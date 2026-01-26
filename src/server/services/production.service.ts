@@ -419,16 +419,16 @@ export async function completeProduction(
                     costPerUnit: costPerUnit,
                     currency: 'USD',
                     isCalculated: true,
-                    costBreakdown: {
+                    costBreakdown: JSON.stringify({
                         ingredients: ingredientsToConsume.map(i => ({
                             name: i.itemName,
                             quantity: i.quantity,
                             cost: i.totalCost,
                         })),
                         totalIngredients: totalIngredientsCost,
-                        laborCost: 0, // TODO: Agregar costo de mano de obra
+                        laborCost: 0,
                         overheadCost: 0,
-                    },
+                    }),
                     reason: `Producción: ${order.orderNumber}`,
                     createdById: input.userId,
                 },
