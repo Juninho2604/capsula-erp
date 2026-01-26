@@ -112,7 +112,7 @@ export default function RecetasPage() {
                                 Por: {recipe.createdBy}
                             </p>
                             <Link
-                                href={`/dashboard/recetas/${recipe.id}`}
+                                href={`/dashboard/recetas/${recipe.id}` as any}
                                 className="text-sm font-medium text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400"
                             >
                                 Ver detalles →
