@@ -164,7 +164,6 @@ export async function registrarEntradaMercancia(
                     inventoryItemId: input.inventoryItemId,
                     costPerUnit: weightedCost,
                     currency: input.currency || 'USD',
-                    supplierId: input.supplierId || null,
                     reason: `Entrada mercancía${input.referenceNumber ? ` - Nota: ${input.referenceNumber}` : ''} - Costo promedio ponderado`,
                     createdById: input.userId,
                 },
