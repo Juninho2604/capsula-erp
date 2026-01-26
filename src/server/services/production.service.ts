@@ -127,7 +127,7 @@ export async function createProductionOrder(
                 scheduledDate: input.scheduledDate,
                 notes: input.notes,
                 createdById: input.userId,
-            },
+            } as any,
         });
 
         return {
@@ -334,7 +334,7 @@ export async function completeProduction(
                     actualCost: totalIngredientsCost,
                     completedAt: new Date(),
                     notes: input.notes,
-                },
+                } as any,
             });
 
             // Registrar salida de cada ingrediente
@@ -502,8 +502,6 @@ export async function quickProduction(input: {
         where: { id: orderResult.orderId },
         data: {
             status: 'APPROVED',
-            approvedById: input.userId,
-            approvedAt: new Date(),
         },
     });
 
