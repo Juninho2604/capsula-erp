@@ -1,0 +1,536 @@
+// ============================================================================
+// SHANKLISH CARACAS ERP - PRISMA SCHEMA
+// ============================================================================
+// Base de Datos: Google Cloud SQL (PostgreSQL)
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USUARIOS Y AUTENTICACIÓN
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  firstName     String
+  lastName      String
+  role          String    @default("CHEF") // OWNER, AUDITOR, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD
+  pin           String?   // Código de 4-6 dígitos para autorización rápida
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  inventoryMovements InventoryMovement[]
+  costHistories      CostHistory[]
+  productionOrders   ProductionOrder[]
+
+  // Requisiciones
+  requisitionsRequested Requisition[] @relation("RequisitionRequester")
+  requisitionsProcessed Requisition[] @relation("RequisitionProcessor")
+
+  // POS - Ventas
+  salesOrders    SalesOrder[] @relation("SalesOrderCreator")
+  authorizedOrders SalesOrder[] @relation("SalesOrderAuthorizer")
+
+  @@index([email])
+  @@index([role])
+}
+
+// ============================================================================
+// ÁREAS DE TRABAJO
+// ============================================================================
+
+model Area {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Relaciones
+  inventoryLocations InventoryLocation[]
+
+  // Requisiciones
+  requisitionsTarget Requisition[] @relation("RequisitionTarget")
+  requisitionsSource Requisition[] @relation("RequisitionSource")
+
+  // POS - Ventas
+  salesOrders    SalesOrder[]
+}
+
+// ============================================================================
+// INVENTARIO
+// ============================================================================
+
+model InventoryItem {
+  id              String   @id @default(cuid())
+  sku             String   @unique
+  name            String
+  description     String?
+  type            String   // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
+  category        String?
+  baseUnit        String   // KG, L, UNIT, G, ML, PORTION
+  purchaseUnit    String?
+  conversionRate  Float?
+  minimumStock    Float    @default(0)
+  reorderPoint    Float    @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  stockLevels     InventoryLocation[]
+  movements       InventoryMovement[]
+  costHistory     CostHistory[]
+  recipeIngredients RecipeIngredient[]
+  outputRecipes   Recipe[]            @relation("RecipeOutput")
+
+  requisitionItems RequisitionItem[]
+
+  @@index([sku])
+  @@index([type])
+  @@index([category])
+}
+
+model InventoryLocation {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  areaId          String
+  area            Area          @relation(fields: [areaId], references: [id])
+  currentStock    Float         @default(0)
+  lastCountDate   DateTime?
+  
+  @@unique([inventoryItemId, areaId])
+  @@index([inventoryItemId])
+  @@index([areaId])
+}
+
+// ============================================================================
+// MOVIMIENTOS DE INVENTARIO
+// ============================================================================
+
+model InventoryMovement {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  movementType    String   // PURCHASE, SALE, PRODUCTION_IN, PRODUCTION_OUT, ADJUSTMENT_IN, ADJUSTMENT_OUT, TRANSFER, WASTE
+  quantity        Float
+  unit            String
+  
+  // Costo
+  unitCost        Float?
+  totalCost       Float?
+  
+  // Documento de soporte
+  referenceNumber String?
+  documentUrl     String?
+  documentType    String?
+  
+  // Notas
+  reason          String?
+  notes           String?
+  
+  // Auditoría
+  createdAt       DateTime @default(now())
+  createdById     String
+  createdBy       User     @relation(fields: [createdById], references: [id])
+
+  // Vinculación con venta (si aplica)
+  salesOrderId    String?
+  salesOrder      SalesOrder? @relation("SaleMovements", fields: [salesOrderId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([movementType])
+  @@index([createdAt])
+  @@index([salesOrderId])
+}
+
+// ============================================================================
+// HISTORIAL DE COSTOS
+// ============================================================================
+
+model CostHistory {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  costPerUnit     Float
+  currency        String   @default("USD")
+  isCalculated    Boolean  @default(false)
+  costBreakdown   String?  // JSON string
+  
+  effectiveFrom   DateTime @default(now())
+  effectiveTo     DateTime?
+  
+  reason          String?
+  createdById     String
+  createdBy       User     @relation(fields: [createdById], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([effectiveFrom])
+}
+
+// ============================================================================
+// RECETAS
+// ============================================================================
+
+model Recipe {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  
+  outputItemId    String
+  outputItem      InventoryItem @relation("RecipeOutput", fields: [outputItemId], references: [id])
+  outputQuantity  Float    @default(1)
+  outputUnit      String
+  
+  yieldPercentage Float    @default(100)
+  prepTime        Int?
+  cookTime        Int?
+  
+  isApproved      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  version         Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  ingredients     RecipeIngredient[]
+  productionOrders ProductionOrder[]
+
+  @@index([outputItemId])
+}
+
+model RecipeIngredient {
+  id              String   @id @default(cuid())
+  recipeId        String
+  recipe          Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  
+  ingredientItemId String
+  ingredientItem   InventoryItem @relation(fields: [ingredientItemId], references: [id])
+  
+  quantity        Float
+  unit            String
+  wastePercentage Float    @default(0)
+  notes           String?
+  sortOrder       Int      @default(0)
+
+  @@unique([recipeId, ingredientItemId])
+  @@index([recipeId])
+}
+
+// ============================================================================
+// ÓRDENES DE PRODUCCIÓN
+// ============================================================================
+
+model ProductionOrder {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  
+  recipeId        String
+  recipe          Recipe   @relation(fields: [recipeId], references: [id])
+  
+  outputItemId    String
+  plannedQuantity Float
+  actualQuantity  Float?
+  unit            String
+  
+  status          String   @default("DRAFT") // DRAFT, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
+  priority        Int      @default(0)
+  
+  scheduledDate   DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  actualYieldPercentage Float?
+  actualCost      Float?
+  
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  createdById     String
+  createdBy       User     @relation(fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+// ============================================================================
+// REQUISICIONES (TRANSFERENCIAS ENTRE ALMACENES)
+// ============================================================================
+
+model Requisition {
+  id          String   @id @default(cuid())
+  code        String   @unique // Ej: REQ-1001
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  
+  // Quién pide (Solicitante)
+  requestedById String
+  requestedBy   User     @relation("RequisitionRequester", fields: [requestedById], references: [id])
+  
+  // Para qué área pide (Destino)
+  targetAreaId  String
+  targetArea    Area     @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
+  
+  // De dónde se saca (Origen - Generalmente Almacén Principal, pero puede variar)
+  sourceAreaId  String?
+  sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
+
+  // Quién aprueba/despacha (Aprobador)
+  processedById String?
+  processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
+  processedAt   DateTime?
+  
+  notes       String?
+
+  items       RequisitionItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([targetAreaId])
+}
+
+model RequisitionItem {
+  id            String      @id @default(cuid())
+  requisitionId String
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  quantity      Float
+  unit          String
+  
+  // Cantidad realmente despachada
+  dispatchedQuantity Float?
+  
+  @@index([requisitionId])
+}
+
+// ============================================================================
+// SISTEMA POS - MENÚ
+// ============================================================================
+
+model MenuCategory {
+  id          String   @id @default(cuid())
+  name        String   // Ej: "Shawarmas", "Bebidas", "Postres"
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  // Relaciones
+  items       MenuItem[]
+  
+  @@index([sortOrder])
+}
+
+model MenuItem {
+  id              String   @id @default(cuid())
+  sku             String   @unique // Ej: "SHWRM-MIX", "BEB-PEPSI"
+  name            String   // Ej: "Shawarma Mixto"
+  description     String?
+  
+  categoryId      String
+  category        MenuCategory @relation(fields: [categoryId], references: [id])
+  
+  // Precios
+  price           Float    // Precio de venta en USD
+  cost            Float?   // Costo calculado (si tiene receta)
+  
+  // Vinculación con inventario/receta (opcional)
+  recipeId        String?  // Si el producto tiene receta para descontar insumos
+  
+  // Configuración
+  isAvailable     Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  
+  // Modificadores permitidos
+  modifierGroups  MenuItemModifierGroup[]
+  
+  // Relaciones
+  orderItems      SalesOrderItem[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([categoryId])
+  @@index([sku])
+}
+
+model MenuModifierGroup {
+  id              String   @id @default(cuid())
+  name            String   // Ej: "Acompañantes", "Tamaño", "Extras"
+  description     String?
+  
+  // Reglas de selección
+  isRequired      Boolean  @default(false) // Debe seleccionar al menos uno
+  minSelections   Int      @default(0)
+  maxSelections   Int      @default(99)    // 99 = sin límite
+  
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  
+  // Relaciones
+  modifiers       MenuModifier[]
+  menuItems       MenuItemModifierGroup[]
+  
+  createdAt       DateTime @default(now())
+}
+
+model MenuModifier {
+  id              String   @id @default(cuid())
+  groupId         String
+  group           MenuModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  name            String   // Ej: "Tabulé", "Vegetales Salteados"
+  priceAdjustment Float    @default(0) // +$0.50, -$1.00, etc.
+  
+  isAvailable     Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  
+  // Relaciones
+  orderItemModifiers SalesOrderItemModifier[]
+  
+  @@index([groupId])
+}
+
+// Tabla pivote: Qué grupos de modificadores aplican a qué productos
+model MenuItemModifierGroup {
+  id              String   @id @default(cuid())
+  menuItemId      String
+  menuItem        MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  
+  modifierGroupId String
+  modifierGroup   MenuModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  
+  @@unique([menuItemId, modifierGroupId])
+}
+
+// ============================================================================
+// SISTEMA POS - VENTAS
+// ============================================================================
+
+model SalesOrder {
+  id              String   @id @default(cuid())
+  
+  // Correlativo único por día (Ej: "REST-2026-01-27-001")
+  orderNumber     String   @unique
+  
+  // Tipo de venta
+  orderType       String   @default("RESTAURANT") // RESTAURANT, DELIVERY
+  
+  // Cliente (opcional)
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?  // Para delivery
+  
+  // Estado
+  status          String   @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED
+  
+  // Totales
+  subtotal        Float    @default(0)
+  discount        Float    @default(0)
+  tax             Float    @default(0)
+  total           Float    @default(0)
+
+  // Detalles de Descuento
+  discountType    String?  // DIVISAS_33, CORTESIA_100, etc.
+  discountReason  String?
+  authorizedById  String?
+  authorizedBy    User?    @relation("SalesOrderAuthorizer", fields: [authorizedById], references: [id])
+
+  // Método de pago
+  
+  // Método de pago
+  paymentMethod   String?  // CASH, CARD, TRANSFER, MULTIPLE
+  paymentStatus   String   @default("PENDING") // PENDING, PAID, PARTIAL, REFUNDED
+  amountPaid      Float    @default(0)
+  change          Float    @default(0) // Vuelto
+  
+  // Auditoría
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Cajera que creó la orden
+  createdById     String
+  createdBy       User     @relation("SalesOrderCreator", fields: [createdById], references: [id])
+  
+  // Área de la que se descuenta inventario
+  areaId          String
+  area            Area     @relation(fields: [areaId], references: [id])
+  
+  // Notas
+  notes           String?
+  
+  // Líneas de la orden
+  items           SalesOrderItem[]
+  
+  // Movimientos de inventario generados
+  inventoryMovements InventoryMovement[] @relation("SaleMovements")
+  
+  @@index([orderNumber])
+  @@index([orderType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+model SalesOrderItem {
+  id              String   @id @default(cuid())
+  
+  orderId         String
+  order           SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  menuItemId      String
+  menuItem        MenuItem @relation(fields: [menuItemId], references: [id])
+  
+  // Snapshot del nombre y precio al momento de la venta
+  itemName        String   // Nombre del producto al momento de la venta
+  unitPrice       Float
+  quantity        Int      @default(1)
+  
+  // Subtotal de esta línea (unitPrice * quantity + modificadores)
+  lineTotal       Float
+  
+  // Notas especiales (Ej: "Sin cebolla")
+  notes           String?
+  
+  // Modificadores seleccionados
+  modifiers       SalesOrderItemModifier[]
+  
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model SalesOrderItemModifier {
+  id              String   @id @default(cuid())
+  
+  orderItemId     String
+  orderItem       SalesOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  
+  modifierId      String?
+  modifier        MenuModifier? @relation(fields: [modifierId], references: [id])
+  
+  // Snapshot del nombre y ajuste de precio al momento de la venta
+  name            String   // Nombre del modificador
+  priceAdjustment Float    @default(0)
+  
+  @@index([orderItemId])
+}
