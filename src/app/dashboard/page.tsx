@@ -1,21 +1,16 @@
-'use client';
-
-import { useAuthStore } from '@/stores/auth.store';
-import { mockLowStockItems, mockInventoryItems, mockSubRecipes, mockFinishedGoods } from '@/lib/mock-data';
-import { formatNumber, formatCurrency, getStockStatus } from '@/lib/utils';
+import { getSession, hasPermission, PERMISSIONS } from '@/lib/auth';
+import { getDashboardStatsAction } from '@/app/actions/dashboard.actions';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 
-export default function DashboardPage() {
-    const { user, canViewCosts } = useAuthStore();
-    const showCosts = canViewCosts();
+export const dynamic = 'force-dynamic';
 
-    // Estadísticas generales
-    const stats = {
-        totalItems: mockInventoryItems.length,
-        lowStockCount: mockLowStockItems.length,
-        subRecipes: mockSubRecipes.length,
-        finishedGoods: mockFinishedGoods.length,
-    };
+export default async function DashboardPage() {
+    const session = await getSession();
+    const showCosts = hasPermission(session?.role, PERMISSIONS.VIEW_COSTS);
+
+    // Fetch real data
+    const { stats, lowStockItems } = await getDashboardStatsAction();
 
     return (
         <div className="space-y-6 animate-in">
@@ -23,7 +18,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        ¡Bienvenido, {user?.firstName}! 👋
+                        ¡Bienvenido, {session?.firstName || 'Usuario'}! 👋
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         Resumen de operaciones - Gerencia Operativa
@@ -58,13 +53,13 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Low Stock Alert */}
-                <div className="stat-card border-red-200 dark:border-red-800">
+                <div className={`stat-card ${stats.lowStockCount > 0 ? 'border-red-200 dark:border-red-800' : ''}`}>
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                 Stock Bajo
                             </p>
-                            <p className="mt-1 text-3xl font-bold text-red-600 dark:text-red-400">
+                            <p className={`mt-1 text-3xl font-bold ${stats.lowStockCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                                 {stats.lowStockCount}
                             </p>
                         </div>
@@ -165,57 +160,54 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {mockLowStockItems.map((item) => {
-                                const stockStatus = getStockStatus(item.currentStock, item.minimumStock, item.reorderPoint);
-                                return (
-                                    <tr key={item.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-lg dark:bg-gray-700">
-                                                    {item.type === 'RAW_MATERIAL' ? '📦' : item.type === 'SUB_RECIPE' ? '🧀' : '🍽️'}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900 dark:text-white">
-                                                        {item.name}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">{item.sku}</p>
-                                                </div>
+                            {lowStockItems.slice(0, 5).map((item) => (
+                                <tr key={item.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-lg dark:bg-gray-700">
+                                                {item.type === 'RAW_MATERIAL' ? '📦' : item.type === 'SUB_RECIPE' ? '🧀' : '🍽️'}
                                             </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900 dark:text-white">
+                                                    {item.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">{item.sku}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                        {item.category || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                            {formatNumber(item.currentStock)} {item.baseUnit}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm text-gray-500">
+                                        {formatNumber(item.minimumStock)} {item.baseUnit}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`alert-badge ${item.status.status === 'critical' ? 'alert-badge-critical' :
+                                            item.status.status === 'warning' ? 'alert-badge-warning' :
+                                                'alert-badge-success'
+                                            }`}>
+                                            {item.status.status === 'critical' && '🔴'}
+                                            {item.status.status === 'warning' && '🟡'}
+                                            {item.status.label}
+                                        </span>
+                                    </td>
+                                    {showCosts && (
+                                        <td className="px-6 py-4 text-right font-mono text-sm text-gray-900 dark:text-white">
+                                            {formatCurrency(item.costPerUnit || 0)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                            {item.category || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
-                                                {formatNumber(item.currentStock)} {item.baseUnit}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-sm text-gray-500">
-                                            {formatNumber(item.minimumStock)} {item.baseUnit}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`alert-badge ${stockStatus.status === 'critical' ? 'alert-badge-critical' :
-                                                    stockStatus.status === 'warning' ? 'alert-badge-warning' :
-                                                        'alert-badge-success'
-                                                }`}>
-                                                {stockStatus.status === 'critical' && '🔴'}
-                                                {stockStatus.status === 'warning' && '🟡'}
-                                                {stockStatus.label}
-                                            </span>
-                                        </td>
-                                        {showCosts && (
-                                            <td className="px-6 py-4 text-right font-mono text-sm text-gray-900 dark:text-white">
-                                                {formatCurrency(item.costPerUnit || 0)}
-                                            </td>
-                                        )}
-                                    </tr>
-                                );
-                            })}
+                                    )}
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
 
-                {mockLowStockItems.length === 0 && (
+                {lowStockItems.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <span className="text-4xl">✅</span>
                         <p className="mt-2 font-medium text-gray-900 dark:text-white">

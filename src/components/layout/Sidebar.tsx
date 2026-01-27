@@ -35,7 +35,7 @@ const secondaryNavigation: NavItem[] = [
         label: 'Usuarios',
         href: '/dashboard/usuarios',
         icon: '👥',
-        roles: ['OWNER', 'ADMIN_MANAGER'],
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
     },
     { label: 'Roles y Permisos', href: '/dashboard/config/roles', icon: '⚙️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
 ];

@@ -16,8 +16,7 @@ export async function getUsers() {
     }
 
     // Validar permisos (Solo Gerentes o superior pueden ver lista de usuarios para config)
-    // Usamos CONFIGURE_ROLES como referencia, o al menos un nivel básico de gestión
-    if (!hasPermission(session.role, PERMISSIONS.CONFIGURE_ROLES)) {
+    if (!hasPermission(session.role, PERMISSIONS.VIEW_USERS)) {
         throw new Error('No tienes permisos para ver la lista de usuarios');
     }
 
@@ -32,7 +31,6 @@ export async function getUsers() {
             email: true,
             role: true,
             isActive: true, // Útil para la gestión
-            lastLogin: false, // No existe en schema, cuidado
         },
     });
 
@@ -59,7 +57,7 @@ export async function updateUserRole(userId: string, newRole: string) {
     try {
         await prisma.user.update({
             where: { id: userId },
-            data: { role: newRole },
+            data: { role: newRole as any }, // Cast as any or import UserRole enum if available
         });
 
         revalidatePath('/dashboard/config/roles');

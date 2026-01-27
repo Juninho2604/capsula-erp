@@ -58,24 +58,7 @@ export async function deleteSession() {
 
 // === UTILIDADES DE PERMISOS ===
 
-export function hasPermission(userRole: string | undefined, requiredRoleLevel: number) {
-    const roleLevels: Record<string, number> = {
-        'OWNER': 100,
-        'AUDITOR': 90,
-        'ADMIN_MANAGER': 80,
-        'OPS_MANAGER': 70,
-        'HR_MANAGER': 60,
-        'CHEF': 50,
-        'AREA_LEAD': 40,
-        'STAFF': 10
-    };
 
-    const userLevel = roleLevels[userRole || 'STAFF'] || 0;
-    return userLevel >= requiredRoleLevel;
-}
+// Exportar desde el archivo separado para evitar conflictos en cliente
+export { hasPermission, PERMISSIONS } from './permissions';
 
-export const PERMISSIONS = {
-    CONFIGURE_ROLES: 70, // Solo Gerentes Ops (70) hacia arriba pueden configurar roles
-    APPROVE_TRANSFERS: 40, // Jefes de Área pueden aprobar (REVISAR LÓGICA DE NEGOCIO)
-    VIEW_COSTS: 80, // Solo Gerentes Admin hacia arriba ven costos detallados
-};
