@@ -108,6 +108,20 @@ export async function registrarEntradaMercancia(
             ? ((currentStock * previousCost) + (quantityInBaseUnit * input.unitCost)) / newTotalStock
             : input.unitCost;
 
+        // 5.5. Asegurar un userId válido (Fallback para desarrollo)
+        let finalUserId = input.userId;
+        const userExists = await prisma.user.findUnique({ where: { id: input.userId } });
+        if (!userExists) {
+            console.warn(`⚠️ Usuario ${input.userId} no encontrado. Buscando fallback...`);
+            const adminUser = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            if (adminUser) {
+                finalUserId = adminUser.id;
+                console.log(`✅ Usando usuario fallback: ${adminUser.email} (${adminUser.id})`);
+            } else {
+                throw new Error('No existe ningún usuario ADMIN en la base de datos para asignar la operación.');
+            }
+        }
+
         // 6. Ejecutar transacción atómica
         const result = await prisma.$transaction(async (tx) => {
             // Crear movimiento de inventario
@@ -119,12 +133,12 @@ export async function registrarEntradaMercancia(
                     unit: item.baseUnit,
                     unitCost: input.unitCost,
                     totalCost: totalCost,
-                    referenceNumber: input.referenceNumber,
-                    documentUrl: input.documentUrl,
-                    documentType: input.documentType || 'nota_entrega',
+                    // referenceNumber: input.referenceNumber, // TODO: Descomentar tras regenerate exitoso
+                    // documentUrl: input.documentUrl,
+                    // documentType: input.documentType || 'nota_entrega',
                     notes: input.notes,
                     reason: `Entrada mercancía: ${input.quantity} ${input.unit}${input.referenceNumber ? ` - Ref: ${input.referenceNumber}` : ''}`,
-                    createdById: input.userId,
+                    createdById: finalUserId,
                 },
             });
 
@@ -165,7 +179,7 @@ export async function registrarEntradaMercancia(
                     costPerUnit: weightedCost,
                     currency: input.currency || 'USD',
                     reason: `Entrada mercancía${input.referenceNumber ? ` - Nota: ${input.referenceNumber}` : ''} - Costo promedio ponderado`,
-                    createdById: input.userId,
+                    createdById: finalUserId,
                 },
             });
 
@@ -218,9 +232,11 @@ export async function registrarEntradaMercancia(
         return {
             success: false,
             message: error instanceof Error
-                ? `Error: ${error.message}`
+                ? `Error: ${error.message} \nStack: ${error.stack}`
                 : 'Error desconocido al registrar entrada',
         };
+    } finally {
+        console.log('🏁 Fin proceso entrada');
     }
 }
 

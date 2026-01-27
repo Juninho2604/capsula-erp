@@ -1,0 +1,57 @@
+
+// ... (contenido anterior del schema) ...
+
+// ============================================================================
+// REQUISICIONES (TRANSFERENCIAS ENTRE ALMACENES)
+// ============================================================================
+
+model Requisition {
+  id          String   @id @default(cuid())
+  code        String   @unique // Ej: REQ-1001
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  
+  // Quién pide (Solicitante)
+  requestedById String
+  requestedBy   User     @relation("RequisitionRequester", fields: [requestedById], references: [id])
+  
+  // Para qué área pide (Destino)
+  targetAreaId  String
+  targetArea    Area     @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
+  
+  // De dónde se saca (Origen - Generalmente Almacén Principal, pero puede variar)
+  sourceAreaId  String?
+  sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
+
+  // Quién aprueba/despacha (Aprobador)
+  processedById String?
+  processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
+  processedAt   DateTime?
+  
+  notes       String?
+
+  items       RequisitionItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([targetAreaId])
+}
+
+model RequisitionItem {
+  id            String      @id @default(cuid())
+  requisitionId String
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  quantity      Float
+  unit          String
+  
+  // Cantidad realmente despachada (puede ser menor a la pedida)
+  dispatchedQuantity Float?
+  
+  @@index([requisitionId])
+}

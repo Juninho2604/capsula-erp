@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROLE_INFO } from '@/lib/constants/roles';
 import { UserRole } from '@/types';
+import { logoutAction } from '@/app/actions/auth.actions';
 
 interface NavItem {
     label: string;
@@ -17,6 +19,7 @@ interface NavItem {
 const navigation: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: '📊' },
     { label: 'Inventario', href: '/dashboard/inventario', icon: '📦' },
+    { label: 'Transferencias', href: '/dashboard/transferencias', icon: '🔄' }, // Agregado
     { label: 'Recetas', href: '/dashboard/recetas', icon: '📋' },
     { label: 'Producción', href: '/dashboard/produccion', icon: '🏭' },
     {
@@ -34,22 +37,44 @@ const secondaryNavigation: NavItem[] = [
         icon: '👥',
         roles: ['OWNER', 'ADMIN_MANAGER'],
     },
-    { label: 'Configuración', href: '/dashboard/config', icon: '⚙️', roles: ['OWNER', 'ADMIN_MANAGER'] },
+    { label: 'Roles y Permisos', href: '/dashboard/config/roles', icon: '⚙️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+    initialUser?: any; // SessionPayload
+}
+
+export function Sidebar({ initialUser }: SidebarProps) {
     const pathname = usePathname();
-    const { user, setRole } = useAuthStore();
+    const { user, login } = useAuthStore();
+
+    // Sincronizar usuario real con el store al montar
+    useEffect(() => {
+        if (initialUser && (!user || initialUser.id !== user.id)) {
+            // Adaptar SessionPayload a User (simplificado)
+            login({
+                id: initialUser.id,
+                email: initialUser.email,
+                firstName: initialUser.firstName,
+                lastName: initialUser.lastName,
+                role: initialUser.role as UserRole,
+            });
+        }
+    }, [initialUser, login, user]);
+
+    // Usar el usuario del store (que ahora está sincronizado)
+    const activeUser = user || (initialUser as any);
+    const userRole = activeUser?.role as UserRole;
 
     // Filtrar navegación según rol del usuario
     const filteredNav = navigation.filter(
-        item => !item.roles || (user && item.roles.includes(user.role))
+        item => !item.roles || (userRole && item.roles.includes(userRole))
     );
     const filteredSecondaryNav = secondaryNavigation.filter(
-        item => !item.roles || (user && item.roles.includes(user.role))
+        item => !item.roles || (userRole && item.roles.includes(userRole))
     );
 
-    const roleInfo = user ? ROLE_INFO[user.role] : null;
+    const roleInfo = userRole ? ROLE_INFO[userRole] : null;
 
     return (
         <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
@@ -119,24 +144,6 @@ export function Sidebar() {
                 )}
             </nav>
 
-            {/* Role Switcher (Solo desarrollo) */}
-            <div className="border-t border-gray-200 p-3 dark:border-gray-700">
-                <p className="mb-2 px-2 text-xs text-gray-400">🔧 Debug: Cambiar Rol</p>
-                <select
-                    value={user?.role || 'OWNER'}
-                    onChange={(e) => setRole(e.target.value as UserRole)}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-800"
-                >
-                    <option value="OWNER">👑 Dueño (Nivel 1)</option>
-                    <option value="AUDITOR">🔍 Auditor (Nivel 2)</option>
-                    <option value="ADMIN_MANAGER">💼 Gerente Admin (Nivel 3)</option>
-                    <option value="OPS_MANAGER">🏭 Gerente Ops (Nivel 4)</option>
-                    <option value="HR_MANAGER">👥 RRHH (Nivel 5)</option>
-                    <option value="CHEF">👨‍🍳 Chef (Nivel 6)</option>
-                    <option value="AREA_LEAD">📍 Jefe Área (Nivel 7)</option>
-                </select>
-            </div>
-
             {/* User Info */}
             <div className="border-t border-gray-200 p-4 dark:border-gray-700">
                 <div className="flex items-center gap-3">
@@ -145,7 +152,7 @@ export function Sidebar() {
                     </div>
                     <div className="flex-1 overflow-hidden">
                         <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
-                            {user?.firstName} {user?.lastName}
+                            {activeUser?.firstName} {activeUser?.lastName}
                         </p>
                         {roleInfo && (
                             <span
@@ -159,6 +166,17 @@ export function Sidebar() {
                             </span>
                         )}
                     </div>
+
+                    {/* Botón Logout */}
+                    <form action={logoutAction}>
+                        <button
+                            type="submit"
+                            title="Cerrar Sesión"
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800"
+                        >
+                            🚪
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>

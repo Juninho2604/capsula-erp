@@ -7,9 +7,8 @@
  */
 
 import { revalidatePath } from 'next/cache';
-
-// En producción, importar de los services reales:
-// import { registerPurchase, registerSale, registerAdjustment } from '@/server/services/inventory.service';
+import prisma from '@/server/db';
+import { Prisma } from '@prisma/client';
 
 // ============================================================================
 // TIPOS
@@ -272,4 +271,98 @@ export async function getStockAction(
             costPerUnit: cost,
         },
     };
+}
+
+// ============================================================================
+// ACTION: OBTENER LISTA DE INVENTARIO (REAL)
+// ============================================================================
+
+export async function getInventoryListAction() {
+    try {
+        const items = await prisma.inventoryItem.findMany({
+            where: { isActive: true },
+            include: {
+                stockLevels: {
+                    include: {
+                        area: true
+                    }
+                },
+                costHistory: {
+                    orderBy: { effectiveFrom: 'desc' },
+                    take: 1
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        // Mapear al formato que espera la UI
+        return items.map(item => {
+            const currentStock = item.stockLevels.reduce((acc, sl) => acc + Number(sl.currentStock), 0);
+            const costPerUnit = item.costHistory[0]?.costPerUnit || 0;
+
+            return {
+                id: item.id,
+                sku: item.sku,
+                name: item.name,
+                type: item.type,
+                category: item.category || 'GENERAL',
+                baseUnit: item.baseUnit,
+                currentStock: currentStock,
+                stockByArea: item.stockLevels.map(sl => ({
+                    areaId: sl.areaId,
+                    areaName: sl.area.name,
+                    quantity: Number(sl.currentStock)
+                })),
+                minimumStock: Number(item.minimumStock),
+                reorderPoint: item.reorderPoint ? Number(item.reorderPoint) : 0,
+                costPerUnit: Number(costPerUnit),
+                lastUpdated: item.updatedAt.toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error('Error obteniendo inventario:', error);
+        return [];
+    }
+}
+
+export async function getAreasAction() {
+    try {
+        const areas = await prisma.area.findMany({
+            orderBy: { name: 'asc' }
+        });
+        return areas;
+    } catch (error) {
+        console.error('Error fetching areas:', error);
+        return [];
+    }
+}
+
+export async function updateInventoryItemAction(
+    id: string,
+    data: {
+        name?: string;
+        sku?: string;
+        category?: string;
+        minimumStock?: number;
+        reorderPoint?: number;
+    }
+): Promise<{ success: boolean; message: string }> {
+    try {
+        await prisma.inventoryItem.update({
+            where: { id },
+            data: {
+                ...data,
+                updatedAt: new Date()
+            }
+        });
+
+        revalidatePath('/dashboard/inventario');
+        return { success: true, message: 'Ítem actualizado exitosamente' };
+    } catch (error) {
+        console.error('Error updating inventory item:', error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Error al actualizar el ítem'
+        };
+    }
 }

@@ -33,6 +33,10 @@ model User {
   costHistories      CostHistory[]
   productionOrders   ProductionOrder[]
 
+  // Requisiciones
+  requisitionsRequested Requisition[] @relation("RequisitionRequester")
+  requisitionsProcessed Requisition[] @relation("RequisitionProcessor")
+
   @@index([email])
   @@index([role])
 }
@@ -50,6 +54,10 @@ model Area {
 
   // Relaciones
   inventoryLocations InventoryLocation[]
+
+  // Requisiciones
+  requisitionsTarget Requisition[] @relation("RequisitionTarget")
+  requisitionsSource Requisition[] @relation("RequisitionSource")
 }
 
 // ============================================================================
@@ -78,6 +86,8 @@ model InventoryItem {
   costHistory     CostHistory[]
   recipeIngredients RecipeIngredient[]
   outputRecipes   Recipe[]            @relation("RecipeOutput")
+
+  requisitionItems RequisitionItem[]
 
   @@index([sku])
   @@index([type])
@@ -243,4 +253,59 @@ model ProductionOrder {
 
   @@index([status])
   @@index([scheduledDate])
+}
+
+// ============================================================================
+// REQUISICIONES (TRANSFERENCIAS ENTRE ALMACENES)
+// ============================================================================
+
+model Requisition {
+  id          String   @id @default(cuid())
+  code        String   @unique // Ej: REQ-1001
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  
+  // Quién pide (Solicitante)
+  requestedById String
+  requestedBy   User     @relation("RequisitionRequester", fields: [requestedById], references: [id])
+  
+  // Para qué área pide (Destino)
+  targetAreaId  String
+  targetArea    Area     @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
+  
+  // De dónde se saca (Origen - Generalmente Almacén Principal, pero puede variar)
+  sourceAreaId  String?
+  sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
+
+  // Quién aprueba/despacha (Aprobador)
+  processedById String?
+  processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
+  processedAt   DateTime?
+  
+  notes       String?
+
+  items       RequisitionItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([targetAreaId])
+}
+
+model RequisitionItem {
+  id            String      @id @default(cuid())
+  requisitionId String
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  quantity      Float
+  unit          String
+  
+  // Cantidad realmente despachada
+  dispatchedQuantity Float?
+  
+  @@index([requisitionId])
 }
