@@ -165,6 +165,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                         >
                             📦 Compra Rápida
                         </Link>
+                        <Link
+                            href="/dashboard/inventario/diario"
+                            className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-700 transition-all hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-900/20 dark:text-purple-300"
+                        >
+                            📅 Cierre Diario
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -253,10 +259,10 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
             {/* Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                <div className="overflow-x-auto max-h-[70vh]">
+                    <table className="w-full relative">
+                        <thead className="sticky top-0 z-10 shadow-sm">
+                            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
                                 <th
                                     className="group cursor-pointer px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50"
                                     onClick={() => handleSort('name')}

@@ -38,9 +38,10 @@ interface MenuItem {
 interface SelectedModifier {
     groupId: string;
     groupName: string;
-    id: string; // modifierId
+    id: string;
     name: string;
     priceAdjustment: number;
+    quantity: number;
 }
 
 export default function POSRestaurantPage() {
@@ -53,7 +54,7 @@ export default function POSRestaurantPage() {
     const [customerName, setCustomerName] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // lastOrder actualizado
+    // lastOrder
     const [lastOrder, setLastOrder] = useState<{
         orderNumber: string;
         total: number;
@@ -124,7 +125,6 @@ export default function POSRestaurantPage() {
         return '🍽️';
     };
 
-    // Agregar item al carrito (Abrir Modal)
     const handleAddToCart = (item: MenuItem) => {
         setSelectedItemForModifier(item);
         setCurrentModifiers([]);
@@ -133,70 +133,89 @@ export default function POSRestaurantPage() {
         setShowModifierModal(true);
     };
 
-    // Lógica para seleccionar/deseleccionar modificadores
-    const toggleModifier = (group: ModifierGroup, modifier: ModifierOption) => {
-        const alreadySelected = currentModifiers.find(m => m.id === modifier.id && m.groupId === group.id);
-        const selectedInGroup = currentModifiers.filter(m => m.groupId === group.id);
-
-        if (alreadySelected) {
-            // Deseleccionar
-            setCurrentModifiers(currentModifiers.filter(m => m !== alreadySelected));
-        } else {
-            // Seleccionar
-            // Verificar Máximos
-            if (group.maxSelections === 1 && selectedInGroup.length > 0) {
-                // Radio button behavior: Reemplazar
-                const otherModifiers = currentModifiers.filter(m => m.groupId !== group.id);
-                setCurrentModifiers([...otherModifiers, {
-                    groupId: group.id,
-                    groupName: group.name,
-                    id: modifier.id,
-                    name: modifier.name,
-                    priceAdjustment: modifier.priceAdjustment
-                }]);
-            } else if (selectedInGroup.length < group.maxSelections) {
-                // Checkbox behavior: Agregar si hay cupo
-                setCurrentModifiers([...currentModifiers, {
-                    groupId: group.id,
-                    groupName: group.name,
-                    id: modifier.id,
-                    name: modifier.name,
-                    priceAdjustment: modifier.priceAdjustment
-                }]);
-            } else {
-                // Lleno: No hacer nada o avisar (opcional)
-                // Podríamos hacer un efecto de "vibrar" para indicar error
-            }
-        }
+    const removeFromCart = (index: number) => {
+        const newCart = [...cart];
+        newCart.splice(index, 1);
+        setCart(newCart);
     };
 
-    // Verificar si el grupo está completo (validez)
+    // UPDATE QUANTITY LOGIC
+    const updateModifierQuantity = (group: ModifierGroup, modifier: ModifierOption, change: number) => {
+        const currentInGroup = currentModifiers.filter(m => m.groupId === group.id);
+        const totalSelectedInGroup = currentInGroup.reduce((sum, m) => sum + m.quantity, 0);
+        const existingMod = currentModifiers.find(m => m.id === modifier.id && m.groupId === group.id);
+        const currentQty = existingMod ? existingMod.quantity : 0;
+
+        // Validaciones
+        if (change > 0) {
+            // Check Max Selections
+            if (group.maxSelections > 1 && totalSelectedInGroup >= group.maxSelections) return;
+
+            // Radio Button Logic (Max 1)
+            if (group.maxSelections === 1) {
+                if (totalSelectedInGroup >= 1 && existingMod) return; // Ya tiene este
+                if (totalSelectedInGroup >= 1 && !existingMod) {
+                    // Reemplazar selección anterior
+                    const others = currentModifiers.filter(m => m.groupId !== group.id);
+                    setCurrentModifiers([...others, {
+                        groupId: group.id, groupName: group.name,
+                        id: modifier.id, name: modifier.name,
+                        priceAdjustment: modifier.priceAdjustment, quantity: 1
+                    }]);
+                    return;
+                }
+            }
+        }
+
+        const newQty = currentQty + change;
+        if (newQty < 0) return;
+
+        let newModifiers = [...currentModifiers];
+        if (existingMod) {
+            if (newQty === 0) {
+                newModifiers = newModifiers.filter(m => !(m.id === modifier.id && m.groupId === group.id));
+            } else {
+                newModifiers = newModifiers.map(m => (m.id === modifier.id && m.groupId === group.id) ? { ...m, quantity: newQty } : m);
+            }
+        } else if (newQty > 0) {
+            newModifiers.push({
+                groupId: group.id, groupName: group.name,
+                id: modifier.id, name: modifier.name,
+                priceAdjustment: modifier.priceAdjustment, quantity: newQty
+            });
+        }
+        setCurrentModifiers(newModifiers);
+    };
+
     const isGroupValid = (group: ModifierGroup) => {
         if (!group.isRequired) return true;
-        const count = currentModifiers.filter(m => m.groupId === group.id).length;
+        const count = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
         return count >= group.minSelections;
     };
 
     const confirmAddToCart = () => {
         if (!selectedItemForModifier) return;
-
-        // Validar todos los grupos requeridos
         const allGroupsValid = selectedItemForModifier.modifierGroups.every(g => isGroupValid(g.modifierGroup));
         if (!allGroupsValid) return;
 
-        const modifierTotal = currentModifiers.reduce((sum, m) => sum + m.priceAdjustment, 0);
+        const modifierTotal = currentModifiers.reduce((sum, m) => sum + (m.priceAdjustment * m.quantity), 0);
         const lineTotal = (selectedItemForModifier.price + modifierTotal) * itemQuantity;
+
+        // Flatten modifiers for cart
+        const explodedModifiers = currentModifiers.flatMap(m => {
+            return Array(m.quantity).fill({
+                modifierId: m.id,
+                name: m.name,
+                priceAdjustment: m.priceAdjustment
+            });
+        });
 
         const newItem: CartItem = {
             menuItemId: selectedItemForModifier.id,
             name: selectedItemForModifier.name,
             quantity: itemQuantity,
             unitPrice: selectedItemForModifier.price,
-            modifiers: currentModifiers.map(m => ({
-                modifierId: m.id,
-                name: m.name,
-                priceAdjustment: m.priceAdjustment,
-            })),
+            modifiers: explodedModifiers,
             notes: itemNotes || undefined,
             lineTotal,
         };
@@ -206,7 +225,7 @@ export default function POSRestaurantPage() {
         setSelectedItemForModifier(null);
     };
 
-    // Calcular totales Carrito y Pagos
+    // Totales
     const cartTotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
     const discountAmount = discountType === 'DIVISAS_33' ? cartTotal * 0.33 : (discountType === 'CORTESIA_100' ? cartTotal : 0);
     const finalTotal = cartTotal - discountAmount;
@@ -229,7 +248,6 @@ export default function POSRestaurantPage() {
             });
 
             if (result.success && result.data) {
-                // IMPRIMIR COMANDA
                 printKitchenCommand({
                     orderNumber: result.data.orderNumber,
                     orderType: 'RESTAURANT',
@@ -275,7 +293,6 @@ export default function POSRestaurantPage() {
         }
     };
 
-    // Handle Descuentos / PIN
     const handleDiscountSelect = (type: string) => {
         if (type === 'CORTESIA_100') {
             setPinInput(''); setPinError(''); setShowPinModal(true);
@@ -300,7 +317,6 @@ export default function POSRestaurantPage() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-white relative">
-            {/* Header */}
             <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-4 fixed top-0 w-full z-30 flex justify-between items-center shadow-md">
                 <div className="flex items-center gap-3">
                     <span className="text-3xl">🧀</span>
@@ -318,7 +334,6 @@ export default function POSRestaurantPage() {
             </div>
 
             <div className="flex h-screen pt-[5rem]">
-                {/* Menú Scrollable */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex gap-2 p-4 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap snap-x">
                         {categories.map(cat => (
@@ -339,20 +354,17 @@ export default function POSRestaurantPage() {
                     </div>
                 </div>
 
-                {/* Carrito Responsive */}
                 <div className={`fixed inset-0 z-40 bg-gray-900 flex flex-col transition-transform duration-300 lg:static lg:bg-gray-800 lg:w-96 lg:translate-x-0 lg:border-l lg:border-gray-700 ${showMobileCart ? 'translate-x-0' : 'translate-x-full'}`}>
                     <div className="lg:hidden p-4 border-b border-gray-700 flex justify-between bg-gray-800">
-                        <h2 className="font-bold text-xl">Carrito Actual</h2>
+                        <h2 className="font-bold text-xl">Carrito</h2>
                         <button onClick={() => setShowMobileCart(false)}>✕</button>
                     </div>
-
                     <div className="p-4 border-b border-gray-700 bg-gray-800/50">
                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Cliente / Mesa" className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:border-amber-500 outline-none" />
                     </div>
-
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {cart.length === 0 ? (
-                            <div className="text-center text-gray-500 mt-10">Tu carrito está vacío 🛒</div>
+                            <div className="text-center text-gray-500 mt-10">Vacío 🛒</div>
                         ) : (
                             cart.map((item, i) => (
                                 <div key={i} className="bg-gray-700 p-3 rounded-lg border border-gray-600 relative group">
@@ -371,16 +383,12 @@ export default function POSRestaurantPage() {
                             ))
                         )}
                     </div>
-
                     <div className="p-4 bg-gray-800 border-t border-gray-700 space-y-3">
-                        {/* Descuentos */}
                         <div className="flex gap-2">
                             <button onClick={() => handleDiscountSelect('NONE')} className={`flex-1 py-2 text-xs font-bold rounded ${discountType === 'NONE' ? 'bg-gray-500 text-white' : 'bg-gray-700'}`}>Normal</button>
-                            <button onClick={() => handleDiscountSelect('DIVISAS_33')} className={`flex-1 py-2 text-xs font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600 text-white' : 'bg-gray-700'}`}>-33% Divisa</button>
+                            <button onClick={() => handleDiscountSelect('DIVISAS_33')} className={`flex-1 py-2 text-xs font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600 text-white' : 'bg-gray-700'}`}>-33%</button>
                             <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`flex-1 py-2 text-xs font-bold rounded ${discountType === 'CORTESIA_100' ? 'bg-purple-600 text-white' : 'bg-gray-700'}`}>Cortesía</button>
                         </div>
-
-                        {/* Métodos Pago */}
                         <div className="grid grid-cols-4 gap-2">
                             {['CASH', 'CARD', 'MOBILE_PAY', 'TRANSFER'].map(m => (
                                 <button key={m} onClick={() => setPaymentMethod(m as any)} className={`py-2 rounded text-xs font-bold ${paymentMethod === m ? 'bg-amber-500 text-black' : 'bg-gray-700'}`}>
@@ -388,8 +396,6 @@ export default function POSRestaurantPage() {
                                 </button>
                             ))}
                         </div>
-
-                        {/* Totales */}
                         <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
                             {paymentMethod === 'CASH' && (
                                 <div className="mb-2 border-b border-gray-700 pb-2">
@@ -400,7 +406,6 @@ export default function POSRestaurantPage() {
                             <div className="flex justify-between text-lg font-bold"><span>Total</span> <span>${finalTotal.toFixed(2)}</span></div>
                             {paymentMethod === 'CASH' && changeAmount > 0 && <div className="flex justify-between text-green-400 text-sm"><span>Cambio</span> <span>${changeAmount.toFixed(2)}</span></div>}
                         </div>
-
                         <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl font-black text-xl shadow-lg disabled:opacity-50">
                             {isProcessing ? '...' : `COBRAR $${finalTotal.toFixed(2)}`}
                         </button>
@@ -408,18 +413,15 @@ export default function POSRestaurantPage() {
                 </div>
             </div>
 
-            {/* Modal FLOTANTE Móvil */}
             {!showMobileCart && cart.length > 0 && (
                 <button onClick={() => setShowMobileCart(true)} className="lg:hidden fixed bottom-6 right-6 bg-amber-500 text-black px-6 py-4 rounded-full font-bold shadow-2xl z-50 animate-bounce">
                     🛒 ${cartTotal.toFixed(2)}
                 </button>
             )}
 
-            {/* MODAL MODIFICADORES MEJORADO */}
             {showModifierModal && selectedItemForModifier && (
                 <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-gray-800 w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-gray-700">
-                        {/* Header Modal */}
                         <div className="p-5 border-b border-gray-700 flex justify-between items-start bg-gray-850">
                             <div>
                                 <h3 className="text-2xl font-bold text-white leading-none">{selectedItemForModifier.name}</h3>
@@ -427,45 +429,67 @@ export default function POSRestaurantPage() {
                             </div>
                             <button onClick={() => setShowModifierModal(false)} className="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
                         </div>
-
-                        {/* Body Scrollable */}
                         <div className="flex-1 overflow-y-auto p-5 space-y-6">
                             {selectedItemForModifier.modifierGroups?.map((groupRel, idx) => {
                                 const group = groupRel.modifierGroup;
-                                const currentCount = currentModifiers.filter(m => m.groupId === group.id).length;
-                                const isValid = !group.isRequired || currentCount >= group.minSelections;
+                                const totalSelected = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
+                                const isValid = !group.isRequired || totalSelected >= group.minSelections;
 
                                 return (
                                     <div key={group.id} className={`p-4 rounded-xl border-2 ${isValid ? 'border-gray-700 bg-gray-750' : 'border-red-500/50 bg-red-900/10'}`}>
                                         <div className="flex justify-between mb-3">
                                             <h4 className="font-bold text-lg text-amber-100">{group.name}</h4>
                                             <span className={`text-xs font-bold px-2 py-1 rounded ${isValid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-                                                {currentCount} / {group.maxSelections}
+                                                {totalSelected} / {group.maxSelections}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-1 gap-2">
                                             {group.modifiers.map(mod => {
-                                                const isSelected = currentModifiers.some(m => m.id === mod.id && m.groupId === group.id);
+                                                const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
+                                                const qty = existing ? existing.quantity : 0;
+                                                const isMaxReached = group.maxSelections > 1 && totalSelected >= group.maxSelections;
+                                                const isRadio = group.maxSelections === 1;
+
                                                 return (
-                                                    <button
-                                                        key={mod.id}
-                                                        onClick={() => toggleModifier(group, mod)}
-                                                        className={`flex justify-between items-center p-3 rounded-lg border transition-all ${isSelected ? 'bg-amber-500 text-black border-amber-500 font-bold' : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'}`}
-                                                    >
-                                                        <span>{mod.name}</span>
-                                                        {isSelected && <span>✓</span>}
-                                                    </button>
+                                                    <div key={mod.id} className={`flex justify-between items-center p-3 rounded-lg border transition-all ${qty > 0 ? 'bg-amber-900/30 border-amber-500' : 'bg-gray-800 border-gray-600'}`}>
+                                                        <span className="text-gray-200 font-medium">{mod.name}</span>
+                                                        {isRadio ? (
+                                                            <button
+                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                className={`w-6 h-6 rounded-full border flex items-center justify-center ${qty > 0 ? 'bg-amber-500 border-amber-500 text-black' : 'border-gray-500'}`}
+                                                            >
+                                                                {qty > 0 && '✓'}
+                                                            </button>
+                                                        ) : (
+                                                            <div className="flex items-center gap-3 bg-gray-900 rounded-lg p-1">
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
+                                                                    className={`w-8 h-8 rounded flex items-center justify-center font-bold transition-colors ${qty > 0 ? 'bg-gray-700 text-white hover:bg-gray-600' : 'text-gray-600 cursor-not-allowed'}`}
+                                                                    disabled={qty === 0}
+                                                                >
+                                                                    -
+                                                                </button>
+                                                                <span className="w-6 text-center font-bold text-amber-500">{qty}</span>
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                    className={`w-8 h-8 rounded flex items-center justify-center font-bold transition-colors ${(!isMaxReached) ? 'bg-amber-600 text-white hover:bg-amber-500' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+                                                                    disabled={isMaxReached}
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 );
                                             })}
                                         </div>
-                                        {group.minSelections > 0 && currentCount < group.minSelections && (
-                                            <p className="text-red-400 text-xs mt-2 text-right">Selecciona al menos {group.minSelections}</p>
+                                        {group.minSelections > 0 && totalSelected < group.minSelections && (
+                                            <p className="text-red-400 text-xs mt-2 text-right">Faltan {group.minSelections - totalSelected}</p>
                                         )}
                                     </div>
                                 );
                             })}
 
-                            {/* Notas y Cantidad */}
                             <div className="bg-gray-750 p-4 rounded-xl border border-gray-700">
                                 <label className="text-sm text-gray-400 uppercase font-bold block mb-2">Notas de Cocina</label>
                                 <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white h-20 resize-none focus:border-amber-500 outline-none" placeholder="Sin cebolla, extra picante..." />
@@ -481,7 +505,6 @@ export default function POSRestaurantPage() {
                             </div>
                         </div>
 
-                        {/* Footer Actions */}
                         <div className="p-5 border-t border-gray-700 bg-gray-850 flex gap-3">
                             <button onClick={() => setShowModifierModal(false)} className="flex-1 py-3 bg-gray-700 rounded-xl font-bold hover:bg-gray-600">Cancelar</button>
                             <button
@@ -489,14 +512,13 @@ export default function POSRestaurantPage() {
                                 disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
                                 className="flex-[2] py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-black rounded-xl font-black text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                AGREGAR AL CARRITO
+                                AGREGAR
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal PIN (Simplificado visualmente para ahorrar espacio código, funcionalmente igual) */}
             {showPinModal && (
                 <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60]">
                     <div className="bg-gray-800 p-6 rounded-2xl w-80">

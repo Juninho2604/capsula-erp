@@ -41,6 +41,9 @@ model User {
   // POS - Ventas
   salesOrders    SalesOrder[] @relation("SalesOrderCreator")
   authorizedOrders SalesOrder[] @relation("SalesOrderAuthorizer")
+  
+  // Cierres de Inventario
+  closedDailyInventories DailyInventory[]
 
   @@index([email])
   @@index([role])
@@ -66,6 +69,9 @@ model Area {
 
   // POS - Ventas
   salesOrders    SalesOrder[]
+  
+  // Inventarios Diarios
+  dailyInventories DailyInventory[]
 }
 
 // ============================================================================
@@ -85,6 +91,7 @@ model InventoryItem {
   minimumStock    Float    @default(0)
   reorderPoint    Float    @default(0)
   isActive        Boolean  @default(true)
+  isCritical      Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -96,6 +103,9 @@ model InventoryItem {
   outputRecipes   Recipe[]            @relation("RecipeOutput")
 
   requisitionItems RequisitionItem[]
+  
+  // Inventario Diario
+  dailyCounts      DailyInventoryItem[]
 
   @@index([sku])
   @@index([type])
@@ -534,3 +544,58 @@ model SalesOrderItemModifier {
   
   @@index([orderItemId])
 }
+
+// ============================================================================
+// INVENTARIO DIARIO
+// ============================================================================
+
+model DailyInventory {
+  id          String   @id @default(cuid())
+  date        DateTime // @db.Date no soportado en SQLite/algunas confs, usar DateTime normal y truncar
+  areaId      String
+  area        Area     @relation(fields: [areaId], references: [id])
+  
+  status      String   @default("DRAFT") // DRAFT, OPEN, CLOSED
+  
+  openedAt    DateTime?
+  closedAt    DateTime?
+  closedById  String?
+  closedBy    User?    @relation(fields: [closedById], references: [id])
+  
+  totalVarianceValue Float?
+  
+  items       DailyInventoryItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([date, areaId])
+}
+
+model DailyInventoryItem {
+  id               String         @id @default(cuid())
+  dailyInventoryId String
+  dailyInventory   DailyInventory @relation(fields: [dailyInventoryId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId  String
+  inventoryItem    InventoryItem  @relation(fields: [inventoryItemId], references: [id])
+  
+  initialCount     Float?   @default(0)
+  finalCount       Float?   @default(0)
+  
+  // Movimientos calculados
+  entries          Float    @default(0)
+  sales            Float    @default(0)
+  waste            Float    @default(0)
+  
+  theoreticalStock Float?
+  variance         Float?
+  
+  unit             String
+  costPerUnit      Float?
+  
+  notes            String?
+  
+  @@unique([dailyInventoryId, inventoryItemId])
+}
+

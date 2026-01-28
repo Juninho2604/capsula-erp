@@ -328,6 +328,7 @@ export async function getInventoryListAction() {
 export async function getAreasAction() {
     try {
         const areas = await prisma.area.findMany({
+            where: { isActive: true },
             orderBy: { name: 'asc' }
         });
         return areas;

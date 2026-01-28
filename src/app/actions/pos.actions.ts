@@ -9,6 +9,7 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { registerSale } from '@/server/services/inventory.service';
 
 // ============================================================================
 // TIPOS
@@ -260,9 +261,10 @@ export async function createSalesOrderAction(
                         lineTotal: item.lineTotal,
                         notes: item.notes,
                         modifiers: {
-                            create: item.modifiers.map(m => ({
-                                modifierName: m.name,
-                                priceAdjustment: m.priceAdjustment
+                            create: item.modifiers?.map(m => ({
+                                name: m.name, // CORREGIDO: Usando 'name' según schema
+                                priceAdjustment: m.priceAdjustment,
+                                modifierId: m.modifierId
                             }))
                         }
                     }))
@@ -271,6 +273,53 @@ export async function createSalesOrderAction(
             include: { items: { include: { modifiers: true } } }
         });
 
+        // ====================================================================
+        // GESTIÓN DE INVENTARIO (Descargo de Recetas)
+        // ====================================================================
+        try {
+            // Recorrer los items vendidos
+            for (const item of data.items) {
+                // 1. Buscar si el producto tiene receta
+                const menuItem = await prisma.menuItem.findUnique({
+                    where: { id: item.menuItemId },
+                    select: {
+                        name: true,
+                        recipe: {
+                            include: {
+                                ingredients: {
+                                    include: { ingredientItem: true }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (menuItem?.recipe && menuItem.recipe.isActive) {
+                    // 2. Descontar ingredientes
+                    for (const ingredient of menuItem.recipe.ingredients) {
+                        // Cantidad total = CantidadIngrediente * CantidadItemsVendidos
+                        const totalQty = ingredient.quantity * item.quantity;
+
+                        await registerSale({
+                            inventoryItemId: ingredient.ingredientItemId,
+                            quantity: totalQty,
+                            unit: ingredient.unit as any,
+                            areaId: areaId, // Usamos el área de venta
+                            orderId: newOrder.id,
+                            userId: session.id,
+                            notes: `Venta POS: ${item.quantity}x ${menuItem.name}`,
+                            allowNegative: true // Permitir negativos
+                        });
+                    }
+                }
+            }
+        } catch (invError) {
+            console.error('Error descontando inventario:', invError);
+            // No fallamos la venta, solo logueamos
+        }
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/delivery');
         revalidatePath('/dashboard/sales');
         revalidatePath('/dashboard/inventory');
 
