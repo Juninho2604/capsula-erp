@@ -166,6 +166,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             📦 Compra Rápida
                         </Link>
                         <Link
+                            href="/dashboard/inventario/importar"
+                            className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700 transition-all hover:bg-green-100 dark:border-green-900 dark:bg-green-900/20 dark:text-green-300"
+                        >
+                            📥 Importar Excel
+                        </Link>
+                        <Link
                             href="/dashboard/inventario/diario"
                             className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-700 transition-all hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-900/20 dark:text-purple-300"
                         >
