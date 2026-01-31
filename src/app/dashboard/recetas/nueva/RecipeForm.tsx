@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import { UnitOfMeasure } from '@/types';
 import { UNIT_INFO } from '@/lib/constants/units';
-import { createRecipeAction } from '@/app/actions/recipe.actions';
+import { createRecipeAction, updateRecipeAction } from '@/app/actions/recipe.actions';
 import { toast } from 'react-hot-toast';
 
 interface IngredientOption {
@@ -20,6 +20,7 @@ interface IngredientOption {
 
 interface RecipeFormProps {
     availableIngredients: IngredientOption[];
+    initialData?: any;
 }
 
 interface DraftIngredient {
@@ -40,26 +41,38 @@ const UNITS: { value: UnitOfMeasure; label: string }[] = [
     { value: 'PORTION', label: 'Porciones' },
 ];
 
-export default function RecipeForm({ availableIngredients }: RecipeFormProps) {
+export default function RecipeForm({ availableIngredients, initialData }: RecipeFormProps) {
     const router = useRouter();
     const { user, canViewCosts } = useAuthStore();
     const showCosts = canViewCosts();
 
     // Estados del formulario
-    const [recipeName, setRecipeName] = useState('');
-    const [description, setDescription] = useState('');
-    const [type, setType] = useState<'SUB_RECIPE' | 'FINISHED_GOOD'>('SUB_RECIPE');
-    const [outputQuantity, setOutputQuantity] = useState<number>(1);
-    const [outputUnit, setOutputUnit] = useState<UnitOfMeasure>('KG');
-    const [yieldPercentage, setYieldPercentage] = useState<number>(100);
-    const [prepTime, setPrepTime] = useState<number>(0);
-    const [cookTime, setCookTime] = useState<number>(0);
+    const [recipeName, setRecipeName] = useState(initialData?.name || '');
+    const [category, setCategory] = useState<string>(initialData?.category || 'RECETAS PRODUCCION');
+    const [description, setDescription] = useState(initialData?.description || '');
+    const [type, setType] = useState<'SUB_RECIPE' | 'FINISHED_GOOD'>(
+        initialData?.outputItem?.type === 'FINISHED_GOOD' ? 'FINISHED_GOOD' : 'SUB_RECIPE'
+    );
+    const [outputQuantity, setOutputQuantity] = useState<number>(initialData?.outputQuantity || 1);
+    const [outputUnit, setOutputUnit] = useState<UnitOfMeasure>(initialData?.outputUnit || 'KG');
+    const [yieldPercentage, setYieldPercentage] = useState<number>(initialData?.yieldPercentage || 100);
+    const [prepTime, setPrepTime] = useState<number>(initialData?.prepTime || 0);
+    const [cookTime, setCookTime] = useState<number>(initialData?.cookTime || 0);
 
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Ingredientes
-    const [ingredients, setIngredients] = useState<DraftIngredient[]>([]);
+    const [ingredients, setIngredients] = useState<DraftIngredient[]>(
+        initialData?.ingredients?.map((ing: any) => ({
+            id: ing.id || `temp-${Math.random()}`,
+            inventoryItemId: ing.ingredientItemId,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            wastePercentage: ing.wastePercentage,
+            notes: ing.notes || ''
+        })) || []
+    );
     const [showAddIngredient, setShowAddIngredient] = useState(false);
 
     // Estado para nuevo ingrediente
@@ -144,8 +157,10 @@ export default function RecipeForm({ availableIngredients }: RecipeFormProps) {
 
         try {
             setIsSubmitting(true);
-            const result = await createRecipeAction({
+
+            const payload = {
                 name: recipeName,
+                category,
                 description,
                 type,
                 outputQuantity,
@@ -161,11 +176,19 @@ export default function RecipeForm({ availableIngredients }: RecipeFormProps) {
                     wastePercentage: ing.wastePercentage,
                     notes: ing.notes
                 }))
-            });
+            };
+
+            let result;
+            if (initialData) {
+                result = await updateRecipeAction({ ...payload, id: initialData.id });
+            } else {
+                result = await createRecipeAction(payload);
+            }
 
             if (result.success) {
-                toast.success('Receta creada con éxito');
-                router.push('/dashboard/recetas');
+                toast.success(initialData ? 'Receta actualizada' : 'Receta creada con éxito');
+                router.push(initialData ? `/dashboard/recetas/${initialData.id}` : '/dashboard/recetas');
+                router.refresh();
             } else {
                 toast.error(result.message);
             }
@@ -189,10 +212,10 @@ export default function RecipeForm({ availableIngredients }: RecipeFormProps) {
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Nueva Receta
+                            {initialData ? 'Editar Receta' : 'Nueva Receta'}
                         </h1>
                         <p className="text-gray-500">
-                            Creando como: {user?.firstName}
+                            {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
                         </p>
                     </div>
                 </div>
@@ -219,6 +242,23 @@ export default function RecipeForm({ availableIngredients }: RecipeFormProps) {
                                     placeholder="Ej: Salsa de Ajo de la Casa"
                                     className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Categoría
+                                </label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                    <option value="RECETAS CREMAS">🥣 Cremas</option>
+                                    <option value="RECETAS PANTRY">🥫 Pantry</option>
+                                    <option value="RECETAS PRODUCCION">🏭 Producción</option>
+                                    <option value="ARMADO EN SERVICIO">🍽️ Armado en Servicio</option>
+                                    <option value="GENERAL">📋 General/Otros</option>
+                                </select>
                             </div>
 
                             <div className="sm:col-span-2">

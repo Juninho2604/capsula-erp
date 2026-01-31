@@ -14,7 +14,7 @@ datasource db {
 }
 
 // ============================================================================
-// USUARIOS Y AUTENTICACIÓN
+// USUARIOS Y AUTENTICACIÃ“N
 // ============================================================================
 
 model User {
@@ -24,7 +24,7 @@ model User {
   firstName     String
   lastName      String
   role          String    @default("CHEF") // OWNER, AUDITOR, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD
-  pin           String?   // Código de 4-6 dígitos para autorización rápida
+  pin           String?   // CÃ³digo de 4-6 dÃ­gitos para autorizaciÃ³n rÃ¡pida
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -45,12 +45,18 @@ model User {
   // Cierres de Inventario
   closedDailyInventories DailyInventory[]
 
+  // Recetas creadas
+  createdRecipes Recipe[]
+  
+  // PrÃ©stamos creados
+  createdLoans InventoryLoan[] @relation("LoanCreator")
+
   @@index([email])
   @@index([role])
 }
 
 // ============================================================================
-// ÁREAS DE TRABAJO
+// Ã�REAS DE TRABAJO
 // ============================================================================
 
 model Area {
@@ -104,6 +110,9 @@ model InventoryItem {
 
   requisitionItems RequisitionItem[]
   
+  // Préstamos
+  loans            InventoryLoan[]
+  
   // Inventario Diario
   dailyCounts      DailyInventoryItem[]
 
@@ -152,19 +161,24 @@ model InventoryMovement {
   reason          String?
   notes           String?
   
-  // Auditoría
+  // AuditorÃ­a
   createdAt       DateTime @default(now())
   createdById     String
   createdBy       User     @relation(fields: [createdById], references: [id])
 
-  // Vinculación con venta (si aplica)
+  // VinculaciÃ³n con venta (si aplica)
   salesOrderId    String?
   salesOrder      SalesOrder? @relation("SaleMovements", fields: [salesOrderId], references: [id])
+
+  // VinculaciÃ³n con prÃ©stamo
+  loanId          String?
+  loan            InventoryLoan? @relation(fields: [loanId], references: [id])
 
   @@index([inventoryItemId])
   @@index([movementType])
   @@index([createdAt])
   @@index([salesOrderId])
+  @@index([loanId])
 }
 
 // ============================================================================
@@ -216,6 +230,9 @@ model Recipe {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  createdById     String?
+  createdBy       User?    @relation(fields: [createdById], references: [id])
 
   // Relaciones
   ingredients     RecipeIngredient[]
@@ -243,7 +260,7 @@ model RecipeIngredient {
 }
 
 // ============================================================================
-// ÓRDENES DE PRODUCCIÓN
+// Ã“RDENES DE PRODUCCIÃ“N
 // ============================================================================
 
 model ProductionOrder {
@@ -287,19 +304,19 @@ model Requisition {
   code        String   @unique // Ej: REQ-1001
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
   
-  // Quién pide (Solicitante)
+  // QuiÃ©n pide (Solicitante)
   requestedById String
   requestedBy   User     @relation("RequisitionRequester", fields: [requestedById], references: [id])
   
-  // Para qué área pide (Destino)
+  // Para quÃ© Ã¡rea pide (Destino)
   targetAreaId  String
   targetArea    Area     @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
   
-  // De dónde se saca (Origen - Generalmente Almacén Principal, pero puede variar)
+  // De dÃ³nde se saca (Origen - Generalmente AlmacÃ©n Principal, pero puede variar)
   sourceAreaId  String?
   sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
 
-  // Quién aprueba/despacha (Aprobador)
+  // QuiÃ©n aprueba/despacha (Aprobador)
   processedById String?
   processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
   processedAt   DateTime?
@@ -334,7 +351,7 @@ model RequisitionItem {
 }
 
 // ============================================================================
-// SISTEMA POS - MENÚ
+// SISTEMA POS - MENÃš
 // ============================================================================
 
 model MenuCategory {
@@ -364,10 +381,10 @@ model MenuItem {
   price           Float    // Precio de venta en USD
   cost            Float?   // Costo calculado (si tiene receta)
   
-  // Vinculación con inventario/receta (opcional)
+  // VinculaciÃ³n con inventario/receta (opcional)
   recipeId        String?  // Si el producto tiene receta para descontar insumos
   
-  // Configuración
+  // ConfiguraciÃ³n
   isAvailable     Boolean  @default(true)
   isActive        Boolean  @default(true)
   
@@ -386,13 +403,13 @@ model MenuItem {
 
 model MenuModifierGroup {
   id              String   @id @default(cuid())
-  name            String   // Ej: "Acompañantes", "Tamaño", "Extras"
+  name            String   // Ej: "AcompaÃ±antes", "TamaÃ±o", "Extras"
   description     String?
   
-  // Reglas de selección
+  // Reglas de selecciÃ³n
   isRequired      Boolean  @default(false) // Debe seleccionar al menos uno
   minSelections   Int      @default(0)
-  maxSelections   Int      @default(99)    // 99 = sin límite
+  maxSelections   Int      @default(99)    // 99 = sin lÃ­mite
   
   isActive        Boolean  @default(true)
   sortOrder       Int      @default(0)
@@ -409,7 +426,7 @@ model MenuModifier {
   groupId         String
   group           MenuModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
-  name            String   // Ej: "Tabulé", "Vegetales Salteados"
+  name            String   // Ej: "TabulÃ©", "Vegetales Salteados"
   priceAdjustment Float    @default(0) // +$0.50, -$1.00, etc.
   
   isAvailable     Boolean  @default(true)
@@ -421,7 +438,7 @@ model MenuModifier {
   @@index([groupId])
 }
 
-// Tabla pivote: Qué grupos de modificadores aplican a qué productos
+// Tabla pivote: QuÃ© grupos de modificadores aplican a quÃ© productos
 model MenuItemModifierGroup {
   id              String   @id @default(cuid())
   menuItemId      String
@@ -440,7 +457,7 @@ model MenuItemModifierGroup {
 model SalesOrder {
   id              String   @id @default(cuid())
   
-  // Correlativo único por día (Ej: "REST-2026-01-27-001")
+  // Correlativo Ãºnico por dÃ­a (Ej: "REST-2026-01-27-001")
   orderNumber     String   @unique
   
   // Tipo de venta
@@ -466,30 +483,30 @@ model SalesOrder {
   authorizedById  String?
   authorizedBy    User?    @relation("SalesOrderAuthorizer", fields: [authorizedById], references: [id])
 
-  // Método de pago
+  // MÃ©todo de pago
   
-  // Método de pago
+  // MÃ©todo de pago
   paymentMethod   String?  // CASH, CARD, TRANSFER, MULTIPLE
   paymentStatus   String   @default("PENDING") // PENDING, PAID, PARTIAL, REFUNDED
   amountPaid      Float    @default(0)
   change          Float    @default(0) // Vuelto
   
-  // Auditoría
+  // AuditorÃ­a
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
-  // Cajera que creó la orden
+  // Cajera que creÃ³ la orden
   createdById     String
   createdBy       User     @relation("SalesOrderCreator", fields: [createdById], references: [id])
   
-  // Área de la que se descuenta inventario
+  // Ã�rea de la que se descuenta inventario
   areaId          String
   area            Area     @relation(fields: [areaId], references: [id])
   
   // Notas
   notes           String?
   
-  // Líneas de la orden
+  // LÃ­neas de la orden
   items           SalesOrderItem[]
   
   // Movimientos de inventario generados
@@ -516,7 +533,7 @@ model SalesOrderItem {
   unitPrice       Float
   quantity        Int      @default(1)
   
-  // Subtotal de esta línea (unitPrice * quantity + modificadores)
+  // Subtotal de esta lÃ­nea (unitPrice * quantity + modificadores)
   lineTotal       Float
   
   // Notas especiales (Ej: "Sin cebolla")
@@ -597,5 +614,43 @@ model DailyInventoryItem {
   notes            String?
   
   @@unique([dailyInventoryId, inventoryItemId])
+}
+
+
+// ============================================================================
+// PRESTAMOS (LOANS)
+// ============================================================================
+
+model InventoryLoan {
+  id              String   @id @default(cuid())
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  loaneeName      String   // Nombre del restaurante/persona
+  quantity        Float
+  unit            String
+  
+  type            String   // REPLACEMENT, PAYMENT
+  status          String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  
+  agreedPrice     Float?   // Precio unitario acordado (si es venta/pago)
+  
+  loanDate        DateTime @default(now())
+  resolvedAt      DateTime?
+  notes           String?
+  
+  createdById     String
+  createdBy       User     @relation("LoanCreator", fields: [createdById], references: [id])
+
+  // Movimientos asociados
+  movements       InventoryMovement[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([loaneeName])
+  @@index([createdById])
 }
 

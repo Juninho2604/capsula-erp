@@ -34,6 +34,7 @@ export interface CreateRecipeInput {
     }[];
     userId: string;
     type?: 'SUB_RECIPE' | 'FINISHED_GOOD';
+    category?: string;
 }
 
 // ============================================================================
@@ -53,9 +54,9 @@ export async function getRecipesAction() {
                         }
                     }
                 },
-                createdBy: {
-                    select: { firstName: true, lastName: true }
-                }
+                // createdBy: {
+                //    select: { firstName: true, lastName: true }
+                // }
             },
             orderBy: { name: 'asc' }
         });
@@ -75,7 +76,7 @@ export async function getRecipesAction() {
                 yieldPercentage: Number(recipe.yieldPercentage),
                 costPerUnit: Number(currentCost),
                 isApproved: recipe.isApproved,
-                createdBy: `${recipe.createdBy.firstName} ${recipe.createdBy.lastName}`,
+                createdBy: 'Sistema',
                 updatedAt: recipe.updatedAt,
             };
         });
@@ -112,9 +113,9 @@ export async function getRecipeByIdAction(id: string) {
                     },
                     orderBy: { sortOrder: 'asc' }
                 },
-                createdBy: {
-                    select: { firstName: true, lastName: true }
-                }
+                // createdBy: {
+                //    select: { firstName: true, lastName: true }
+                // }
             }
         });
 
@@ -202,6 +203,7 @@ export async function createRecipeAction(input: CreateRecipeInput): Promise<Acti
                 data: {
                     name: input.name,
                     sku: sku,
+                    category: input.category,
                     type: input.type || 'SUB_RECIPE', // Default to sub-recipe if not specified
                     baseUnit: input.outputUnit,
                     description: input.description,
@@ -221,7 +223,7 @@ export async function createRecipeAction(input: CreateRecipeInput): Promise<Acti
                     prepTime: input.prepTime,
                     cookTime: input.cookTime,
                     isApproved: true, // Auto-approve for now
-                    createdById: input.userId,
+                    // createdById: input.userId, // Temporarily disabled until client regen
                     ingredients: {
                         create: input.ingredients.map((ing, index) => ({
                             ingredientItemId: ing.itemId,
@@ -265,6 +267,94 @@ export async function createRecipeAction(input: CreateRecipeInput): Promise<Acti
         return {
             success: false,
             message: error instanceof Error ? error.message : 'Error al crear la receta'
+        };
+    }
+}
+
+export interface UpdateRecipeInput extends CreateRecipeInput {
+    id: string;
+}
+
+export async function updateRecipeAction(input: UpdateRecipeInput): Promise<ActionResult> {
+    try {
+        if (!input.id || !input.name || input.ingredients.length === 0) {
+            return { success: false, message: 'Faltan datos requeridos' };
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Get existing recipe to know output item
+            const existing = await tx.recipe.findUnique({
+                where: { id: input.id },
+                include: { outputItem: true }
+            });
+            if (!existing) throw new Error("Receta no encontrada");
+
+            // 2. Update Output Item if name or category changed
+            if (existing.name !== input.name || existing.outputItem.category !== input.category) {
+                await tx.inventoryItem.update({
+                    where: { id: existing.outputItemId },
+                    data: {
+                        name: input.name,
+                        category: input.category
+                    }
+                });
+            }
+
+            // 3. Update Recipe Basic Info
+            const updatedRecipe = await tx.recipe.update({
+                where: { id: input.id },
+                data: {
+                    name: input.name,
+                    description: input.description,
+                    outputQuantity: input.outputQuantity,
+                    outputUnit: input.outputUnit,
+                    yieldPercentage: input.yieldPercentage,
+                    prepTime: input.prepTime,
+                    cookTime: input.cookTime,
+                }
+            });
+
+            // 4. Replace Ingredients
+            // Delete old
+            await tx.recipeIngredient.deleteMany({
+                where: { recipeId: input.id }
+            });
+
+            // Create new (createMany is faster)
+            await tx.recipeIngredient.createMany({
+                data: input.ingredients.map((ing, index) => ({
+                    recipeId: input.id,
+                    ingredientItemId: ing.itemId,
+                    quantity: ing.quantity,
+                    unit: ing.unit,
+                    wastePercentage: ing.wastePercentage,
+                    notes: ing.notes,
+                    sortOrder: index
+                }))
+            });
+
+            return updatedRecipe;
+        });
+
+        // 5. Recalculate Cost
+        // We trigger it but don't fail the update if cost calc fails
+        try {
+            await updateRecipeCostAction(input.id, input.userId);
+        } catch (e) {
+            console.warn("Cost update failed after recipe update", e);
+        }
+
+        revalidatePath('/dashboard/recetas');
+        // Revalidate the detail page specifically
+        revalidatePath(`/dashboard/recetas/${input.id}`);
+
+        return { success: true, message: 'Receta actualizada exitosamente' };
+
+    } catch (error) {
+        console.error('Error updating recipe:', error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Error al actualizar receta'
         };
     }
 }

@@ -36,6 +36,12 @@ const navigation: NavItem[] = [
         roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD']
     },
     {
+        label: 'Préstamos',
+        href: '/dashboard/prestamos',
+        icon: '🤝',
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER']
+    },
+    {
         label: 'Recetas',
         href: '/dashboard/recetas',
         icon: '📋',

@@ -47,9 +47,12 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                 </div>
 
                 <div className="flex gap-2">
-                    <button className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <Link
+                        href={`/dashboard/recetas/${params.id}/editar`}
+                        className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    >
                         🖊️ Editar
-                    </button>
+                    </Link>
                     {/* Placeholder for future actions like 'Print' or 'Export' */}
                 </div>
             </div>
@@ -171,7 +174,7 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                                 {formatCurrency(recipe.outputItem.currentCost)}
                             </p>
                             <p className="text-sm text-gray-500">
-                                por {UNIT_INFO[recipe.outputUnit]?.labelEs || recipe.outputUnit}
+                                por {UNIT_INFO[recipe.outputUnit as keyof typeof UNIT_INFO]?.labelEs || recipe.outputUnit}
                             </p>
                         </div>
 
