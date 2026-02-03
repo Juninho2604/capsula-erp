@@ -281,3 +281,234 @@ export async function rejectRequisition(requisitionId: string, userId: string): 
         return { success: false, message: 'Error al rechazar solicitud' };
     }
 }
+
+// ============================================================================
+// TRANSFERENCIA MASIVA POR CATEGORÍA
+// ============================================================================
+
+/**
+ * Obtiene categorías disponibles con conteo de items
+ */
+export async function getCategoriesForTransferAction(): Promise<{
+    success: boolean;
+    categories?: { name: string; count: number }[];
+}> {
+    try {
+        const items = await prisma.inventoryItem.groupBy({
+            by: ['category'],
+            where: {
+                isActive: true,
+                category: { not: null }
+            },
+            _count: { id: true },
+            orderBy: { category: 'asc' }
+        });
+
+        return {
+            success: true,
+            categories: items
+                .filter(i => i.category)
+                .map(i => ({
+                    name: i.category!,
+                    count: i._count.id
+                }))
+        };
+    } catch (error) {
+        console.error('Error getting categories:', error);
+        return { success: false };
+    }
+}
+
+/**
+ * Previsualiza qué items se transferirían por categoría
+ */
+export async function previewBulkTransferAction(
+    category: string,
+    sourceAreaId: string
+): Promise<{
+    success: boolean;
+    message: string;
+    items?: { id: string; name: string; currentStock: number; unit: string }[];
+}> {
+    try {
+        // Obtener items de la categoría con stock en el área origen
+        const locations = await prisma.inventoryLocation.findMany({
+            where: {
+                areaId: sourceAreaId,
+                currentStock: { gt: 0 },
+                inventoryItem: {
+                    category: { equals: category, mode: 'insensitive' },
+                    isActive: true
+                }
+            },
+            include: {
+                inventoryItem: { select: { id: true, name: true, baseUnit: true } }
+            }
+        });
+
+        if (locations.length === 0) {
+            return {
+                success: false,
+                message: `No hay items de categoría "${category}" con stock en el área seleccionada`
+            };
+        }
+
+        return {
+            success: true,
+            message: `${locations.length} items encontrados`,
+            items: locations.map(loc => ({
+                id: loc.inventoryItemId,
+                name: loc.inventoryItem.name,
+                currentStock: loc.currentStock,
+                unit: loc.inventoryItem.baseUnit
+            }))
+        };
+    } catch (error) {
+        console.error('Error previewing bulk transfer:', error);
+        return { success: false, message: 'Error al previsualizar transferencia' };
+    }
+}
+
+/**
+ * Ejecuta transferencia masiva de TODA una categoría de un área a otra
+ * Esto mueve TODO el stock disponible, sin necesidad de aprobación
+ */
+export async function executeBulkTransferAction(
+    category: string,
+    sourceAreaId: string,
+    targetAreaId: string,
+    userId: string
+): Promise<ActionResult> {
+    try {
+        if (sourceAreaId === targetAreaId) {
+            return { success: false, message: 'Origen y destino no pueden ser iguales' };
+        }
+
+        // Validar usuario
+        let executorId = userId;
+        const userExists = await prisma.user.findUnique({ where: { id: userId } });
+        if (!userExists) {
+            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            if (owner) executorId = owner.id;
+        }
+
+        // Obtener items con stock en origen
+        const locationsToTransfer = await prisma.inventoryLocation.findMany({
+            where: {
+                areaId: sourceAreaId,
+                currentStock: { gt: 0 },
+                inventoryItem: {
+                    category: { equals: category, mode: 'insensitive' },
+                    isActive: true
+                }
+            },
+            include: {
+                inventoryItem: { select: { id: true, name: true, baseUnit: true } }
+            }
+        });
+
+        if (locationsToTransfer.length === 0) {
+            return {
+                success: false,
+                message: `No hay items de categoría "${category}" con stock en el área origen`
+            };
+        }
+
+        // Generar código de transferencia
+        const count = await prisma.requisition.count();
+        const code = `BULK-${(count + 1).toString().padStart(4, '0')}`;
+
+        // Ejecutar transferencia en transacción
+        await prisma.$transaction(async (tx) => {
+            // Crear requisición como historial
+            const req = await tx.requisition.create({
+                data: {
+                    code,
+                    requestedById: executorId,
+                    processedById: executorId,
+                    sourceAreaId,
+                    targetAreaId,
+                    status: 'COMPLETED',
+                    processedAt: new Date(),
+                    notes: `Transferencia masiva de categoría: ${category}`,
+                    items: {
+                        create: locationsToTransfer.map(loc => ({
+                            inventoryItemId: loc.inventoryItemId,
+                            quantity: loc.currentStock,
+                            unit: loc.inventoryItem.baseUnit,
+                            dispatchedQuantity: loc.currentStock
+                        }))
+                    }
+                }
+            });
+
+            // Procesar cada item
+            for (const loc of locationsToTransfer) {
+                const qty = loc.currentStock;
+
+                // Movimiento de salida
+                await tx.inventoryMovement.create({
+                    data: {
+                        inventoryItemId: loc.inventoryItemId,
+                        movementType: 'TRANSFER_OUT',
+                        quantity: qty,
+                        unit: loc.inventoryItem.baseUnit,
+                        createdById: executorId,
+                        notes: `Transferencia masiva ${code}`,
+                        reason: `Categoría ${category} → Destino`
+                    }
+                });
+
+                // Reducir stock en origen (poner a 0)
+                await tx.inventoryLocation.update({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: loc.inventoryItemId,
+                            areaId: sourceAreaId
+                        }
+                    },
+                    data: {
+                        currentStock: 0,
+                        lastCountDate: new Date()
+                    }
+                });
+
+                // Sumar stock en destino
+                await tx.inventoryLocation.upsert({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: loc.inventoryItemId,
+                            areaId: targetAreaId
+                        }
+                    },
+                    create: {
+                        inventoryItemId: loc.inventoryItemId,
+                        areaId: targetAreaId,
+                        currentStock: qty,
+                        lastCountDate: new Date()
+                    },
+                    update: {
+                        currentStock: { increment: qty },
+                        lastCountDate: new Date()
+                    }
+                });
+            }
+        }, { timeout: 180000 }); // 3 minutes for large transfers
+
+        revalidatePath('/dashboard/inventario');
+        revalidatePath('/dashboard/transferencias');
+
+        return {
+            success: true,
+            message: `✅ Transferencia ${code} completada: ${locationsToTransfer.length} items de "${category}" movidos`,
+            data: { code, count: locationsToTransfer.length }
+        };
+
+    } catch (error) {
+        console.error('Error executing bulk transfer:', error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Error al ejecutar transferencia'
+        };
+    }
+}

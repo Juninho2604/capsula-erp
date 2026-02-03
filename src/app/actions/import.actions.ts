@@ -290,7 +290,8 @@ function levenshteinDistance(a: string, b: string): number {
 
 export async function processImportAction(
     items: { matchedItemId?: string; quantity: number; unit: string; shouldRename?: boolean; newName?: string; category?: string; itemName?: string }[],
-    type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL'
+    type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL',
+    areaId?: string // NEW: Optional area ID, defaults to Almacén Principal
 ) {
     const session = await getSession();
     if (!session?.id) return { success: false, message: 'No autorizado' };
@@ -307,11 +308,31 @@ export async function processImportAction(
         const result = await prisma.$transaction(async (tx) => {
             const movementType = (type === 'ENTRADA_ALMACEN' || type === 'INVENTARIO_INICIAL') ? 'PURCHASE' : 'WASTE';
 
-            // Optimization: Fetch Area and Locations ONCE
-            const defaultArea = await tx.area.findFirst();
-            const existingLocations = defaultArea ? await tx.inventoryLocation.findMany({
-                where: { areaId: defaultArea.id }
-            }) : [];
+            // FIX: If areaId provided, use it. Otherwise find "Almacén Principal" by name
+            let targetArea;
+            if (areaId) {
+                targetArea = await tx.area.findUnique({ where: { id: areaId } });
+            }
+
+            // Fallback to Almacén Principal if not found or not provided
+            if (!targetArea) {
+                targetArea = await tx.area.findFirst({
+                    where: { name: { contains: 'ALMACEN PRINCIPAL', mode: 'insensitive' } }
+                });
+            }
+
+            // Final fallback to first area (shouldn't happen in normal use)
+            if (!targetArea) {
+                targetArea = await tx.area.findFirst();
+            }
+
+            if (!targetArea) {
+                throw new Error('No se encontró ningún área para registrar el inventario');
+            }
+
+            const existingLocations = await tx.inventoryLocation.findMany({
+                where: { areaId: targetArea.id }
+            });
             const locMap = new Map(existingLocations.map(l => [l.inventoryItemId, l]));
 
             let processedCount = 0;
@@ -376,7 +397,7 @@ export async function processImportAction(
                     });
 
                     // 2. Update stock
-                    if (defaultArea) {
+                    if (targetArea) {
                         const loc = locMap.get(targetItemId);
 
                         const current = loc?.currentStock || 0;
@@ -386,12 +407,12 @@ export async function processImportAction(
                             where: {
                                 inventoryItemId_areaId: {
                                     inventoryItemId: targetItemId,
-                                    areaId: defaultArea.id
+                                    areaId: targetArea.id
                                 }
                             },
                             create: {
                                 inventoryItemId: targetItemId,
-                                areaId: defaultArea.id,
+                                areaId: targetArea.id,
                                 currentStock: Math.max(0, change)
                             },
                             update: {

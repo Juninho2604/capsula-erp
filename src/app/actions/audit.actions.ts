@@ -22,6 +22,7 @@ export interface UpdateAuditItemInput {
 
 export interface ApproveAuditInput {
     auditId: string;
+    areaId?: string; // Optional - if not provided, will use audit's areaId or fallback to Almacén Principal
 }
 
 // --- Getters ---
@@ -174,6 +175,38 @@ export async function approveAuditAction(input: ApproveAuditInput) {
     const userId = session.id;
 
     try {
+        // OPTIMIZATION: Get area ID OUTSIDE the transaction to reduce transaction time
+        let targetAreaId = input.areaId;
+        if (!targetAreaId) {
+            // Try exact match first (with accent)
+            let mainArea = await prisma.area.findFirst({
+                where: { name: 'Almacén Principal' }
+            });
+
+            // Fallback: search by partial match without accent
+            if (!mainArea) {
+                mainArea = await prisma.area.findFirst({
+                    where: {
+                        OR: [
+                            { name: { contains: 'Almacen', mode: 'insensitive' } },
+                            { name: { contains: 'Principal', mode: 'insensitive' } }
+                        ]
+                    }
+                });
+            }
+
+            // Final fallback: use first available area
+            if (!mainArea) {
+                mainArea = await prisma.area.findFirst();
+            }
+
+            targetAreaId = mainArea?.id;
+        }
+
+        if (!targetAreaId) {
+            return { success: false, message: 'No se encontró un área destino para los ajustes' };
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             const audit = await tx.inventoryAudit.findUnique({
                 where: { id: input.auditId },
@@ -183,20 +216,25 @@ export async function approveAuditAction(input: ApproveAuditInput) {
             if (!audit) throw new Error("Auditoría no encontrada");
             if (audit.status !== 'DRAFT') throw new Error("La auditoría ya no está en borrador");
 
+            // Use the areaId from audit if available, otherwise use the one we found
+            const areaToUse = audit.areaId || targetAreaId;
+
             await tx.inventoryAudit.update({
                 where: { id: input.auditId },
                 data: {
                     status: 'APPROVED',
                     resolvedAt: new Date(),
-                    resolvedById: userId
+                    resolvedById: userId,
+                    areaId: areaToUse // Store the area used
                 }
             });
 
+            // Process items with differences
             for (const item of audit.items) {
                 if (Math.abs(item.difference) > 0.0001) {
                     const movementType = item.difference > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT';
 
-                    const movement = await tx.inventoryMovement.create({
+                    await tx.inventoryMovement.create({
                         data: {
                             inventoryItemId: item.inventoryItemId,
                             movementType: movementType as any,
@@ -209,34 +247,27 @@ export async function approveAuditAction(input: ApproveAuditInput) {
                         }
                     });
 
-                    let targetAreaId = audit.areaId;
-                    if (!targetAreaId) {
-                        const mainArea = await tx.area.findFirst({ where: { name: 'Almacén Principal' } });
-                        if (mainArea) targetAreaId = mainArea.id;
-                    }
-
-                    if (targetAreaId) {
-                        await tx.inventoryLocation.upsert({
-                            where: {
-                                inventoryItemId_areaId: {
-                                    inventoryItemId: item.inventoryItemId,
-                                    areaId: targetAreaId
-                                }
-                            },
-                            create: {
+                    // Use pre-fetched areaId instead of querying inside loop
+                    await tx.inventoryLocation.upsert({
+                        where: {
+                            inventoryItemId_areaId: {
                                 inventoryItemId: item.inventoryItemId,
-                                areaId: targetAreaId,
-                                currentStock: item.countedStock
-                            },
-                            update: {
-                                currentStock: { increment: item.difference }
+                                areaId: areaToUse!
                             }
-                        });
-                    }
+                        },
+                        create: {
+                            inventoryItemId: item.inventoryItemId,
+                            areaId: areaToUse!,
+                            currentStock: item.countedStock
+                        },
+                        update: {
+                            currentStock: { increment: item.difference }
+                        }
+                    });
                 }
             }
             return audit;
-        }, { timeout: 30000 });
+        }, { timeout: 180000 }); // Increased from 30s to 180s (3 minutes)
 
         revalidatePath('/dashboard/inventario');
         revalidatePath('/dashboard/inventario/auditorias');

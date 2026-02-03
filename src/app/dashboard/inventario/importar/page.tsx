@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { createAuditAction } from '@/app/actions/audit.actions';
 import { parseUploadAction, processImportAction, type ImportPreviewResult } from '@/app/actions/import.actions';
+import { getAreasForSelect } from '@/app/actions/entrada.actions';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -17,6 +18,20 @@ export default function ImportPage() {
     const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isDraft, setIsDraft] = useState(false);
+
+    // NEW: Area selector state
+    const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
+    const [selectedAreaId, setSelectedAreaId] = useState<string>('');
+
+    // Fetch areas on mount
+    useEffect(() => {
+        getAreasForSelect().then(list => {
+            setAreas(list);
+            // Set default to Almacén Principal if exists
+            const almacen = list.find(a => a.name.toLowerCase().includes('almacen principal'));
+            if (almacen) setSelectedAreaId(almacen.id);
+        });
+    }, []);
 
     // ... (rest of handlers unchanged until handleImport)
 
@@ -88,7 +103,7 @@ export default function ImportPage() {
                 itemName: i.itemName
             }));
 
-            const result = await processImportAction(mappedItems, importType);
+            const result = await processImportAction(mappedItems, importType, selectedAreaId || undefined);
             if (result.success) {
                 toast.success(result.message);
                 setFile(null);
@@ -209,7 +224,7 @@ export default function ImportPage() {
 
             <Card>
                 <CardContent className="pt-6">
-                    <div className="mb-6 grid gap-6 md:grid-cols-2">
+                    <div className="mb-6 grid gap-6 md:grid-cols-3">
                         <div>
                             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 1. Selecciona el Tipo de Planilla
@@ -230,7 +245,26 @@ export default function ImportPage() {
 
                         <div>
                             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                2. Sube tu archivo
+                                2. Área Destino
+                            </label>
+                            <select
+                                value={selectedAreaId}
+                                onChange={(e) => setSelectedAreaId(e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">Seleccionar área...</option>
+                                {areas.map(area => (
+                                    <option key={area.id} value={area.id}>{area.name}</option>
+                                ))}
+                            </select>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Donde se registrará el inventario importado
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                3. Sube tu archivo
                             </label>
                             <input
                                 ref={fileInputRef}

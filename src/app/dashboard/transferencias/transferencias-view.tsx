@@ -59,6 +59,9 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    // Estado para expandir/colapsar historial
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
     // --- MANEJADORES ---
 
     const handleCreateRequisition = async () => {
@@ -453,31 +456,81 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                                         </tr>
                                     ) : (
                                         historyReqs.map(req => (
-                                            <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                                <td className="px-4 py-3 font-mono text-gray-600 dark:text-gray-400">{req.code}</td>
-                                                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    {new Date(req.createdAt).toLocaleDateString()}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                                    <span className="text-gray-500">{req.sourceArea?.name || 'ALM'}</span> → {req.targetArea.name}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    {req.requestedBy.firstName}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    {req.processedBy?.firstName || '-'}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={cn(
-                                                        "rounded-full px-2 py-0.5 text-xs font-medium",
-                                                        req.status === 'COMPLETED' ? "bg-emerald-100 text-emerald-800" :
-                                                            req.status === 'REJECTED' ? "bg-red-100 text-red-800" :
-                                                                "bg-gray-100 text-gray-800"
-                                                    )}>
-                                                        {req.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                            <>
+                                                <tr
+                                                    key={req.id}
+                                                    onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                                                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                                >
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`transform transition-transform duration-200 ${expandedId === req.id ? 'rotate-90' : ''}`}>
+                                                                ▶
+                                                            </span>
+                                                            <span className="font-mono text-gray-600 dark:text-gray-400">{req.code}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        {new Date(req.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                                        <span className="text-gray-500">{req.sourceArea?.name || 'ALM'}</span> → {req.targetArea.name}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        {req.requestedBy.firstName}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        {req.processedBy?.firstName || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={cn(
+                                                                "rounded-full px-2 py-0.5 text-xs font-medium",
+                                                                req.status === 'COMPLETED' ? "bg-emerald-100 text-emerald-800" :
+                                                                    req.status === 'REJECTED' ? "bg-red-100 text-red-800" :
+                                                                        "bg-gray-100 text-gray-800"
+                                                            )}>
+                                                                {req.status}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">
+                                                                {req.items.length} items
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {/* Fila expandible con detalles */}
+                                                {expandedId === req.id && (
+                                                    <tr key={`${req.id}-details`}>
+                                                        <td colSpan={6} className="bg-gray-50 dark:bg-gray-800/30 p-0">
+                                                            <div className="p-4 animate-in slide-in-from-top-2 duration-200">
+                                                                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                                    📦 Items Transferidos ({req.items.length})
+                                                                </div>
+                                                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                                    {req.items.map((item, idx) => (
+                                                                        <div
+                                                                            key={idx}
+                                                                            className="flex items-center justify-between rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2"
+                                                                        >
+                                                                            <span className="text-sm text-gray-900 dark:text-white truncate">
+                                                                                {item.inventoryItem.name}
+                                                                            </span>
+                                                                            <span className="ml-2 whitespace-nowrap text-sm font-medium text-amber-600 dark:text-amber-400">
+                                                                                {formatNumber(item.dispatchedQuantity || item.quantity)} {item.inventoryItem.baseUnit}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                {req.items.length > 6 && (
+                                                                    <div className="mt-2 text-center text-xs text-gray-500">
+                                                                        ... y más items
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
                                         ))
                                     )}
                                 </tbody>
