@@ -2,8 +2,11 @@
 
 import { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
-import { parseUploadAction, processImportAction, ImportPreviewResult } from '@/app/actions/import.actions';
+import { createAuditAction } from '@/app/actions/audit.actions';
+import { parseUploadAction, processImportAction, type ImportPreviewResult } from '@/app/actions/import.actions';
 import { toast } from 'react-hot-toast';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function ImportPage() {
     const { user } = useAuthStore();
@@ -13,8 +16,95 @@ export default function ImportPage() {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isDraft, setIsDraft] = useState(false);
 
-    // Handlers for manual edits
+    // ... (rest of handlers unchanged until handleImport)
+
+    const handleImport = async () => {
+        if (!preview || !preview.items || !user) return;
+
+        // Filter valid items: must have match OR can be new in MASTER LOAD
+        const validItems = preview.items.filter(i =>
+            (i.matchedItemId || importType === 'INVENTARIO_INICIAL') &&
+            (i.quantity >= 0 || i.shouldRename) // Allow 0 quantity for creation
+        );
+
+        if (validItems.length === 0) {
+            toast.error('No hay items válidos para importar');
+            return;
+        }
+
+        // --- DRAFT / AUDIT FLOW ---
+        if (isDraft) {
+            const auditItems = validItems
+                .filter(i => i.matchedItemId) // Only existing items
+                .map(i => ({
+                    inventoryItemId: i.matchedItemId!,
+                    countedStock: i.quantity
+                }));
+
+            if (auditItems.length === 0) {
+                toast.error('Para auditoría solo se procesan items ya existentes (Coincidencias)');
+                return;
+            }
+
+            if (!confirm(`Se creará un BORRADOR de Auditoría con ${auditItems.length} items.\nEl inventario NO se afectará hasta que se apruebe.\n¿Continuar?`)) return;
+
+            setIsProcessing(true);
+            const res = await createAuditAction({
+                name: `Importación ${importType} - ${new Date().toLocaleDateString()}`,
+                items: auditItems,
+                areaId: undefined // Global for now
+            });
+
+            setIsProcessing(false);
+            if (res.success) {
+                toast.success('Auditoría borrador creada');
+                // Redirect
+                window.location.href = `/dashboard/inventario/auditorias/${res.auditId}`;
+                return;
+            } else {
+                toast.error(res.message);
+                return;
+            }
+        }
+
+        // --- NORMAL FLOW ---
+        const countRename = validItems.filter(i => i.shouldRename).length;
+        const countStock = validItems.filter(i => i.quantity > 0).length;
+        const countNew = validItems.filter(i => !i.matchedItemId).length;
+
+        if (!confirm(`Importar:\n- ${countNew} Nuevos Items\n- ${countStock} Ajustes de Stock\n- ${countRename} Renombres\n¿Confirmar?`)) return;
+
+        setIsProcessing(true);
+        try {
+            const mappedItems = validItems.map(i => ({
+                matchedItemId: i.matchedItemId,
+                quantity: i.quantity,
+                unit: i.unit,
+                shouldRename: i.shouldRename,
+                newName: i.itemName,
+                category: i.category,
+                itemName: i.itemName
+            }));
+
+            const result = await processImportAction(mappedItems, importType);
+            if (result.success) {
+                toast.success(result.message);
+                setFile(null);
+                setPreview(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            toast.error('Error al procesar importación');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+
     const handleUnitChange = (index: number, newUnit: string) => {
         if (!preview || !preview.items) return;
         const newItems = [...preview.items];
@@ -111,121 +201,76 @@ export default function ImportPage() {
         }
     };
 
-    const handleImport = async () => {
-        if (!preview || !preview.items || !user) return;
-
-        // Filter valid items: must have match OR can be new in MASTER LOAD
-        const validItems = preview.items.filter(i =>
-            (i.matchedItemId || importType === 'INVENTARIO_INICIAL') &&
-            (i.quantity >= 0 || i.shouldRename) // Allow 0 quantity for creation
-        );
-
-        if (validItems.length === 0) {
-            toast.error('No hay items válidos para importar');
-            return;
-        }
-
-        const countRename = validItems.filter(i => i.shouldRename).length;
-        const countStock = validItems.filter(i => i.quantity > 0).length;
-        const countNew = validItems.filter(i => !i.matchedItemId).length;
-
-        if (!confirm(`Importar:\n- ${countNew} Nuevos Items\n- ${countStock} Ajustes de Stock\n- ${countRename} Renombres\n¿Confirmar?`)) return;
-
-        setIsProcessing(true);
-        try {
-            const mappedItems = validItems.map(i => ({
-                matchedItemId: i.matchedItemId,
-                quantity: i.quantity,
-                unit: i.unit,
-                shouldRename: i.shouldRename,
-                newName: i.itemName,
-                category: i.category,
-                itemName: i.itemName
-            }));
-
-            const result = await processImportAction(mappedItems, importType, user.id);
-            if (result.success) {
-                toast.success(result.message);
-                setFile(null);
-                setPreview(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-            } else {
-                toast.error(result.message);
-            }
-        } catch (error) {
-            toast.error('Error al procesar importación');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     return (
         <div className="space-y-6 animate-in">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Importación Masiva de Planillas
             </h1>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="mb-6 grid gap-6 md:grid-cols-2">
-                    <div>
-                        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            1. Selecciona el Tipo de Planilla
-                        </label>
-                        <select
-                            value={importType}
-                            onChange={(e) => setImportType(e.target.value as any)}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="mb-6 grid gap-6 md:grid-cols-2">
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                1. Selecciona el Tipo de Planilla
+                            </label>
+                            <select
+                                value={importType}
+                                onChange={(e) => setImportType(e.target.value as any)}
+                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="INVENTARIO_INICIAL">Inventario Inicial (Planilla Orden de Compra)</option>
+                                <option value="ENTRADA_ALMACEN">Entrada de Almacén (Planilla Diaria)</option>
+                                <option value="MERMA">Registro de Mermas</option>
+                            </select>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Formatos soportados: "ORDEN DE COMPRA NO TOCAR", "ENTRADA ALMACEN", "REGISTRO DE MERMA".
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                2. Sube tu archivo
+                            </label>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".xlsx, .xls"
+                                onChange={handleFileChange}
+                                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-amber-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/30 dark:file:text-amber-400"
+                            />
+                        </div>
+                    </div>
+
+                    {file && !preview && (
+                        <Button
+                            onClick={handleAnalyze}
+                            isLoading={isProcessing}
                         >
-                            <option value="INVENTARIO_INICIAL">Inventario Inicial (Planilla Orden de Compra)</option>
-                            <option value="ENTRADA_ALMACEN">Entrada de Almacén (Planilla Diaria)</option>
-                            <option value="MERMA">Registro de Mermas</option>
-                        </select>
-                        <p className="mt-1 text-xs text-gray-500">
-                            Formatos soportados: "ORDEN DE COMPRA NO TOCAR", "ENTRADA ALMACEN", "REGISTRO DE MERMA".
-                        </p>
-                    </div>
-
-                    <div>
-                        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            2. Sube tu archivo
-                        </label>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".xlsx, .xls"
-                            onChange={handleFileChange}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-amber-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/30 dark:file:text-amber-400"
-                        />
-                    </div>
-                </div>
-
-                {file && !preview && (
-                    <button
-                        onClick={handleAnalyze}
-                        disabled={isProcessing}
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                        {isProcessing ? 'Analizando...' : 'Analizar Archivo'}
-                    </button>
-                )}
-            </div>
+                            {isProcessing ? 'Analizando...' : 'Analizar Archivo'}
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Preview Section */}
             {preview && preview.items && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
-                            Vista Previa ({preview.items.length} filas detectadas)
-                        </h3>
-                        <div className="text-sm">
-                            <span className="mr-4 text-green-600">
-                                {preview.items.filter(i => i.status === 'MATCHED').length} Validados
-                            </span>
-                            <span className="text-red-500">
-                                {preview.items.filter(i => i.status !== 'MATCHED').length} Errores
-                            </span>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 py-4">
+                        <div className="flex items-center justify-between w-full">
+                            <CardTitle className="text-lg">
+                                Vista Previa ({preview.items.length} filas detectadas)
+                            </CardTitle>
+                            <div className="text-sm font-normal">
+                                <span className="mr-4 text-green-600">
+                                    {preview.items.filter(i => i.status === 'MATCHED').length} Validados
+                                </span>
+                                <span className="text-red-500">
+                                    {preview.items.filter(i => i.status !== 'MATCHED').length} Errores
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    </CardHeader>
 
                     <div className="max-h-96 overflow-y-auto">
                         <table className="w-full text-left text-sm">
@@ -327,22 +372,37 @@ export default function ImportPage() {
                         </table>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 bg-gray-50 px-6 py-4 dark:bg-gray-800/50">
-                        <button
-                            onClick={() => { setFile(null); setPreview(null); }}
-                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={handleImport}
-                            disabled={isProcessing || preview.items.filter(i => i.status === 'MATCHED').length === 0}
-                            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                        >
-                            {isProcessing ? 'Importando...' : 'Confirmar Importación'}
-                        </button>
+                    <div className="flex items-center justify-between bg-gray-50 px-6 py-4 dark:bg-gray-800/50 rounded-b-xl">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={isDraft}
+                                onChange={(e) => setIsDraft(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Cargar como Borrador (Auditoría)
+                            </span>
+                        </label>
+
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => { setFile(null); setPreview(null); }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleImport}
+                                disabled={isProcessing || preview.items.filter(i => i.status === 'MATCHED').length === 0}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                isLoading={isProcessing}
+                            >
+                                {isProcessing ? 'Importando...' : 'Confirmar Importación'}
+                            </Button>
+                        </div>
                     </div>
-                </div>
+                </Card>
             )}
         </div>
     );

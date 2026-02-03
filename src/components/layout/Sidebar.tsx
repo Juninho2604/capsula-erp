@@ -30,6 +30,12 @@ const navigation: NavItem[] = [
         roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
     },
     {
+        label: 'Auditorías',
+        href: '/dashboard/inventario/auditorias',
+        icon: '📝',
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD']
+    },
+    {
         label: 'Transferencias',
         href: '/dashboard/transferencias',
         icon: '🔄',

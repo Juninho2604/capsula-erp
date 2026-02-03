@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import * as XLSX from 'xlsx';
+import { getSession } from '@/lib/auth';
+import { z } from 'zod';
 
 export interface ImportPreviewResult {
     success: boolean;
@@ -20,6 +22,23 @@ export interface ImportPreviewResult {
     }[];
     allItems?: { id: string; name: string }[];
 }
+
+
+const importItemSchema = z.object({
+    matchedItemId: z.string().optional(),
+    quantity: z.number(),
+    unit: z.string(),
+    shouldRename: z.boolean().optional(),
+    newName: z.string().optional(),
+    category: z.string().optional(),
+    itemName: z.string().optional()
+});
+
+const processImportSchema = z.object({
+    items: z.array(importItemSchema),
+    type: z.enum(['ENTRADA_ALMACEN', 'MERMA', 'INVENTARIO_INICIAL'])
+});
+
 
 export async function parseUploadAction(
     fileBase64: string,
@@ -142,6 +161,8 @@ export async function parseUploadAction(
 
                 const rawName = col0; // Column A
                 const rawQty = col1;  // Column B
+                const rawUnit = row[4]; // Column E - Unit (Index 4)
+
                 const normalizedRaw = normalize(rawName);
 
                 // 1. Try Exact Match
@@ -173,27 +194,39 @@ export async function parseUploadAction(
 
                 // Handle numbers and strings like "400 und"
                 let quantity = 0;
-                let detectedUnit = 'KG'; // Default for decimals usually
+                let detectedUnit = 'KG'; // Default fallback
 
+                // Extract quantity
                 if (typeof rawQty === 'number') {
                     quantity = rawQty;
-                    // If matches integer, maybe UND, but safer to assume KG for ingredients unless specified
-                    // Actually user said "gran mayoria son kg", "especifique cuales son und"
-                    // If it is integer and large (like 400), likely UND. If small decimal, KG.
-                    // But let's look at text too if available.
                 } else if (typeof rawQty === 'string') {
-                    const lowerQty = rawQty.toLowerCase();
-                    if (lowerQty.includes('und') || lowerQty.includes('pza') || lowerQty.includes('uni')) detectedUnit = 'UNI';
-                    else if (lowerQty.includes('kg') || lowerQty.includes('kilo')) detectedUnit = 'KG';
-                    else if (lowerQty.includes('lt') || lowerQty.includes('litro')) detectedUnit = 'LTS';
-
-                    // Extract first number found
                     const parsed = parseFloat(rawQty.replace(',', '.'));
                     if (!isNaN(parsed)) quantity = parsed;
                 }
 
-                // Heuristic: If we didn't detect unit from string, but quantity is integer > 10, *maybe* it's Unit?
-                // User said "gran mayoria son kg". Let's stick to KG default unless "und" is explicit or user changes it.
+                // Detect Unit
+                // Priority 1: Column C (Explicit Unit)
+                if (rawUnit) {
+                    const u = normalize(rawUnit.toString());
+                    if (['und', 'unidad', 'pza', 'pieza', 'u', 'uni'].includes(u)) detectedUnit = 'UNI';
+                    else if (['kg', 'kilo', 'kilogramo', 'kgs'].includes(u)) detectedUnit = 'KG';
+                    else if (['g', 'gr', 'gramo', 'grs'].includes(u)) detectedUnit = 'GR';
+                    else if (['l', 'lt', 'litro', 'lts', 'litros'].includes(u)) detectedUnit = 'LTS';
+                    else if (['ml', 'mililitro', 'mls'].includes(u)) detectedUnit = 'ML';
+                    else if (['lb', 'libra', 'lbs'].includes(u)) detectedUnit = 'LB';
+                    else if (['oz', 'onza', 'ozs'].includes(u)) detectedUnit = 'OZ';
+                    else if (['gal', 'galon'].includes(u)) detectedUnit = 'GAL';
+                    else detectedUnit = rawUnit.toString().toUpperCase().substring(0, 5); // Fallback to raw
+                }
+                // Priority 2: Infer from Quantity string if explicitly stated there (e.g. "500 ml")
+                else if (typeof rawQty === 'string') {
+                    const lowerQty = rawQty.toLowerCase();
+                    if (lowerQty.includes('und') || lowerQty.includes('pza') || lowerQty.includes('uni')) detectedUnit = 'UNI';
+                    else if (lowerQty.includes('kg') || lowerQty.includes('kilo')) detectedUnit = 'KG';
+                    else if (lowerQty.includes('lts') || lowerQty.includes('litro') || lowerQty.includes('lt')) detectedUnit = 'LTS';
+                    else if (lowerQty.includes('ml')) detectedUnit = 'ML';
+                    else if (lowerQty.includes('gr') || lowerQty.includes('gramo')) detectedUnit = 'GR';
+                }
 
                 items.push({
                     row: i + 1,
@@ -257,9 +290,19 @@ function levenshteinDistance(a: string, b: string): number {
 
 export async function processImportAction(
     items: { matchedItemId?: string; quantity: number; unit: string; shouldRename?: boolean; newName?: string; category?: string; itemName?: string }[],
-    type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL',
-    userId: string
+    type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL'
 ) {
+    const session = await getSession();
+    if (!session?.id) return { success: false, message: 'No autorizado' };
+    const userId = session.id;
+
+    // 1. Input Validation
+    const validation = processImportSchema.safeParse({ items, type });
+    if (!validation.success) {
+        console.error("Validation Error:", validation.error);
+        return { success: false, message: 'Datos de importación inválidos o corruptos' };
+    }
+
     try {
         const result = await prisma.$transaction(async (tx) => {
             const movementType = (type === 'ENTRADA_ALMACEN' || type === 'INVENTARIO_INICIAL') ? 'PURCHASE' : 'WASTE';
@@ -324,18 +367,13 @@ export async function processImportAction(
                     await tx.inventoryMovement.create({
                         data: {
                             inventoryItemId: targetItemId,
-                            movementType: movementType,
+                            movementType: movementType as any,
                             quantity: item.quantity,
                             unit: item.unit, // Needs better mapping
                             createdById: userId,
                             reason: `Importación masiva: ${type}`
                         }
                     });
-
-                    // 2. Update stock
-                    // Assuming Area ID 1 or find a default area? 
-                    // For now we just create movement. We need to associate with an Area.
-                    // Let's pick the first available area for now or default Main.
 
                     // 2. Update stock
                     if (defaultArea) {
@@ -369,6 +407,7 @@ export async function processImportAction(
         }, { timeout: 120000 });
 
         revalidatePath('/dashboard/inventario');
+        revalidatePath('/dashboard');
         return { success: true, message: `Importados ${result} items exitosamente` };
 
     } catch (error: any) {

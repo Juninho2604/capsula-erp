@@ -51,6 +51,10 @@ model User {
   // PrÃ©stamos creados
   createdLoans InventoryLoan[] @relation("LoanCreator")
 
+  // Auditorías
+  createdAudits   InventoryAudit[] @relation("AuditCreator")
+  resolvedAudits  InventoryAudit[] @relation("AuditResolver")
+
   @@index([email])
   @@index([role])
 }
@@ -78,6 +82,9 @@ model Area {
   
   // Inventarios Diarios
   dailyInventories DailyInventory[]
+
+  // Auditorías
+  audits         InventoryAudit[]
 }
 
 // ============================================================================
@@ -116,9 +123,13 @@ model InventoryItem {
   // Inventario Diario
   dailyCounts      DailyInventoryItem[]
 
+  // Auditorías
+  auditItems     InventoryAuditItem[]
+
   @@index([sku])
   @@index([type])
   @@index([category])
+  @@index([name])
 }
 
 model InventoryLocation {
@@ -179,6 +190,7 @@ model InventoryMovement {
   @@index([createdAt])
   @@index([salesOrderId])
   @@index([loanId])
+  @@index([createdById])
 }
 
 // ============================================================================
@@ -654,3 +666,56 @@ model InventoryLoan {
   @@index([createdById])
 }
 
+// ============================================================================
+// AUDITORÍAS DE INVENTARIO
+// ============================================================================
+
+model InventoryAudit {
+  id          String   @id @default(cuid())
+  
+  // Estado de la auditoría
+  status      String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
+  
+  // Metadatos
+  name        String?  // Ej: "Inventario Mensual Enero"
+  notes       String?
+  areaId      String?
+  area        Area?    @relation(fields: [areaId], references: [id])
+  
+  // Auditoría del registro
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("AuditCreator", fields: [createdById], references: [id])
+  
+  resolvedAt  DateTime?
+  resolvedById String?
+  resolvedBy   User?    @relation("AuditResolver", fields: [resolvedById], references: [id])
+  
+  // Relaciones
+  items       InventoryAuditItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+model InventoryAuditItem {
+  id              String   @id @default(cuid())
+  auditId         String
+  audit           InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  // Valores
+  systemStock     Float    // Stock que decía el sistema al momento de crear la auditoría
+  countedStock    Float    // Stock real contado
+  difference      Float    // Calculado: counted - system
+  
+  costSnapshot    Float?   // Costo unitario en ese momento
+  
+  notes           String?
+
+  @@index([auditId])
+  @@index([inventoryItemId])
+}

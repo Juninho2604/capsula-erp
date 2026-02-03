@@ -1,4 +1,5 @@
 'use server';
+import { getSession } from '@/lib/auth';
 
 /**
  * SHANKLISH CARACAS ERP - Inventory Actions
@@ -40,97 +41,98 @@ export interface ActionResult {
 }
 
 // ============================================================================
-// MOCK: Simulación de operaciones para desarrollo sin DB
-// ============================================================================
-
-// Stock simulado (en producción viene de DB)
-const mockStockData: Record<string, number> = {
-    'ins-leche': 45,
-    'ins-sal': 25,
-    'ins-zaatar': 1.5,
-    'ins-carne': 8,
-    'ins-burgol': 15,
-    'ins-cebolla': 10,
-    'ins-aceite': 12,
-    'ins-merey': 5,
-    'ins-pan': 100,
-    'sub-cuajada': 8,
-    'sub-shanklish': 50,
-    'sub-masa-kibbe': 3,
-};
-
-// Costos simulados
-const mockCostData: Record<string, number> = {
-    'ins-leche': 2.5,
-    'ins-sal': 0.8,
-    'ins-zaatar': 25,
-    'ins-carne': 8.5,
-    'ins-burgol': 3.2,
-    'ins-cebolla': 1.5,
-    'ins-aceite': 4.0,
-    'ins-merey': 18,
-    'ins-pan': 0.5,
-};
-
-// Conversiones de unidad
-const CONVERSIONS: Record<string, Record<string, number>> = {
-    'ins-leche': { 'UNIT': 20 }, // 1 saco = 20 litros
-};
-
+// LOGICA REAL IMPLEMENTADA CON PRISMA
 // ============================================================================
 // ACTION: REGISTRAR COMPRA
 // ============================================================================
 
 export async function registerPurchaseAction(
-    formData: PurchaseFormData,
-    userId: string = 'user-admin'
+    formData: PurchaseFormData
 ): Promise<ActionResult> {
-    try {
-        // Simular delay de red
-        await new Promise(resolve => setTimeout(resolve, 500));
+    const session = await getSession();
+    if (!session?.id) return { success: false, message: 'No autorizado' };
+    const userId = session.id;
 
+    try {
         const { inventoryItemId, quantity, unit, unitCost, areaId, notes } = formData;
 
-        // Convertir a unidad base si aplica
-        let quantityInBase = quantity;
-        const conversion = CONVERSIONS[inventoryItemId]?.[unit];
-        if (conversion) {
-            quantityInBase = quantity * conversion;
-        }
+        if (quantity <= 0) return { success: false, message: 'La cantidad debe ser positiva' };
+        if (unitCost < 0) return { success: false, message: 'El costo no puede ser negativo' };
 
-        // Actualizar stock mock
-        const currentStock = mockStockData[inventoryItemId] || 0;
-        const newStock = currentStock + quantityInBase;
-        mockStockData[inventoryItemId] = newStock;
+        const result = await prisma.$transaction(async (tx) => {
+            // Fetch item to get base unit and current cost
+            const item = await tx.inventoryItem.findUnique({
+                where: { id: inventoryItemId },
+                include: {
+                    costHistory: { orderBy: { effectiveFrom: 'desc' }, take: 1 },
+                    stockLevels: { where: { areaId } }
+                }
+            });
 
-        // Calcular nuevo costo promedio ponderado
-        const currentCost = mockCostData[inventoryItemId] || 0;
-        const newCost = currentStock > 0
-            ? ((currentStock * currentCost) + (quantityInBase * unitCost)) / newStock
-            : unitCost;
-        mockCostData[inventoryItemId] = newCost;
+            if (!item) throw new Error('Ítem no encontrado');
 
-        // Log para desarrollo
-        console.log('📦 COMPRA REGISTRADA:', {
-            item: inventoryItemId,
-            cantidad: `${quantity} ${unit}`,
-            enBase: `${quantityInBase}`,
-            costoUnit: unitCost,
-            nuevoStock: newStock,
-            nuevoCosto: newCost.toFixed(4),
+            // 2. Register Movement
+            const movement = await tx.inventoryMovement.create({
+                data: {
+                    inventoryItemId,
+                    movementType: 'PURCHASE',
+                    quantity,
+                    unit,
+                    unitCost,
+                    totalCost: quantity * unitCost,
+                    createdById: userId,
+                    reason: 'Compra registrada manualmente',
+                    notes
+                }
+            });
+
+            // 3. Update Stock
+            const currentLoc = item.stockLevels[0];
+            const oldStock = currentLoc?.currentStock || 0;
+            const newStock = oldStock + quantity;
+
+            await tx.inventoryLocation.upsert({
+                where: { inventoryItemId_areaId: { inventoryItemId, areaId } },
+                create: { inventoryItemId, areaId, currentStock: quantity },
+                update: { currentStock: newStock }
+            });
+
+            // 4. Update Cost (Weighted Average)
+            const oldCost = item.costHistory[0]?.costPerUnit || 0;
+            let newWeightedCost = oldCost;
+
+            // Formula: (OldTotalValue + NewValue) / TotalStock
+            // Value = Stock * Cost
+            // Only if total stock > 0
+            if (newStock > 0) {
+                const oldValue = oldStock * oldCost;
+                const newValue = quantity * unitCost;
+                newWeightedCost = (oldValue + newValue) / newStock;
+            }
+
+            // Record new cost
+            await tx.costHistory.create({
+                data: {
+                    inventoryItemId,
+                    costPerUnit: newWeightedCost,
+                    effectiveFrom: new Date(),
+                    reason: 'Actualización por Compra',
+                    createdById: userId
+                }
+            });
+
+            return { newStock, newWeightedCost };
         });
 
-        // Revalidar páginas afectadas
         revalidatePath('/dashboard');
         revalidatePath('/dashboard/inventario');
 
         return {
             success: true,
-            message: `Compra registrada: +${quantityInBase} unidades. Nuevo stock: ${newStock.toFixed(2)}`,
+            message: `Compra registrada correctamente.`,
             data: {
-                newStock,
-                newCostPerUnit: newCost,
-                quantityAdded: quantityInBase,
+                newStock: result.newStock,
+                newCostPerUnit: result.newWeightedCost
             },
         };
 
@@ -148,32 +150,49 @@ export async function registerPurchaseAction(
 // ============================================================================
 
 export async function registerSaleAction(
-    formData: SaleFormData,
-    userId: string = 'user-admin'
+    formData: SaleFormData
 ): Promise<ActionResult> {
-    try {
-        await new Promise(resolve => setTimeout(resolve, 300));
+    const session = await getSession();
+    if (!session?.id) return { success: false, message: 'No autorizado' };
+    const userId = session.id;
 
+    try {
         const { inventoryItemId, quantity, areaId, orderId } = formData;
 
-        // Verificar stock
-        const currentStock = mockStockData[inventoryItemId] || 0;
-        if (currentStock < quantity) {
-            return {
-                success: false,
-                message: `Stock insuficiente. Disponible: ${currentStock}`,
-            };
-        }
+        if (quantity <= 0) return { success: false, message: 'La cantidad debe ser positiva' };
 
-        // Decrementar stock
-        const newStock = currentStock - quantity;
-        mockStockData[inventoryItemId] = newStock;
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Check Stock
+            const location = await tx.inventoryLocation.findUnique({
+                where: { inventoryItemId_areaId: { inventoryItemId, areaId } }
+            });
 
-        console.log('💵 VENTA REGISTRADA:', {
-            item: inventoryItemId,
-            cantidad: quantity,
-            nuevoStock: newStock,
-            orden: orderId,
+            const currentStock = location?.currentStock || 0;
+            if (currentStock < quantity) {
+                throw new Error(`Stock insuficiente. Disponible: ${currentStock}`);
+            }
+
+            // 2. Register Movement
+            await tx.inventoryMovement.create({
+                data: {
+                    inventoryItemId,
+                    movementType: 'SALE',
+                    quantity: quantity,
+                    unit: 'UNIT', // Should optimally fetch item unit
+                    createdById: userId,
+                    salesOrderId: orderId,
+                    reason: 'Venta registrada manualmente'
+                }
+            });
+
+            // 3. Update Stock
+            const newStock = currentStock - quantity;
+            await tx.inventoryLocation.update({
+                where: { inventoryItemId_areaId: { inventoryItemId, areaId } },
+                data: { currentStock: newStock }
+            });
+
+            return newStock;
         });
 
         revalidatePath('/dashboard');
@@ -181,8 +200,8 @@ export async function registerSaleAction(
 
         return {
             success: true,
-            message: `Venta registrada: -${quantity} unidades. Stock restante: ${newStock.toFixed(2)}`,
-            data: { newStock },
+            message: `Venta registrada. Nuevo stock: ${result.toFixed(2)}`,
+            data: { newStock: result },
         };
 
     } catch (error) {
@@ -260,17 +279,33 @@ export async function processWinkOrderAction(
 export async function getStockAction(
     inventoryItemId: string
 ): Promise<ActionResult> {
-    const stock = mockStockData[inventoryItemId] ?? 0;
-    const cost = mockCostData[inventoryItemId] ?? 0;
+    try {
+        const item = await prisma.inventoryItem.findUnique({
+            where: { id: inventoryItemId },
+            include: {
+                stockLevels: true,
+                costHistory: { orderBy: { effectiveFrom: 'desc' }, take: 1 }
+            }
+        });
 
-    return {
-        success: true,
-        message: 'Stock obtenido',
-        data: {
-            currentStock: stock,
-            costPerUnit: cost,
-        },
-    };
+        if (!item) return { success: false, message: 'Item no encontrado' };
+
+        // Sum stock default
+        const currentStock = item.stockLevels.reduce((acc, loc) => acc + loc.currentStock, 0);
+        const costPerUnit = item.costHistory[0]?.costPerUnit || 0;
+
+        return {
+            success: true,
+            message: 'Stock obtenido',
+            data: {
+                currentStock,
+                costPerUnit,
+            },
+        };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: 'Error obteniendo stock' };
+    }
 }
 
 // ============================================================================
