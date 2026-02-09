@@ -55,6 +55,14 @@ model User {
   createdAudits   InventoryAudit[] @relation("AuditCreator")
   resolvedAudits  InventoryAudit[] @relation("AuditResolver")
 
+  // Órdenes de Compra
+  createdPurchaseOrders  PurchaseOrder[] @relation("PurchaseOrderCreator")
+  receivedPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderReceiver")
+
+  // Procesamiento de Proteínas
+  createdProteinProcessings   ProteinProcessing[] @relation("ProteinProcessingCreator")
+  completedProteinProcessings ProteinProcessing[] @relation("ProteinProcessingCompleter")
+
   @@index([email])
   @@index([role])
 }
@@ -85,6 +93,9 @@ model Area {
 
   // Auditorías
   audits         InventoryAudit[]
+
+  // Procesamiento de Proteínas
+  proteinProcessings ProteinProcessing[]
 }
 
 // ============================================================================
@@ -125,6 +136,14 @@ model InventoryItem {
 
   // Auditorías
   auditItems     InventoryAuditItem[]
+
+  // Órdenes de Compra
+  supplierItems      SupplierItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  // Procesamiento de Proteínas
+  proteinSources     ProteinProcessing[] @relation("ProteinSource")
+  proteinOutputs     ProteinSubProduct[] @relation("ProteinOutput")
 
   @@index([sku])
   @@index([type])
@@ -305,6 +324,90 @@ model ProductionOrder {
 
   @@index([status])
   @@index([scheduledDate])
+}
+
+// ============================================================================
+// PROCESAMIENTO Y DESPOSTE DE PROTEÍNAS
+// ============================================================================
+
+model ProteinProcessing {
+  id              String   @id @default(cuid())
+  code            String   @unique // Ej: PROT-2026-001
+  
+  // Fecha del procesamiento
+  processDate     DateTime @default(now())
+  
+  // Producto a procesar (item del inventario - ej: Res entera, Pollo entero)
+  sourceItemId    String
+  sourceItem      InventoryItem @relation("ProteinSource", fields: [sourceItemId], references: [id])
+  
+  // Proveedor (opcional)
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  supplierName    String?   // Por si no está en el sistema
+  
+  // Pesos
+  frozenWeight    Float     // Peso congelado inicial (kg)
+  drainedWeight   Float     // Peso escurrido/descongelado (kg)
+  
+  // Totales calculados
+  totalSubProducts Float    @default(0) // Suma de pesos de subproductos
+  wasteWeight     Float     @default(0) // Desperdicio (kg)
+  wastePercentage Float     @default(0) // % de desperdicio
+  yieldPercentage Float     @default(0) // % de rendimiento
+  
+  // Estado
+  status          String    @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, CANCELLED
+  
+  // Área donde se realiza el procesamiento
+  areaId          String
+  area            Area      @relation(fields: [areaId], references: [id])
+  
+  notes           String?
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String
+  createdBy       User      @relation("ProteinProcessingCreator", fields: [createdById], references: [id])
+  completedAt     DateTime?
+  completedById   String?
+  completedBy     User?     @relation("ProteinProcessingCompleter", fields: [completedById], references: [id])
+  
+  // Subproductos resultantes
+  subProducts     ProteinSubProduct[]
+  
+  @@index([processDate])
+  @@index([status])
+  @@index([sourceItemId])
+}
+
+model ProteinSubProduct {
+  id              String   @id @default(cuid())
+  
+  processingId    String
+  processing      ProteinProcessing @relation(fields: [processingId], references: [id], onDelete: Cascade)
+  
+  // Item de inventario resultante (ej: Lomo, Costilla, Pechuga)
+  outputItemId    String?
+  outputItem      InventoryItem? @relation("ProteinOutput", fields: [outputItemId], references: [id])
+  
+  // Nombre del subproducto (por si no está en inventario)
+  name            String
+  
+  // Peso y unidades obtenidas
+  weight          Float     // Peso en kg
+  units           Int       @default(1) // Cantidad de piezas
+  unitType        String    @default("KG") // KG, UNIDAD, PIEZA
+  
+  // Costo calculado (proporcional al peso)  
+  estimatedCost   Float     @default(0)
+  
+  notes           String?
+  sortOrder       Int       @default(0)
+  
+  @@index([processingId])
+  @@index([outputItemId])
 }
 
 // ============================================================================
@@ -717,5 +820,116 @@ model InventoryAuditItem {
   notes           String?
 
   @@index([auditId])
+  @@index([inventoryItemId])
+}
+
+// ============================================================================
+// PROVEEDORES Y ÓRDENES DE COMPRA
+// ============================================================================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  code        String?  @unique // Código interno del proveedor
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  notes       String?
+  
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  purchaseOrders PurchaseOrder[]
+  // Productos que suministra este proveedor
+  suppliedItems  SupplierItem[]
+  // Procesamiento de Proteínas
+  proteinProcessings ProteinProcessing[]
+
+  @@index([name])
+}
+
+// Relación entre Proveedor y los Items que puede suministrar
+model SupplierItem {
+  id              String        @id @default(cuid())
+  supplierId      String
+  supplier        Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  // Precio de referencia del proveedor
+  unitPrice       Float?
+  leadTimeDays    Int?          // Tiempo de entrega en días
+  minimumOrder    Float?        // Cantidad mínima de pedido
+  
+  isPreferred     Boolean       @default(false) // Proveedor preferido para este item
+  
+  @@unique([supplierId, inventoryItemId])
+  @@index([supplierId])
+  @@index([inventoryItemId])
+}
+
+model PurchaseOrder {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique // Ej: OC-2026-0001
+  
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  
+  status          String   @default("DRAFT") // DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED
+  
+  // Fechas
+  orderDate       DateTime @default(now())
+  expectedDate    DateTime? // Fecha esperada de recepción
+  receivedDate    DateTime?
+  
+  // Totales
+  subtotal        Float    @default(0)
+  taxAmount       Float    @default(0)
+  totalAmount     Float    @default(0)
+  
+  notes           String?
+  internalNotes   String?  // Notas internas no visibles en la orden impresa
+  
+  // Auditoría
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdById     String
+  createdBy       User     @relation("PurchaseOrderCreator", fields: [createdById], references: [id])
+  
+  receivedById    String?
+  receivedBy      User?    @relation("PurchaseOrderReceiver", fields: [receivedById], references: [id])
+
+  // Items de la orden
+  items           PurchaseOrderItem[]
+
+  @@index([status])
+  @@index([orderDate])
+  @@index([supplierId])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  // Cantidades
+  quantityOrdered Float         // Cantidad solicitada
+  quantityReceived Float        @default(0) // Cantidad recibida
+  unit            String
+  
+  // Precios
+  unitPrice       Float         @default(0)
+  totalPrice      Float         @default(0)
+  
+  // Información adicional
+  notes           String?
+  
+  @@index([purchaseOrderId])
   @@index([inventoryItemId])
 }

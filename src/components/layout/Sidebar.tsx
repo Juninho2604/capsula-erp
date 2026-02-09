@@ -67,6 +67,18 @@ const navigation: NavItem[] = [
         roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
     },
     {
+        label: 'Compras',
+        href: '/dashboard/compras',
+        icon: '🛒',
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+    },
+    {
+        label: 'Proteínas',
+        href: '/dashboard/proteinas',
+        icon: '🥩',
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
+    },
+    {
         label: 'Menú',
         href: '/dashboard/menu',
         icon: '🍽️',
@@ -87,6 +99,12 @@ const posNavigation: NavItem[] = [
         href: '/dashboard/pos/delivery',
         icon: '🛵',
         roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
+    },
+    {
+        label: 'Cargar Ventas',
+        href: '/dashboard/ventas/cargar',
+        icon: '💳',
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
     },
     {
         label: 'Historial Ventas',

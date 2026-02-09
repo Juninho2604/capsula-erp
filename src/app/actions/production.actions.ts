@@ -4,9 +4,12 @@
  * SHANKLISH CARACAS ERP - Production Actions
  * 
  * Server Actions para gestión de producción desde el frontend
+ * CONECTADO A BASE DE DATOS REAL CON PRISMA
  */
 
 import { revalidatePath } from 'next/cache';
+import prisma from '@/server/db';
+import { getSession } from '@/lib/auth';
 
 // ============================================================================
 // TIPOS
@@ -32,101 +35,64 @@ export interface ProductionActionResult {
     };
 }
 
-// ============================================================================
-// MOCK: Datos simulados para desarrollo
-// ============================================================================
-
-// Stock simulado
-const mockStock: Record<string, number> = {
-    'ins-leche': 200,
-    'ins-sal': 25,
-    'ins-zaatar': 8,
-    'ins-carne': 30,
-    'ins-burgol': 15,
-    'ins-cebolla': 10,
-    'ins-aceite': 40,
-    'sub-cuajada': 8,
-    'sub-shanklish': 50,
-    'sub-masa-kibbe': 10,
-};
-
-// Recetas simuladas con sus ingredientes
-const mockRecipes: Record<string, {
-    name: string;
-    outputItem: string;
-    outputQuantity: number;
-    outputUnit: string;
-    yieldPercentage: number;
-    ingredients: { itemId: string; name: string; quantity: number; unit: string; wastePercentage: number }[];
-}> = {
-    'recipe-cuajada': {
-        name: 'Cuajada Base',
-        outputItem: 'sub-cuajada',
-        outputQuantity: 2,
-        outputUnit: 'KG',
-        yieldPercentage: 95,
-        ingredients: [
-            { itemId: 'ins-leche', name: 'Leche Entera', quantity: 10, unit: 'L', wastePercentage: 0 },
-            { itemId: 'ins-sal', name: 'Sal Fina', quantity: 0.02, unit: 'KG', wastePercentage: 0 },
-        ],
-    },
-    'recipe-shanklish': {
-        name: 'Bola de Shanklish Seco',
-        outputItem: 'sub-shanklish',
-        outputQuantity: 25,
-        outputUnit: 'UNIT',
-        yieldPercentage: 90,
-        ingredients: [
-            { itemId: 'sub-cuajada', name: 'Cuajada Base', quantity: 2, unit: 'KG', wastePercentage: 5 },
-            { itemId: 'ins-zaatar', name: "Za'atar", quantity: 0.3, unit: 'KG', wastePercentage: 10 },
-            { itemId: 'ins-sal', name: 'Sal Fina', quantity: 0.05, unit: 'KG', wastePercentage: 0 },
-        ],
-    },
-    'recipe-masa-kibbe': {
-        name: 'Masa de Kibbe',
-        outputItem: 'sub-masa-kibbe',
-        outputQuantity: 2.5,
-        outputUnit: 'KG',
-        yieldPercentage: 98,
-        ingredients: [
-            { itemId: 'ins-carne', name: 'Carne de Res Molida', quantity: 1.5, unit: 'KG', wastePercentage: 5 },
-            { itemId: 'ins-burgol', name: 'Trigo Burgol', quantity: 0.5, unit: 'KG', wastePercentage: 0 },
-            { itemId: 'ins-cebolla', name: 'Cebolla Blanca', quantity: 0.3, unit: 'KG', wastePercentage: 15 },
-            { itemId: 'ins-sal', name: 'Sal Fina', quantity: 0.025, unit: 'KG', wastePercentage: 0 },
-        ],
-    },
-};
-
-let orderCounter = 1;
+export interface IngredientRequirement {
+    itemId: string;
+    itemName: string;
+    required: number;
+    gross: number;
+    unit: string;
+    available: number;
+    sufficient: boolean;
+}
 
 // ============================================================================
-// ACTION: PRODUCCIÓN RÁPIDA
+// ACTION: PRODUCCIÓN RÁPIDA (CONECTADO A DB)
 // ============================================================================
 
 /**
  * Registra una producción rápida (sin orden previa)
  * - Víctor termina 20kg de Cuajada → Botón "Finalizar Producción"
- * - Sistema resta ingredientes proporcionales
- * - Sistema suma producto terminado
+ * - Sistema resta ingredientes proporcionales del área especificada
+ * - Sistema suma producto terminado al área especificada
  */
 export async function quickProductionAction(
-    formData: QuickProductionFormData,
-    userId: string = 'user-chef-victor'
+    formData: QuickProductionFormData
 ): Promise<ProductionActionResult> {
-    try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+    const session = await getSession();
+    if (!session?.id) {
+        return { success: false, message: 'No autorizado' };
+    }
+    const userId = session.id;
 
-        const recipe = mockRecipes[formData.recipeId];
+    try {
+        // 1. Obtener la receta con sus ingredientes
+        const recipe = await prisma.recipe.findUnique({
+            where: { id: formData.recipeId },
+            include: {
+                ingredients: {
+                    include: {
+                        ingredientItem: true
+                    }
+                },
+                outputItem: true
+            }
+        });
+
         if (!recipe) {
             return { success: false, message: 'Receta no encontrada' };
         }
 
-        // Calcular factor de escala
+        // 2. Calcular factor de escala
         const scaleFactor = formData.actualQuantity / recipe.outputQuantity;
 
-        // Calcular ingredientes a consumir
-        const ingredientsConsumed: { name: string; quantity: number; unit: string }[] = [];
+        // 3. Verificar stock disponible de cada ingrediente en el área
         const stockErrors: string[] = [];
+        const ingredientsToConsume: {
+            itemId: string;
+            name: string;
+            grossQty: number;
+            unit: string
+        }[] = [];
 
         for (const ing of recipe.ingredients) {
             const requiredQty = ing.quantity * scaleFactor;
@@ -134,15 +100,28 @@ export async function quickProductionAction(
                 ? requiredQty / (1 - ing.wastePercentage / 100)
                 : requiredQty;
 
-            const currentStock = mockStock[ing.itemId] || 0;
+            // Buscar stock en el área especificada
+            const location = await prisma.inventoryLocation.findUnique({
+                where: {
+                    inventoryItemId_areaId: {
+                        inventoryItemId: ing.ingredientItemId,
+                        areaId: formData.areaId
+                    }
+                }
+            });
+
+            const currentStock = location?.currentStock || 0;
 
             if (currentStock < grossQty) {
-                stockErrors.push(`${ing.name}: necesario ${grossQty.toFixed(3)}, disponible ${currentStock.toFixed(3)}`);
+                stockErrors.push(
+                    `${ing.ingredientItem.name}: necesario ${grossQty.toFixed(3)}, disponible ${currentStock.toFixed(3)}`
+                );
             } else {
-                ingredientsConsumed.push({
-                    name: ing.name,
-                    quantity: parseFloat(grossQty.toFixed(3)),
-                    unit: ing.unit,
+                ingredientsToConsume.push({
+                    itemId: ing.ingredientItemId,
+                    name: ing.ingredientItem.name,
+                    grossQty: parseFloat(grossQty.toFixed(4)),
+                    unit: ing.unit
                 });
             }
         }
@@ -155,33 +134,107 @@ export async function quickProductionAction(
             };
         }
 
-        // Generar número de orden
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const orderNumber = `PROD-${today}-${String(orderCounter++).padStart(4, '0')}`;
+        // 4. Ejecutar la producción en transacción
+        const result = await prisma.$transaction(async (tx) => {
+            // Generar número de orden
+            const count = await tx.productionOrder.count();
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const orderNumber = `PROD-${today}-${String(count + 1).padStart(4, '0')}`;
 
-        // Procesar: restar ingredientes, sumar producto
-        for (const ing of recipe.ingredients) {
-            const requiredQty = ing.quantity * scaleFactor;
-            const grossQty = ing.wastePercentage < 100
-                ? requiredQty / (1 - ing.wastePercentage / 100)
-                : requiredQty;
+            // Crear la orden de producción
+            const productionOrder = await tx.productionOrder.create({
+                data: {
+                    orderNumber,
+                    recipeId: formData.recipeId,
+                    outputItemId: recipe.outputItemId,
+                    plannedQuantity: formData.actualQuantity,
+                    actualQuantity: formData.actualQuantity,
+                    unit: formData.unit,
+                    status: 'COMPLETED',
+                    startedAt: new Date(),
+                    completedAt: new Date(),
+                    notes: formData.notes,
+                    createdById: userId,
+                    actualYieldPercentage: recipe.yieldPercentage
+                }
+            });
 
-            mockStock[ing.itemId] = (mockStock[ing.itemId] || 0) - grossQty;
-        }
+            // Restar ingredientes del inventario
+            for (const ing of ingredientsToConsume) {
+                // Crear movimiento de salida
+                await tx.inventoryMovement.create({
+                    data: {
+                        inventoryItemId: ing.itemId,
+                        movementType: 'PRODUCTION_OUT',
+                        quantity: ing.grossQty,
+                        unit: ing.unit,
+                        createdById: userId,
+                        reason: `Producción: ${recipe.name}`,
+                        notes: `Orden: ${orderNumber}`
+                    }
+                });
 
-        // Sumar producto terminado
-        mockStock[recipe.outputItem] = (mockStock[recipe.outputItem] || 0) + formData.actualQuantity;
+                // Actualizar stock en ubicación
+                await tx.inventoryLocation.update({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: ing.itemId,
+                            areaId: formData.areaId
+                        }
+                    },
+                    data: {
+                        currentStock: { decrement: ing.grossQty },
+                        lastCountDate: new Date()
+                    }
+                });
+            }
+
+            // Sumar producto terminado al inventario
+            await tx.inventoryMovement.create({
+                data: {
+                    inventoryItemId: recipe.outputItemId,
+                    movementType: 'PRODUCTION_IN',
+                    quantity: formData.actualQuantity,
+                    unit: formData.unit,
+                    createdById: userId,
+                    reason: `Producción: ${recipe.name}`,
+                    notes: `Orden: ${orderNumber}`
+                }
+            });
+
+            // Actualizar o crear ubicación del producto terminado
+            await tx.inventoryLocation.upsert({
+                where: {
+                    inventoryItemId_areaId: {
+                        inventoryItemId: recipe.outputItemId,
+                        areaId: formData.areaId
+                    }
+                },
+                create: {
+                    inventoryItemId: recipe.outputItemId,
+                    areaId: formData.areaId,
+                    currentStock: formData.actualQuantity,
+                    lastCountDate: new Date()
+                },
+                update: {
+                    currentStock: { increment: formData.actualQuantity },
+                    lastCountDate: new Date()
+                }
+            });
+
+            return { orderNumber, productionOrder };
+        }, { timeout: 60000 });
 
         // Calcular rendimiento real
         const expectedQty = recipe.outputQuantity * scaleFactor * (recipe.yieldPercentage / 100);
         const actualYield = (formData.actualQuantity / expectedQty) * 100;
 
         console.log('🏭 PRODUCCIÓN COMPLETADA:', {
-            orden: orderNumber,
+            orden: result.orderNumber,
             receta: recipe.name,
             producido: `${formData.actualQuantity} ${formData.unit}`,
             rendimiento: `${actualYield.toFixed(1)}%`,
-            ingredientes: ingredientsConsumed,
+            ingredientes: ingredientsToConsume.length,
         });
 
         // Revalidar páginas
@@ -191,15 +244,19 @@ export async function quickProductionAction(
 
         return {
             success: true,
-            message: `¡Producción completada! Orden: ${orderNumber}`,
+            message: `¡Producción completada! Orden: ${result.orderNumber}`,
             data: {
-                orderNumber,
+                orderNumber: result.orderNumber,
                 productAdded: {
-                    name: recipe.name,
+                    name: recipe.outputItem.name,
                     quantity: formData.actualQuantity,
                     unit: formData.unit,
                 },
-                ingredientsConsumed,
+                ingredientsConsumed: ingredientsToConsume.map(ing => ({
+                    name: ing.name,
+                    quantity: ing.grossQty,
+                    unit: ing.unit
+                })),
                 actualYield: parseFloat(actualYield.toFixed(1)),
             },
         };
@@ -214,61 +271,158 @@ export async function quickProductionAction(
 }
 
 // ============================================================================
-// ACTION: CALCULAR INGREDIENTES NECESARIOS
+// ACTION: CALCULAR INGREDIENTES NECESARIOS (CONECTADO A DB)
 // ============================================================================
-
-export interface IngredientRequirement {
-    itemId: string;
-    itemName: string;
-    required: number;
-    gross: number;
-    unit: string;
-    available: number;
-    sufficient: boolean;
-}
 
 export async function calculateRequirementsAction(
     recipeId: string,
-    quantity: number
+    quantity: number,
+    areaId?: string // Opcional: si se especifica, busca stock en ese área
 ): Promise<{ success: boolean; requirements: IngredientRequirement[] }> {
-    const recipe = mockRecipes[recipeId];
-    if (!recipe) {
+    try {
+        const recipe = await prisma.recipe.findUnique({
+            where: { id: recipeId },
+            include: {
+                ingredients: {
+                    include: {
+                        ingredientItem: {
+                            include: {
+                                stockLevels: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!recipe) {
+            return { success: false, requirements: [] };
+        }
+
+        const scaleFactor = quantity / recipe.outputQuantity;
+
+        const requirements: IngredientRequirement[] = await Promise.all(
+            recipe.ingredients.map(async (ing) => {
+                const required = ing.quantity * scaleFactor;
+                const gross = ing.wastePercentage < 100
+                    ? required / (1 - ing.wastePercentage / 100)
+                    : required;
+
+                // Calcular stock disponible
+                let available = 0;
+                if (areaId) {
+                    // Stock en área específica
+                    const location = ing.ingredientItem.stockLevels.find(
+                        sl => sl.areaId === areaId
+                    );
+                    available = location?.currentStock || 0;
+                } else {
+                    // Stock global (suma de todas las áreas)
+                    available = ing.ingredientItem.stockLevels.reduce(
+                        (sum, sl) => sum + sl.currentStock, 0
+                    );
+                }
+
+                return {
+                    itemId: ing.ingredientItemId,
+                    itemName: ing.ingredientItem.name,
+                    required: parseFloat(required.toFixed(4)),
+                    gross: parseFloat(gross.toFixed(4)),
+                    unit: ing.unit,
+                    available: parseFloat(available.toFixed(3)),
+                    sufficient: available >= gross,
+                };
+            })
+        );
+
+        return { success: true, requirements };
+    } catch (error) {
+        console.error('Error en calculateRequirementsAction:', error);
         return { success: false, requirements: [] };
     }
-
-    const scaleFactor = quantity / recipe.outputQuantity;
-
-    const requirements: IngredientRequirement[] = recipe.ingredients.map(ing => {
-        const required = ing.quantity * scaleFactor;
-        const gross = ing.wastePercentage < 100
-            ? required / (1 - ing.wastePercentage / 100)
-            : required;
-        const available = mockStock[ing.itemId] || 0;
-
-        return {
-            itemId: ing.itemId,
-            itemName: ing.name,
-            required: parseFloat(required.toFixed(4)),
-            gross: parseFloat(gross.toFixed(4)),
-            unit: ing.unit,
-            available: parseFloat(available.toFixed(3)),
-            sufficient: available >= gross,
-        };
-    });
-
-    return { success: true, requirements };
 }
 
 // ============================================================================
-// ACTION: OBTENER RECETAS DISPONIBLES
+// ACTION: OBTENER RECETAS DISPONIBLES PARA PRODUCCIÓN
 // ============================================================================
 
 export async function getProductionRecipesAction() {
-    return Object.entries(mockRecipes).map(([id, recipe]) => ({
-        id,
-        name: recipe.name,
-        outputQuantity: recipe.outputQuantity,
-        outputUnit: recipe.outputUnit,
-        ingredientCount: recipe.ingredients.length,
-    }));
+    try {
+        const recipes = await prisma.recipe.findMany({
+            where: {
+                isActive: true,
+                isApproved: true
+            },
+            include: {
+                outputItem: true,
+                _count: {
+                    select: { ingredients: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        return recipes.map(recipe => ({
+            id: recipe.id,
+            name: recipe.name,
+            outputQuantity: recipe.outputQuantity,
+            outputUnit: recipe.outputUnit,
+            outputItemName: recipe.outputItem.name,
+            ingredientCount: recipe._count.ingredients,
+        }));
+    } catch (error) {
+        console.error('Error en getProductionRecipesAction:', error);
+        return [];
+    }
+}
+
+// ============================================================================
+// ACTION: OBTENER HISTORIAL DE PRODUCCIÓN
+// ============================================================================
+
+export async function getProductionHistoryAction(limit: number = 20) {
+    try {
+        const orders = await prisma.productionOrder.findMany({
+            where: { status: 'COMPLETED' },
+            include: {
+                recipe: true,
+                createdBy: {
+                    select: { firstName: true, lastName: true }
+                }
+            },
+            orderBy: { completedAt: 'desc' },
+            take: limit
+        });
+
+        return orders.map(order => ({
+            id: order.id,
+            orderNumber: order.orderNumber,
+            recipeName: order.recipe.name,
+            quantity: order.actualQuantity,
+            unit: order.unit,
+            completedAt: order.completedAt,
+            createdBy: `${order.createdBy.firstName} ${order.createdBy.lastName}`,
+            yieldPercentage: order.actualYieldPercentage
+        }));
+    } catch (error) {
+        console.error('Error en getProductionHistoryAction:', error);
+        return [];
+    }
+}
+
+// ============================================================================
+// ACTION: OBTENER ÁREAS PARA PRODUCCIÓN
+// ============================================================================
+
+export async function getProductionAreasAction() {
+    try {
+        const areas = await prisma.area.findMany({
+            where: { isActive: true },
+            orderBy: { name: 'asc' }
+        });
+        return areas;
+    } catch (error) {
+        console.error('Error en getProductionAreasAction:', error);
+        return [];
+    }
 }

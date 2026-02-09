@@ -1,0 +1,745 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { formatNumber, formatCurrency, cn } from '@/lib/utils';
+import {
+    getProteinItemsAction,
+    getProcessingAreasAction,
+    getSuppliersAction,
+    createProteinProcessingAction,
+    getProteinProcessingsAction,
+    getProteinProcessingByIdAction,
+    completeProteinProcessingAction,
+    cancelProteinProcessingAction,
+    getProteinProcessingStatsAction,
+    SubProductInput
+} from '@/app/actions/protein-processing.actions';
+
+interface SubProduct extends SubProductInput {
+    id: string;
+}
+
+export default function ProteinProcessingView() {
+    const [proteinItems, setProteinItems] = useState<any[]>([]);
+    const [areas, setAreas] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [processings, setProcessings] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(null);
+    const [selectedProcessing, setSelectedProcessing] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Estado del formulario
+    const [viewMode, setViewMode] = useState<'list' | 'create' | 'detail'>('list');
+    const [processDate, setProcessDate] = useState(new Date().toISOString().slice(0, 10));
+    const [sourceItemId, setSourceItemId] = useState('');
+    const [supplierId, setSupplierId] = useState('');
+    const [supplierName, setSupplierName] = useState('');
+    const [frozenWeight, setFrozenWeight] = useState<number>(0);
+    const [drainedWeight, setDrainedWeight] = useState<number>(0);
+    const [areaId, setAreaId] = useState('');
+    const [notes, setNotes] = useState('');
+
+    // Subproductos
+    const [subProducts, setSubProducts] = useState<SubProduct[]>([]);
+    const [newSubProductName, setNewSubProductName] = useState('');
+    const [newSubProductWeight, setNewSubProductWeight] = useState<number>(0);
+    const [newSubProductUnits, setNewSubProductUnits] = useState<number>(1);
+
+    // Cargar datos iniciales
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    async function loadData() {
+        setIsLoading(true);
+        const [itemsData, areasData, suppliersData, processingsData, statsData] = await Promise.all([
+            getProteinItemsAction(),
+            getProcessingAreasAction(),
+            getSuppliersAction(),
+            getProteinProcessingsAction(),
+            getProteinProcessingStatsAction()
+        ]);
+        setProteinItems(itemsData);
+        setAreas(areasData);
+        setSuppliers(suppliersData);
+        setProcessings(processingsData);
+        setStats(statsData);
+
+        if (areasData.length > 0) {
+            setAreaId(areasData[0].id);
+        }
+
+        setIsLoading(false);
+    }
+
+    // Agregar subproducto
+    function addSubProduct() {
+        if (!newSubProductName || newSubProductWeight <= 0) {
+            alert('Ingresa nombre y peso del subproducto');
+            return;
+        }
+
+        const newProduct: SubProduct = {
+            id: Date.now().toString(),
+            name: newSubProductName,
+            weight: newSubProductWeight,
+            units: newSubProductUnits,
+            unitType: 'KG'
+        };
+
+        setSubProducts([...subProducts, newProduct]);
+        setNewSubProductName('');
+        setNewSubProductWeight(0);
+        setNewSubProductUnits(1);
+    }
+
+    // Eliminar subproducto
+    function removeSubProduct(id: string) {
+        setSubProducts(subProducts.filter(sp => sp.id !== id));
+    }
+
+    // Calcular totales
+    const totalSubProductsWeight = subProducts.reduce((sum, sp) => sum + sp.weight, 0);
+    const wasteWeight = Math.max(0, drainedWeight - totalSubProductsWeight);
+    const wastePercentage = drainedWeight > 0 ? (wasteWeight / drainedWeight) * 100 : 0;
+    const yieldPercentage = frozenWeight > 0 ? (totalSubProductsWeight / frozenWeight) * 100 : 0;
+    const drainLoss = frozenWeight > 0 ? ((frozenWeight - drainedWeight) / frozenWeight) * 100 : 0;
+
+    // Guardar procesamiento
+    async function handleSubmit() {
+        if (!sourceItemId) {
+            alert('Selecciona el producto a procesar');
+            return;
+        }
+        if (frozenWeight <= 0) {
+            alert('Ingresa el peso congelado');
+            return;
+        }
+        if (drainedWeight <= 0) {
+            alert('Ingresa el peso escurrido');
+            return;
+        }
+        if (subProducts.length === 0) {
+            alert('Agrega al menos un subproducto');
+            return;
+        }
+
+        setIsSubmitting(true);
+        const result = await createProteinProcessingAction({
+            processDate: new Date(processDate),
+            sourceItemId,
+            supplierId: supplierId || undefined,
+            supplierName: supplierName || undefined,
+            frozenWeight,
+            drainedWeight,
+            areaId,
+            notes: notes || undefined,
+            subProducts: subProducts.map(sp => ({
+                name: sp.name,
+                weight: sp.weight,
+                units: sp.units,
+                unitType: sp.unitType,
+                outputItemId: sp.outputItemId
+            }))
+        });
+
+        if (result.success) {
+            alert(`✅ ${result.message}`);
+            resetForm();
+            setViewMode('list');
+            loadData();
+        } else {
+            alert(`❌ ${result.message}`);
+        }
+        setIsSubmitting(false);
+    }
+
+    // Resetear formulario
+    function resetForm() {
+        setProcessDate(new Date().toISOString().slice(0, 10));
+        setSourceItemId('');
+        setSupplierId('');
+        setSupplierName('');
+        setFrozenWeight(0);
+        setDrainedWeight(0);
+        setNotes('');
+        setSubProducts([]);
+    }
+
+    // Ver detalle
+    async function viewDetail(id: string) {
+        const processing = await getProteinProcessingByIdAction(id);
+        setSelectedProcessing(processing);
+        setViewMode('detail');
+    }
+
+    // Completar procesamiento
+    async function handleComplete(id: string) {
+        if (!confirm('¿Completar este procesamiento? Se actualizará el inventario.')) return;
+
+        const result = await completeProteinProcessingAction(id);
+        alert(result.message);
+        if (result.success) {
+            loadData();
+            setViewMode('list');
+        }
+    }
+
+    // Cancelar procesamiento
+    async function handleCancel(id: string) {
+        const reason = prompt('Motivo de la cancelación:');
+        if (!reason) return;
+
+        const result = await cancelProteinProcessingAction(id, reason);
+        alert(result.message);
+        if (result.success) {
+            loadData();
+            setViewMode('list');
+        }
+    }
+
+    // Status badges
+    function getStatusBadge(status: string) {
+        const styles: Record<string, string> = {
+            'DRAFT': 'bg-gray-100 text-gray-700',
+            'IN_PROGRESS': 'bg-blue-100 text-blue-700',
+            'COMPLETED': 'bg-emerald-100 text-emerald-700',
+            'CANCELLED': 'bg-red-100 text-red-700'
+        };
+        const labels: Record<string, string> = {
+            'DRAFT': '📝 Borrador',
+            'IN_PROGRESS': '🔄 En Proceso',
+            'COMPLETED': '✅ Completado',
+            'CANCELLED': '❌ Cancelado'
+        };
+        return (
+            <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', styles[status] || 'bg-gray-100')}>
+                {labels[status] || status}
+            </span>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-500">Cargando...</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 animate-in">
+            {/* Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        🥩 Procesamiento de Proteínas
+                    </h1>
+                    <p className="text-gray-500">
+                        Registro de desposte y rendimiento de carnes
+                    </p>
+                </div>
+
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => { setViewMode('list'); setSelectedProcessing(null); }}
+                        className={cn(
+                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            viewMode === 'list'
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                        )}
+                    >
+                        📋 Ver Registros
+                    </button>
+                    <button
+                        onClick={() => { setViewMode('create'); resetForm(); }}
+                        className={cn(
+                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            viewMode === 'create'
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                        )}
+                    >
+                        ➕ Nuevo Procesamiento
+                    </button>
+                </div>
+            </div>
+
+            {/* Estadísticas */}
+            {stats && viewMode === 'list' && (
+                <div className="grid gap-4 sm:grid-cols-5">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p className="text-sm text-gray-500">Total Procesamientos</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalProcessings}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p className="text-sm text-gray-500">Peso Total Procesado</p>
+                        <p className="text-2xl font-bold text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p className="text-sm text-gray-500">Subproductos Obtenidos</p>
+                        <p className="text-2xl font-bold text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p className="text-sm text-gray-500">Rendimiento Promedio</p>
+                        <p className="text-2xl font-bold text-amber-600">{formatNumber(stats.avgYield)}%</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p className="text-sm text-gray-500">Desperdicio Promedio</p>
+                        <p className="text-2xl font-bold text-red-600">{formatNumber(stats.avgWaste)}%</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Vista: Lista de procesamientos */}
+            {viewMode === 'list' && (
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="border-b border-gray-200 bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Código</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Fecha</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Producto</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Proveedor</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Peso Inicial</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Rendimiento</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Estado</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {processings.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                                            <span className="text-4xl">🥩</span>
+                                            <p className="mt-2">No hay procesamientos registrados</p>
+                                            <button
+                                                onClick={() => setViewMode('create')}
+                                                className="mt-4 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm hover:bg-amber-600"
+                                            >
+                                                Crear primer procesamiento
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    processings.map((p: any) => (
+                                        <tr key={p.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => viewDetail(p.id)}
+                                                    className="font-medium text-amber-600 hover:underline"
+                                                >
+                                                    {p.code}
+                                                </button>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                                {new Date(p.processDate).toLocaleDateString('es-VE')}
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">{p.sourceItem}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">{p.supplier}</td>
+                                            <td className="px-6 py-4 text-center font-mono">{formatNumber(p.frozenWeight)} kg</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={cn(
+                                                    'font-semibold',
+                                                    p.yieldPercentage >= 70 ? 'text-emerald-600' :
+                                                        p.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                )}>
+                                                    {formatNumber(p.yieldPercentage)}%
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                {getStatusBadge(p.status)}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex justify-center gap-2">
+                                                    <button
+                                                        onClick={() => viewDetail(p.id)}
+                                                        className="text-blue-500 hover:text-blue-700 text-sm"
+                                                        title="Ver detalle"
+                                                    >
+                                                        👁️
+                                                    </button>
+                                                    {p.status === 'DRAFT' && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleComplete(p.id)}
+                                                                className="text-emerald-500 hover:text-emerald-700 text-sm"
+                                                                title="Completar"
+                                                            >
+                                                                ✅
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleCancel(p.id)}
+                                                                className="text-red-500 hover:text-red-700 text-sm"
+                                                                title="Cancelar"
+                                                            >
+                                                                ❌
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Vista: Crear procesamiento */}
+            {viewMode === 'create' && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Formulario principal */}
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                            <h2 className="font-semibold text-gray-900 dark:text-white">
+                                📋 Datos del Procesamiento
+                            </h2>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {/* Fecha */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                                <input
+                                    type="date"
+                                    value={processDate}
+                                    onChange={(e) => setProcessDate(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            {/* Producto a procesar */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Producto a Procesar*</label>
+                                <select
+                                    value={sourceItemId}
+                                    onChange={(e) => setSourceItemId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                >
+                                    <option value="">Seleccionar producto...</option>
+                                    {proteinItems.map(item => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.name} ({item.category || 'Sin categoría'})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Proveedor */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                                <select
+                                    value={supplierId}
+                                    onChange={(e) => setSupplierId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                >
+                                    <option value="">Seleccionar o escribir...</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                {!supplierId && (
+                                    <input
+                                        type="text"
+                                        value={supplierName}
+                                        onChange={(e) => setSupplierName(e.target.value)}
+                                        placeholder="O escribir nombre del proveedor..."
+                                        className="w-full mt-2 rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Área */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Área de Procesamiento</label>
+                                <select
+                                    value={areaId}
+                                    onChange={(e) => setAreaId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                >
+                                    {areas.map(area => (
+                                        <option key={area.id} value={area.id}>{area.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Pesos */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Congelado (kg)*</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={frozenWeight || ''}
+                                        onChange={(e) => setFrozenWeight(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Escurrido (kg)*</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={drainedWeight || ''}
+                                        onChange={(e) => setDrainedWeight(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Pérdida por escurrido */}
+                            {frozenWeight > 0 && drainedWeight > 0 && (
+                                <div className="p-3 rounded-lg bg-blue-50 text-sm">
+                                    <span className="text-blue-700">
+                                        💧 Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Notas */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Observaciones del procesamiento..."
+                                    rows={2}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Subproductos */}
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                            <h2 className="font-semibold text-gray-900 dark:text-white">
+                                🍖 Subproductos ({subProducts.length})
+                            </h2>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {/* Agregar subproducto */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newSubProductName}
+                                    onChange={(e) => setNewSubProductName(e.target.value)}
+                                    placeholder="Nombre (ej: Lomo, Costilla...)"
+                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                />
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={newSubProductWeight || ''}
+                                    onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
+                                    placeholder="Peso kg"
+                                    className="w-24 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                />
+                                <input
+                                    type="number"
+                                    value={newSubProductUnits || ''}
+                                    onChange={(e) => setNewSubProductUnits(parseInt(e.target.value) || 1)}
+                                    placeholder="Uds"
+                                    className="w-16 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                />
+                                <button
+                                    onClick={addSubProduct}
+                                    className="px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                                >
+                                    +
+                                </button>
+                            </div>
+
+                            {/* Lista de subproductos */}
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {subProducts.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-8">
+                                        Agrega los cortes/subproductos obtenidos
+                                    </p>
+                                ) : (
+                                    subProducts.map((sp, index) => (
+                                        <div key={sp.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                                            <div className="flex-1">
+                                                <span className="text-gray-400 mr-2">{index + 1}.</span>
+                                                <span className="font-medium">{sp.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-mono text-sm">{formatNumber(sp.weight)} kg</span>
+                                                <span className="text-xs text-gray-500">({sp.units} pza)</span>
+                                                <button
+                                                    onClick={() => removeSubProduct(sp.id)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Resumen */}
+                            <div className="border-t pt-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-500">Total Subproductos:</span>
+                                    <span className="font-semibold">{formatNumber(totalSubProductsWeight)} kg</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-500">Desperdicio:</span>
+                                    <span className={cn('font-semibold', wasteWeight > 0 ? 'text-red-600' : 'text-gray-600')}>
+                                        {formatNumber(wasteWeight)} kg ({formatNumber(wastePercentage)}%)
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold">
+                                    <span>Rendimiento:</span>
+                                    <span className={cn(
+                                        yieldPercentage >= 70 ? 'text-emerald-600' :
+                                            yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                    )}>
+                                        {formatNumber(yieldPercentage)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Botón guardar */}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!sourceItemId || frozenWeight <= 0 || subProducts.length === 0 || isSubmitting}
+                                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                            >
+                                {isSubmitting ? 'Guardando...' : '💾 Guardar Procesamiento'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Vista: Detalle */}
+            {viewMode === 'detail' && selectedProcessing && (
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex justify-between items-center">
+                        <div>
+                            <h2 className="font-semibold text-gray-900 dark:text-white">
+                                {selectedProcessing.code}
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                {new Date(selectedProcessing.processDate).toLocaleDateString('es-VE', {
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                })}
+                            </p>
+                        </div>
+                        {getStatusBadge(selectedProcessing.status)}
+                    </div>
+
+                    <div className="p-6 grid gap-6 lg:grid-cols-2">
+                        {/* Info general */}
+                        <div className="space-y-4">
+                            <h3 className="font-medium text-gray-900">Información General</h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Producto:</span>
+                                    <span className="font-medium">{selectedProcessing.sourceItem.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Proveedor:</span>
+                                    <span>{selectedProcessing.supplier?.name || selectedProcessing.supplierName || '-'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Área:</span>
+                                    <span>{selectedProcessing.area.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Creado por:</span>
+                                    <span>{selectedProcessing.createdBy.firstName} {selectedProcessing.createdBy.lastName}</span>
+                                </div>
+                            </div>
+
+                            <h3 className="font-medium text-gray-900 pt-4">Pesos y Rendimiento</h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Peso Congelado:</span>
+                                    <span className="font-mono">{formatNumber(selectedProcessing.frozenWeight)} kg</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Peso Escurrido:</span>
+                                    <span className="font-mono">{formatNumber(selectedProcessing.drainedWeight)} kg</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Total Subproductos:</span>
+                                    <span className="font-mono text-emerald-600">{formatNumber(selectedProcessing.totalSubProducts)} kg</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Desperdicio:</span>
+                                    <span className="font-mono text-red-600">{formatNumber(selectedProcessing.wasteWeight)} kg ({formatNumber(selectedProcessing.wastePercentage)}%)</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                                    <span>Rendimiento:</span>
+                                    <span className={cn(
+                                        selectedProcessing.yieldPercentage >= 70 ? 'text-emerald-600' :
+                                            selectedProcessing.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                    )}>
+                                        {formatNumber(selectedProcessing.yieldPercentage)}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subproductos */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-4">Subproductos Obtenidos</h3>
+                            <div className="space-y-2">
+                                {selectedProcessing.subProducts.map((sp: any, index: number) => (
+                                    <div key={sp.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                                        <div>
+                                            <span className="text-gray-400 mr-2">{index + 1}.</span>
+                                            <span className="font-medium">{sp.name}</span>
+                                            {sp.outputItem && (
+                                                <span className="ml-2 text-xs text-amber-600">
+                                                    → {sp.outputItem.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-mono">{formatNumber(sp.weight)} kg</span>
+                                            <span className="text-xs text-gray-500 ml-2">({sp.units} pza)</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Acciones */}
+                    {selectedProcessing.status === 'DRAFT' && (
+                        <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
+                            <button
+                                onClick={() => handleCancel(selectedProcessing.id)}
+                                className="px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                            >
+                                ❌ Cancelar
+                            </button>
+                            <button
+                                onClick={() => handleComplete(selectedProcessing.id)}
+                                className="px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600"
+                            >
+                                ✅ Completar y Actualizar Inventario
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

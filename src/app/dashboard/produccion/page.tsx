@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
-import { mockAreas } from '@/lib/mock-data';
 import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import {
     quickProductionAction,
     calculateRequirementsAction,
     getProductionRecipesAction,
+    getProductionAreasAction,
     IngredientRequirement,
     ProductionActionResult,
 } from '@/app/actions/production.actions';
@@ -27,9 +27,10 @@ export default function ProduccionPage() {
 
     // Estado
     const [recipes, setRecipes] = useState<RecipeOption[]>([]);
+    const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
     const [selectedRecipe, setSelectedRecipe] = useState('');
     const [quantity, setQuantity] = useState<number>(0);
-    const [areaId, setAreaId] = useState('area-cocina');
+    const [areaId, setAreaId] = useState('');
     const [notes, setNotes] = useState('');
 
     // Requerimientos calculados
@@ -49,9 +50,16 @@ export default function ProduccionPage() {
         timestamp: Date;
     }[]>([]);
 
-    // Cargar recetas al inicio
+    // Cargar recetas y áreas al inicio
     useEffect(() => {
         getProductionRecipesAction().then(setRecipes);
+        getProductionAreasAction().then(loadedAreas => {
+            setAreas(loadedAreas);
+            // Seleccionar Centro de Producción por defecto si existe
+            const prodArea = loadedAreas.find(a => a.name.toLowerCase().includes('produccion') || a.name.toLowerCase().includes('producción'));
+            if (prodArea) setAreaId(prodArea.id);
+            else if (loadedAreas.length > 0) setAreaId(loadedAreas[0].id);
+        });
     }, []);
 
     // Calcular requerimientos cuando cambia receta o cantidad
@@ -62,14 +70,14 @@ export default function ProduccionPage() {
         }
 
         setIsCalculating(true);
-        calculateRequirementsAction(selectedRecipe, quantity)
+        calculateRequirementsAction(selectedRecipe, quantity, areaId)
             .then(res => {
                 if (res.success) {
                     setRequirements(res.requirements);
                 }
             })
             .finally(() => setIsCalculating(false));
-    }, [selectedRecipe, quantity]);
+    }, [selectedRecipe, quantity, areaId]);
 
     // Obtener receta seleccionada
     const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
@@ -219,7 +227,7 @@ export default function ProduccionPage() {
                                     onChange={(e) => setAreaId(e.target.value)}
                                     className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 >
-                                    {mockAreas.map(area => (
+                                    {areas.map(area => (
                                         <option key={area.id} value={area.id}>
                                             {area.name}
                                         </option>

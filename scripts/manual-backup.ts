@@ -10,7 +10,8 @@ async function main() {
 
     // Obtener ruta del escritorio
     const desktopPath = path.join(process.env.USERPROFILE || 'C:\\Users\\Shanklish Laptop 1', 'Desktop');
-    const dateStr = '29-1-2026';
+    const now = new Date();
+    const dateStr = `${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear()}`;
     const filename = `BACKUP_SHANKLISH_ERP_${dateStr}.json`;
     const fullPath = path.join(desktopPath, filename);
 
