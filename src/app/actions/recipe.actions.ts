@@ -289,13 +289,15 @@ export async function updateRecipeAction(input: UpdateRecipeInput): Promise<Acti
             });
             if (!existing) throw new Error("Receta no encontrada");
 
-            // 2. Update Output Item if name or category changed
-            if (existing.name !== input.name || existing.outputItem.category !== input.category) {
+            // 2. Update Output Item if name, category, or type changed
+            const newType = input.type || existing.outputItem.type;
+            if (existing.name !== input.name || existing.outputItem.category !== input.category || existing.outputItem.type !== newType) {
                 await tx.inventoryItem.update({
                     where: { id: existing.outputItemId },
                     data: {
                         name: input.name,
-                        category: input.category
+                        category: input.category,
+                        type: newType,
                     }
                 });
             }

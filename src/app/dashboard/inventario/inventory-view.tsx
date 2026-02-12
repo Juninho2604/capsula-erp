@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency, getStockStatus, cn } from '@/lib/utils';
@@ -20,7 +20,12 @@ interface InventoryViewProps {
 
 export default function InventoryView({ initialItems, initialAreas = [] }: InventoryViewProps) {
     const { canViewCosts, hasRole } = useAuthStore();
-    const showCosts = canViewCosts();
+    // Defer showCosts to client-side to avoid hydration mismatch
+    // (Zustand store has no user during SSR, so canViewCosts() returns false on server but true on client)
+    const [showCosts, setShowCosts] = useState(false);
+    useEffect(() => {
+        setShowCosts(canViewCosts());
+    }, [canViewCosts]);
 
     // Filtros
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');

@@ -5,21 +5,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import { createRequisition, approveRequisition, rejectRequisition } from '@/app/actions/requisition.actions';
 import { formatNumber, cn } from '@/lib/utils';
 import { UserRole } from '@/types';
-import { Check, ChevronsUpDown, Trash2 } from 'lucide-react';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
 
 // Tipos locales para props
 interface Item {
@@ -66,58 +53,29 @@ interface TransferItemRowProps {
 }
 
 function TransferItemRow({ index, item, itemsList, onUpdate, onRemove }: TransferItemRowProps) {
-    const [open, setOpen] = useState(false);
+    // Map items for Combobox
+    const comboboxItems = itemsList.map(i => ({ value: i.id, label: i.name }));
 
     return (
         <tr>
             <td className="p-2">
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between border-gray-200 bg-white font-normal dark:border-gray-600 dark:bg-gray-800"
-                        >
-                            {item.id
-                                ? itemsList.find((i) => i.id === item.id)?.name
-                                : "Seleccionar Item..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                        <Command>
-                            <CommandInput placeholder="Buscar item..." />
-                            <CommandList>
-                                <CommandEmpty>No se encontró el item.</CommandEmpty>
-                                <CommandGroup>
-                                    {itemsList.map((i) => (
-                                        <CommandItem
-                                            key={i.id}
-                                            value={i.name}
-                                            onSelect={() => {
-                                                onUpdate(index, {
-                                                    id: i.id,
-                                                    name: i.name,
-                                                    unit: i.baseUnit
-                                                });
-                                                setOpen(false);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    item.id === i.id ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                            {i.name}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                <Combobox
+                    items={comboboxItems}
+                    value={item.id}
+                    onChange={(val) => {
+                        const selected = itemsList.find(i => i.id === val);
+                        if (selected) {
+                            onUpdate(index, {
+                                id: selected.id,
+                                name: selected.name,
+                                unit: selected.baseUnit
+                            });
+                        }
+                    }}
+                    placeholder="Seleccionar Item..."
+                    searchPlaceholder="Buscar item..."
+                    className="w-full justify-between"
+                />
             </td>
             <td className="p-2">
                 <input
@@ -312,16 +270,13 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Desde (Origen)
                                 </label>
-                                <select
+                                <Combobox
+                                    items={areasList.map(a => ({ value: a.id, label: a.name }))}
                                     value={sourceAreaId}
-                                    onChange={e => setSourceAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                >
-                                    <option value="">Seleccionar origen...</option>
-                                    {areasList.map(a => (
-                                        <option key={a.id} value={a.id}>{a.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={setSourceAreaId}
+                                    placeholder="Seleccionar origen..."
+                                    searchPlaceholder="Buscar área..."
+                                />
                                 <p className="mt-1 text-xs text-gray-500">De dónde sale la mercancía</p>
                             </div>
 
@@ -330,16 +285,13 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Para (Destino)
                                 </label>
-                                <select
+                                <Combobox
+                                    items={areasList.map(a => ({ value: a.id, label: a.name }))}
                                     value={targetAreaId}
-                                    onChange={e => setTargetAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                >
-                                    <option value="">Seleccionar área destino...</option>
-                                    {areasList.map(a => (
-                                        <option key={a.id} value={a.id}>{a.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={setTargetAreaId}
+                                    placeholder="Seleccionar área destino..."
+                                    searchPlaceholder="Buscar área..."
+                                />
                                 <p className="mt-1 text-xs text-gray-500">Quién recibe la mercancía</p>
                             </div>
                         </div>

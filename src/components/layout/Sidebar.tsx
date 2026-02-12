@@ -34,13 +34,13 @@ const navigation: NavItem[] = [
         label: 'Auditorías',
         href: '/dashboard/inventario/auditorias',
         icon: '📝',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD']
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
     },
     {
         label: 'Transferencias',
         href: '/dashboard/transferencias',
         icon: '🔄',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD']
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
     },
     {
         label: 'Préstamos',
@@ -70,13 +70,13 @@ const navigation: NavItem[] = [
         label: 'Compras',
         href: '/dashboard/compras',
         icon: '🛒',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
     },
     {
         label: 'Proteínas',
         href: '/dashboard/proteinas',
         icon: '🥩',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
     },
     {
         label: 'Menú',

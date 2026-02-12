@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, cn } from '@/lib/utils';
 import { updateRecipeCostAction } from '@/app/actions/recipe.actions';
 import { toast } from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCcw } from 'lucide-react';
 
 interface Recipe {
@@ -26,7 +26,8 @@ interface RecipeListProps {
 
 export default function RecipeList({ recipes }: RecipeListProps) {
     const { canViewCosts, user } = useAuthStore();
-    const showCosts = canViewCosts();
+    const [showCosts, setShowCosts] = useState(false);
+    useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
 
     const handleCalculateCost = async (e: React.MouseEvent, recipe: Recipe) => {

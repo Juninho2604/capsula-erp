@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
@@ -13,7 +13,8 @@ interface Props {
 
 export default function CompraForm({ itemsList, areasList }: Props) {
     const { user, canViewCosts } = useAuthStore();
-    const showCosts = canViewCosts();
+    const [showCosts, setShowCosts] = useState(false);
+    useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
 
     // Estado del formulario
     const [selectedItem, setSelectedItem] = useState('');

@@ -7,23 +7,9 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-    CommandSeparator,
-} from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
+import { Plus } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
 import QuickItemModal from './QuickItemModal';
-import { Button } from '@/components/ui/button';
 
 // Tipos
 interface UploadedFile {
@@ -50,7 +36,8 @@ interface Props {
 
 export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
     const { user, canViewCosts } = useAuthStore();
-    const showCosts = canViewCosts();
+    const [showCosts, setShowCosts] = useState(false);
+    useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Estado del formulario principal
@@ -79,8 +66,18 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
     // Lista local para actualizar cuando se crea uno nuevo sin recargar
     const [localItems, setLocalItems] = useState(itemsList);
-    // Estado para el combobox
-    const [openCombobox, setOpenCombobox] = useState(false);
+
+    // Formatted date for display (avoid hydration mismatch)
+    const [displayDate, setDisplayDate] = useState('');
+    useEffect(() => {
+        setDisplayDate(new Date().toLocaleDateString('es-VE', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: '2-digit',
+            minute: '2-digit'
+        }));
+    }, []);
 
     // Obtener item seleccionado
     const selectedItemData = localItems.find(i => i.id === selectedItem);
@@ -447,65 +444,26 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                     <label className="mb-1 block text-xs font-medium text-gray-500">
                                         Insumo
                                     </label>
-                                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                                        Insumo
-                                    </label>
-                                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={openCombobox}
-                                                className="w-full justify-between border-gray-200 bg-white font-normal dark:border-gray-600 dark:bg-gray-800"
-                                            >
-                                                {selectedItem
-                                                    ? localItems.find((item) => item.id === selectedItem)?.name
-                                                    : "Seleccionar..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0" align="start">
-                                            <Command>
-                                                <CommandInput placeholder="Buscar insumo..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No se encontró el insumo.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            onSelect={() => {
-                                                                setIsQuickItemModalOpen(true);
-                                                                setOpenCombobox(false);
-                                                            }}
-                                                            className="text-amber-600 font-medium cursor-pointer"
-                                                        >
-                                                            <Plus className="mr-2 h-4 w-4" />
-                                                            Crear "{selectedItem || 'Nuevo'}"
-                                                        </CommandItem>
-                                                    </CommandGroup>
-                                                    <CommandSeparator />
-                                                    <CommandGroup heading="Insumos Existentes">
-                                                        {localItems.map((item) => (
-                                                            <CommandItem
-                                                                key={item.id}
-                                                                value={item.name}
-                                                                onSelect={() => {
-                                                                    setSelectedItem(item.id === selectedItem ? "" : item.id);
-                                                                    setOpenCombobox(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        selectedItem === item.id ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {item.name} ({item.baseUnit})
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <Combobox
+                                                items={localItems.map(item => ({ value: item.id, label: `${item.name} (${item.baseUnit})` }))}
+                                                value={selectedItem}
+                                                onChange={(val) => setSelectedItem(val === selectedItem ? '' : val)}
+                                                placeholder="Seleccionar..."
+                                                searchPlaceholder="Buscar insumo..."
+                                                emptyMessage="No se encontró el insumo."
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsQuickItemModalOpen(true)}
+                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                            title="Crear nuevo insumo"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -744,13 +702,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             {user?.firstName} {user?.lastName}
                         </p>
                         <p className="text-xs text-gray-400">
-                            {new Date().toLocaleDateString('es-VE', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'long',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
+                            {displayDate}
                         </p>
                     </div>
                 </div>

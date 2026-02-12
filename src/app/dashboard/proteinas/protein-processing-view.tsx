@@ -14,9 +14,12 @@ import {
     getProteinProcessingStatsAction,
     SubProductInput
 } from '@/app/actions/protein-processing.actions';
+import { createQuickItem } from '@/app/actions/inventory.actions';
+import { toast } from 'react-hot-toast';
 
 interface SubProduct extends SubProductInput {
     id: string;
+    outputItemId?: string; // ID del item de inventario al que corresponde
 }
 
 export default function ProteinProcessingView() {
@@ -43,8 +46,20 @@ export default function ProteinProcessingView() {
     // Subproductos
     const [subProducts, setSubProducts] = useState<SubProduct[]>([]);
     const [newSubProductName, setNewSubProductName] = useState('');
+    const [newSubProductItemId, setNewSubProductItemId] = useState('');
     const [newSubProductWeight, setNewSubProductWeight] = useState<number>(0);
     const [newSubProductUnits, setNewSubProductUnits] = useState<number>(1);
+    const [newSubProductUnitType, setNewSubProductUnitType] = useState<string>('KG');
+
+    // Estado para crear insumo nuevo (Subproducto)
+    const [showCreateItem, setShowCreateItem] = useState(false);
+    const [isCreatingItem, setIsCreatingItem] = useState(false);
+    const [newItemName, setNewItemName] = useState('');
+    const [newItemUnit, setNewItemUnit] = useState<string>('KG');
+    const [newItemType, setNewItemType] = useState<string>('RAW_MATERIAL');
+
+    // Lista combinada de items para seleccionar en subproductos (Filtrado por materias primas/sub recetas)
+    const availableSubItems = proteinItems.filter(i => true); // Por ahora todos, idealmente filtrar.
 
     // Cargar datos iniciales
     useEffect(() => {
@@ -75,24 +90,65 @@ export default function ProteinProcessingView() {
 
     // Agregar subproducto
     function addSubProduct() {
-        if (!newSubProductName || newSubProductWeight <= 0) {
-            alert('Ingresa nombre y peso del subproducto');
+        if ((!newSubProductName && !newSubProductItemId) || newSubProductWeight <= 0) {
+            toast.error('Selecciona un producto y peso válido');
             return;
         }
 
+        const selectedItem = proteinItems.find(i => i.id === newSubProductItemId);
+        const name = selectedItem ? selectedItem.name : newSubProductName;
+
         const newProduct: SubProduct = {
             id: Date.now().toString(),
-            name: newSubProductName,
+            name: name,
             weight: newSubProductWeight,
             units: newSubProductUnits,
-            unitType: 'KG'
+            unitType: newSubProductUnitType,
+            outputItemId: newSubProductItemId || undefined
         };
 
         setSubProducts([...subProducts, newProduct]);
         setNewSubProductName('');
+        setNewSubProductItemId('');
         setNewSubProductWeight(0);
         setNewSubProductUnits(1);
     }
+
+    // Crear insumo nuevo on-the-fly
+    const handleCreateItem = async () => {
+        if (!newItemName.trim()) return;
+        setIsCreatingItem(true);
+        try {
+            // Asumimos userId fijo o del contexto si estuviera disponible, por ahora pasamos uno genérico si no lo tenemos a mano
+            // Nota: En una app real usaríamos useAuthStore como en RecipeForm
+            const result = await createQuickItem({
+                name: newItemName.trim(),
+                unit: newItemUnit,
+                type: newItemType,
+                userId: 'system', // El backend lo revalidará o usará session
+                cost: 0,
+            });
+            if (result.success && result.item) {
+                // Actualizar la lista local de items
+                setProteinItems(prev => [...prev, result.item!].sort((a, b) => a.name.localeCompare(b.name)));
+
+                // Seleccionar el nuevo item
+                setNewSubProductItemId(result.item!.id);
+                setNewSubProductName(result.item!.name);
+                setNewSubProductUnitType(result.item!.baseUnit);
+
+                toast.success(`Insumo "${newItemName}" creado`);
+                setShowCreateItem(false);
+                setNewItemName('');
+            } else {
+                toast.error(result.message || 'Error al crear item');
+            }
+        } catch (error) {
+            toast.error('Error al crear item');
+        } finally {
+            setIsCreatingItem(false);
+        }
+    };
 
     // Eliminar subproducto
     function removeSubProduct(id: string) {
@@ -531,35 +587,111 @@ export default function ProteinProcessingView() {
 
                         <div className="p-6 space-y-4">
                             {/* Agregar subproducto */}
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newSubProductName}
-                                    onChange={(e) => setNewSubProductName(e.target.value)}
-                                    placeholder="Nombre (ej: Lomo, Costilla...)"
-                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
-                                />
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={newSubProductWeight || ''}
-                                    onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
-                                    placeholder="Peso kg"
-                                    className="w-24 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
-                                />
-                                <input
-                                    type="number"
-                                    value={newSubProductUnits || ''}
-                                    onChange={(e) => setNewSubProductUnits(parseInt(e.target.value) || 1)}
-                                    placeholder="Uds"
-                                    className="w-16 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
-                                />
-                                <button
-                                    onClick={addSubProduct}
-                                    className="px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
-                                >
-                                    +
-                                </button>
+                            <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="text-sm font-medium text-gray-700">Nuevo corte / subproducto</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateItem(!showCreateItem)}
+                                        className="text-xs text-emerald-600 font-medium hover:text-emerald-700 underline"
+                                    >
+                                        {showCreateItem ? 'Cancelar creación' : '+ Crear nuevo item en inventario'}
+                                    </button>
+                                </div>
+
+                                {/* Mini form crear item */}
+                                {showCreateItem && (
+                                    <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 animate-in fade-in slide-in-from-top-2">
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <input
+                                                type="text"
+                                                value={newItemName}
+                                                onChange={(e) => setNewItemName(e.target.value)}
+                                                placeholder="Nombre (ej: Huesos de Pollo)"
+                                                className="col-span-2 rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                autoFocus
+                                            />
+                                            <select
+                                                value={newItemUnit}
+                                                onChange={(e) => setNewItemUnit(e.target.value)}
+                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                            >
+                                                <option value="KG">Kilogramos</option>
+                                                <option value="G">Gramos</option>
+                                                <option value="UNIT">Unidad</option>
+                                            </select>
+                                            <select
+                                                value={newItemType}
+                                                onChange={(e) => setNewItemType(e.target.value)}
+                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                            >
+                                                <option value="RAW_MATERIAL">Materia Prima</option>
+                                                <option value="SUB_RECIPE">Sub-receta</option>
+                                                <option value="FINISHED_GOOD">Producto Final</option>
+                                            </select>
+                                        </div>
+                                        <button
+                                            onClick={handleCreateItem}
+                                            disabled={!newItemName.trim() || isCreatingItem}
+                                            className="w-full rounded bg-emerald-600 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                        >
+                                            {isCreatingItem ? 'Creando...' : 'Guardar Item'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <div className="flex-1">
+                                        <select
+                                            value={newSubProductItemId}
+                                            onChange={(e) => {
+                                                const item = proteinItems.find(i => i.id === e.target.value);
+                                                setNewSubProductItemId(e.target.value);
+                                                if (item) {
+                                                    setNewSubProductName(item.name);
+                                                    setNewSubProductUnitType(item.baseUnit);
+                                                }
+                                            }}
+                                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                        >
+                                            <option value="">-- Seleccionar item existente --</option>
+                                            {proteinItems.map(item => (
+                                                <option key={item.id} value={item.id}>
+                                                    {item.name} ({item.baseUnit})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="relative w-24">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={newSubProductWeight || ''}
+                                                onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
+                                                placeholder="Peso"
+                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                            />
+                                            <span className="absolute right-2 top-2 text-xs text-gray-400">{newSubProductUnitType}</span>
+                                        </div>
+                                        <div className="relative w-20">
+                                            <input
+                                                type="number"
+                                                value={newSubProductUnits || ''}
+                                                onChange={(e) => setNewSubProductUnits(parseInt(e.target.value) || 1)}
+                                                placeholder="Uds"
+                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                            />
+                                            <span className="absolute right-2 top-2 text-xs text-gray-400">pza</span>
+                                        </div>
+                                        <button
+                                            onClick={addSubProduct}
+                                            className="px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Lista de subproductos */}

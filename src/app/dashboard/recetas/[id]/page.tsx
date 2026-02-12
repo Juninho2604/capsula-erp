@@ -5,7 +5,13 @@ import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import { getRecipeByIdAction } from '@/app/actions/recipe.actions';
 import { UNIT_INFO } from '@/lib/constants/units';
 
+import { getSession } from '@/lib/auth';
+import { canViewCosts, UserRole } from '@/types';
+
 export default async function RecipeDetailPage({ params }: { params: { id: string } }) {
+    const session = await getSession();
+    const showCosts = session ? canViewCosts(session.role as UserRole) : false;
+
     const recipe = await getRecipeByIdAction(params.id);
 
     if (!recipe) {
@@ -77,8 +83,12 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                                         <th className="px-6 py-3 font-medium text-right">Cant. Neta</th>
                                         <th className="px-6 py-3 font-medium text-right">Merma</th>
                                         <th className="px-6 py-3 font-medium text-right">Cant. Bruta</th>
-                                        <th className="px-6 py-3 font-medium text-right">Costo Unit.</th>
-                                        <th className="px-6 py-3 font-medium text-right">Total</th>
+                                        {showCosts && (
+                                            <>
+                                                <th className="px-6 py-3 font-medium text-right">Costo Unit.</th>
+                                                <th className="px-6 py-3 font-medium text-right">Total</th>
+                                            </>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -104,16 +114,16 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                                                 <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">
                                                     {formatNumber(grossQty, 3)} {ing.unit}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">
-                                                    {formatCurrency(ing.currentCost)}
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
-                                                    {/* NOTE: This total calculation here is a rough approximation for display if units match. 
-                                                        The real total is calculated by the service and stored in CostHistory. 
-                                                        For exactness we would need the breakdown JSON. 
-                                                        For now we estimate or leave blank if unsure about conversions. */}
-                                                    ~{formatCurrency(totalIngCost)}
-                                                </td>
+                                                {showCosts && (
+                                                    <>
+                                                        <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">
+                                                            {formatCurrency(ing.currentCost)}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
+                                                            ~{formatCurrency(totalIngCost)}
+                                                        </td>
+                                                    </>
+                                                )}
                                             </tr>
                                         );
                                     })}
@@ -160,33 +170,35 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                     </div>
 
                     {/* Cost Summary */}
-                    <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
-                        <div className="mb-4 flex items-center gap-2">
-                            <span className="text-2xl">💰</span>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Análisis de Costos
-                            </h3>
-                        </div>
+                    {showCosts && (
+                        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                            <div className="mb-4 flex items-center gap-2">
+                                <span className="text-2xl">💰</span>
+                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                                    Análisis de Costos
+                                </h3>
+                            </div>
 
-                        <div className="space-y-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider">Costo Unitario</p>
-                            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                                {formatCurrency(recipe.outputItem.currentCost)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                                por {UNIT_INFO[recipe.outputUnit as keyof typeof UNIT_INFO]?.labelEs || recipe.outputUnit}
-                            </p>
-                        </div>
+                            <div className="space-y-1">
+                                <p className="text-xs text-gray-500 uppercase tracking-wider">Costo Unitario</p>
+                                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                                    {formatCurrency(recipe.outputItem.currentCost)}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                    por {UNIT_INFO[recipe.outputUnit as keyof typeof UNIT_INFO]?.labelEs || recipe.outputUnit}
+                                </p>
+                            </div>
 
-                        <div className="mt-6 space-y-3 border-t border-amber-200 pt-4 dark:border-amber-700">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600 dark:text-gray-400">Costo Total Lote:</span>
-                                <span className="font-medium text-gray-900 dark:text-white">
-                                    {formatCurrency(totalCost)}
-                                </span>
+                            <div className="mt-6 space-y-3 border-t border-amber-200 pt-4 dark:border-amber-700">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600 dark:text-gray-400">Costo Total Lote:</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">
+                                        {formatCurrency(totalCost)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-blue-800 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
                         <p className="text-xs">

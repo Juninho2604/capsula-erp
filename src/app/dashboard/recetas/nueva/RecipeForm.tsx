@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
@@ -8,6 +8,7 @@ import { formatNumber, formatCurrency } from '@/lib/utils';
 import { UnitOfMeasure } from '@/types';
 import { UNIT_INFO } from '@/lib/constants/units';
 import { createRecipeAction, updateRecipeAction } from '@/app/actions/recipe.actions';
+import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 
 interface IngredientOption {
@@ -44,7 +45,8 @@ const UNITS: { value: UnitOfMeasure; label: string }[] = [
 export default function RecipeForm({ availableIngredients, initialData }: RecipeFormProps) {
     const router = useRouter();
     const { user, canViewCosts } = useAuthStore();
-    const showCosts = canViewCosts();
+    const [showCosts, setShowCosts] = useState(false);
+    useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
 
     // Estados del formulario
     const [recipeName, setRecipeName] = useState(initialData?.name || '');
@@ -61,6 +63,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Lista local de ingredientes disponibles (incluye nuevos creados on-the-fly)
+    const [localIngredients, setLocalIngredients] = useState<IngredientOption[]>(availableIngredients);
 
     // Ingredientes
     const [ingredients, setIngredients] = useState<DraftIngredient[]>(
@@ -84,16 +89,24 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         notes: '',
     });
 
+    // Estado para crear insumo nuevo
+    const [showCreateItem, setShowCreateItem] = useState(false);
+    const [isCreatingItem, setIsCreatingItem] = useState(false);
+    const [newItemName, setNewItemName] = useState('');
+    const [newItemUnit, setNewItemUnit] = useState<string>('KG');
+    const [newItemType, setNewItemType] = useState<string>('RAW_MATERIAL');
+    const [newItemCost, setNewItemCost] = useState<number>(0);
+
     // Filtrar items disponibles (no agregar el mismo dos veces)
     const availableOptions = useMemo(() => {
         const usedIds = new Set(ingredients.map(i => i.inventoryItemId));
-        return availableIngredients.filter(item => !usedIds.has(item.id));
-    }, [ingredients, availableIngredients]);
+        return localIngredients.filter(item => !usedIds.has(item.id));
+    }, [ingredients, localIngredients]);
 
     // Calcular costos de todos los ingredientes (Preview en vivo)
     const ingredientCosts = useMemo(() => {
         return ingredients.map(ing => {
-            const item = availableIngredients.find(i => i.id === ing.inventoryItemId);
+            const item = localIngredients.find(i => i.id === ing.inventoryItemId);
 
             // Simple cost estimation assuming units match base unit or 1:1 for now
             // In a real app we'd need client-side unit conversion or fetch conversion rates
@@ -145,6 +158,51 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         setIngredients([...ingredients, newIng]);
         setNewIngredient({ inventoryItemId: '', quantity: 0, unit: 'KG', wastePercentage: 0, notes: '' });
         setShowAddIngredient(false);
+    };
+
+    // Crear insumo nuevo on-the-fly
+    const handleCreateItem = async () => {
+        if (!newItemName.trim() || !user) return;
+        setIsCreatingItem(true);
+        try {
+            const result = await createQuickItem({
+                name: newItemName.trim(),
+                unit: newItemUnit,
+                type: newItemType,
+                userId: user.id,
+                cost: newItemCost > 0 ? newItemCost : undefined,
+            });
+            if (result.success && result.item) {
+                // Agregar a la lista local de ingredientes
+                const newOption: IngredientOption = {
+                    id: result.item.id,
+                    name: result.item.name,
+                    type: result.item.type,
+                    baseUnit: result.item.baseUnit,
+                    currentCost: newItemCost || 0,
+                };
+                setLocalIngredients(prev => [...prev, newOption].sort((a, b) => a.name.localeCompare(b.name)));
+                // Pre-seleccionar en el dropdown
+                setNewIngredient(prev => ({
+                    ...prev,
+                    inventoryItemId: result.item!.id,
+                    unit: result.item!.baseUnit as UnitOfMeasure,
+                }));
+                toast.success(`Insumo "${newItemName}" creado exitosamente`);
+                // Resetear
+                setNewItemName('');
+                setNewItemUnit('KG');
+                setNewItemType('RAW_MATERIAL');
+                setNewItemCost(0);
+                setShowCreateItem(false);
+            } else {
+                toast.error(result.message || 'Error al crear el insumo');
+            }
+        } catch (error) {
+            toast.error('Error al crear el insumo');
+        } finally {
+            setIsCreatingItem(false);
+        }
     };
 
     // Eliminar ingrediente
@@ -453,9 +511,83 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         {/* Modal para agregar ingrediente */}
                         {showAddIngredient && (
                             <div className="border-t border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/50">
-                                <h3 className="mb-4 font-medium text-gray-900 dark:text-white">
-                                    Agregar Ingrediente
-                                </h3>
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h3 className="font-medium text-gray-900 dark:text-white">
+                                        Agregar Ingrediente
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateItem(!showCreateItem)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+                                    >
+                                        {showCreateItem ? '✕ Cerrar' : '＋ Crear Insumo Nuevo'}
+                                    </button>
+                                </div>
+
+                                {/* Mini-formulario para crear insumo nuevo */}
+                                {showCreateItem && (
+                                    <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/10">
+                                        <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-400">
+                                            🆕 Crear Insumo Nuevo
+                                        </h4>
+                                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div className="sm:col-span-2">
+                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                    Nombre del insumo *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={newItemName}
+                                                    onChange={(e) => setNewItemName(e.target.value)}
+                                                    placeholder="Ej: Aceite de Oliva, Harina de Trigo..."
+                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                    Unidad base *
+                                                </label>
+                                                <select
+                                                    value={newItemUnit}
+                                                    onChange={(e) => setNewItemUnit(e.target.value)}
+                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                >
+                                                    {UNITS.map(u => (
+                                                        <option key={u.value} value={u.value}>{u.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                    Tipo
+                                                </label>
+                                                <select
+                                                    value={newItemType}
+                                                    onChange={(e) => setNewItemType(e.target.value)}
+                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                >
+                                                    <option value="RAW_MATERIAL">📦 Materia Prima</option>
+                                                    <option value="SUB_RECIPE">🧀 Sub-Receta</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 flex items-center justify-between">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                Se creará en el inventario y podrás darle entrada (compras) luego.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={handleCreateItem}
+                                                disabled={!newItemName.trim() || isCreatingItem}
+                                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {isCreatingItem ? '⏳ Creando...' : '✓ Crear Insumo'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="sm:col-span-2">
                                         <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
@@ -464,14 +596,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <select
                                             value={newIngredient.inventoryItemId}
                                             onChange={(e) => {
-                                                const item = availableIngredients.find(i => i.id === e.target.value);
+                                                const item = localIngredients.find(i => i.id === e.target.value);
                                                 setNewIngredient({
                                                     ...newIngredient,
                                                     inventoryItemId: e.target.value,
                                                     unit: (item?.baseUnit as UnitOfMeasure) || 'KG'
                                                 })
                                             }}
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="">Seleccionar...</option>
                                             <optgroup label="🧀 Sub-recetas">
@@ -503,12 +635,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="1"
-                                                className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                                className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             />
                                             <select
                                                 value={newIngredient.unit}
                                                 onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value as UnitOfMeasure })}
-                                                className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                                className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
                                                 {UNITS.map(u => (
                                                     <option key={u.value} value={u.value}>{u.label}</option>
@@ -528,7 +660,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             min="0"
                                             max="99"
                                             placeholder="0"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
                                 </div>
