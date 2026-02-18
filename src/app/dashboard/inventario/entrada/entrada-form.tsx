@@ -171,7 +171,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 const result = await processHandwrittenNotesAction(base64data);
 
                 if (result.success) {
-                    setOcrSuggestions(result.suggestions);
+                    setOcrSuggestions(result.suggestions ?? []);
                     setShowOcrModal(true);
                 } else {
                     alert('Error OCR: ' + result.message);
