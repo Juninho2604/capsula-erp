@@ -315,14 +315,14 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
             }
         }
 
-        // 2. Actualizar los campos 'sales' de cada item en el inventario diario
+        // 2. Acumular los campos 'sales' de cada item en el inventario diario
         const consumptionEntries = Array.from(totalConsumption.entries());
         for (const [itemId, qty] of consumptionEntries) {
             const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
             if (dailyItem) {
                 await prisma.dailyInventoryItem.update({
                     where: { id: dailyItem.id },
-                    data: { sales: qty }
+                    data: { sales: { increment: qty } }
                 });
             }
         }

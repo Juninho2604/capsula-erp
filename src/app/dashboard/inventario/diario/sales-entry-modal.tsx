@@ -61,8 +61,8 @@ export default function SalesEntryModal({ dailyId, onClose, onUpdate }: Props) {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700">
                 <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex justify-between items-center">
                     <div>
-                        <h2 className="text-xl font-bold">💳 Cargar Ventas del Día</h2>
-                        <p className="text-blue-100 text-sm">Ingrese la cantidad de platos vendidos para calcular el consumo teórico.</p>
+                        <h2 className="text-xl font-bold">➕ Sumar Ventas POS</h2>
+                        <p className="text-blue-100 text-sm">Ingrese cantidades para <b>SUMAR</b> a sus ventas del día. (Use negativos para restar errores)</p>
                     </div>
                     <button onClick={onClose} className="text-white hover:text-gray-200 text-2xl">×</button>
                 </div>
@@ -83,7 +83,6 @@ export default function SalesEntryModal({ dailyId, onClose, onUpdate }: Props) {
                                             </div>
                                             <input
                                                 type="number"
-                                                min="0"
                                                 value={sales[item.id] || ''}
                                                 placeholder="0"
                                                 onChange={e => handleChange(item.id, e.target.value)}
@@ -109,7 +108,7 @@ export default function SalesEntryModal({ dailyId, onClose, onUpdate }: Props) {
                         disabled={saving}
                         className="px-10 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 disabled:opacity-50"
                     >
-                        {saving ? 'Procesando...' : '💾 Guardar Ventas'}
+                        {saving ? 'Procesando...' : '➕ Sumar al Inventario'}
                     </button>
                 </div>
             </div>

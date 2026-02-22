@@ -161,17 +161,17 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                    {data?.status === 'DRAFT' && <span className="bg-amber-100 text-amber-700 text-[10px] font-black tracking-tighter px-3 py-1 rounded-full border border-amber-200 uppercase">Borrador</span>}
+                    {data?.status === 'DRAFT' && <span className="bg-amber-100 text-amber-700 text-[10px] font-black tracking-widest px-3 py-1.5 rounded-lg border border-amber-200 uppercase">Estado: Borrador</span>}
                     {data?.status === 'CLOSED' && <span className="bg-red-500 text-white text-[10px] font-black tracking-tighter px-3 py-1 rounded-full border border-red-600 uppercase">Inventario Finalizado</span>}
 
                     {!isClosed && (
                         <div className="flex gap-2">
                             <button
                                 onClick={handleSave}
-                                disabled={!hasChanges || loading}
+                                disabled={loading}
                                 className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-blue-700 transition shadow-lg shadow-blue-500/20"
                             >
-                                {loading ? '...' : '💾 Guardar'}
+                                {loading ? '...' : '💾 Guardar Borrador'}
                             </button>
                             <button
                                 onClick={handleCloseDay}
