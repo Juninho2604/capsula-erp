@@ -268,7 +268,7 @@ export async function saveDailyInventoryCountsAction(dailyId: string, itemsData:
 export async function getMenuItemsWithRecipesAction() {
     try {
         const items = await prisma.menuItem.findMany({
-            where: { isActive: true, recipeId: { not: null } },
+            where: { isActive: true },
             include: { category: true },
             orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }]
         });
