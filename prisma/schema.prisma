@@ -374,7 +374,8 @@ model ProteinProcessing {
   
   // Totales calculados
   totalSubProducts Float    @default(0) // Suma de pesos de subproductos
-  wasteWeight     Float     @default(0) // Desperdicio (kg)
+  wasteWeight     Float     @default(0) // Desperdicio (kg) calculado (Drained - SubProducts)
+  reportedWaste   Float?                // Desperdicio reportado manualmente (kg)
   wastePercentage Float     @default(0) // % de desperdicio
   yieldPercentage Float     @default(0) // % de rendimiento
   

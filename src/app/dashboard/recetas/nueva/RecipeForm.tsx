@@ -10,6 +10,7 @@ import { UNIT_INFO } from '@/lib/constants/units';
 import { createRecipeAction, updateRecipeAction } from '@/app/actions/recipe.actions';
 import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
+import { Combobox } from '@/components/ui/combobox';
 
 interface IngredientOption {
     id: string;
@@ -593,34 +594,24 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
                                             Insumo / Sub-receta
                                         </label>
-                                        <select
-                                            value={newIngredient.inventoryItemId}
-                                            onChange={(e) => {
-                                                const item = localIngredients.find(i => i.id === e.target.value);
+                                        <Combobox
+                                            items={availableOptions.map(item => ({
+                                                value: item.id,
+                                                label: `${item.type === 'SUB_RECIPE' ? '🧀' : '📦'} ${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
+                                            }))}
+                                            value={newIngredient.inventoryItemId || ''}
+                                            onChange={(val) => {
+                                                const item = localIngredients.find(i => i.id === val);
                                                 setNewIngredient({
                                                     ...newIngredient,
-                                                    inventoryItemId: e.target.value,
+                                                    inventoryItemId: val,
                                                     unit: (item?.baseUnit as UnitOfMeasure) || 'KG'
-                                                })
+                                                });
                                             }}
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">Seleccionar...</option>
-                                            <optgroup label="🧀 Sub-recetas">
-                                                {availableOptions.filter(i => i.type === 'SUB_RECIPE').map(item => (
-                                                    <option key={item.id} value={item.id}>
-                                                        {item.name} ({item.baseUnit}) - ${formatNumber(item.currentCost)}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                            <optgroup label="📦 Insumos Base">
-                                                {availableOptions.filter(i => i.type === 'RAW_MATERIAL').map(item => (
-                                                    <option key={item.id} value={item.id}>
-                                                        {item.name} ({item.baseUnit}) - ${formatNumber(item.currentCost)}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        </select>
+                                            placeholder="Seleccionar..."
+                                            searchPlaceholder="Buscar insumo..."
+                                            emptyMessage="No se encontró el insumo."
+                                        />
                                     </div>
 
                                     <div>

@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { UNIT_INFO } from '@/lib/constants/units';
 import { UnitOfMeasure } from '@/types';
 import { formatNumber, formatCurrency } from '@/lib/utils';
+import { Combobox } from '@/components/ui/combobox';
 
 interface ItemOption {
     id: string;
@@ -140,18 +141,17 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                         <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Insumo / Producto *
                         </label>
-                        <select
-                            value={selectedItemId}
-                            onChange={(e) => handleItemChange(e.target.value)}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        >
-                            <option value="">Seleccionar producto...</option>
-                            {items.map(item => (
-                                <option key={item.id} value={item.id}>
-                                    {item.name} ({item.unit})
-                                </option>
-                            ))}
-                        </select>
+                        <Combobox
+                            items={items.map(item => ({
+                                value: item.id,
+                                label: `${item.name} (${item.unit})`
+                            }))}
+                            value={selectedItemId || ''}
+                            onChange={(val) => handleItemChange(val)}
+                            placeholder="Seleccionar producto..."
+                            searchPlaceholder="Buscar producto..."
+                            emptyMessage="No se encontró el producto."
+                        />
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">

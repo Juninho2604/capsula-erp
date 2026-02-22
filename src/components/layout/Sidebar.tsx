@@ -214,8 +214,8 @@ export function Sidebar({ initialUser }: SidebarProps) {
                         <span className="text-xl">🧀</span>
                     </div>
                     <div>
-                        <h1 className="font-bold text-gray-900 dark:text-white">Shanklish</h1>
-                        <p className="text-xs text-gray-500">ERP v0.1.0</p>
+                        <h1 className="font-bold text-gray-900 dark:text-white">CAPSULA</h1>
+                        <p className="text-xs text-gray-500">Shanklish Caracas</p>
                     </div>
                     {/* Close button for mobile */}
                     <button
@@ -238,6 +238,7 @@ export function Sidebar({ initialUser }: SidebarProps) {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={closeSidebar}
                                 className={cn(
                                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                                     isActive
@@ -266,6 +267,7 @@ export function Sidebar({ initialUser }: SidebarProps) {
                                     <Link
                                         key={item.href}
                                         href={item.href}
+                                        onClick={closeSidebar}
                                         className={cn(
                                             'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                                             isActive
@@ -296,6 +298,7 @@ export function Sidebar({ initialUser }: SidebarProps) {
                                     <Link
                                         key={item.href}
                                         href={item.href}
+                                        onClick={closeSidebar}
                                         className={cn(
                                             'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                                             isActive

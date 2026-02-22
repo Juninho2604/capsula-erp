@@ -15,7 +15,7 @@ if ([string]::IsNullOrEmpty($AccountId)) {
 }
 
 $EcrUri = "$AccountId.dkr.ecr.$Region.amazonaws.com"
-$ImageUri = "$EcrUri/$RepoName`" + ":latest"
+$ImageUri = "$EcrUri/${RepoName}:latest"
 
 Write-Host "--- Iniciando Despliegue a AWS ECR ---" -ForegroundColor Cyan
 Write-Host "Region: $Region"
@@ -39,7 +39,7 @@ docker build -t $RepoName .
 
 # 3. Etiquetar la imagen
 Write-Host "3. Etiquetando imagen..." -ForegroundColor Green
-docker tag "$RepoName`" + ":latest" $ImageUri
+docker tag "${RepoName}:latest" $ImageUri
 
 # 4. Subir la imagen (Push)
 Write-Host "4. Subiendo imagen a ECR..." -ForegroundColor Green

@@ -16,6 +16,7 @@ import {
 } from '@/app/actions/protein-processing.actions';
 import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
+import { Combobox } from '@/components/ui/combobox';
 
 interface SubProduct extends SubProductInput {
     id: string;
@@ -42,6 +43,7 @@ export default function ProteinProcessingView() {
     const [drainedWeight, setDrainedWeight] = useState<number>(0);
     const [areaId, setAreaId] = useState('');
     const [notes, setNotes] = useState('');
+    const [reportedWaste, setReportedWaste] = useState<number>(0);
 
     // Subproductos
     const [subProducts, setSubProducts] = useState<SubProduct[]>([]);
@@ -191,6 +193,7 @@ export default function ProteinProcessingView() {
             drainedWeight,
             areaId,
             notes: notes || undefined,
+            reportedWaste: reportedWaste || undefined,
             subProducts: subProducts.map(sp => ({
                 name: sp.name,
                 weight: sp.weight,
@@ -220,6 +223,7 @@ export default function ProteinProcessingView() {
         setFrozenWeight(0);
         setDrainedWeight(0);
         setNotes('');
+        setReportedWaste(0);
         setSubProducts([]);
     }
 
@@ -476,33 +480,33 @@ export default function ProteinProcessingView() {
                             {/* Producto a procesar */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Producto a Procesar*</label>
-                                <select
+                                <Combobox
+                                    items={proteinItems.map(item => ({
+                                        value: item.id,
+                                        label: `${item.name} (${item.category || 'Sin categoría'})`
+                                    }))}
                                     value={sourceItemId}
-                                    onChange={(e) => setSourceItemId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
-                                >
-                                    <option value="">Seleccionar producto...</option>
-                                    {proteinItems.map(item => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.name} ({item.category || 'Sin categoría'})
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setSourceItemId(val)}
+                                    placeholder="Seleccionar producto..."
+                                    searchPlaceholder="Buscar producto..."
+                                    emptyMessage="No se encontró producto."
+                                />
                             </div>
 
                             {/* Proveedor */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
-                                <select
+                                <Combobox
+                                    items={suppliers.map(s => ({
+                                        value: s.id,
+                                        label: s.name
+                                    }))}
                                     value={supplierId}
-                                    onChange={(e) => setSupplierId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
-                                >
-                                    <option value="">Seleccionar o escribir...</option>
-                                    {suppliers.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setSupplierId(val)}
+                                    placeholder="Seleccionar proveedor..."
+                                    searchPlaceholder="Buscar proveedor..."
+                                    emptyMessage="No se encontró proveedor."
+                                />
                                 {!supplierId && (
                                     <input
                                         type="text"
@@ -517,15 +521,17 @@ export default function ProteinProcessingView() {
                             {/* Área */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Área de Procesamiento</label>
-                                <select
+                                <Combobox
+                                    items={areas.map(area => ({
+                                        value: area.id,
+                                        label: area.name
+                                    }))}
                                     value={areaId}
-                                    onChange={(e) => setAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
-                                >
-                                    {areas.map(area => (
-                                        <option key={area.id} value={area.id}>{area.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setAreaId(val)}
+                                    placeholder="Seleccionar área..."
+                                    searchPlaceholder="Buscar área..."
+                                    emptyMessage="No se encontró área."
+                                />
                             </div>
 
                             {/* Pesos */}
@@ -551,6 +557,20 @@ export default function ProteinProcessingView() {
                                         placeholder="0.00"
                                         className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
                                     />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Desperdicio Reportado (kg) - Entrada Manual</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={reportedWaste || ''}
+                                        onChange={(e) => setReportedWaste(parseFloat(e.target.value) || 0)}
+                                        placeholder="Ingresa el desperdicio real segun Excel..."
+                                        className="w-full rounded-lg border border-red-200 bg-red-50/30 px-4 py-2.5 focus:border-red-500 focus:outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">
+                                        * Este valor se usará para tus reportes de merma real.
+                                    </p>
                                 </div>
                             </div>
 
@@ -642,25 +662,24 @@ export default function ProteinProcessingView() {
 
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <div className="flex-1">
-                                        <select
+                                        <Combobox
+                                            items={proteinItems.map(item => ({
+                                                value: item.id,
+                                                label: `${item.name} (${item.baseUnit})`
+                                            }))}
                                             value={newSubProductItemId}
-                                            onChange={(e) => {
-                                                const item = proteinItems.find(i => i.id === e.target.value);
-                                                setNewSubProductItemId(e.target.value);
+                                            onChange={(val) => {
+                                                const item = proteinItems.find(i => i.id === val);
+                                                setNewSubProductItemId(val);
                                                 if (item) {
                                                     setNewSubProductName(item.name);
                                                     setNewSubProductUnitType(item.baseUnit);
                                                 }
                                             }}
-                                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
-                                        >
-                                            <option value="">-- Seleccionar item existente --</option>
-                                            {proteinItems.map(item => (
-                                                <option key={item.id} value={item.id}>
-                                                    {item.name} ({item.baseUnit})
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="-- Seleccionar item existente --"
+                                            searchPlaceholder="Buscar item..."
+                                            emptyMessage="No se encontró el item."
+                                        />
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="relative w-24">

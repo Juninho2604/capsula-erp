@@ -36,6 +36,7 @@ export interface CreateProteinProcessingInput {
     drainedWeight: number;
     areaId: string;
     notes?: string;
+    reportedWaste?: number; // Desperdicio manual
     subProducts: SubProductInput[];
 }
 
@@ -172,6 +173,7 @@ export async function createProteinProcessingAction(
                     status: 'DRAFT',
                     areaId: input.areaId,
                     notes: input.notes,
+                    reportedWaste: input.reportedWaste || null,
                     createdById: session.id,
                     subProducts: {
                         create: input.subProducts.map((sp, index) => ({
@@ -393,11 +395,16 @@ export async function completeProteinProcessingAction(
                         }
                     });
 
+                    // Cantidad a incrementar depende de la unidad base del item
+                    const incrementAmount = subProduct.outputItem.baseUnit === 'UNIT' || subProduct.outputItem.baseUnit === 'PORTION'
+                        ? subProduct.units
+                        : subProduct.weight;
+
                     if (location) {
                         await tx.inventoryLocation.update({
                             where: { id: location.id },
                             data: {
-                                currentStock: { increment: subProduct.weight }
+                                currentStock: { increment: incrementAmount }
                             }
                         });
                     } else {
@@ -405,7 +412,7 @@ export async function completeProteinProcessingAction(
                             data: {
                                 inventoryItemId: subProduct.outputItemId,
                                 areaId: processing.areaId,
-                                currentStock: subProduct.weight
+                                currentStock: incrementAmount
                             }
                         });
                     }
@@ -415,11 +422,11 @@ export async function completeProteinProcessingAction(
                         data: {
                             inventoryItemId: subProduct.outputItemId,
                             movementType: 'PRODUCTION',
-                            quantity: subProduct.weight,
-                            unit: subProduct.unitType,
+                            quantity: incrementAmount,
+                            unit: subProduct.outputItem.baseUnit, // Usar la unidad base del item
                             documentType: 'PROTEIN_PROCESSING',
                             referenceNumber: processing.code,
-                            notes: `Subproducto de desposte: ${processing.code} - ${subProduct.name}`,
+                            notes: `Subproducto de desposte: ${processing.code} - ${subProduct.name} (Peso: ${subProduct.weight}kg)`,
                             createdById: session.id
                         }
                     });
