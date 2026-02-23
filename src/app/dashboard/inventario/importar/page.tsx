@@ -69,7 +69,7 @@ export default function ImportPage() {
             const res = await createAuditAction({
                 name: `Importación ${importType} - ${new Date().toLocaleDateString()}`,
                 items: auditItems,
-                areaId: undefined // Global for now
+                areaId: selectedAreaId || undefined
             });
 
             setIsProcessing(false);
