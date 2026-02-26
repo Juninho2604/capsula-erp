@@ -50,6 +50,12 @@ const navigation: NavItem[] = [
         roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
     },
     {
+        label: 'Historial Mensual',
+        href: '/dashboard/inventario/historial-mensual',
+        icon: '📊',
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER']
+    },
+    {
         label: 'Préstamos',
         href: '/dashboard/prestamos',
         icon: '🤝',
@@ -77,7 +83,7 @@ const navigation: NavItem[] = [
         label: 'Compras',
         href: '/dashboard/compras',
         icon: '🛒',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
+        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
     },
     {
         label: 'Proteínas',

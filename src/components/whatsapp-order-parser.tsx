@@ -292,8 +292,10 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                 </div>
 
                 <textarea
+                    id="whatsapp-chat-input"
                     value={chatText}
                     onChange={e => setChatText(e.target.value)}
+                    onInput={e => setChatText((e.target as HTMLTextAreaElement).value)}
                     placeholder={`Pega aquí el chat del cliente...\n\nEjemplo:\n2 shawarma mixto\n1 tabla familiar\n3 kebbe frito\nNombre: Juan Pérez\nDirección: Av. Libertador, Edif. Los Pinos, Apto 3B`}
                     rows={8}
                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-mono focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white resize-none"

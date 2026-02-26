@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import {
     getFullMenuAction,
     updateMenuItemPriceAction,
+    updateMenuItemNameAction,
     createMenuItemAction,
     toggleMenuItemStatusAction,
     ensureBasicCategoriesAction,
@@ -24,6 +25,10 @@ export default function MenuManagementPage() {
         description: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Estado para edición inline de nombre
+    const [editingNameId, setEditingNameId] = useState<string | null>(null);
+    const [editingNameValue, setEditingNameValue] = useState('');
 
     // Cargar datos
     const loadData = async () => {
@@ -62,6 +67,22 @@ export default function MenuManagementPage() {
 
         // Persistir (debounce idealmente, pero directo por ahora)
         await updateMenuItemPriceAction(itemId, price);
+    };
+
+    const handleNameChange = async (itemId: string, newName: string) => {
+        if (!newName.trim()) return;
+        setEditingNameId(null);
+
+        // Actualización optimista
+        const newCats = categories.map(cat => ({
+            ...cat,
+            items: cat.items.map((item: any) =>
+                item.id === itemId ? { ...item, name: newName.trim() } : item
+            )
+        }));
+        setCategories(newCats);
+
+        await updateMenuItemNameAction(itemId, newName.trim());
     };
 
     const handleCreateItem = async () => {
@@ -148,7 +169,36 @@ export default function MenuManagementPage() {
                             {category.items.map((item: any) => (
                                 <div key={item.id} className={`flex items-center justify-between p-4 hover:bg-gray-700/50 transition-colors ${!item.isActive ? 'opacity-50 grayscale' : ''}`}>
                                     <div className="flex-1">
-                                        <div className="font-semibold text-lg">{item.name}</div>
+                                        <div className="flex items-center gap-2">
+                                            {editingNameId === item.id ? (
+                                                <input
+                                                    autoFocus
+                                                    type="text"
+                                                    value={editingNameValue}
+                                                    onChange={e => setEditingNameValue(e.target.value)}
+                                                    onBlur={() => handleNameChange(item.id, editingNameValue)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') handleNameChange(item.id, editingNameValue);
+                                                        if (e.key === 'Escape') setEditingNameId(null);
+                                                    }}
+                                                    className="bg-gray-900 border border-amber-500 rounded px-2 py-1 text-lg font-semibold text-white focus:outline-none w-full max-w-md"
+                                                />
+                                            ) : (
+                                                <>
+                                                    <div className="font-semibold text-lg">{item.name}</div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingNameId(item.id);
+                                                            setEditingNameValue(item.name);
+                                                        }}
+                                                        className="text-gray-500 hover:text-amber-400 transition-colors text-sm"
+                                                        title="Editar nombre"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                         <div className="text-sm text-gray-400">{item.description || 'Sin descripción'}</div>
                                     </div>
 

@@ -11,6 +11,7 @@ import {
     getSalesAreasAction,
     voidSalesOrderAction
 } from '@/app/actions/sales-entry.actions';
+import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 
 interface CartItem {
     menuItemId: string;
@@ -44,7 +45,7 @@ export default function SalesEntryView() {
     const [deliveryAddress, setDeliveryAddress] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [viewMode, setViewMode] = useState<'entry' | 'history'>('entry');
+    const [viewMode, setViewMode] = useState<'entry' | 'history' | 'whatsapp'>('entry');
 
     // Cargar datos iniciales
     useEffect(() => {
@@ -241,6 +242,17 @@ export default function SalesEntryView() {
                         )}
                     >
                         📋 Ventas Hoy ({todaySales.summary.totalSales})
+                    </button>
+                    <button
+                        onClick={() => setViewMode('whatsapp')}
+                        className={cn(
+                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            viewMode === 'whatsapp'
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                        )}
+                    >
+                        💬 WhatsApp
                     </button>
                     <Link
                         href="/dashboard/ventas"
@@ -504,6 +516,66 @@ export default function SalesEntryView() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Vista: WhatsApp Parser */}
+            {viewMode === 'whatsapp' && (
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-6">
+                    {/* Opción de cargar archivo .txt */}
+                    <div className="mb-6 rounded-lg border-2 border-dashed border-green-200 bg-green-50/50 p-4 dark:border-green-900/50 dark:bg-green-900/10">
+                        <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
+                            📂 Cargar archivo de chat exportado (.txt)
+                        </p>
+                        <input
+                            type="file"
+                            accept=".txt,.text"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const text = await file.text();
+                                // Strip WhatsApp metadata (timestamps/sender) from each line
+                                const cleaned = text.split('\n').map(line => {
+                                    // Pattern: "[DD/MM/YYYY, HH:MM:SS] Sender: message" or "DD/MM/YYYY, HH:MM - Sender: message"
+                                    const stripped = line
+                                        .replace(/^\[?\d{1,2}\/\d{1,2}\/\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?\s*m\.?)?\]?\s*[-–]?\s*/i, '')
+                                        .replace(/^[^:]+:\s*/, '');
+                                    return stripped;
+                                }).filter(l => l.trim()).join('\n');
+                                // Set the text in the parser - we need a ref or state approach
+                                // For simplicity, we populate a hidden textarea and trigger parse
+                                const textarea = document.querySelector('#whatsapp-chat-input') as HTMLTextAreaElement;
+                                if (textarea) {
+                                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+                                    nativeInputValueSetter?.call(textarea, cleaned);
+                                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                                    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+                                }
+                            }}
+                            className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer"
+                        />
+                    </div>
+
+                    <WhatsAppOrderParser
+                        onOrderReady={(items, name, phone, address) => {
+                            // Convert CartItem format from parser to sales-entry format
+                            const cartItems: CartItem[] = items.map(i => ({
+                                menuItemId: i.menuItemId,
+                                menuItemName: i.name,
+                                quantity: i.quantity,
+                                unitPrice: i.unitPrice,
+                                notes: i.notes,
+                            }));
+                            setCart(cartItems);
+                            if (name) setCustomerName(name);
+                            if (phone) setCustomerPhone(phone);
+                            if (address) {
+                                setDeliveryAddress(address);
+                                setOrderType('DELIVERY');
+                            }
+                            setViewMode('entry');
+                        }}
+                    />
                 </div>
             )}
 

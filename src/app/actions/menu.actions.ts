@@ -127,6 +127,26 @@ export async function toggleMenuItemStatusAction(id: string, isActive: boolean):
     }
 }
 
+export async function updateMenuItemNameAction(id: string, newName: string): Promise<ActionResult> {
+    try {
+        if (!newName.trim()) return { success: false, message: 'El nombre no puede estar vacío' };
+
+        await prisma.menuItem.update({
+            where: { id },
+            data: { name: newName.trim() }
+        });
+
+        revalidatePath('/dashboard/menu');
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/delivery');
+        revalidatePath('/dashboard/ventas/cargar');
+
+        return { success: true, message: 'Nombre actualizado' };
+    } catch (error) {
+        return { success: false, message: 'Error al actualizar nombre' };
+    }
+}
+
 // ============================================================================
 // UTILIDAD: SEED CATEGORÍAS (Si está vacío)
 // ============================================================================
