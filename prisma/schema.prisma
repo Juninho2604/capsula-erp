@@ -37,6 +37,7 @@ model User {
   // Requisiciones
   requisitionsRequested Requisition[] @relation("RequisitionRequester")
   requisitionsProcessed Requisition[] @relation("RequisitionProcessor")
+  requisitionsDispatched Requisition[] @relation("RequisitionDispatcher")
 
   // POS - Ventas
   salesOrders    SalesOrder[] @relation("SalesOrderCreator")
@@ -147,6 +148,10 @@ model InventoryItem {
   // Procesamiento de Proteínas
   proteinSources     ProteinProcessing[] @relation("ProteinSource")
   proteinOutputs     ProteinSubProduct[] @relation("ProteinOutput")
+
+  // Plantillas de Procesamiento
+  templateSources    ProcessingTemplate[]       @relation("TemplateSource")
+  templateOutputs    ProcessingTemplateOutput[] @relation("TemplateOutput")
 
   // Items críticos por área
   areaCriticalItems  AreaCriticalItem[]
@@ -434,6 +439,47 @@ model ProteinSubProduct {
 }
 
 // ============================================================================
+// PLANTILLAS DE PROCESAMIENTO DE PROTEÍNAS
+// ============================================================================
+
+model ProcessingTemplate {
+  id              String   @id @default(cuid())
+  name            String   // Ej: "Desposte de Res", "Desposte de Pollo"
+  description     String?
+  
+  // Item fuente (materia prima)
+  sourceItemId    String
+  sourceItem      InventoryItem @relation("TemplateSource", fields: [sourceItemId], references: [id])
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Sub-productos permitidos
+  allowedOutputs  ProcessingTemplateOutput[]
+  
+  @@index([sourceItemId])
+}
+
+model ProcessingTemplateOutput {
+  id              String   @id @default(cuid())
+  templateId      String  
+  template        ProcessingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  // Item de salida permitido
+  outputItemId    String
+  outputItem      InventoryItem @relation("TemplateOutput", fields: [outputItemId], references: [id])
+  
+  // Peso esperado (referencia para el usuario)
+  expectedWeight  Float?     // Peso promedio esperado en KG
+  expectedUnits   Int?       // Unidades esperadas
+  sortOrder       Int        @default(0)
+  
+  @@unique([templateId, outputItemId])
+  @@index([templateId])
+}
+
+// ============================================================================
 // REQUISICIONES (TRANSFERENCIAS ENTRE ALMACENES)
 // ============================================================================
 
@@ -454,10 +500,15 @@ model Requisition {
   sourceAreaId  String?
   sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
 
-  // QuiÃ©n aprueba/despacha (Aprobador)
+  // Quién aprueba/recepciona (Gerente Operativo)
   processedById String?
   processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
   processedAt   DateTime?
+
+  // Quién despacha (Jefe de Producción) - NUEVO para flujo escalonado
+  dispatchedById String?
+  dispatchedBy   User?    @relation("RequisitionDispatcher", fields: [dispatchedById], references: [id])
+  dispatchedAt   DateTime?
   
   notes       String?
 
@@ -479,11 +530,13 @@ model RequisitionItem {
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   
-  quantity      Float
+  quantity      Float       // Cantidad solicitada por el Chef
   unit          String
   
-  // Cantidad realmente despachada
-  dispatchedQuantity Float?
+  // Cantidades por etapa del flujo escalonado
+  sentQuantity       Float?   // Lo que realmente envió el Jefe de Producción
+  receivedQuantity   Float?   // Lo que confirmó el Gerente que llegó
+  dispatchedQuantity Float?   // Retrocompat: alias de sentQuantity
   
   @@index([requisitionId])
 }

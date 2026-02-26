@@ -433,6 +433,70 @@ export async function completeProteinProcessingAction(
                 }
             }
 
+            // 2.5 CALCULAR Y REGISTRAR COSTOS DE SUB-PRODUCTOS
+            const sourceCostRecord = await tx.costHistory.findFirst({
+                where: {
+                    inventoryItemId: processing.sourceItemId,
+                    effectiveTo: null // Costo vigente
+                },
+                orderBy: { effectiveFrom: 'desc' }
+            });
+
+            if (sourceCostRecord && processing.totalSubProducts > 0) {
+                // Costo total de la materia prima usada
+                const totalSourceCost = Number(sourceCostRecord.costPerUnit) * processing.frozenWeight;
+
+                for (const subProduct of processing.subProducts) {
+                    if (subProduct.outputItemId && subProduct.weight > 0) {
+                        // Costo proporcional: (peso del subproducto / peso total subproductos) * costo total
+                        const proportionalCost = (subProduct.weight / processing.totalSubProducts) * totalSourceCost;
+                        // Costo por unidad base (KG generalmente)
+                        const costPerUnit = proportionalCost / subProduct.weight;
+
+                        // Actualizar estimatedCost en ProteinSubProduct
+                        await tx.proteinSubProduct.update({
+                            where: { id: subProduct.id },
+                            data: { estimatedCost: parseFloat(proportionalCost.toFixed(4)) }
+                        });
+
+                        // Cerrar el costo anterior del item de salida
+                        await tx.costHistory.updateMany({
+                            where: {
+                                inventoryItemId: subProduct.outputItemId,
+                                effectiveTo: null
+                            },
+                            data: { effectiveTo: new Date() }
+                        });
+
+                        // Crear nuevo registro de costo con trazabilidad completa
+                        await tx.costHistory.create({
+                            data: {
+                                inventoryItemId: subProduct.outputItemId,
+                                costPerUnit: parseFloat(costPerUnit.toFixed(4)),
+                                currency: sourceCostRecord.currency || 'USD',
+                                isCalculated: true,
+                                costBreakdown: JSON.stringify({
+                                    sourceItemId: processing.sourceItemId,
+                                    sourceItemName: processing.sourceItem.name,
+                                    sourceCostPerUnit: Number(sourceCostRecord.costPerUnit),
+                                    frozenWeight: processing.frozenWeight,
+                                    totalSourceCost,
+                                    subProductName: subProduct.name,
+                                    subProductWeight: subProduct.weight,
+                                    totalSubProductsWeight: processing.totalSubProducts,
+                                    processingCode: processing.code,
+                                    calculatedAt: new Date().toISOString()
+                                }),
+                                reason: `Costo calculado por procesamiento ${processing.code} (${processing.sourceItem.name} → ${subProduct.name})`,
+                                createdById: session.id
+                            }
+                        });
+                    }
+                }
+
+                console.log(`💰 COSTOS CALCULADOS para ${processing.code}: Costo total materia prima $${totalSourceCost.toFixed(2)} distribuido en ${processing.subProducts.length} subproductos`);
+            }
+
             // 3. Marcar procesamiento como completado
             await tx.proteinProcessing.update({
                 where: { id: processingId },
@@ -589,5 +653,108 @@ export async function getProteinProcessingStatsAction(startDate?: Date, endDate?
             avgWaste: 0,
             byProteinType: {}
         };
+    }
+}
+
+// ============================================================================
+// ACTION: GESTIÓN DE PLANTILLAS DE PROCESAMIENTO
+// ============================================================================
+
+export async function getProcessingTemplatesAction() {
+    try {
+        const templates = await prisma.processingTemplate.findMany({
+            where: { isActive: true },
+            include: {
+                sourceItem: { select: { id: true, name: true, sku: true } },
+                allowedOutputs: {
+                    include: {
+                        outputItem: { select: { id: true, name: true, sku: true, baseUnit: true } }
+                    },
+                    orderBy: { sortOrder: 'asc' }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+        return templates;
+    } catch (error) {
+        console.error('Error en getProcessingTemplatesAction:', error);
+        return [];
+    }
+}
+
+export async function getTemplateBySourceItemAction(sourceItemId: string) {
+    try {
+        const template = await prisma.processingTemplate.findFirst({
+            where: {
+                sourceItemId,
+                isActive: true
+            },
+            include: {
+                allowedOutputs: {
+                    include: {
+                        outputItem: {
+                            select: { id: true, name: true, sku: true, baseUnit: true, category: true }
+                        }
+                    },
+                    orderBy: { sortOrder: 'asc' }
+                }
+            }
+        });
+        return template;
+    } catch (error) {
+        console.error('Error en getTemplateBySourceItemAction:', error);
+        return null;
+    }
+}
+
+export async function createProcessingTemplateAction(input: {
+    name: string;
+    description?: string;
+    sourceItemId: string;
+    outputs: { outputItemId: string; expectedWeight?: number; expectedUnits?: number }[];
+}): Promise<{ success: boolean; message: string }> {
+    const session = await getSession();
+    if (!session?.id) return { success: false, message: 'No autorizado' };
+
+    try {
+        await prisma.processingTemplate.create({
+            data: {
+                name: input.name,
+                description: input.description,
+                sourceItemId: input.sourceItemId,
+                allowedOutputs: {
+                    create: input.outputs.map((o, i) => ({
+                        outputItemId: o.outputItemId,
+                        expectedWeight: o.expectedWeight,
+                        expectedUnits: o.expectedUnits,
+                        sortOrder: i
+                    }))
+                }
+            }
+        });
+
+        revalidatePath('/dashboard/proteinas');
+        return { success: true, message: 'Plantilla creada exitosamente' };
+    } catch (error) {
+        console.error('Error creando plantilla:', error);
+        return { success: false, message: 'Error al crear plantilla' };
+    }
+}
+
+export async function deleteProcessingTemplateAction(templateId: string): Promise<{ success: boolean; message: string }> {
+    const session = await getSession();
+    if (!session?.id) return { success: false, message: 'No autorizado' };
+
+    try {
+        await prisma.processingTemplate.update({
+            where: { id: templateId },
+            data: { isActive: false }
+        });
+
+        revalidatePath('/dashboard/proteinas');
+        return { success: true, message: 'Plantilla eliminada' };
+    } catch (error) {
+        console.error('Error eliminando plantilla:', error);
+        return { success: false, message: 'Error al eliminar plantilla' };
     }
 }

@@ -454,13 +454,20 @@ export default function PurchaseOrderView() {
                                     <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center gap-1">
-                                            <button onClick={() => handleExportWhatsApp(order.id)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50" title="Copiar para WhatsApp">📱</button>
-                                            {['DRAFT', 'SENT', 'PARTIAL'].includes(order.status) && (
-                                                <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50" title="Recibir mercancía">📥</button>
+                                            <button onClick={() => handleExportWhatsApp(order.id)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 min-h-[44px] min-w-[44px]" title="Copiar para WhatsApp">📱</button>
+                                            {['SENT', 'PARTIAL'].includes(order.status) && (
+                                                <button
+                                                    onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-colors min-h-[44px]"
+                                                    title="Recibir mercancía"
+                                                >
+                                                    📦 Recibir
+                                                </button>
                                             )}
                                             {order.status === 'DRAFT' && (<>
-                                                <button onClick={() => handleSendOrder(order.id)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50" title="Marcar como enviada">📤</button>
-                                                <button onClick={() => handleCancelOrder(order.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50" title="Cancelar">🗑️</button>
+                                                <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 min-h-[44px] min-w-[44px]" title="Recibir mercancía">📥</button>
+                                                <button onClick={() => handleSendOrder(order.id)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 min-h-[44px] min-w-[44px]" title="Marcar como enviada">📤</button>
+                                                <button onClick={() => handleCancelOrder(order.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 min-h-[44px] min-w-[44px]" title="Cancelar">🗑️</button>
                                             </>)}
                                         </div>
                                     </td>

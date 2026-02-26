@@ -527,6 +527,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                 placeholder="Seleccionar..."
                                                 searchPlaceholder="Buscar insumo..."
                                                 emptyMessage="No se encontró el insumo."
+                                                allowCreate={true}
+                                                onCreateNew={() => setIsQuickItemModalOpen(true)}
                                             />
                                         </div>
                                         <button

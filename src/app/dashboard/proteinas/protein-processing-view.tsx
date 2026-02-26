@@ -17,6 +17,7 @@ import {
 import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
+import ProcessingTemplates from './processing-templates';
 
 interface SubProduct extends SubProductInput {
     id: string;
@@ -34,7 +35,7 @@ export default function ProteinProcessingView() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Estado del formulario
-    const [viewMode, setViewMode] = useState<'list' | 'create' | 'detail'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'create' | 'detail' | 'templates'>('list');
     const [processDate, setProcessDate] = useState(new Date().toISOString().slice(0, 10));
     const [sourceItemId, setSourceItemId] = useState('');
     const [supplierId, setSupplierId] = useState('');
@@ -326,6 +327,17 @@ export default function ProteinProcessingView() {
                         )}
                     >
                         ➕ Nuevo Procesamiento
+                    </button>
+                    <button
+                        onClick={() => setViewMode('templates')}
+                        className={cn(
+                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            viewMode === 'templates'
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                        )}
+                    >
+                        📋 Plantillas
                     </button>
                 </div>
             </div>
@@ -890,6 +902,11 @@ export default function ProteinProcessingView() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Vista: Plantillas de Procesamiento */}
+            {viewMode === 'templates' && (
+                <ProcessingTemplates />
             )}
         </div>
     );

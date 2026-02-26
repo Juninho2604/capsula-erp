@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { createSalesOrderAction, getMenuForPOSAction, validateManagerPinAction, type CartItem } from '@/app/actions/pos.actions';
 import { printReceipt, printKitchenCommand } from '@/lib/print-command';
+import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 
 interface ModifierOption {
     id: string;
@@ -76,6 +78,9 @@ export default function POSDeliveryPage() {
     const [showPinModal, setShowPinModal] = useState(false);
     const [pinInput, setPinInput] = useState('');
     const [pinError, setPinError] = useState('');
+
+    // WHATSAPP PARSER
+    const [showWhatsAppParser, setShowWhatsAppParser] = useState(false);
 
     useEffect(() => {
         async function loadMenu() {
@@ -218,28 +223,57 @@ export default function POSDeliveryPage() {
                     <span className="text-4xl">🛵</span>
                     <div><h1 className="text-2xl font-black">Shanklish Delivery</h1><p className="text-blue-200 text-xs font-bold uppercase">Sistema de Despacho</p></div>
                 </div>
-                <div><p className="font-mono text-xl">{new Date().toLocaleDateString('es-VE')}</p></div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowWhatsAppParser(!showWhatsAppParser)}
+                        className={cn(
+                            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                            showWhatsAppParser
+                                ? 'bg-green-500 text-white shadow-lg'
+                                : 'bg-white/10 text-white/80 hover:bg-white/20'
+                        )}
+                    >
+                        💬 WhatsApp
+                    </button>
+                    <p className="font-mono text-xl">{new Date().toLocaleDateString('es-VE')}</p>
+                </div>
             </div>
 
             <div className="flex h-screen pt-20 overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-hidden bg-gray-900">
-                    <div className="flex gap-2 p-3 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
-                        {categories.map(cat => (
-                            <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-5 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-                                <span>{getCategoryIcon(cat.name)}</span> {cat.name}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="flex-1 p-4 overflow-y-auto pb-24">
-                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {menuItems.map(item => (
-                                <button key={item.id} onClick={() => handleAddToCart(item)} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-left shadow-md group h-36 flex flex-col justify-between">
-                                    <div className="font-bold text-lg leading-tight group-hover:text-blue-300">{item.name}</div>
-                                    <div className="text-2xl font-black text-blue-400">${item.price.toFixed(2)}</div>
-                                </button>
-                            ))}
+                    {/* WhatsApp Parser Panel */}
+                    {showWhatsAppParser ? (
+                        <div className="flex-1 overflow-y-auto p-4 pb-24">
+                            <WhatsAppOrderParser
+                                onOrderReady={(items, name, phone, address) => {
+                                    setCart(items);
+                                    setCustomerName(name);
+                                    setCustomerPhone(phone);
+                                    setCustomerAddress(address);
+                                    setShowWhatsAppParser(false);
+                                }}
+                            />
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            <div className="flex gap-2 p-3 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
+                                {categories.map(cat => (
+                                    <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-5 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                        <span>{getCategoryIcon(cat.name)}</span> {cat.name}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex-1 p-4 overflow-y-auto pb-24">
+                                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {menuItems.map(item => (
+                                        <button key={item.id} onClick={() => handleAddToCart(item)} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-left shadow-md group h-36 flex flex-col justify-between">
+                                            <div className="font-bold text-lg leading-tight group-hover:text-blue-300">{item.name}</div>
+                                            <div className="text-2xl font-black text-blue-400">${item.price.toFixed(2)}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </>)}
                 </div>
 
                 <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-20">

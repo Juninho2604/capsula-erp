@@ -53,6 +53,7 @@ export async function getRequisitions(filter: 'ALL' | 'PENDING' | 'COMPLETED' = 
             include: {
                 requestedBy: { select: { firstName: true, lastName: true } },
                 processedBy: { select: { firstName: true, lastName: true } },
+                dispatchedBy: { select: { firstName: true, lastName: true } },
                 targetArea: { select: { name: true } },
                 sourceArea: { select: { name: true } },
                 items: {
@@ -129,7 +130,68 @@ export async function createRequisition(input: CreateRequisitionInput): Promise<
     }
 }
 
-// 2. APROBAR Y DESPACHAR
+// 2a. DESPACHAR REQUISICIÓN (Jefe de Producción - paso intermedio)
+export async function dispatchRequisition(input: {
+    requisitionId: string;
+    dispatchedById: string;
+    items: { inventoryItemId: string; sentQuantity: number }[];
+}): Promise<ActionResult> {
+    try {
+        const req = await prisma.requisition.findUnique({
+            where: { id: input.requisitionId },
+            include: { items: true }
+        });
+
+        if (!req) return { success: false, message: 'Requisición no encontrada' };
+        if (req.status !== 'PENDING' && req.status !== 'REQUESTED') {
+            return { success: false, message: 'Esta solicitud ya fue procesada o despachada' };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Si no tenía origen, buscar almacén principal
+            let sourceAreaId = req.sourceAreaId;
+            if (!sourceAreaId) {
+                const mainWarehouse = await tx.area.findFirst({
+                    where: { name: { contains: 'ALMACEN PRINCIPAL', mode: 'insensitive' } }
+                });
+                if (mainWarehouse) sourceAreaId = mainWarehouse.id;
+            }
+
+            // Actualizar estado a DISPATCHED
+            await tx.requisition.update({
+                where: { id: input.requisitionId },
+                data: {
+                    status: 'DISPATCHED',
+                    dispatchedById: input.dispatchedById,
+                    dispatchedAt: new Date(),
+                    sourceAreaId
+                }
+            });
+
+            // Actualizar cada item con la cantidad enviada
+            for (const item of input.items) {
+                await tx.requisitionItem.updateMany({
+                    where: {
+                        requisitionId: input.requisitionId,
+                        inventoryItemId: item.inventoryItemId
+                    },
+                    data: {
+                        sentQuantity: item.sentQuantity,
+                        dispatchedQuantity: item.sentQuantity // retrocompat
+                    }
+                });
+            }
+        });
+
+        revalidatePath('/dashboard/transferencias');
+        return { success: true, message: 'Despacho registrado. Pendiente de aprobación gerencial.' };
+    } catch (error) {
+        console.error('Error dispatching:', error);
+        return { success: false, message: 'Error al despachar' };
+    }
+}
+
+// 2b. APROBAR Y COMPLETAR (Gerente)
 export async function approveRequisition(input: ApproveRequisitionInput): Promise<ActionResult> {
     try {
         // Buscar la requisición para validar
@@ -139,7 +201,10 @@ export async function approveRequisition(input: ApproveRequisitionInput): Promis
         });
 
         if (!req) return { success: false, message: 'Requisición no encontrada' };
-        if (req.status !== 'PENDING') return { success: false, message: 'Esta solicitud ya fue procesada' };
+        // Aceptar PENDING (flujo directo) o DISPATCHED (flujo escalonado)
+        if (req.status !== 'PENDING' && req.status !== 'DISPATCHED') {
+            return { success: false, message: 'Esta solicitud ya fue procesada' };
+        }
 
         // Si no tenía origen, intentar asignarlo ahora o fallar
         if (!req.sourceAreaId) {

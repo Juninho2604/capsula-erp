@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
-import { createRequisition, approveRequisition, rejectRequisition } from '@/app/actions/requisition.actions';
+import { createRequisition, dispatchRequisition, approveRequisition, rejectRequisition } from '@/app/actions/requisition.actions';
 import { formatNumber, cn } from '@/lib/utils';
 import { UserRole } from '@/types';
 import { Trash2 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
+import { QuickCreateItemDialog } from '@/components/ui/quick-create-item-dialog';
 
 // Tipos locales para props
 interface Item {
@@ -27,6 +28,8 @@ interface Requisition {
     status: string;
     requestedBy: { firstName: string; lastName: string };
     processedBy: { firstName: string; lastName: string } | null;
+    dispatchedBy?: { firstName: string; lastName: string } | null;
+    dispatchedAt?: Date | null;
     targetArea: { name: string };
     sourceArea: { name: string } | null;
     createdAt: Date;
@@ -34,6 +37,8 @@ interface Requisition {
         inventoryItemId: string;
         inventoryItem: { name: string; sku: string; baseUnit: string };
         quantity: number;
+        sentQuantity?: number | null;
+        receivedQuantity?: number | null;
         dispatchedQuantity: number | null;
     }[];
 }
@@ -50,9 +55,10 @@ interface TransferItemRowProps {
     itemsList: Item[];
     onUpdate: (index: number, updates: Partial<{ id: string, name: string, quantity: number, unit: string }>) => void;
     onRemove: (index: number) => void;
+    onRequestCreate: (searchTerm: string, rowIndex: number) => void;
 }
 
-function TransferItemRow({ index, item, itemsList, onUpdate, onRemove }: TransferItemRowProps) {
+function TransferItemRow({ index, item, itemsList, onUpdate, onRemove, onRequestCreate }: TransferItemRowProps) {
     // Map items for Combobox
     const comboboxItems = itemsList.map(i => ({ value: i.id, label: i.name }));
 
@@ -75,11 +81,14 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove }: Transfe
                     placeholder="Seleccionar Item..."
                     searchPlaceholder="Buscar item..."
                     className="w-full justify-between"
+                    allowCreate={true}
+                    onCreateNew={(term) => onRequestCreate(term, index)}
                 />
             </td>
             <td className="p-2">
                 <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     value={item.quantity === 0 ? '' : item.quantity}
                     onChange={e => {
@@ -87,7 +96,7 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove }: Transfe
                         onUpdate(index, { quantity: isNaN(val) ? 0 : val });
                     }}
                     placeholder="0"
-                    className="w-full rounded border border-gray-200 px-3 py-2 text-center focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800"
+                    className="w-full rounded border border-gray-200 px-3 py-2 text-center focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 min-h-[44px]"
                 />
             </td>
             <td className="p-2 text-center text-gray-500 font-mono text-xs">
@@ -106,10 +115,11 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove }: Transfe
     );
 }
 
-export default function TransferenciasView({ itemsList, areasList, initialRequisitions }: Props) {
+export default function TransferenciasView({ itemsList: initialItemsList, areasList, initialRequisitions }: Props) {
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'NEW' | 'PENDING' | 'HISTORY'>('NEW');
     const [requisitions, setRequisitions] = useState<Requisition[]>(initialRequisitions);
+    const [itemsList, setItemsList] = useState<Item[]>(initialItemsList);
 
     // --- ESTADOS DE NUEVA SOLICITUD ---
     const [targetAreaId, setTargetAreaId] = useState('');
@@ -125,6 +135,14 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
 
     // Estado para expandir/colapsar historial
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    // --- ESTADOS DE DESPACHO ESCALONADO ---
+    const [dispatchQuantities, setDispatchQuantities] = useState<Record<string, number>>({});
+
+    // --- ESTADOS DE CREACIÓN RÁPIDA ---
+    const [showQuickCreate, setShowQuickCreate] = useState(false);
+    const [quickCreateName, setQuickCreateName] = useState('');
+    const [quickCreateRowIndex, setQuickCreateRowIndex] = useState<number>(0);
 
     // --- MANEJADORES ---
 
@@ -169,17 +187,44 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
         }
     };
 
-    const handleApprove = async (req: Requisition) => {
+    // Despachar (Jefe de Producción) — paso intermedio
+    const handleDispatch = async (req: Requisition) => {
         if (!confirm(`¿Confirmas el despacho de ${req.code}?`)) return;
+        setIsSubmitting(true);
+
+        const items = req.items.map(i => ({
+            inventoryItemId: i.inventoryItemId,
+            sentQuantity: dispatchQuantities[i.inventoryItemId] ?? i.quantity
+        }));
+
+        const res = await dispatchRequisition({
+            requisitionId: req.id,
+            dispatchedById: user?.id || '',
+            items
+        });
+
+        if (res.success) {
+            alert('📦 Despacho registrado. Pendiente de aprobación.');
+            window.location.reload();
+        } else {
+            alert('❌ Error: ' + res.message);
+        }
+        setIsSubmitting(false);
+    };
+
+    // Aprobar (Gerente) — paso final, mueve inventario
+    const handleApprove = async (req: Requisition) => {
+        if (!confirm(`¿Confirmas la recepción de ${req.code}? Esto moverá el inventario.`)) return;
+        setIsSubmitting(true);
 
         const itemsToDispatch = req.items.map(i => ({
             inventoryItemId: i.inventoryItemId,
-            dispatchedQuantity: i.quantity
+            dispatchedQuantity: i.sentQuantity || i.dispatchedQuantity || i.quantity
         }));
 
         const res = await approveRequisition({
             requisitionId: req.id,
-            processedById: user?.id || 'cmkvq94uo0000ua0ns6g844yr',
+            processedById: user?.id || '',
             items: itemsToDispatch
         });
 
@@ -189,14 +234,16 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
         } else {
             alert('❌ Error: ' + res.message);
         }
+        setIsSubmitting(false);
     };
 
     const handleReject = async (req: Requisition) => {
         if (!confirm(`¿Estás seguro de rechazar la solicitud ${req.code}?`)) return;
+        setIsSubmitting(true);
 
         const res = await rejectRequisition(
             req.id,
-            user?.id || 'cmkvq94uo0000ua0ns6g844yr'
+            user?.id || ''
         );
 
         if (res.success) {
@@ -205,11 +252,14 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
         } else {
             alert('Error: ' + res.message);
         }
+        setIsSubmitting(false);
     };
 
     // --- FILTROS DE LISTA ---
     const pendingReqs = requisitions.filter(r => r.status === 'PENDING');
-    const historyReqs = requisitions.filter(r => r.status !== 'PENDING').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const dispatchedReqs = requisitions.filter(r => r.status === 'DISPATCHED');
+    const activeReqs = [...pendingReqs, ...dispatchedReqs];
+    const historyReqs = requisitions.filter(r => !['PENDING', 'DISPATCHED'].includes(r.status)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Permisos simples (Mejora futura: usar hook de permisos)
     // Asumimos que cualquiera puede pedir, pero aprobar/rechazar requiere rol > CHEF
@@ -239,7 +289,7 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                             : "border-transparent text-gray-500 hover:text-gray-700"
                     )}
                 >
-                    ⏳ Pendientes ({pendingReqs.length})
+                    ⏳ En Proceso ({activeReqs.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('HISTORY')}
@@ -327,6 +377,11 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                                                     setRequestItems([{ id: '', name: '', quantity: 0, unit: '-' }]);
                                                 }
                                             }}
+                                            onRequestCreate={(term, rowIdx) => {
+                                                setQuickCreateName(term);
+                                                setQuickCreateRowIndex(rowIdx);
+                                                setShowQuickCreate(true);
+                                            }}
                                         />
                                     ))}
                                 </tbody>
@@ -361,58 +416,158 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                     </div>
                 )}
 
-                {/* 2. PENDIENTES */}
+                {/* 2. EN PROCESO (PENDIENTES + DESPACHADAS) */}
                 {activeTab === 'PENDING' && (
-                    <div className="space-y-4">
-                        {pendingReqs.length === 0 ? (
+                    <div className="space-y-6">
+                        {activeReqs.length === 0 ? (
                             <div className="py-12 text-center text-gray-500">
-                                No hay solicitudes pendientes por aprobar.
+                                <span className="text-4xl">📭</span>
+                                <p className="mt-2">No hay solicitudes en proceso.</p>
                             </div>
                         ) : (
-                            pendingReqs.map(req => (
-                                <div key={req.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
-                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono font-bold text-amber-700 dark:text-amber-500">{req.code}</span>
-                                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">Pendiente</span>
-                                            </div>
-                                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                                De: <strong>{req.sourceArea?.name || 'Almacén Principal'}</strong> → Para: <strong>{req.targetArea.name}</strong>
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                Por: {req.requestedBy.firstName} {req.requestedBy.lastName} • {new Date(req.createdAt).toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleReject(req)}
-                                                className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:bg-gray-800 dark:hover:bg-red-900/20"
-                                            >
-                                                ❌ Rechazar
-                                            </button>
-                                            <button
-                                                onClick={() => handleApprove(req)}
-                                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-600"
-                                            >
-                                                ✅ Aprobar
-                                            </button>
-                                        </div>
-                                    </div>
+                            <>
+                                {/* Sección PENDING - Esperando despacho */}
+                                {pendingReqs.length > 0 && (
+                                    <div>
+                                        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs dark:bg-amber-900">1</span>
+                                            Esperando Despacho ({pendingReqs.length})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {pendingReqs.map(req => (
+                                                <div key={req.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
+                                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-mono font-bold text-amber-700 dark:text-amber-500">{req.code}</span>
+                                                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">⏳ Pendiente</span>
+                                                            </div>
+                                                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                                                De: <strong>{req.sourceArea?.name || 'Almacén Principal'}</strong> → Para: <strong>{req.targetArea.name}</strong>
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                Solicitó: {req.requestedBy.firstName} {req.requestedBy.lastName} • {new Date(req.createdAt).toLocaleString('es-VE')}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <button
+                                                                onClick={() => handleReject(req)}
+                                                                disabled={isSubmitting}
+                                                                className="min-h-[44px] rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:bg-gray-800 dark:hover:bg-red-900/20"
+                                                            >
+                                                                ❌ Rechazar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDispatch(req)}
+                                                                disabled={isSubmitting}
+                                                                className="min-h-[44px] rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-600 disabled:opacity-50"
+                                                            >
+                                                                📦 Despachar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleApprove(req)}
+                                                                disabled={isSubmitting}
+                                                                className="min-h-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-600 disabled:opacity-50"
+                                                            >
+                                                                ✅ Aprobar Directo
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                    <div className="mt-4 border-t border-amber-200 pt-3 dark:border-amber-800">
-                                        <p className="mb-2 text-xs font-semibold text-gray-500">ITEMS A DESPACHAR:</p>
-                                        <ul className="grid gap-2 sm:grid-cols-2">
-                                            {req.items.map(item => (
-                                                <li key={item.inventoryItemId} className="flex justify-between rounded bg-white px-3 py-1.5 text-sm dark:bg-gray-800">
-                                                    <span className="text-gray-700 dark:text-gray-300">{item.inventoryItem.name}</span>
-                                                    <span className="font-mono font-medium">{formatNumber(item.quantity)} {item.inventoryItem.baseUnit}</span>
-                                                </li>
+                                                    <div className="mt-4 border-t border-amber-200 pt-3 dark:border-amber-800">
+                                                        <p className="mb-2 text-xs font-semibold text-gray-500">ITEMS SOLICITADOS (ajustá cantidades de despacho si difieren):</p>
+                                                        <div className="grid gap-2 sm:grid-cols-2">
+                                                            {req.items.map(item => (
+                                                                <div key={item.inventoryItemId} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 dark:bg-gray-800">
+                                                                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.inventoryItem.name}</span>
+                                                                    <div className="flex items-center gap-2 ml-2">
+                                                                        <span className="text-xs text-gray-400">Pedido: {formatNumber(item.quantity)}</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            inputMode="decimal"
+                                                                            min={0}
+                                                                            defaultValue={item.quantity}
+                                                                            onChange={e => setDispatchQuantities(prev => ({ ...prev, [item.inventoryItemId]: parseFloat(e.target.value) || 0 }))}
+                                                                            className="w-20 rounded border border-gray-200 px-2 py-1 text-center text-sm font-mono dark:border-gray-600 dark:bg-gray-700 min-h-[36px]"
+                                                                        />
+                                                                        <span className="text-xs text-gray-500">{item.inventoryItem.baseUnit}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             ))}
-                                        </ul>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                )}
+
+                                {/* Sección DISPATCHED - Esperando aprobación gerencial */}
+                                {dispatchedReqs.length > 0 && (
+                                    <div>
+                                        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs dark:bg-blue-900">2</span>
+                                            Despachadas — Esperando Confirmación ({dispatchedReqs.length})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {dispatchedReqs.map(req => (
+                                                <div key={req.id} className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/50 dark:bg-blue-900/10">
+                                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{req.code}</span>
+                                                                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">📦 Despachado</span>
+                                                            </div>
+                                                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                                                De: <strong>{req.sourceArea?.name || 'Almacén Principal'}</strong> → Para: <strong>{req.targetArea.name}</strong>
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                Solicitó: {req.requestedBy.firstName} • Despachó: {req.dispatchedBy?.firstName || '—'}
+                                                                {req.dispatchedAt && ` • ${new Date(req.dispatchedAt).toLocaleString('es-VE')}`}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => handleReject(req)}
+                                                                disabled={isSubmitting}
+                                                                className="min-h-[44px] rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                            >
+                                                                ❌ Rechazar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleApprove(req)}
+                                                                disabled={isSubmitting}
+                                                                className="min-h-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-emerald-600 disabled:opacity-50"
+                                                            >
+                                                                ✅ Confirmar Recepción
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-4 border-t border-blue-200 pt-3 dark:border-blue-800">
+                                                        <p className="mb-2 text-xs font-semibold text-gray-500">ITEMS DESPACHADOS:</p>
+                                                        <ul className="grid gap-2 sm:grid-cols-2">
+                                                            {req.items.map(item => (
+                                                                <li key={item.inventoryItemId} className="flex justify-between rounded-lg bg-white px-3 py-2 text-sm dark:bg-gray-800">
+                                                                    <span className="text-gray-700 dark:text-gray-300">{item.inventoryItem.name}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {(item.sentQuantity ?? item.dispatchedQuantity) !== item.quantity && (
+                                                                            <span className="text-xs text-gray-400 line-through">{formatNumber(item.quantity)}</span>
+                                                                        )}
+                                                                        <span className="font-mono font-medium text-blue-600">
+                                                                            {formatNumber(item.sentQuantity ?? item.dispatchedQuantity ?? item.quantity)} {item.inventoryItem.baseUnit}
+                                                                        </span>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -508,9 +663,10 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                                                                 "rounded-full px-2 py-0.5 text-xs font-medium",
                                                                 req.status === 'COMPLETED' ? "bg-emerald-100 text-emerald-800" :
                                                                     req.status === 'REJECTED' ? "bg-red-100 text-red-800" :
-                                                                        "bg-gray-100 text-gray-800"
+                                                                        req.status === 'DISPATCHED' ? "bg-blue-100 text-blue-800" :
+                                                                            "bg-gray-100 text-gray-800"
                                                             )}>
-                                                                {req.status}
+                                                                {req.status === 'COMPLETED' ? '✅ Completado' : req.status === 'REJECTED' ? '❌ Rechazado' : req.status === 'DISPATCHED' ? '📦 Despachado' : req.status}
                                                             </span>
                                                             <span className="text-xs text-gray-400">
                                                                 {req.items.length} items
@@ -559,6 +715,28 @@ export default function TransferenciasView({ itemsList, areasList, initialRequis
                     </div>
                 )}
             </div>
+
+            {/* Modal de Creación Rápida de Producto */}
+            <QuickCreateItemDialog
+                open={showQuickCreate}
+                onClose={() => setShowQuickCreate(false)}
+                initialName={quickCreateName}
+                userId={user?.id || ''}
+                onItemCreated={(newItem) => {
+                    // Agregar al listado local
+                    setItemsList(prev => [...prev, { id: newItem.id, name: newItem.name, baseUnit: newItem.baseUnit }]);
+                    // Auto-seleccionar en la fila que gatilló la creación
+                    const newItems = [...requestItems];
+                    newItems[quickCreateRowIndex] = {
+                        ...newItems[quickCreateRowIndex],
+                        id: newItem.id,
+                        name: newItem.name,
+                        unit: newItem.baseUnit
+                    };
+                    setRequestItems(newItems);
+                    setMsg({ type: 'success', text: `✅ Producto "${newItem.name}" creado y seleccionado` });
+                }}
+            />
         </div>
     );
 }
