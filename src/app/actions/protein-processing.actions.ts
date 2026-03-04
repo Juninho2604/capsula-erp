@@ -679,7 +679,7 @@ export async function getProcessingTemplatesAction() {
                     orderBy: { sortOrder: 'asc' }
                 }
             },
-            orderBy: { name: 'asc' }
+            orderBy: [{ sourceItemId: 'asc' }, { chainOrder: 'asc' }]
         });
         return templates;
     } catch (error) {
@@ -688,13 +688,17 @@ export async function getProcessingTemplatesAction() {
     }
 }
 
-export async function getTemplateBySourceItemAction(sourceItemId: string) {
+export async function getTemplateBySourceItemAction(sourceItemId: string, processingStep?: string) {
     try {
+        const where: any = {
+            sourceItemId,
+            isActive: true
+        };
+        if (processingStep) {
+            where.processingStep = processingStep;
+        }
         const template = await prisma.processingTemplate.findFirst({
-            where: {
-                sourceItemId,
-                isActive: true
-            },
+            where,
             include: {
                 allowedOutputs: {
                     include: {
@@ -704,7 +708,8 @@ export async function getTemplateBySourceItemAction(sourceItemId: string) {
                     },
                     orderBy: { sortOrder: 'asc' }
                 }
-            }
+            },
+            orderBy: { chainOrder: 'asc' }
         });
         return template;
     } catch (error) {
@@ -713,11 +718,71 @@ export async function getTemplateBySourceItemAction(sourceItemId: string) {
     }
 }
 
+// Obtener la cadena completa de plantillas para un item fuente
+export async function getTemplateChainAction(sourceItemId: string) {
+    try {
+        // Buscar todas las plantillas que comienzan con este sourceItem
+        const templates = await prisma.processingTemplate.findMany({
+            where: {
+                sourceItemId,
+                isActive: true
+            },
+            include: {
+                sourceItem: { select: { id: true, name: true, sku: true } },
+                allowedOutputs: {
+                    include: {
+                        outputItem: {
+                            select: { id: true, name: true, sku: true, baseUnit: true, category: true }
+                        }
+                    },
+                    orderBy: { sortOrder: 'asc' }
+                }
+            },
+            orderBy: { chainOrder: 'asc' }
+        });
+
+        // Si hay outputs intermedios, buscar plantillas para esos items también
+        const allTemplates = [...templates];
+        for (const template of templates) {
+            const intermediateOutputs = template.allowedOutputs.filter((o: any) => o.isIntermediate);
+            for (const output of intermediateOutputs) {
+                const childTemplates = await prisma.processingTemplate.findMany({
+                    where: {
+                        sourceItemId: output.outputItemId,
+                        isActive: true
+                    },
+                    include: {
+                        sourceItem: { select: { id: true, name: true, sku: true } },
+                        allowedOutputs: {
+                            include: {
+                                outputItem: {
+                                    select: { id: true, name: true, sku: true, baseUnit: true, category: true }
+                                }
+                            },
+                            orderBy: { sortOrder: 'asc' }
+                        }
+                    },
+                    orderBy: { chainOrder: 'asc' }
+                });
+                allTemplates.push(...childTemplates);
+            }
+        }
+
+        return allTemplates;
+    } catch (error) {
+        console.error('Error en getTemplateChainAction:', error);
+        return [];
+    }
+}
+
 export async function createProcessingTemplateAction(input: {
     name: string;
     description?: string;
     sourceItemId: string;
-    outputs: { outputItemId: string; expectedWeight?: number; expectedUnits?: number }[];
+    processingStep?: string;
+    canGainWeight?: boolean;
+    chainOrder?: number;
+    outputs: { outputItemId: string; expectedWeight?: number; expectedUnits?: number; isIntermediate?: boolean }[];
 }): Promise<{ success: boolean; message: string }> {
     const session = await getSession();
     if (!session?.id) return { success: false, message: 'No autorizado' };
@@ -728,11 +793,15 @@ export async function createProcessingTemplateAction(input: {
                 name: input.name,
                 description: input.description,
                 sourceItemId: input.sourceItemId,
+                processingStep: input.processingStep || 'LIMPIEZA',
+                canGainWeight: input.canGainWeight || false,
+                chainOrder: input.chainOrder || 0,
                 allowedOutputs: {
                     create: input.outputs.map((o, i) => ({
                         outputItemId: o.outputItemId,
                         expectedWeight: o.expectedWeight,
                         expectedUnits: o.expectedUnits,
+                        isIntermediate: o.isIntermediate || false,
                         sortOrder: i
                     }))
                 }

@@ -454,21 +454,31 @@ model ProteinSubProduct {
 
 model ProcessingTemplate {
   id              String   @id @default(cuid())
-  name            String   // Ej: "Desposte de Res", "Desposte de Pollo"
+  name            String   // Ej: "Procesamiento de Lomito", "Procesamiento de Pollo"
   description     String?
   
   // Item fuente (materia prima)
   sourceItemId    String
   sourceItem      InventoryItem @relation("TemplateSource", fields: [sourceItemId], references: [id])
   
+  // Paso de procesamiento que esta plantilla cubre (puede haber varias plantillas por item fuente, una por paso)
+  processingStep  String   @default("LIMPIEZA") // LIMPIEZA, MASERADO, DISTRIBUCION, CUSTOM
+  
+  // Si el peso de salida puede ser mayor al de entrada (ej: maserado agrega condimentos)
+  canGainWeight   Boolean  @default(false)
+  
+  // Orden en la cadena de pasos para este item fuente
+  chainOrder      Int      @default(0) // 0=primer paso, 1=segundo, etc.
+  
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
-  // Sub-productos permitidos
+  // Sub-productos permitidos en este paso
   allowedOutputs  ProcessingTemplateOutput[]
   
   @@index([sourceItemId])
+  @@index([processingStep])
 }
 
 model ProcessingTemplateOutput {
@@ -484,6 +494,9 @@ model ProcessingTemplateOutput {
   expectedWeight  Float?     // Peso promedio esperado en KG
   expectedUnits   Int?       // Unidades esperadas
   sortOrder       Int        @default(0)
+  
+  // Indica si este output es un producto intermedio (input del siguiente paso) o un producto final
+  isIntermediate  Boolean    @default(false) // true = se usa como input del siguiente paso
   
   @@unique([templateId, outputItemId])
   @@index([templateId])

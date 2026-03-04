@@ -13,6 +13,7 @@ import {
     cancelProteinProcessingAction,
     getProteinProcessingStatsAction,
     getTemplateBySourceItemAction,
+    getTemplateChainAction,
     getCompletedProcessingsForChainAction,
     SubProductInput
 } from '@/app/actions/protein-processing.actions';
@@ -20,6 +21,13 @@ import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import ProcessingTemplates from './processing-templates';
+
+const STEP_CONFIG: Record<string, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
+    'LIMPIEZA': { label: 'Limpieza', emoji: '🧹', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
+    'MASERADO': { label: 'Maserado', emoji: '🥘', color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
+    'DISTRIBUCION': { label: 'Distribución', emoji: '📦', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
+    'CUSTOM': { label: 'Personalizado', emoji: '⚙️', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
+};
 
 interface SubProduct extends SubProductInput {
     id: string;
@@ -65,28 +73,41 @@ export default function ProteinProcessingView() {
 
     // Estado para plantilla activa
     const [activeTemplate, setActiveTemplate] = useState<any>(null);
+    const [templateChain, setTemplateChain] = useState<any[]>([]);
     const [loadingTemplate, setLoadingTemplate] = useState(false);
 
-    // Estado para procesamiento en cadena (P5)
+    // Estado para procesamiento en cadena
     const [processingStep, setProcessingStep] = useState('LIMPIEZA');
     const [parentProcessingId, setParentProcessingId] = useState('');
     const [completedProcessings, setCompletedProcessings] = useState<any[]>([]);
 
-    // Cargar plantilla cuando cambia el sourceItem
+    // Cargar cadena de plantillas cuando cambia el sourceItem
     useEffect(() => {
         if (sourceItemId) {
             setLoadingTemplate(true);
-            getTemplateBySourceItemAction(sourceItemId).then(template => {
+            Promise.all([
+                getTemplateBySourceItemAction(sourceItemId, processingStep),
+                getTemplateChainAction(sourceItemId)
+            ]).then(([template, chain]) => {
                 setActiveTemplate(template);
+                setTemplateChain(chain);
                 setLoadingTemplate(false);
                 if (template) {
-                    toast.success(`📋 Plantilla "${template.name}" cargada con ${template.allowedOutputs.length} subproductos`);
+                    toast.success(`📋 Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
+                    // Auto-detect if this step can gain weight
+                    if ((template as any).canGainWeight) {
+                        toast(`⬆️ En este paso el peso puede AUMENTAR (ej: condimentos)`, { icon: '🥘' });
+                    }
+                }
+                if (chain.length > 1) {
+                    toast(`🔗 Cadena de ${chain.length} pasos disponible para esta proteína`, { icon: '📋' });
                 }
             });
         } else {
             setActiveTemplate(null);
+            setTemplateChain([]);
         }
-    }, [sourceItemId]);
+    }, [sourceItemId, processingStep]);
 
     // Lista de items filtrada: si hay plantilla, solo mostrar los outputs permitidos; si no, todos
     const availableSubItems = activeTemplate
@@ -97,6 +118,7 @@ export default function ProteinProcessingView() {
             baseUnit: o.outputItem.baseUnit,
             expectedWeight: o.expectedWeight,
             expectedUnits: o.expectedUnits,
+            isIntermediate: o.isIntermediate || false,
         }))
         : proteinItems;
 
@@ -531,31 +553,55 @@ export default function ProteinProcessingView() {
                                 />
                             </div>
 
-                            {/* Paso del Procesamiento (P5) */}
+                            {/* Paso del Procesamiento */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Paso del Procesamiento</label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[
-                                        { value: 'LIMPIEZA', label: '🧹 Limpieza', color: 'blue' },
-                                        { value: 'MASERADO', label: '🥘 Maserado', color: 'purple' },
-                                        { value: 'DISTRIBUCION', label: '📦 Distribución', color: 'green' },
-                                        { value: 'CUSTOM', label: '⚙️ Otro', color: 'gray' },
-                                    ].map(step => (
-                                        <button
-                                            key={step.value}
-                                            type="button"
-                                            onClick={() => setProcessingStep(step.value)}
-                                            className={cn(
-                                                'rounded-lg px-3 py-2 text-xs font-medium border transition-all',
-                                                processingStep === step.value
-                                                    ? `bg-${step.color}-100 border-${step.color}-500 text-${step.color}-800 ring-2 ring-${step.color}-200`
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                            )}
-                                        >
-                                            {step.label}
-                                        </button>
-                                    ))}
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Paso del Procesamiento</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {Object.entries(STEP_CONFIG).map(([value, config]) => {
+                                        const hasTemplate = templateChain.some((t: any) => t.processingStep === value);
+                                        return (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                onClick={() => setProcessingStep(value)}
+                                                className={cn(
+                                                    'rounded-xl px-3 py-3 text-xs font-medium border-2 transition-all relative',
+                                                    processingStep === value
+                                                        ? `${config.bgColor} ${config.borderColor} ${config.color} ring-2 ring-offset-1`
+                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                )}
+                                            >
+                                                <span className="text-lg">{config.emoji}</span>
+                                                <span className="block mt-0.5">{config.label}</span>
+                                                {hasTemplate && (
+                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Tiene plantilla"></span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                                {/* Template chain indicator */}
+                                {templateChain.length > 0 && (
+                                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                                        <span>📋 Cadena disponible:</span>
+                                        {templateChain
+                                            .sort((a: any, b: any) => a.chainOrder - b.chainOrder)
+                                            .map((t: any, i: number) => {
+                                                const sc = STEP_CONFIG[t.processingStep] || STEP_CONFIG['CUSTOM'];
+                                                return (
+                                                    <span key={t.id} className="flex items-center gap-0.5">
+                                                        {i > 0 && <span className="text-gray-300">→</span>}
+                                                        <span className={cn(
+                                                            'rounded px-1.5 py-0.5 font-medium',
+                                                            t.processingStep === processingStep ? `${sc.bgColor} ${sc.color}` : 'text-gray-400'
+                                                        )}>
+                                                            {sc.emoji} {sc.label}
+                                                        </span>
+                                                    </span>
+                                                );
+                                            })}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Encadenar con procesamiento previo (P5) */}
@@ -692,12 +738,22 @@ export default function ProteinProcessingView() {
                                 </div>
                             </div>
 
-                            {/* Pérdida por escurrido */}
+                            {/* Pérdida por escurrido / Ganancia de peso */}
                             {frozenWeight > 0 && drainedWeight > 0 && (
-                                <div className="p-3 rounded-lg bg-blue-50 text-sm">
-                                    <span className="text-blue-700">
-                                        💧 Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
-                                    </span>
+                                <div className={cn(
+                                    'p-3 rounded-lg text-sm',
+                                    drainedWeight > frozenWeight ? 'bg-purple-50' : 'bg-blue-50'
+                                )}>
+                                    {drainedWeight > frozenWeight ? (
+                                        <span className="text-purple-700">
+                                            ⬆️ Ganancia de peso: <strong>{formatNumber(drainedWeight - frozenWeight)} kg</strong> ({formatNumber(((drainedWeight - frozenWeight) / frozenWeight) * 100)}%)
+                                            <span className="block text-xs mt-0.5 opacity-70">Se agregaron condimentos/marinado</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-blue-700">
+                                            💧 Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
+                                        </span>
+                                    )}
                                 </div>
                             )}
 
@@ -781,8 +837,25 @@ export default function ProteinProcessingView() {
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <div className="flex-1">
                                         {activeTemplate && (
-                                            <div className="mb-2 px-2 py-1 rounded bg-amber-50 border border-amber-200 text-xs text-amber-700">
-                                                📋 Usando plantilla: <strong>{activeTemplate.name}</strong> ({activeTemplate.allowedOutputs.length} subproductos permitidos)
+                                            <div className={cn(
+                                                'mb-2 px-3 py-2 rounded-lg border text-xs',
+                                                STEP_CONFIG[activeTemplate.processingStep]?.bgColor || 'bg-amber-50',
+                                                STEP_CONFIG[activeTemplate.processingStep]?.borderColor || 'border-amber-200',
+                                                STEP_CONFIG[activeTemplate.processingStep]?.color || 'text-amber-700'
+                                            )}>
+                                                <div className="flex items-center gap-1.5">
+                                                    {STEP_CONFIG[activeTemplate.processingStep]?.emoji || '📋'}
+                                                    <strong>{activeTemplate.name}</strong>
+                                                    <span className="opacity-70">({activeTemplate.allowedOutputs.length} subproductos)</span>
+                                                    {activeTemplate.canGainWeight && (
+                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">⬆️ Peso puede aumentar</span>
+                                                    )}
+                                                </div>
+                                                {activeTemplate.allowedOutputs.some((o: any) => o.isIntermediate) && (
+                                                    <p className="mt-1 text-[10px] opacity-70">
+                                                        🔗 Algunos productos son intermedios y pasarán al siguiente paso de la cadena.
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                         <Combobox
@@ -850,24 +923,35 @@ export default function ProteinProcessingView() {
                                         Agrega los cortes/subproductos obtenidos
                                     </p>
                                 ) : (
-                                    subProducts.map((sp, index) => (
-                                        <div key={sp.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                                            <div className="flex-1">
-                                                <span className="text-gray-400 mr-2">{index + 1}.</span>
-                                                <span className="font-medium">{sp.name}</span>
+                                    subProducts.map((sp, index) => {
+                                        // Check if this subproduct is intermediate
+                                        const templateOutput = activeTemplate?.allowedOutputs?.find((o: any) => o.outputItem?.id === sp.outputItemId);
+                                        const isIntermediate = templateOutput?.isIntermediate || false;
+                                        return (
+                                            <div key={sp.id} className={cn(
+                                                'flex items-center justify-between p-3 rounded-lg',
+                                                isIntermediate ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
+                                            )}>
+                                                <div className="flex-1">
+                                                    <span className="text-gray-400 mr-2">{index + 1}.</span>
+                                                    <span className="font-medium">{sp.name}</span>
+                                                    {isIntermediate && (
+                                                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-200 text-orange-700 font-medium">🔗 Intermedio</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-mono text-sm">{formatNumber(sp.weight)} kg</span>
+                                                    <span className="text-xs text-gray-500">({sp.units} pza)</span>
+                                                    <button
+                                                        onClick={() => removeSubProduct(sp.id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono text-sm">{formatNumber(sp.weight)} kg</span>
-                                                <span className="text-xs text-gray-500">({sp.units} pza)</span>
-                                                <button
-                                                    onClick={() => removeSubProduct(sp.id)}
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
 

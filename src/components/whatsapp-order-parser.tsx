@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
+import { Combobox } from '@/components/ui/combobox';
 
 interface MenuItem {
     id: string;
@@ -13,6 +14,7 @@ interface MenuItem {
 }
 
 interface ParsedLine {
+    id: string; // unique id for key
     raw: string;
     quantity: number;
     productName: string;
@@ -20,11 +22,19 @@ interface ParsedLine {
     matchScore: number;
     alternatives: MenuItem[];
     notes: string;
+    isCustom?: boolean; // manually added by user
+    isEditing?: boolean; // currently being edited
 }
 
 interface WhatsAppParserProps {
     onOrderReady: (items: CartItem[], customerName: string, customerPhone: string, customerAddress: string) => void;
 }
+
+// Known customizable items - these get special treatment
+const CUSTOMIZABLE_KEYWORDS = [
+    'tabla', 'arma tu', 'personaliza', 'combo', 'shanklish personalizado',
+    'armar', 'armada', 'especial personaliz',
+];
 
 // Normaliza texto para comparación fuzzy
 function normalize(text: string): string {
@@ -36,32 +46,52 @@ function normalize(text: string): string {
         .trim();
 }
 
-// Fuzzy match score (0-1)
+// Fuzzy match score (0-1) — improved algorithm
 function fuzzyScore(input: string, target: string): number {
     const a = normalize(input);
     const b = normalize(target);
 
-    // Coincidencia exacta
+    if (!a || !b) return 0;
+
+    // Exact match
     if (a === b) return 1;
 
-    // Contiene
-    if (b.includes(a)) return 0.9;
-    if (a.includes(b)) return 0.85;
+    // One contains the other
+    if (b.includes(a)) return 0.92;
+    if (a.includes(b)) return 0.88;
 
-    // Token matching - cuántas palabras del input están en el target
-    const inputTokens = a.split(' ').filter(t => t.length > 2);
-    const targetTokens = b.split(' ').filter(t => t.length > 2);
+    // Token matching
+    const inputTokens = a.split(' ').filter(t => t.length > 1);
+    const targetTokens = b.split(' ').filter(t => t.length > 1);
 
     if (inputTokens.length === 0 || targetTokens.length === 0) return 0;
 
     let matchCount = 0;
+    let partialMatchCount = 0;
     for (const token of inputTokens) {
-        if (targetTokens.some(t => t.includes(token) || token.includes(t))) {
+        const exactMatch = targetTokens.some(t => t === token);
+        const partialMatch = targetTokens.some(t => t.includes(token) || token.includes(t));
+        if (exactMatch) {
             matchCount++;
+        } else if (partialMatch) {
+            partialMatchCount++;
         }
     }
 
-    return matchCount / Math.max(inputTokens.length, 1) * 0.8;
+    const totalScore = (matchCount + partialMatchCount * 0.6) / Math.max(inputTokens.length, 1);
+    return totalScore * 0.85;
+}
+
+// Check if a line refers to a customizable item (tabla, arma tu shanklish, etc.)
+function isCustomizableItem(text: string): boolean {
+    const n = normalize(text);
+    return CUSTOMIZABLE_KEYWORDS.some(kw => n.includes(kw));
+}
+
+// Generate unique ID
+let _idCounter = 0;
+function genId() {
+    return `pl-${Date.now()}-${_idCounter++}`;
 }
 
 // Parsear una línea de texto a cantidad + nombre
@@ -69,29 +99,32 @@ function parseLine(line: string): { quantity: number; productName: string; notes
     const trimmed = line.trim();
     if (!trimmed || trimmed.length < 3) return null;
 
-    // Ignorar líneas que son saludos o irrelevantes
-    const ignorePatterns = /^(hola|buenos|buenas|ok|listo|gracia|perfecto|dale|por favor|si|no|ahi|claro|muchas|buen|hey|bueno|como|esta|cuando|donde|para|aqui|habla|saludo|necesito|quiero|quisiera|pedido|mi pedido|orden|mi orden)/i;
-    if (ignorePatterns.test(trimmed)) return null;
+    // Ignore greetings and irrelevant lines
+    const ignorePatterns = /^(hola|buenos|buenas|ok|listo|gracia|perfecto|dale|por favor|si|no|ahi|claro|muchas|buen|hey|bueno|como|esta|cuando|donde|aqui|habla|saludo|bienvenido|menu|ver|tienen|disponible|hay|precio|cuanto|cuesta|omitir|ya|voy|lista|vale|exacto|genial|super|excelente|listo|foto|imagen|audio|video|sticker|gif|documento|ubicacion|contacto|eliminaste)/i;
+    if (ignorePatterns.test(trimmed.replace(/^[^a-záéíóú]*/i, ''))) return null;
+
+    // Ignore very short lines that are likely not products
+    if (trimmed.length < 4 && !/^\d/.test(trimmed)) return null;
 
     let quantity = 1;
     let productName = trimmed;
     let notes = '';
 
-    // Extraer notas entre paréntesis
+    // Extract notes between parentheses
     const noteMatch = productName.match(/\(([^)]+)\)/);
     if (noteMatch) {
         notes = noteMatch[1];
         productName = productName.replace(/\(([^)]+)\)/, '').trim();
     }
 
-    // Extraer notas después de " - "
+    // Extract notes after " - " or ":"
     const dashMatch = productName.match(/\s[-–]\s(.+)$/);
     if (dashMatch) {
         notes = notes ? `${notes}, ${dashMatch[1]}` : dashMatch[1];
         productName = productName.replace(/\s[-–]\s.+$/, '').trim();
     }
 
-    // Patrones de cantidad al inicio: "2x", "2 x", "x2", "2  shak", "#2", "2-"
+    // Quantity patterns at start
     const qtyPatterns = [
         /^(\d+)\s*[xX×]\s*/,       // 2x, 2 x, 2×
         /^[xX×]\s*(\d+)\s+/,        // x2
@@ -108,7 +141,7 @@ function parseLine(line: string): { quantity: number; productName: string; notes
         }
     }
 
-    // Cantidad al final: "shawarma x2", "shawarma (2)"
+    // Quantity at end
     const qtyEndPatterns = [
         /\s*[xX×]\s*(\d+)$/,
         /\s*\((\d+)\)$/,
@@ -138,6 +171,12 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+
+    // For manual product adding
+    const [showAddProduct, setShowAddProduct] = useState(false);
+    const [manualProductId, setManualProductId] = useState('');
+    const [manualQuantity, setManualQuantity] = useState(1);
+    const [manualNotes, setManualNotes] = useState('');
 
     // Load menu on mount
     useEffect(() => {
@@ -171,7 +210,6 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
         if (!chatText.trim()) return;
         setIsParsing(true);
 
-        // Split into lines
         const lines = chatText.split('\n').filter(l => l.trim());
         const results: ParsedLine[] = [];
 
@@ -203,7 +241,10 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
             const parsed = parseLine(line);
             if (!parsed) continue;
 
-            // Find best match
+            // Check if this is a customizable item (tabla, arma tu shanklish)
+            const customizable = isCustomizableItem(parsed.productName);
+
+            // Find best match and alternatives
             let bestMatch: MenuItem | null = null;
             let bestScore = 0;
             const alternatives: MenuItem[] = [];
@@ -214,24 +255,35 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                     if (bestMatch) alternatives.push(bestMatch);
                     bestScore = score;
                     bestMatch = item;
-                } else if (score > 0.3) {
+                } else if (score > 0.25) {
                     alternatives.push(item);
                 }
             }
 
-            // Only accept matches above threshold
-            if (bestScore < 0.4) {
+            // For customizable items, lower the threshold — we want to show them even if no great match
+            const threshold = customizable ? 0.3 : 0.4;
+            if (bestScore < threshold) {
                 bestMatch = null;
             }
 
+            // If customizable and we found something, put the original text as notes
+            let notes = parsed.notes;
+            if (customizable && !notes) {
+                notes = `Personalizado: ${parsed.productName}`;
+            }
+
             results.push({
+                id: genId(),
                 raw: line.trim(),
                 quantity: parsed.quantity,
                 productName: parsed.productName,
                 matchedItem: bestMatch,
                 matchScore: bestScore,
-                alternatives: alternatives.sort((a, b) => fuzzyScore(parsed.productName, b.name) - fuzzyScore(parsed.productName, a.name)).slice(0, 5),
-                notes: parsed.notes
+                alternatives: alternatives
+                    .sort((a, b) => fuzzyScore(parsed.productName, b.name) - fuzzyScore(parsed.productName, a.name))
+                    .slice(0, 8),
+                notes,
+                isCustom: customizable,
             });
         }
 
@@ -239,20 +291,52 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
         setIsParsing(false);
     }, [chatText, allMenuItems]);
 
-    const updateMatch = (idx: number, item: MenuItem) => {
-        const newParsed = [...parsedLines];
-        newParsed[idx] = { ...newParsed[idx], matchedItem: item, matchScore: 1 };
-        setParsedLines(newParsed);
+    const updateMatch = (id: string, item: MenuItem) => {
+        setParsedLines(prev => prev.map(l => l.id === id ? { ...l, matchedItem: item, matchScore: 1, isEditing: false } : l));
     };
 
-    const updateQuantity = (idx: number, qty: number) => {
-        const newParsed = [...parsedLines];
-        newParsed[idx] = { ...newParsed[idx], quantity: qty };
-        setParsedLines(newParsed);
+    const updateQuantity = (id: string, qty: number) => {
+        if (qty <= 0) {
+            removeLine(id);
+            return;
+        }
+        setParsedLines(prev => prev.map(l => l.id === id ? { ...l, quantity: qty } : l));
     };
 
-    const removeLine = (idx: number) => {
-        setParsedLines(parsedLines.filter((_, i) => i !== idx));
+    const updateNotes = (id: string, notes: string) => {
+        setParsedLines(prev => prev.map(l => l.id === id ? { ...l, notes } : l));
+    };
+
+    const removeLine = (id: string) => {
+        setParsedLines(prev => prev.filter(l => l.id !== id));
+    };
+
+    const toggleEditing = (id: string) => {
+        setParsedLines(prev => prev.map(l => l.id === id ? { ...l, isEditing: !l.isEditing } : l));
+    };
+
+    // Add a product manually  
+    const addManualProduct = () => {
+        if (!manualProductId) return;
+        const item = allMenuItems.find(i => i.id === manualProductId);
+        if (!item) return;
+
+        setParsedLines(prev => [...prev, {
+            id: genId(),
+            raw: `(Agregado manualmente)`,
+            quantity: manualQuantity,
+            productName: item.name,
+            matchedItem: item,
+            matchScore: 1,
+            alternatives: [],
+            notes: manualNotes,
+            isCustom: false,
+        }]);
+
+        setManualProductId('');
+        setManualQuantity(1);
+        setManualNotes('');
+        setShowAddProduct(false);
     };
 
     const matchedLines = parsedLines.filter(l => l.matchedItem);
@@ -275,7 +359,10 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-500">Cargando menú...</p>
+                </div>
             </div>
         );
     }
@@ -296,18 +383,28 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                     value={chatText}
                     onChange={e => setChatText(e.target.value)}
                     onInput={e => setChatText((e.target as HTMLTextAreaElement).value)}
-                    placeholder={`Pega aquí el chat del cliente...\n\nEjemplo:\n2 shawarma mixto\n1 tabla familiar\n3 kebbe frito\nNombre: Juan Pérez\nDirección: Av. Libertador, Edif. Los Pinos, Apto 3B`}
+                    placeholder={`Pega aquí el chat del cliente...\n\nEjemplo:\n2 shawarma mixto grande\n1 tabla familiar\n3 kebbe frito\n1 arma tu shanklish (picante, tomate seco, pesto)\nNombre: Juan Pérez\nDirección: Av. Libertador, Edif. Los Pinos`}
                     rows={8}
                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-mono focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white resize-none"
                 />
 
-                <button
-                    onClick={parseChat}
-                    disabled={!chatText.trim() || isParsing}
-                    className="mt-3 w-full min-h-[48px] rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-3 font-semibold text-white shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                >
-                    {isParsing ? '⏳ Analizando...' : '🔍 Analizar Pedido'}
-                </button>
+                <div className="flex gap-2 mt-3">
+                    <button
+                        onClick={parseChat}
+                        disabled={!chatText.trim() || isParsing}
+                        className="flex-1 min-h-[48px] rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-3 font-semibold text-white shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                    >
+                        {isParsing ? '⏳ Analizando...' : '🔍 Analizar Pedido'}
+                    </button>
+                    {parsedLines.length > 0 && (
+                        <button
+                            onClick={() => { setParsedLines([]); setChatText(''); setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); }}
+                            className="min-h-[48px] rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                        >
+                            🗑️ Limpiar
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Results */}
@@ -341,122 +438,285 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                         </div>
                     </div>
 
-                    {/* Matched items */}
-                    {matchedLines.length > 0 && (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900/50 dark:bg-emerald-900/10">
-                            <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-3">
-                                ✅ Items Reconocidos ({matchedLines.length})
+                    {/* Summary bar */}
+                    <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 px-5 py-3 text-white shadow-lg">
+                        <div className="flex items-center gap-4">
+                            <div>
+                                <span className="text-sm opacity-80">Reconocidos</span>
+                                <span className="ml-1.5 text-lg font-bold">{matchedLines.length}</span>
+                            </div>
+                            {unmatchedLines.length > 0 && (
+                                <div>
+                                    <span className="text-sm opacity-80">Sin match</span>
+                                    <span className="ml-1.5 text-lg font-bold text-amber-300">{unmatchedLines.length}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="text-right">
+                            <span className="text-sm opacity-80">Total estimado</span>
+                            <span className="ml-2 text-xl font-bold">{formatCurrency(orderTotal)}</span>
+                        </div>
+                    </div>
+
+                    {/* ALL parsed items — unified list with edit capabilities */}
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
+                        <div className="border-b border-gray-200 px-5 py-3 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800 flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                🛒 Items del Pedido ({parsedLines.length})
                             </h4>
-                            <div className="space-y-2">
-                                {parsedLines.map((line, idx) => {
-                                    if (!line.matchedItem) return null;
-                                    return (
-                                        <div key={idx} className="flex items-center gap-3 rounded-lg bg-white p-3 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => updateQuantity(idx, Math.max(1, line.quantity - 1))}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 font-bold"
-                                                >
-                                                    −
-                                                </button>
-                                                <span className="w-8 text-center font-mono font-bold text-lg">{line.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(idx, line.quantity + 1)}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
+                            <button
+                                onClick={() => setShowAddProduct(!showAddProduct)}
+                                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            >
+                                + Agregar Producto
+                            </button>
+                        </div>
 
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900 dark:text-white">{line.matchedItem.name}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs text-gray-500">"{line.raw}"</p>
-                                                    {line.matchScore < 0.9 && (
-                                                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                                                            {Math.round(line.matchScore * 100)}% match
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {line.notes && (
-                                                    <p className="text-xs text-blue-500 mt-0.5">📝 {line.notes}</p>
-                                                )}
-                                            </div>
+                        {/* Manual add product */}
+                        {showAddProduct && (
+                            <div className="border-b border-gray-200 bg-emerald-50/30 px-5 py-3 dark:border-gray-700 flex items-center gap-3">
+                                <div className="flex-1">
+                                    <Combobox
+                                        items={allMenuItems.map(i => ({
+                                            value: i.id,
+                                            label: `${i.name} — ${formatCurrency(i.price)}`
+                                        }))}
+                                        value={manualProductId}
+                                        onChange={setManualProductId}
+                                        placeholder="Buscar producto del menú..."
+                                        searchPlaceholder="Shawarma, Tabla, Kibbe..."
+                                    />
+                                </div>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={manualQuantity}
+                                    onChange={e => setManualQuantity(parseInt(e.target.value) || 1)}
+                                    className="w-16 rounded-lg border border-gray-200 px-2 py-2 text-center text-sm min-h-[40px]"
+                                    placeholder="Cant"
+                                />
+                                <input
+                                    type="text"
+                                    value={manualNotes}
+                                    onChange={e => setManualNotes(e.target.value)}
+                                    className="w-40 rounded-lg border border-gray-200 px-3 py-2 text-sm min-h-[40px]"
+                                    placeholder="Notas..."
+                                />
+                                <button
+                                    onClick={addManualProduct}
+                                    disabled={!manualProductId}
+                                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-40 min-h-[40px]"
+                                >
+                                    ✓
+                                </button>
+                            </div>
+                        )}
 
-                                            <div className="text-right">
-                                                <p className="font-bold text-emerald-600">${(line.matchedItem.price * line.quantity).toFixed(2)}</p>
-                                                <p className="text-xs text-gray-400">${line.matchedItem.price.toFixed(2)} c/u</p>
-                                            </div>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {parsedLines.map((line) => (
+                                <div
+                                    key={line.id}
+                                    className={cn(
+                                        'px-5 py-3 transition-colors',
+                                        !line.matchedItem && 'bg-amber-50/50 dark:bg-amber-900/10',
+                                        line.isCustom && line.matchedItem && 'bg-purple-50/30 dark:bg-purple-900/10',
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {/* Status indicator */}
+                                        <div className={cn(
+                                            'flex h-8 w-8 items-center justify-center rounded-full text-sm flex-shrink-0',
+                                            line.matchedItem
+                                                ? 'bg-emerald-100 text-emerald-600'
+                                                : 'bg-amber-100 text-amber-600'
+                                        )}>
+                                            {line.matchedItem ? '✓' : '?'}
+                                        </div>
 
+                                        {/* Quantity controls */}
+                                        <div className="flex items-center gap-1 flex-shrink-0">
                                             <button
-                                                onClick={() => removeLine(idx)}
-                                                className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                                onClick={() => updateQuantity(line.id, line.quantity - 1)}
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 text-sm font-bold"
+                                            >
+                                                −
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={line.quantity}
+                                                onChange={e => updateQuantity(line.id, parseInt(e.target.value) || 1)}
+                                                className="w-10 text-center font-mono font-bold text-sm rounded border border-gray-200 py-1 dark:border-gray-600 dark:bg-gray-700"
+                                            />
+                                            <button
+                                                onClick={() => updateQuantity(line.id, line.quantity + 1)}
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 text-sm font-bold"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+
+                                        {/* Product info */}
+                                        <div className="flex-1 min-w-0">
+                                            {line.matchedItem ? (
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                                                            {line.matchedItem.name}
+                                                        </p>
+                                                        {line.isCustom && (
+                                                            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-bold text-purple-700 flex-shrink-0">
+                                                                PERSONALIZADO
+                                                            </span>
+                                                        )}
+                                                        {line.matchScore < 0.9 && line.matchScore > 0 && (
+                                                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 flex-shrink-0">
+                                                                {Math.round(line.matchScore * 100)}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-400 truncate">&quot;{line.raw}&quot;</p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                                                        <span className="font-mono text-amber-600">⚠️</span> &quot;{line.productName}&quot;
+                                                    </p>
+                                                    <p className="text-[11px] text-gray-400">No se encontró coincidencia en el menú</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Price */}
+                                        {line.matchedItem && (
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="font-bold text-emerald-600">{formatCurrency(line.matchedItem.price * line.quantity)}</p>
+                                                <p className="text-[10px] text-gray-400">{formatCurrency(line.matchedItem.price)} c/u</p>
+                                            </div>
+                                        )}
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <button
+                                                onClick={() => toggleEditing(line.id)}
+                                                className={cn(
+                                                    'flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors',
+                                                    line.isEditing
+                                                        ? 'bg-blue-100 text-blue-600'
+                                                        : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'
+                                                )}
+                                                title="Cambiar producto"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                onClick={() => removeLine(line.id)}
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 text-sm"
+                                                title="Eliminar"
                                             >
                                                 ✕
                                             </button>
                                         </div>
-                                    );
-                                })}
+                                    </div>
 
-                                <div className="mt-3 flex items-center justify-between border-t border-emerald-200 pt-3 dark:border-emerald-800">
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Estimado:</span>
-                                    <span className="text-xl font-bold text-emerald-600">${orderTotal.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                    {/* Notes */}
+                                    {(line.notes || line.isCustom) && (
+                                        <div className="ml-[72px] mt-1">
+                                            <input
+                                                type="text"
+                                                value={line.notes}
+                                                onChange={e => updateNotes(line.id, e.target.value)}
+                                                placeholder="Agregar notas (personalización, ingredientes, etc.)"
+                                                className={cn(
+                                                    'w-full rounded border px-2.5 py-1.5 text-xs',
+                                                    line.isCustom
+                                                        ? 'border-purple-200 bg-purple-50/50 text-purple-700 placeholder:text-purple-300'
+                                                        : 'border-blue-200 bg-blue-50/50 text-blue-700 placeholder:text-blue-300'
+                                                )}
+                                            />
+                                        </div>
+                                    )}
 
-                    {/* Unmatched items */}
-                    {unmatchedLines.length > 0 && (
-                        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900/50 dark:bg-amber-900/10">
-                            <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-3">
-                                ⚠️ No Reconocidos ({unmatchedLines.length})
-                            </h4>
-                            <div className="space-y-3">
-                                {parsedLines.map((line, idx) => {
-                                    if (line.matchedItem) return null;
-                                    return (
-                                        <div key={idx} className="rounded-lg bg-white p-3 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                    <span className="font-mono font-bold text-amber-600">{line.quantity}x</span> "{line.productName}"
-                                                </p>
-                                                <button
-                                                    onClick={() => removeLine(idx)}
-                                                    className="text-xs text-gray-400 hover:text-red-500"
-                                                >
-                                                    Ignorar
-                                                </button>
+                                    {/* Edit mode: change product selection */}
+                                    {line.isEditing && (
+                                        <div className="ml-[72px] mt-2 space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <Combobox
+                                                        items={allMenuItems.map(i => ({
+                                                            value: i.id,
+                                                            label: `${i.name} — ${formatCurrency(i.price)}`
+                                                        }))}
+                                                        value={line.matchedItem?.id || ''}
+                                                        onChange={val => {
+                                                            const item = allMenuItems.find(i => i.id === val);
+                                                            if (item) updateMatch(line.id, item);
+                                                        }}
+                                                        placeholder="Buscar producto del menú..."
+                                                        searchPlaceholder="Escribir nombre..."
+                                                    />
+                                                </div>
                                             </div>
 
+                                            {/* Quick alternatives */}
                                             {line.alternatives.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    <span className="text-xs text-gray-400">¿Quisiste decir?</span>
+                                                    <span className="text-[10px] text-gray-400 py-1">Sugerencias:</span>
                                                     {line.alternatives.map(alt => (
                                                         <button
                                                             key={alt.id}
-                                                            onClick={() => updateMatch(idx, alt)}
-                                                            className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                                            onClick={() => updateMatch(line.id, alt)}
+                                                            className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
                                                         >
-                                                            {alt.name} (${alt.price})
+                                                            {alt.name} <span className="text-gray-400">{formatCurrency(alt.price)}</span>
                                                         </button>
                                                     ))}
                                                 </div>
                                             )}
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    )}
+
+                                    {/* Show alternatives for unmatched items (always) */}
+                                    {!line.matchedItem && !line.isEditing && line.alternatives.length > 0 && (
+                                        <div className="ml-[72px] mt-2 flex flex-wrap gap-1.5">
+                                            <span className="text-[10px] text-gray-400 py-1">¿Quisiste decir?</span>
+                                            {line.alternatives.slice(0, 5).map(alt => (
+                                                <button
+                                                    key={alt.id}
+                                                    onClick={() => updateMatch(line.id, alt)}
+                                                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 transition-colors dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                                >
+                                                    {alt.name} <span className="opacity-60">{formatCurrency(alt.price)}</span>
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => toggleEditing(line.id)}
+                                                className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                                            >
+                                                🔍 Buscar en menú
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {parsedLines.length === 0 && (
+                                <div className="px-5 py-8 text-center text-gray-400 text-sm">
+                                    Analiza un chat para ver los items aquí
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     {/* Confirm button */}
                     {matchedLines.length > 0 && (
                         <button
                             onClick={handleConfirm}
-                            className="w-full min-h-[52px] rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-lg font-bold text-white shadow-lg hover:shadow-xl transition-all"
+                            className="w-full min-h-[56px] rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
                         >
-                            ✅ Cargar {matchedLines.length} items al carrito — ${orderTotal.toFixed(2)}
+                            <span className="text-lg">✅</span>
+                            <span>Cargar {matchedLines.length} items al carrito</span>
+                            <span className="rounded-full bg-white/20 px-3 py-1 text-sm">{formatCurrency(orderTotal)}</span>
                         </button>
                     )}
                 </div>
