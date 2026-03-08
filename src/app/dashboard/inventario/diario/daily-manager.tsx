@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getDailyInventoryAction, saveDailyInventoryCountsAction, closeDailyInventoryAction } from '@/app/actions/inventory-daily.actions';
+import { getDailyInventoryAction, saveDailyInventoryCountsAction, closeDailyInventoryAction, syncSalesFromOrdersAction, getWeeklyInventorySummaryAction } from '@/app/actions/inventory-daily.actions';
 import { toast } from 'react-hot-toast';
 import CriticalListManager from './critical-list-manager';
 import SalesEntryModal from './sales-entry-modal';
@@ -19,6 +19,9 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const [hasChanges, setHasChanges] = useState(false);
     const [showConfig, setShowConfig] = useState(false);
     const [showSalesModal, setShowSalesModal] = useState(false);
+    const [syncingSales, setSyncingSales] = useState(false);
+    const [showWeeklySummary, setShowWeeklySummary] = useState(false);
+    const [weeklySummary, setWeeklySummary] = useState<any[]>([]);
 
     // Cargar datos al cambiar fecha o área
     useEffect(() => {
@@ -102,6 +105,44 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
 
+            {/* Panel Variaciones Semanales */}
+            {showWeeklySummary && (
+                <div className="mx-4 mb-4 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 p-4">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-bold text-blue-800 dark:text-blue-200">📊 Últimos 7 días - Variaciones</h3>
+                        <button onClick={() => setShowWeeklySummary(false)} className="text-blue-600 hover:text-blue-800">✕</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-blue-700 dark:text-blue-300">
+                                    <th className="py-2 pr-4">Fecha</th>
+                                    <th className="py-2 pr-4">Estado</th>
+                                    <th className="py-2 pr-4 text-right">Variación Total</th>
+                                    <th className="py-2 pr-4 text-right">Items con Faltante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {weeklySummary.length === 0 ? (
+                                    <tr><td colSpan={4} className="py-4 text-center text-gray-500">Sin datos para esta área</td></tr>
+                                ) : (
+                                    weeklySummary.map((d: any) => (
+                                        <tr key={d.date} className="border-t border-blue-200 dark:border-blue-800">
+                                            <td className="py-2">{new Date(d.date).toLocaleDateString('es-VE')}</td>
+                                            <td className="py-2">
+                                                <span className={d.status === 'CLOSED' ? 'text-green-600' : 'text-amber-600'}>{d.status === 'CLOSED' ? '✓ Cerrado' : 'Borrador'}</span>
+                                            </td>
+                                            <td className="py-2 text-right font-mono">{d.totalVariance >= 0 ? '+' : ''}{d.totalVariance?.toFixed(2) || '0'}</td>
+                                            <td className="py-2 text-right">{d.negativeCount > 0 ? <span className="text-red-600 font-bold">{d.negativeCount}</span> : '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Modales */}
             {showConfig && (
                 <CriticalListManager
@@ -144,18 +185,48 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
 
                     <div className="flex gap-2 self-end pb-0.5">
                         <button
+                            onClick={async () => {
+                                const willShow = !showWeeklySummary;
+                                setShowWeeklySummary(willShow);
+                                if (willShow) {
+                                    const res = await getWeeklyInventorySummaryAction(selectedArea, selectedDate);
+                                    if (res.success) setWeeklySummary(res.data || []);
+                                }
+                            }}
+                            className={`px-4 py-2 text-sm font-bold rounded-xl border shadow-sm transition-all ${showWeeklySummary ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:border-blue-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'}`}
+                        >
+                            📊 Variaciones Semanales
+                        </button>
+                        <button
                             onClick={() => setShowConfig(true)}
                             className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 shadow-sm transition-all"
                         >
                             ⚙️ Configurar Items
                         </button>
                         {!isClosed && data && !isProduction && (
-                            <button
-                                onClick={() => setShowSalesModal(true)}
-                                className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
-                            >
-                                💳 Cargar Ventas POS
-                            </button>
+                            <>
+                                <button
+                                    onClick={async () => {
+                                        setSyncingSales(true);
+                                        const res = await syncSalesFromOrdersAction(data.id);
+                                        if (res.success) {
+                                            toast.success(res.message);
+                                            loadData();
+                                        } else toast.error(res.message);
+                                        setSyncingSales(false);
+                                    }}
+                                    disabled={syncingSales || loading}
+                                    className="px-4 py-2 text-sm font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-xl hover:bg-emerald-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {syncingSales ? '...' : '📥'} Importar desde Cargar Ventas
+                                </button>
+                                <button
+                                    onClick={() => setShowSalesModal(true)}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
+                                >
+                                    💳 Cargar Ventas Manual
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

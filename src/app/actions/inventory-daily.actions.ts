@@ -35,12 +35,19 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
         const criticalItems = areaCriticals.map(ac => ac.inventoryItem).filter(i => i.isActive);
 
         // 3. CALCULAR ENTRADAS Y SALIDAS SEGÚN EL ÁREA
+        // Fecha efectiva: processedAt (cuando se marcó completado) o createdAt si no hay processedAt. NO updatedAt.
+        const transferDateFilter = {
+            OR: [
+                { processedAt: { gte: startOfDay, lte: endOfDay } },
+                { AND: [{ processedAt: null }, { createdAt: { gte: startOfDay, lte: endOfDay } }] }
+            ]
+        };
         // ── Transferencias donde ESTA ÁREA es DESTINO (entradas) ──
         const inboundRequisitions = await prisma.requisition.findMany({
             where: {
                 targetAreaId: areaId,
                 status: 'COMPLETED',
-                updatedAt: { gte: startOfDay, lte: endOfDay }
+                ...transferDateFilter
             },
             include: { items: true }
         });
@@ -57,7 +64,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             where: {
                 sourceAreaId: areaId,
                 status: 'COMPLETED',
-                updatedAt: { gte: startOfDay, lte: endOfDay }
+                ...transferDateFilter
             },
             include: { items: true }
         });
@@ -336,6 +343,89 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
 }
 
 // ============================================================================
+// SINCRONIZAR VENTAS DESDE CARGAR VENTAS / POS (SalesOrder)
+// ============================================================================
+/**
+ * Importa el consumo de ventas desde las órdenes registradas (Cargar Ventas, POS)
+ * para la fecha y área del inventario diario. Reemplaza las ventas manuales previas.
+ */
+export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ success: boolean; message: string; orderCount?: number }> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const daily = await prisma.dailyInventory.findUnique({
+            where: { id: dailyId },
+            include: { items: true }
+        });
+        if (!daily) return { success: false, message: 'Inventario no encontrado' };
+
+        const startOfDay = new Date(daily.date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(daily.date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Órdenes completadas del día en esta área
+        const orders = await prisma.salesOrder.findMany({
+            where: {
+                areaId: daily.areaId,
+                status: 'COMPLETED',
+                createdAt: { gte: startOfDay, lte: endOfDay }
+            },
+            include: {
+                items: { include: { menuItem: true } }
+            }
+        });
+
+        const totalConsumption = new Map<string, number>();
+
+        for (const order of orders) {
+            for (const item of order.items) {
+                if (item.quantity <= 0) continue;
+
+                const menuItem = item.menuItem;
+                if (menuItem?.recipeId) {
+                    const recipe = await prisma.recipe.findUnique({
+                        where: { id: menuItem.recipeId },
+                        include: { ingredients: true }
+                    });
+                    if (recipe) {
+                        for (const ing of recipe.ingredients) {
+                            const qty = ing.quantity * item.quantity;
+                            const current = totalConsumption.get(ing.ingredientItemId) || 0;
+                            totalConsumption.set(ing.ingredientItemId, current + qty);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Actualizar sales SOLO para items con consumo de recetas (no tocar transferencias salientes)
+        // Para área producción: sales = transferencias salientes (ya calculadas). No sobrescribir.
+        const itemsWithConsumption = Array.from(totalConsumption.entries());
+        for (const [itemId, consumption] of itemsWithConsumption) {
+            const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
+            if (dailyItem) {
+                await prisma.dailyInventoryItem.update({
+                    where: { id: dailyItem.id },
+                    data: { sales: consumption }
+                });
+            }
+        }
+
+        revalidatePath('/dashboard/inventario/diario');
+        return {
+            success: true,
+            message: `Ventas sincronizadas: ${orders.length} órdenes importadas`,
+            orderCount: orders.length
+        };
+    } catch (error) {
+        console.error('Error sincronizando ventas:', error);
+        return { success: false, message: 'Error al sincronizar ventas' };
+    }
+}
+
+// ============================================================================
 // CERRAR DÍA
 // ============================================================================
 export async function closeDailyInventoryAction(dailyId: string) {
@@ -357,6 +447,48 @@ export async function closeDailyInventoryAction(dailyId: string) {
     } catch (error) {
         console.error('Error closing inventory:', error);
         return { success: false, message: 'Error al finalizar' };
+    }
+}
+
+// ============================================================================
+// RESUMEN SEMANAL DE VARIACIONES
+// ============================================================================
+export async function getWeeklyInventorySummaryAction(areaId: string, endDateStr?: string) {
+    try {
+        const endDate = endDateStr ? new Date(endDateStr) : new Date();
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
+
+        const dailies = await prisma.dailyInventory.findMany({
+            where: {
+                areaId,
+                date: { gte: startDate, lte: endDate }
+            },
+            include: {
+                items: true,
+                area: true
+            },
+            orderBy: { date: 'asc' }
+        });
+
+        const summary = dailies.map(d => {
+            const totalVariance = d.items.reduce((sum, i) => sum + (i.variance || 0), 0);
+            const negativeCount = d.items.filter(i => (i.variance || 0) < -0.01).length;
+            return {
+                date: d.date,
+                status: d.status,
+                itemCount: d.items.length,
+                totalVariance,
+                negativeCount,
+                closedAt: d.closedAt
+            };
+        });
+
+        return { success: true, data: summary };
+    } catch (error) {
+        console.error('Error getting weekly summary:', error);
+        return { success: false, data: [] };
     }
 }
 
