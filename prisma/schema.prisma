@@ -981,6 +981,7 @@ model SupplierItem {
 model PurchaseOrder {
   id              String   @id @default(cuid())
   orderNumber     String   @unique // Ej: OC-2026-0001
+  orderName       String?  // Nombre descriptivo: VEGETALES, COCHE, etc.
   
   supplierId      String?
   supplier        Supplier? @relation(fields: [supplierId], references: [id])

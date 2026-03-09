@@ -33,6 +33,7 @@ export interface LowStockItem {
 }
 
 export interface CreatePurchaseOrderInput {
+    orderName?: string;
     supplierId?: string;
     expectedDate?: Date;
     notes?: string;
@@ -299,6 +300,7 @@ export async function createPurchaseOrderAction(
         const order = await prisma.purchaseOrder.create({
             data: {
                 orderNumber,
+                orderName: input.orderName?.trim() || null,
                 supplierId: input.supplierId || null,
                 expectedDate: input.expectedDate,
                 notes: input.notes,
@@ -359,6 +361,7 @@ export async function getPurchaseOrdersAction(status?: string) {
         return orders.map(order => ({
             id: order.id,
             orderNumber: order.orderNumber,
+            orderName: order.orderName,
             status: order.status,
             supplierName: order.supplier?.name || 'Sin proveedor',
             orderDate: order.orderDate,
@@ -721,6 +724,9 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
         let text = `📋 *ORDEN DE COMPRA*\n`;
         text += `━━━━━━━━━━━━━━━━━━━━\n`;
         text += `*Número:* ${order.orderNumber}\n`;
+        if (order.orderName) {
+            text += `*Nombre:* ${order.orderName}\n`;
+        }
         text += `*Fecha:* ${date}\n`;
         if (order.supplier) {
             text += `*Proveedor:* ${order.supplier.name}\n`;

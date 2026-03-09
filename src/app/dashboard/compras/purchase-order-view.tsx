@@ -9,8 +9,9 @@ import {
     receivePurchaseOrderItemsAction, updateStockLevelsAction,
     LowStockItem, StockConfigItem
 } from '@/app/actions/purchase.actions';
+import WhatsAppPurchaseOrderParser from '@/components/whatsapp-purchase-order-parser';
 
-type ViewMode = 'orders' | 'create' | 'auto' | 'config' | 'receive';
+type ViewMode = 'orders' | 'create' | 'auto' | 'config' | 'receive' | 'whatsapp';
 
 interface OrderItem {
     inventoryItemId: string;
@@ -31,6 +32,7 @@ export default function PurchaseOrderView() {
     const [areas, setAreas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [orderName, setOrderName] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const [expectedDate, setExpectedDate] = useState('');
     const [notes, setNotes] = useState('');
@@ -91,6 +93,26 @@ export default function PurchaseOrderView() {
         setSearchQuery('');
     }
 
+    function handleWhatsAppOrderReady(items: { inventoryItemId: string; name: string; category: string; quantity: number; unit: string }[], supplierName?: string, extractedNotes?: string) {
+        const newOrderItems: OrderItem[] = items.map(i => ({
+            inventoryItemId: i.inventoryItemId,
+            name: i.name,
+            category: i.category,
+            quantity: i.quantity,
+            unit: i.unit,
+            unitPrice: 0,
+        }));
+        setOrderItems(newOrderItems);
+        let finalNotes = extractedNotes || '';
+        if (supplierName) {
+            const matched = suppliers.find(s => s.name.toLowerCase().includes(supplierName.toLowerCase()) || supplierName.toLowerCase().includes(s.name.toLowerCase()));
+            setSelectedSupplier(matched?.id || '');
+            if (!matched) finalNotes = (finalNotes ? `Proveedor: ${supplierName}\n` : `Proveedor: ${supplierName}`) + finalNotes;
+        }
+        setNotes(finalNotes);
+        setViewMode('create');
+    }
+
     function updateItemQuantity(itemId: string, quantity: number) {
         setOrderItems(orderItems.map(item => item.inventoryItemId === itemId ? { ...item, quantity } : item));
     }
@@ -103,10 +125,11 @@ export default function PurchaseOrderView() {
         if (orderItems.length === 0) return;
         setIsSubmitting(true);
         const result = await createPurchaseOrderAction({
+            orderName: orderName?.trim() || undefined,
             supplierId: selectedSupplier || undefined, expectedDate: expectedDate ? new Date(expectedDate) : undefined,
             notes: notes || undefined, items: orderItems.map(item => ({ inventoryItemId: item.inventoryItemId, quantityOrdered: item.quantity, unit: item.unit, unitPrice: item.unitPrice }))
         });
-        if (result.success) { alert(`✅ ${result.message}`); setOrderItems([]); setSelectedSupplier(''); setExpectedDate(''); setNotes(''); setViewMode('orders'); loadData(); }
+        if (result.success) { alert(`✅ ${result.message}`); setOrderItems([]); setOrderName(''); setSelectedSupplier(''); setExpectedDate(''); setNotes(''); setViewMode('orders'); loadData(); }
         else alert(`❌ ${result.message}`);
         setIsSubmitting(false);
     }
@@ -184,10 +207,10 @@ export default function PurchaseOrderView() {
                     <p className="text-gray-500">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    {(['orders', 'auto', 'create', 'config', 'receive'] as ViewMode[]).map(mode => {
-                        const labels: Record<ViewMode, string> = { orders: '📋 Órdenes', auto: '✨ Auto-Generar', create: '➕ Manual', config: '⚙️ Stock Mín.', receive: '📥 Recibir' };
-                        return <button key={mode} onClick={() => { setViewMode(mode); if (mode === 'orders') loadData(); }}
-                            className={cn('px-3 py-2 rounded-lg text-xs font-medium transition-all', viewMode === mode ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300')}>{labels[mode]}</button>;
+                    {(['orders', 'auto', 'create', 'whatsapp', 'config', 'receive'] as ViewMode[]).map(mode => {
+                        const labels: Record<ViewMode, string> = { orders: '📋 Órdenes', auto: '✨ Auto-Generar', create: '➕ Manual', whatsapp: '💬 WhatsApp', config: '⚙️ Stock Mín.', receive: '📥 Recibir' };
+                        return <button key={mode} onClick={() => { setViewMode(mode); if (mode === 'orders') loadData(); if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems); }}
+                            className={cn('px-3 py-2 rounded-lg text-xs font-medium transition-all', viewMode === mode ? (mode === 'whatsapp' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg') : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300')}>{labels[mode]}</button>;
                     })}
                 </div>
             </div>
@@ -290,6 +313,29 @@ export default function PurchaseOrderView() {
                 </div>
             )}
 
+            {/* ===== WHATSAPP: Cargar orden desde chat ===== */}
+            {viewMode === 'whatsapp' && (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                        <WhatsAppPurchaseOrderParser onOrderReady={handleWhatsAppOrderReady} />
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-amber-50/50 dark:bg-gray-800 dark:border-gray-700 p-6">
+                        <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">💡 Cómo usar</h3>
+                        <ol className="text-sm text-amber-900 dark:text-amber-100 space-y-2 list-decimal list-inside">
+                            <li>Exporta o copia el chat de WhatsApp con tu proveedor</li>
+                            <li>Pega el texto en el área de la izquierda</li>
+                            <li>Haz clic en &quot;Analizar Orden&quot;</li>
+                            <li>Revisa y corrige los items reconocidos</li>
+                            <li>Haz clic en &quot;Cargar items a la orden&quot;</li>
+                            <li>Completa proveedor, fecha y crea la orden</li>
+                        </ol>
+                        <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">
+                            Formatos soportados: 2 kg Arroz, 5x Aceite, 10 unidades Harina, etc.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* ===== CREATE: Manual ===== */}
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -330,7 +376,7 @@ export default function PurchaseOrderView() {
                                     className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                                     <option value="">Seleccionar orden...</option>
                                     {orders.filter(o => ['DRAFT', 'SENT', 'PARTIAL'].includes(o.status)).map(o => (
-                                        <option key={o.id} value={o.id}>{o.orderNumber} - {o.supplierName} ({o.itemCount} items) {getStatusLabel(o.status)}</option>
+                                        <option key={o.id} value={o.id}>{o.orderNumber}{o.orderName ? ` (${o.orderName})` : ''} - {o.supplierName} ({o.itemCount} items) {getStatusLabel(o.status)}</option>
                                     ))}
                                 </select>
                             </div>
@@ -393,6 +439,8 @@ export default function PurchaseOrderView() {
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-gray-900 dark:text-white">📋 Nueva Orden de Compra</h2></div>
                 <div className="p-6 space-y-4">
+                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de orden (opcional)</label>
+                        <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
                     <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proveedor (opcional)</label>
                         <select value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                             <option value="">Sin proveedor específico</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -447,7 +495,11 @@ export default function PurchaseOrderView() {
                                 <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><span className="text-4xl">📭</span><p className="mt-2">No hay órdenes de compra</p></td></tr>
                             ) : orders.map(order => (
                                 <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                    <td className="px-6 py-4"><p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p><p className="text-xs text-gray-500">{order.createdBy}</p></td>
+                                    <td className="px-6 py-4">
+                                        <p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p>
+                                        {order.orderName && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{order.orderName}</p>}
+                                        <p className="text-xs text-gray-500">{order.createdBy}</p>
+                                    </td>
                                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{order.supplierName}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{new Date(order.orderDate).toLocaleDateString('es-VE')}</td>
                                     <td className="px-6 py-4 text-center"><span className="font-mono">{order.itemCount}</span></td>
