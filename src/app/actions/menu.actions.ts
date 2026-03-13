@@ -62,7 +62,6 @@ export async function getCategoriesAction() {
 export async function createMenuItemAction(data: MenuItemData): Promise<ActionResult> {
     try {
         const session = await getSession();
-        // if (!session || session.role !== 'OWNER' ...) // Validación de permisos idealmente
 
         // Generar SKU automático si no viene
         let sku = data.sku;
@@ -83,11 +82,49 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
             }
         });
 
+        // AUTO-CREAR STUB DE RECETA vinculado al item del menú
+        try {
+            const invSku = `FG-${data.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
+            const invItem = await prisma.inventoryItem.create({
+                data: {
+                    name: data.name,
+                    sku: invSku,
+                    type: 'FINISHED_GOOD',
+                    baseUnit: 'PORCION',
+                    isActive: true,
+                    description: data.description,
+                    category: 'MENU',
+                }
+            });
+
+            const recipe = await prisma.recipe.create({
+                data: {
+                    name: data.name,
+                    description: `Receta de ${data.name} - completar ingredientes`,
+                    outputItemId: invItem.id,
+                    outputQuantity: 1,
+                    outputUnit: 'PORCION',
+                    yieldPercentage: 100,
+                    isApproved: true,
+                    createdById: session?.id ?? null,
+                }
+            });
+
+            await prisma.menuItem.update({
+                where: { id: newItem.id },
+                data: { recipeId: recipe.id }
+            });
+        } catch (recipeErr) {
+            // No fallamos la creación del item si la receta falla
+            console.warn('No se pudo auto-crear receta stub:', recipeErr);
+        }
+
         revalidatePath('/dashboard/menu');
         revalidatePath('/dashboard/pos/restaurante');
         revalidatePath('/dashboard/pos/delivery');
+        revalidatePath('/dashboard/recetas');
 
-        return { success: true, message: 'Producto creado exitosamente', data: newItem };
+        return { success: true, message: 'Producto creado con receta vacía lista para completar', data: newItem };
     } catch (error) {
         console.error('Error creating item:', error);
         return { success: false, message: 'Error al crear el producto' };
@@ -144,6 +181,98 @@ export async function updateMenuItemNameAction(id: string, newName: string): Pro
         return { success: true, message: 'Nombre actualizado' };
     } catch (error) {
         return { success: false, message: 'Error al actualizar nombre' };
+    }
+}
+
+// ============================================================================
+// RECETAS VINCULADAS AL MENÚ
+// ============================================================================
+
+/**
+ * Retorna los items del menú que NO tienen receta asignada
+ */
+export async function getMenuItemsWithoutRecipeAction() {
+    try {
+        const items = await prisma.menuItem.findMany({
+            where: {
+                isActive: true,
+                recipeId: null,
+            },
+            include: {
+                category: { select: { name: true } }
+            },
+            orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }]
+        });
+        return { success: true, data: items };
+    } catch (error) {
+        console.error('Error fetching items without recipe:', error);
+        return { success: false, message: 'Error al cargar items sin receta', data: [] };
+    }
+}
+
+/**
+ * Vincula manualmente un MenuItem a una Receta existente
+ */
+export async function linkMenuItemToRecipeAction(menuItemId: string, recipeId: string): Promise<ActionResult> {
+    try {
+        await prisma.menuItem.update({
+            where: { id: menuItemId },
+            data: { recipeId }
+        });
+        revalidatePath('/dashboard/menu');
+        revalidatePath('/dashboard/recetas');
+        return { success: true, message: 'Receta vinculada exitosamente' };
+    } catch (error) {
+        return { success: false, message: 'Error al vincular receta' };
+    }
+}
+
+/**
+ * Auto-crea stub de receta para un MenuItem existente que no tiene receta
+ */
+export async function createRecipeStubForMenuItemAction(menuItemId: string): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        const menuItem = await prisma.menuItem.findUnique({ where: { id: menuItemId } });
+        if (!menuItem) return { success: false, message: 'Item no encontrado' };
+        if (menuItem.recipeId) return { success: false, message: 'El item ya tiene receta' };
+
+        const invSku = `FG-${menuItem.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
+        const invItem = await prisma.inventoryItem.create({
+            data: {
+                name: menuItem.name,
+                sku: invSku,
+                type: 'FINISHED_GOOD',
+                baseUnit: 'PORCION',
+                isActive: true,
+                category: 'MENU',
+            }
+        });
+
+        const recipe = await prisma.recipe.create({
+            data: {
+                name: menuItem.name,
+                description: `Receta de ${menuItem.name} - completar ingredientes`,
+                outputItemId: invItem.id,
+                outputQuantity: 1,
+                outputUnit: 'PORCION',
+                yieldPercentage: 100,
+                isApproved: true,
+                createdById: session?.id ?? null,
+            }
+        });
+
+        await prisma.menuItem.update({
+            where: { id: menuItemId },
+            data: { recipeId: recipe.id }
+        });
+
+        revalidatePath('/dashboard/menu');
+        revalidatePath('/dashboard/recetas');
+        return { success: true, message: 'Receta stub creada exitosamente', data: { recipeId: recipe.id } };
+    } catch (error) {
+        console.error('Error creating recipe stub:', error);
+        return { success: false, message: 'Error al crear receta stub' };
     }
 }
 

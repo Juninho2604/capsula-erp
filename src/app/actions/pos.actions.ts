@@ -35,10 +35,12 @@ export interface CreateOrderData {
     customerPhone?: string;
     customerAddress?: string;
     items: CartItem[];
-    paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE_PAY' | 'MULTIPLE';
+    paymentMethod?: string; // 'BS_POS', 'ZELLE', 'CASH_USD', 'MOBILE_PAY', 'CASH', 'CARD', 'TRANSFER', 'MULTIPLE'
     amountPaid?: number;
     notes?: string;
-    discountType?: string; // 'DIVISAS_33', 'CORTESIA_100', 'NONE'
+    discountType?: string; // 'DIVISAS_33', 'CORTESIA', 'NONE'
+    discountPercent?: number; // Para cortesía: 0-100
+    courtesyReason?: string; // Descripción de la cortesía
     authorizedById?: string; // ID del gerente que autorizó
 }
 
@@ -202,15 +204,30 @@ export async function createSalesOrderAction(
         let discount = 0;
         let discountReason = '';
 
-        if (data.discountType === 'DIVISAS_33') {
-            discount = subtotal * 0.33;
-            discountReason = 'Pago en Divisas (33%)';
-        } else if (data.discountType === 'CORTESIA_100') {
-            discount = subtotal;
-            discountReason = 'Cortesía Autorizada (100%)';
+        // Descuento por divisas: se activa cuando el método de pago es ZELLE o CASH_USD,
+        // O cuando discountType es DIVISAS_33 (compatibilidad con órdenes anteriores)
+        const isDivisas = data.paymentMethod === 'ZELLE' || data.paymentMethod === 'CASH_USD' || data.discountType === 'DIVISAS_33';
+
+        if (data.discountType === 'CORTESIA') {
+            const pct = Math.min(100, Math.max(0, data.discountPercent ?? 100));
+            discount = subtotal * (pct / 100);
+            discountReason = data.courtesyReason
+                ? `Cortesía ${pct}%: ${data.courtesyReason}`
+                : `Cortesía Autorizada (${pct}%)`;
             if (!data.authorizedById) {
                 discountReason += ' [Sin ID Autorizador]';
             }
+        } else if (isDivisas) {
+            discount = subtotal * 0.33;
+            discountReason = data.paymentMethod === 'ZELLE'
+                ? 'Pago Zelle - Divisas (33%)'
+                : data.paymentMethod === 'CASH_USD'
+                ? 'Efectivo USD - Divisas (33%)'
+                : 'Pago en Divisas (33%)';
+        } else if (data.discountType === 'CORTESIA_100') {
+            // Retrocompatibilidad con órdenes anteriores
+            discount = subtotal;
+            discountReason = 'Cortesía Autorizada (100%)';
         }
 
         // Si discount excede subtotal (por error redondeo), ajustar

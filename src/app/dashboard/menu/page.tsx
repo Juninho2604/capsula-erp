@@ -8,7 +8,8 @@ import {
     createMenuItemAction,
     toggleMenuItemStatusAction,
     ensureBasicCategoriesAction,
-    getCategoriesAction
+    getCategoriesAction,
+    createRecipeStubForMenuItemAction
 } from '@/app/actions/menu.actions';
 
 export default function MenuManagementPage() {
@@ -29,6 +30,10 @@ export default function MenuManagementPage() {
     // Estado para edición inline de nombre
     const [editingNameId, setEditingNameId] = useState<string | null>(null);
     const [editingNameValue, setEditingNameValue] = useState('');
+
+    // Filtro sin receta
+    const [showOnlyNoRecipe, setShowOnlyNoRecipe] = useState(false);
+    const [creatingRecipeFor, setCreatingRecipeFor] = useState<string | null>(null);
 
     // Cargar datos
     const loadData = async () => {
@@ -114,13 +119,29 @@ export default function MenuManagementPage() {
         loadData();
     };
 
-    // Filtrado de búsqueda
+    const handleCreateRecipeStub = async (itemId: string) => {
+        setCreatingRecipeFor(itemId);
+        const result = await createRecipeStubForMenuItemAction(itemId);
+        if (result.success) {
+            loadData();
+        } else {
+            alert(result.message);
+        }
+        setCreatingRecipeFor(null);
+    };
+
+    // Conteo de items sin receta
+    const itemsWithoutRecipe = categories.flatMap(c => c.items).filter((i: any) => !i.recipeId).length;
+
+    // Filtrado de búsqueda + filtro sin receta
     const filteredCategories = categories.map(cat => ({
         ...cat,
-        items: cat.items.filter((item: any) =>
-            item.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    })).filter(cat => cat.items.length > 0 || searchTerm === '');
+        items: cat.items.filter((item: any) => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesRecipeFilter = !showOnlyNoRecipe || !item.recipeId;
+            return matchesSearch && matchesRecipeFilter;
+        })
+    })).filter(cat => cat.items.length > 0);
 
     if (isLoading) {
         return <div className="p-8 text-center text-white">Cargando menú...</div>;
@@ -143,16 +164,27 @@ export default function MenuManagementPage() {
                 </button>
             </div>
 
-            {/* Barra de búsqueda */}
-            <div className="mb-6 relative">
-                <span className="absolute left-4 top-3 text-gray-500">🔍</span>
-                <input
-                    type="text"
-                    placeholder="Buscar plato..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-amber-500 transition-colors"
-                />
+            {/* Barra de búsqueda + filtros */}
+            <div className="mb-6 flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                    <span className="absolute left-4 top-3 text-gray-500">🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Buscar plato..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                    />
+                </div>
+                <button
+                    onClick={() => setShowOnlyNoRecipe(!showOnlyNoRecipe)}
+                    className={`px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border ${showOnlyNoRecipe ? 'bg-red-500/20 border-red-500 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500/50'}`}
+                >
+                    ⚠️ Sin Receta
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${itemsWithoutRecipe > 0 ? 'bg-red-500 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                        {itemsWithoutRecipe}
+                    </span>
+                </button>
             </div>
 
             {/* Lista por Categorías */}
@@ -202,7 +234,23 @@ export default function MenuManagementPage() {
                                         <div className="text-sm text-gray-400">{item.description || 'Sin descripción'}</div>
                                     </div>
 
-                                    <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-3 flex-wrap justify-end">
+                                        {/* Receta Status */}
+                                        {item.recipeId ? (
+                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1">
+                                                📋 Receta ✓
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleCreateRecipeStub(item.id)}
+                                                disabled={creatingRecipeFor === item.id}
+                                                className="px-2 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                                title="Crear receta vacía para este plato"
+                                            >
+                                                {creatingRecipeFor === item.id ? '⏳' : '⚠️'} Sin Receta
+                                            </button>
+                                        )}
+
                                         {/* Precio Editable */}
                                         <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-1">
                                             <span className="text-amber-500 font-bold mr-1">$</span>

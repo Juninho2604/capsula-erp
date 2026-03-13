@@ -1,12 +1,19 @@
 
 import Link from 'next/link';
 import { getRecipesAction } from '@/app/actions/recipe.actions';
+import { getMenuItemsWithoutRecipeAction } from '@/app/actions/menu.actions';
 import RecipeList from './RecipeList';
+import MissingRecipesPanel from './MissingRecipesPanel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RecetasPage() {
-    const allRecipes = await getRecipesAction();
+    const [allRecipes, missingResult] = await Promise.all([
+        getRecipesAction(),
+        getMenuItemsWithoutRecipeAction(),
+    ]);
+
+    const missingItems = missingResult.data ?? [];
 
     return (
         <div className="space-y-6 animate-in">
@@ -18,6 +25,11 @@ export default async function RecetasPage() {
                     </h1>
                     <p className="text-gray-500">
                         {allRecipes.length} recetas disponibles
+                        {missingItems.length > 0 && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                ⚠️ {missingItems.length} platos sin receta
+                            </span>
+                        )}
                     </p>
                 </div>
                 <Link
@@ -27,6 +39,11 @@ export default async function RecetasPage() {
                     ➕ Nueva Receta
                 </Link>
             </div>
+
+            {/* Platos del Menú sin Receta */}
+            {missingItems.length > 0 && (
+                <MissingRecipesPanel items={missingItems} />
+            )}
 
             {/* Recipe List Component */}
             {allRecipes.length > 0 ? (
