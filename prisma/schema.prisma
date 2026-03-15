@@ -25,9 +25,14 @@ model User {
   lastName      String
   role          String    @default("CHEF") // OWNER, AUDITOR, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD
   pin           String?   // CÃ³digo de 4-6 dÃ­gitos para autorizaciÃ³n rÃ¡pida
+  allowedModules String?  // JSON array de módulos permitidos (null = acceso por rol)
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Soft Delete
+  deletedAt     DateTime?
+  deletedById   String?
 
   // Relaciones
   inventoryMovements InventoryMovement[]
@@ -81,8 +86,13 @@ model Area {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
+
   // Relaciones
   inventoryLocations InventoryLocation[]
+  inventoryMovements InventoryMovement[]
 
   // Requisiciones
   requisitionsTarget Requisition[] @relation("RequisitionTarget")
@@ -124,6 +134,10 @@ model InventoryItem {
   isCritical      Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
 
   // Relaciones
   stockLevels     InventoryLocation[]
@@ -233,12 +247,27 @@ model InventoryMovement {
   loanId          String?
   loan            InventoryLoan? @relation(fields: [loanId], references: [id])
 
+  // Ubicación del movimiento
+  areaId          String?
+  area            Area?    @relation(fields: [areaId], references: [id])
+
+  // Vinculaciones cruzadas (trazabilidad completa)
+  productionOrderId  String?
+  requisitionId      String?
+  purchaseOrderId    String?
+  auditId            String?
+  proteinProcessingId String?
+
   @@index([inventoryItemId])
   @@index([movementType])
   @@index([createdAt])
   @@index([salesOrderId])
   @@index([loanId])
   @@index([createdById])
+  @@index([areaId])
+  @@index([productionOrderId])
+  @@index([requisitionId])
+  @@index([purchaseOrderId])
 }
 
 // ============================================================================
@@ -291,6 +320,10 @@ model Recipe {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
+
   createdById     String?
   createdBy       User?    @relation(fields: [createdById], references: [id])
 
@@ -350,6 +383,10 @@ model ProductionOrder {
   createdAt       DateTime @default(now())
   createdById     String
   createdBy       User     @relation(fields: [createdById], references: [id])
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
 
   @@index([status])
   @@index([scheduledDate])
@@ -414,6 +451,10 @@ model ProteinProcessing {
   
   // Subproductos resultantes
   subProducts     ProteinSubProduct[]
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
   
   @@index([processDate])
   @@index([status])
@@ -546,6 +587,10 @@ model Requisition {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
+
   @@index([status])
   @@index([requestedById])
   @@index([targetAreaId])
@@ -581,6 +626,10 @@ model MenuCategory {
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
   
   // Relaciones
   items       MenuItem[]
@@ -619,6 +668,10 @@ model MenuItem {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
   
   @@index([categoryId])
   @@index([sku])
@@ -746,6 +799,10 @@ model SalesOrder {
   
   // Movimientos de inventario generados
   inventoryMovements InventoryMovement[] @relation("SaleMovements")
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
   
   @@index([orderNumber])
   @@index([orderType])
@@ -773,6 +830,12 @@ model SalesOrderItem {
   
   // Notas especiales (Ej: "Sin cebolla")
   notes           String?
+
+  // Snapshot de costo (margen retroactivo)
+  costPerUnit     Float?
+  costTotal       Float?
+  marginPerUnit   Float?
+  marginPercent   Float?
   
   // Modificadores seleccionados
   modifiers       SalesOrderItemModifier[]
@@ -820,6 +883,10 @@ model DailyInventory {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
   
   @@unique([date, areaId])
 }
@@ -884,6 +951,10 @@ model InventoryLoan {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
+
   @@index([status])
   @@index([loaneeName])
   @@index([createdById])
@@ -919,6 +990,10 @@ model InventoryAudit {
   
   // Relaciones
   items       InventoryAuditItem[]
+
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
 
   @@index([status])
   @@index([createdAt])
@@ -963,6 +1038,10 @@ model Supplier {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
 
   // Relaciones
   purchaseOrders PurchaseOrder[]
@@ -1029,6 +1108,10 @@ model PurchaseOrder {
   // Items de la orden
   items           PurchaseOrderItem[]
 
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
+
   @@index([status])
   @@index([orderDate])
   @@index([supplierId])
@@ -1056,4 +1139,47 @@ model PurchaseOrderItem {
   
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
+}
+
+// ============================================================================
+// AUDIT LOG - REGISTRO FORENSE DE OPERACIONES
+// ============================================================================
+// Esta tabla NUNCA se borra. Solo se puede archivar a cold storage.
+// Toda server action que modifique datos debe crear un AuditLog.
+// ============================================================================
+
+model AuditLog {
+  id            String   @id @default(cuid())
+
+  // QUIÉN
+  userId        String
+  userName      String   // Snapshot para no depender de JOIN
+  userRole      String   // Rol al momento de la acción
+
+  // QUÉ
+  action        String   // CREATE, UPDATE, DELETE, VOID, APPROVE, REJECT, LOGIN, LOGOUT
+  entityType    String   // SalesOrder, InventoryMovement, Recipe, etc.
+  entityId      String   // ID del registro afectado
+
+  // DETALLE
+  description   String?  // Descripción legible: "Creó orden REST-2026-03-15-001"
+  changes       String?  // JSON: { field: { from: "X", to: "Y" } }
+  metadata      String?  // JSON: datos contextuales adicionales
+
+  // DESDE DÓNDE
+  ipAddress     String?
+  userAgent     String?
+  deviceId      String?  // Identificador de terminal/caja
+
+  // CUÁNDO
+  createdAt     DateTime @default(now())
+
+  // CONTEXTO OPERATIVO
+  module        String?  // POS, INVENTORY, PRODUCTION, RECIPE, etc.
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([module])
 }
