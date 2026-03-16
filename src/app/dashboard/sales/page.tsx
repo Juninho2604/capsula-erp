@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSalesHistoryAction, getDailyZReportAction, getSalesForArqueoAction, voidSalesOrderAction, type ZReportData } from '@/app/actions/sales.actions';
+import { getSalesHistoryAction, getDailyZReportAction, voidSalesOrderAction, type ZReportData } from '@/app/actions/sales.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';
-import { exportArqueoToExcel } from '@/lib/export-arqueo-excel';
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -42,12 +41,33 @@ export default function SalesHistoryPage() {
 
     const handleExportArqueo = async () => {
         const date = filterDate ? new Date(filterDate + 'T12:00:00') : new Date();
-        const result = await getSalesForArqueoAction(date);
-        if (result.success && result.data) {
-            const dateStr = date.toLocaleDateString('es-VE');
-            exportArqueoToExcel(result.data, dateStr);
-        } else {
-            alert(result.message || 'Error exportando arqueo');
+        const dateParam = date.toISOString().slice(0, 10);
+        try {
+            const res = await fetch(`/api/arqueo?date=${dateParam}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || 'Error exportando arqueo');
+                return;
+            }
+            const blob = await res.blob();
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let fileName = `Arqueo_Caja_Shanklish_${dateParam}.xlsx`;
+            if (contentDisposition) {
+                const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/);
+                if (utf8Match) fileName = decodeURIComponent(utf8Match[1]);
+                else {
+                    const simpleMatch = contentDisposition.match(/filename=["']?([^"';]+)/);
+                    if (simpleMatch) fileName = simpleMatch[1].trim();
+                }
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            alert('Error exportando arqueo');
         }
     };
 
