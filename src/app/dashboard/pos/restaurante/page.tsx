@@ -497,7 +497,8 @@ export default function POSSportBarPage() {
 
   const handleCloseTab = async () => {
     if (!activeTab) return;
-    if (activeTab.balanceDue > 0.005) {
+    const balance = Number(activeTab.balanceDue ?? 0);
+    if (balance > 0.01) {
       alert("La cuenta aún tiene saldo pendiente");
       return;
     }
@@ -1239,13 +1240,13 @@ export default function POSSportBarPage() {
                     </div>
                   )}
 
-                  {/* Close tab */}
+                  {/* Close tab - permitir cerrar cuando no hay consumo (saldo 0) o ya se cobró */}
                   <button
                     onClick={handleCloseTab}
-                    disabled={activeTab.balanceDue > 0.005 || isProcessing}
+                    disabled={(Number(activeTab.balanceDue ?? 0) > 0.01) || isProcessing}
                     className="mt-2 w-full py-2 border border-slate-600 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-700 transition disabled:opacity-30"
                   >
-                    Cerrar cuenta (saldo $0.00)
+                    Cerrar cuenta (saldo ${(Number(activeTab.balanceDue ?? 0)).toFixed(2)})
                   </button>
                 </div>
               </div>

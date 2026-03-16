@@ -239,9 +239,48 @@ async function resolveSalesAreaForBranch(branchId?: string) {
     return ensureBaseSalesArea();
 }
 
-function calculateCartTotals(data: Pick<CreateOrderData, 'items' | 'discountType' | 'discountPercent' | 'amountPaid'>) {
-    const subtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
+const DELIVERY_FEE_NORMAL = 4.5;
+const DELIVERY_FEE_DIVISAS = 3;
 
+function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid'>) {
+    const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
+
+    // DELIVERY: $4.5 fee normal, $3 en divisas. Sin 10% servicio.
+    if (data.orderType === 'DELIVERY') {
+        let subtotal: number;
+        let discount: number;
+        let total: number;
+        let discountReason = '';
+
+        if (data.discountType === 'DIVISAS_33') {
+            const itemsDiscounted = itemsSubtotal * (2 / 3);
+            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
+            discount = itemsSubtotal / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS);
+            total = itemsDiscounted + DELIVERY_FEE_DIVISAS;
+            discountReason = 'Pago en Divisas (33.33%) - Delivery $3';
+        } else if (data.discountType === 'CORTESIA_100') {
+            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
+            discount = subtotal;
+            total = 0;
+            discountReason = 'Cortesía Autorizada (100%)';
+        } else if (data.discountType === 'CORTESIA_PERCENT' && data.discountPercent != null) {
+            const pct = Math.min(100, Math.max(0, data.discountPercent)) / 100;
+            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
+            discount = subtotal * pct;
+            total = subtotal - discount;
+            discountReason = `Cortesía Autorizada (${data.discountPercent}%)`;
+        } else {
+            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
+            discount = 0;
+            total = subtotal;
+        }
+
+        const change = (data.amountPaid || 0) - total;
+        return { subtotal, discount, total, change: change > 0 ? change : 0, discountReason };
+    }
+
+    // RESTAURANT / PICKUP: sin delivery fee, lógica original
+    const subtotal = itemsSubtotal;
     let discount = 0;
     let discountReason = '';
 
@@ -820,6 +859,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
 
         const salesArea = await resolveSalesAreaForBranch(openTab.branchId);
         const { subtotal, total } = calculateCartTotals({
+            orderType: 'RESTAURANT',
             items: data.items,
             amountPaid: 0,
             discountType: undefined
@@ -1082,7 +1122,9 @@ export async function closeOpenTabAction(openTabId: string): Promise<ActionResul
             return { success: false, message: 'Cuenta no encontrada' };
         }
 
-        if (openTab.balanceDue > 0) {
+        // Permitir cerrar cuando no hay consumo (saldo 0) o ya se cobró (tolerancia por decimales)
+        const balance = Number(openTab.balanceDue ?? 0);
+        if (balance > 0.01) {
             return { success: false, message: 'La cuenta aún tiene saldo pendiente' };
         }
 

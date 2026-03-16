@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { createSalesOrderAction, getMenuForPOSAction, validateManagerPinAction, type CartItem } from '@/app/actions/pos.actions';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt, printKitchenCommand } from '@/lib/print-command';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
+import { PriceDisplay } from '@/components/pos/PriceDisplay';
+import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
+
+const DELIVERY_FEE_NORMAL = 4.5;
+const DELIVERY_FEE_DIVISAS = 3;
 
 interface ModifierOption {
     id: string;
@@ -69,8 +75,9 @@ export default function POSDeliveryPage() {
     const [itemNotes, setItemNotes] = useState('');
 
     // PAYMENT STATE
-    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE_PAY'>('TRANSFER');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE_PAY' | 'ZELLE'>('TRANSFER');
     const [amountReceived, setAmountReceived] = useState('');
+    const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
     // DISCOUNT STATE
     const [discountType, setDiscountType] = useState<'NONE' | 'DIVISAS_33' | 'CORTESIA_100'>('NONE');
@@ -88,11 +95,15 @@ export default function POSDeliveryPage() {
     useEffect(() => {
         async function loadMenu() {
             try {
-                const result = await getMenuForPOSAction();
-                if (result.success && result.data) {
-                    setCategories(result.data);
-                    if (result.data.length > 0) setSelectedCategory(result.data[0].id);
+                const [menuResult, rate] = await Promise.all([
+                    getMenuForPOSAction(),
+                    getExchangeRateValue(),
+                ]);
+                if (menuResult.success && menuResult.data) {
+                    setCategories(menuResult.data);
+                    if (menuResult.data.length > 0) setSelectedCategory(menuResult.data[0].id);
                 }
+                setExchangeRate(rate);
             } catch (error) { console.error(error); } finally { setIsLoading(false); }
         }
         loadMenu();
@@ -104,6 +115,12 @@ export default function POSDeliveryPage() {
             if (cat) setMenuItems(cat.items);
         }
     }, [selectedCategory, categories]);
+
+    useEffect(() => {
+        if (paymentMethod !== 'CASH' && paymentMethod !== 'ZELLE' && discountType === 'DIVISAS_33') {
+            setDiscountType('NONE');
+        }
+    }, [paymentMethod, discountType]);
 
     const filteredMenuItems = productSearch.trim()
         ? categories.flatMap((c: any) => c.items as MenuItem[]).filter((i) =>
@@ -190,9 +207,11 @@ export default function POSDeliveryPage() {
         setShowModifierModal(false); setSelectedItemForModifier(null);
     };
 
-    const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
-    const discountAmount = discountType === 'DIVISAS_33' ? cartTotal * 0.33 : (discountType === 'CORTESIA_100' ? cartTotal : 0);
-    const finalTotal = cartTotal - discountAmount;
+    const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
+    const isPagoDivisas = paymentMethod === 'CASH' || paymentMethod === 'ZELLE';
+    const deliveryFee = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas ? cartSubtotal * (2 / 3) : (discountType === 'CORTESIA_100' ? 0 : cartSubtotal);
+    const finalTotal = discountType === 'CORTESIA_100' ? 0 : itemsAfterDiscount + deliveryFee;
     const paidAmount = parseFloat(amountReceived) || 0;
 
     const handleCheckout = async () => {
@@ -234,6 +253,7 @@ export default function POSDeliveryPage() {
                     <div><h1 className="text-2xl font-black">Shanklish Delivery</h1><p className="text-blue-200 text-xs font-bold uppercase">Sistema de Despacho</p></div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <CurrencyCalculator totalUsd={finalTotal} deliveryFee={discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL} hasServiceFee={false} onRateUpdated={setExchangeRate} className="bg-white/10 hover:bg-white/20 text-white" />
                     <button
                         onClick={() => setShowWhatsAppParser(!showWhatsAppParser)}
                         className={cn(
@@ -348,18 +368,51 @@ export default function POSDeliveryPage() {
                     </div>
 
                     <div className="p-4 bg-gray-800 border-t border-gray-700 space-y-3">
-                        <div className="flex gap-1">
-                            <button onClick={() => handleDiscountSelect('NONE')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'NONE' ? 'bg-blue-900 text-blue-200 ring-1 ring-blue-500' : 'bg-gray-700'}`}>Normal</button>
-                            <button onClick={() => handleDiscountSelect('DIVISAS_33')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600' : 'bg-gray-700'}`}>Divisa -33%</button>
-                            <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'CORTESIA_100' ? 'bg-purple-600' : 'bg-gray-700'}`}>Cortesía</button>
+                        <div className="rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-xs space-y-1">
+                            <div className="flex justify-between text-gray-400">
+                                <span>Subtotal</span>
+                                <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
+                            </div>
+                            <div className="flex justify-between text-gray-400">
+                                <span>🛵 Delivery</span>
+                                <span className="text-blue-300">${deliveryFee.toFixed(2)}</span>
+                            </div>
+                            {discountType === 'DIVISAS_33' && isPagoDivisas && (
+                                <div className="flex justify-between text-blue-400">
+                                    <span>Descuento divisas -33.33%</span>
+                                    <span>-${(cartSubtotal / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                </div>
+                            )}
+                            {discountType === 'CORTESIA_100' && (
+                                <div className="flex justify-between text-purple-400">
+                                    <span>Cortesía 100%</span>
+                                    <span>-${(cartSubtotal + DELIVERY_FEE_NORMAL).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-white border-t border-gray-700 pt-1">
+                                <span>Total</span>
+                                <PriceDisplay usd={finalTotal} rate={exchangeRate} size="sm" showBs={false} />
+                            </div>
                         </div>
-                        <div className="grid grid-cols-4 gap-1">
-                            {['TRANSFER', 'MOBILE_PAY', 'CASH', 'CARD'].map(m => (
-                                <button key={m} onClick={() => setPaymentMethod(m as any)} className={`py-2 text-xs font-bold rounded ${paymentMethod === m ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                                    {m === 'TRANSFER' ? 'Transf' : m === 'MOBILE_PAY' ? 'P.Móvil' : m === 'CASH' ? 'Efec' : 'Punto'}
+                        <div className="flex gap-1">
+                            <button onClick={() => handleDiscountSelect('NONE')} className={`flex-1 py-1.5 text-[10px] font-bold rounded ${discountType === 'NONE' ? 'bg-blue-900 text-blue-200 ring-1 ring-blue-500' : 'bg-gray-700 text-gray-300'}`}>Normal</button>
+                            <button onClick={() => isPagoDivisas && handleDiscountSelect('DIVISAS_33')} disabled={!isPagoDivisas} title={!isPagoDivisas ? 'Solo con Efectivo o Zelle' : 'Descuento divisas - Delivery $3'} className={`flex-1 py-1.5 text-[10px] font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600 text-white' : isPagoDivisas ? 'bg-gray-700 text-gray-300' : 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-60'}`}>Divisa -33%</button>
+                            <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`flex-1 py-1.5 text-[10px] font-bold rounded ${discountType === 'CORTESIA_100' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Cortesía</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                            {(['TRANSFER', 'MOBILE_PAY', 'CASH', 'ZELLE', 'CARD'] as const).map(m => (
+                                <button key={m} onClick={() => setPaymentMethod(m)} className={`py-2 text-[10px] font-bold rounded ${paymentMethod === m ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>
+                                    {m === 'TRANSFER' ? 'Transf' : m === 'MOBILE_PAY' ? 'P.Móvil' : m === 'CASH' ? 'Efect' : m === 'ZELLE' ? 'Zelle' : 'Punto'}
                                 </button>
                             ))}
                         </div>
+                        <input
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                            placeholder={`Monto recibido ($${finalTotal.toFixed(2)})`}
+                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
                         <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xl shadow-lg disabled:opacity-50">
                             {isProcessing ? 'PROCESANDO...' : `CONFIRMAR $${finalTotal.toFixed(2)}`}
                         </button>
