@@ -6,19 +6,27 @@ Esta guía te permite aplicar exactamente los cambios de esta sesión en tu otro
 
 ## Opción A: Usar parche Git (recomendado si el otro proyecto tiene la misma base)
 
-### 1. Generar el parche en este proyecto
+### 1. Archivos a copiar al otro proyecto
 
-```bash
-# Desde la raíz del proyecto actual (SHANKLISH ERP 3.0)
-git diff 5239d3e..HEAD > cambios-erp-sesion.patch
-```
+- `cambios-erp-sesion-sin-plantilla.patch` – parche con todos los cambios de código
+- `public/templates/arqueo-plantilla.xlsx` – plantilla Excel (copiar manualmente)
 
 ### 2. Aplicar en el otro proyecto
 
 ```bash
 cd "ruta/al/otro/proyecto"
-git apply --check cambios-erp-sesion.patch   # Verificar que aplique sin conflictos
-git apply cambios-erp-sesion.patch           # Aplicar
+
+# Crear carpeta de plantillas
+mkdir -p public/templates
+
+# Aplicar el parche
+git apply --check cambios-erp-sesion-sin-plantilla.patch   # Verificar
+git apply cambios-erp-sesion-sin-plantilla.patch           # Aplicar
+
+# Copiar la plantilla Excel (desde este proyecto)
+# cp "ruta/proyecto-origen/public/templates/arqueo-plantilla.xlsx" public/templates/
+
+npm install
 ```
 
 Si hay conflictos, `git apply` fallará. En ese caso usa la **Opción B**.
@@ -64,7 +72,7 @@ Si hay conflictos, `git apply` fallará. En ese caso usa la **Opción B**.
 
 ## Opción C: Copiar archivos completos
 
-Si prefieres reemplazar archivos enteros, copia estos desde este proyecto al otro:
+Si prefieres reemplazar archivos enteros, copia estos desde **este proyecto** al otro:
 
 ```
 src/app/actions/pos.actions.ts
@@ -78,6 +86,7 @@ src/lib/arqueo-excel-utils.ts
 src/app/api/arqueo/route.ts
 public/templates/arqueo-plantilla.xlsx
 public/templates/README.md
+package.json  (o al menos las líneas de exceljs y xlsx en dependencies)
 ```
 
 Luego ejecuta `npm install` en el otro proyecto.
