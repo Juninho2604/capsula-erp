@@ -64,10 +64,8 @@ const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data }, ref)
         >
             {/* Header */}
             <div className="text-center mb-4">
-                <div className="text-3xl font-bold italic font-serif mb-1">Shanklish</div>
-                <div className="text-[10px] mb-2">- Caracas -</div>
-                <div className="font-bold text-[12px]">SHANKLISH CARACAS, C.A</div>
-                <div className="font-bold text-[12px]">J-41308727-8</div>
+                <img src="/logo-shanklish.png" alt="Shanklish Caracas" className="max-w-[120px] mx-auto mb-2" />
+                <div className="font-bold text-[12px]">RIF: J413087278</div>
                 <div className="font-bold text-[12px] mt-2">RECIBO DE PAGO</div>
             </div>
 

@@ -40,16 +40,22 @@ export default function SalesHistoryPage() {
 
     // ---- REIMPRESIÓN ----
     const handleReprint = (sale: any) => {
+        const serviceFee = sale.orderType === 'RESTAURANT' ? (sale.total || 0) * 0.1 : 0;
+        const itemsSubtotal = (sale.items || []).reduce((s: number, i: any) => s + (i.lineTotal || 0), 0);
+        const deliveryFee = sale.orderType === 'DELIVERY' && sale.subtotal != null ? Math.max(0, sale.subtotal - itemsSubtotal) : undefined;
         printReceipt({
             orderNumber: sale.orderNumber,
             orderType: sale.orderType as 'RESTAURANT' | 'DELIVERY',
             date: sale.createdAt,
             cashierName: `${sale.createdBy?.firstName || 'Cajera'} ${sale.createdBy?.lastName || ''}`.trim(),
             customerName: sale.customerName || undefined,
+            customerPhone: sale.customerPhone || undefined,
             customerAddress: sale.customerAddress || undefined,
-            subtotal: sale.subtotal,
+            subtotal: sale.orderType === 'DELIVERY' && deliveryFee ? itemsSubtotal : sale.subtotal,
             discount: sale.discount,
+            deliveryFee,
             total: sale.total,
+            serviceFee,
             items: (sale.items || []).map((item: any) => ({
                 name: item.itemName,
                 quantity: item.quantity,

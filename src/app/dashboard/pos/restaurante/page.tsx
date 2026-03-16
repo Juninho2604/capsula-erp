@@ -15,7 +15,7 @@ import {
   type CartItem,
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
-import { printKitchenCommand } from "@/lib/print-command";
+import { printKitchenCommand, printReceipt } from "@/lib/print-command";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
@@ -485,6 +485,32 @@ export default function POSSportBarPage() {
         alert(result.message);
         return;
       }
+      // Imprimir factura con 10% servicio para RESTAURANT
+      const subtotal = (activeTab as any).runningSubtotal ?? activeTab.orders.reduce((s, o) => s + o.items.reduce((si: number, i: any) => si + (i.lineTotal || 0), 0), 0);
+      const discount = (activeTab as any).runningDiscount ?? 0;
+      const totalAntesServicio = (activeTab as any).runningTotal ?? subtotal - discount;
+      const serviceFee = totalAntesServicio * 0.1;
+      const allItems = activeTab.orders.flatMap((o) =>
+        (o.items || []).map((i: any) => ({
+          name: i.itemName,
+          quantity: i.quantity,
+          unitPrice: (i.lineTotal || 0) / (i.quantity || 1),
+          total: i.lineTotal || 0,
+          modifiers: (i.modifiers || []).map((m: any) => m.name),
+        }))
+      );
+      printReceipt({
+        orderNumber: activeTab.orders[0]?.orderNumber || activeTab.tabCode,
+        orderType: "RESTAURANT",
+        date: new Date(),
+        cashierName: cashierName || pinResult.data?.managerName || "Cajera",
+        customerName: activeTab.customerLabel,
+        items: allItems,
+        subtotal,
+        discount,
+        total: totalAntesServicio,
+        serviceFee,
+      });
       setAmountReceived("");
       setPaymentPin("");
       setDiscountType("NONE");
@@ -1240,6 +1266,41 @@ export default function POSSportBarPage() {
                     </div>
                   )}
 
+                  {/* Imprimir recibo - disponible cuando hay consumos */}
+                  {activeTab.orders.length > 0 && (
+                    <button
+                      onClick={() => {
+                        const subtotal = (activeTab as any).runningSubtotal ?? activeTab.orders.reduce((s, o) => s + o.items.reduce((si: number, i: any) => si + (i.lineTotal || 0), 0), 0);
+                        const discount = (activeTab as any).runningDiscount ?? 0;
+                        const totalAntesServicio = (activeTab as any).runningTotal ?? subtotal - discount;
+                        const serviceFee = totalAntesServicio * 0.1;
+                        const allItems = activeTab.orders.flatMap((o) =>
+                          (o.items || []).map((i: any) => ({
+                            name: i.itemName,
+                            quantity: i.quantity,
+                            unitPrice: (i.lineTotal || 0) / (i.quantity || 1),
+                            total: i.lineTotal || 0,
+                            modifiers: (i.modifiers || []).map((m: any) => m.name),
+                          }))
+                        );
+                        printReceipt({
+                          orderNumber: activeTab.orders[0]?.orderNumber || activeTab.tabCode,
+                          orderType: "RESTAURANT",
+                          date: new Date(),
+                          cashierName: cashierName || "Cajera",
+                          customerName: activeTab.customerLabel,
+                          items: allItems,
+                          subtotal,
+                          discount,
+                          total: totalAntesServicio,
+                          serviceFee,
+                        });
+                      }}
+                      className="mt-2 w-full py-2 border border-slate-500 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-700 transition flex items-center justify-center gap-2"
+                    >
+                      🖨️ Imprimir factura
+                    </button>
+                  )}
                   {/* Close tab - permitir cerrar cuando no hay consumo (saldo 0) o ya se cobró */}
                   <button
                     onClick={handleCloseTab}
