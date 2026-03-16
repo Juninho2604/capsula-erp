@@ -92,6 +92,7 @@ export async function getSalesHistoryAction(limit = 100) {
                 result.push({
                     id: `tab-${o.openTabId}`,
                     _consolidated: true,
+                    orderType: 'RESTAURANT',
                     serviceFeeIncluded,
                     _orderIds: sorted.map(x => x.id),
                     orderNumber: tab?.tabCode || first.orderNumber,
