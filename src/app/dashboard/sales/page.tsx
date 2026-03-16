@@ -43,25 +43,27 @@ export default function SalesHistoryPage() {
         const serviceFee = sale.orderType === 'RESTAURANT' ? (sale.total || 0) * 0.1 : 0;
         const itemsSubtotal = (sale.items || []).reduce((s: number, i: any) => s + (i.lineTotal || 0), 0);
         const deliveryFee = sale.orderType === 'DELIVERY' && sale.subtotal != null ? Math.max(0, sale.subtotal - itemsSubtotal) : undefined;
+        const discountReason = (sale.discount || 0) > 0 ? 'Descuento aplicado' : undefined;
         printReceipt({
             orderNumber: sale.orderNumber,
-            orderType: sale.orderType as 'RESTAURANT' | 'DELIVERY',
+            orderType: (sale.orderType || 'RESTAURANT') as 'RESTAURANT' | 'DELIVERY',
             date: sale.createdAt,
             cashierName: `${sale.createdBy?.firstName || 'Cajera'} ${sale.createdBy?.lastName || ''}`.trim(),
             customerName: sale.customerName || undefined,
             customerPhone: sale.customerPhone || undefined,
             customerAddress: sale.customerAddress || undefined,
-            subtotal: sale.orderType === 'DELIVERY' && deliveryFee ? itemsSubtotal : sale.subtotal,
-            discount: sale.discount,
+            subtotal: sale.orderType === 'DELIVERY' && deliveryFee ? itemsSubtotal : (sale.subtotal ?? itemsSubtotal),
+            discount: sale.discount ?? 0,
+            discountReason,
             deliveryFee,
             total: sale.total,
             serviceFee,
             items: (sale.items || []).map((item: any) => ({
-                name: item.itemName,
+                name: item.itemName || item.name,
                 quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                total: item.lineTotal,
-                modifiers: (item.modifiers || []).map((m: any) => m.name)
+                unitPrice: item.unitPrice ?? (item.lineTotal / (item.quantity || 1)),
+                total: item.lineTotal || item.total,
+                modifiers: Array.isArray(item.modifiers) ? item.modifiers.map((m: any) => typeof m === 'string' ? m : m?.name) : []
             }))
         });
     };
@@ -89,19 +91,24 @@ export default function SalesHistoryPage() {
 
     const executeVoid = async (managerId: string, managerName: string) => {
         if (!voidTarget) return;
-        const res = await voidSalesOrderAction({
-            orderId: voidTarget.id,
-            voidReason,
-            authorizedById: managerId,
-            authorizedByName: managerName
-        });
+        const orderIds = voidTarget._orderIds || [voidTarget.id];
+        let lastError = '';
+        for (const orderId of orderIds) {
+            const res = await voidSalesOrderAction({
+                orderId,
+                voidReason,
+                authorizedById: managerId,
+                authorizedByName: managerName
+            });
+            if (!res.success) lastError = res.message || 'Error';
+        }
         setVoidLoading(false);
-        if (res.success) {
-            alert(`✅ ${res.message}`);
+        if (!lastError) {
+            alert(`✅ ${orderIds.length > 1 ? 'Mesa anulada correctamente' : 'Orden anulada correctamente'}`);
             setVoidTarget(null);
             loadData();
         } else {
-            alert(`❌ ${res.message}`);
+            alert(`❌ ${lastError}`);
         }
     };
 
@@ -211,6 +218,11 @@ export default function SalesHistoryPage() {
                                             <span className={`font-bold ${isVoided ? 'text-red-400 line-through' : 'text-blue-300'}`}>
                                                 {sale.orderNumber}
                                             </span>
+                                            {sale._consolidated && sale.orderNumbers?.length > 1 && (
+                                                <span className="text-[10px] text-gray-500" title={sale.orderNumbers.join(', ')}>
+                                                    ({sale.orderNumbers.length} tandas)
+                                                </span>
+                                            )}
                                             {isVoided && (
                                                 <span className="bg-red-900 text-red-300 text-xs px-1.5 py-0.5 rounded font-bold">ANULADA</span>
                                             )}

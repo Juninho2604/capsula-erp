@@ -34,13 +34,14 @@ export interface ZReportData {
 
 export async function getSalesHistoryAction(limit = 100) {
     try {
-        const sales = await prisma.salesOrder.findMany({
-            take: limit,
+        const orders = await prisma.salesOrder.findMany({
+            take: limit * 3, // fetch more to allow grouping
             orderBy: { createdAt: 'desc' },
             include: {
                 authorizedBy: { select: { firstName: true, lastName: true } },
                 createdBy: { select: { firstName: true, lastName: true } },
                 voidedBy: { select: { firstName: true, lastName: true } },
+                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true } },
                 items: {
                     include: {
                         modifiers: { select: { name: true, priceAdjustment: true } }
@@ -48,7 +49,69 @@ export async function getSalesHistoryAction(limit = 100) {
                 }
             }
         });
-        return { success: true, data: sales };
+
+        // Agrupar órdenes RESTAURANT por openTabId (misma mesa = una sola venta)
+        const byTab = new Map<string | null, typeof orders>();
+        for (const o of orders) {
+            const key = o.orderType === 'RESTAURANT' && o.openTabId ? o.openTabId : null;
+            if (key === null) {
+                byTab.set(`single-${o.id}`, [o]);
+            } else {
+                const existing = byTab.get(key) || [];
+                existing.push(o);
+                byTab.set(key, existing);
+            }
+        }
+
+        // Construir lista: una fila por mesa (consolidada) o por orden individual
+        const result: any[] = [];
+        const seenTabs = new Set<string>();
+        for (const o of orders) {
+            if (o.orderType === 'RESTAURANT' && o.openTabId && !seenTabs.has(o.openTabId)) {
+                seenTabs.add(o.openTabId);
+                const group = byTab.get(o.openTabId) || [o];
+                const sorted = [...group].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                const first = sorted[0];
+                const last = sorted[sorted.length - 1];
+                const tab = first.openTab;
+                const total = tab?.runningTotal ?? sorted.reduce((s, x) => s + x.total, 0);
+                const subtotal = tab?.runningSubtotal ?? sorted.reduce((s, x) => s + x.subtotal, 0);
+                const discount = tab?.runningDiscount ?? sorted.reduce((s, x) => s + x.discount, 0);
+                const allItems = sorted.flatMap(x => (x.items || []).map((it: any) => ({
+                    ...it,
+                    itemName: it.itemName,
+                    lineTotal: it.lineTotal,
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    modifiers: (it.modifiers || []).map((m: any) => m.name)
+                })));
+                result.push({
+                    id: `tab-${o.openTabId}`,
+                    _consolidated: true,
+                    _orderIds: sorted.map(x => x.id),
+                    orderNumber: tab?.tabCode || first.orderNumber,
+                    orderNumbers: sorted.map(x => x.orderNumber),
+                    createdAt: last.createdAt,
+                    customerName: tab?.customerLabel || first.customerName,
+                    customerPhone: tab?.customerPhone || first.customerPhone,
+                    createdBy: first.createdBy,
+                    paymentMethod: first.paymentMethod,
+                    subtotal,
+                    discount,
+                    total,
+                    items: allItems,
+                    orders: sorted,
+                    status: sorted.some(x => x.status === 'CANCELLED') ? 'CANCELLED' : first.status,
+                    voidReason: sorted.find(x => x.voidReason)?.voidReason,
+                    voidedAt: sorted.find(x => x.voidedAt)?.voidedAt,
+                    voidedBy: sorted.find(x => x.voidedBy)?.voidedBy,
+                });
+            } else if (!o.openTabId || o.orderType !== 'RESTAURANT') {
+                result.push({ ...o, _consolidated: false });
+            }
+        }
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return { success: true, data: result.slice(0, limit) };
     } catch (error) {
         console.error('Error fetching sales:', error);
         return { success: false, message: 'Error cargando historial' };
