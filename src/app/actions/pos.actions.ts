@@ -70,6 +70,7 @@ export interface RegisterOpenTabPaymentInput {
     splitLabel?: string;
     notes?: string;
     discountAmount?: number;
+    serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal)
 }
 
 export interface ActionResult {
@@ -1045,10 +1046,12 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                 }
             });
 
+            const baseLabel = data.splitLabel || `Pago ${openTab.paymentSplits.length + 1}`;
+            const splitLabel = data.serviceFeeIncluded ? `${baseLabel} | +10% serv` : baseLabel;
             await tx.paymentSplit.create({
                 data: {
                     openTabId: openTab.id,
-                    splitLabel: data.splitLabel || `Pago ${openTab.paymentSplits.length + 1}`,
+                    splitLabel,
                     splitType: 'CUSTOM',
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',

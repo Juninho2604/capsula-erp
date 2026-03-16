@@ -2,31 +2,57 @@
 
 import { useRef, useState, useEffect } from 'react';
 
-interface CashierShiftModalProps {
-    onShiftOpen: (name: string) => void;
+const STORAGE_KEY = 'shanklish_cashier_shift';
+
+function getTodayStr() {
+    return new Date().toISOString().slice(0, 10);
 }
 
-export function CashierShiftModal({ onShiftOpen }: CashierShiftModalProps) {
+function loadStoredShift(): { date: string; cashierName: string } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as { date: string; cashierName: string };
+    } catch {
+        return null;
+    }
+}
+
+function saveShift(cashierName: string) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: getTodayStr(), cashierName }));
+}
+
+interface CashierShiftModalProps {
+    onShiftOpen: (name: string) => void;
+    /** Si true, fuerza mostrar el modal (ej. al hacer "Cambiar cajera") */
+    forceOpen?: boolean;
+}
+
+export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShiftModalProps) {
     const [name, setName] = useState('');
     const [isVisible, setIsVisible] = useState(false);
-    // Use a ref so the effect never depends on onShiftOpen as a closure
     const onShiftOpenRef = useRef(onShiftOpen);
     onShiftOpenRef.current = onShiftOpen;
 
     useEffect(() => {
-        // Only fires once on mount
-        const savedName = sessionStorage.getItem('cashierShiftName');
-        if (savedName) {
-            onShiftOpenRef.current(savedName);
+        if (forceOpen) {
+            setIsVisible(true);
+            return;
+        }
+        const stored = loadStoredShift();
+        const today = getTodayStr();
+        if (stored && stored.date === today && stored.cashierName) {
+            onShiftOpenRef.current(stored.cashierName);
         } else {
             setIsVisible(true);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [forceOpen]);
 
     const handleOpen = () => {
         if (!name.trim()) return;
-        sessionStorage.setItem('cashierShiftName', name.trim());
+        saveShift(name.trim());
         setIsVisible(false);
         onShiftOpenRef.current(name.trim());
     };
@@ -39,7 +65,9 @@ export function CashierShiftModal({ onShiftOpen }: CashierShiftModalProps) {
                 <div className="text-center mb-6">
                     <div className="text-4xl mb-2">👩🏻‍💻</div>
                     <h2 className="text-xl font-black">Apertura de Caja</h2>
-                    <p className="text-sm text-slate-400">Ingresa tu nombre para iniciar el turno</p>
+                    <p className="text-sm text-slate-400">
+                        {forceOpen ? 'Cambio de cajera' : 'Ingresa tu nombre para iniciar el turno (una vez al día)'}
+                    </p>
                 </div>
 
                 <div className="space-y-4">
@@ -61,7 +89,7 @@ export function CashierShiftModal({ onShiftOpen }: CashierShiftModalProps) {
                         disabled={!name.trim()}
                         className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-3 rounded-xl font-black text-lg transition disabled:opacity-50"
                     >
-                        Abrir Turno →
+                        {forceOpen ? 'Cambiar Cajera →' : 'Abrir Turno →'}
                     </button>
                 </div>
             </div>

@@ -41,7 +41,7 @@ export async function getSalesHistoryAction(limit = 100) {
                 authorizedBy: { select: { firstName: true, lastName: true } },
                 createdBy: { select: { firstName: true, lastName: true } },
                 voidedBy: { select: { firstName: true, lastName: true } },
-                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true } },
+                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, paymentSplits: { select: { splitLabel: true } } } },
                 items: {
                     include: {
                         modifiers: { select: { name: true, priceAdjustment: true } }
@@ -85,9 +85,14 @@ export async function getSalesHistoryAction(limit = 100) {
                     unitPrice: it.unitPrice,
                     modifiers: (it.modifiers || []).map((m: any) => m.name)
                 })));
+                const splits = tab?.paymentSplits || [];
+                const serviceFeeIncluded = splits.length > 0
+                    ? splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'))
+                    : true;
                 result.push({
                     id: `tab-${o.openTabId}`,
                     _consolidated: true,
+                    serviceFeeIncluded,
                     _orderIds: sorted.map(x => x.id),
                     orderNumber: tab?.tabCode || first.orderNumber,
                     orderNumbers: sorted.map(x => x.orderNumber),

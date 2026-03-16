@@ -192,6 +192,9 @@ export default function POSSportBarPage() {
   // ── Descuento ─────────────────────────────────────────────────────────────
   const [discountType, setDiscountType] = useState<"NONE" | "DIVISAS_33">("NONE");
 
+  // ── 10% Servicio (solo sala principal, opcional) ───────────────────────────
+  const [serviceFeeIncluded, setServiceFeeIncluded] = useState(true);
+
   // ── Remove item ───────────────────────────────────────────────────────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{
@@ -219,6 +222,7 @@ export default function POSSportBarPage() {
 
   // ── Nueva Funcionalidad: Cajero y Pickup ──────────────────────────────────
   const [cashierName, setCashierName] = useState("");
+  const [showChangeCashierModal, setShowChangeCashierModal] = useState(false);
   const [isPickupMode, setIsPickupMode] = useState(false);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
 
@@ -288,15 +292,27 @@ export default function POSSportBarPage() {
 
   const activeTab = useMemo(() => selectedTable?.openTabs[0] || null, [selectedTable]);
 
+  const allMenuItems = useMemo(
+    () => categories.flatMap((c) => (c.items || [])),
+    [categories],
+  );
+
   const filteredMenuItems = useMemo(() => {
     if (!productSearch.trim()) return menuItems;
     const q = productSearch.toLowerCase();
-    return menuItems.filter((i) => i.name.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
-  }, [menuItems, productSearch]);
+    return allMenuItems.filter((i) => i.name.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
+  }, [menuItems, productSearch, allMenuItems]);
 
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const paidAmount = parseFloat(amountReceived) || 0;
   const isPagoDivisas = paymentMethod === "CASH" || paymentMethod === "ZELLE";
+
+  const paymentBaseAmount = activeTab
+    ? discountType === "DIVISAS_33"
+      ? (activeTab.balanceDue * 2) / 3
+      : activeTab.balanceDue
+    : 0;
+  const paymentAmountToCharge = serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount;
 
   // ============================================================================
   // OPEN TAB
@@ -480,16 +496,17 @@ export default function POSSportBarPage() {
         paymentMethod,
         splitLabel: `${PAYMENT_LABELS[paymentMethod] || paymentMethod}${discountLabel} – ${pinResult.data?.managerName || ""}`,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        serviceFeeIncluded,
       });
       if (!result.success) {
         alert(result.message);
         return;
       }
-      // Imprimir factura con descuento aplicado (divisas, etc.) y 10% servicio
+      // Imprimir factura: correlativo fijo por mesa (tabCode), 10% servicio solo si el cliente lo pagó
       const subtotal = (activeTab as any).runningSubtotal ?? activeTab.orders.reduce((s, o) => s + o.items.reduce((si: number, i: any) => si + (i.lineTotal || 0), 0), 0);
       const discount = discountType === "DIVISAS_33" ? activeTab.balanceDue / 3 : ((activeTab as any).runningDiscount ?? 0);
       const totalAntesServicio = discountType === "DIVISAS_33" ? activeTab.balanceDue * (2 / 3) : ((activeTab as any).runningTotal ?? subtotal - discount);
-      const serviceFee = totalAntesServicio * 0.1;
+      const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
       const allItems = activeTab.orders.flatMap((o) =>
         (o.items || []).map((i: any) => ({
           name: i.itemName,
@@ -500,7 +517,7 @@ export default function POSSportBarPage() {
         }))
       );
       printReceipt({
-        orderNumber: activeTab.orders[0]?.orderNumber || activeTab.tabCode,
+        orderNumber: activeTab.tabCode,
         orderType: "RESTAURANT",
         date: new Date(),
         cashierName: cashierName || pinResult.data?.managerName || "Cajera",
@@ -515,6 +532,7 @@ export default function POSSportBarPage() {
       setAmountReceived("");
       setPaymentPin("");
       setDiscountType("NONE");
+      setServiceFeeIncluded(true);
       setShowPaymentPinModal(false);
       await loadData();
     } finally {
@@ -679,8 +697,10 @@ export default function POSSportBarPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <CashierShiftModal
+        forceOpen={showChangeCashierModal}
         onShiftOpen={(name) => {
           setCashierName(name);
+          setShowChangeCashierModal(false);
         }}
       />
 
@@ -690,8 +710,19 @@ export default function POSSportBarPage() {
           <span className="text-3xl">🍸</span>
           <div>
             <h1 className="text-xl font-black">POS Restaurante</h1>
-            <p className="text-xs text-slate-400">
-              Cuentas abiertas · Trazabilidad {cashierName ? ` · Cajera: ${cashierName}` : ""}
+            <p className="text-xs text-slate-400 flex items-center gap-2">
+              Cuentas abiertas · Trazabilidad
+              {cashierName ? (
+                <>
+                  <span>· Cajera: {cashierName}</span>
+                  <button
+                    onClick={() => setShowChangeCashierModal(true)}
+                    className="text-amber-400 hover:text-amber-300 text-[10px] font-bold underline"
+                  >
+                    Cambiar cajera
+                  </button>
+                </>
+              ) : null}
             </p>
           </div>
         </div>
@@ -1195,68 +1226,53 @@ export default function POSSportBarPage() {
                   </div>
 
                   {/* Resumen */}
-                  <div className="bg-slate-900 rounded-lg px-3 py-2 mb-2 text-xs space-y-1">
-                    <div className="flex justify-between text-slate-400">
-                      <span>Saldo</span>
-                      <span>${activeTab.balanceDue.toFixed(2)}</span>
-                    </div>
-                    {discountType === "DIVISAS_33" && (
-                      <div className="flex justify-between text-blue-400">
-                        <span>Descuento divisas</span>
-                        <span>-${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                  {(() => {
+                    return (
+                      <div className="bg-slate-900 rounded-lg px-3 py-2 mb-2 text-xs space-y-1">
+                        <div className="flex justify-between text-slate-400">
+                          <span>Saldo</span>
+                          <span>${activeTab.balanceDue.toFixed(2)}</span>
+                        </div>
+                        {discountType === "DIVISAS_33" && (
+                          <div className="flex justify-between text-blue-400">
+                            <span>Descuento divisas</span>
+                            <span>-${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={serviceFeeIncluded}
+                            onChange={(e) => setServiceFeeIncluded(e.target.checked)}
+                            className="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                          />
+                          <span className="text-slate-300">Incluir 10% servicio</span>
+                        </label>
+                        <div className="flex justify-between font-bold text-white border-t border-slate-700 pt-1">
+                          <span>A cobrar</span>
+                          <span>${paymentAmountToCharge.toFixed(2)}</span>
+                        </div>
+                        {!serviceFeeIncluded && (
+                          <div className="flex justify-between text-amber-500/80 text-[10px]">
+                            <span>Sin 10% servicio</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div className="flex justify-between font-bold text-white border-t border-slate-700 pt-1">
-                      <span>A cobrar</span>
-                      <span>
-                        $
-                        {(discountType === "DIVISAS_33"
-                          ? (activeTab.balanceDue * 2) / 3
-                          : activeTab.balanceDue
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-600 text-[10px]">
-                      <span>10% Servicio sugerido</span>
-                      <span>
-                        $
-                        {(
-                          (discountType === "DIVISAS_33" ? (activeTab.balanceDue * 2) / 3 : activeTab.balanceDue) * 0.1
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-500 text-[10px]">
-                      <span>Total sugerido c/servicio</span>
-                      <span>
-                        $
-                        {(
-                          (discountType === "DIVISAS_33" ? (activeTab.balanceDue * 2) / 3 : activeTab.balanceDue) * 1.1
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   <input
                     type="number"
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value)}
-                    placeholder={`Monto a recibir ($${(discountType === "DIVISAS_33" ? (activeTab.balanceDue * 2) / 3 : activeTab.balanceDue).toFixed(2)})`}
+                    placeholder={`Monto a recibir ($${paymentAmountToCharge.toFixed(2)})`}
                     className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-amber-500 focus:outline-none mb-2"
                   />
 
                   {/* CurrencyCalculator */}
                   <CurrencyCalculator
-                    totalUsd={
-                      paidAmount > 0
-                        ? paidAmount
-                        : Number(
-                            (discountType === "DIVISAS_33"
-                              ? (activeTab.balanceDue * 2) / 3
-                              : activeTab.balanceDue
-                            ).toFixed(2),
-                          )
-                    }
-                    hasServiceFee={true}
+                    totalUsd={paidAmount > 0 ? paidAmount : paymentAmountToCharge}
+                    hasServiceFee={false}
                     onRateUpdated={setExchangeRate}
                     className="w-full justify-center mb-2"
                   />
@@ -1277,15 +1293,24 @@ export default function POSSportBarPage() {
                   {/* Paid splits */}
                   {activeTab.paymentSplits.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      {activeTab.paymentSplits.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex justify-between text-[10px] text-slate-400 bg-slate-900 rounded px-2 py-1"
-                        >
-                          <span>{p.splitLabel}</span>
-                          <span className="text-emerald-400 font-bold">${p.paidAmount.toFixed(2)}</span>
-                        </div>
-                      ))}
+                      {activeTab.paymentSplits.map((p) => {
+                        const hasService = (p.splitLabel || "").includes("| +10% serv");
+                        const label = (p.splitLabel || "").replace(" | +10% serv", "");
+                        return (
+                          <div
+                            key={p.id}
+                            className="flex justify-between items-center text-[10px] text-slate-400 bg-slate-900 rounded px-2 py-1"
+                          >
+                            <span>
+                              {label}
+                              {hasService && (
+                                <span className="ml-1 text-emerald-400 font-bold">+10%</span>
+                              )}
+                            </span>
+                            <span className="text-emerald-400 font-bold">${p.paidAmount.toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

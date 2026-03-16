@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getSalesHistoryAction, getDailyZReportAction, voidSalesOrderAction, type ZReportData } from '@/app/actions/sales.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt } from '@/lib/print-command';
+import { exportZReportToExcel } from '@/lib/export-z-report';
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -40,7 +41,7 @@ export default function SalesHistoryPage() {
 
     // ---- REIMPRESIÓN ----
     const handleReprint = (sale: any) => {
-        const serviceFee = sale.orderType === 'RESTAURANT' ? (sale.total || 0) * 0.1 : 0;
+        const serviceFee = sale.orderType === 'RESTAURANT' && sale.serviceFeeIncluded ? (sale.total || 0) * 0.1 : 0;
         const itemsSubtotal = (sale.items || []).reduce((s: number, i: any) => s + (i.lineTotal || 0), 0);
         const deliveryFee = sale.orderType === 'DELIVERY' && sale.subtotal != null ? Math.max(0, sale.subtotal - itemsSubtotal) : undefined;
         const discountReason = (sale.discount || 0) > 0 ? 'Descuento aplicado' : undefined;
@@ -195,13 +196,14 @@ export default function SalesHistoryPage() {
                             <th className="p-4">Método</th>
                             <th className="p-4 text-right">Total</th>
                             <th className="p-4">Descuento</th>
+                            <th className="p-4 text-center">10% Serv.</th>
                             <th className="p-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700 font-mono text-sm">
                         {filteredSales.length === 0 && (
                             <tr>
-                                <td colSpan={8} className="p-10 text-center text-gray-500">
+                                <td colSpan={9} className="p-10 text-center text-gray-500">
                                     No hay ventas en este período.
                                 </td>
                             </tr>
@@ -271,6 +273,17 @@ export default function SalesHistoryPage() {
                                         ) : <span className="text-gray-600">-</span>}
                                     </td>
                                     <td className="p-4 text-center">
+                                        {sale.orderType === 'RESTAURANT' ? (
+                                            sale.serviceFeeIncluded ? (
+                                                <span className="text-emerald-400 text-xs font-bold">✓ Sí</span>
+                                            ) : (
+                                                <span className="text-amber-500/80 text-xs">No</span>
+                                            )
+                                        ) : (
+                                            <span className="text-gray-600">-</span>
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                             <button
                                                 onClick={() => handleReprint(sale)}
@@ -332,9 +345,20 @@ export default function SalesHistoryPage() {
                         <div className="text-center text-xs text-gray-500 pt-4 border-t border-gray-300">
                             <p>Fin del Reporte — Pedidos Totales: {zReport.totalOrders}</p>
                         </div>
-                        <button onClick={() => window.print()} className="w-full bg-black text-white py-3 rounded mt-6 font-bold hover:bg-gray-800 no-print">
-                            IMPRIMIR COMPROBANTE
-                        </button>
+                        <div className="flex gap-3 mt-6 no-print">
+                            <button
+                                onClick={() => exportZReportToExcel(zReport)}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold transition flex items-center justify-center gap-2"
+                            >
+                                📥 Exportar a Excel
+                            </button>
+                            <button
+                                onClick={() => window.print()}
+                                className="flex-1 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition"
+                            >
+                                🖨️ Imprimir
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
