@@ -233,8 +233,9 @@ export default function SalesHistoryPage() {
                             <th className="p-4">Hora</th>
                             <th className="p-4">Cliente</th>
                             <th className="p-4">Cajera</th>
-                            <th className="p-4">Método</th>
-                            <th className="p-4 text-right">Total</th>
+                            <th className="p-4">Método(s)</th>
+                            <th className="p-4 text-right">Factura</th>
+                            <th className="p-4 text-right">Cobrado</th>
                             <th className="p-4">Descuento</th>
                             <th className="p-4 text-center">10% Serv.</th>
                             <th className="p-4 text-center">Acciones</th>
@@ -290,10 +291,43 @@ export default function SalesHistoryPage() {
                                         {sale.createdBy?.firstName || '-'}
                                     </td>
                                     <td className="p-4">
-                                        {getPaymentBadge(sale.paymentMethod)}
+                                        {(sale.paymentBreakdown || []).length > 1 ? (
+                                            <div className="flex flex-wrap gap-1" title={(sale.paymentBreakdown || []).map((p: { method: string; amount: number }) => `${p.method}: $${p.amount.toFixed(2)}`).join(' | ')}>
+                                                {(sale.paymentBreakdown || []).map((p: { method: string; amount: number }, i: number) => (
+                                                    <span key={i} className="flex items-center gap-0.5">
+                                                        {getPaymentBadge(p.method)}
+                                                        <span className="text-[10px] text-gray-500">${(p.amount || 0).toFixed(2)}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            getPaymentBadge(sale.paymentMethod)
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-right text-gray-400 text-sm">
+                                        {formatMoney(sale.totalFactura ?? sale.total)}
                                     </td>
                                     <td className="p-4 text-right font-bold text-white text-base">
-                                        {formatMoney(sale.total)}
+                                        <div
+                                            className="cursor-help"
+                                            title={
+                                                sale.orderType === 'RESTAURANT' && (sale.totalProductos != null || sale.servicioAmount != null)
+                                                    ? [
+                                                        sale.totalProductos != null && `Productos: ${formatMoney(sale.totalProductos)}`,
+                                                        (sale.servicioAmount ?? 0) > 0 && `Servicio 10%: ${formatMoney(sale.servicioAmount)}`,
+                                                        (sale.propina ?? 0) > 0.01 && `Propina: ${formatMoney(sale.propina)}`,
+                                                        `Total cobrado: ${formatMoney(sale.totalCobrado ?? sale.total)}`
+                                                    ].filter(Boolean).join('\n')
+                                                    : undefined
+                                            }
+                                        >
+                                            {formatMoney(sale.totalCobrado ?? sale.total)}
+                                            {(sale.propina ?? 0) > 0.01 && (
+                                                <div className="text-[10px] text-amber-400 font-normal" title="Propina (excedente no devuelto)">
+                                                    +{formatMoney(sale.propina)} propina
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4 font-sans">
                                         {sale.discount > 0 ? (
@@ -412,7 +446,7 @@ export default function SalesHistoryPage() {
                         <div className="flex items-center justify-between mb-5">
                             <div>
                                 <h2 className="text-xl font-bold text-red-400">Anular Venta</h2>
-                                <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.total)}</p>
+                                <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
                             </div>
                             <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white text-2xl font-bold">×</button>
                         </div>
@@ -429,7 +463,7 @@ export default function SalesHistoryPage() {
                                 <span>Items:</span><span>{(voidTarget.items || []).length} productos</span>
                             </div>
                             <div className="flex justify-between font-bold text-white pt-1 border-t border-gray-700">
-                                <span>Total:</span><span>{formatMoney(voidTarget.total)}</span>
+                                <span>Total cobrado:</span><span>{formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</span>
                             </div>
                         </div>
 

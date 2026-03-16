@@ -1056,7 +1056,7 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
                     total: appliedAmount,
-                    paidAmount: appliedAmount,
+                    paidAmount: data.amount,
                     paidAt: new Date(),
                     notes: data.notes
                 }

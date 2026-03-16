@@ -51,7 +51,3 @@ next-env.d.ts
 
 # Cache
 .cache/
-
-# Archivos temporales / no subir
-arqueo-descargado.xlsx
-cambios-erp-sesion.patch

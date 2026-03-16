@@ -41,7 +41,7 @@ export async function getSalesHistoryAction(limit = 100) {
                 authorizedBy: { select: { firstName: true, lastName: true } },
                 createdBy: { select: { firstName: true, lastName: true } },
                 voidedBy: { select: { firstName: true, lastName: true } },
-                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, paymentSplits: { select: { splitLabel: true } } } },
+                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, paymentSplits: { select: { splitLabel: true, paymentMethod: true, paidAmount: true } } } },
                 items: {
                     include: {
                         modifiers: { select: { name: true, priceAdjustment: true } }
@@ -89,11 +89,28 @@ export async function getSalesHistoryAction(limit = 100) {
                 const serviceFeeIncluded = splits.length > 0
                     ? splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'))
                     : true;
+                const totalFactura = serviceFeeIncluded ? total * 1.1 : total;
+                const totalCobrado = splits.reduce((s: number, sp: { paidAmount?: number }) => s + (sp.paidAmount || 0), 0) || totalFactura;
+                const servicioAmount = serviceFeeIncluded ? total * 0.1 : 0;
+                const propina = Math.max(0, totalCobrado - totalFactura);
+                const paymentBreakdown = splits.map((sp: { paymentMethod?: string; paidAmount?: number }) => ({
+                    method: sp.paymentMethod || 'CASH',
+                    amount: sp.paidAmount || 0
+                }));
+                if (paymentBreakdown.length === 0 && totalFactura > 0) {
+                    paymentBreakdown.push({ method: first.paymentMethod || 'CASH', amount: totalCobrado });
+                }
                 result.push({
                     id: `tab-${o.openTabId}`,
                     _consolidated: true,
                     orderType: 'RESTAURANT',
                     serviceFeeIncluded,
+                    totalFactura,
+                    totalCobrado,
+                    totalProductos: total,
+                    servicioAmount,
+                    propina,
+                    paymentBreakdown,
                     _orderIds: sorted.map(x => x.id),
                     orderNumber: tab?.tabCode || first.orderNumber,
                     orderNumbers: sorted.map(x => x.orderNumber),
@@ -113,7 +130,17 @@ export async function getSalesHistoryAction(limit = 100) {
                     voidedBy: sorted.find(x => x.voidedBy)?.voidedBy,
                 });
             } else if (!o.openTabId || o.orderType !== 'RESTAURANT') {
-                result.push({ ...o, _consolidated: false });
+                const ordTotal = o.total || 0;
+                result.push({
+                    ...o,
+                    _consolidated: false,
+                    totalFactura: ordTotal,
+                    totalCobrado: ordTotal,
+                    totalProductos: ordTotal,
+                    servicioAmount: 0,
+                    propina: 0,
+                    paymentBreakdown: [{ method: o.paymentMethod || 'CASH', amount: ordTotal }]
+                });
             }
         }
         result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -192,7 +219,10 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                 const splits = tab?.paymentSplits || [];
                 let serviceFee = 0;
                 const hasService = splits.length > 0 && splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'));
-                const totalReceived = hasService ? total * 1.1 : total;
+                const totalFactura = hasService ? total * 1.1 : total;
+                const totalCobrado = splits.length > 0
+                    ? splits.reduce((s: number, sp: { paidAmount?: number }) => s + (sp.paidAmount || 0), 0)
+                    : totalFactura;
 
                 if (splits.length > 0) {
                     for (const s of splits) {
@@ -220,7 +250,7 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     orderType: 'RESTAURANT',
                     description,
                     correlativo: tab?.tabCode || group[0].orderNumber || '',
-                    total: totalReceived,
+                    total: totalCobrado,
                     paymentBreakdown: breakdown,
                     serviceFee
                 });
