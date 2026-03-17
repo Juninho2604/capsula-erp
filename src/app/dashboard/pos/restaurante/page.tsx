@@ -231,6 +231,14 @@ export default function POSSportBarPage() {
   const [showChangeCashierModal, setShowChangeCashierModal] = useState(false);
   const [isPickupMode, setIsPickupMode] = useState(false);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
+  const [lastPickupOrder, setLastPickupOrder] = useState<{
+    orderNumber: string;
+    total: number;
+    subtotal: number;
+    discount: number;
+    items: { name: string; quantity: number; unitPrice: number; total: number; modifiers: string[] }[];
+    customerName: string;
+  } | null>(null);
 
   // ============================================================================
   // DATA LOADING
@@ -670,27 +678,37 @@ export default function POSSportBarPage() {
         const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
         const discount = pickupDiscount;
         const discountReason = discount > 0 ? "Descuento aplicado" : undefined;
-        if (getPOSConfig().printReceiptOnRestaurant) {
-        printReceipt({
+        const pickupReceiptItems = cart.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          total: i.lineTotal,
+          modifiers: i.modifiers.map((m) => m.name),
+        }));
+        const pickupReceiptData = {
           orderNumber: result.data.orderNumber,
-          orderType: "RESTAURANT",
+          orderType: "RESTAURANT" as const,
           date: new Date(),
           cashierName: cashierName || "Cajera",
           customerName: pickupCustomerName || "Cliente en Caja",
-          items: cart.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            total: i.lineTotal,
-            modifiers: i.modifiers.map((m) => m.name),
-          })),
+          items: pickupReceiptItems,
           subtotal,
           discount,
           discountReason,
           total: finalTotal,
-          serviceFee: 0, // Pickup no cobra servicio
-        });
+          serviceFee: 0,
+        };
+        if (getPOSConfig().printReceiptOnRestaurant) {
+          printReceipt(pickupReceiptData);
         }
+        setLastPickupOrder({
+          orderNumber: result.data.orderNumber,
+          total: finalTotal,
+          subtotal,
+          discount,
+          items: pickupReceiptItems,
+          customerName: pickupCustomerName || "Cliente en Caja",
+        });
 
         setCart([]);
         setPaymentMethod("CASH");
@@ -1136,6 +1154,28 @@ export default function POSSportBarPage() {
                     </>
                   );
                 })()}
+                {lastPickupOrder && (
+                  <button
+                    onClick={() => {
+                      printReceipt({
+                        orderNumber: lastPickupOrder.orderNumber,
+                        orderType: "RESTAURANT",
+                        date: new Date(),
+                        cashierName: cashierName || "Cajera",
+                        customerName: lastPickupOrder.customerName,
+                        items: lastPickupOrder.items,
+                        subtotal: lastPickupOrder.subtotal,
+                        discount: lastPickupOrder.discount,
+                        discountReason: lastPickupOrder.discount > 0 ? "Descuento aplicado" : undefined,
+                        total: lastPickupOrder.total,
+                        serviceFee: 0,
+                      });
+                    }}
+                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 border border-slate-600 text-sm"
+                  >
+                    🖨️ Imprimir factura {lastPickupOrder.orderNumber}
+                  </button>
+                )}
               </div>
             </div>
           ) : !activeTab ? (

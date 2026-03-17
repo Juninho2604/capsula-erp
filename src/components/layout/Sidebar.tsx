@@ -120,6 +120,12 @@ const posNavigation: NavItem[] = [
         roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
     },
     {
+        label: 'PedidosYA',
+        href: '/dashboard/pos/pedidosya',
+        icon: '🍔',
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
+    },
+    {
         label: 'Cargar Ventas',
         href: '/dashboard/ventas/cargar',
         icon: '💳',
