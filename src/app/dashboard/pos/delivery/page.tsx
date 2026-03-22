@@ -3,8 +3,15 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { createSalesOrderAction, getMenuForPOSAction, validateManagerPinAction, type CartItem } from '@/app/actions/pos.actions';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt, printKitchenCommand } from '@/lib/print-command';
+import { getPOSConfig } from '@/lib/pos-settings';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
+import { PriceDisplay } from '@/components/pos/PriceDisplay';
+import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
+
+const DELIVERY_FEE_NORMAL = 4.5;
+const DELIVERY_FEE_DIVISAS = 3;
 
 interface ModifierOption {
     id: string;
@@ -52,14 +59,6 @@ export default function POSDeliveryPage() {
     const [customerAddress, setCustomerAddress] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // lastOrder
-    const [lastOrder, setLastOrder] = useState<{
-        orderNumber: string;
-        total: number;
-        subtotal: number;
-        discount: number;
-        itemsSnapshot: any[];
-    } | null>(null);
 
     // MODAL STATE
     const [showModifierModal, setShowModifierModal] = useState(false);
@@ -69,27 +68,36 @@ export default function POSDeliveryPage() {
     const [itemNotes, setItemNotes] = useState('');
 
     // PAYMENT STATE
-    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE_PAY'>('TRANSFER');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE_PAY' | 'ZELLE'>('TRANSFER');
     const [amountReceived, setAmountReceived] = useState('');
+    const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
     // DISCOUNT STATE
-    const [discountType, setDiscountType] = useState<'NONE' | 'DIVISAS_33' | 'CORTESIA_100'>('NONE');
+    const [discountType, setDiscountType] = useState<'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT'>('NONE');
     const [authorizedManager, setAuthorizedManager] = useState<{ id: string, name: string } | null>(null);
     const [showPinModal, setShowPinModal] = useState(false);
     const [pinInput, setPinInput] = useState('');
     const [pinError, setPinError] = useState('');
+    const [cortesiaPercent, setCortesiaPercent] = useState('100');
 
     // WHATSAPP PARSER
     const [showWhatsAppParser, setShowWhatsAppParser] = useState(false);
 
+    // SEARCH
+    const [productSearch, setProductSearch] = useState('');
+
     useEffect(() => {
         async function loadMenu() {
             try {
-                const result = await getMenuForPOSAction();
-                if (result.success && result.data) {
-                    setCategories(result.data);
-                    if (result.data.length > 0) setSelectedCategory(result.data[0].id);
+                const [menuResult, rate] = await Promise.all([
+                    getMenuForPOSAction(),
+                    getExchangeRateValue(),
+                ]);
+                if (menuResult.success && menuResult.data) {
+                    setCategories(menuResult.data);
+                    if (menuResult.data.length > 0) setSelectedCategory(menuResult.data[0].id);
                 }
+                setExchangeRate(rate);
             } catch (error) { console.error(error); } finally { setIsLoading(false); }
         }
         loadMenu();
@@ -101,6 +109,19 @@ export default function POSDeliveryPage() {
             if (cat) setMenuItems(cat.items);
         }
     }, [selectedCategory, categories]);
+
+    useEffect(() => {
+        if (paymentMethod !== 'CASH' && paymentMethod !== 'ZELLE' && discountType === 'DIVISAS_33') {
+            setDiscountType('NONE');
+        }
+    }, [paymentMethod, discountType]);
+
+    const filteredMenuItems = productSearch.trim()
+        ? categories.flatMap((c: any) => c.items as MenuItem[]).filter((i) =>
+              i.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+              i.sku?.toLowerCase().includes(productSearch.toLowerCase())
+          )
+        : menuItems;
 
     const getCategoryIcon = (name: string) => {
         if (name.includes('Tabla') || name.includes('Combo')) return '🍱';
@@ -180,9 +201,17 @@ export default function POSDeliveryPage() {
         setShowModifierModal(false); setSelectedItemForModifier(null);
     };
 
-    const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
-    const discountAmount = discountType === 'DIVISAS_33' ? cartTotal * 0.33 : (discountType === 'CORTESIA_100' ? cartTotal : 0);
-    const finalTotal = cartTotal - discountAmount;
+    const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
+    const isPagoDivisas = paymentMethod === 'CASH' || paymentMethod === 'ZELLE';
+    const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
+    const deliveryFee = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas ? cartSubtotal * (2 / 3)
+        : discountType === 'CORTESIA_100' ? 0
+        : discountType === 'CORTESIA_PERCENT' ? cartSubtotal * (1 - cortesiaPercentNum / 100)
+        : cartSubtotal;
+    const finalTotal = (discountType === 'CORTESIA_100') ? 0
+        : discountType === 'CORTESIA_PERCENT' ? itemsAfterDiscount + (cortesiaPercentNum >= 100 ? 0 : deliveryFee)
+        : itemsAfterDiscount + deliveryFee;
     const paidAmount = parseFloat(amountReceived) || 0;
 
     const handleCheckout = async () => {
@@ -192,26 +221,67 @@ export default function POSDeliveryPage() {
             const result = await createSalesOrderAction({
                 orderType: 'DELIVERY',
                 customerName: customerName || 'Delivery',
-                customerPhone, customerAddress: customerAddress || 'N/A', // Asegurar que no sea null
-                items: cart, paymentMethod, amountPaid: paidAmount || finalTotal, discountType, authorizedById: authorizedManager?.id, notes: `Dirección: ${customerAddress}`
+                customerPhone, customerAddress: customerAddress || 'N/A',
+                items: cart, paymentMethod, amountPaid: paidAmount || finalTotal,
+                discountType,
+                discountPercent: discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum : undefined,
+                authorizedById: authorizedManager?.id,
+                notes: `Dirección: ${customerAddress}`
             });
 
             if (result.success && result.data) {
-                printKitchenCommand({
-                    orderNumber: result.data.orderNumber, orderType: 'DELIVERY',
-                    customerName: `${customerName} (${customerPhone})`,
-                    items: cart.map(i => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map(m => m.name), notes: i.notes })),
-                    createdAt: new Date(), address: customerAddress
-                });
-
+                const cfg = getPOSConfig();
+                if (cfg.printComandaOnDelivery) {
+                    printKitchenCommand({
+                        orderNumber: result.data.orderNumber, orderType: 'DELIVERY',
+                        customerName: `${customerName} (${customerPhone})`,
+                        items: cart.map(i => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map(m => m.name), notes: i.notes })),
+                        createdAt: new Date(), address: customerAddress
+                    });
+                }
+                const receiptData = {
+                    orderNumber: result.data.orderNumber,
+                    orderType: 'DELIVERY' as const,
+                    date: new Date(),
+                    cashierName: 'Delivery',
+                    customerName: customerName || undefined,
+                    customerPhone: customerPhone || undefined,
+                    customerAddress: customerAddress || undefined,
+                    items: cart.map(i => ({
+                        name: i.name,
+                        quantity: i.quantity,
+                        unitPrice: i.unitPrice,
+                        total: i.lineTotal,
+                        modifiers: i.modifiers.map(m => m.name)
+                    })),
+                    subtotal: cartSubtotal,
+                    discount: discountType === 'DIVISAS_33' && isPagoDivisas ? cartSubtotal / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS : (discountType === 'CORTESIA_100' ? cartSubtotal + DELIVERY_FEE_NORMAL : 0),
+                    discountReason: (discountType === 'DIVISAS_33' && isPagoDivisas) || discountType === 'CORTESIA_100' ? 'Descuento aplicado' : undefined,
+                    deliveryFee: discountType === 'CORTESIA_100' ? 0 : deliveryFee,
+                    total: finalTotal
+                };
+                if (cfg.printReceiptOnDelivery) {
+                    printReceipt(receiptData);
+                }
                 setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setPaymentMethod('TRANSFER'); setAmountReceived('');
                 setDiscountType('NONE'); setAuthorizedManager(null);
             } else alert(result.message);
         } catch (e) { console.error(e); alert('Error'); } finally { setIsProcessing(false); }
     };
 
-    const handleDiscountSelect = (t: string) => { if (t === 'CORTESIA_100') { setPinInput(''); setPinError(''); setShowPinModal(true); } else { setDiscountType(t as any); setAuthorizedManager(null); } };
-    const handlePinSubmit = async () => { const r = await validateManagerPinAction(pinInput); if (r.success && r.data) { setAuthorizedManager({ id: r.data.managerId, name: r.data.managerName }); setDiscountType('CORTESIA_100'); setShowPinModal(false); } else setPinError('PIN Inválido'); };
+    const handleDiscountSelect = (t: string) => {
+        if (t === 'CORTESIA_100') { setPinInput(''); setPinError(''); setCortesiaPercent('100'); setShowPinModal(true); }
+        else { setDiscountType(t as any); setAuthorizedManager(null); }
+    };
+    const handlePinSubmit = async () => {
+        const r = await validateManagerPinAction(pinInput);
+        if (r.success && r.data) {
+            setAuthorizedManager({ id: r.data.managerId, name: r.data.managerName });
+            const pct = parseFloat(cortesiaPercent);
+            setDiscountType(pct >= 100 ? 'CORTESIA_100' : 'CORTESIA_PERCENT');
+            setShowPinModal(false);
+        } else setPinError('PIN Inválido');
+    };
     const handlePinKey = (k: string) => { if (k === 'clear') setPinInput(''); else if (k === 'back') setPinInput(p => p.slice(0, -1)); else setPinInput(p => p + k); };
 
     if (isLoading) return <div className="text-white p-10">Cargando...</div>;
@@ -224,6 +294,7 @@ export default function POSDeliveryPage() {
                     <div><h1 className="text-2xl font-black">Shanklish Delivery</h1><p className="text-blue-200 text-xs font-bold uppercase">Sistema de Despacho</p></div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <CurrencyCalculator totalUsd={finalTotal} deliveryFee={discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL} hasServiceFee={false} onRateUpdated={setExchangeRate} className="bg-white/10 hover:bg-white/20 text-white" />
                     <button
                         onClick={() => setShowWhatsAppParser(!showWhatsAppParser)}
                         className={cn(
@@ -256,24 +327,59 @@ export default function POSDeliveryPage() {
                         </div>
                     ) : (
                         <>
-                            <div className="flex gap-2 p-3 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
-                                {categories.map(cat => (
-                                    <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-5 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-                                        <span>{getCategoryIcon(cat.name)}</span> {cat.name}
-                                    </button>
-                                ))}
+                            {/* Search bar */}
+                            <div className="px-3 pt-3 pb-1 bg-gray-800 border-b border-gray-700">
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                                    <input
+                                        type="text"
+                                        value={productSearch}
+                                        onChange={(e) => setProductSearch(e.target.value)}
+                                        placeholder="Buscar producto..."
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-xl py-2 pl-9 pr-9 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                                    />
+                                    {productSearch && (
+                                        <button
+                                            onClick={() => setProductSearch('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
                             </div>
+                            {/* Categories */}
+                            {!productSearch && (
+                                <div className="flex gap-2 p-3 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
+                                    {categories.map((cat: any) => (
+                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-5 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                            <span>{getCategoryIcon(cat.name)}</span> {cat.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex-1 p-4 overflow-y-auto pb-24">
+                                {productSearch && (
+                                    <p className="text-xs text-gray-400 mb-3">
+                                        {filteredMenuItems.length} resultado(s) para &quot;{productSearch}&quot;
+                                    </p>
+                                )}
                                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {menuItems.map(item => (
+                                    {filteredMenuItems.map(item => (
                                         <button key={item.id} onClick={() => handleAddToCart(item)} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-500 rounded-xl p-4 text-left shadow-md group h-36 flex flex-col justify-between">
                                             <div className="font-bold text-lg leading-tight group-hover:text-blue-300">{item.name}</div>
                                             <div className="text-2xl font-black text-blue-400">${item.price.toFixed(2)}</div>
                                         </button>
                                     ))}
+                                    {filteredMenuItems.length === 0 && (
+                                        <div className="col-span-full text-center text-gray-500 py-12 text-sm">
+                                            Sin resultados para &quot;{productSearch}&quot;
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </>)}
+                        </>
+                        )}
                 </div>
 
                 <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-20">
@@ -303,18 +409,61 @@ export default function POSDeliveryPage() {
                     </div>
 
                     <div className="p-4 bg-gray-800 border-t border-gray-700 space-y-3">
-                        <div className="flex gap-1">
-                            <button onClick={() => handleDiscountSelect('NONE')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'NONE' ? 'bg-blue-900 text-blue-200 ring-1 ring-blue-500' : 'bg-gray-700'}`}>Normal</button>
-                            <button onClick={() => handleDiscountSelect('DIVISAS_33')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600' : 'bg-gray-700'}`}>Divisa -33%</button>
-                            <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`flex-1 py-1 text-[10px] font-bold rounded ${discountType === 'CORTESIA_100' ? 'bg-purple-600' : 'bg-gray-700'}`}>Cortesía</button>
+                        <div className="rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-xs space-y-1">
+                            <div className="flex justify-between text-gray-400">
+                                <span>Subtotal</span>
+                                <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
+                            </div>
+                            <div className="flex justify-between text-gray-400">
+                                <span>🛵 Delivery</span>
+                                <span className="text-blue-300">${deliveryFee.toFixed(2)}</span>
+                            </div>
+                            {discountType === 'DIVISAS_33' && isPagoDivisas && (
+                                <div className="flex justify-between text-blue-400">
+                                    <span>Descuento divisas -33.33%</span>
+                                    <span>-${(cartSubtotal / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                </div>
+                            )}
+                            {discountType === 'CORTESIA_100' && (
+                                <div className="flex justify-between text-purple-400">
+                                    <span>Cortesía 100%</span>
+                                    <span>-${(cartSubtotal + DELIVERY_FEE_NORMAL).toFixed(2)}</span>
+                                </div>
+                            )}
+                            {discountType === 'CORTESIA_PERCENT' && (
+                                <div className="flex justify-between text-purple-400">
+                                    <span>Cortesía {cortesiaPercentNum}%</span>
+                                    <span>-${(cartSubtotal * cortesiaPercentNum / 100).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-white border-t border-gray-700 pt-1">
+                                <span>Total</span>
+                                <PriceDisplay usd={finalTotal} rate={exchangeRate} size="sm" showBs={false} />
+                            </div>
                         </div>
-                        <div className="grid grid-cols-4 gap-1">
-                            {['TRANSFER', 'MOBILE_PAY', 'CASH', 'CARD'].map(m => (
-                                <button key={m} onClick={() => setPaymentMethod(m as any)} className={`py-2 text-xs font-bold rounded ${paymentMethod === m ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                                    {m === 'TRANSFER' ? 'Transf' : m === 'MOBILE_PAY' ? 'P.Móvil' : m === 'CASH' ? 'Efec' : 'Punto'}
+                        <div className="grid grid-cols-2 gap-1">
+                            <button onClick={() => handleDiscountSelect('NONE')} className={`py-1.5 text-[10px] font-bold rounded ${discountType === 'NONE' ? 'bg-blue-900 text-blue-200 ring-1 ring-blue-500' : 'bg-gray-700 text-gray-300'}`}>Normal</button>
+                            <button onClick={() => isPagoDivisas && handleDiscountSelect('DIVISAS_33')} disabled={!isPagoDivisas} title={!isPagoDivisas ? 'Solo con Efectivo o Zelle' : 'Descuento divisas - Delivery $3'} className={`py-1.5 text-[10px] font-bold rounded ${discountType === 'DIVISAS_33' ? 'bg-blue-600 text-white' : isPagoDivisas ? 'bg-gray-700 text-gray-300' : 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-60'}`}>Divisa -33%</button>
+                            <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`col-span-2 py-1.5 text-[10px] font-bold rounded ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
+                                    ? `🎁 Cortesía ${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'} — ${authorizedManager?.name || ''}`
+                                    : '🎁 Cortesía (PIN)'}
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                            {(['TRANSFER', 'MOBILE_PAY', 'CASH', 'ZELLE', 'CARD'] as const).map(m => (
+                                <button key={m} onClick={() => setPaymentMethod(m)} className={`py-2 text-[10px] font-bold rounded ${paymentMethod === m ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>
+                                    {m === 'TRANSFER' ? 'Transf' : m === 'MOBILE_PAY' ? 'P.Móvil' : m === 'CASH' ? 'Efect' : m === 'ZELLE' ? 'Zelle' : 'Punto'}
                                 </button>
                             ))}
                         </div>
+                        <input
+                            type="number"
+                            value={amountReceived}
+                            onChange={(e) => setAmountReceived(e.target.value)}
+                            placeholder={`Monto recibido ($${finalTotal.toFixed(2)})`}
+                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
                         <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xl shadow-lg disabled:opacity-50">
                             {isProcessing ? 'PROCESANDO...' : `CONFIRMAR $${finalTotal.toFixed(2)}`}
                         </button>
@@ -388,15 +537,37 @@ export default function POSDeliveryPage() {
 
             {showPinModal && (
                 <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60]">
-                    <div className="bg-gray-800 p-6 rounded-2xl w-80 text-center">
-                        <h3 className="font-bold text-xl mb-4">Autorización</h3>
-                        <div className="bg-black p-4 rounded text-2xl tracking-widest mb-4 font-mono">{pinInput.replace(/./g, '*')}</div>
+                    <div className="bg-gray-800 p-6 rounded-2xl w-80">
+                        <h3 className="font-bold text-xl mb-4 text-center text-purple-300">🎁 Cortesía</h3>
+                        {/* Porcentaje */}
+                        <div className="mb-4">
+                            <label className="block text-xs text-gray-400 font-bold mb-1">% de Cortesía</label>
+                            <div className="flex gap-1.5 mb-2">
+                                {['25','50','75','100'].map(v => (
+                                    <button key={v} onClick={() => setCortesiaPercent(v)}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded transition ${cortesiaPercent === v ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                        {v}%
+                                    </button>
+                                ))}
+                            </div>
+                            <input type="number" min="1" max="100" value={cortesiaPercent}
+                                onChange={e => setCortesiaPercent(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-center font-bold focus:border-purple-500 focus:outline-none"
+                                placeholder="% personalizado" />
+                        </div>
+                        {/* PIN */}
+                        <label className="block text-xs text-gray-400 font-bold mb-1">PIN de Gerente / Dueño</label>
+                        <div className="bg-black p-4 rounded text-2xl tracking-widest mb-3 font-mono text-center min-h-[3.5rem]">{pinInput.replace(/./g, '•')}</div>
                         <div className="grid grid-cols-3 gap-2 mb-4">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => <button key={n} onClick={() => handlePinKey(n.toString())} className="bg-gray-700 p-3 rounded font-bold text-xl">{n}</button>)}
-                            <button onClick={() => handlePinKey('clear')} className="bg-red-800 rounded font-bold text-red-200">C</button>
+                            <button onClick={() => handlePinKey('clear')} className="bg-red-800 rounded font-bold text-red-200 text-sm">C</button>
                             <button onClick={() => handlePinKey('back')} className="bg-gray-600 rounded font-bold">⌫</button>
                         </div>
-                        <div className="flex gap-2"><button onClick={() => setShowPinModal(false)} className="flex-1 bg-gray-600 py-2 rounded">Cancelar</button><button onClick={handlePinSubmit} className="flex-1 bg-blue-600 py-2 rounded font-bold">OK</button></div>
+                        {pinError && <p className="text-red-400 text-xs text-center mb-3">{pinError}</p>}
+                        <div className="flex gap-2">
+                            <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="flex-1 bg-gray-600 py-2 rounded">Cancelar</button>
+                            <button onClick={handlePinSubmit} disabled={!pinInput} className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-2 rounded font-bold transition">Aplicar</button>
+                        </div>
                     </div>
                 </div>
             )}

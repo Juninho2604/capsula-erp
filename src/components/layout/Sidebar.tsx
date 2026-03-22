@@ -120,6 +120,12 @@ const posNavigation: NavItem[] = [
         roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
     },
     {
+        label: 'PedidosYA',
+        href: '/dashboard/pos/pedidosya',
+        icon: '🍔',
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
+    },
+    {
         label: 'Cargar Ventas',
         href: '/dashboard/ventas/cargar',
         icon: '💳',
@@ -143,6 +149,12 @@ const posNavigation: NavItem[] = [
         icon: '🍽️',
         roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
     },
+    {
+        label: 'Configuración POS',
+        href: '/dashboard/config/pos',
+        icon: '🖨️',
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER_RESTAURANT', 'CASHIER_DELIVERY'],
+    },
 ];
 
 const secondaryNavigation: NavItem[] = [
@@ -153,6 +165,7 @@ const secondaryNavigation: NavItem[] = [
         roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
     },
     { label: 'Roles y Permisos', href: '/dashboard/config/roles', icon: '⚙️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
+    { label: 'Configuración POS', href: '/dashboard/config/pos', icon: '🖨️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
 ];
 
 

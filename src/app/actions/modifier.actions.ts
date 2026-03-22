@@ -90,3 +90,160 @@ export async function toggleModifierAvailabilityAction(modifierId: string, isAva
         return { success: false, message: 'Error actualizando modificador' };
     }
 }
+
+// ============================================================================
+// CRUD GRUPOS
+// ============================================================================
+
+export async function createModifierGroupAction(data: {
+    name: string;
+    description?: string;
+    isRequired: boolean;
+    minSelections: number;
+    maxSelections: number;
+}) {
+    try {
+        const maxSort = await prisma.menuModifierGroup.aggregate({ _max: { sortOrder: true } });
+        const group = await prisma.menuModifierGroup.create({
+            data: {
+                name: data.name.trim(),
+                description: data.description?.trim() || null,
+                isRequired: data.isRequired,
+                minSelections: data.minSelections,
+                maxSelections: data.maxSelections,
+                sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
+            },
+            include: {
+                modifiers: { include: { linkedMenuItem: { select: { id: true, name: true } } } },
+                menuItems: { include: { menuItem: { select: { id: true, name: true } } } }
+            }
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true, data: group };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: 'Error creando grupo' };
+    }
+}
+
+export async function updateModifierGroupAction(id: string, data: {
+    name?: string;
+    description?: string | null;
+    isRequired?: boolean;
+    minSelections?: number;
+    maxSelections?: number;
+}) {
+    try {
+        await prisma.menuModifierGroup.update({
+            where: { id },
+            data: {
+                ...(data.name !== undefined && { name: data.name.trim() }),
+                ...(data.description !== undefined && { description: data.description }),
+                ...(data.isRequired !== undefined && { isRequired: data.isRequired }),
+                ...(data.minSelections !== undefined && { minSelections: data.minSelections }),
+                ...(data.maxSelections !== undefined && { maxSelections: data.maxSelections }),
+            }
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Error actualizando grupo' };
+    }
+}
+
+export async function deleteModifierGroupAction(id: string) {
+    try {
+        await prisma.menuModifierGroup.update({ where: { id }, data: { isActive: false } });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Error eliminando grupo' };
+    }
+}
+
+// ============================================================================
+// CRUD MODIFICADORES
+// ============================================================================
+
+export async function addModifierAction(data: {
+    groupId: string;
+    name: string;
+    priceAdjustment: number;
+    linkedMenuItemId?: string | null;
+}) {
+    try {
+        const maxSort = await prisma.menuModifier.aggregate({
+            where: { groupId: data.groupId },
+            _max: { sortOrder: true }
+        });
+        const modifier = await prisma.menuModifier.create({
+            data: {
+                groupId: data.groupId,
+                name: data.name.trim(),
+                priceAdjustment: data.priceAdjustment,
+                linkedMenuItemId: data.linkedMenuItemId || null,
+                sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
+            },
+            include: { linkedMenuItem: { select: { id: true, name: true } } }
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true, data: modifier };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: 'Error creando modificador' };
+    }
+}
+
+export async function updateModifierNamePriceAction(id: string, name: string, priceAdjustment: number) {
+    try {
+        await prisma.menuModifier.update({
+            where: { id },
+            data: { name: name.trim(), priceAdjustment }
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Error actualizando modificador' };
+    }
+}
+
+export async function deleteModifierAction(id: string) {
+    try {
+        await prisma.menuModifier.delete({ where: { id } });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Error eliminando modificador' };
+    }
+}
+
+// ============================================================================
+// VINCULAR GRUPO A MENU ITEM (para que aparezca en POS)
+// ============================================================================
+
+export async function linkGroupToMenuItemAction(modifierGroupId: string, menuItemId: string) {
+    try {
+        await prisma.menuItemModifierGroup.upsert({
+            where: { menuItemId_modifierGroupId: { menuItemId, modifierGroupId } },
+            create: { menuItemId, modifierGroupId },
+            update: {}
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: 'Error vinculando grupo a plato' };
+    }
+}
+
+export async function unlinkGroupFromMenuItemAction(modifierGroupId: string, menuItemId: string) {
+    try {
+        await prisma.menuItemModifierGroup.delete({
+            where: { menuItemId_modifierGroupId: { menuItemId, modifierGroupId } }
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Error desvinculando grupo de plato' };
+    }
+}
