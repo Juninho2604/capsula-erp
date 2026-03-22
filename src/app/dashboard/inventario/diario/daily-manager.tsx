@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import {
     getDailyInventoryAction,
     saveDailyInventoryCountsAction,
@@ -146,6 +147,102 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const exportToExcel = () => {
+        if (!items.length) { toast.error('No hay datos para exportar'); return; }
+
+        const wb = XLSX.utils.book_new();
+
+        // ── Metadata rows ──
+        const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-VE', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        const statusLabel = data?.status === 'CLOSED' ? 'CERRADO' : 'BORRADOR';
+
+        const metaRows = [
+            ['SHANKLISH CARACAS — INVENTARIO DIARIO'],
+            [`Área: ${selectedAreaName}`, '', '', `Fecha: ${dateLabel}`, '', '', `Estado: ${statusLabel}`],
+            [],
+        ];
+
+        // ── Header columns ──
+        const headers = [
+            'PRODUCTO', 'SKU', 'UNIDAD',
+            'APERTURA', 'ENTRADAS (+)', 'VENTAS/CONSUMO (−)', 'MERMA (−)',
+            'TEÓRICO', 'CIERRE REAL', 'VARIACIÓN'
+        ];
+
+        // ── Data rows ──
+        const dataRows = items.map(item => {
+            const theoretical = item.theoreticalStock || 0;
+            const variance = item.variance || 0;
+            return [
+                item.inventoryItem.name,
+                item.inventoryItem.sku,
+                item.unit,
+                item.initialCount || 0,
+                item.entries || 0,
+                item.sales || 0,
+                item.waste || 0,
+                parseFloat(theoretical.toFixed(4)),
+                item.finalCount || 0,
+                parseFloat(variance.toFixed(4)),
+            ];
+        });
+
+        // ── Totals row ──
+        const totalsRow = [
+            `TOTALES (${items.length} items)`, '', '',
+            items.reduce((s, i) => s + (i.initialCount || 0), 0),
+            items.reduce((s, i) => s + (i.entries || 0), 0),
+            items.reduce((s, i) => s + (i.sales || 0), 0),
+            items.reduce((s, i) => s + (i.waste || 0), 0),
+            items.reduce((s, i) => s + (i.theoreticalStock || 0), 0),
+            items.reduce((s, i) => s + (i.finalCount || 0), 0),
+            items.reduce((s, i) => s + (i.variance || 0), 0),
+        ];
+
+        // ── Ventas column (raw, for user to fill in) ──
+        const salesHelperRows = [
+            [],
+            ['--- COLUMNA DE AYUDA: VENTAS PARA COMPLETAR ---'],
+            ['Producto', 'SKU', 'Unidad', 'Ventas del día (completar aquí)'],
+            ...items.map(item => [item.inventoryItem.name, item.inventoryItem.sku, item.unit, '']),
+        ];
+
+        // ── Build worksheet ──
+        const allRows = [
+            ...metaRows,
+            headers,
+            ...dataRows,
+            [],
+            totalsRow,
+            ...salesHelperRows,
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+        // Column widths
+        ws['!cols'] = [
+            { wch: 32 }, // Producto
+            { wch: 14 }, // SKU
+            { wch: 8 },  // Unidad
+            { wch: 12 }, // Apertura
+            { wch: 14 }, // Entradas
+            { wch: 20 }, // Ventas
+            { wch: 12 }, // Merma
+            { wch: 12 }, // Teórico
+            { wch: 12 }, // Cierre
+            { wch: 12 }, // Variación
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventario Diario');
+
+        // ── File name ──
+        const fileName = `inventario_${selectedAreaName.replace(/\s+/g, '_').toLowerCase()}_${selectedDate}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        toast.success(`📥 Descargado: ${fileName}`);
     };
 
     const isClosed = data?.status === 'CLOSED';
@@ -294,6 +391,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             )}
                         >
                             📊 Reporte por Rango
+                        </button>
+                        <button
+                            onClick={exportToExcel}
+                            disabled={!items.length}
+                            className="px-4 py-2 text-sm font-bold text-green-700 bg-green-50 border border-green-300 rounded-xl hover:bg-green-100 shadow-sm transition-all disabled:opacity-40 flex items-center gap-1.5"
+                            title="Descargar inventario del día como Excel"
+                        >
+                            📥 Exportar Excel
                         </button>
                         <button
                             onClick={() => setShowConfig(true)}
