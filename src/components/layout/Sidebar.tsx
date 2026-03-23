@@ -38,6 +38,12 @@ const navigation: NavItem[] = [
         roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
     },
     {
+        label: 'Conteo físico (Excel)',
+        href: '/dashboard/inventario/conteo-semanal',
+        icon: '📋',
+        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR']
+    },
+    {
         label: 'Auditorías',
         href: '/dashboard/inventario/auditorias',
         icon: '📝',
