@@ -10,173 +10,77 @@ import { ROLE_INFO } from '@/lib/constants/roles';
 import { UserRole } from '@/types';
 import { logoutAction } from '@/app/actions/auth.actions';
 import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
-
-interface NavItem {
-    label: string;
-    href: string;
-    icon: string;
-    roles?: UserRole[]; // Si no se especifica, todos pueden ver
-}
-
-const navigation: NavItem[] = [
-    {
-        label: 'Dashboard',
-        href: '/dashboard',
-        icon: '📊',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'CHEF', 'AREA_LEAD'] // Todos MENOS Cajeras
-    },
-    {
-        label: 'Inventario Diario',
-        href: '/dashboard/inventario/diario',
-        icon: '📅',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
-    },
-    {
-        label: 'Inventario',
-        href: '/dashboard/inventario',
-        icon: '📦',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
-    },
-    {
-        label: 'Conteo físico (Excel)',
-        href: '/dashboard/inventario/conteo-semanal',
-        icon: '📋',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR']
-    },
-    {
-        label: 'Auditorías',
-        href: '/dashboard/inventario/auditorias',
-        icon: '📝',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
-    },
-    {
-        label: 'Transferencias',
-        href: '/dashboard/transferencias',
-        icon: '🔄',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
-    },
-    {
-        label: 'Historial Mensual',
-        href: '/dashboard/inventario/historial-mensual',
-        icon: '📊',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER']
-    },
-    {
-        label: 'Préstamos',
-        href: '/dashboard/prestamos',
-        icon: '🤝',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER']
-    },
-    {
-        label: 'Recetas',
-        href: '/dashboard/recetas',
-        icon: '📋',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF']
-    },
-    {
-        label: 'Producción',
-        href: '/dashboard/produccion',
-        icon: '🏭',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD']
-    },
-    {
-        label: 'Costos',
-        href: '/dashboard/costos',
-        icon: '💰',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-    },
-    {
-        label: 'Compras',
-        href: '/dashboard/compras',
-        icon: '🛒',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
-    },
-    {
-        label: 'Proteínas',
-        href: '/dashboard/proteinas',
-        icon: '🥩',
-        roles: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
-    },
-    {
-        label: 'Menú',
-        href: '/dashboard/menu',
-        icon: '🍽️',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-    },
-    {
-        label: 'Modificadores',
-        href: '/dashboard/menu/modificadores',
-        icon: '🔧',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-    },
-];
-
-// Navegación POS
-const posNavigation: NavItem[] = [
-    {
-        label: 'POS Restaurante',
-        href: '/dashboard/pos/restaurante',
-        icon: '🥙',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_RESTAURANT'],
-    },
-    {
-        label: 'POS Delivery',
-        href: '/dashboard/pos/delivery',
-        icon: '🛵',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
-    },
-    {
-        label: 'PedidosYA',
-        href: '/dashboard/pos/pedidosya',
-        icon: '🍔',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
-    },
-    {
-        label: 'Cargar Ventas',
-        href: '/dashboard/ventas/cargar',
-        icon: '💳',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
-    },
-    {
-        label: 'Historial Ventas',
-        href: '/dashboard/sales',
-        icon: '📈',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF'],
-    },
-    {
-        label: 'Comandera Cocina',
-        href: '/kitchen',
-        icon: '👨‍🍳',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF'],
-    },
-    {
-        label: 'Menú',
-        href: '/dashboard/menu',
-        icon: '🍽️',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-    },
-    {
-        label: 'Configuración POS',
-        href: '/dashboard/config/pos',
-        icon: '🖨️',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER_RESTAURANT', 'CASHIER_DELIVERY'],
-    },
-];
-
-const secondaryNavigation: NavItem[] = [
-    {
-        label: 'Usuarios',
-        href: '/dashboard/usuarios',
-        icon: '👥',
-        roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
-    },
-    { label: 'Roles y Permisos', href: '/dashboard/config/roles', icon: '⚙️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
-    { label: 'Configuración POS', href: '/dashboard/config/pos', icon: '🖨️', roles: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
-];
-
+import { getModulesBySection, type ModuleDefinition } from '@/lib/constants/modules-registry';
 
 interface SidebarProps {
     initialUser?: any; // SessionPayload
+}
+
+/**
+ * Sección del sidebar con título y módulos
+ */
+function SidebarSection({
+    title,
+    modules,
+    pathname,
+    closeSidebar,
+    colorScheme = 'amber',
+}: {
+    title: string;
+    modules: ModuleDefinition[];
+    pathname: string;
+    closeSidebar: () => void;
+    colorScheme?: 'amber' | 'green' | 'purple' | 'blue';
+}) {
+    if (modules.length === 0) return null;
+
+    const activeGradients = {
+        amber: 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-400',
+        green: 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 dark:text-green-400',
+        purple: 'bg-gradient-to-r from-purple-500/10 to-violet-500/10 text-purple-700 dark:text-purple-400',
+        blue: 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-700 dark:text-blue-400',
+    };
+
+    const dotColors = {
+        amber: 'bg-amber-500',
+        green: 'bg-green-500',
+        purple: 'bg-purple-500',
+        blue: 'bg-blue-500',
+    };
+
+    return (
+        <>
+            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                {title}
+            </p>
+            {modules.map((mod) => {
+                const isActive = pathname === mod.href
+                    || pathname.startsWith(mod.href + '/')
+                    || mod.subRoutes?.some(sub => pathname === sub || pathname.startsWith(sub + '/'));
+
+                return (
+                    <Link
+                        key={mod.id}
+                        href={mod.href}
+                        onClick={closeSidebar}
+                        className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                            isActive
+                                ? activeGradients[colorScheme]
+                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                        )}
+                    >
+                        <span className="text-lg">{mod.icon}</span>
+                        {mod.label}
+                        {isActive && (
+                            <div className={cn('ml-auto h-2 w-2 rounded-full', dotColors[colorScheme])} />
+                        )}
+                    </Link>
+                );
+            })}
+        </>
+    );
 }
 
 export function Sidebar({ initialUser }: SidebarProps) {
@@ -204,20 +108,12 @@ export function Sidebar({ initialUser }: SidebarProps) {
 
     // Usar el usuario del store (que ahora está sincronizado)
     const activeUser = user || (initialUser as any);
-    const userRole = activeUser?.role as UserRole;
+    const userRole = (activeUser?.role as string) || 'CHEF';
 
-    // Filtrar navegación según rol del usuario
-    const filteredNav = navigation.filter(
-        item => !item.roles || (userRole && item.roles.includes(userRole))
-    );
-    const filteredPosNav = posNavigation.filter(
-        item => !item.roles || (userRole && item.roles.includes(userRole))
-    );
-    const filteredSecondaryNav = secondaryNavigation.filter(
-        item => !item.roles || (userRole && item.roles.includes(userRole))
-    );
+    // Obtener módulos visibles según habilitación + rol
+    const sections = getModulesBySection(userRole);
 
-    const roleInfo = userRole ? ROLE_INFO[userRole] : null;
+    const roleInfo = userRole ? ROLE_INFO[userRole as UserRole] : null;
 
     return (
         <>
@@ -246,7 +142,9 @@ export function Sidebar({ initialUser }: SidebarProps) {
                     </div>
                     <div>
                         <h1 className="font-bold text-gray-900 dark:text-white">CAPSULA</h1>
-                        <p className="text-xs text-gray-500">Shanklish Caracas</p>
+                        <p className="text-xs text-gray-500">
+                            {process.env.NEXT_PUBLIC_BUSINESS_NAME || 'ERP System'}
+                        </p>
                     </div>
                     {/* Close button for mobile */}
                     <button
@@ -258,92 +156,44 @@ export function Sidebar({ initialUser }: SidebarProps) {
                     </button>
                 </div>
 
-                {/* Main Navigation */}
+                {/* Main Navigation — driven by Module Registry */}
                 <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-                    <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                        Operaciones
-                    </p>
-                    {filteredNav.map((item) => {
-                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={closeSidebar}
-                                className={cn(
-                                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                                    isActive
-                                        ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-400'
-                                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                                )}
-                            >
-                                <span className="text-lg">{item.icon}</span>
-                                {item.label}
-                                {isActive && (
-                                    <div className="ml-auto h-2 w-2 rounded-full bg-amber-500" />
-                                )}
-                            </Link>
-                        );
-                    })}
 
-                    {filteredPosNav.length > 0 && (
-                        <>
-                            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
-                            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                Ventas
-                            </p>
-                            {filteredPosNav.map((item) => {
-                                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={closeSidebar}
-                                        className={cn(
-                                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                                            isActive
-                                                ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 dark:text-green-400'
-                                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                                        )}
-                                    >
-                                        <span className="text-lg">{item.icon}</span>
-                                        {item.label}
-                                        {isActive && (
-                                            <div className="ml-auto h-2 w-2 rounded-full bg-green-500" />
-                                        )}
-                                    </Link>
-                                );
-                            })}
-                        </>
-                    )}
+                    {/* Operaciones */}
+                    <SidebarSection
+                        title="Operaciones"
+                        modules={sections.operations}
+                        pathname={pathname}
+                        closeSidebar={closeSidebar}
+                        colorScheme="amber"
+                    />
 
-                    {filteredSecondaryNav.length > 0 && (
-                        <>
-                            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
-                            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                Administración
-                            </p>
-                            {filteredSecondaryNav.map((item) => {
-                                const isActive = pathname === item.href;
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={closeSidebar}
-                                        className={cn(
-                                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                                            isActive
-                                                ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-400'
-                                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                                        )}
-                                    >
-                                        <span className="text-lg">{item.icon}</span>
-                                        {item.label}
-                                    </Link>
-                                );
-                            })}
-                        </>
-                    )}
+                    {/* Ventas */}
+                    <SidebarSection
+                        title="Ventas"
+                        modules={sections.sales}
+                        pathname={pathname}
+                        closeSidebar={closeSidebar}
+                        colorScheme="green"
+                    />
+
+                    {/* Juegos (solo si hay módulos de juego habilitados) */}
+                    <SidebarSection
+                        title="Entretenimiento"
+                        modules={sections.games}
+                        pathname={pathname}
+                        closeSidebar={closeSidebar}
+                        colorScheme="purple"
+                    />
+
+                    {/* Administración */}
+                    <SidebarSection
+                        title="Administración"
+                        modules={sections.admin}
+                        pathname={pathname}
+                        closeSidebar={closeSidebar}
+                        colorScheme="blue"
+                    />
                 </nav>
 
                 {/* User Info */}

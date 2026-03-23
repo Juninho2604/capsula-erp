@@ -74,6 +74,11 @@ model User {
   createdProteinProcessings   ProteinProcessing[] @relation("ProteinProcessingCreator")
   completedProteinProcessings ProteinProcessing[] @relation("ProteinProcessingCompleter")
 
+  // Módulo Juegos
+  reservationsCreated GameSession[]    @relation("GameSessionStarter")
+  gameSessionsEnded   GameSession[]    @relation("GameSessionEnder")
+  createdReservations Reservation[]    @relation("ReservationCreator")
+
   @@index([email])
   @@index([role])
 }
@@ -179,10 +184,27 @@ model InventoryItem {
   // Items críticos por área
   areaCriticalItems  AreaCriticalItem[]
 
+  // ── Beverage fields (Table-Pong / bar) ──────────────────────────────────
+  isBeverage         Boolean  @default(false)
+  beverageCategory   String?  // BEER, WINE, SPIRIT, COCKTAIL, SOFT_DRINK, WATER, JUICE, HOT
+  beverageSubCategory String? // IPA, LAGER, ROSÉ, etc.
+  isAlcoholic        Boolean  @default(false)
+  servingSize        Float?   // Standard serving in baseUnit
+  servingSizeUnit    String?  // CL, ML, OZ
+
+  // Familia de producto (SKU Studio)
+  productFamilyId    String?
+  productFamily      ProductFamily? @relation(fields: [productFamilyId], references: [id])
+
+  // Conteos Físicos (InventoryCycle)
+  cycleSnapshots     InventoryCycleSnapshot[]
+
   @@index([sku])
   @@index([type])
   @@index([category])
   @@index([name])
+  @@index([isBeverage])
+  @@index([productFamilyId])
 }
 
 // ============================================================================
@@ -672,16 +694,28 @@ model MenuItem {
 
   // Relaciones
   orderItems      SalesOrderItem[]
-  
+
+  // ── Service routing ─────────────────────────────────────────────────────
+  serviceCategory  String?  // FOOD, BEVERAGE, GAME_TIME, MERCHANDISE
+  kitchenRouting   String?  // BAR, KITCHEN, GRILL, COLD_STATION — destino de comanda
+
+  // ── Intercompany ─────────────────────────────────────────────────────────
+  isIntercompanyItem    Boolean @default(false)  // Viene de otro negocio
+  externalSku           String? // SKU en el sistema origen
+  sourceBranchId        String? // Branch que lo origina
+  intercompanyMappings  IntercompanyItemMapping[] @relation("IntercompanyMenuItem")
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   // Soft Delete
   deletedAt       DateTime?
   deletedById     String?
-  
+
   @@index([categoryId])
   @@index([sku])
+  @@index([serviceCategory])
+  @@index([isIntercompanyItem])
 }
 
 model MenuModifierGroup {
@@ -827,6 +861,7 @@ model SalesOrder {
   inventoryMovements InventoryMovement[] @relation("SaleMovements")
   openTabLinks       OpenTabOrder[]
   paymentSplits      PaymentSplit[]
+  gameSessions       GameSession[]       @relation("GameSessions")
 
   // Soft Delete
   deletedAt       DateTime?
@@ -1237,11 +1272,12 @@ model Branch {
   deletedAt     DateTime?
   deletedById   String?
 
-  areas         Area[]
-  serviceZones  ServiceZone[]
+  areas           Area[]
+  serviceZones    ServiceZone[]
   tableOrStations TableOrStation[]
-  openTabs      OpenTab[]
-  salesOrders   SalesOrder[]
+  openTabs        OpenTab[]
+  salesOrders     SalesOrder[]
+  gameStations    GameStation[]
 }
 
 model ServiceZone {
@@ -1301,11 +1337,13 @@ model OpenTab {
   guestCount      Int      @default(1)
   status          String   @default("OPEN") // OPEN, PARTIALLY_PAID, CLOSED, CANCELLED
   serviceType     String   @default("TABLE_SERVICE") // TABLE_SERVICE, BAR_TAB, EVENT
-  runningSubtotal Float    @default(0)
-  runningDiscount Float    @default(0)
-  runningTax      Float    @default(0)
-  runningTotal    Float    @default(0)
-  balanceDue      Float    @default(0)
+  runningSubtotal      Float @default(0)
+  runningDiscount      Float @default(0)
+  runningTax           Float @default(0)
+  runningTotal         Float @default(0)
+  balanceDue           Float @default(0)
+  totalServiceCharge   Float @default(0)  // Service charge acumulado de la mesa
+  totalTip             Float @default(0)  // Propina voluntaria acumulada
   version         Int      @default(0)
   openedAt        DateTime @default(now())
   closedAt        DateTime?
@@ -1353,11 +1391,13 @@ model PaymentSplit {
   splitType      String   @default("EQUAL") // EQUAL, ITEM_BASED, CUSTOM
   paymentMethod  String?
   status         String   @default("PENDING") // PENDING, PAID, VOID
-  subtotal       Float    @default(0)
-  discount       Float    @default(0)
-  tax            Float    @default(0)
-  total          Float    @default(0)
-  paidAmount     Float    @default(0)
+  subtotal             Float @default(0)
+  discount             Float @default(0)
+  tax                  Float @default(0)
+  serviceChargeAmount  Float @default(0) // Cargo de servicio prorrateado en este split
+  tipAmount            Float @default(0) // Propina prorrateada en este split
+  total                Float @default(0)
+  paidAmount           Float @default(0)
   createdAt      DateTime @default(now())
   paidAt         DateTime?
   notes          String?
@@ -1380,4 +1420,321 @@ model ExchangeRate {
   salesOrders   SalesOrder[]
 
   @@index([effectiveDate])
+}
+
+// ============================================================================
+// MÓDULO ENTRETENIMIENTO / JUEGOS (Table-Pong)
+// ============================================================================
+
+model GameType {
+  id          String   @id @default(cuid())
+  code        String   @unique  // BILLAR, PLAYSTATION, PING_PONG, ARCADE, etc.
+  name        String
+  description String?
+  icon        String?
+  color       String?  // Hex color para UI
+  defaultSessionMinutes Int @default(60)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stations    GameStation[]
+  sessions    GameSession[]
+
+  @@index([code])
+}
+
+model GameStation {
+  id            String   @id @default(cuid())
+  code          String   @unique  // BILLAR-01, PS5-01, etc.
+  name          String
+  gameTypeId    String
+  gameType      GameType @relation(fields: [gameTypeId], references: [id])
+  branchId      String?
+  branch        Branch?  @relation(fields: [branchId], references: [id])
+  currentStatus String   @default("AVAILABLE") // AVAILABLE, IN_USE, RESERVED, MAINTENANCE
+  hourlyRate    Float?   // Precio por hora (null = pulsera / flat fee)
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      GameSession[]
+  reservations  Reservation[]
+  queueTickets  QueueTicket[]
+
+  @@index([gameTypeId])
+  @@index([currentStatus])
+  @@index([branchId])
+}
+
+model WristbandPlan {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String   // Ej: "Pulsera Básica 2h", "Pulsera Premium Full Day"
+  description   String?
+  durationMinutes Int    // Duración total en minutos
+  price         Float
+  color         String?  // Color físico de la pulsera
+  maxSessions   Int?     // Nº máximo de estaciones simultáneas (null = ilimitado)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  reservations  Reservation[]
+
+  @@index([isActive])
+}
+
+model Reservation {
+  id              String   @id @default(cuid())
+  code            String   @unique  // RES-2026-0001
+  stationId       String
+  station         GameStation @relation(fields: [stationId], references: [id])
+  wristbandPlanId String?
+  wristbandPlan   WristbandPlan? @relation(fields: [wristbandPlanId], references: [id])
+  customerName    String
+  customerPhone   String?
+  guestCount      Int      @default(1)
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  status          String   @default("PENDING") // PENDING, CONFIRMED, CHECKED_IN, NO_SHOW, CANCELLED
+  notes           String?
+  depositAmount   Float    @default(0)
+  depositPaid     Boolean  @default(false)
+  createdById     String
+  createdBy       User     @relation("ReservationCreator", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  session         GameSession?
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
+
+  @@index([stationId, scheduledStart])
+  @@index([status])
+  @@index([customerPhone])
+}
+
+model GameSession {
+  id              String   @id @default(cuid())
+  code            String   @unique  // GSN-2026-0001
+  stationId       String
+  station         GameStation @relation(fields: [stationId], references: [id])
+  gameTypeId      String
+  gameType        GameType @relation(fields: [gameTypeId], references: [id])
+  reservationId   String?  @unique
+  reservation     Reservation? @relation(fields: [reservationId], references: [id])
+  salesOrderId    String?
+  salesOrder      SalesOrder? @relation("GameSessions", fields: [salesOrderId], references: [id])
+  wristbandCode   String?  // Código físico de la pulsera escaneada
+  customerName    String?
+  guestCount      Int      @default(1)
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  scheduledEndAt  DateTime?
+  status          String   @default("ACTIVE") // ACTIVE, PAUSED, ENDED, OVERTIME
+  billingType     String   @default("HOURLY") // HOURLY, WRISTBAND, FLAT
+  minutesBilled   Int      @default(0)
+  amountBilled    Float    @default(0)
+  notes           String?
+  startedById     String
+  startedBy       User     @relation("GameSessionStarter", fields: [startedById], references: [id])
+  endedById       String?
+  endedBy         User?    @relation("GameSessionEnder", fields: [endedById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([stationId, status])
+  @@index([startedAt])
+  @@index([salesOrderId])
+}
+
+model QueueTicket {
+  id          String   @id @default(cuid())
+  ticketNumber Int     // Correlativo del turno (reset por día)
+  stationId   String?
+  station     GameStation? @relation(fields: [stationId], references: [id])
+  gameTypeId  String?  // Si solo pide tipo de juego (cualquier estación)
+  customerName String
+  customerPhone String?
+  guestCount  Int      @default(1)
+  status      String   @default("WAITING") // WAITING, CALLED, SEATED, EXPIRED, CANCELLED
+  calledAt    DateTime?
+  seatedAt    DateTime?
+  estimatedWaitMinutes Int?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([stationId])
+}
+
+// ============================================================================
+// MÓDULO INTERCOMPANY (Multi-Negocio)
+// ============================================================================
+
+model IntercompanySettlement {
+  id              String   @id @default(cuid())
+  code            String   @unique  // IC-2026-0001
+  fromBranchId    String   // Negocio que provee
+  toBranchId      String   // Negocio que recibe
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          String   @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, PAID, DISPUTED
+  subtotal        Float    @default(0)
+  taxAmount       Float    @default(0)
+  totalAmount     Float    @default(0)
+  notes           String?
+  approvedById    String?
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  createdById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt       DateTime?
+  deletedById     String?
+
+  lines           IntercompanySettlementLine[]
+
+  @@index([fromBranchId, toBranchId])
+  @@index([status])
+  @@index([periodStart])
+}
+
+model IntercompanySettlementLine {
+  id               String   @id @default(cuid())
+  settlementId     String
+  settlement       IntercompanySettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  menuItemId       String?
+  inventoryItemId  String?
+  description      String
+  quantity         Float
+  unit             String
+  unitPrice        Float
+  totalPrice       Float
+  notes            String?
+  sortOrder        Int      @default(0)
+
+  @@index([settlementId])
+}
+
+model IntercompanyItemMapping {
+  id               String   @id @default(cuid())
+  // El MenuItem en el negocio receptor
+  menuItemId       String
+  menuItem         MenuItem @relation("IntercompanyMenuItem", fields: [menuItemId], references: [id], onDelete: Cascade)
+  // El InventoryItem en el negocio proveedor que se debe descontar
+  sourceInventoryItemId String
+  fromBranchId     String
+  toBranchId       String
+  transferPrice    Float?   // Precio de transferencia intercompany
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@unique([menuItemId, fromBranchId])
+  @@index([fromBranchId, toBranchId])
+}
+
+// ============================================================================
+// MÓDULOS DE ADMINISTRACIÓN AVANZADA
+// ============================================================================
+
+// Familia de productos (SKU Studio)
+model ProductFamily {
+  id          String   @id @default(cuid())
+  code        String   @unique  // Ej: SHAWARMA, BEBIDA, POSTRE
+  name        String
+  description String?
+  icon        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       InventoryItem[]
+  templates   SkuCreationTemplate[]
+
+  @@index([code])
+}
+
+// Plantilla para crear SKUs rápidamente desde el SKU Studio
+model SkuCreationTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  productFamilyId String?
+  productFamily   ProductFamily? @relation(fields: [productFamilyId], references: [id])
+  // JSON con los campos pre-rellenados para crear InventoryItem + MenuItem
+  defaultFields   String   // JSON
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([productFamilyId])
+}
+
+// Mensajes broadcast (anuncios internos)
+model BroadcastMessage {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  type        String   @default("INFO") // INFO, WARNING, ALERT, SUCCESS
+  targetRoles String?  // JSON array de roles que lo ven (null = todos)
+  isActive    Boolean  @default(true)
+  startsAt    DateTime @default(now())
+  expiresAt   DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([isActive, startsAt])
+  @@index([type])
+}
+
+// Ciclo de Conteo Físico (Inventario Semanal/Mensual)
+model InventoryCycle {
+  id          String   @id @default(cuid())
+  code        String   @unique  // CYCLE-2026-W12
+  name        String   // Ej: "Conteo Semana 12 - 2026"
+  cycleType   String   @default("WEEKLY") // WEEKLY, MONTHLY, SPOT_CHECK
+  areaIds     String   // JSON array de IDs de área incluidos
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, CLOSED, CANCELLED
+  startedAt   DateTime @default(now())
+  closedAt    DateTime?
+  closedById  String?
+  notes       String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  snapshots   InventoryCycleSnapshot[]
+
+  @@index([status])
+  @@index([cycleType])
+  @@index([startedAt])
+}
+
+model InventoryCycleSnapshot {
+  id              String   @id @default(cuid())
+  cycleId         String
+  cycle           InventoryCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  areaId          String
+  countedStock    Float    // Conteo físico real
+  systemStock     Float    // Stock del sistema al momento del conteo
+  difference      Float    // counted - system
+  unit            String
+  costSnapshot    Float?
+  countedById     String
+  countedAt       DateTime @default(now())
+  notes           String?
+
+  @@unique([cycleId, inventoryItemId, areaId])
+  @@index([cycleId])
+  @@index([inventoryItemId])
 }

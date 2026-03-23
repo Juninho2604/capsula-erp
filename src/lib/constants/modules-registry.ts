@@ -1,0 +1,465 @@
+/**
+ * CAPSULA ERP — Module Registry
+ * 
+ * Registro maestro de TODOS los módulos disponibles del sistema.
+ * El ADMIN puede activar/desactivar módulos por instalación.
+ * 
+ * Cada instalación del ERP lee la variable ENABLED_MODULES 
+ * (o lo trae de la BD) y solo muestra los módulos activos.
+ */
+
+export interface ModuleDefinition {
+  /** Identificador único del módulo */
+  id: string;
+  /** Nombre legible */
+  label: string;
+  /** Descripción corta */
+  description: string;
+  /** Icono emoji */
+  icon: string;
+  /** Ruta principal del módulo en el dashboard */
+  href: string;
+  /** Sección del sidebar donde aparece */
+  section: 'operations' | 'sales' | 'admin' | 'games';
+  /** Si está habilitado por defecto en una nueva instalación */
+  enabledByDefault: boolean;
+  /** Orden de aparición en el sidebar */
+  sortOrder: number;
+  /** Sub-rutas que pertenecen a este módulo (para breadcrumbs, etc.) */
+  subRoutes?: string[];
+  /** Tags para búsqueda / agrupación */
+  tags?: string[];
+}
+
+/**
+ * REGISTRO MAESTRO DE MÓDULOS
+ * Todos los módulos disponibles en CAPSULA ERP (Shanklish + TablePong unificado)
+ */
+export const MODULE_REGISTRY: ModuleDefinition[] = [
+  // ═══════════════════════════════════════════
+  // OPERACIONES
+  // ═══════════════════════════════════════════
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    description: 'Panel principal con métricas y resumen',
+    icon: '📊',
+    href: '/dashboard',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 0,
+  },
+  {
+    id: 'inventory_daily',
+    label: 'Inventario Diario',
+    description: 'Conteo y control diario de inventario',
+    icon: '📅',
+    href: '/dashboard/inventario/diario',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 10,
+  },
+  {
+    id: 'inventory',
+    label: 'Inventario',
+    description: 'Gestión completa de inventario y stock',
+    icon: '📦',
+    href: '/dashboard/inventario',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 20,
+    subRoutes: ['/dashboard/inventario/entrada'],
+  },
+  {
+    id: 'inventory_count',
+    label: 'Conteo Físico (Excel)',
+    description: 'Importar conteo semanal desde archivo Excel',
+    icon: '📋',
+    href: '/dashboard/inventario/conteo-semanal',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 25,
+  },
+  {
+    id: 'audits',
+    label: 'Auditorías',
+    description: 'Auditorías de inventario y control',
+    icon: '📝',
+    href: '/dashboard/inventario/auditorias',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 30,
+  },
+  {
+    id: 'transfers',
+    label: 'Transferencias',
+    description: 'Requisiciones y transferencias entre áreas',
+    icon: '🔄',
+    href: '/dashboard/transferencias',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 40,
+  },
+  {
+    id: 'inventory_history',
+    label: 'Historial Mensual',
+    description: 'Historial mensual de movimientos de inventario',
+    icon: '📊',
+    href: '/dashboard/inventario/historial-mensual',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 45,
+  },
+  {
+    id: 'loans',
+    label: 'Préstamos',
+    description: 'Préstamos de inventario entre negocios',
+    icon: '🤝',
+    href: '/dashboard/prestamos',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 50,
+  },
+  {
+    id: 'recipes',
+    label: 'Recetas',
+    description: 'Gestión de recetas y fichas técnicas',
+    icon: '📋',
+    href: '/dashboard/recetas',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 60,
+  },
+  {
+    id: 'production',
+    label: 'Producción',
+    description: 'Órdenes de producción y transformación',
+    icon: '🏭',
+    href: '/dashboard/produccion',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 70,
+  },
+  {
+    id: 'costs',
+    label: 'Costos',
+    description: 'Análisis de costos y márgenes',
+    icon: '💰',
+    href: '/dashboard/costos',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 80,
+  },
+  {
+    id: 'purchases',
+    label: 'Compras',
+    description: 'Órdenes de compra y proveedores',
+    icon: '🛒',
+    href: '/dashboard/compras',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 90,
+  },
+  {
+    id: 'proteins',
+    label: 'Proteínas',
+    description: 'Desposte y procesamiento de proteínas',
+    icon: '🥩',
+    href: '/dashboard/proteinas',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 100,
+    tags: ['food'],
+  },
+  {
+    id: 'menu',
+    label: 'Menú',
+    description: 'Gestión del menú y productos de venta',
+    icon: '🍽️',
+    href: '/dashboard/menu',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 110,
+    subRoutes: ['/dashboard/menu/modificadores'],
+  },
+  {
+    id: 'modifiers',
+    label: 'Modificadores',
+    description: 'Grupos de modificadores y opciones',
+    icon: '🔧',
+    href: '/dashboard/menu/modificadores',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 115,
+  },
+
+  // ═══════════════════════════════════════════
+  // VENTAS / POS
+  // ═══════════════════════════════════════════
+  {
+    id: 'pos_restaurant',
+    label: 'POS Restaurante',
+    description: 'Punto de venta para consumo en local',
+    icon: '🥙',
+    href: '/dashboard/pos/restaurante',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 200,
+  },
+  {
+    id: 'pos_delivery',
+    label: 'POS Delivery',
+    description: 'Punto de venta para despacho a domicilio',
+    icon: '🛵',
+    href: '/dashboard/pos/delivery',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 210,
+  },
+  {
+    id: 'pedidosya',
+    label: 'PedidosYA',
+    description: 'Integración con plataforma PedidosYA',
+    icon: '🍔',
+    href: '/dashboard/pos/pedidosya',
+    section: 'sales',
+    enabledByDefault: false,
+    sortOrder: 220,
+    tags: ['integration'],
+  },
+  {
+    id: 'sales_entry',
+    label: 'Cargar Ventas',
+    description: 'Carga manual de ventas externas',
+    icon: '💳',
+    href: '/dashboard/ventas/cargar',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 230,
+  },
+  {
+    id: 'sales_history',
+    label: 'Historial Ventas',
+    description: 'Historial completo de ventas y arqueo',
+    icon: '📈',
+    href: '/dashboard/sales',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 240,
+  },
+  {
+    id: 'kitchen_display',
+    label: 'Comandera Cocina',
+    description: 'Pantalla de órdenes para cocina',
+    icon: '👨‍🍳',
+    href: '/kitchen',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 250,
+  },
+  {
+    id: 'pos_config',
+    label: 'Configuración POS',
+    description: 'Ajustes de impresión, comanda y factura',
+    icon: '🖨️',
+    href: '/dashboard/config/pos',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 260,
+  },
+
+  // ═══════════════════════════════════════════
+  // JUEGOS (Table Pong específico — off por default)
+  // ═══════════════════════════════════════════
+  {
+    id: 'games',
+    label: 'Juegos',
+    description: 'Gestión de estaciones de juego (billar, PS, etc.)',
+    icon: '🎱',
+    href: '/dashboard/games',
+    section: 'games',
+    enabledByDefault: false,
+    sortOrder: 300,
+    tags: ['entertainment'],
+  },
+  {
+    id: 'reservations',
+    label: 'Reservaciones',
+    description: 'Sistema de reservas de mesas y juegos',
+    icon: '📅',
+    href: '/dashboard/reservations',
+    section: 'games',
+    enabledByDefault: false,
+    sortOrder: 310,
+    tags: ['entertainment'],
+  },
+  {
+    id: 'wristbands',
+    label: 'Pulseras',
+    description: 'Planes de pulsera para juegos ilimitados',
+    icon: '⌚',
+    href: '/dashboard/wristbands',
+    section: 'games',
+    enabledByDefault: false,
+    sortOrder: 320,
+    tags: ['entertainment'],
+  },
+  {
+    id: 'queue',
+    label: 'Cola de Espera',
+    description: 'Gestión de turnos y cola de espera',
+    icon: '🎫',
+    href: '/dashboard/queue',
+    section: 'games',
+    enabledByDefault: false,
+    sortOrder: 330,
+    tags: ['entertainment'],
+  },
+
+  // ═══════════════════════════════════════════
+  // INTERCOMPANY (off por default, para multi-negocio)
+  // ═══════════════════════════════════════════
+  {
+    id: 'intercompany',
+    label: 'Intercompany',
+    description: 'Liquidaciones y trazabilidad entre negocios',
+    icon: '🔗',
+    href: '/dashboard/intercompany',
+    section: 'admin',
+    enabledByDefault: false,
+    sortOrder: 400,
+    tags: ['multi-business'],
+  },
+
+  // ═══════════════════════════════════════════
+  // ADMINISTRACIÓN
+  // ═══════════════════════════════════════════
+  {
+    id: 'users',
+    label: 'Usuarios',
+    description: 'Gestión de usuarios del sistema',
+    icon: '👥',
+    href: '/dashboard/usuarios',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 500,
+  },
+  {
+    id: 'roles_config',
+    label: 'Roles y Permisos',
+    description: 'Configuración de roles y permisos',
+    icon: '⚙️',
+    href: '/dashboard/config/roles',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 510,
+  },
+  {
+    id: 'module_config',
+    label: 'Módulos',
+    description: 'Activar/desactivar módulos del sistema',
+    icon: '🧩',
+    href: '/dashboard/config/modules',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 520,
+  },
+];
+
+/**
+ * Mapa de módulo → roles que pueden acceder
+ * Esto trabaja EN CONJUNTO con los modules habilitados:
+ *   1. El módulo debe estar HABILITADO en la instancia
+ *   2. El usuario debe tener el ROL correcto
+ */
+export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
+  dashboard: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'CHEF', 'AREA_LEAD'],
+  inventory_daily: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  inventory: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  inventory_count: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'],
+  audits: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  transfers: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  inventory_history: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  loans: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  recipes: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
+  production: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  costs: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  purchases: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  proteins: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
+  menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_RESTAURANT'],
+  pos_delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
+  pedidosya: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_DELIVERY'],
+  sales_entry: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
+  sales_history: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF'],
+  kitchen_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF'],
+  pos_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER_RESTAURANT', 'CASHIER_DELIVERY'],
+  // Juegos (Table Pong)
+  games: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  reservations: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_RESTAURANT'],
+  wristbands: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  queue: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_RESTAURANT'],
+  // Intercompany
+  intercompany: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  // Admin
+  users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
+  roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  module_config: ['OWNER'], // Solo el OWNER puede activar/desactivar módulos
+};
+
+/**
+ * Obtener la lista de módulos habilitados para esta instancia.
+ * Lee de la variable de entorno ENABLED_MODULES (comma-separated)
+ * Si no existe, usa los módulos con enabledByDefault=true.
+ */
+export function getEnabledModuleIds(): string[] {
+  const envModules = process.env.NEXT_PUBLIC_ENABLED_MODULES;
+  
+  if (envModules) {
+    return envModules.split(',').map(m => m.trim()).filter(Boolean);
+  }
+
+  // Default: todos los que tienen enabledByDefault
+  return MODULE_REGISTRY
+    .filter(m => m.enabledByDefault)
+    .map(m => m.id);
+}
+
+/**
+ * Obtener módulos filtrados por:
+ *  1. Si están habilitados en esta instancia
+ *  2. Si el usuario tiene el rol correcto
+ */
+export function getVisibleModules(userRole: string): ModuleDefinition[] {
+  const enabledIds = getEnabledModuleIds();
+
+  // module_config siempre visible para OWNER (para que pueda desbloquear módulos)
+  const visibleIds = new Set(enabledIds);
+  if (userRole === 'OWNER') {
+    visibleIds.add('module_config');
+  }
+
+  return MODULE_REGISTRY
+    .filter(m => visibleIds.has(m.id))
+    .filter(m => {
+      const allowedRoles = MODULE_ROLE_ACCESS[m.id];
+      if (!allowedRoles) return true; // Sin restricción de rol
+      return allowedRoles.includes(userRole);
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/**
+ * Agrupar módulos visibles por sección del sidebar
+ */
+export function getModulesBySection(userRole: string) {
+  const modules = getVisibleModules(userRole);
+  
+  return {
+    operations: modules.filter(m => m.section === 'operations'),
+    sales: modules.filter(m => m.section === 'sales'),
+    games: modules.filter(m => m.section === 'games'),
+    admin: modules.filter(m => m.section === 'admin'),
+  };
+}

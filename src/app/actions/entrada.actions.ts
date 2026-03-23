@@ -136,9 +136,9 @@ export async function registrarEntradaMercancia(
                     unit: item.baseUnit,
                     unitCost: input.unitCost,
                     totalCost: totalCost,
-                    // referenceNumber: input.referenceNumber, // TODO: Descomentar tras regenerate exitoso
-                    // documentUrl: input.documentUrl,
-                    // documentType: input.documentType || 'nota_entrega',
+                    referenceNumber: input.referenceNumber,
+                    documentUrl: input.documentUrl,
+                    documentType: input.documentType || 'nota_entrega',
                     notes: input.notes,
                     reason: `Entrada mercancía: ${input.quantity} ${input.unit} (${areaName})${input.referenceNumber ? ` - Ref: ${input.referenceNumber}` : ''}`,
                     createdById: finalUserId,
