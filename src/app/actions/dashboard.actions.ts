@@ -1,55 +1,94 @@
 'use server';
 
 import prisma from '@/server/db';
+import { getSession } from '@/lib/auth';
 import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on server
 import { InventoryItemType } from '@/types';
 
 export async function getDashboardStatsAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
-            where: { isActive: true },
-            include: {
-                stockLevels: true,
-                costHistory: {
-                    orderBy: { effectiveFrom: 'desc' },
-                    take: 1
+        const session = await getSession();
+        const isAdmin = session && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(session.role);
+
+        const now = new Date();
+        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        const yesterdayEnd = new Date(todayEnd); yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+
+        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg] = await Promise.all([
+            prisma.inventoryItem.findMany({
+                where: { isActive: true },
+                include: {
+                    stockLevels: true,
+                    costHistory: {
+                        orderBy: { effectiveFrom: 'desc' },
+                        take: 1
+                    }
                 }
-            }
-        });
+            }),
+            // Today's sales (always fetch for admin roles)
+            isAdmin ? prisma.salesOrder.aggregate({
+                where: {
+                    createdAt: { gte: todayStart, lte: todayEnd },
+                    status: { not: 'CANCELLED' },
+                },
+                _sum: { total: true },
+                _count: { id: true },
+            }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
+            // Yesterday comparison
+            isAdmin ? prisma.salesOrder.aggregate({
+                where: {
+                    createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
+                    status: { not: 'CANCELLED' },
+                },
+                _sum: { total: true },
+                _count: { id: true },
+            }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
+            // Open tabs
+            isAdmin ? prisma.openTab.aggregate({
+                where: { status: 'OPEN' },
+                _count: { id: true },
+                _sum: { balanceDue: true },
+            }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
+        ]);
 
         // Process items to calculate stock and status
         const processedItems = items.map(item => {
             const currentStock = item.stockLevels.reduce((acc, level) => acc + Number(level.currentStock || 0), 0);
-
-            // Decimal to Number conversion for safety if Prisma returns Decimals (though schema showed Float, sometimes safe to be sure)
-            // Schema says Float, so it should be number. But we saw previous issues. 
-            // We will treat them as numbers.
-
             const costPerUnit = Number(item.costHistory[0]?.costPerUnit || 0);
             const stockStatus = getStockStatus(currentStock, Number(item.minimumStock), Number(item.reorderPoint));
-
-            return {
-                ...item,
-                currentStock,
-                costPerUnit,
-                stockStatus
-            };
+            return { ...item, currentStock, costPerUnit, stockStatus };
         });
 
         const totalItems = processedItems.length;
         const subRecipes = processedItems.filter(i => i.type === 'SUB_RECIPE').length;
         const finishedGoods = processedItems.filter(i => i.type === 'FINISHED_GOOD').length;
-
-        // Filter low stock items
         const lowStockItems = processedItems.filter(i => i.stockStatus.status !== 'ok');
+
+        const todayRevenue = Number(todaySalesAgg._sum.total || 0);
+        const todayOrders = todaySalesAgg._count.id;
+        const yesterdayRevenue = Number(yesterdaySalesAgg._sum.total || 0);
 
         return {
             stats: {
                 totalItems,
                 lowStockCount: lowStockItems.length,
                 subRecipes,
-                finishedGoods
+                finishedGoods,
             },
+            salesKPIs: isAdmin ? {
+                todayRevenue,
+                todayOrders,
+                avgTicket: todayOrders > 0 ? todayRevenue / todayOrders : 0,
+                yesterdayRevenue,
+                yesterdayOrders: yesterdaySalesAgg._count.id,
+                revenueChange: yesterdayRevenue > 0
+                    ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
+                    : null,
+                openTabs: openTabsAgg._count.id,
+                openTabsExposed: Number(openTabsAgg._sum.balanceDue || 0),
+            } : null,
             lowStockItems: lowStockItems.map(item => ({
                 id: item.id,
                 name: item.name,

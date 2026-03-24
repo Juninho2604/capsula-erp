@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     const showCosts = hasPermission(session?.role, PERMISSIONS.VIEW_COSTS);
 
     // Fetch real data
-    const { stats, lowStockItems } = await getDashboardStatsAction();
+    const { stats, salesKPIs, lowStockItems } = await getDashboardStatsAction();
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -42,6 +42,51 @@ export default async function DashboardPage() {
                     Nueva Receta
                 </Link>
             </div>
+
+            {/* Sales KPIs — solo para roles admin */}
+            {salesKPIs && (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Revenue Hoy */}
+                    <div className="glass-panel rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70 mb-1">Ventas Hoy</p>
+                        <p className="text-3xl font-black text-amber-500">${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        {salesKPIs.revenueChange !== null && (
+                            <p className={`text-xs font-bold mt-1 ${salesKPIs.revenueChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {salesKPIs.revenueChange >= 0 ? '▲' : '▼'} {Math.abs(salesKPIs.revenueChange).toFixed(1)}% vs ayer
+                            </p>
+                        )}
+                        {salesKPIs.revenueChange === null && (
+                            <p className="text-xs text-gray-500 mt-1">Sin datos de ayer</p>
+                        )}
+                    </div>
+
+                    {/* Órdenes Hoy */}
+                    <div className="glass-panel rounded-2xl p-5 border border-blue-500/20 bg-blue-500/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-400/70 mb-1">Órdenes Hoy</p>
+                        <p className="text-3xl font-black text-blue-400">{salesKPIs.todayOrders}</p>
+                        <p className="text-xs text-gray-500 mt-1">Ayer: {salesKPIs.yesterdayOrders} órdenes</p>
+                    </div>
+
+                    {/* Ticket Promedio */}
+                    <div className="glass-panel rounded-2xl p-5 border border-purple-500/20 bg-purple-500/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-purple-400/70 mb-1">Ticket Promedio</p>
+                        <p className="text-3xl font-black text-purple-400">${salesKPIs.avgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-gray-500 mt-1">Por orden hoy</p>
+                    </div>
+
+                    {/* Cuentas Abiertas */}
+                    <div className={`glass-panel rounded-2xl p-5 border ${salesKPIs.openTabs > 0 ? 'border-orange-500/30 bg-orange-500/5' : 'border-gray-700/30'}`}>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400/70 mb-1">Cuentas Abiertas</p>
+                        <p className={`text-3xl font-black ${salesKPIs.openTabs > 0 ? 'text-orange-400' : 'text-gray-500'}`}>{salesKPIs.openTabs}</p>
+                        {salesKPIs.openTabs > 0 && (
+                            <p className="text-xs text-orange-400/70 mt-1 font-bold">${salesKPIs.openTabsExposed.toFixed(2)} expuestos</p>
+                        )}
+                        {salesKPIs.openTabs === 0 && (
+                            <p className="text-xs text-gray-500 mt-1">Todo cobrado</p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Stats Grid */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -242,7 +287,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <Link
                     href="/dashboard/recetas/nueva"
                     className="group capsula-card hover:border-amber-500 hover:shadow-amber-500/10 p-2"
@@ -304,6 +349,28 @@ export default async function DashboardPage() {
                             </p>
                         </div>
                         <span className="ml-auto text-emerald-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                            →
+                        </span>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/dashboard/estadisticas"
+                    className="group capsula-card hover:border-purple-500 hover:shadow-purple-500/10 p-2"
+                >
+                    <div className="flex items-center gap-5 p-4 rounded-xl transition-all group-hover:bg-purple-500/5">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 text-3xl text-white shadow-xl shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                            📈
+                        </div>
+                        <div>
+                            <p className="text-lg font-black text-gray-900 dark:text-white">
+                                Estadísticas
+                            </p>
+                            <p className="text-sm font-medium text-gray-500">
+                                Análisis por rol
+                            </p>
+                        </div>
+                        <span className="ml-auto text-purple-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
                             →
                         </span>
                     </div>

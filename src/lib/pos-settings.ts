@@ -14,6 +14,12 @@ export interface POSConfig {
   printComandaOnRestaurant: boolean;
   /** Imprimir factura al cerrar cuenta (Restaurante) */
   printReceiptOnRestaurant: boolean;
+  /**
+   * Validar stock de ingredientes antes de confirmar una orden.
+   * Si está activo y faltan insumos, la orden se bloquea.
+   * Desactivado por defecto hasta completar la carga de recetas.
+   */
+  stockValidationEnabled: boolean;
 }
 
 const DEFAULTS: POSConfig = {
@@ -21,6 +27,7 @@ const DEFAULTS: POSConfig = {
   printReceiptOnDelivery: true,
   printComandaOnRestaurant: true,
   printReceiptOnRestaurant: true,
+  stockValidationEnabled: false,
 };
 
 export function getPOSConfig(): POSConfig {

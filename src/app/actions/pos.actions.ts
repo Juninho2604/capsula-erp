@@ -11,6 +11,7 @@ import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
+import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 
 // ============================================================================
 // TIPOS
@@ -851,12 +852,15 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
         const menuItems = await getMenuItemMetadata(menuItemIds);
         const menuMap = new Map(menuItems.map(item => [item.id, item]));
 
-        // Stock validation disabled - inventory migration not complete
-        // await validateComponentStockAvailability({
-        //     items: data.items,
-        //     areaId: salesArea.id,
-        //     menuMap
-        // });
+        // Stock validation — controlled via SystemConfig 'pos_stock_validation_enabled'
+        const stockValidation = await getStockValidationEnabled();
+        if (stockValidation) {
+            await validateComponentStockAvailability({
+                items: data.items,
+                areaId: salesArea.id,
+                menuMap,
+            });
+        }
 
         const shouldSendToKitchen = data.items.some(item => {
             const menuItem = menuMap.get(item.menuItemId);

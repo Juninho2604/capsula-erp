@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { MODULE_REGISTRY } from '@/lib/constants/modules-registry';
 
 const ENABLED_MODULES_KEY = 'enabled_modules';
+const STOCK_VALIDATION_KEY = 'pos_stock_validation_enabled';
 
 /**
  * Lee los módulos habilitados desde la BD.
@@ -69,5 +70,45 @@ export async function saveEnabledModules(moduleIds: string[]): Promise<{ ok: boo
     // Revalidar todo el dashboard para que el Sidebar refleje los cambios
     revalidatePath('/dashboard', 'layout');
 
+    return { ok: true };
+}
+
+// ============================================================================
+// VALIDACIÓN DE STOCK EN POS
+// ============================================================================
+
+/**
+ * Lee si la validación de stock está activa.
+ * Llamar desde Server Actions (pos.actions.ts).
+ */
+export async function getStockValidationEnabled(): Promise<boolean> {
+    try {
+        const config = await prisma.systemConfig.findUnique({
+            where: { key: STOCK_VALIDATION_KEY },
+        });
+        return config?.value === 'true';
+    } catch {
+        return false; // default: disabled
+    }
+}
+
+/**
+ * Activa o desactiva la validación de stock en POS.
+ * Solo OWNER / ADMIN_MANAGER pueden cambiar esto.
+ */
+export async function setStockValidationEnabled(enabled: boolean): Promise<{ ok: boolean; error?: string }> {
+    const session = await getSession();
+    if (!session) return { ok: false, error: 'No autorizado' };
+    if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
+        return { ok: false, error: 'Sin permisos para cambiar esta configuración' };
+    }
+
+    await prisma.systemConfig.upsert({
+        where: { key: STOCK_VALIDATION_KEY },
+        create: { key: STOCK_VALIDATION_KEY, value: String(enabled), updatedBy: session.id },
+        update: { value: String(enabled), updatedBy: session.id },
+    });
+
+    revalidatePath('/dashboard/config/pos');
     return { ok: true };
 }
