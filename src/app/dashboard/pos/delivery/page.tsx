@@ -94,6 +94,8 @@ export default function POSDeliveryPage() {
     // SEARCH
     const [productSearch, setProductSearch] = useState('');
 
+    const [mobileView, setMobileView] = useState<"menu" | "order">("menu");
+
     useEffect(() => {
         async function loadMenu() {
             try {
@@ -292,15 +294,15 @@ export default function POSDeliveryPage() {
     };
     const handlePinKey = (k: string) => { if (k === 'clear') setPinInput(''); else if (k === 'back') setPinInput(p => p.slice(0, -1)); else setPinInput(p => p + k); };
 
-    if (isLoading) return <div className="text-white p-10">Cargando...</div>;
+    if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-center"><div className="text-4xl mb-4">🛵</div><div className="text-xl font-black text-foreground">Cargando Delivery...</div></div></div>;
 
     return (
-        <div className="min-h-screen bg-background text-foreground relative flex flex-col font-sans animate-in fade-in duration-700">
-            <div className="glass-panel px-6 py-4 fixed top-0 w-full z-30 shadow-2xl flex justify-between items-center h-24 border-b-primary/10">
+        <div className="min-h-screen bg-background text-foreground relative flex flex-col font-sans animate-in fade-in duration-700 pb-16 lg:pb-0">
+            <div className="glass-panel px-3 md:px-6 py-3 md:py-4 fixed top-0 w-full z-30 shadow-2xl flex justify-between items-center h-16 md:h-24 border-b-primary/10">
                 <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center text-4xl shadow-lg shadow-blue-500/20">🛵</div>
+                    <div className="h-10 w-10 md:h-14 md:w-14 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-blue-500/20">🛵</div>
                     <div>
-                        <h1 className="text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">Shanklish <span className="text-foreground">Delivery</span></h1>
+                        <h1 className="text-xl md:text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">Shanklish <span className="text-foreground">Delivery</span></h1>
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                             Sistema de Despacho Táctil CAPSULA
@@ -323,8 +325,8 @@ export default function POSDeliveryPage() {
                 </div>
             </div>
 
-            <div className="flex h-screen pt-24 overflow-hidden">
-                <div className="flex-1 flex flex-col overflow-hidden bg-background">
+            <div className="flex h-screen pt-16 md:pt-24 overflow-hidden">
+                <div className={`flex-1 flex flex-col overflow-hidden bg-background ${mobileView === "menu" ? "flex" : "hidden"} lg:flex`}>
                     {/* WhatsApp Parser Panel */}
                     {showWhatsAppParser ? (
                         <div className="flex-1 overflow-y-auto p-6 pb-24 glass-panel m-4 rounded-3xl border-primary/5">
@@ -381,19 +383,19 @@ export default function POSDeliveryPage() {
                                         💡 {filteredMenuItems.length} productos coinciden con tu búsqueda
                                     </p>
                                 )}
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                     {filteredMenuItems.map(item => (
                                         <button 
                                             key={item.id} 
                                             onClick={() => handleAddToCart(item)} 
-                                            className="capsula-card group p-5 text-left h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98]"
+                                            className="capsula-card group p-3 md:p-5 text-left h-32 md:h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98] transition-transform"
                                         >
                                             <div className="font-black text-base uppercase leading-tight tracking-tight group-hover:text-primary transition-colors">{item.name}</div>
                                             <div className="flex items-end justify-between">
                                                 <div className="text-2xl font-black text-primary italic">
                                                     <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                                 </div>
-                                                <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
+                                                <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:translate-y-4 lg:group-hover:translate-y-0">
                                                     ➕
                                                 </div>
                                             </div>
@@ -411,7 +413,7 @@ export default function POSDeliveryPage() {
                         )}
                 </div>
 
-                <div className="w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20">
+                <div className={`w-full lg:w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
                     <div className="p-6 bg-secondary/20 border-b border-border space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-black text-lg uppercase tracking-tight flex items-center gap-2">📦 Entrega</h2>
@@ -511,8 +513,8 @@ export default function POSDeliveryPage() {
             </div>
 
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-card glass-panel w-full max-w-lg rounded-3xl flex flex-col max-h-[90vh] shadow-2xl border-primary/20">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in zoom-in duration-300">
+                    <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border-primary/20">
                         <div className="p-6 border-b border-border flex justify-between items-center">
                             <div>
                                 <h3 className="text-2xl font-black uppercase tracking-tight">{selectedItemForModifier.name}</h3>
@@ -589,8 +591,8 @@ export default function POSDeliveryPage() {
             )}
 
             {showPinModal && (
-                <div className="fixed inset-0 bg-background/90 backdrop-blur-xl flex items-center justify-center z-[60] animate-in fade-in duration-500">
-                    <div className="bg-card glass-panel p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl border-purple-500/20">
+                <div className="fixed inset-0 bg-background/90 backdrop-blur-xl flex items-end sm:items-center justify-center z-[60] animate-in fade-in duration-500 p-0 sm:p-4">
+                    <div className="bg-card glass-panel p-6 md:p-8 rounded-t-[2rem] sm:rounded-[2.5rem] w-full max-w-md shadow-2xl border-purple-500/20">
                         <div className="text-center mb-6">
                             <div className="h-16 w-16 bg-purple-500/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">🎁</div>
                             <h3 className="font-black text-2xl uppercase tracking-tighter text-purple-600 dark:text-purple-400 italic">Autorizar Cortesía</h3>
@@ -642,6 +644,33 @@ export default function POSDeliveryPage() {
                     </div>
                 </div>
             )}
+            {/* Navegación móvil delivery */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
+                <button
+                onClick={() => setMobileView("menu")}
+                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
+                    ${mobileView === "menu" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
+                >
+                {mobileView === "menu" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
+                <span className="text-xl">🍽️</span>
+                MENÚ
+                </button>
+                <button
+                onClick={() => setMobileView("order")}
+                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
+                    ${mobileView === "order" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
+                >
+                {mobileView === "order" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
+                <span className="text-xl">📦</span>
+                ORDEN
+                {cart.length > 0 && (
+                    <span className="absolute top-1 right-8 bg-blue-500 text-white text-[9px] rounded-full min-w-[16px] h-4 flex items-center
+            justify-center font-black px-1">
+                    {cart.length}
+                    </span>
+                )}
+                </button>
+            </nav>
         </div>
     );
 }
