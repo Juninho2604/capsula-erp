@@ -375,6 +375,30 @@ export default async function DashboardPage() {
                         </span>
                     </div>
                 </Link>
+
+                {salesKPIs && (
+                    <Link
+                        href="/dashboard/metas"
+                        className="group capsula-card hover:border-rose-500 hover:shadow-rose-500/10 p-2"
+                    >
+                        <div className="flex items-center gap-5 p-4 rounded-xl transition-all group-hover:bg-rose-500/5">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-3xl text-white shadow-xl shadow-rose-500/30 group-hover:scale-110 transition-transform">
+                                🎯
+                            </div>
+                            <div>
+                                <p className="text-lg font-black text-gray-900 dark:text-white">
+                                    Metas
+                                </p>
+                                <p className="text-sm font-medium text-gray-500">
+                                    Objetivos y merma
+                                </p>
+                            </div>
+                            <span className="ml-auto text-rose-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                                →
+                            </span>
+                        </div>
+                    </Link>
+                )}
             </div>
         </div>
     );

@@ -406,6 +406,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     enabledByDefault: true,
     sortOrder: 530,
   },
+  {
+    id: 'metas',
+    label: 'Objetivos y Metas',
+    description: 'Fijar metas de venta diaria, semanal y mensual. Control de % de merma aceptable con seguimiento en tiempo real.',
+    icon: '🎯',
+    href: '/dashboard/metas',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 540,
+    tags: ['kpi', 'metas', 'objetivos'],
+  },
 ];
 
 /**
@@ -452,6 +463,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   module_config: ['OWNER'], // Solo el OWNER puede activar/desactivar módulos
   tasa_cambio: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER_RESTAURANT', 'CASHIER_DELIVERY'],
+  metas: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'],
 };
 
 /**
