@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/stores/auth.store';
 import { useUIStore } from '@/stores/ui.store';
 import { HelpPanel } from './HelpPanel';
+import { NotificationBell } from './NotificationBell';
 
 export function Navbar() {
     const { user } = useAuthStore();
@@ -27,6 +28,8 @@ export function Navbar() {
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-2">
+                {/* Notificaciones del sistema */}
+                <NotificationBell />
                 {/* Help Panel con guía por módulo */}
                 <HelpPanel />
 

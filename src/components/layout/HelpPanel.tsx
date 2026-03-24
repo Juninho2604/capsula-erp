@@ -260,17 +260,14 @@ export function HelpPanel() {
 
   return (
     <>
-      {/* Botón campana */}
+      {/* Botón ayuda */}
       <button
         onClick={() => setIsOpen(true)}
         className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         title="Ayuda y guía del módulo"
         aria-label="Abrir guía de ayuda"
       >
-        <span className="text-xl">🔔</span>
-        <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-black text-white">
-          ?
-        </span>
+        <span className="text-xl">❓</span>
       </button>
 
       {/* Overlay */}
