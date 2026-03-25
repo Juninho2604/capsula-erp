@@ -215,40 +215,101 @@ export function printReceipt(data: ReceiptData) {
 
 /**
  * IMPRESIÓN COMANDA COCINA (Sin precios, letras grandes)
+ * Usa iframe oculto para no interrumpir la pantalla de cocina.
+ * Para impresión completamente silenciosa (sin diálogo), lanzar Chrome con:
+ *   --kiosk-printing
  */
 export function printKitchenCommand(data: any) {
-    const printWindow = window.open('', '_blank', 'width=350,height=600');
-    if (!printWindow) return;
-
     const date = new Date(data.createdAt);
-    const formattedDate = date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const formattedTime = date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const orderNum = data.orderNumber.split('-').pop();
 
-    const html = `
-<!DOCTYPE html>
-<html>
+    const html = `<!DOCTYPE html>
+<html lang="es">
 <head>
-    <title>COCINA ${data.orderNumber}</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>COMANDA ${data.orderNumber}</title>
     <style>
-        body { font-family: sans-serif; width: 72mm; margin: 2mm; font-weight: bold; }
-        .header { text-align: center; border-bottom: 3px solid black; padding-bottom: 5px; margin-bottom: 10px; }
-        .title { font-size: 20px; font-weight: 900; }
-        .meta { font-size: 14px; margin-top: 5px; }
-        .item { border-bottom: 1px dashed #000; padding: 8px 0; display: flex; align-items: flex-start; }
-        .qty-box { background: #000; color: #fff; font-size: 22px; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 72mm;
+            font-weight: bold;
+            background: white;
+            color: black;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            padding: 6px 4px;
+            border-bottom: 2px dashed #000;
+            margin-bottom: 6px;
+        }
+        .title {
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+        .order-num {
+            font-size: 40px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 4px 0;
+        }
+        .meta { font-size: 13px; margin-top: 4px; }
+        .customer { font-size: 13px; margin-top: 2px; }
+        .item {
+            border-bottom: 1px dashed #000;
+            padding: 6px 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .qty-box {
+            background: #000;
+            color: #fff;
+            font-size: 22px;
+            padding: 2px 8px;
+            min-width: 36px;
+            text-align: center;
+            flex-shrink: 0;
+        }
         .details { flex: 1; }
-        .name { font-size: 18px; line-height: 1.1; }
-        .mods { font-size: 14px; margin-top: 4px; font-style: italic; }
-        .notes { font-size: 14px; background: #eee; padding: 2px; margin-top: 2px; }
+        .name { font-size: 17px; line-height: 1.2; }
+        .mods {
+            font-size: 12px;
+            margin-top: 3px;
+            font-style: italic;
+            font-weight: normal;
+        }
+        .notes {
+            font-size: 12px;
+            background: #eee;
+            padding: 2px 4px;
+            margin-top: 3px;
+            font-weight: normal;
+        }
+        .footer {
+            text-align: center;
+            padding: 6px 4px 2px;
+            font-size: 12px;
+            font-weight: normal;
+            letter-spacing: 1px;
+        }
+        @media print {
+            @page { margin: 2mm; size: 72mm auto; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="title">COMANDA COCINA</div>
-        <div style="font-size: 24px; margin: 5px 0;"># ${data.orderNumber.split('-').pop()}</div>
-        <div class="meta">${formattedDate} - ${data.orderType === 'RESTAURANT' ? 'SALA' : 'DELIVERY'}</div>
-        ${data.customerName ? `<div>${data.customerName}</div>` : ''}
+        <div class="title">-- COCINA --</div>
+        <div class="order-num">#${orderNum}</div>
+        <div class="meta">${formattedTime} - ${data.orderType === 'RESTAURANT' ? 'SALA' : 'DELIVERY'}</div>
+        ${data.customerName ? `<div class="customer">${data.customerName}</div>` : ''}
     </div>
-    
+
     ${data.items.map((item: any) => `
     <div class="item">
         <div class="qty-box">${item.quantity}</div>
@@ -257,20 +318,42 @@ export function printKitchenCommand(data: any) {
             ${item.modifiers && item.modifiers.length > 0 ? `
                 <div class="mods">+ ${item.modifiers.join('<br>+ ')}</div>
             ` : ''}
-            ${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
+            ${item.notes ? `<div class="notes">Nota: ${item.notes}</div>` : ''}
         </div>
     </div>
     `).join('')}
-    
-    <script>
-        window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-        }
-    </script>
+
+    <div class="footer">--------------------------------</div>
 </body>
-</html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
+</html>`;
+
+    // Iframe oculto: no abre nueva ventana ni interrumpe la pantalla de cocina
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+        document.body.removeChild(iframe);
+        return;
+    }
+
+    doc.open('text/html', 'replace');
+    doc.write(html);
+    doc.close();
+
+    // Esperar a que el contenido cargue antes de imprimir
+    setTimeout(() => {
+        try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+        } catch (e) {
+            console.warn('Error al imprimir comanda:', e);
+        }
+        setTimeout(() => {
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        }, 2000);
+    }, 300);
 }

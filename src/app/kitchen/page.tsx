@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { printKitchenCommand } from '@/lib/print-command';
 
 interface OrderItem {
     name: string;
@@ -171,6 +172,23 @@ export default function KitchenDisplayPage() {
 
                     if (newOrderIds.length > 0) {
                         playNotificationSound();
+
+                        // Imprimir comanda automáticamente para cada orden nueva
+                        const ordersToprint = newOrders.filter(o => newOrderIds.includes(o.id));
+                        for (const order of ordersToprint) {
+                            printKitchenCommand({
+                                orderNumber: order.orderNumber,
+                                orderType: order.orderType,
+                                createdAt: order.createdAt,
+                                customerName: order.customerName,
+                                items: order.items.map(item => ({
+                                    quantity: item.quantity,
+                                    name: item.name,
+                                    modifiers: item.modifiers.map(m => m.name),
+                                    notes: item.notes,
+                                })),
+                            });
+                        }
 
                         if (Notification.permission === 'granted') {
                             new Notification('🍽️ Nueva Orden', {
