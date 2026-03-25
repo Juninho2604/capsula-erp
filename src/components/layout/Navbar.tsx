@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useUIStore } from '@/stores/ui.store';
 import { HelpPanel } from './HelpPanel';
 import { NotificationBell } from './NotificationBell';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Navbar() {
     const { user } = useAuthStore();
@@ -32,6 +33,8 @@ export function Navbar() {
                 <NotificationBell />
                 {/* Help Panel con guía por módulo */}
                 <HelpPanel />
+                {/* Selector de modo oscuro/claro */}
+                <ThemeToggle />
 
                 {/* Date/Time */}
                 <div className="hidden text-sm text-gray-500 lg:block px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-medium">

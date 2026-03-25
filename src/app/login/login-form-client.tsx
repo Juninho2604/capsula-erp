@@ -43,7 +43,7 @@ export default function LoginForm() {
     return (
         <form action={handleSubmit} className="space-y-6">
             <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-bold text-gray-900 dark:text-gray-200 uppercase tracking-tight">
                     Correo Electrónico
                 </label>
                 <div className="mt-1">
@@ -56,13 +56,13 @@ export default function LoginForm() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="usuario@shanklish.com"
-                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
+                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
                     />
                 </div>
             </div>
 
             <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-bold text-gray-900 dark:text-gray-200 uppercase tracking-tight">
                     Contraseña
                 </label>
                 <div className="mt-1">
@@ -73,7 +73,7 @@ export default function LoginForm() {
                         autoComplete="current-password"
                         required
                         placeholder="••••••••"
-                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
+                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
                     />
                 </div>
             </div>
@@ -87,4 +87,4 @@ export default function LoginForm() {
             <SubmitButton />
         </form>
     );
-}
+}

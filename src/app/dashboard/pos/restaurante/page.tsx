@@ -813,8 +813,8 @@ export default function POSSportBarPage() {
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-3xl shadow-inner">🍸</div>
           <div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-primary italic">RESTAURANTE</span></h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <h1 className="text-lg md:text-2xl font-black tracking-tight text-gray-950 dark:text-foreground">POS <span className="text-primary italic">RESTAURANTE</span></h1>
+            <p className="text-[10px] font-bold text-gray-700 dark:text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               Gestión Táctil CAPSULA · Operaciones en Vivo
               {cashierName ? (
                 <span className="flex items-center gap-2 bg-secondary/50 px-2 py-0.5 rounded-full border border-border">
@@ -869,7 +869,7 @@ export default function POSSportBarPage() {
                       setSelectedZoneId(z.id);
                       setSelectedTableId("");
                     }}
-                    className={`flex-1 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id && !isPickupMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/60 hover:border-primary/50"}`}
+                    className={`flex-1 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id && !isPickupMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-gray-900 dark:text-foreground/60 hover:border-primary/50"}`}
                   >
                     {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
                   </button>
@@ -911,12 +911,12 @@ export default function POSSportBarPage() {
                           : "border-border bg-card/50 hover:border-primary/30"
                     }`}
                   >
-                    <div className={`text-sm md:text-base font-black ${isSelected ? 'text-primary' : tab ? 'text-emerald-500' : 'text-foreground/40'}`}>{table.code}</div>
+                    <div className={`text-sm md:text-base font-black ${isSelected ? 'text-primary' : tab ? 'text-emerald-600' : 'text-gray-900 dark:text-foreground/40'}`}>{table.code}</div>
                     {tab ? (
                       <div className="absolute top-1 right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-background animate-pulse"></div>
                     ) : null}
                     {tab && (
-                      <div className="mt-1 text-[9px] font-black text-foreground/70 truncate w-full px-1 text-center">
+                      <div className="mt-1 text-[9px] font-black text-gray-950 dark:text-foreground/70 truncate w-full px-1 text-center">
                          ${tab.balanceDue.toFixed(0)}
                       </div>
                     )}
@@ -965,7 +965,7 @@ export default function POSSportBarPage() {
             {/* Active tab banner */}
             {activeTab ? (
               <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                <span className="text-emerald-200">
+                <span className="text-emerald-950 dark:text-emerald-200">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                   {activeTab.customerPhone && <> · {activeTab.customerPhone}</>}
                 </span>
@@ -1028,9 +1028,9 @@ export default function POSSportBarPage() {
                     key={item.id}
                     onClick={() => handleAddToCart(item)}
                     disabled={!activeTab && !isPickupMode}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-primary/40 active:scale-95 transition-transform"
+                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-primary/40 active:scale-95 transition-transform bg-white dark:bg-card"
                   >
-                    <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
+                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
                     <div className="flex items-end justify-between mt-2">
                       <div className="text-xl font-black text-primary">
                         <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
@@ -1233,7 +1233,7 @@ export default function POSSportBarPage() {
               <div className="p-3 border-b border-border bg-card space-y-1.5 shrink-0">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-black text-base">{activeTab.customerLabel}</div>
+                    <div className="font-black text-base text-gray-950 dark:text-foreground">{activeTab.customerLabel}</div>
                     {activeTab.customerPhone && (
                       <div className="text-xs text-muted-foreground">📞 {activeTab.customerPhone}</div>
                     )}
@@ -1286,7 +1286,7 @@ export default function POSSportBarPage() {
                           className="flex items-center justify-between text-xs bg-card rounded-lg px-2 py-1.5"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">
+                            <div className="font-bold truncate text-gray-950 dark:text-foreground">
                               {item.quantity}× {item.name}
                             </div>
                             {item.modifiers.length > 0 && (
@@ -1333,7 +1333,7 @@ export default function POSSportBarPage() {
                           </div>
                           {order.items.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-xs py-0.5">
-                              <span className="text-foreground/70 flex-1 truncate">
+                              <span className="text-gray-950 dark:text-foreground/70 flex-1 truncate">
                                 {item.quantity}× {item.itemName}
                               </span>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -1440,7 +1440,7 @@ export default function POSSportBarPage() {
                           />
                           <span className="text-foreground/70">Incluir 10% servicio</span>
                         </label>
-                        <div className="flex justify-between font-bold text-white border-t border-border pt-1">
+                        <div className="flex justify-between font-bold text-gray-950 dark:text-white border-t border-border pt-1">
                           <span>A cobrar</span>
                           <span>${paymentAmountToCharge.toFixed(2)}</span>
                         </div>

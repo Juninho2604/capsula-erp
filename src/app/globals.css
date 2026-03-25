@@ -10,19 +10,19 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 37 95% 45%; /* Amber Shanklish principal */
+    --primary: 37 95% 35%; /* Más oscuro para contraste */
     --primary-foreground: 210 40% 98%;
-    --secondary: 37 30% 90%;
-    --secondary-foreground: 37 90% 20%;
-    --muted: 37 20% 94%;
-    --muted-foreground: 37 10% 40%;
-    --accent: 37 90% 55%;
+    --secondary: 37 30% 92%;
+    --secondary-foreground: 37 90% 15%; /* Más oscuro */
+    --muted: 37 20% 92%;
+    --muted-foreground: 37 10% 25%; /* Más oscuro */
+    --accent: 37 90% 45%; /* Más oscuro */
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 45%; /* Más oscuro */
     --destructive-foreground: 210 40% 98%;
-    --border: 37 20% 88%;
-    --input: 37 20% 88%;
-    --ring: 37 95% 45%;
+    --border: 37 20% 82%; /* Más contraste */
+    --input: 37 20% 82%;
+    --ring: 37 95% 35%;
     --radius: 1rem; /* Bordes más redondeados para tablet */
     
     /* CAPSULA INNOVATION TOKENS */

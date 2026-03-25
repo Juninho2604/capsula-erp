@@ -11,6 +11,8 @@ export const metadata: Metadata = {
     keywords: ['CAPSULA', 'ERP', 'restaurante', 'inventario', 'recetas', 'Shanklish', 'Caracas'],
 };
 
+import { ThemeProvider } from '@/components/theme-provider';
+
 export default function RootLayout({
     children,
 }: {
@@ -18,8 +20,15 @@ export default function RootLayout({
 }) {
     return (
         <html lang="es" suppressHydrationWarning>
-            <body className={`${inter.variable} font-sans antialiased`}>
-                {children}
+            <body className={`${inter.variable} font-sans antialiased bg-background text-foreground transition-colors duration-300`}>
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="light"
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    {children}
+                </ThemeProvider>
                 <Toaster position="top-right" />
             </body>
         </html>
