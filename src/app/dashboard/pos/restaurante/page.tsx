@@ -17,6 +17,7 @@ import {
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { printKitchenCommand, printReceipt } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
+import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
@@ -348,11 +349,11 @@ export default function POSSportBarPage() {
   const handleOpenTab = async () => {
     if (!selectedTable) return;
     if (!openTabName.trim()) {
-      alert("El nombre del cliente es obligatorio");
+      toast.error("El nombre del cliente es obligatorio");
       return;
     }
     if (!openTabPhone.trim()) {
-      alert("El teléfono del cliente es obligatorio");
+      toast.error("El teléfono del cliente es obligatorio");
       return;
     }
     setIsProcessing(true);
@@ -365,7 +366,7 @@ export default function POSSportBarPage() {
         waiterLabel: openTabWaiter ? `Mesonero ${openTabWaiter}` : undefined,
       });
       if (!result.success) {
-        alert(result.message);
+        toast.error(result.message);
         return;
       }
       setShowOpenTabModal(false);
@@ -477,7 +478,7 @@ export default function POSSportBarPage() {
     try {
       const result = await addItemsToOpenTabAction({ openTabId: activeTab.id, items: cart });
       if (!result.success) {
-        alert(result.message);
+        toast.error(result.message);
         return;
       }
       if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
@@ -576,7 +577,7 @@ export default function POSSportBarPage() {
         serviceFeeIncluded,
       });
       if (!result.success) {
-        alert(result.message);
+        toast.error(result.message);
         return;
       }
       // Imprimir factura: correlativo fijo por mesa (tabCode), 10% servicio solo si el cliente lo pagó
@@ -623,7 +624,7 @@ export default function POSSportBarPage() {
     if (!activeTab) return;
     const balance = Number(activeTab.balanceDue ?? 0);
     if (balance > 0.01) {
-      alert("La cuenta aún tiene saldo pendiente");
+      toast.error("La cuenta aún tiene saldo pendiente");
       return;
     }
     if (!confirm("¿Cerrar esta cuenta?")) return;
@@ -631,7 +632,7 @@ export default function POSSportBarPage() {
     try {
       const result = await closeOpenTabAction(activeTab.id);
       if (!result.success) {
-        alert(result.message);
+        toast.error(result.message);
         return;
       }
       await loadData();
@@ -723,11 +724,11 @@ export default function POSSportBarPage() {
         clearDiscount();
         setPickupCustomerName("");
       } else {
-        alert(result.message);
+        toast.error(result.message);
       }
     } catch (e) {
       console.error(e);
-      alert("Error en Venta Directa");
+      toast.error("Error en Venta Directa");
     } finally {
       setIsProcessing(false);
     }
@@ -784,10 +785,10 @@ export default function POSSportBarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-white">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">🍸</div>
-          <div className="text-xl font-bold">Cargando Restaurante...</div>
+          <div className="text-xl font-bold text-foreground">Cargando Restaurante...</div>
         </div>
       </div>
     );
