@@ -484,7 +484,8 @@ export default function POSSportBarPage() {
         printKitchenCommand({
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT",
-          customerName: activeTab.customerLabel || selectedTable?.name,
+          tableName: selectedTable?.name ?? null,
+          customerName: activeTab.customerLabel || null,
           items: cart.map((i) => ({
             name: i.name,
             quantity: i.quantity,
@@ -672,6 +673,7 @@ export default function POSSportBarPage() {
         printKitchenCommand({
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT",
+          tableName: null,
           customerName: pickupCustomerName || "Cliente Caja",
           items: cart.map((i) => ({
             name: i.name,

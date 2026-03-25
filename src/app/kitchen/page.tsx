@@ -15,6 +15,7 @@ interface KitchenOrder {
     orderNumber: string;
     orderType: string;
     customerName: string | null;
+    tableName: string | null;
     status: string;
     items: OrderItem[];
     createdAt: string;
@@ -185,6 +186,7 @@ export default function KitchenDisplayPage() {
                                 orderType: order.orderType,
                                 createdAt: order.createdAt,
                                 customerName: order.customerName,
+                                tableName: order.tableName,
                                 items: order.items.map(item => ({
                                     quantity: item.quantity,
                                     name: item.name,
@@ -425,6 +427,13 @@ export default function KitchenDisplayPage() {
                                 <div className={`text-center py-2 bg-gray-900 ${getTimerColor(order.createdAt)}`}>
                                     <span className="text-3xl font-mono">⏱️ {getTimeSince(order.createdAt)}</span>
                                 </div>
+
+                                {/* Mesa */}
+                                {order.tableName && (
+                                    <div className="px-4 py-2 bg-amber-600/80 text-white font-bold text-lg text-center tracking-wide">
+                                        🪑 {order.tableName}
+                                    </div>
+                                )}
 
                                 {/* Cliente */}
                                 {order.customerName && (

@@ -340,7 +340,9 @@ export function printKitchenCommand(data: any) {
     <div class="order-num">#${orderNum}</div>
     <div class="sep">--------------------------------</div>
     <div class="meta">${formattedTime} &nbsp;|&nbsp; ${data.orderType === 'RESTAURANT' ? 'SALA' : 'DELIVERY'}</div>
+    ${data.tableName ? `<div style="text-align:center;font-size:22px;font-weight:900;margin:4px 0;">${data.tableName}</div>` : ''}
     ${data.customerName ? `<div class="customer">${data.customerName}</div>` : ''}
+    ${data.address ? `<div style="text-align:center;font-size:12px;font-weight:normal;margin:2px 4px;">${data.address}</div>` : ''}
     <div class="sep">--------------------------------</div>
 
     ${deduped.map((item: any) => `

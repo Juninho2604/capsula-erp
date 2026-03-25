@@ -342,7 +342,8 @@ export default function POSMeseroPage() {
         printKitchenCommand({
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT",
-          customerName: activeTab.customerLabel || selectedTable?.name,
+          tableName: selectedTable?.name ?? null,
+          customerName: activeTab.customerLabel || null,
           items: cart.map((i) => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map((m) => m.name), notes: i.notes })),
           createdAt: new Date(),
         });

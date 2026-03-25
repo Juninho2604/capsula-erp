@@ -20,7 +20,8 @@ export async function GET() {
                         menuItem: true,
                         modifiers: true
                     }
-                }
+                },
+                tableOrStation: true
             },
             orderBy: {
                 createdAt: 'asc' // Las más antiguas primero
@@ -32,6 +33,7 @@ export async function GET() {
             orderNumber: order.orderNumber,
             orderType: order.orderType,
             customerName: order.customerName,
+            tableName: order.tableOrStation?.name ?? null,
             status: order.status,
             createdAt: order.createdAt.toISOString(),
             items: order.items.map(item => ({
