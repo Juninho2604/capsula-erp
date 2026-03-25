@@ -541,6 +541,9 @@ export async function getMenuForPOSAction() {
                     orderBy: { name: 'asc' },
                     include: {
                         modifierGroups: {
+                            where: {
+                                modifierGroup: { isActive: true }
+                            },
                             include: {
                                 modifierGroup: {
                                     include: {
