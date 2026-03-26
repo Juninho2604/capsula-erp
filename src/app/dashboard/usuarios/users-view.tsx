@@ -5,7 +5,6 @@ import { UserRole } from '@/types';
 import { ROLE_INFO } from '@/lib/constants/roles';
 import { updateUserRole, toggleUserStatus, updateUserModules } from '@/app/actions/user.actions';
 import { toast } from 'react-hot-toast';
-import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { PERMISSIONS, hasPermission } from '@/lib/permissions';
 import { MODULE_REGISTRY, MODULE_ROLE_ACCESS } from '@/lib/constants/modules-registry';
@@ -31,207 +30,182 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
     const isOwner = currentUser?.role === 'OWNER';
 
     const [users, setUsers] = useState(initialUsers);
-    const [editingUser, setEditingUser] = useState<string | null>(null);
-    const [modulesPanelUser, setModulesPanelUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+    const active = users.filter(u => u.isActive);
+    const inactive = users.filter(u => !u.isActive);
 
     const handleRoleChange = async (userId: string, newRole: string) => {
-        if (!confirm(`¿Estás seguro de cambiar el rol a ${newRole}?`)) return;
-        setIsLoading(true);
-        try {
-            const res = await updateUserRole(userId, newRole);
-            if (res.success) {
-                toast.success(res.message);
-                setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-                setEditingUser(null);
-            } else {
-                toast.error(res.message);
-            }
-        } catch {
-            toast.error('Error al actualizar rol');
-        } finally {
-            setIsLoading(false);
+        if (!confirm(`¿Cambiar el rol a ${newRole}?`)) return;
+        const res = await updateUserRole(userId, newRole);
+        if (res.success) {
+            toast.success(res.message);
+            const updated = users.map(u => u.id === userId ? { ...u, role: newRole } : u);
+            setUsers(updated);
+            if (selectedUser?.id === userId) setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
+        } else {
+            toast.error(res.message);
         }
     };
 
     const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
-        if (!confirm(`¿Estás seguro de ${currentStatus ? 'desactivar' : 'activar'} este usuario?`)) return;
-        setIsLoading(true);
-        try {
-            const res = await toggleUserStatus(userId, !currentStatus);
-            if (res.success) {
-                toast.success(res.message);
-                setUsers(users.map(u => u.id === userId ? { ...u, isActive: !currentStatus } : u));
-            } else {
-                toast.error(res.message);
-            }
-        } catch {
-            toast.error('Error al cambiar estado');
-        } finally {
-            setIsLoading(false);
+        if (!confirm(`¿${currentStatus ? 'Desactivar' : 'Activar'} este usuario?`)) return;
+        const res = await toggleUserStatus(userId, !currentStatus);
+        if (res.success) {
+            toast.success(res.message);
+            setUsers(users.map(u => u.id === userId ? { ...u, isActive: !currentStatus } : u));
+            if (selectedUser?.id === userId) setSelectedUser(prev => prev ? { ...prev, isActive: !currentStatus } : null);
+        } else {
+            toast.error(res.message);
+        }
+    };
+
+    const handleModulesSaved = (userId: string, newModules: string[] | null) => {
+        const updated = users.map(u =>
+            u.id === userId
+                ? { ...u, allowedModules: newModules ? JSON.stringify(newModules) : null }
+                : u
+        );
+        setUsers(updated);
+        if (selectedUser?.id === userId) {
+            setSelectedUser(prev => prev ? { ...prev, allowedModules: newModules ? JSON.stringify(newModules) : null } : null);
         }
     };
 
     return (
-        <div className="space-y-6 animate-in">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Gestión de Usuarios
-                    </h1>
-                    <p className="text-gray-500">
-                        {users.length} usuarios registrados
-                    </p>
-                </div>
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="mb-4">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Módulos por Usuario</h1>
+                <p className="text-sm text-gray-500 mt-1">
+                    Selecciona un usuario para configurar qué módulos del sistema puede ver en su menú.
+                    Si usas <span className="font-semibold">acceso por rol</span>, el sistema aplica las reglas predeterminadas del rol.
+                </p>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Usuario</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Rol</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Módulos</th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {users.map((u) => {
-                                const roleInfo = ROLE_INFO[u.role as UserRole] || { labelEs: u.role, color: '#6b7280' };
-                                const isSelf = u.id === currentUser?.id;
-                                const isTargetOwner = u.role === 'OWNER';
-                                const canEdit = canManageUsers && !isSelf && (isOwner || !isTargetOwner);
+            {/* Split panel */}
+            <div className="flex gap-4 flex-1 min-h-0 h-[calc(100vh-180px)]">
+                {/* ── Left: User list ── */}
+                <div className="w-80 shrink-0 flex flex-col bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                    <div className="overflow-y-auto flex-1 p-3 space-y-1">
+                        {/* Active users */}
+                        <p className="px-2 py-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            Usuarios Activos ({active.length})
+                        </p>
+                        {active.map(u => (
+                            <UserCard
+                                key={u.id}
+                                user={u}
+                                isSelected={selectedUser?.id === u.id}
+                                onClick={() => setSelectedUser(u)}
+                            />
+                        ))}
 
-                                let userModules: string[] | null = null;
-                                try {
-                                    userModules = u.allowedModules ? JSON.parse(u.allowedModules) : null;
-                                } catch { /* noop */ }
+                        {/* Inactive users */}
+                        {inactive.length > 0 && (
+                            <>
+                                <p className="px-2 pt-3 pb-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                    Inactivos
+                                </p>
+                                {inactive.map(u => (
+                                    <UserCard
+                                        key={u.id}
+                                        user={u}
+                                        isSelected={selectedUser?.id === u.id}
+                                        onClick={() => setSelectedUser(u)}
+                                        dimmed
+                                    />
+                                ))}
+                            </>
+                        )}
+                    </div>
+                </div>
 
-                                return (
-                                    <tr key={u.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-lg dark:bg-gray-700">👤</div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900 dark:text-white">{u.firstName} {u.lastName}</p>
-                                                    <p className="text-xs text-gray-500">{u.email}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {editingUser === u.id ? (
-                                                <select
-                                                    className="rounded border border-gray-300 text-sm p-1"
-                                                    value={u.role}
-                                                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                                    disabled={isLoading}
-                                                    onBlur={() => setEditingUser(null)}
-                                                    autoFocus
-                                                >
-                                                    {Object.keys(ROLE_INFO).map((role) => (
-                                                        <option key={role} value={role}>{ROLE_INFO[role as UserRole].labelEs}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <span
-                                                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                                    style={{ backgroundColor: `${roleInfo.color}20`, color: roleInfo.color }}
-                                                >
-                                                    {roleInfo.labelEs}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={cn(
-                                                "inline-flex rounded-full px-2 py-1 text-xs font-semibold",
-                                                u.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                            )}>
-                                                {u.isActive ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            {canEdit ? (
-                                                <button
-                                                    onClick={() => setModulesPanelUser(u)}
-                                                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
-                                                >
-                                                    🧩 {userModules ? `${userModules.length} custom` : 'Por rol'}
-                                                </button>
-                                            ) : (
-                                                <span className="text-xs text-gray-400">
-                                                    {userModules ? `${userModules.length} custom` : 'Por rol'}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            {canEdit && (
-                                                <>
-                                                    <button
-                                                        onClick={() => setEditingUser(u.id)}
-                                                        className="text-amber-600 hover:text-amber-900 text-sm font-medium"
-                                                        disabled={isLoading}
-                                                    >
-                                                        Cambiar Rol
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleStatusToggle(u.id, u.isActive)}
-                                                        className={cn(
-                                                            "text-sm font-medium ml-3",
-                                                            u.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"
-                                                        )}
-                                                        disabled={isLoading}
-                                                    >
-                                                        {u.isActive ? 'Desactivar' : 'Activar'}
-                                                    </button>
-                                                </>
-                                            )}
-                                            {!canEdit && (
-                                                <span className="text-xs text-gray-400 italic">Sólo lectura</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                {/* ── Right: Module config panel ── */}
+                <div className="flex-1 bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                    {selectedUser ? (
+                        <ModulesPanel
+                            key={selectedUser.id}
+                            user={selectedUser}
+                            enabledModuleIds={enabledModuleIds}
+                            canManage={canManageUsers && selectedUser.id !== currentUser?.id && (isOwner || selectedUser.role !== 'OWNER')}
+                            isOwner={isOwner}
+                            onRoleChange={handleRoleChange}
+                            onStatusToggle={handleStatusToggle}
+                            onModulesSaved={handleModulesSaved}
+                        />
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+                            <div className="text-5xl opacity-30">👤</div>
+                            <p className="font-medium">Selecciona un usuario de la lista</p>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* ── Module Picker Panel ── */}
-            {modulesPanelUser && (
-                <ModulesPanel
-                    user={modulesPanelUser}
-                    enabledModuleIds={enabledModuleIds}
-                    onClose={() => setModulesPanelUser(null)}
-                    onSaved={(userId, newModules) => {
-                        setUsers(users.map(u =>
-                            u.id === userId
-                                ? { ...u, allowedModules: newModules ? JSON.stringify(newModules) : null }
-                                : u
-                        ));
-                        setModulesPanelUser(null);
-                    }}
-                />
-            )}
         </div>
     );
 }
 
-// ─── Module Picker Panel ──────────────────────────────────────────────────────
+// ─── User Card ────────────────────────────────────────────────────────────────
+
+function UserCard({ user, isSelected, onClick, dimmed }: { user: User; isSelected: boolean; onClick: () => void; dimmed?: boolean }) {
+    const roleInfo = ROLE_INFO[user.role as UserRole] || { labelEs: user.role, color: '#6b7280' };
+    let isCustom = false;
+    try { isCustom = user.allowedModules !== null; } catch { /* noop */ }
+
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full text-left rounded-xl px-3 py-2.5 transition-all border ${
+                isSelected
+                    ? 'bg-amber-500/10 border-amber-500/40'
+                    : 'border-transparent hover:bg-muted'
+            } ${dimmed ? 'opacity-50' : ''}`}
+        >
+            <p className={`font-semibold text-sm ${isSelected ? 'text-amber-500' : 'text-foreground'}`}>
+                {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span
+                    className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                    style={{ backgroundColor: `${roleInfo.color}25`, color: roleInfo.color }}
+                >
+                    {roleInfo.labelEs}
+                </span>
+                {isCustom && (
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 uppercase">
+                        personalizado
+                    </span>
+                )}
+            </div>
+        </button>
+    );
+}
+
+// ─── Modules Panel ────────────────────────────────────────────────────────────
 
 interface ModulesPanelProps {
     user: User;
     enabledModuleIds: string[];
-    onClose: () => void;
-    onSaved: (userId: string, modules: string[] | null) => void;
+    canManage: boolean;
+    isOwner: boolean;
+    onRoleChange: (userId: string, newRole: string) => void;
+    onStatusToggle: (userId: string, currentStatus: boolean) => void;
+    onModulesSaved: (userId: string, modules: string[] | null) => void;
 }
 
-function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanelProps) {
-    const [isPending, startTransition] = useTransition();
+const SECTIONS = [
+    { key: 'operations', label: 'Operaciones', icon: '⚙️' },
+    { key: 'sales',      label: 'Ventas',       icon: '💳' },
+    { key: 'games',      label: 'Entretenimiento', icon: '🎮' },
+    { key: 'admin',      label: 'Administración',  icon: '🔐' },
+] as const;
 
-    // Modules accessible by this user's role from enabled modules
+function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange, onStatusToggle, onModulesSaved }: ModulesPanelProps) {
+    const [isPending, startTransition] = useTransition();
+    const roleInfo = ROLE_INFO[user.role as UserRole] || { labelEs: user.role, color: '#6b7280' };
+
     const accessibleModules = MODULE_REGISTRY
         .filter(m => enabledModuleIds.includes(m.id))
         .filter(m => {
@@ -240,7 +214,6 @@ function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanel
         })
         .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    // Parse current allowedModules (null = all accessible modules)
     let initialSelected: Set<string>;
     try {
         const parsed: string[] | null = user.allowedModules ? JSON.parse(user.allowedModules) : null;
@@ -251,9 +224,6 @@ function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanel
 
     const [selected, setSelected] = useState<Set<string>>(initialSelected);
     const isCustom = user.allowedModules !== null;
-
-    // Check if selection equals "all accessible" (which means no restriction)
-    const allAccessibleIds = new Set(accessibleModules.map(m => m.id));
     const isAllSelected = accessibleModules.every(m => selected.has(m.id));
 
     function toggle(id: string) {
@@ -266,12 +236,11 @@ function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanel
 
     function handleSave() {
         startTransition(async () => {
-            // If all accessible modules are selected → save as null (no restriction)
             const toSave = isAllSelected ? null : Array.from(selected);
             const res = await updateUserModules(user.id, toSave);
             if (res.success) {
                 toast.success(res.message);
-                onSaved(user.id, toSave);
+                onModulesSaved(user.id, toSave);
             } else {
                 toast.error(res.message);
             }
@@ -283,88 +252,119 @@ function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanel
             const res = await updateUserModules(user.id, null);
             if (res.success) {
                 toast.success('Permisos restablecidos al rol');
-                onSaved(user.id, null);
+                onModulesSaved(user.id, null);
             } else {
                 toast.error(res.message);
             }
         });
     }
 
-    const sections = [
-        { key: 'operations', label: 'Operaciones', icon: '⚙️' },
-        { key: 'sales',      label: 'Ventas',       icon: '💳' },
-        { key: 'games',      label: 'Entretenimiento', icon: '🎮' },
-        { key: 'admin',      label: 'Administración', icon: '🔐' },
-    ] as const;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/40" onClick={onClose}>
-            <div
-                className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl dark:bg-gray-900"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="flex items-center gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-700">
-                    <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                            🧩 Módulos de {user.firstName} {user.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                            {isCustom ? 'Permisos personalizados' : 'Acceso por rol (sin restricción extra)'}
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="ml-auto rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">✕</button>
+        <>
+            {/* User header */}
+            <div className="px-5 py-4 border-b border-border flex items-center gap-3 shrink-0">
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0">👤</div>
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground">{user.firstName} {user.lastName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase"
+                        style={{ backgroundColor: `${roleInfo.color}20`, color: roleInfo.color }}
+                    >
+                        {roleInfo.labelEs}
+                    </span>
+                    {canManage && (
+                        <select
+                            className="text-xs border border-border rounded-lg px-2 py-1 bg-background text-foreground"
+                            value={user.role}
+                            onChange={e => onRoleChange(user.id, e.target.value)}
+                        >
+                            {Object.keys(ROLE_INFO).map(role => (
+                                <option key={role} value={role}>{ROLE_INFO[role as UserRole].labelEs}</option>
+                            ))}
+                        </select>
+                    )}
+                    {canManage && (
+                        <button
+                            onClick={() => onStatusToggle(user.id, user.isActive)}
+                            className={`text-xs font-semibold px-3 py-1 rounded-full border transition ${
+                                user.isActive
+                                    ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                                    : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                            }`}
+                        >
+                            {user.isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Modules list */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">
+                        Módulos visibles — {isCustom ? <span className="text-indigo-400">personalizado</span> : <span className="text-muted-foreground">según rol</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{selected.size} de {accessibleModules.length} habilitados</p>
                 </div>
 
-                {/* Module list */}
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-                    {sections.map(section => {
-                        const mods = accessibleModules.filter(m => m.section === section.key);
-                        if (mods.length === 0) return null;
-                        return (
-                            <div key={section.key}>
-                                <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                    <span>{section.icon}</span> {section.label}
-                                </p>
-                                <div className="space-y-1">
-                                    {mods.map(mod => (
+                {SECTIONS.map(section => {
+                    const mods = accessibleModules.filter(m => m.section === section.key);
+                    if (mods.length === 0) return null;
+                    return (
+                        <div key={section.key}>
+                            <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                <span>{section.icon}</span> {section.label}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                {mods.map(mod => {
+                                    const checked = selected.has(mod.id);
+                                    return (
                                         <label
                                             key={mod.id}
-                                            className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                            className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 border transition-all ${
+                                                checked
+                                                    ? 'bg-amber-500/5 border-amber-500/20'
+                                                    : 'border-border bg-background/50 opacity-50'
+                                            } ${!canManage ? 'cursor-default' : ''}`}
                                         >
                                             <input
                                                 type="checkbox"
-                                                checked={selected.has(mod.id)}
-                                                onChange={() => toggle(mod.id)}
+                                                checked={checked}
+                                                onChange={() => canManage && toggle(mod.id)}
                                                 className="h-4 w-4 rounded border-gray-300 accent-amber-500"
-                                                disabled={isPending}
+                                                disabled={isPending || !canManage}
                                             />
-                                            <span className="text-lg">{mod.icon}</span>
+                                            <span className="text-base">{mod.icon}</span>
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">{mod.label}</p>
-                                                <p className="truncate text-xs text-gray-500">{mod.description}</p>
+                                                <p className="text-sm font-semibold text-foreground leading-tight">{mod.label}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{mod.description}</p>
                                             </div>
                                         </label>
-                                    ))}
-                                </div>
+                                    );
+                                })}
                             </div>
-                        );
-                    })}
+                        </div>
+                    );
+                })}
 
-                    {accessibleModules.length === 0 && (
-                        <p className="text-center text-sm text-gray-400">
-                            Este rol no tiene módulos habilitados disponibles.
-                        </p>
-                    )}
-                </div>
+                {accessibleModules.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-8">
+                        Este rol no tiene módulos habilitados disponibles.
+                    </p>
+                )}
+            </div>
 
-                {/* Footer */}
-                <div className="flex items-center gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
+            {/* Footer actions */}
+            {canManage && (
+                <div className="flex items-center gap-3 border-t border-border px-5 py-3 shrink-0">
                     {isCustom && (
                         <button
                             onClick={handleReset}
                             disabled={isPending}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300"
+                            className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50 transition"
                         >
                             Restablecer al rol
                         </button>
@@ -372,12 +372,12 @@ function ModulesPanel({ user, enabledModuleIds, onClose, onSaved }: ModulesPanel
                     <button
                         onClick={handleSave}
                         disabled={isPending}
-                        className="ml-auto rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50"
+                        className="ml-auto rounded-xl bg-amber-500 px-5 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
                     >
                         {isPending ? 'Guardando…' : `Guardar (${selected.size} módulos)`}
                     </button>
                 </div>
-            </div>
-        </div>
+            )}
+        </>
     );
 }

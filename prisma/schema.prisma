@@ -685,6 +685,10 @@ model MenuItem {
   // ConfiguraciÃ³n
   isAvailable     Boolean  @default(true)
   isActive        Boolean  @default(true)
+
+  // POS Navigation
+  posGroup        String?  // Agrupa variantes de tamaño (ej: "Shawarma Carne" para 250gr/350gr/500gr)
+  posSubcategory  String?  // Subcategoría visual en POS (ej: "Jugos", "Cafés")
   
   // Modificadores permitidos
   modifierGroups  MenuItemModifierGroup[]
