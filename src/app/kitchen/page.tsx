@@ -98,6 +98,7 @@ export default function KitchenDisplayPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
     const [userRole, setUserRole] = useState<string>('');
     const [currentTime, setCurrentTime] = useState(new Date());
     const previousOrdersRef = useRef<string[]>([]);
@@ -158,26 +159,66 @@ export default function KitchenDisplayPage() {
 
     const canMuteSound = ROLES_CAN_MUTE.includes(userRole);
 
+    // Imprime una comanda usando un iframe oculto (no popup — no bloqueado por el navegador)
+    const autoPrintViaIframe = (order: KitchenOrder) => {
+        const time = new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        const html = `<!DOCTYPE html><html><head><title>COCINA ${order.orderNumber}</title><style>
+body{font-family:sans-serif;width:72mm;margin:2mm;font-weight:bold;}
+.header{text-align:center;border-bottom:3px solid black;padding-bottom:5px;margin-bottom:10px;}
+.title{font-size:20px;font-weight:900;}
+.item{border-bottom:1px dashed #000;padding:8px 0;display:flex;align-items:flex-start;}
+.qty-box{background:#000;color:#fff;font-size:22px;padding:2px 8px;border-radius:4px;margin-right:8px;}
+.details{flex:1;}.name{font-size:18px;line-height:1.1;}
+.mods{font-size:14px;margin-top:4px;font-style:italic;}
+.notes{font-size:14px;background:#eee;padding:2px;margin-top:2px;}
+</style></head><body>
+<div class="header">
+<div class="title">COMANDA COCINA</div>
+<div style="font-size:24px;margin:5px 0"># ${order.orderNumber.split('-').pop()}</div>
+<div>${time} — ${order.orderType === 'RESTAURANT' ? 'SALA' : 'DELIVERY'}</div>
+${order.customerName ? `<div>${order.customerName}</div>` : ''}
+</div>
+${order.items.map(item => `
+<div class="item">
+<div class="qty-box">${item.quantity}</div>
+<div class="details">
+<div class="name">${item.name}</div>
+${item.modifiers.length > 0 ? `<div class="mods">+ ${item.modifiers.map(m => m.name).join('<br>+ ')}</div>` : ''}
+${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
+</div></div>`).join('')}
+</body></html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) { document.body.removeChild(iframe); return; }
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => {
+            iframe.contentWindow?.print();
+            setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 2000);
+        }, 400);
+    };
+
     const fetchOrders = useCallback(async () => {
         try {
-            const response = await fetch('/api/kitchen/orders?station=kitchen');
+            const response = await fetch('/api/kitchen/orders?station=kitchen', { cache: 'no-store' });
             if (response.ok) {
                 const data = await response.json();
-                const newOrders: KitchenOrder[] = data.orders || [];
+                const freshOrders: KitchenOrder[] = data.orders || [];
 
-                // Detectar nuevas órdenes
-                if (!isFirstLoadRef.current && soundEnabled) {
-                    const currentOrderIds = newOrders.map(o => o.id);
+                if (!isFirstLoadRef.current) {
+                    const currentOrderIds = freshOrders.map(o => o.id);
                     const newOrderIds = currentOrderIds.filter(
                         id => !previousOrdersRef.current.includes(id)
                     );
 
                     if (newOrderIds.length > 0) {
-                        playNotificationSound();
+                        if (soundEnabled) playNotificationSound();
 
                         // Imprimir comanda automáticamente (solo una vez por orden)
-                        const ordersToprint = newOrders.filter(
-                            o => newOrderIds.includes(o.id) && !printedOrdersRef.current.has(o.id)
+                        const ordersToprint = freshOrders.filter(
+                            (o: KitchenOrder) => newOrderIds.includes(o.id) && !printedOrdersRef.current.has(o.id)
                         );
                         for (const order of ordersToprint) {
                             printedOrdersRef.current.add(order.id);
@@ -187,10 +228,10 @@ export default function KitchenDisplayPage() {
                                 createdAt: order.createdAt,
                                 customerName: order.customerName,
                                 tableName: order.tableName,
-                                items: order.items.map(item => ({
+                                items: order.items.map((item: OrderItem) => ({
                                     quantity: item.quantity,
                                     name: item.name,
-                                    modifiers: item.modifiers.map(m => m.name),
+                                    modifiers: item.modifiers.map((m: { name: string }) => m.name),
                                     notes: item.notes,
                                 })),
                             });
@@ -202,15 +243,21 @@ export default function KitchenDisplayPage() {
                                 icon: '/favicon.ico'
                             });
                         }
+
+                        if (autoPrintEnabled) {
+                            freshOrders
+                                .filter(o => newOrderIds.includes(o.id))
+                                .forEach(o => autoPrintViaIframe(o));
+                        }
                     }
 
                     previousOrdersRef.current = currentOrderIds;
                 } else {
-                    previousOrdersRef.current = newOrders.map(o => o.id);
+                    previousOrdersRef.current = freshOrders.map(o => o.id);
                     isFirstLoadRef.current = false;
                 }
 
-                setOrders(newOrders);
+                setOrders(freshOrders);
             }
         } catch (error) {
             console.error('Error fetching orders:', error);
@@ -218,7 +265,7 @@ export default function KitchenDisplayPage() {
             setIsLoading(false);
             setLastUpdate(new Date());
         }
-    }, [soundEnabled]);
+    }, [soundEnabled, autoPrintEnabled]);
 
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'default') {
@@ -228,7 +275,7 @@ export default function KitchenDisplayPage() {
 
     useEffect(() => {
         fetchOrders();
-        const interval = setInterval(fetchOrders, 5000);
+        const interval = setInterval(fetchOrders, 3000);
         return () => clearInterval(interval);
     }, [fetchOrders]);
 
@@ -370,6 +417,18 @@ export default function KitchenDisplayPage() {
                             title="Probar sonido"
                         >
                             🔊
+                        </button>
+
+                        {/* Botón Auto-Impresión */}
+                        <button
+                            onClick={() => setAutoPrintEnabled(p => !p)}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${autoPrintEnabled
+                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                                : 'bg-white/10 text-white/60'
+                            }`}
+                            title={autoPrintEnabled ? 'Auto-impresión activa — click para desactivar' : 'Activar auto-impresión de comandas'}
+                        >
+                            🖨️ <span className="hidden sm:inline">{autoPrintEnabled ? 'AUTO ON' : 'AUTO OFF'}</span>
                         </button>
 
                         {/* Reloj en tiempo real */}

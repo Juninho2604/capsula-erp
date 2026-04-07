@@ -6,6 +6,7 @@ import { createSalesOrderAction, getMenuForPOSAction, validateManagerPinAction, 
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt, printKitchenCommand } from '@/lib/print-command';
 import { getPOSConfig } from '@/lib/pos-settings';
+import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 import { PriceDisplay } from '@/components/pos/PriceDisplay';
 import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
@@ -275,8 +276,8 @@ export default function POSDeliveryPage() {
                 }
                 setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setPaymentMethod('TRANSFER'); setAmountReceived('');
                 setDiscountType('NONE'); setAuthorizedManager(null);
-            } else alert(result.message);
-        } catch (e) { console.error(e); alert('Error'); } finally { setIsProcessing(false); }
+            } else toast.error(result.message ?? 'Error al procesar el pedido');
+        } catch (e) { console.error(e); toast.error('Error al procesar el pedido'); } finally { setIsProcessing(false); }
     };
 
     const handleDiscountSelect = (t: string) => {

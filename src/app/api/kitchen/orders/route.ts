@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // Categorías que van a BARRA (solo Bebidas)
 const BAR_CATEGORIES = ['Bebidas'];
 

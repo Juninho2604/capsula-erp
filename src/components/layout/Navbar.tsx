@@ -29,6 +29,8 @@ export function Navbar() {
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-2">
+                {/* Toggle Dark/Light mode */}
+                <ThemeToggle />
                 {/* Notificaciones del sistema */}
                 <NotificationBell />
                 {/* Help Panel con guía por módulo */}

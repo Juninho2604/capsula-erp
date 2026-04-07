@@ -60,25 +60,25 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
     if (!isVisible) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-sm text-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4">
+            <div className="bg-card border border-border p-6 rounded-2xl shadow-2xl w-full max-w-sm text-foreground">
                 <div className="text-center mb-6">
                     <div className="text-4xl mb-2">👩🏻‍💻</div>
                     <h2 className="text-xl font-black">Apertura de Caja</h2>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                         {forceOpen ? 'Cambio de cajera' : 'Ingresa tu nombre para iniciar el turno (una vez al día)'}
                     </p>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Nombre de Cajera</label>
+                        <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase">Nombre de Cajera</label>
                         <input
                             type="text"
                             value={name}
                             onChange={e => setName(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleOpen()}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg font-bold text-white focus:outline-none focus:border-amber-500 transition"
+                            className="w-full bg-background border border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground focus:outline-none focus:border-primary transition"
                             placeholder="Ej: María Pérez"
                             autoFocus
                         />
@@ -87,7 +87,7 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
                     <button
                         onClick={handleOpen}
                         disabled={!name.trim()}
-                        className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-3 rounded-xl font-black text-lg transition disabled:opacity-50"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-black text-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {forceOpen ? 'Cambiar Cajera →' : 'Abrir Turno →'}
                     </button>

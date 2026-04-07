@@ -14,6 +14,7 @@ import {
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { printKitchenCommand } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
+import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 
 // ============================================================================
@@ -241,8 +242,8 @@ export default function POSMeseroPage() {
 
   const handleOpenTab = async () => {
     if (!selectedTable) return;
-    if (!openTabName.trim()) { alert("El nombre del cliente es obligatorio"); return; }
-    if (!openTabPhone.trim()) { alert("El teléfono del cliente es obligatorio"); return; }
+    if (!openTabName.trim()) { toast.error("El nombre del cliente es obligatorio"); return; }
+    if (!openTabPhone.trim()) { toast.error("El teléfono del cliente es obligatorio"); return; }
     setIsProcessing(true);
     try {
       const result = await openTabAction({
@@ -252,7 +253,7 @@ export default function POSMeseroPage() {
         guestCount: openTabGuests,
         waiterLabel: openTabWaiter ? `Mesonero ${openTabWaiter}` : undefined,
       });
-      if (!result.success) { alert(result.message); return; }
+      if (!result.success) { toast.error(result.message); return; }
       setShowOpenTabModal(false);
       setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2); setOpenTabWaiter("");
       await loadData();
@@ -337,7 +338,7 @@ export default function POSMeseroPage() {
     setIsProcessing(true);
     try {
       const result = await addItemsToOpenTabAction({ openTabId: activeTab.id, items: cart });
-      if (!result.success) { alert(result.message); return; }
+      if (!result.success) { toast.error(result.message); return; }
       if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
         printKitchenCommand({
           orderNumber: result.data.orderNumber,

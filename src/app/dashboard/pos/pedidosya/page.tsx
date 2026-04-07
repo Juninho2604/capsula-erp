@@ -6,6 +6,7 @@ import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
 import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
 import { printKitchenCommand } from '@/lib/print-command';
 import { getPOSConfig } from '@/lib/pos-settings';
+import toast from 'react-hot-toast';
 
 interface ModifierOption {
     id: string;
@@ -176,13 +177,13 @@ export default function POSPedidosYAPage() {
                 setLastOrder({ orderNumber: result.data.orderNumber, items: [...cart], customerName: customerName || 'PedidosYA' });
                 setCart([]);
                 setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setExternalOrderId(''); setNotes('');
-                alert(`✅ Pedido registrado: ${result.data.orderNumber}`);
+                toast.success(`Pedido registrado: ${result.data.orderNumber}`);
             } else {
-                alert(result.message || 'Error al registrar');
+                toast.error(result.message || 'Error al registrar');
             }
         } catch (e) {
             console.error(e);
-            alert('Error al registrar pedido');
+            toast.error('Error al registrar pedido');
         } finally {
             setIsProcessing(false);
         }
@@ -199,46 +200,62 @@ export default function POSPedidosYAPage() {
         });
     };
 
-    if (isLoading) return <div className="text-white p-10">Cargando menú...</div>;
+    if (isLoading) return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="text-center">
+                <div className="text-4xl mb-4">🍔</div>
+                <div className="text-xl font-black text-foreground">Cargando PedidosYA...</div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-950 text-white relative flex flex-col font-sans">
+        <div className="min-h-screen bg-background text-foreground relative flex flex-col font-sans">
             {/* Header */}
-            <div className="bg-gradient-to-r from-orange-600 to-red-700 px-6 py-4 fixed top-0 w-full z-30 shadow-xl flex justify-between items-center h-20">
+            <div className="glass-panel px-3 md:px-6 py-3 md:py-4 fixed top-0 w-full z-30 shadow-2xl flex justify-between items-center h-16 md:h-20 border-b border-border">
                 <div className="flex items-center gap-3">
-                    <span className="text-4xl">🍔</span>
+                    <div className="h-10 w-10 md:h-12 md:w-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">🍔</div>
                     <div>
-                        <h1 className="text-2xl font-black">PedidosYA</h1>
-                        <p className="text-orange-200 text-xs font-bold uppercase">Registro de Pedidos Externos</p>
+                        <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-orange-500 italic">PedidosYA</span></h1>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                            Registro de Pedidos Externos
+                        </p>
                     </div>
                 </div>
-                <p className="font-mono text-xl">{new Date().toLocaleDateString('es-VE')}</p>
+                <div className="px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+                    {new Date().toLocaleDateString('es-VE')}
+                </div>
             </div>
 
-            <div className="flex h-screen pt-20 overflow-hidden">
+            <div className="flex h-screen pt-16 md:pt-20 overflow-hidden">
                 {/* Menú izquierda */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-gray-900">
+                <div className="flex-1 flex flex-col overflow-hidden bg-background">
                     {/* Búsqueda */}
-                    <div className="px-3 pt-3 pb-1 bg-gray-800 border-b border-gray-700">
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                    <div className="px-4 py-3 bg-background border-b border-border">
+                        <div className="relative group">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
                             <input
                                 type="text"
                                 value={productSearch}
                                 onChange={e => setProductSearch(e.target.value)}
-                                placeholder="Buscar producto..."
-                                className="w-full bg-gray-700 border border-gray-600 rounded-xl py-2 pl-9 pr-9 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
+                                placeholder="Buscar producto por nombre o SKU..."
+                                className="w-full bg-secondary/50 border border-border rounded-2xl py-3 pl-12 pr-12 text-sm font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
                             />
                             {productSearch && (
-                                <button onClick={() => setProductSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">✕</button>
+                                <button onClick={() => setProductSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">✕</button>
                             )}
                         </div>
                     </div>
                     {/* Categorías */}
                     {!productSearch && (
-                        <div className="flex gap-2 p-3 bg-gray-800 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
+                        <div className="flex gap-3 px-4 py-3 bg-background border-b border-border overflow-x-auto no-scrollbar">
                             {categories.map((cat: any) => (
-                                <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-4 py-2 rounded-lg font-bold transition-all text-sm ${selectedCategory === cat.id ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setSelectedCategory(cat.id)}
+                                    className={`shrink-0 px-5 py-2.5 rounded-2xl font-black text-sm transition-all active:scale-95 border-2 ${selectedCategory === cat.id ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-card border-border text-foreground/50 hover:border-orange-400/40'}`}
+                                >
                                     {cat.name}
                                 </button>
                             ))}
@@ -246,11 +263,15 @@ export default function POSPedidosYAPage() {
                     )}
                     {/* Productos */}
                     <div className="flex-1 p-4 overflow-y-auto pb-24">
-                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                             {filteredMenuItems.map(item => (
-                                <button key={item.id} onClick={() => handleAddToCart(item)} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl p-4 text-left shadow-md group h-32 flex flex-col justify-between">
-                                    <div className="font-bold text-base leading-tight group-hover:text-orange-300">{item.name}</div>
-                                    <div className="text-xl font-black text-orange-400">${item.price.toFixed(2)}</div>
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleAddToCart(item)}
+                                    className="capsula-card group p-4 text-left h-32 flex flex-col justify-between border-primary/5 hover:border-orange-400/40 active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="font-black text-sm uppercase leading-tight tracking-tight group-hover:text-orange-500 transition-colors">{item.name}</div>
+                                    <div className="text-2xl font-black text-orange-500 italic">${item.price.toFixed(2)}</div>
                                 </button>
                             ))}
                         </div>
@@ -258,62 +279,62 @@ export default function POSPedidosYAPage() {
                 </div>
 
                 {/* Panel derecho */}
-                <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-20">
+                <div className="w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20">
                     {/* Datos del pedido */}
-                    <div className="p-4 bg-gray-800 border-b border-gray-700 space-y-2">
-                        <h2 className="font-black text-lg flex items-center gap-2">📦 Datos del Pedido</h2>
+                    <div className="p-4 bg-card border-b border-border space-y-2">
+                        <h2 className="font-black text-base flex items-center gap-2 text-foreground">📦 Datos del Pedido</h2>
                         <div className="grid grid-cols-2 gap-2">
-                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# PedidosYA" className="col-span-2 bg-orange-900/30 border border-orange-700 rounded p-2 text-white text-sm focus:ring-2 focus:ring-orange-500 placeholder-orange-300/60 font-mono" />
-                            <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre cliente" className="bg-gray-700 border-none rounded p-2 text-white text-sm focus:ring-2 focus:ring-orange-500" />
-                            <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="bg-gray-700 border-none rounded p-2 text-white text-sm focus:ring-2 focus:ring-orange-500" />
+                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# PedidosYA" className="col-span-2 bg-orange-500/10 border border-orange-500/40 rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-orange-500/40 font-mono" />
+                            <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre cliente" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
-                        <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Dirección..." className="w-full bg-gray-700 border-none rounded p-2 text-white text-sm focus:ring-2 focus:ring-orange-500 h-16 resize-none" />
-                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas adicionales..." className="w-full bg-gray-700 border-none rounded p-2 text-white text-sm focus:ring-2 focus:ring-orange-500" />
+                        <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Dirección..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 h-16 resize-none" />
+                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas adicionales..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                     </div>
 
                     {/* Carrito */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900/50">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
                         {cart.length === 0 && (
-                            <div className="text-center text-gray-500 py-8 text-sm">
+                            <div className="text-center text-muted-foreground py-8 text-sm">
                                 <p className="text-3xl mb-2">🍔</p>
                                 <p>Agrega productos del menú</p>
                             </div>
                         )}
                         {cart.map((item, i) => (
-                            <div key={i} className="bg-gray-800 p-3 rounded border border-gray-700 flex justify-between group">
+                            <div key={i} className="bg-secondary/30 p-3 rounded-xl border border-border flex justify-between group">
                                 <div>
-                                    <div className="font-bold text-sm flex gap-2"><span className="text-orange-400">x{item.quantity}</span> {item.name}</div>
-                                    {item.modifiers.length > 0 && <div className="text-xs text-gray-400 pl-6">{item.modifiers.map(m => m.name).join(', ')}</div>}
-                                    {item.notes && <div className="text-xs text-orange-300 pl-6 italic">"{item.notes}"</div>}
+                                    <div className="font-bold text-sm flex gap-2"><span className="text-orange-500">x{item.quantity}</span> {item.name}</div>
+                                    {item.modifiers.length > 0 && <div className="text-xs text-muted-foreground pl-6">{item.modifiers.map(m => m.name).join(', ')}</div>}
+                                    {item.notes && <div className="text-xs text-orange-400 pl-6 italic">"{item.notes}"</div>}
                                 </div>
                                 <div className="text-right">
                                     <div className="font-bold text-sm">${item.lineTotal.toFixed(2)}</div>
-                                    <button onClick={() => removeFromCart(i)} className="text-red-500 text-xs hover:underline opacity-0 group-hover:opacity-100">Borrar</button>
+                                    <button onClick={() => removeFromCart(i)} className="text-destructive text-xs hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Borrar</button>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* Footer: total + botones */}
-                    <div className="p-4 bg-gray-800 border-t border-gray-700 space-y-3">
-                        <div className="flex justify-between text-sm text-gray-300 bg-gray-900 rounded-lg px-3 py-2">
+                    <div className="p-4 bg-card border-t border-border space-y-3">
+                        <div className="flex justify-between text-sm text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
                             <span>Total estimado</span>
-                            <span className="font-bold text-white">${cartSubtotal.toFixed(2)}</span>
+                            <span className="font-bold text-foreground">${cartSubtotal.toFixed(2)}</span>
                         </div>
-                        <div className="rounded-lg bg-orange-900/20 border border-orange-700/40 px-3 py-2 text-xs text-orange-300">
+                        <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-xs text-orange-500">
                             ℹ️ <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
                         </div>
                         <button
                             onClick={handleSubmit}
                             disabled={cart.length === 0 || isProcessing}
-                            className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-xl shadow-lg disabled:opacity-50"
+                            className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                         >
-                            {isProcessing ? 'REGISTRANDO...' : `REGISTRAR PEDIDO`}
+                            {isProcessing ? '⏳ REGISTRANDO...' : 'REGISTRAR PEDIDO'}
                         </button>
                         {lastOrder && (
                             <button
                                 onClick={handleReprintComanda}
-                                className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 border border-gray-600 text-sm"
+                                className="w-full py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm transition-all"
                             >
                                 🖨️ Reimprimir comanda {lastOrder.orderNumber}
                             </button>
@@ -324,14 +345,14 @@ export default function POSPedidosYAPage() {
 
             {/* Modal modificadores */}
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-gray-800 w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-gray-700">
-                        <div className="p-5 border-b border-gray-700 flex justify-between">
+                <div className="fixed inset-0 bg-background/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-card w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-border">
+                        <div className="p-5 border-b border-border flex justify-between">
                             <div>
-                                <h3 className="text-2xl font-bold">{selectedItemForModifier.name}</h3>
-                                <p className="text-orange-400 font-bold text-xl">${selectedItemForModifier.price.toFixed(2)}</p>
+                                <h3 className="text-2xl font-bold text-foreground">{selectedItemForModifier.name}</h3>
+                                <p className="text-orange-500 font-bold text-xl">${selectedItemForModifier.price.toFixed(2)}</p>
                             </div>
-                            <button onClick={() => setShowModifierModal(false)} className="text-4xl leading-none hover:text-red-500">&times;</button>
+                            <button onClick={() => setShowModifierModal(false)} className="text-4xl leading-none text-muted-foreground hover:text-destructive transition-colors">&times;</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-5 space-y-4">
                             {selectedItemForModifier.modifierGroups?.map(groupRel => {
@@ -339,10 +360,10 @@ export default function POSPedidosYAPage() {
                                 const totalSelected = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                                 return (
-                                    <div key={group.id} className={`p-4 rounded-xl border ${isValid ? 'border-gray-600' : 'border-red-500 bg-red-900/10'}`}>
+                                    <div key={group.id} className={`p-4 rounded-xl border ${isValid ? 'border-border' : 'border-destructive bg-destructive/5'}`}>
                                         <div className="flex justify-between mb-2">
-                                            <h4 className="font-bold text-orange-100">{group.name}</h4>
-                                            <span className={`text-xs px-2 py-0.5 rounded ${isValid ? 'bg-orange-900 text-orange-300' : 'bg-red-800 text-red-200'}`}>{totalSelected}/{group.maxSelections}</span>
+                                            <h4 className="font-bold text-foreground">{group.name}</h4>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isValid ? 'bg-orange-500/10 text-orange-500' : 'bg-destructive/10 text-destructive'}`}>{totalSelected}/{group.maxSelections}</span>
                                         </div>
                                         <div className="grid gap-2">
                                             {group.modifiers.filter(m => m.isAvailable).map(mod => {
@@ -351,15 +372,15 @@ export default function POSPedidosYAPage() {
                                                 const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                                                 const isRadio = group.maxSelections === 1;
                                                 return (
-                                                    <div key={mod.id} className={`flex justify-between items-center p-3 rounded-lg border ${qty > 0 ? 'bg-orange-900/40 border-orange-500' : 'bg-gray-800 border-gray-600'}`}>
-                                                        <span className="text-sm">{mod.name}{mod.priceAdjustment !== 0 && <span className="text-xs text-orange-400 ml-1">{mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}</span>}</span>
+                                                    <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${qty > 0 ? 'bg-orange-500/10 border-orange-500/50' : 'bg-secondary/30 border-border'}`}>
+                                                        <span className="text-sm text-foreground">{mod.name}{mod.priceAdjustment !== 0 && <span className="text-xs text-orange-500 ml-1">{mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}</span>}</span>
                                                         {isRadio ? (
-                                                            <button onClick={() => updateModifierQuantity(group, mod, 1)} className={`w-6 h-6 rounded-full border flex justify-center items-center ${qty > 0 ? 'bg-orange-500 border-orange-500' : 'border-gray-500'}`}>{qty > 0 && '✓'}</button>
+                                                            <button onClick={() => updateModifierQuantity(group, mod, 1)} className={`w-6 h-6 rounded-full border-2 flex justify-center items-center text-xs transition-colors ${qty > 0 ? 'bg-orange-500 border-orange-500 text-white' : 'border-border text-transparent'}`}>✓</button>
                                                         ) : (
-                                                            <div className="flex gap-2 bg-gray-900 p-1 rounded">
-                                                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`w-6 h-6 ${qty === 0 ? 'text-gray-600' : 'text-white'}`}>-</button>
-                                                                <span className="font-bold text-orange-400 w-4 text-center">{qty}</span>
-                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`w-6 h-6 ${isMax ? 'text-gray-600' : 'text-orange-400'}`}>+</button>
+                                                            <div className="flex gap-1 bg-background border border-border p-1 rounded-lg">
+                                                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${qty === 0 ? 'text-muted-foreground/30' : 'text-foreground hover:bg-secondary'}`}>−</button>
+                                                                <span className="font-bold text-orange-500 w-5 text-center text-sm flex items-center justify-center">{qty}</span>
+                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${isMax ? 'text-muted-foreground/30' : 'text-orange-500 hover:bg-orange-500/10'}`}>+</button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -369,25 +390,25 @@ export default function POSPedidosYAPage() {
                                     </div>
                                 );
                             })}
-                            <div className="bg-gray-750 p-4 rounded-xl border border-gray-600">
-                                <label className="text-xs font-bold uppercase text-gray-400 mb-2 block">Notas</label>
-                                <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-gray-900 rounded p-3 h-16 text-white border-none focus:ring-2 focus:ring-orange-500" placeholder="Instrucciones especiales..." />
+                            <div className="p-4 rounded-xl border border-border bg-secondary/20">
+                                <label className="text-xs font-bold uppercase text-muted-foreground mb-2 block">Notas</label>
+                                <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 h-16 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="Instrucciones especiales..." />
                             </div>
-                            <div className="flex items-center justify-between bg-gray-750 p-4 rounded-xl border border-gray-600">
-                                <span className="font-bold">Cantidad</span>
-                                <div className="flex bg-gray-900 rounded-lg">
-                                    <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="w-12 h-10 hover:bg-gray-700 font-bold">-</button>
-                                    <span className="w-10 h-10 flex items-center justify-center font-bold">{itemQuantity}</span>
-                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="w-12 h-10 bg-orange-600 hover:bg-orange-500 font-bold text-white rounded-r-lg">+</button>
+                            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/20">
+                                <span className="font-bold text-foreground">Cantidad</span>
+                                <div className="flex bg-background border border-border rounded-xl overflow-hidden">
+                                    <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="w-12 h-10 font-bold text-foreground hover:bg-secondary transition-colors">−</button>
+                                    <span className="w-10 h-10 flex items-center justify-center font-black text-foreground">{itemQuantity}</span>
+                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="w-12 h-10 bg-orange-500 hover:bg-orange-400 font-bold text-white transition-colors">+</button>
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 border-t border-gray-700 flex gap-3">
-                            <button onClick={() => setShowModifierModal(false)} className="flex-1 py-3 bg-gray-700 rounded-lg font-bold">Cancelar</button>
+                        <div className="p-4 border-t border-border flex gap-3">
+                            <button onClick={() => setShowModifierModal(false)} className="flex-1 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold transition-colors">Cancelar</button>
                             <button
                                 onClick={confirmAddToCart}
                                 disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
-                                className="flex-[2] py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg font-bold shadow-lg disabled:opacity-50"
+                                className="flex-[2] py-3 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
                                 AGREGAR
                             </button>
