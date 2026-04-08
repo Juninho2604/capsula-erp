@@ -1301,14 +1301,12 @@ export default function POSSportBarPage() {
                         </div>
                       )}
 
-                      <div className="glass-panel p-4 rounded-2xl border-primary/5">
-                        <CurrencyCalculator
-                          totalUsd={pickupTotal}
-                          hasServiceFee={false}
-                          onRateUpdated={setExchangeRate}
-                          className="w-full justify-center"
-                        />
-                      </div>
+                      <CurrencyCalculator
+                        totalUsd={pickupTotal}
+                        hasServiceFee={false}
+                        onRateUpdated={setExchangeRate}
+                        inline
+                      />
 
                       <button
                         onClick={handleCheckoutPickup}
@@ -1589,7 +1587,7 @@ export default function POSSportBarPage() {
                     totalUsd={paidAmount > 0 ? paidAmount : paymentAmountToCharge}
                     hasServiceFee={false}
                     onRateUpdated={setExchangeRate}
-                    className="w-full justify-center mb-2"
+                    inline
                   />
 
                   {/* Register payment (requiere PIN) */}
