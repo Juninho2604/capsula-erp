@@ -29,6 +29,10 @@ export default function SalesHistoryPage() {
         // Default: today en Caracas
         return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
     });
+    const [filterSearch, setFilterSearch] = useState('');
+    const [filterPaymentMethod, setFilterPaymentMethod] = useState('ALL');
+    const [filterOrderType, setFilterOrderType] = useState('ALL');
+    const [filterHasDiscount, setFilterHasDiscount] = useState(false);
 
     useEffect(() => { loadData(); }, []);
 
@@ -179,17 +183,67 @@ export default function SalesHistoryPage() {
     const formatMoney = (amount: number) => `$${(amount || 0).toFixed(2)}`;
 
     // ---- FILTRADO ----
+    const clearAllFilters = () => {
+        setFilterSearch('');
+        setFilterPaymentMethod('ALL');
+        setFilterOrderType('ALL');
+        setFilterHasDiscount(false);
+        setShowCancelled(false);
+    };
+
+    const hasActiveFilters = filterSearch !== '' || filterPaymentMethod !== 'ALL' || filterOrderType !== 'ALL' || filterHasDiscount || showCancelled;
+
     const allFilteredSales = sales.filter(s => showCancelled || s.status !== 'CANCELLED');
     const filteredSales = allFilteredSales.filter(s => {
+        // Fecha
         if (filterDate) {
             const saleDate = new Date(s.createdAt).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
             if (saleDate !== filterDate) return false;
         }
+        // Búsqueda libre
+        if (filterSearch.trim()) {
+            const q = filterSearch.trim().toLowerCase();
+            const matchesOrder = (s.orderNumber || '').toLowerCase().includes(q);
+            const matchesCustomer = (s.customerName || '').toLowerCase().includes(q);
+            const matchesPhone = (s.customerPhone || '').toLowerCase().includes(q);
+            if (!matchesOrder && !matchesCustomer && !matchesPhone) return false;
+        }
+        // Método de pago
+        if (filterPaymentMethod !== 'ALL') {
+            const breakdown: { method: string }[] = s.paymentBreakdown || [];
+            if (filterPaymentMethod === 'MIXED') {
+                if (breakdown.length <= 1) return false;
+            } else {
+                const methodMatch =
+                    breakdown.length > 0
+                        ? breakdown.some(p => p.method?.toUpperCase() === filterPaymentMethod)
+                        : (s.paymentMethod || '').toUpperCase() === filterPaymentMethod;
+                if (!methodMatch) return false;
+            }
+        }
+        // Tipo de orden
+        if (filterOrderType !== 'ALL') {
+            if ((s.orderType || '').toUpperCase() !== filterOrderType) return false;
+        }
+        // Con descuento
+        if (filterHasDiscount && !(s.discount > 0)) return false;
         return true;
     });
 
     const shownCount = filteredSales.length;
     const totalCount = allFilteredSales.length;
+
+    // Totales del filtro activo
+    const filteredTotals = filteredSales.reduce(
+        (acc, s) => {
+            if (s.status === 'CANCELLED') return acc;
+            acc.invoiced += s.totalFactura ?? s.total ?? 0;
+            acc.collected += s.totalCobrado ?? s.total ?? 0;
+            acc.discounts += s.discount ?? 0;
+            return acc;
+        },
+        { invoiced: 0, collected: 0, discounts: 0 }
+    );
 
     // Formatted date for display
     const displayDate = filterDate
@@ -231,15 +285,6 @@ export default function SalesHistoryPage() {
                             × Todas
                         </button>
                     )}
-                    <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-                        <input
-                            type="checkbox"
-                            checked={showCancelled}
-                            onChange={e => setShowCancelled(e.target.checked)}
-                            className="rounded"
-                        />
-                        Anuladas
-                    </label>
                     <button
                         onClick={handleExportArqueo}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
@@ -252,6 +297,105 @@ export default function SalesHistoryPage() {
                     >
                         🖨️ REPORTE &quot;Z&quot; (CIERRE)
                     </button>
+                </div>
+            </div>
+
+            {/* ── BARRA DE FILTROS AVANZADOS ─────────────────────────────────── */}
+            <div className="bg-gray-800/80 rounded-2xl border border-gray-700 p-4 mb-4 flex flex-wrap gap-3 items-end">
+                {/* Búsqueda libre */}
+                <div className="flex-1 min-w-[200px]">
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">🔍 Buscar</label>
+                    <input
+                        type="text"
+                        value={filterSearch}
+                        onChange={e => setFilterSearch(e.target.value)}
+                        placeholder="Orden #, cliente, teléfono..."
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none placeholder:text-gray-600"
+                    />
+                </div>
+                {/* Método de pago */}
+                <div>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">💳 Método</label>
+                    <select
+                        value={filterPaymentMethod}
+                        onChange={e => setFilterPaymentMethod(e.target.value)}
+                        className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
+                    >
+                        <option value="ALL">Todos</option>
+                        <option value="CASH">💵 Efectivo $</option>
+                        <option value="ZELLE">⚡ Zelle</option>
+                        <option value="CARD">💳 Punto PDV</option>
+                        <option value="MOBILE_PAY">📱 Pago Móvil</option>
+                        <option value="TRANSFER">🏦 Transferencia</option>
+                        <option value="CASH_BS">🇻🇪 Efectivo Bs</option>
+                        <option value="MIXED">🔀 Pago Mixto</option>
+                    </select>
+                </div>
+                {/* Tipo de orden */}
+                <div>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">📦 Tipo</label>
+                    <select
+                        value={filterOrderType}
+                        onChange={e => setFilterOrderType(e.target.value)}
+                        className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
+                    >
+                        <option value="ALL">Todos</option>
+                        <option value="DELIVERY">🛵 Delivery</option>
+                        <option value="RESTAURANT">🍽️ Mesa / Pickup</option>
+                        <option value="PEDIDOSYA">🟡 PedidosYA</option>
+                    </select>
+                </div>
+                {/* Con descuento */}
+                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 hover:border-blue-500 transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={filterHasDiscount}
+                        onChange={e => setFilterHasDiscount(e.target.checked)}
+                        className="rounded accent-blue-500"
+                    />
+                    <span className="font-medium">Con descuento</span>
+                </label>
+                {/* Anuladas */}
+                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 hover:border-red-500 transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={showCancelled}
+                        onChange={e => setShowCancelled(e.target.checked)}
+                        className="rounded accent-red-500"
+                    />
+                    <span className="font-medium">Anuladas</span>
+                </label>
+                {/* Clear all */}
+                {hasActiveFilters && (
+                    <button
+                        onClick={clearAllFilters}
+                        className="bg-gray-700 hover:bg-red-900/60 hover:border-red-500 border border-gray-600 text-gray-300 hover:text-red-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors"
+                    >
+                        ✕ Limpiar filtros
+                    </button>
+                )}
+            </div>
+
+            {/* ── RESUMEN DE RESULTADOS FILTRADOS ───────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Órdenes</p>
+                    <p className="text-2xl font-black text-white">{shownCount}</p>
+                    {shownCount !== totalCount && <p className="text-xs text-gray-500">de {totalCount} total</p>}
+                </div>
+                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Facturado</p>
+                    <p className="text-2xl font-black text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
+                </div>
+                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Cobrado</p>
+                    <p className="text-2xl font-black text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
+                </div>
+                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Descuentos</p>
+                    <p className={`text-2xl font-black ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                        {filteredTotals.discounts > 0 ? `-${formatMoney(filteredTotals.discounts)}` : '$0.00'}
+                    </p>
                 </div>
             </div>
 
