@@ -472,6 +472,15 @@ export default function POSDeliveryPage() {
                                     <PriceDisplay usd={finalTotal} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
+                            {/* Calculadora USD → Bs junto al total */}
+                            <div className="flex justify-end pt-1">
+                                <CurrencyCalculator
+                                    totalUsd={finalTotal}
+                                    deliveryFee={discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL}
+                                    hasServiceFee={false}
+                                    onRateUpdated={setExchangeRate}
+                                />
+                            </div>
                         </div>
 
                         {/* Descuentos y Pagos */}
