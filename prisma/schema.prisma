@@ -685,6 +685,8 @@ model MenuItem {
   // Precios
   price           Float    // Precio de venta en USD
   cost            Float?   // Costo calculado (si tiene receta)
+  pedidosYaPrice  Float?   // Precio publicado en PedidosYA (override manual)
+  pedidosYaEnabled Boolean @default(false) // Disponible en PedidosYA
   
   // VinculaciÃ³n con inventario/receta (opcional)
   recipeId        String?  // Si el producto tiene receta para descontar insumos
