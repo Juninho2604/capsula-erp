@@ -3,44 +3,83 @@
 import * as XLSX from 'xlsx';
 import type { ZReportData } from '@/app/actions/sales.actions';
 
-function formatMoney(amount: number) {
+function fmt(amount: number) {
     return `$${amount.toFixed(2)}`;
 }
 
+function fmtOpt(amount: number) {
+    return amount > 0 ? fmt(amount) : '-';
+}
+
 /**
- * Exporta el Reporte Z (cierre de caja) a Excel para arqueo manual.
- * Formato: Concepto | Monto USD
+ * Exporta el Reporte Z (cierre de caja) a Excel.
+ * Incluye desglose completo: métodos de pago, servicio, propinas,
+ * conteo por canal y subtotales por tipo de descuento.
  */
 export function exportZReportToExcel(zReport: ZReportData) {
     const rows: [string, string][] = [
-        ['SHANKLISH CARACAS - CIERRE DE CAJA', ''],
+        // ── encabezado ──────────────────────────────────────────────────────
+        ['SHANKLISH CARACAS — CIERRE DE CAJA', ''],
         ['Fecha', zReport.period],
         ['', ''],
-        ['RESUMEN DE VENTAS', ''],
-        ['Ventas brutas', formatMoney(zReport.grossTotal)],
-        ['(-) Descuentos', `-${formatMoney(zReport.totalDiscounts)}`],
-        ['  Divisas (33%)', zReport.discountBreakdown.divisas > 0 ? `-${formatMoney(zReport.discountBreakdown.divisas)}` : '-'],
-        ['  Cortesías', zReport.discountBreakdown.cortesias > 0 ? `-${formatMoney(zReport.discountBreakdown.cortesias)}` : '-'],
-        ['  Otros', zReport.discountBreakdown.other > 0 ? `-${formatMoney(zReport.discountBreakdown.other)}` : '-'],
-        ['VENTA NETA', formatMoney(zReport.netTotal)],
+
+        // ── ventas ──────────────────────────────────────────────────────────
+        ['══ VENTAS ══════════════════════════════', ''],
+        ['Ventas brutas (subtotales)',       fmt(zReport.grossTotal)],
+        ['(-) Descuentos totales',           zReport.totalDiscounts > 0 ? `-${fmt(zReport.totalDiscounts)}` : '-'],
+        ['   Divisas (33%)',                 fmtOpt(zReport.discountBreakdown.divisas)],
+        ['   Cortesías',                     fmtOpt(zReport.discountBreakdown.cortesias)],
+        ['   Otros descuentos',              fmtOpt(zReport.discountBreakdown.other)],
+        ['VENTA NETA (productos)',           fmt(zReport.netTotal)],
+        ['(+) Servicio 10% mesas',          fmtOpt(zReport.totalServiceFee)],
+        ['(+) Propinas del día',             fmtOpt(zReport.totalTips)],
+        ['TOTAL COBRADO',                    fmt(zReport.totalCollected)],
         ['', ''],
-        ['ARQUEO DE CAJA', ''],
-        ['PUNTO (Bs)', formatMoney(zReport.paymentBreakdown.card)],
-        ['ZELLE', formatMoney(zReport.paymentBreakdown.zelle)],
-        ['EFECTIVO USD', formatMoney(zReport.paymentBreakdown.cash)],
-        ['PAGO MÓVIL', formatMoney(zReport.paymentBreakdown.mobile)],
-        ['TRANSFERENCIA', formatMoney(zReport.paymentBreakdown.transfer)],
-        ['Otros', formatMoney(zReport.paymentBreakdown.other)],
+
+        // ── arqueo por método de pago ────────────────────────────────────────
+        ['══ ARQUEO DE CAJA ══════════════════════', ''],
+        ['Efectivo USD',                     fmtOpt(zReport.paymentBreakdown.cash)],
+        ['Zelle',                            fmtOpt(zReport.paymentBreakdown.zelle)],
+        ['Punto PDV',                        fmtOpt(zReport.paymentBreakdown.card)],
+        ['Pago Móvil',                       fmtOpt(zReport.paymentBreakdown.mobile)],
+        ['Transferencia',                    fmtOpt(zReport.paymentBreakdown.transfer)],
+        ['PedidosYA / Externo',              fmtOpt(zReport.paymentBreakdown.external)],
+        ['Otros',                            fmtOpt(zReport.paymentBreakdown.other)],
+        ['SUMA MÉTODOS DE PAGO',             fmt(
+            zReport.paymentBreakdown.cash +
+            zReport.paymentBreakdown.zelle +
+            zReport.paymentBreakdown.card +
+            zReport.paymentBreakdown.mobile +
+            zReport.paymentBreakdown.transfer +
+            zReport.paymentBreakdown.external +
+            zReport.paymentBreakdown.other
+        )],
         ['', ''],
-        ['TOTAL PEDIDOS', String(zReport.totalOrders)],
+
+        // ── pedidos por canal ────────────────────────────────────────────────
+        ['══ PEDIDOS POR CANAL ═══════════════════', ''],
+        ['Restaurante / Mesas',              String(zReport.ordersByType.restaurant)],
+        ['Delivery',                         String(zReport.ordersByType.delivery)],
+        ['Pickup / Mostrador',               String(zReport.ordersByType.pickup)],
+        ['PedidosYA',                        String(zReport.ordersByType.pedidosya)],
+        ['TOTAL TRANSACCIONES',              String(zReport.totalOrders)],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 25 }, { wch: 15 }];
+    ws['!cols'] = [{ wch: 35 }, { wch: 16 }];
+
+    // Negrita en filas de totales / títulos
+    const boldRows = [0, 3, 9, 12, 14, 21, 23, 29];
+    for (const r of boldRows) {
+        const cellA = XLSX.utils.encode_cell({ r, c: 0 });
+        const cellB = XLSX.utils.encode_cell({ r, c: 1 });
+        if (ws[cellA]) ws[cellA].s = { font: { bold: true } };
+        if (ws[cellB]) ws[cellB].s = { font: { bold: true } };
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Cierre de Caja');
 
-    const fileName = `Cierre_Caja_${zReport.period.replace(/\//g, '-')}.xlsx`;
+    const fileName = `CierreCaja_${zReport.period.replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }

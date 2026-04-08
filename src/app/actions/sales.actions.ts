@@ -13,22 +13,38 @@ export interface SalesFilter {
 export interface ZReportData {
     period: string;
     totalOrders: number;
-    grossTotal: number;
-    totalDiscounts: number;
+    ordersByType: {
+        restaurant: number;
+        delivery: number;
+        pickup: number;
+        pedidosya: number;
+    };
+
+    // Ventas
+    grossTotal: number;        // suma de subtotales (antes de descuento)
+    totalDiscounts: number;    // suma de descuentos
+    netTotal: number;          // grossTotal - totalDiscounts
+    totalServiceFee: number;   // +10% servicio acumulado de mesas
+    totalTips: number;         // propinas voluntarias totales del día
+    totalCollected: number;    // dinero real que entró en caja
+
     discountBreakdown: {
         divisas: number;
         cortesias: number;
         other: number;
     };
-    netTotal: number;
+
+    // Arqueo por método de pago (sobre totalCollected)
     paymentBreakdown: {
-        cash: number;
-        card: number;
-        transfer: number;
-        mobile: number;
+        cash: number;       // Efectivo USD
         zelle: number;
+        card: number;       // Punto PDV
+        mobile: number;     // Pago Móvil
+        transfer: number;   // Transferencia
+        external: number;   // PedidosYA / EXTERNAL
         other: number;
     };
+
     ordersByStatus: Record<string, number>;
 }
 
@@ -296,61 +312,138 @@ export async function getDailyZReportAction(): Promise<{ success: boolean; data?
     try {
         const today = new Date();
         const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(today); endOfDay.setHours(23, 59, 59, 999);
+        const endOfDay   = new Date(today); endOfDay.setHours(23, 59, 59, 999);
 
-        const todaysOrders = await prisma.salesOrder.findMany({
+        const orders = await prisma.salesOrder.findMany({
             where: {
                 createdAt: { gte: startOfDay, lte: endOfDay },
-                status: { not: 'CANCELLED' }
-            }
+                status:    { notIn: ['CANCELLED'] },
+            },
+            include: {
+                openTab: {
+                    select: {
+                        runningSubtotal: true,
+                        runningDiscount: true,
+                        runningTotal:    true,
+                        paymentSplits: {
+                            where:  { status: 'PAID' },
+                            select: { paymentMethod: true, paidAmount: true, splitLabel: true },
+                        },
+                    },
+                },
+            },
         });
 
-        let grossTotal = 0;
-        let totalDiscounts = 0;
-        let discountDivisas = 0;
-        let discountCortesias = 0;
-        let paymentCash = 0;
-        let paymentCard = 0;
-        let paymentTransfer = 0;
-        let paymentMobile = 0;
-        let paymentZelle = 0;
+        type OrderRow = typeof orders[number];
+        type Split = { paymentMethod: string | null; paidAmount: number; splitLabel: string };
 
-        for (const order of todaysOrders) {
-            grossTotal += order.subtotal;
-            totalDiscounts += order.discount;
+        // ── helpers (arrow functions to avoid strict-mode fn declaration issues) ──
+        const pay = { cash: 0, card: 0, transfer: 0, mobile: 0, zelle: 0, external: 0, other: 0 };
+        const addPayment = (pm: string | null | undefined, amt: number) => {
+            const k = (pm ?? '').toUpperCase();
+            if      (k === 'CASH' || k === 'CASH_USD')           pay.cash     += amt;
+            else if (k === 'ZELLE')                              pay.zelle    += amt;
+            else if (k === 'CARD' || k === 'BS_POS')             pay.card     += amt;
+            else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL')  pay.mobile   += amt;
+            else if (k === 'TRANSFER' || k === 'BANK_TRANSFER')  pay.transfer += amt;
+            else if (k === 'EXTERNAL')                           pay.external += amt;
+            else                                                 pay.other    += amt;
+        };
 
-            if (order.discountType === 'DIVISAS_33') discountDivisas += order.discount;
-            else if (order.discountType === 'CORTESIA_100' || order.discountType === 'CORTESIA') discountCortesias += order.discount;
+        const disc = { divisas: 0, cortesias: 0, other: 0 };
+        const addDiscount = (o: OrderRow) => {
+            if (o.discount <= 0) return;
+            if      (o.discountType === 'DIVISAS_33')                                        disc.divisas   += o.discount;
+            else if (o.discountType === 'CORTESIA_100' || o.discountType === 'CORTESIA')     disc.cortesias += o.discount;
+            else                                                                              disc.other     += o.discount;
+        };
 
-            const paid = order.total;
-            const pm = order.paymentMethod?.toUpperCase() || 'UNKNOWN';
+        // ── group RESTAURANT+openTab orders by tab ────────────────────────────
+        const tabGroups = new Map<string, OrderRow[]>();
+        const tabOrderIds = new Set<string>();
+        for (const o of orders) {
+            if (o.openTabId && o.orderType === 'RESTAURANT') {
+                tabOrderIds.add(o.id);
+                const g = tabGroups.get(o.openTabId) ?? [];
+                g.push(o);
+                tabGroups.set(o.openTabId, g);
+            }
+        }
+        const nonTabOrders = orders.filter(o => !tabOrderIds.has(o.id));
 
-            if (pm === 'CASH' || pm === 'CASH_USD') paymentCash += paid;
-            else if (pm === 'CARD' || pm === 'BS_POS') paymentCard += paid;
-            else if (pm === 'TRANSFER' || pm === 'BANK_TRANSFER') paymentTransfer += paid;
-            else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL') paymentMobile += paid;
-            else if (pm === 'ZELLE') paymentZelle += paid;
-            else paymentMobile += paid;
+        let grossTotal      = 0;
+        let totalDiscounts  = 0;
+        let totalServiceFee = 0;
+        let totalTips       = 0;
+        const byType = { restaurant: 0, delivery: 0, pickup: 0, pedidosya: 0 };
+
+        // ── process tab groups (mesas) ────────────────────────────────────────
+        for (const group of Array.from(tabGroups.values())) {
+            const tab      = group[0].openTab!;
+            const subtotal = tab.runningSubtotal;
+            const discount = tab.runningDiscount;
+            const netProds = tab.runningTotal;      // subtotal - discount
+
+            grossTotal     += subtotal;
+            totalDiscounts += discount;
+            for (const o of group) addDiscount(o);
+            byType.restaurant++;
+
+            const splits: Split[]  = (tab.paymentSplits ?? []) as Split[];
+            const hasService = splits.some((s: Split) => (s.splitLabel ?? '').includes('| +10% serv'));
+            const serviceFee = hasService ? netProds * 0.1 : 0;
+            totalServiceFee += serviceFee;
+
+            const totalFactura = netProds + serviceFee;
+            const totalCobrado = splits.length > 0
+                ? splits.reduce((acc: number, sp: Split) => acc + (sp.paidAmount ?? 0), 0)
+                : totalFactura;
+            totalTips += Math.max(0, totalCobrado - totalFactura);
+
+            if (splits.length > 0) {
+                for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0);
+            } else {
+                addPayment(group[0].paymentMethod, totalCobrado);
+            }
         }
 
-        const netTotal = grossTotal - totalDiscounts;
+        // ── process non-tab orders (delivery / pickup / pedidosya / directo) ──
+        for (const o of nonTabOrders) {
+            grossTotal     += o.subtotal;
+            totalDiscounts += o.discount;
+            addDiscount(o);
+
+            const amountPaid = o.amountPaid || o.total;
+            // Propina = excedente pagado sin vuelto (keepChangeAsTip)
+            totalTips += (o.change === 0 && amountPaid > o.total)
+                ? Math.max(0, amountPaid - o.total) : 0;
+            addPayment(o.paymentMethod, amountPaid);
+
+            if      (o.orderType === 'DELIVERY')   byType.delivery++;
+            else if (o.orderType === 'PEDIDOSYA')  byType.pedidosya++;
+            else if (o.orderType === 'PICKUP')     byType.pickup++;
+            else                                   byType.restaurant++; // standalone RESTAURANT (mostrador)
+        }
+
+        const netTotal       = grossTotal - totalDiscounts;
+        const totalCollected = netTotal + totalServiceFee + totalTips;
 
         return {
             success: true,
             data: {
-                period: today.toLocaleDateString(),
-                totalOrders: todaysOrders.length,
+                period:         today.toLocaleDateString('es-VE'),
+                totalOrders:    tabGroups.size + nonTabOrders.length,
+                ordersByType:   byType,
                 grossTotal,
                 totalDiscounts,
-                discountBreakdown: {
-                    divisas: discountDivisas,
-                    cortesias: discountCortesias,
-                    other: totalDiscounts - discountDivisas - discountCortesias
-                },
                 netTotal,
-                paymentBreakdown: { cash: paymentCash, card: paymentCard, transfer: paymentTransfer, mobile: paymentMobile, zelle: paymentZelle, other: 0 },
-                ordersByStatus: {}
-            }
+                totalServiceFee,
+                totalTips,
+                totalCollected,
+                discountBreakdown: disc,
+                paymentBreakdown:  pay,
+                ordersByStatus:    {},
+            },
         };
     } catch (error) {
         console.error('Error generating Z report:', error);

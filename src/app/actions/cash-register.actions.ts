@@ -170,7 +170,7 @@ export async function closeCashRegisterAction(
 
     const salesAgg = await prisma.salesOrder.aggregate({
       where: {
-        status: 'COMPLETED',
+        status: { in: ['COMPLETED', 'CONFIRMED'] },
         createdAt: { gte: dayStart, lte: dayEnd },
       },
       _sum: { total: true },
