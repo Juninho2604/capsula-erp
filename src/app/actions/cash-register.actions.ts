@@ -164,9 +164,10 @@ export async function closeCashRegisterAction(
     if (register.status === 'CLOSED') return { success: false, error: 'La caja ya está cerrada' };
 
     // Calcular totales de ventas del día en esa caja (usando SalesOrders del mismo día)
-    const dayStart = new Date(register.shiftDate);
-    const dayEnd = new Date(register.shiftDate);
-    dayEnd.setHours(23, 59, 59, 999);
+    // shiftDate está guardado como medianoche UTC del día Caracas (ej. 2026-04-07T00:00:00Z)
+    // El día Caracas completo = +4h a +28h en UTC (medianoche a medianoche Caracas)
+    const dayStart = new Date(register.shiftDate.getTime() + 4  * 3_600_000);       // 04:00 UTC = 00:00 Caracas
+    const dayEnd   = new Date(register.shiftDate.getTime() + 28 * 3_600_000 - 1);   // 04:00 UTC siguiente - 1ms
 
     const salesAgg = await prisma.salesOrder.aggregate({
       where: {

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { getCaracasDayRange } from '@/lib/datetime';
 
 export interface SalesFilter {
     startDate?: Date;
@@ -190,10 +191,8 @@ export interface ArqueoSaleRow {
 
 export async function getSalesForArqueoAction(date: Date): Promise<{ success: boolean; data?: ArqueoSaleRow[]; message?: string }> {
     try {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
+        // Usar rango en timezone Caracas (UTC-4) para capturar el día completo
+        const { start: startOfDay, end: endOfDay } = getCaracasDayRange(date);
 
         const orders = await prisma.salesOrder.findMany({
             where: {
@@ -311,8 +310,8 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
 export async function getDailyZReportAction(): Promise<{ success: boolean; data?: ZReportData; message?: string }> {
     try {
         const today = new Date();
-        const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay   = new Date(today); endOfDay.setHours(23, 59, 59, 999);
+        // Usar rango en timezone Caracas (UTC-4) para capturar el día completo
+        const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
         const orders = await prisma.salesOrder.findMany({
             where: {
