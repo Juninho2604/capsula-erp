@@ -529,27 +529,58 @@ export default function SalesHistoryPage() {
                             <p className="text-sm">{new Date().toLocaleString()}</p>
                             <p className="text-sm mt-1 font-bold">CIERRE DE CAJA DIARIO</p>
                         </div>
+                        {/* ── VENTAS ── */}
                         <div className="space-y-1 mb-4 border-b-2 border-dashed border-black pb-4">
                             <div className="flex justify-between"><span>VENTAS BRUTAS</span><span>{formatMoney(zReport.grossTotal)}</span></div>
-                            <div className="flex justify-between text-red-600"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
-                            {zReport.discountBreakdown.divisas > 0 && (
-                                <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                            {zReport.totalDiscounts > 0 && (<>
+                                <div className="flex justify-between text-red-600"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
+                                {zReport.discountBreakdown.divisas > 0 && (
+                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                                )}
+                                {zReport.discountBreakdown.cortesias > 0 && (
+                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
+                                )}
+                                {zReport.discountBreakdown.other > 0 && (
+                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
+                                )}
+                            </>)}
+                            <div className="flex justify-between font-bold text-base mt-1 pt-1 border-t border-gray-300"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
+                            {zReport.totalServiceFee > 0 && (
+                                <div className="flex justify-between text-blue-700"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
                             )}
-                            {zReport.discountBreakdown.cortesias > 0 && (
-                                <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
+                            {zReport.totalTips > 0 && (
+                                <div className="flex justify-between text-green-700"><span>(+) PROPINAS</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
-                            <div className="flex justify-between font-bold text-xl mt-2 pt-2 border-t border-gray-300"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
+                            <div className="flex justify-between font-black text-xl mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
-                        <div className="mb-6">
+
+                        {/* ── ARQUEO DE CAJA ── */}
+                        <div className="mb-4 border-b-2 border-dashed border-black pb-4">
                             <h3 className="font-bold underline mb-2">ARQUEO DE CAJA</h3>
-                            <div className="flex justify-between"><span>PUNTO (Bs)</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>
-                            <div className="flex justify-between"><span>ZELLE</span><span>{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>
-                            <div className="flex justify-between"><span>EFECTIVO USD</span><span>{formatMoney(zReport.paymentBreakdown.cash)}</span></div>
-                            <div className="flex justify-between"><span>PAGO MÓVIL</span><span>{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>
-                            <div className="flex justify-between text-gray-600"><span>TRANSFERENCIA</span><span>{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>
+                            <div className="space-y-0.5 text-sm">
+                                {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
+                                {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
+                                {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
+                                {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
+                                {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
+                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
+                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-500"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                            </div>
                         </div>
-                        <div className="text-center text-xs text-gray-500 pt-4 border-t border-gray-300">
-                            <p>Fin del Reporte — Pedidos Totales: {zReport.totalOrders}</p>
+
+                        {/* ── PEDIDOS POR CANAL ── */}
+                        <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">
+                            <h3 className="font-bold underline mb-2">PEDIDOS POR CANAL</h3>
+                            <div className="space-y-0.5">
+                                {zReport.ordersByType.restaurant > 0 && <div className="flex justify-between"><span>Restaurante / Mesas</span><span>{zReport.ordersByType.restaurant}</span></div>}
+                                {zReport.ordersByType.pickup > 0 && <div className="flex justify-between"><span>Pickup / Mostrador</span><span>{zReport.ordersByType.pickup}</span></div>}
+                                {zReport.ordersByType.delivery > 0 && <div className="flex justify-between"><span>Delivery</span><span>{zReport.ordersByType.delivery}</span></div>}
+                                {zReport.ordersByType.pedidosya > 0 && <div className="flex justify-between"><span>PedidosYA</span><span>{zReport.ordersByType.pedidosya}</span></div>}
+                            </div>
+                        </div>
+
+                        <div className="text-center text-xs text-gray-500 pt-2">
+                            <p className="font-bold">Total transacciones: {zReport.totalOrders}</p>
                         </div>
                         <div className="flex gap-3 mt-6 no-print">
                             <button
