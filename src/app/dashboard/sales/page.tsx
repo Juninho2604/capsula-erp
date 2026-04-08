@@ -34,11 +34,12 @@ export default function SalesHistoryPage() {
     const [filterOrderType, setFilterOrderType] = useState('ALL');
     const [filterHasDiscount, setFilterHasDiscount] = useState(false);
 
-    useEffect(() => { loadData(); }, []);
+    // Recargar datos cada vez que cambia la fecha seleccionada
+    useEffect(() => { loadData(filterDate); }, [filterDate]);
 
-    const loadData = async () => {
+    const loadData = async (date?: string) => {
         setIsLoading(true);
-        const result = await getSalesHistoryAction();
+        const result = await getSalesHistoryAction(date || undefined);
         if (result.success && result.data) setSales(result.data as any[]);
         setIsLoading(false);
     };
@@ -53,9 +54,9 @@ export default function SalesHistoryPage() {
     };
 
     const handleGenerateZReport = async () => {
-        const result = await getDailyZReportAction();
+        const result = await getDailyZReportAction(filterDate || undefined);
         if (result.success && result.data) { setZReport(result.data); setShowZReport(true); }
-        else alert('Error generando reporte');
+        else alert('Error generando reporte Z');
     };
 
     const handleExportArqueo = async () => {
@@ -193,13 +194,9 @@ export default function SalesHistoryPage() {
 
     const hasActiveFilters = filterSearch !== '' || filterPaymentMethod !== 'ALL' || filterOrderType !== 'ALL' || filterHasDiscount || showCancelled;
 
+    // La fecha ya se filtra en el servidor (getSalesHistoryAction). Aquí solo filtros adicionales.
     const allFilteredSales = sales.filter(s => showCancelled || s.status !== 'CANCELLED');
     const filteredSales = allFilteredSales.filter(s => {
-        // Fecha
-        if (filterDate) {
-            const saleDate = new Date(s.createdAt).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
-            if (saleDate !== filterDate) return false;
-        }
         // Búsqueda libre
         if (filterSearch.trim()) {
             const q = filterSearch.trim().toLowerCase();
@@ -277,14 +274,6 @@ export default function SalesHistoryPage() {
                             className="bg-transparent text-white text-sm focus:outline-none cursor-pointer w-32"
                         />
                     </div>
-                    {filterDate && (
-                        <button
-                            onClick={() => setFilterDate('')}
-                            className="bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        >
-                            × Todas
-                        </button>
-                    )}
                     <button
                         onClick={handleExportArqueo}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
@@ -293,9 +282,10 @@ export default function SalesHistoryPage() {
                     </button>
                     <button
                         onClick={handleGenerateZReport}
+                        title={`Generar reporte Z para ${displayDate || 'hoy'}`}
                         className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
                     >
-                        🖨️ REPORTE &quot;Z&quot; (CIERRE)
+                        🖨️ REPORTE &quot;Z&quot; {displayDate ? `· ${displayDate}` : '(HOY)'}
                     </button>
                 </div>
             </div>

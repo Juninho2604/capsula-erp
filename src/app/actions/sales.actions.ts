@@ -49,10 +49,20 @@ export interface ZReportData {
     ordersByStatus: Record<string, number>;
 }
 
-export async function getSalesHistoryAction(limit = 100) {
+/**
+ * Historial de ventas.
+ * @param date  Fecha en formato "YYYY-MM-DD" (timezone Caracas). Si se omite, usa hoy.
+ *              Cuando se pasa una fecha, se filtra en BD para ese día completo
+ *              y no se aplica límite de registros.
+ */
+export async function getSalesHistoryAction(date?: string) {
     try {
+        // Calcular rango del día en timezone Caracas
+        const queryDate = date ? new Date(date + 'T12:00:00') : new Date();
+        const { start: startOfDay, end: endOfDay } = getCaracasDayRange(queryDate);
+
         const orders = await prisma.salesOrder.findMany({
-            take: limit * 3, // fetch more to allow grouping
+            where: { createdAt: { gte: startOfDay, lte: endOfDay } },
             orderBy: { createdAt: 'desc' },
             include: {
                 authorizedBy: { select: { firstName: true, lastName: true } },
@@ -103,9 +113,11 @@ export async function getSalesHistoryAction(limit = 100) {
                     modifiers: (it.modifiers || []).map((m: any) => m.name)
                 })));
                 const splits = tab?.paymentSplits || [];
+                // Solo considerar el 10% servicio si se registró un pago con ese concepto.
+                // Si no hay splits (tab abierta / sin cobrar), no asumir servicio.
                 const serviceFeeIncluded = splits.length > 0
                     ? splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'))
-                    : true;
+                    : false;
                 const totalFactura = serviceFeeIncluded ? total * 1.1 : total;
                 const totalCobrado = splits.reduce((s: number, sp: { paidAmount?: number }) => s + (sp.paidAmount || 0), 0) || totalFactura;
                 const servicioAmount = serviceFeeIncluded ? total * 0.1 : 0;
@@ -167,7 +179,7 @@ export async function getSalesHistoryAction(limit = 100) {
             }
         }
         result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return { success: true, data: result.slice(0, limit) };
+        return { success: true, data: result };
     } catch (error) {
         console.error('Error fetching sales:', error);
         return { success: false, message: 'Error cargando historial' };
@@ -308,9 +320,13 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
     }
 }
 
-export async function getDailyZReportAction(): Promise<{ success: boolean; data?: ZReportData; message?: string }> {
+/**
+ * Reporte Z (cierre de caja).
+ * @param date  Fecha en formato "YYYY-MM-DD". Si se omite, usa hoy.
+ */
+export async function getDailyZReportAction(date?: string): Promise<{ success: boolean; data?: ZReportData; message?: string }> {
     try {
-        const today = new Date();
+        const today = date ? new Date(date + 'T12:00:00') : new Date();
         // Usar rango en timezone Caracas (UTC-4) para capturar el día completo
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
@@ -433,7 +449,7 @@ export async function getDailyZReportAction(): Promise<{ success: boolean; data?
         return {
             success: true,
             data: {
-                period:         today.toLocaleDateString('es-VE'),
+                period:         today.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' }),
                 totalOrders:    tabGroups.size + nonTabOrders.length,
                 ordersByType:   byType,
                 grossTotal,
