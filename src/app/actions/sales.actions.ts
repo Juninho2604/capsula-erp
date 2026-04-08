@@ -149,19 +149,20 @@ export async function getSalesHistoryAction(limit = 100) {
             } else if (!o.openTabId || o.orderType !== 'RESTAURANT') {
                 const ordTotal = o.total || 0;
                 const amountPaid = o.amountPaid || ordTotal;
-                // Propina = excedente pagado que no se devolvió como vuelto (change=0)
-                const propina = o.change === 0 && amountPaid > ordTotal
-                    ? Math.max(0, amountPaid - ordTotal)
-                    : 0;
+                const change = o.change || 0;
+                // netReceived = lo que efectivamente ingresó a caja (excluye el vuelto entregado)
+                const netReceived = amountPaid - change;
+                // Propina = excedente retenido voluntariamente (keepChangeAsTip)
+                const propina = Math.max(0, netReceived - ordTotal);
                 result.push({
                     ...o,
                     _consolidated: false,
                     totalFactura: ordTotal,
-                    totalCobrado: amountPaid,
+                    totalCobrado: netReceived,
                     totalProductos: ordTotal,
                     servicioAmount: 0,
                     propina,
-                    paymentBreakdown: [{ method: o.paymentMethod || 'CASH', amount: amountPaid }]
+                    paymentBreakdown: [{ method: o.paymentMethod || 'CASH', amount: netReceived }]
                 });
             }
         }

@@ -695,6 +695,52 @@ export default function POSSportBarPage() {
     }
   };
 
+  const handlePrintPrecuenta = () => {
+    if (!activeTab) return;
+    // Collect all items across all orders on this tab
+    const allItems = activeTab.orders.flatMap((order) =>
+      (order.items || []).map((item) => ({
+        name: item.itemName,
+        quantity: item.quantity,
+        unitPrice: item.lineTotal / Math.max(1, item.quantity),
+        total: item.lineTotal,
+        modifiers: ((item as any).modifiers || [])
+          .map((m: any) => (typeof m === "string" ? m : m?.name))
+          .filter(Boolean) as string[],
+      }))
+    );
+    const itemsSubtotal = allItems.reduce((s, i) => s + i.total, 0);
+    // Apply current discount state
+    const discountAmt =
+      discountType === "DIVISAS_33" ? itemsSubtotal / 3
+      : discountType === "CORTESIA_100" ? itemsSubtotal
+      : discountType === "CORTESIA_PERCENT" ? itemsSubtotal * (cortesiaPercentNum / 100)
+      : 0;
+    const afterDiscount = itemsSubtotal - discountAmt;
+    const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
+    const precuentaTotal = afterDiscount + svcFee;
+    const discountReason =
+      discountType === "DIVISAS_33" ? "Pago en Divisas -33%"
+      : discountType === "CORTESIA_100" ? "Cortesía 100%"
+      : discountType === "CORTESIA_PERCENT" ? `Cortesía ${cortesiaPercentNum}%`
+      : undefined;
+    printReceipt({
+      orderNumber: activeTab.tabCode,
+      orderType: "RESTAURANT",
+      date: new Date(),
+      cashierName: cashierName || "Cajera",
+      customerName: activeTab.customerLabel || undefined,
+      customerPhone: activeTab.customerPhone || undefined,
+      items: allItems,
+      subtotal: itemsSubtotal,
+      discount: discountAmt > 0 ? discountAmt : undefined,
+      discountReason,
+      serviceFee: svcFee > 0 ? svcFee : undefined,
+      total: precuentaTotal,
+      isPrecuenta: true,
+    });
+  };
+
   const handleCloseTab = async () => {
     if (!activeTab) return;
     const balance = Number(activeTab.balanceDue ?? 0);
@@ -1545,7 +1591,17 @@ export default function POSSportBarPage() {
 
                 {/* Payment section */}
                 <div className="rounded-xl border border-border bg-secondary p-4">
-                  <div className="text-sm font-bold text-muted-foreground uppercase mb-3">Cobrar cuenta</div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-bold text-muted-foreground uppercase">Cobrar cuenta</div>
+                    {activeTab.orders.length > 0 && (
+                      <button
+                        onClick={handlePrintPrecuenta}
+                        className="text-xs font-bold text-blue-300 bg-blue-900/30 hover:bg-blue-900/60 border border-blue-700/50 rounded-lg px-3 py-1.5 transition-colors"
+                      >
+                        🖨️ Pre-Cuenta
+                      </button>
+                    )}
+                  </div>
 
                   {/* 1. Descuento */}
                   <div className="mb-3">
