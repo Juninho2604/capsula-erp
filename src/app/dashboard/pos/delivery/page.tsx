@@ -429,7 +429,7 @@ export default function POSDeliveryPage() {
                         )}
                 </div>
 
-                <div className={`w-full lg:w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
+                <div className={`w-full lg:w-[460px] xl:w-[520px] bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
                     <div className="p-6 bg-secondary/20 border-b border-border space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-black text-lg uppercase tracking-tight flex items-center gap-2">📦 Entrega</h2>
@@ -467,16 +467,16 @@ export default function POSDeliveryPage() {
 
                     <div className="p-6 bg-secondary/30 border-t border-border space-y-4">
                         <div className="capsula-card p-4 space-y-2 border-primary/10 shadow-lg">
-                            <div className="flex justify-between text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                            <div className="flex justify-between text-xs font-black text-muted-foreground uppercase tracking-widest">
                                 <span>Subtotal Orden</span>
                                 <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
                             </div>
-                            <div className="flex justify-between text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                            <div className="flex justify-between text-xs font-black text-blue-600 uppercase tracking-widest">
                                 <span>🛵 Tarifa Delivery</span>
                                 <span>+${deliveryFee.toFixed(2)}</span>
                             </div>
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
-                                <div className="flex justify-between text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 p-2 rounded-lg">
+                                <div className="flex justify-between text-xs font-black text-primary uppercase tracking-widest bg-primary/10 p-2 rounded-lg">
                                     <span>Descuento % Divisas</span>
                                     <span>-${(cartSubtotal / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
                                 </div>
@@ -502,9 +502,9 @@ export default function POSDeliveryPage() {
                         {/* Descuentos y Pagos */}
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => handleDiscountSelect('NONE')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'NONE' ? 'bg-secondary text-foreground border-2 border-primary/50' : 'bg-background border border-border text-muted-foreground'}`}>Normal</button>
-                                <button onClick={() => isPagoDivisas && handleDiscountSelect('DIVISAS_33')} disabled={!isPagoDivisas} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : isPagoDivisas ? 'bg-background border border-border text-primary' : 'bg-background opacity-30 grayscale cursor-not-allowed'}`}>Divisa -33%</button>
-                                <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`col-span-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-background border border-border text-purple-600'}`}>
+                                <button onClick={() => handleDiscountSelect('NONE')} className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${discountType === 'NONE' ? 'bg-secondary text-foreground border-2 border-primary/50' : 'bg-background border border-border text-muted-foreground'}`}>Normal</button>
+                                <button onClick={() => isPagoDivisas && handleDiscountSelect('DIVISAS_33')} disabled={!isPagoDivisas} className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : isPagoDivisas ? 'bg-background border border-border text-primary' : 'bg-background opacity-30 grayscale cursor-not-allowed'}`}>Divisa -33%</button>
+                                <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`col-span-2 py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-background border border-border text-purple-600'}`}>
                                     {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
                                         ? `🎁 Cortesía ${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'} — ${authorizedManager?.name || ''}`
                                         : '🎁 Cortesía (Autorizar PIN)'}
@@ -516,14 +516,14 @@ export default function POSDeliveryPage() {
                                 <button
                                     type="button"
                                     onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${!isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}
+                                    className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}
                                 >
                                     Pago Único
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}
+                                    className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}
                                 >
                                     💳 Pago Mixto
                                 </button>
@@ -532,10 +532,10 @@ export default function POSDeliveryPage() {
                             {!isMixedMode ? (
                                 /* ── Pago Único ── */
                                 <div className="space-y-3">
-                                    <div className="grid grid-cols-3 gap-1.5">
+                                    <div className="grid grid-cols-3 gap-2">
                                         {(['TRANSFER', 'MOBILE_PAY', 'CASH', 'ZELLE', 'CARD'] as const).map(m => (
                                             <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                                className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 ${paymentMethod === m ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
+                                                className={`py-3.5 rounded-xl text-sm font-black uppercase transition-all active:scale-95 ${paymentMethod === m ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
                                                 {m === 'CASH' ? '💵 Efectivo $' : m === 'ZELLE' ? '⚡ Zelle' : m === 'CARD' ? '💳 Punto' : m === 'MOBILE_PAY' ? '📱 P.Móvil' : '🏦 Transf.'}
                                             </button>
                                         ))}

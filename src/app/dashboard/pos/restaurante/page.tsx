@@ -1208,7 +1208,7 @@ export default function POSSportBarPage() {
         </main>
 
         {/* ══ RIGHT: ACCOUNT PANEL ════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-[420px] xl:w-[480px] shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
           {isPickupMode ? (
             <div className="flex-1 flex flex-col overflow-hidden bg-secondary/80">
               <div className="p-4 border-b border-indigo-900/50 bg-indigo-900/20 space-y-2 shrink-0">
@@ -1267,10 +1267,10 @@ export default function POSSportBarPage() {
 
               <div className="p-4 bg-card border-t border-border space-y-3 shrink-0">
                 {/* Descuento */}
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={clearDiscount}
-                    className={`py-1.5 text-xs font-bold rounded-lg transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-secondary hover:bg-muted"}`}
+                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-secondary hover:bg-muted"}`}
                   >
                     Normal
                   </button>
@@ -1278,13 +1278,13 @@ export default function POSSportBarPage() {
                     onClick={() => isPagoDivisasPickup ? setDiscountType("DIVISAS_33") : undefined}
                     disabled={!isPagoDivisasPickup}
                     title={!isPagoDivisasPickup ? "Solo con Efectivo o Zelle" : ""}
-                    className={`py-1.5 text-xs font-bold rounded-lg transition ${discountType === "DIVISAS_33" ? "bg-indigo-600 text-white" : isPagoDivisasPickup ? "bg-secondary text-foreground/70 hover:bg-muted" : "bg-secondary text-foreground/50 cursor-not-allowed opacity-50"}`}
+                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-indigo-600 text-white" : isPagoDivisasPickup ? "bg-secondary text-foreground/70 hover:bg-muted" : "bg-secondary text-foreground/50 cursor-not-allowed opacity-50"}`}
                   >
                     Divisas -33%
                   </button>
                   <button
                     onClick={openCortesiaModal}
-                    className={`col-span-2 py-1.5 text-xs font-bold rounded-lg transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
+                    className={`col-span-2 py-3 text-sm font-bold rounded-xl transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
                   >
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
                       ? `🎁 Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"}`
@@ -1306,24 +1306,24 @@ export default function POSSportBarPage() {
                   return (
                     <div className="space-y-3 pt-2">
                       {/* Toggle Pago Único / Pago Mixto */}
-                      <div className="grid grid-cols-2 gap-1.5">
+                      <div className="grid grid-cols-2 gap-2">
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(false); setMixedPaymentsPickup([]); }}
-                          className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
+                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
                         >Pago Único</button>
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(true); setAmountReceived(""); }}
-                          className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
+                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
                         >💳 Pago Mixto</button>
                       </div>
 
                       {!isPickupMixedMode ? (
                         /* ── Pago Único ── */
                         <div className="space-y-2">
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-2 gap-2">
                             {(["CASH", "ZELLE", "CARD", "MOBILE_PAY", "TRANSFER"] as const).map((m) => (
                               <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
+                                className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
                                 {PAYMENT_LABELS[m]}
                               </button>
                             ))}
@@ -1431,7 +1431,7 @@ export default function POSSportBarPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground space-y-0.5">
+                <div className="text-xs text-muted-foreground space-y-0.5">
                   <div>
                     🔓 Abrió:{" "}
                     <span className="text-foreground/70">
@@ -1544,16 +1544,16 @@ export default function POSSportBarPage() {
                 )}
 
                 {/* Payment section */}
-                <div className="rounded-xl border border-border bg-secondary p-3">
-                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Cobrar cuenta</div>
+                <div className="rounded-xl border border-border bg-secondary p-4">
+                  <div className="text-sm font-bold text-muted-foreground uppercase mb-3">Cobrar cuenta</div>
 
                   {/* 1. Descuento */}
                   <div className="mb-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">1. Descuento</p>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">1. Descuento</p>
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={clearDiscount}
-                        className={`py-1.5 text-xs font-bold rounded-lg transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-card text-foreground/70 hover:bg-muted"}`}
+                        className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-card text-foreground/70 hover:bg-muted"}`}
                       >
                         Normal
                       </button>
@@ -1561,13 +1561,13 @@ export default function POSSportBarPage() {
                         onClick={() => (isPagoDivisas || isTableMixedMode) && setDiscountType("DIVISAS_33")}
                         disabled={!isPagoDivisas && !isTableMixedMode}
                         title={(!isPagoDivisas && !isTableMixedMode) ? "Solo con Efectivo o Zelle" : "Descuento por pago en divisas"}
-                        className={`py-1.5 text-xs font-bold rounded-lg transition ${discountType === "DIVISAS_33" ? "bg-blue-600 text-white ring-1 ring-white" : (isPagoDivisas || isTableMixedMode) ? "bg-card text-foreground/70 hover:bg-muted" : "bg-card text-foreground/50 cursor-not-allowed opacity-50"}`}
+                        className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-blue-600 text-white ring-1 ring-white" : (isPagoDivisas || isTableMixedMode) ? "bg-card text-foreground/70 hover:bg-muted" : "bg-card text-foreground/50 cursor-not-allowed opacity-50"}`}
                       >
                         Divisas -33%
                       </button>
                       <button
                         onClick={openCortesiaModal}
-                        className={`col-span-2 py-1.5 text-xs font-bold rounded-lg transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white ring-1 ring-purple-400" : "bg-card text-foreground/70 hover:bg-muted"}`}
+                        className={`col-span-2 py-3 text-sm font-bold rounded-xl transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white ring-1 ring-purple-400" : "bg-card text-foreground/70 hover:bg-muted"}`}
                       >
                         {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
                           ? `🎁 Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"} — ${authorizedManager?.name || ""}`
@@ -1575,13 +1575,13 @@ export default function POSSportBarPage() {
                       </button>
                     </div>
                     {discountType === "DIVISAS_33" && (
-                      <p className="text-[10px] text-blue-400 mt-1">
+                      <p className="text-xs text-blue-400 mt-1.5">
                         Descuento: -${(activeTab.balanceDue / 3).toFixed(2)} → Total: $
                         {((activeTab.balanceDue * 2) / 3).toFixed(2)}
                       </p>
                     )}
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") && (
-                      <p className="text-[10px] text-purple-400 mt-1">
+                      <p className="text-xs text-purple-400 mt-1.5">
                         Descuento: -${(activeTab.balanceDue * (cortesiaPercentNum / 100)).toFixed(2)} → Total: ${(activeTab.balanceDue * (1 - cortesiaPercentNum / 100)).toFixed(2)}
                       </p>
                     )}
@@ -1589,23 +1589,23 @@ export default function POSSportBarPage() {
 
                   {/* 2. Forma de pago */}
                   <div className="mb-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">2. Forma de pago</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">2. Forma de pago</p>
                     {/* Toggle Pago Único / Pago Mixto */}
-                    <div className="grid grid-cols-2 gap-1.5 mb-2">
+                    <div className="grid grid-cols-2 gap-2 mb-2">
                       <button type="button"
                         onClick={() => { setIsTableMixedMode(false); setMixedPaymentsTable([]); }}
-                        className={`py-2 rounded-lg text-xs font-bold transition ${!isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
+                        className={`py-3 rounded-xl text-sm font-bold transition ${!isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
                       >Pago Único</button>
                       <button type="button"
                         onClick={() => { setIsTableMixedMode(true); setAmountReceived(""); }}
-                        className={`py-2 rounded-lg text-xs font-bold transition ${isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
+                        className={`py-3 rounded-xl text-sm font-bold transition ${isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
                       >💳 Pago Mixto</button>
                     </div>
                     {!isTableMixedMode ? (
-                      <div className="grid grid-cols-2 gap-1.5">
+                      <div className="grid grid-cols-2 gap-2">
                         {(["CASH", "ZELLE", "CARD", "MOBILE_PAY", "TRANSFER"] as const).map((m) => (
                           <button key={m} onClick={() => setPaymentMethod(m)}
-                            className={`py-2 rounded-lg text-xs font-bold transition ${paymentMethod === m ? "bg-amber-500 text-black" : "bg-card text-foreground/70 hover:bg-muted"}`}>
+                            className={`py-3 rounded-xl text-sm font-bold transition ${paymentMethod === m ? "bg-amber-500 text-black" : "bg-card text-foreground/70 hover:bg-muted"}`}>
                             {PAYMENT_LABELS[m]}
                           </button>
                         ))}
@@ -1692,7 +1692,7 @@ export default function POSSportBarPage() {
                       setShowPaymentPinModal(true);
                     }}
                     disabled={paidAmount <= 0 || isProcessing}
-                    className="capsula-btn capsula-btn-primary w-full py-5 text-sm shadow-xl shadow-primary/10"
+                    className="capsula-btn capsula-btn-primary w-full py-5 text-base shadow-xl shadow-primary/10"
                   >
                     🔐 REGISTRAR PAGO ${paidAmount > 0 ? paidAmount.toFixed(2) : "0.00"}
                   </button>
@@ -1706,7 +1706,7 @@ export default function POSSportBarPage() {
                         return (
                           <div
                             key={p.id}
-                            className="flex justify-between items-center text-[10px] text-muted-foreground bg-card rounded px-2 py-1"
+                            className="flex justify-between items-center text-xs text-muted-foreground bg-card rounded px-2 py-1"
                           >
                             <span>
                               {label}
@@ -1721,7 +1721,7 @@ export default function POSSportBarPage() {
                     </div>
                   )}
 
-                  <p className="mt-2 text-[10px] text-muted-foreground text-center">La factura se imprime al registrar el pago. Reimprimir desde Historial de Ventas.</p>
+                  <p className="mt-2 text-xs text-muted-foreground text-center">La factura se imprime al registrar el pago. Reimprimir desde Historial de Ventas.</p>
                   {/* Close tab - permitir cerrar cuando no hay consumo (saldo 0) o ya se cobró */}
                   <button
                     onClick={handleCloseTab}
