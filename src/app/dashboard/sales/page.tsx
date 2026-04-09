@@ -260,6 +260,11 @@ export default function SalesHistoryPage() {
         { invoiced: 0, collected: 0, discounts: 0 }
     );
 
+    // Anulaciones del día (sobre el total del día, no sobre el filtro)
+    const todayVoids = sales.filter(s => s.status === 'CANCELLED');
+    const voidCount = todayVoids.length;
+    const voidAmount = todayVoids.reduce((sum, s) => sum + (s.totalFactura ?? s.total ?? 0), 0);
+
     // Formatted date for display
     const displayDate = filterDate
         ? new Date(filterDate + 'T12:00:00').toLocaleDateString('es-VE', { day: '2-digit', month: 'numeric', year: 'numeric' })
@@ -408,7 +413,7 @@ export default function SalesHistoryPage() {
             </div>
 
             {/* ── RESUMEN DE RESULTADOS FILTRADOS ───────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Órdenes</p>
                     <p className="text-2xl font-black text-white">{shownCount}</p>
@@ -427,6 +432,11 @@ export default function SalesHistoryPage() {
                     <p className={`text-2xl font-black ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
                         {filteredTotals.discounts > 0 ? `-${formatMoney(filteredTotals.discounts)}` : '$0.00'}
                     </p>
+                </div>
+                <div className={`rounded-xl px-4 py-3 border ${voidCount > 0 ? 'bg-red-900/20 border-red-800/50' : 'bg-gray-800 border-gray-700'}`}>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Anuladas hoy</p>
+                    <p className={`text-2xl font-black ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
+                    {voidAmount > 0 && <p className="text-xs text-red-500/80 font-bold">{formatMoney(voidAmount)}</p>}
                 </div>
             </div>
 
