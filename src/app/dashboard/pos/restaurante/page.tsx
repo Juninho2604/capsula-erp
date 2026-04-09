@@ -129,12 +129,20 @@ interface SportBarLayout {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  CASH: "💵 Efectivo $",
-  CARD: "💳 Tarjeta",
-  MOBILE_PAY: "📱 Pago Móvil",
-  TRANSFER: "🏦 Transferencia",
-  ZELLE: "⚡ Zelle",
+  CASH:         "💵 Cash $",
+  CASH_USD:     "💵 Cash $",
+  CASH_EUR:     "€ Cash €",
+  CARD:         "💳 PDV",
+  PDV_SHANKLISH:"💳 PDV Shan.",
+  PDV_SUPERFERRO:"💳 PDV Super.",
+  MOBILE_PAY:   "📱 P.Móvil",
+  MOVIL_NG:     "📱 Móvil NG",
+  TRANSFER:     "🏦 Transf.",
+  ZELLE:        "⚡ Zelle",
 };
+
+const SINGLE_PAY_METHODS = ["CASH_USD", "CASH_EUR", "ZELLE", "PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG", "MOBILE_PAY"] as const;
+type SinglePayMethod = typeof SINGLE_PAY_METHODS[number];
 const CASHIER_ROLES = ["OWNER", "ADMIN_MANAGER", "OPS_MANAGER", "AREA_LEAD"];
 
 function getRoleLabel(role: string) {
@@ -199,7 +207,7 @@ export default function POSSportBarPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // ── Payment (table mode) ─────────────────────────────────────────────────
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER" | "MOBILE_PAY" | "ZELLE">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<SinglePayMethod>("CASH_USD");
   const [amountReceived, setAmountReceived] = useState("");
   const [showPaymentPinModal, setShowPaymentPinModal] = useState(false);
   const [paymentPin, setPaymentPin] = useState("");
@@ -307,9 +315,10 @@ export default function POSSportBarPage() {
   }, []);
 
   useEffect(() => {
-    if (paymentMethod !== "CASH" && paymentMethod !== "ZELLE" && discountType === "DIVISAS_33") {
+    if (!isDivisasMethod(paymentMethod) && discountType === "DIVISAS_33") {
       setDiscountType("NONE");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentMethod, discountType]);
 
   useEffect(() => {
@@ -644,7 +653,7 @@ export default function POSSportBarPage() {
         discountLabel = ` · Cortesía ${cortesiaPercentNum}%`;
       }
       const effectiveMethod = isTableMixedMode
-        ? (mixedPaymentsTable.length === 1 ? mixedPaymentsTable[0].method as typeof paymentMethod : "CASH")
+        ? (mixedPaymentsTable.length === 1 ? mixedPaymentsTable[0].method as typeof paymentMethod : "CASH_USD")
         : paymentMethod;
       const effectiveLabel = isTableMixedMode
         ? `Pago Mixto${discountLabel} – ${pinResult.data?.managerName || ""}`
@@ -1374,7 +1383,7 @@ export default function POSSportBarPage() {
                         /* ── Pago Único ── */
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-2">
-                            {(["CASH", "ZELLE", "CARD", "MOBILE_PAY", "TRANSFER"] as const).map((m) => (
+                            {SINGLE_PAY_METHODS.map((m) => (
                               <button key={m} type="button" onClick={() => setPaymentMethod(m)}
                                 className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
                                 {PAYMENT_LABELS[m]}
@@ -1666,7 +1675,7 @@ export default function POSSportBarPage() {
                     </div>
                     {!isTableMixedMode ? (
                       <div className="grid grid-cols-2 gap-2">
-                        {(["CASH", "ZELLE", "CARD", "MOBILE_PAY", "TRANSFER"] as const).map((m) => (
+                        {SINGLE_PAY_METHODS.map((m) => (
                           <button key={m} onClick={() => setPaymentMethod(m)}
                             className={`py-3 rounded-xl text-sm font-bold transition ${paymentMethod === m ? "bg-amber-500 text-black" : "bg-card text-foreground/70 hover:bg-muted"}`}>
                             {PAYMENT_LABELS[m]}
