@@ -220,6 +220,7 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
             },
             orderBy: { createdAt: 'asc' },
             include: {
+                orderPayments: { select: { method: true, amountUSD: true } },
                 openTab: {
                     select: {
                         tabCode: true,
@@ -294,14 +295,22 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     serviceFee
                 });
             } else if (o.orderType !== 'RESTAURANT' || !o.openTabId) {
-                const pm = (o.paymentMethod || '').toUpperCase();
                 const breakdown = { cashUsd: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
-                if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd = o.total;
-                else if (pm === 'ZELLE') breakdown.zelle = o.total;
-                else if (pm === 'CARD' || pm === 'BS_POS') breakdown.cardPdVShanklish = o.total;
-                else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL') breakdown.mobileShanklish = o.total;
-                else if (pm === 'TRANSFER') breakdown.cardPdVSuperferro = o.total;
-                else breakdown.mobileShanklish = o.total;
+                const addLine = (pm: string, amt: number) => {
+                    const k = (pm || '').toUpperCase();
+                    if (k === 'CASH' || k === 'CASH_USD') breakdown.cashUsd += amt;
+                    else if (k === 'ZELLE') breakdown.zelle += amt;
+                    else if (k === 'CARD' || k === 'BS_POS') breakdown.cardPdVShanklish += amt;
+                    else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL') breakdown.mobileShanklish += amt;
+                    else if (k === 'TRANSFER' || k === 'BANK_TRANSFER') breakdown.cardPdVSuperferro += amt;
+                    // CASH_BS, MULTIPLE, CORTESIA, unknown → no category (no inflates mobile)
+                };
+                const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
+                if (mixedLines && mixedLines.length > 0) {
+                    for (const p of mixedLines) addLine(p.method, p.amountUSD);
+                } else {
+                    addLine(o.paymentMethod || '', o.total);
+                }
 
                 const isPickup = !o.openTabId && (o.orderType === 'RESTAURANT' || o.orderType === 'PICKUP');
                 const isDelivery = o.orderType === 'DELIVERY';
