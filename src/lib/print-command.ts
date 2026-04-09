@@ -60,6 +60,20 @@ export function printReceipt(data: ReceiptData) {
     const serviceFee = data.serviceFee ?? 0;
     const totalSuggested = total + serviceFee;
 
+    // Deduplicar items: combinar entradas con mismo nombre + mismos modificadores
+    const deduped: (ReceiptItem & { _key: string })[] = [];
+    for (const item of data.items) {
+        const key = item.name + '|' + item.modifiers.slice().sort().join('|');
+        const existing = deduped.find(d => d._key === key);
+        if (existing) {
+            existing.quantity += item.quantity;
+            existing.total += item.total;
+            existing.unitPrice = existing.total / existing.quantity;
+        } else {
+            deduped.push({ ...item, _key: key });
+        }
+    }
+
     // Tipografía profesional para notas de entrega: Arial es la más común en facturas/recibos
     const html = `
 <!DOCTYPE html>
@@ -152,7 +166,7 @@ export function printReceipt(data: ReceiptData) {
             </tr>
         </thead>
         <tbody>
-            ${data.items.map(item => `
+            ${deduped.map(item => `
             <tr>
                 <td class="item-name">${item.quantity} × $${item.unitPrice.toFixed(2)}</td>
                 <td>
