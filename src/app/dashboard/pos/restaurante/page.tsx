@@ -737,10 +737,13 @@ export default function POSSportBarPage() {
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
     const precuentaTotal = afterDiscount + svcFee;
     const discountReason =
-      discountType === "DIVISAS_33" ? "Pago en Divisas -33%"
-      : discountType === "CORTESIA_100" ? "Cortesía 100%"
-      : discountType === "CORTESIA_PERCENT" ? `Cortesía ${cortesiaPercentNum}%`
-      : undefined;
+      discountType === "DIVISAS_33"
+        ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < base - 0.01
+            ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
+            : 'Pago en Divisas (33.33%)')
+        : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
+        : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
+        : undefined;
     printReceipt({
       orderNumber: activeTab.tabCode,
       orderType: "RESTAURANT",
