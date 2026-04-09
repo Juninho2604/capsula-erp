@@ -213,13 +213,15 @@ export default function POSDeliveryPage() {
     };
 
     const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
-    // isPagoDivisas: single mode → method must be CASH/ZELLE; mixed mode → at least one USD line
+    // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
+    const isDivisasMethod = (m: string) => m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
+    // isPagoDivisas: single mode → method must be CASH/CASH_USD/CASH_EUR/ZELLE; mixed → at least one divisas line
     const isPagoDivisas = isMixedMode
-        ? mixedPayments.some(p => p.method === 'CASH' || p.method === 'ZELLE')
-        : (paymentMethod === 'CASH' || paymentMethod === 'ZELLE');
+        ? mixedPayments.some(p => isDivisasMethod(p.method))
+        : isDivisasMethod(paymentMethod);
     // In mixed mode, divisas discount only applies to the USD portion
     const divisasUsdAmount = isMixedMode
-        ? mixedPayments.filter(p => p.method === 'CASH' || p.method === 'ZELLE').reduce((s, p) => s + p.amountUSD, 0)
+        ? mixedPayments.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
         : undefined; // undefined = full total gets -33%
     const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
     const deliveryFee = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;

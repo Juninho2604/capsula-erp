@@ -268,22 +268,22 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     for (const s of splits) {
                         const pm = (s.paymentMethod || '').toUpperCase();
                         const amt = s.paidAmount || 0;
-                        if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd += amt;
+                        if (pm === 'CASH' || pm === 'CASH_USD' || pm === 'CASH_EUR') breakdown.cashUsd += amt;
                         else if (pm === 'ZELLE') breakdown.zelle += amt;
-                        else if (pm === 'CARD' || pm === 'BS_POS') breakdown.cardPdVShanklish += amt;
-                        else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL') breakdown.mobileShanklish += amt;
-                        else if (pm === 'TRANSFER') breakdown.cardPdVSuperferro += amt;
-                        else breakdown.mobileShanklish += amt;
+                        else if (pm === 'CARD' || pm === 'BS_POS' || pm === 'PDV_SHANKLISH') breakdown.cardPdVShanklish += amt;
+                        else if (pm === 'PDV_SUPERFERRO' || pm === 'TRANSFER') breakdown.cardPdVSuperferro += amt;
+                        else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL' || pm === 'MOVIL_NG') breakdown.mobileShanklish += amt;
+                        // CASH_BS, MULTIPLE, CORTESIA → silently excluded
                     }
                     serviceFee = hasService ? total * 0.1 : 0;
                 } else {
                     const pm = (group[0].paymentMethod || '').toUpperCase();
-                    if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd = total;
+                    if (pm === 'CASH' || pm === 'CASH_USD' || pm === 'CASH_EUR') breakdown.cashUsd = total;
                     else if (pm === 'ZELLE') breakdown.zelle = total;
-                    else if (pm === 'CARD' || pm === 'BS_POS') breakdown.cardPdVShanklish = total;
-                    else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL') breakdown.mobileShanklish = total;
-                    else if (pm === 'TRANSFER') breakdown.cardPdVSuperferro = total;
-                    else breakdown.mobileShanklish = total;
+                    else if (pm === 'CARD' || pm === 'BS_POS' || pm === 'PDV_SHANKLISH') breakdown.cardPdVShanklish = total;
+                    else if (pm === 'PDV_SUPERFERRO' || pm === 'TRANSFER') breakdown.cardPdVSuperferro = total;
+                    else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL' || pm === 'MOVIL_NG') breakdown.mobileShanklish = total;
+                    // CASH_BS, MULTIPLE, CORTESIA → silently excluded
                 }
 
                 result.push({
@@ -298,12 +298,12 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                 const breakdown = { cashUsd: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
                 const addLine = (pm: string, amt: number) => {
                     const k = (pm || '').toUpperCase();
-                    if (k === 'CASH' || k === 'CASH_USD') breakdown.cashUsd += amt;
+                    if (k === 'CASH' || k === 'CASH_USD' || k === 'CASH_EUR') breakdown.cashUsd += amt;
                     else if (k === 'ZELLE') breakdown.zelle += amt;
-                    else if (k === 'CARD' || k === 'BS_POS') breakdown.cardPdVShanklish += amt;
-                    else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL') breakdown.mobileShanklish += amt;
-                    else if (k === 'TRANSFER' || k === 'BANK_TRANSFER') breakdown.cardPdVSuperferro += amt;
-                    // CASH_BS, MULTIPLE, CORTESIA, unknown → no category (no inflates mobile)
+                    else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH') breakdown.cardPdVShanklish += amt;
+                    else if (k === 'PDV_SUPERFERRO' || k === 'TRANSFER' || k === 'BANK_TRANSFER') breakdown.cardPdVSuperferro += amt;
+                    else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG') breakdown.mobileShanklish += amt;
+                    // CASH_BS, MULTIPLE, CORTESIA, unknown → silently excluded
                 };
                 const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
                 if (mixedLines && mixedLines.length > 0) {
@@ -373,13 +373,13 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const pay = { cash: 0, card: 0, transfer: 0, mobile: 0, zelle: 0, external: 0, other: 0 };
         const addPayment = (pm: string | null | undefined, amt: number) => {
             const k = (pm ?? '').toUpperCase();
-            if      (k === 'CASH' || k === 'CASH_USD')           pay.cash     += amt;
-            else if (k === 'ZELLE')                              pay.zelle    += amt;
-            else if (k === 'CARD' || k === 'BS_POS')             pay.card     += amt;
-            else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL')  pay.mobile   += amt;
-            else if (k === 'TRANSFER' || k === 'BANK_TRANSFER')  pay.transfer += amt;
-            else if (k === 'EXTERNAL')                           pay.external += amt;
-            else                                                 pay.other    += amt;
+            if      (k === 'CASH' || k === 'CASH_USD' || k === 'CASH_EUR')                              pay.cash     += amt;
+            else if (k === 'ZELLE')                                                                      pay.zelle    += amt;
+            else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH' || k === 'PDV_SUPERFERRO') pay.card     += amt;
+            else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG')                      pay.mobile   += amt;
+            else if (k === 'TRANSFER' || k === 'BANK_TRANSFER')                                          pay.transfer += amt;
+            else if (k === 'EXTERNAL')                                                                   pay.external += amt;
+            else                                                                                         pay.other    += amt;
         };
 
         const disc = { divisas: 0, cortesias: 0, other: 0 };

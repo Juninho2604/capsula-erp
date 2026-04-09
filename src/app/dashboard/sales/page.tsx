@@ -178,13 +178,18 @@ export default function SalesHistoryPage() {
     // ---- BADGES ----
     const getPaymentBadge = (method: string) => {
         switch (method?.toUpperCase()) {
-            case 'CASH': return <span className="bg-green-900 text-green-300 px-2 py-0.5 rounded text-xs font-bold">EFECTIVO</span>;
-            case 'CASH_USD': return <span className="bg-green-800 text-green-200 px-2 py-0.5 rounded text-xs font-bold">USD</span>;
+            case 'CASH':
+            case 'CASH_USD': return <span className="bg-green-900 text-green-300 px-2 py-0.5 rounded text-xs font-bold">Cash $</span>;
+            case 'CASH_EUR': return <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-bold">Cash €</span>;
             case 'CARD':
-            case 'BS_POS': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">PUNTO</span>;
+            case 'BS_POS':
+            case 'PDV_SHANKLISH': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">PDV Shanklish</span>;
+            case 'PDV_SUPERFERRO': return <span className="bg-sky-900 text-sky-300 px-2 py-0.5 rounded text-xs font-bold">PDV Superferro</span>;
             case 'ZELLE': return <span className="bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded text-xs font-bold">ZELLE</span>;
             case 'MOBILE_PAY': return <span className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded text-xs font-bold">PAGO MÓVIL</span>;
+            case 'MOVIL_NG': return <span className="bg-violet-900 text-violet-300 px-2 py-0.5 rounded text-xs font-bold">MÓVIL NG</span>;
             case 'TRANSFER': return <span className="bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded text-xs font-bold">TRANSFER</span>;
+            case 'CASH_BS': return <span className="bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded text-xs font-bold">Bs</span>;
             default: return <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs font-bold">{method || '-'}</span>;
         }
     };
@@ -327,10 +332,13 @@ export default function SalesHistoryPage() {
                         className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
                     >
                         <option value="ALL">Todos</option>
-                        <option value="CASH">💵 Efectivo $</option>
+                        <option value="CASH_USD">💵 Cash $</option>
+                        <option value="CASH_EUR">€ Cash €</option>
                         <option value="ZELLE">⚡ Zelle</option>
-                        <option value="CARD">💳 Punto PDV</option>
+                        <option value="PDV_SHANKLISH">💳 PDV Shanklish</option>
+                        <option value="PDV_SUPERFERRO">💳 PDV Superferro</option>
                         <option value="MOBILE_PAY">📱 Pago Móvil</option>
+                        <option value="MOVIL_NG">📱 Móvil NG</option>
                         <option value="TRANSFER">🏦 Transferencia</option>
                         <option value="CASH_BS">🇻🇪 Efectivo Bs</option>
                         <option value="MIXED">🔀 Pago Mixto</option>

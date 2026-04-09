@@ -368,20 +368,22 @@ export default function POSSportBarPage() {
 
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const paidAmount = parseFloat(amountReceived) || 0;
+  // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
+  const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
-  const isPagoDivisas = paymentMethod === "CASH" || paymentMethod === "ZELLE";
+  const isPagoDivisas = isDivisasMethod(paymentMethod);
   // isPagoDivisasPickup: single mode → method CASH/ZELLE; mixed mode → at least one USD line
   const isPagoDivisasPickup = isPickupMixedMode
-    ? mixedPaymentsPickup.some(p => p.method === "CASH" || p.method === "ZELLE")
-    : (paymentMethod === "CASH" || paymentMethod === "ZELLE");
+    ? mixedPaymentsPickup.some(p => isDivisasMethod(p.method))
+    : isDivisasMethod(paymentMethod);
   const divisasUsdAmountPickup = isPickupMixedMode
-    ? mixedPaymentsPickup.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0)
+    ? mixedPaymentsPickup.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
     : undefined;
   const totalMixedPickupPaid = mixedPaymentsPickup.reduce((s, p) => s + p.amountUSD, 0);
 
-  // In TABLE mixed mode, only the USD (CASH/ZELLE) lines get the -33% divisas discount
+  // In TABLE mixed mode, only the divisas (CASH/CASH_USD/CASH_EUR/ZELLE) lines get the -33% discount
   const divisasUsdAmountTable = isTableMixedMode
-    ? mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0)
+    ? mixedPaymentsTable.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
     : 0;
 
   const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
@@ -1680,7 +1682,7 @@ export default function POSSportBarPage() {
                           onChange={(lines, _paid, _complete) => setMixedPaymentsTable(lines)}
                           disabled={isProcessing}
                         />
-                        {discountType === "DIVISAS_33" && mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0) > 0 && (() => {
+                        {discountType === "DIVISAS_33" && divisasUsdAmountTable > 0 && (() => {
                           return (
                             <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-2 py-1.5 text-[10px] text-indigo-300 space-y-0.5">
                               <div className="flex justify-between"><span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span><span>-${(divisasUsdAmountTable / 3).toFixed(2)}</span></div>
