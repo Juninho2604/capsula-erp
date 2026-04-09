@@ -388,9 +388,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const disc = { divisas: 0, cortesias: 0, other: 0 };
         const addDiscount = (o: OrderRow) => {
             if (o.discount <= 0) return;
-            if      (o.discountType === 'DIVISAS_33')                                        disc.divisas   += o.discount;
-            else if (o.discountType === 'CORTESIA_100' || o.discountType === 'CORTESIA')     disc.cortesias += o.discount;
-            else                                                                              disc.other     += o.discount;
+            if      (o.discountType === 'DIVISAS_33')                                                              disc.divisas   += o.discount;
+            else if (o.discountType === 'CORTESIA_100' || o.discountType === 'CORTESIA_PERCENT' || o.discountType === 'CORTESIA') disc.cortesias += o.discount;
+            else                                                                                                disc.other     += o.discount;
         };
 
         // ── group RESTAURANT+openTab orders by tab ────────────────────────────
