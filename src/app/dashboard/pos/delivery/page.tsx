@@ -478,7 +478,7 @@ export default function POSDeliveryPage() {
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
                                 <div className="flex justify-between text-xs font-black text-primary uppercase tracking-widest bg-primary/10 p-2 rounded-lg">
                                     <span>Descuento % Divisas</span>
-                                    <span>-${(cartSubtotal / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                    <span>-${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between font-black text-xl text-foreground border-t border-border pt-2 mt-2">
@@ -504,7 +504,7 @@ export default function POSDeliveryPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-2">
                                 <button onClick={() => handleDiscountSelect('NONE')} className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${discountType === 'NONE' ? 'bg-secondary text-foreground border-2 border-primary/50' : 'bg-background border border-border text-muted-foreground'}`}>Normal</button>
-                                <button onClick={() => isPagoDivisas && handleDiscountSelect('DIVISAS_33')} disabled={!isPagoDivisas} className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : isPagoDivisas ? 'bg-background border border-border text-primary' : 'bg-background opacity-30 grayscale cursor-not-allowed'}`}>Divisa -33%</button>
+                                <button onClick={() => handleDiscountSelect('DIVISAS_33')} className={`py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-primary'}`}>Divisa -33%</button>
                                 <button onClick={() => handleDiscountSelect('CORTESIA_100')} className={`col-span-2 py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-background border border-border text-purple-600'}`}>
                                     {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
                                         ? `🎁 Cortesía ${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'} — ${authorizedManager?.name || ''}`
@@ -551,7 +551,7 @@ export default function POSDeliveryPage() {
                                 /* ── Pago Mixto ── */
                                 <div className="space-y-2">
                                     <MixedPaymentSelector
-                                        key={`delivery-mixed-${finalTotal}`}
+                                        key={`delivery-mixed-${isMixedMode}`}
                                         totalAmount={finalTotal}
                                         exchangeRate={exchangeRate}
                                         onChange={(lines, _paid, complete) => {

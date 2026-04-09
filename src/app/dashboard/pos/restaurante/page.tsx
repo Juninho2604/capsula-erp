@@ -379,11 +379,18 @@ export default function POSSportBarPage() {
     : undefined;
   const totalMixedPickupPaid = mixedPaymentsPickup.reduce((s, p) => s + p.amountUSD, 0);
 
+  // In TABLE mixed mode, only the USD (CASH/ZELLE) lines get the -33% divisas discount
+  const divisasUsdAmountTable = isTableMixedMode
+    ? mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0)
+    : 0;
+
   const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
 
   const paymentBaseAmount = activeTab
     ? discountType === "DIVISAS_33"
-      ? (activeTab.balanceDue * 2) / 3
+      ? isTableMixedMode
+        ? activeTab.balanceDue - divisasUsdAmountTable / 3   // partial: only USD lines get -33%
+        : (activeTab.balanceDue * 2) / 3                     // full: entire balance -33%
       : discountType === "CORTESIA_100"
       ? 0
       : discountType === "CORTESIA_PERCENT"
@@ -621,9 +628,8 @@ export default function POSSportBarPage() {
       let discountLabel = "";
       if (discountType === "DIVISAS_33") {
         if (isTableMixedMode) {
-          const usdAmt = mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0);
-          discountAmount = usdAmt / 3;
-          discountLabel = ` · Divisas sobre $${usdAmt.toFixed(2)}`;
+          discountAmount = divisasUsdAmountTable / 3;
+          discountLabel = ` · Divisas sobre $${divisasUsdAmountTable.toFixed(2)}`;
         } else {
           discountAmount = activeTab.balanceDue / 3;
           discountLabel = " · -33.33% Divisas";
@@ -1675,11 +1681,10 @@ export default function POSSportBarPage() {
                           disabled={isProcessing}
                         />
                         {discountType === "DIVISAS_33" && mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0) > 0 && (() => {
-                          const usdAmt = mixedPaymentsTable.filter(p => p.method === "CASH" || p.method === "ZELLE").reduce((s, p) => s + p.amountUSD, 0);
                           return (
                             <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-2 py-1.5 text-[10px] text-indigo-300 space-y-0.5">
-                              <div className="flex justify-between"><span>Divisas ${usdAmt.toFixed(2)}</span><span>-${(usdAmt / 3).toFixed(2)}</span></div>
-                              <div className="flex justify-between font-black text-white"><span>Total</span><span>${(paymentAmountToCharge - usdAmt / 3).toFixed(2)}</span></div>
+                              <div className="flex justify-between"><span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span><span>-${(divisasUsdAmountTable / 3).toFixed(2)}</span></div>
+                              <div className="flex justify-between font-black text-white"><span>Total a cobrar</span><span>${paymentAmountToCharge.toFixed(2)}</span></div>
                             </div>
                           );
                         })()}

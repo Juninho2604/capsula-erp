@@ -69,6 +69,7 @@ export async function getSalesHistoryAction(date?: string) {
                 createdBy: { select: { firstName: true, lastName: true } },
                 voidedBy: { select: { firstName: true, lastName: true } },
                 openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, paymentSplits: { select: { splitLabel: true, paymentMethod: true, paidAmount: true } } } },
+                orderPayments: { select: { method: true, amountUSD: true } },
                 items: {
                     include: {
                         modifiers: { select: { name: true, priceAdjustment: true } }
@@ -166,6 +167,11 @@ export async function getSalesHistoryAction(date?: string) {
                 const netReceived = amountPaid - change;
                 // Propina = excedente retenido voluntariamente (keepChangeAsTip)
                 const propina = Math.max(0, netReceived - ordTotal);
+                // Desglose de pagos: usar SalesOrderPayment para pagos mixtos
+                const mixedLines = o.orderPayments || [];
+                const paymentBreakdown = mixedLines.length > 0
+                    ? mixedLines.map(p => ({ method: p.method, amount: p.amountUSD }))
+                    : [{ method: o.paymentMethod || 'CASH', amount: netReceived }];
                 result.push({
                     ...o,
                     _consolidated: false,
@@ -174,7 +180,7 @@ export async function getSalesHistoryAction(date?: string) {
                     totalProductos: ordTotal,
                     servicioAmount: 0,
                     propina,
-                    paymentBreakdown: [{ method: o.paymentMethod || 'CASH', amount: netReceived }]
+                    paymentBreakdown,
                 });
             }
         }
@@ -336,6 +342,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 status:    { notIn: ['CANCELLED'] },
             },
             include: {
+                orderPayments: { select: { method: true, amountUSD: true } },
                 openTab: {
                     select: {
                         runningSubtotal: true,
@@ -430,12 +437,17 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             addDiscount(o);
 
             const amountPaid = o.amountPaid || o.total;
-            // Propina = excedente pagado sin vuelto (keepChangeAsTip)
             // netReceived = lo que quedó en caja (excluye vuelto devuelto)
             const netReceived = amountPaid - (o.change || 0);
             totalTips += (o.change === 0 && amountPaid > o.total)
                 ? Math.max(0, amountPaid - o.total) : 0;
-            addPayment(o.paymentMethod, netReceived);
+            // Para pagos mixtos usar las líneas de SalesOrderPayment; si no, método único
+            const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
+            if (mixedLines && mixedLines.length > 0) {
+                for (const p of mixedLines) addPayment(p.method, p.amountUSD);
+            } else {
+                addPayment(o.paymentMethod, netReceived);
+            }
 
             if      (o.orderType === 'DELIVERY')   byType.delivery++;
             else if (o.orderType === 'PEDIDOSYA')  byType.pedidosya++;
