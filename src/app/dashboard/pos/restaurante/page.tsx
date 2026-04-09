@@ -277,6 +277,7 @@ export default function POSSportBarPage() {
   const [showTipModal, setShowTipModal] = useState(false);
   const [tipAmount, setTipAmount] = useState('');
   const [tipMethod, setTipMethod] = useState<string>('CASH_USD');
+  const [tipTableRef, setTipTableRef] = useState('');
   const [isTipProcessing, setIsTipProcessing] = useState(false);
 
   const [lastPickupOrder, setLastPickupOrder] = useState<{
@@ -815,12 +816,16 @@ export default function POSSportBarPage() {
     if (!amount || amount <= 0) return;
     setIsTipProcessing(true);
     try {
-      const result = await recordCollectiveTipAction({ tipAmount: amount, paymentMethod: tipMethod });
+      const note = tipTableRef.trim()
+        ? `Propina colectiva — Mesa/Ref: ${tipTableRef.trim()}`
+        : 'Propina colectiva';
+      const result = await recordCollectiveTipAction({ tipAmount: amount, paymentMethod: tipMethod, note });
       if (result.success) {
         toast.success(`Propina de $${amount.toFixed(2)} registrada`);
         setShowTipModal(false);
         setTipAmount('');
         setTipMethod('CASH_USD');
+        setTipTableRef('');
       } else {
         toast.error(result.message || 'Error al registrar propina');
       }
@@ -1011,7 +1016,15 @@ export default function POSSportBarPage() {
               <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
               <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
             </div>
-            <p className="text-xs text-muted-foreground">Registra una propina recibida después del cobro de la cuenta.</p>
+            <p className="text-xs text-muted-foreground">Propina recibida después del cobro. Indica la mesa o cliente para trazabilidad.</p>
+            {/* Mesa / referencia */}
+            <input
+              type="text"
+              value={tipTableRef}
+              onChange={e => setTipTableRef(e.target.value)}
+              placeholder="Mesa o cliente (ej: Mesa 5, Juan Pérez)"
+              className="w-full bg-background border border-border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/40"
+            />
             {/* Method */}
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -1036,7 +1049,6 @@ export default function POSSportBarPage() {
                 onChange={e => setTipAmount(e.target.value)}
                 placeholder="0.00"
                 className="flex-1 bg-transparent border-none px-3 py-3 text-2xl font-black focus:outline-none placeholder:text-muted-foreground/30"
-                autoFocus
               />
             </div>
             {tipMethod === 'CASH_BS' && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (

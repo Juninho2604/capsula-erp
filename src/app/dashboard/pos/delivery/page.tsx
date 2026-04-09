@@ -92,6 +92,7 @@ export default function POSDeliveryPage() {
     const [showTipModal, setShowTipModal] = useState(false);
     const [tipAmount, setTipAmount] = useState('');
     const [tipMethod, setTipMethod] = useState<string>('CASH_USD');
+    const [tipClientRef, setTipClientRef] = useState('');
     const [isTipProcessing, setIsTipProcessing] = useState(false);
 
     // WHATSAPP PARSER
@@ -249,12 +250,16 @@ export default function POSDeliveryPage() {
         if (!amount || amount <= 0) return;
         setIsTipProcessing(true);
         try {
-            const result = await recordCollectiveTipAction({ tipAmount: amount, paymentMethod: tipMethod });
+            const note = tipClientRef.trim()
+                ? `Propina colectiva — Cliente: ${tipClientRef.trim()}`
+                : 'Propina colectiva';
+            const result = await recordCollectiveTipAction({ tipAmount: amount, paymentMethod: tipMethod, note });
             if (result.success) {
                 toast.success(`Propina de $${amount.toFixed(2)} registrada`);
                 setShowTipModal(false);
                 setTipAmount('');
                 setTipMethod('CASH_USD');
+                setTipClientRef('');
             } else {
                 toast.error(result.message || 'Error al registrar propina');
             }
@@ -810,7 +815,15 @@ export default function POSDeliveryPage() {
                             <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
                             <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Registra una propina recibida después del cobro de la cuenta.</p>
+                        <p className="text-xs text-muted-foreground">Propina recibida después del cobro. Indica el cliente para trazabilidad.</p>
+                        {/* Cliente / referencia */}
+                        <input
+                            type="text"
+                            value={tipClientRef}
+                            onChange={e => setTipClientRef(e.target.value)}
+                            placeholder="Nombre del cliente (opcional)"
+                            className="w-full bg-background border border-border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/40"
+                        />
                         <div className="grid grid-cols-3 gap-2">
                             {[
                                 { id: 'CASH_USD', label: '💵 Cash $' },
