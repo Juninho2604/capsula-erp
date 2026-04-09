@@ -728,10 +728,11 @@ export default function POSSportBarPage() {
     // Use balanceDue as the discount base — same math as paymentAmountToCharge on screen
     const base = activeTab.balanceDue;
     const discountAmt =
-      discountType === "DIVISAS_33" ? base / 3
-      : discountType === "CORTESIA_100" ? base
-      : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
-      : 0;
+      discountType === "DIVISAS_33"
+        ? (isTableMixedMode ? divisasUsdAmountTable / 3 : base / 3)  // partial vs full
+        : discountType === "CORTESIA_100" ? base
+        : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
+        : 0;
     const afterDiscount = base - discountAmt;
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
     const precuentaTotal = afterDiscount + svcFee;
