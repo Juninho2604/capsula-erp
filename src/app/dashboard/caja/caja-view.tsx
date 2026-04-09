@@ -15,9 +15,40 @@ const SHIFT_TYPES = [
 ];
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const BILL_DENOMS = [100, 50, 20, 10, 5, 1] as const;
 
 function fmt(n: number) {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseDenominations(json: string | null): Record<string, number> | null {
+  if (!json) return null;
+  try { return JSON.parse(json); } catch { return null; }
+}
+
+function DenomBreakdown({ json, label }: { json: string | null; label: string }) {
+  const data = parseDenominations(json);
+  if (!data) return null;
+  return (
+    <div className="mt-2 text-xs">
+      <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">{label}</p>
+      {BILL_DENOMS.map(d => {
+        const count = data[String(d)] ?? 0;
+        if (!count) return null;
+        return (
+          <div key={d} className="flex justify-between text-foreground/80">
+            <span>${d} × {count}</span>
+            <span>${fmt(d * count)}</span>
+          </div>
+        );
+      })}
+      {data.total != null && (
+        <div className="flex justify-between font-bold text-foreground border-t border-border mt-1 pt-1">
+          <span>Total</span><span>${fmt(data.total)}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface Props {
@@ -43,6 +74,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
   const [closeDenom, setCloseDenom] = useState<{ json: string; total: number } | null>(null);
   const [showOpenDenom, setShowOpenDenom] = useState(false);
   const [showCloseDenom, setShowCloseDenom] = useState(false);
+  const [denomModal, setDenomModal] = useState<CashRegisterData | null>(null);
 
   const loadPeriod = (month: number, year: number) => {
     startTransition(async () => {
@@ -150,7 +182,13 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Fondo inicial</span>
-                    <span className="font-semibold text-foreground">${fmt(r.openingCashUsd)}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-semibold text-foreground">${fmt(r.openingCashUsd)}</span>
+                      {r.openingDenominationsJson && (
+                        <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
+                          className="text-emerald-400 hover:text-emerald-300 text-xs">📋</button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Abierta por</span>
@@ -221,7 +259,15 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                       <td className="px-5 py-3 text-right text-foreground">${fmt(r.totalSalesUsd ?? 0)}</td>
                       <td className="px-5 py-3 text-right text-red-500">${fmt(r.totalExpenses ?? 0)}</td>
                       <td className="px-5 py-3 text-right text-foreground">${fmt(r.expectedCash ?? 0)}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-foreground">${fmt(r.closingCashUsd ?? 0)}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-foreground">
+                        <div className="flex items-center justify-end gap-1">
+                          <span>${fmt(r.closingCashUsd ?? 0)}</span>
+                          {(r.openingDenominationsJson || r.closingDenominationsJson) && (
+                            <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
+                              className="text-blue-400 hover:text-blue-300 text-xs">📋</button>
+                          )}
+                        </div>
+                      </td>
                       <td className={`px-5 py-3 text-right font-bold ${diffColor}`}>
                         {diff >= 0 ? '+' : ''}{fmt(diff)}
                       </td>
@@ -338,6 +384,21 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal: Desglose de Billetes */}
+      {denomModal && (
+        <Modal title={`Billetes — ${denomModal.registerName}`} onClose={() => setDenomModal(null)}>
+          <div className="space-y-4">
+            <DenomBreakdown json={denomModal.openingDenominationsJson} label="Apertura" />
+            {denomModal.closingDenominationsJson && (
+              <DenomBreakdown json={denomModal.closingDenominationsJson} label="Cierre" />
+            )}
+            {!denomModal.openingDenominationsJson && !denomModal.closingDenominationsJson && (
+              <p className="text-sm text-muted-foreground text-center py-4">Sin desglose de billetes registrado</p>
+            )}
+          </div>
         </Modal>
       )}
     </div>
