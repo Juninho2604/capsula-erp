@@ -697,7 +697,6 @@ export default function POSSportBarPage() {
 
   const handlePrintPrecuenta = () => {
     if (!activeTab) return;
-    // Collect all items across all orders on this tab
     const allItems = activeTab.orders.flatMap((order) =>
       (order.items || []).map((item) => ({
         name: item.itemName,
@@ -709,14 +708,14 @@ export default function POSSportBarPage() {
           .filter(Boolean) as string[],
       }))
     );
-    const itemsSubtotal = allItems.reduce((s, i) => s + i.total, 0);
-    // Apply current discount state
+    // Use balanceDue as the discount base — same math as paymentAmountToCharge on screen
+    const base = activeTab.balanceDue;
     const discountAmt =
-      discountType === "DIVISAS_33" ? itemsSubtotal / 3
-      : discountType === "CORTESIA_100" ? itemsSubtotal
-      : discountType === "CORTESIA_PERCENT" ? itemsSubtotal * (cortesiaPercentNum / 100)
+      discountType === "DIVISAS_33" ? base / 3
+      : discountType === "CORTESIA_100" ? base
+      : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
       : 0;
-    const afterDiscount = itemsSubtotal - discountAmt;
+    const afterDiscount = base - discountAmt;
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
     const precuentaTotal = afterDiscount + svcFee;
     const discountReason =
@@ -732,7 +731,7 @@ export default function POSSportBarPage() {
       customerName: activeTab.customerLabel || undefined,
       customerPhone: activeTab.customerPhone || undefined,
       items: allItems,
-      subtotal: itemsSubtotal,
+      subtotal: base,
       discount: discountAmt > 0 ? discountAmt : undefined,
       discountReason,
       serviceFee: svcFee > 0 ? svcFee : undefined,
