@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getSalesHistoryAction, getDailyZReportAction, getEndOfDaySummaryAction, voidSalesOrderAction, type ZReportData, type EndOfDaySummary } from '@/app/actions/sales.actions';
-import { validateManagerPinAction } from '@/app/actions/pos.actions';
+import { validateCashierPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';
 
@@ -143,7 +143,7 @@ export default function SalesHistoryPage() {
     const handleVoidPinConfirm = async () => {
         setVoidPinError('');
         setVoidLoading(true);
-        const res = await validateManagerPinAction(voidPin);
+        const res = await validateCashierPinAction(voidPin);
         if (res.success && res.data) {
             await executeVoid(res.data.managerId, res.data.managerName);
         } else {
@@ -661,6 +661,31 @@ export default function SalesHistoryPage() {
                                                                 <span className="ml-1 text-white font-bold font-mono">{formatMoney(p.amount)}</span>
                                                             </span>
                                                         ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Detalle de anulación */}
+                                                {isVoided && (sale.voidReason || sale.voidedBy || sale.voidedAt) && (
+                                                    <div className="mt-3 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2 text-xs space-y-1">
+                                                        <div className="font-bold text-red-400 uppercase tracking-wider text-[10px]">Detalle de Anulación</div>
+                                                        {sale.voidedBy && (
+                                                            <div className="flex gap-2 text-gray-300">
+                                                                <span className="text-gray-500">Anulado por:</span>
+                                                                <span className="font-bold text-red-300">{sale.voidedBy.firstName} {sale.voidedBy.lastName}</span>
+                                                            </div>
+                                                        )}
+                                                        {sale.voidedAt && (
+                                                            <div className="flex gap-2 text-gray-300">
+                                                                <span className="text-gray-500">Fecha anulación:</span>
+                                                                <span>{new Date(sale.voidedAt).toLocaleString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </div>
+                                                        )}
+                                                        {sale.voidReason && (
+                                                            <div className="flex gap-2 text-gray-300">
+                                                                <span className="text-gray-500 shrink-0">Motivo:</span>
+                                                                <span className="text-red-200">{sale.voidReason}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </td>

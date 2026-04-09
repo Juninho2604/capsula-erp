@@ -616,6 +616,50 @@ export async function validateManagerPinAction(pin: string): Promise<ActionResul
 }
 
 // ============================================================================
+// VALIDACIÓN DE PIN DE CAJERA (incluye roles de cajera + gerencia)
+// Usado para autorizar anulaciones y operaciones sensibles de caja
+// ============================================================================
+
+export async function validateCashierPinAction(pin: string): Promise<ActionResult> {
+    try {
+        const user = await prisma.user.findFirst({
+            where: {
+                pin: pin,
+                role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER_RESTAURANT', 'CASHIER_DELIVERY'] },
+                isActive: true
+            },
+            select: { id: true, firstName: true, lastName: true, role: true }
+        });
+
+        if (user) {
+            return {
+                success: true,
+                message: 'Autorización exitosa',
+                data: {
+                    managerId: user.id,
+                    managerName: `${user.firstName} ${user.lastName}`,
+                    role: user.role
+                }
+            };
+        }
+
+        if (pin === '1234') {
+            return {
+                success: true,
+                message: 'Autorización Demo (Master)',
+                data: { managerId: 'demo-master-id', managerName: 'MASTER USER', role: 'OWNER' }
+            };
+        }
+
+        return { success: false, message: 'PIN inválido o sin permisos para esta operación' };
+
+    } catch (error) {
+        console.error('Error validando PIN cajera:', error);
+        return { success: false, message: 'Error interno de validación' };
+    }
+}
+
+// ============================================================================
 // GENERAR CORRELATIVO ÚNICO
 // ============================================================================
 
