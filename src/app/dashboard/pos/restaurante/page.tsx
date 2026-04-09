@@ -10,6 +10,7 @@ import {
   openTabAction,
   registerOpenTabPaymentAction,
   createSalesOrderAction,
+  recordCollectiveTipAction,
   removeItemFromOpenTabAction,
   validateManagerPinAction,
   type CartItem,
@@ -129,19 +130,23 @@ interface SportBarLayout {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  CASH:         "💵 Cash $",
-  CASH_USD:     "💵 Cash $",
-  CASH_EUR:     "€ Cash €",
-  CARD:         "💳 PDV",
-  PDV_SHANKLISH:"💳 PDV Shan.",
+  CASH:          "💵 Cash $",
+  CASH_USD:      "💵 Cash $",
+  CASH_EUR:      "€ Cash €",
+  CASH_BS:       "💴 Efectivo Bs",
+  CARD:          "💳 PDV",
+  PDV_SHANKLISH: "💳 PDV Shan.",
   PDV_SUPERFERRO:"💳 PDV Super.",
-  MOBILE_PAY:   "📱 Pago Móvil",
-  MOVIL_NG:     "📱 Pago Móvil NG",
-  TRANSFER:     "🏦 Transf.",
-  ZELLE:        "⚡ Zelle",
+  MOBILE_PAY:    "📱 Pago Móvil",
+  MOVIL_NG:      "📱 Pago Móvil NG",
+  TRANSFER:      "🏦 Transf.",
+  ZELLE:         "⚡ Zelle",
 };
 
-const SINGLE_PAY_METHODS = ["CASH_USD", "CASH_EUR", "ZELLE", "PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG"] as const;
+/** Métodos donde el cliente paga en Bs — el input acepta Bs y se convierte a USD */
+const BS_SINGLE_METHODS = new Set(["PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG", "CASH_BS"]);
+
+const SINGLE_PAY_METHODS = ["CASH_USD", "CASH_EUR", "ZELLE", "PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG", "CASH_BS"] as const;
 type SinglePayMethod = typeof SINGLE_PAY_METHODS[number];
 const CASHIER_ROLES = ["OWNER", "ADMIN_MANAGER", "OPS_MANAGER", "AREA_LEAD"];
 
@@ -267,6 +272,13 @@ export default function POSSportBarPage() {
   const [isPickupMode, setIsPickupMode] = useState(false);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
   const [keepChangeAsTip, setKeepChangeAsTip] = useState(false);
+
+  // ── Propina colectiva ─────────────────────────────────────────────────────
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [tipAmount, setTipAmount] = useState('');
+  const [tipMethod, setTipMethod] = useState<string>('CASH_USD');
+  const [isTipProcessing, setIsTipProcessing] = useState(false);
+
   const [lastPickupOrder, setLastPickupOrder] = useState<{
     orderNumber: string;
     total: number;
@@ -376,7 +388,12 @@ export default function POSSportBarPage() {
   }, [subcatFilteredItems]);
 
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
-  const paidAmount = parseFloat(amountReceived) || 0;
+  const rawAmount = parseFloat(amountReceived) || 0;
+  /** Si el método es Bs (PDV, Móvil, Efectivo Bs) el input está en Bs → convertir a USD */
+  const isBsPayMethod = BS_SINGLE_METHODS.has(paymentMethod);
+  const paidAmount = isBsPayMethod && exchangeRate && rawAmount > 0
+    ? rawAmount / exchangeRate
+    : rawAmount;
   // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
   const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
@@ -625,7 +642,7 @@ export default function POSSportBarPage() {
   const handlePaymentPinConfirm = async () => {
     const effectiveAmount = isTableMixedMode
       ? mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0)
-      : paidAmount;
+      : paidAmount; // paidAmount already in USD (Bs methods auto-converted above)
     if (!activeTab || effectiveAmount <= 0) return;
     setPaymentPinError("");
     setIsProcessing(true);
@@ -793,6 +810,25 @@ export default function POSSportBarPage() {
   // CHECKOUT PICKUP
   // ============================================================================
 
+  const handleRecordTip = async () => {
+    const amount = parseFloat(tipAmount);
+    if (!amount || amount <= 0) return;
+    setIsTipProcessing(true);
+    try {
+      const result = await recordCollectiveTipAction({ tipAmount: amount, paymentMethod: tipMethod });
+      if (result.success) {
+        toast.success(`Propina de $${amount.toFixed(2)} registrada`);
+        setShowTipModal(false);
+        setTipAmount('');
+        setTipMethod('CASH_USD');
+      } else {
+        toast.error(result.message || 'Error al registrar propina');
+      }
+    } finally {
+      setIsTipProcessing(false);
+    }
+  };
+
   const handleCheckoutPickup = async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
@@ -814,7 +850,10 @@ export default function POSSportBarPage() {
           ? { payments: mixedPaymentsPickup.length > 0 ? mixedPaymentsPickup : [{ method: "CASH", amountUSD: finalTotal }],
               amountPaid: totalMixedPickupPaid || finalTotal,
               divisasUsdAmount: discountType === "DIVISAS_33" ? divisasUsdAmountPickup : undefined }
-          : { paymentMethod, amountPaid: paidAmount || finalTotal, keepChangeAsTip }),
+          : isBsPayMethod && exchangeRate && rawAmount > 0
+            ? { payments: [{ method: paymentMethod, amountUSD: paidAmount || finalTotal, amountBS: rawAmount, exchangeRate }],
+                amountPaid: paidAmount || finalTotal }
+            : { paymentMethod, amountPaid: paidAmount || finalTotal, keepChangeAsTip }),
         notes: "Venta Directa Pickup",
         discountType,
         discountPercent: discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum : undefined,
@@ -964,6 +1003,60 @@ export default function POSSportBarPage() {
         }}
       />
 
+      {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
+      {showTipModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
+              <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
+            </div>
+            <p className="text-xs text-muted-foreground">Registra una propina recibida después del cobro de la cuenta.</p>
+            {/* Method */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'CASH_USD', label: '💵 Cash $' },
+                { id: 'ZELLE',    label: '⚡ Zelle' },
+                { id: 'CASH_BS',  label: '💴 Bs' },
+              ].map(m => (
+                <button key={m.id} type="button" onClick={() => setTipMethod(m.id)}
+                  className={`py-2 rounded-xl text-xs font-black uppercase transition-all ${tipMethod === m.id ? 'bg-amber-500 text-white' : 'bg-background border border-border text-muted-foreground hover:border-amber-500/50'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {/* Amount */}
+            <div className="flex items-center bg-background border border-border rounded-2xl p-1">
+              <span className="pl-4 text-muted-foreground text-sm font-black">
+                {tipMethod === 'CASH_BS' ? 'Bs' : '$'}
+              </span>
+              <input
+                type="number" min="0" step="0.01"
+                value={tipAmount}
+                onChange={e => setTipAmount(e.target.value)}
+                placeholder="0.00"
+                className="flex-1 bg-transparent border-none px-3 py-3 text-2xl font-black focus:outline-none placeholder:text-muted-foreground/30"
+                autoFocus
+              />
+            </div>
+            {tipMethod === 'CASH_BS' && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
+              <div className="flex justify-between text-xs px-1">
+                <span className="text-muted-foreground">Equivalente USD</span>
+                <span className="font-bold text-emerald-400">${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleRecordTip}
+              disabled={isTipProcessing || !(parseFloat(tipAmount) > 0)}
+              className="w-full py-4 rounded-2xl bg-amber-500 text-white font-black uppercase text-lg shadow-lg shadow-amber-500/30 disabled:opacity-40 active:scale-95 transition-all"
+            >
+              {isTipProcessing ? 'Registrando...' : 'Registrar Propina'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div className="glass-panel px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 shadow-lg border-b-primary/10">
         <div className="flex items-center gap-4">
@@ -992,6 +1085,13 @@ export default function POSSportBarPage() {
                <CurrencyCalculator totalUsd={Number(activeTab.balanceDue.toFixed(2))} onRateUpdated={setExchangeRate} />
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setShowTipModal(true)}
+            className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase hover:bg-amber-500/20 transition-colors"
+          >
+            + Propina
+          </button>
           <div className="px-4 py-2 bg-secondary/30 rounded-xl border border-border font-black text-sm tabular-nums text-foreground/70">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
@@ -1412,9 +1512,26 @@ export default function POSSportBarPage() {
                           <div className="flex items-center gap-2 bg-background border border-border p-1 rounded-2xl">
                             <input type="number" value={amountReceived}
                               onChange={(e) => { setAmountReceived(e.target.value); setKeepChangeAsTip(false); }}
-                              placeholder="Recibido..." className="flex-1 bg-transparent border-none rounded-xl px-4 py-3 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30 text-foreground" />
-                            <div className="pr-4 text-xs font-black text-muted-foreground uppercase">USD</div>
+                              placeholder="Recibido..."
+                              className="flex-1 bg-transparent border-none rounded-xl px-4 py-3 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30 text-foreground" />
+                            <div className="pr-4 text-xs font-black text-muted-foreground uppercase">
+                              {isBsPayMethod ? 'Bs' : 'USD'}
+                            </div>
                           </div>
+                          {/* Equivalente USD para métodos Bs */}
+                          {isBsPayMethod && exchangeRate && rawAmount > 0 && (
+                            <div className="flex justify-between text-xs px-1">
+                              <span className="text-muted-foreground">Equivalente USD</span>
+                              <span className="font-bold text-emerald-400">${(rawAmount / exchangeRate).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {/* Vuelto para efectivo USD */}
+                          {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? cartTotal/3 : 0)) && (
+                            <div className="flex justify-between text-sm font-black px-1">
+                              <span className="text-amber-400">Vuelto</span>
+                              <span className="text-amber-400">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? cartTotal/3 : 0))).toFixed(2)}</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         /* ── Pago Mixto ── */
@@ -1758,13 +1875,27 @@ export default function POSSportBarPage() {
                     );
                   })()}
 
-                  <input
-                    type="number"
-                    value={amountReceived}
-                    onChange={(e) => setAmountReceived(e.target.value)}
-                    placeholder={`Monto a recibir ($${paymentAmountToCharge.toFixed(2)})`}
-                    className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none mb-2"
-                  />
+                  <div className="relative mb-2">
+                    <input
+                      type="number"
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(e.target.value)}
+                      placeholder={isBsPayMethod && exchangeRate
+                        ? `Bs ${(paymentAmountToCharge * exchangeRate).toFixed(0)}`
+                        : `$${paymentAmountToCharge.toFixed(2)}`}
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none pr-14"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                      {isBsPayMethod ? 'Bs' : 'USD'}
+                    </span>
+                  </div>
+                  {/* Equivalente USD para Bs methods */}
+                  {isBsPayMethod && exchangeRate && rawAmount > 0 && (
+                    <div className="flex justify-between text-xs px-1 mb-2">
+                      <span className="text-muted-foreground">Equivalente USD</span>
+                      <span className="font-bold text-emerald-400">${(rawAmount / exchangeRate).toFixed(2)}</span>
+                    </div>
+                  )}
 
                   {/* CurrencyCalculator */}
                   <CurrencyCalculator

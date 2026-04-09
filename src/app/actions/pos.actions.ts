@@ -829,6 +829,68 @@ export async function createSalesOrderAction(
 }
 
 // ============================================================================
+// ACTION: REGISTRAR PROPINA COLECTIVA
+// ============================================================================
+
+/**
+ * Records a collective (post-payment) tip as a zero-total sales order.
+ * total=0, amountPaid=tipAmount → Z report picks it up as tip correctly.
+ */
+export async function recordCollectiveTipAction(data: {
+    tipAmount: number;
+    paymentMethod: string;
+    note?: string;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const salesArea = await ensureBaseSalesArea();
+
+        let order;
+        for (let attempt = 0; attempt < 10; attempt++) {
+            try {
+                if (attempt > 0) await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
+                const orderNumber = await generateOrderNumber('PICKUP');
+                order = await prisma.salesOrder.create({
+                    data: {
+                        orderNumber,
+                        orderType: 'PICKUP',
+                        customerName: 'PROPINA COLECTIVA',
+                        status: 'CONFIRMED',
+                        serviceFlow: 'DIRECT_SALE',
+                        sourceChannel: 'POS_RESTAURANT',
+                        paymentStatus: 'PAID',
+                        paymentMethod: data.paymentMethod,
+                        kitchenStatus: 'SENT',
+                        sentToKitchenAt: new Date(),
+                        subtotal: 0,
+                        discount: 0,
+                        total: 0,
+                        amountPaid: data.tipAmount,
+                        change: 0,
+                        notes: data.note || 'Propina colectiva',
+                        createdById: session.id,
+                        areaId: salesArea.id,
+                    },
+                });
+                break;
+            } catch (err) {
+                if (isOrderNumberUniqueError(err) && attempt < 9) continue;
+                throw err;
+            }
+        }
+
+        if (!order) throw new Error('No se pudo registrar la propina');
+
+        revalidatePath('/dashboard/sales');
+        return { success: true, message: 'Propina registrada', data: order };
+    } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+// ============================================================================
 // POS RESTAURANTE - CUENTAS ABIERTAS
 // ============================================================================
 
