@@ -985,16 +985,33 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
 
 - **Ruta**: `/dashboard/usuarios`
 - **Página**: Server Component — importa `getUsers()` + `getEnabledModulesFromDB()`
-- **Actions**: `user.actions.ts` → 5 funciones:
+- **Actions**: `user.actions.ts` → 6 funciones:
   - `getUsers()` — lista con roles y allowedModules
   - `updateUserRole(userId, newRole)` — cambia rol (jerarquía: solo superiores)
   - `toggleUserStatus(userId, isActive)` — activar/desactivar
   - `changePasswordAction(currentPassword, newPassword)` — cambio propio
   - `updateUserModules(userId, allowedModules)` — asigna módulos individuales
+  - `updateUserPin(userId, rawPin)` — asigna/cambia PIN de otro usuario (requiere MANAGE_USERS)
 - **Modelos**: User
-- **Componentes**: `ChangePasswordDialog`
+- **Componentes**: `ChangePasswordDialog`, `PinSection` (panel lateral derecho de `users-view.tsx`)
 - **Middleware**: Ruta protegida — solo OWNER, ADMIN_MANAGER
 - **Estado**: Funcional
+
+#### Gestión de PINs
+
+- **Dónde**: Panel lateral derecho de `/dashboard/usuarios` → sección "PIN de acceso (POS)"
+- **Quién puede asignar**: Roles con `MANAGE_USERS` (nivel 70+: OWNER, ADMIN_MANAGER, OPS_MANAGER)
+- **Restricción**: Un usuario no puede modificar su propio PIN desde este panel (`session.id === userId` → error)
+- **Validación**: Numérico estricto, 4–6 dígitos (`/^\d{4,6}$/`)
+- **Almacenamiento**: Nunca en texto plano — se hashea con PBKDF2-SHA256 antes de guardar en BD
+
+#### Hashing PBKDF2 — Fuente Autoritativa
+
+- **Archivo**: `src/app/actions/user.actions.ts` (fuente única de verdad para el hashing)
+- **Funciones exportadas**: `hashPin(rawPin)`, `pbkdf2Hex(pin, saltHex)`
+- **Algoritmo**: PBKDF2-SHA256, 100 000 iteraciones, salt aleatorio de 16 bytes por hash
+- **Formato en BD**: `"saltHex:hashHex"` — si no contiene `:` se trata como PIN legado en texto plano (período de transición)
+- **Uso en POS**: `pos.actions.ts` importa `hashPin` y `pbkdf2Hex` desde `user.actions.ts`; `verifyPin()` permanece local en `pos.actions.ts`
 
 ### 7.2 Módulos por Usuario
 
