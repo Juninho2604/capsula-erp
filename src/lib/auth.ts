@@ -11,7 +11,8 @@ interface SessionPayload {
     firstName: string;
     lastName: string;
     role: string;
-    // Permisos adicionales si los implementamos
+    /** ID del usuario cuyo PIN fue validado como cajera activa en este terminal */
+    activeCashierId?: string;
 }
 
 export async function encrypt(payload: SessionPayload) {
@@ -54,6 +55,16 @@ export async function createSession(payload: SessionPayload) {
 
 export async function deleteSession() {
     (await cookies()).delete('session');
+}
+
+/**
+ * Actualiza activeCashierId en la sesión activa del terminal.
+ * Llamado tras validar exitosamente el PIN de una cajera.
+ */
+export async function updateSessionCashier(cashierId: string) {
+    const current = await getSession();
+    if (!current) return;
+    await createSession({ ...current, activeCashierId: cashierId });
 }
 
 // === UTILIDADES DE PERMISOS ===

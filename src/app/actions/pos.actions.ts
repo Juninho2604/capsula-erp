@@ -15,6 +15,7 @@ import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
+import { updateSessionCashier } from '@/lib/auth';
 
 // ============================================================================
 // TIPOS
@@ -665,6 +666,7 @@ export async function validateCashierPinAction(pin: string): Promise<ActionResul
 
         for (const candidate of candidates) {
             if (candidate.pin && await verifyPin(pin, candidate.pin)) {
+                await updateSessionCashier(candidate.id);
                 return {
                     success: true,
                     message: 'Autorización exitosa',
@@ -764,7 +766,7 @@ export async function createSalesOrderAction(
 
                         notes: finalNotes,
 
-                        createdById: session.id,
+                        createdById: session.activeCashierId ?? session.id,
                         areaId: areaId,
 
                         items: {
@@ -899,7 +901,7 @@ export async function recordCollectiveTipAction(data: {
                         amountPaid: data.tipAmount,
                         change: 0,
                         notes: data.note || 'Propina colectiva',
-                        createdById: session.id,
+                        createdById: session.activeCashierId ?? session.id,
                         areaId: salesArea.id,
                     },
                 });
@@ -1118,7 +1120,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     tableOrStationId: openTab.tableOrStationId,
                     openTabId: openTab.id,
                     notes: data.notes,
-                    createdById: session.id,
+                    createdById: session.activeCashierId ?? session.id,
                     items: {
                         create: data.items.map(item => ({
                             menuItemId: item.menuItemId,
