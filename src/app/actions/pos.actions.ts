@@ -264,6 +264,11 @@ async function resolveSalesAreaForBranch(branchId?: string) {
 const DELIVERY_FEE_NORMAL = 4.5;
 const DELIVERY_FEE_DIVISAS = 3;
 
+/** Redondea a 2 decimales: ≥0.5 sube, <0.5 baja. Aplica antes de guardar en BD. */
+function roundCents(n: number): number {
+    return Math.round(n * 100) / 100;
+}
+
 function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount'>) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
@@ -278,7 +283,7 @@ function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' |
             // Partial divisas: only the USD portion gets -33%
             const divisasBase = data.divisasUsdAmount ?? itemsSubtotal;
             subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = divisasBase / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS);
+            discount = roundCents(divisasBase / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS));
             total = subtotal - discount;
             discountReason = divisasBase < itemsSubtotal - 0.01
                 ? `Pago Mixto Divisas (33.33% sobre $${divisasBase.toFixed(2)}) - Delivery $3`
@@ -311,7 +316,7 @@ function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' |
 
     if (data.discountType === 'DIVISAS_33') {
         const divisasBase = data.divisasUsdAmount ?? subtotal;
-        discount = divisasBase / 3;
+        discount = roundCents(divisasBase / 3);
         discountReason = divisasBase < subtotal - 0.01
             ? `Pago Mixto Divisas (33.33% sobre $${divisasBase.toFixed(2)})`
             : 'Pago en Divisas (33.33%)';

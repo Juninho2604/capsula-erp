@@ -1498,7 +1498,7 @@ export default function POSSportBarPage() {
                 {/* Modo de pago + total calculado */}
                 {(() => {
                   const baseDiscount = discountType === "DIVISAS_33"
-                    ? (isPickupMixedMode ? (divisasUsdAmountPickup ?? 0) / 3 : cartTotal / 3)
+                    ? (isPickupMixedMode ? Math.round((divisasUsdAmountPickup ?? 0) / 3 * 100) / 100 : Math.round(cartTotal / 3 * 100) / 100)
                     : discountType === "CORTESIA_100" ? cartTotal
                     : discountType === "CORTESIA_PERCENT" ? cartTotal * (cortesiaPercentNum / 100)
                     : 0;
@@ -1549,10 +1549,10 @@ export default function POSSportBarPage() {
                             </div>
                           )}
                           {/* Vuelto para efectivo USD */}
-                          {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? cartTotal/3 : 0)) && (
+                          {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0)) && (
                             <div className="flex justify-between text-sm font-black px-1">
                               <span className="text-amber-400">Vuelto</span>
-                              <span className="text-amber-400">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? cartTotal/3 : 0))).toFixed(2)}</span>
+                              <span className="text-amber-400">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
                             </div>
                           )}
                         </div>
