@@ -744,6 +744,240 @@ Proteínas ──→ InventoryMovement (salida source, entrada subproductos) ─
 
 ---
 
-*Continúa en Sección 6: Módulos de Ventas...*
+## 6. Módulos de VENTAS / POS (9 módulos)
 
-*Generado el 2026-04-10 — Shanklish ERP / Cápsula SaaS — Partes 1-3*
+### 6.1 POS Restaurante
+
+- **Ruta**: `/dashboard/pos/restaurante`
+- **Página**: `src/app/dashboard/pos/restaurante/page.tsx` — **2581 líneas**, Client Component (el archivo más grande del sistema)
+- **Actions**: `pos.actions.ts` (1470 líneas) → funciones usadas:
+  - `getMenuForPOSAction()` — carga menú completo para POS
+  - `validateManagerPinAction(pin)` — autoriza descuentos/cortesías
+  - `validateCashierPinAction(pin)` — autoriza cambio de cajera
+  - `createSalesOrderAction(data)` — crea orden con descargo de inventario
+  - `recordCollectiveTipAction(data)` — propina colectiva a mesoneros
+  - `openTabAction(data)` — abre mesa/tab
+  - `addItemsToOpenTabAction(data)` — agrega items a tab abierto (envía a cocina)
+  - `registerOpenTabPaymentAction(data)` — registra pago parcial/total en tab
+  - `closeOpenTabAction(tabId)` — cierra tab
+  - `removeItemFromOpenTabAction(data)` — elimina item de tab
+  - `getRestaurantLayoutAction()` — zonas y mesas del restaurante
+  - `getUsersForTabAction()` — usuarios asignables a tabs
+- **Actions adicionales**: `exchange.actions.ts` → `getExchangeRateValue()`
+- **Modelos escritos**: SalesOrder, SalesOrderItem, SalesOrderItemModifier, SalesOrderPayment, OpenTab, OpenTabOrder, PaymentSplit, InvoiceCounter
+- **Modelos leídos**: MenuItem, MenuCategory, MenuModifier, ExchangeRate, ServiceZone, TableOrStation, Waiter
+- **Componentes**: `MixedPaymentSelector`, `PrintTicket`, `PriceDisplay`, `CashierShiftModal`, `BillDenominationInput`, `CurrencyCalculator`
+- **Lógica clave**:
+  - Dos flujos: **Venta Directa** (delivery-style, cobro inmediato) y **Mesa/Tab** (abrir → agregar items → enviar cocina → cobrar → cerrar)
+  - Service charge 10% toggle por venta (estado local `serviceFeeIncluded`)
+  - Descuentos: DIVISAS_33, CORTESIA_100, CORTESIA_PERCENT (requiere PIN gerente)
+  - Pago único (7 métodos) o mixto (MixedPaymentSelector)
+  - PaymentSplit: dividir cuenta por persona en mesa
+  - Descargo automático de inventario vía `inventory.service.registerSale()`
+- **Estado**: Funcional
+- **Valores hardcodeados** (detallados en Sección 11)
+
+### 6.2 POS Mesero
+
+- **Ruta**: `/dashboard/pos/mesero`
+- **Página**: `src/app/dashboard/pos/mesero/page.tsx` — Client Component
+- **Actions**: `pos.actions.ts` (subset: solo apertura de tab y agregar items, sin cobro)
+- **Modelos**: OpenTab, SalesOrder, SalesOrderItem, MenuItem
+- **Lógica**: Vista simplificada del POS Restaurante. Mesonero toma pedido por mesa, agrega items, envía a cocina. **No tiene acceso a cobro ni cierre de mesa.**
+- **Conexiones**: → OpenTab (abre/agrega items) → SalesOrder (crea con kitchenStatus: SENT)
+- **Estado**: Funcional
+- **enabledByDefault**: false (debe habilitarse manualmente)
+
+### 6.3 POS Delivery
+
+- **Ruta**: `/dashboard/pos/delivery`
+- **Página**: `src/app/dashboard/pos/delivery/page.tsx` — **898 líneas**, Client Component
+- **Actions**: `pos.actions.ts` → `createSalesOrderAction()`, `getMenuForPOSAction()`, `validateManagerPinAction()`; `exchange.actions.ts` → `getExchangeRateValue()`
+- **Modelos escritos**: SalesOrder, SalesOrderItem, SalesOrderPayment, InvoiceCounter
+- **Lógica clave**:
+  - Solo venta directa (sin tabs/mesas)
+  - Delivery fee automático: $4.50 normal / $3.00 divisas (**hardcodeado**)
+  - Mismos descuentos: DIVISAS_33, CORTESIA_100, CORTESIA_PERCENT
+  - Impresión de comanda + factura configurable por POSConfig (localStorage)
+- **Valores hardcodeados**:
+  ```typescript
+  // src/app/dashboard/pos/delivery/page.tsx:15-16
+  const DELIVERY_FEE_NORMAL = 4.5;
+  const DELIVERY_FEE_DIVISAS = 3;
+  ```
+- **Estado**: Funcional
+
+### 6.4 PedidosYA
+
+- **Ruta**: `/dashboard/pos/pedidosya`
+- **Página**: `src/app/dashboard/pos/pedidosya/page.tsx` — Client Component
+- **Actions**: `pedidosya.actions.ts` → `createPedidosYAOrderAction(data)`; `pos.actions.ts` → `getMenuForPOSAction()`
+- **Modelos**: SalesOrder, SalesOrderItem
+- **Lógica**: Carga órdenes de PedidosYA. Usa precios `pedidosYaPrice` del MenuItem si existen, sino precio normal. Canal: `PEDIDOS_YA`. No maneja pagos (PedidosYA cobra directamente).
+- **Lib**: `src/lib/pedidosya-price.ts` — lógica de precio PedidosYA
+- **Estado**: Funcional
+- **enabledByDefault**: false
+
+### 6.5 Cargar Ventas
+
+- **Ruta**: `/dashboard/ventas/cargar`
+- **Página**: `src/app/dashboard/ventas/cargar/page.tsx` — Client Component
+- **Actions**: `sales-entry.actions.ts` → 7 funciones:
+  - `getMenuItemsForSalesAction()` / `getMenuCategoriesAction()`
+  - `createSalesEntryAction(data)` — crea SalesOrder manual (sourceChannel configurable)
+  - `getTodaySalesAction()` — ventas del día
+  - `getSalesAreasAction()` — áreas disponibles
+  - `voidSalesOrderAction(params)` — anular venta
+  - `getSalesSummaryAction(startDate, endDate)` — resumen
+- **Modelos**: SalesOrder, SalesOrderItem, MenuItem, MenuCategory, Area
+- **Lógica**: Carga manual de ventas externas (plataformas, eventos). Permite crear órdenes sin pasar por el POS. Útil para registrar ventas de canales que no usan el sistema directamente.
+- **Estado**: Funcional
+
+### 6.6 Historial Ventas
+
+- **Ruta**: `/dashboard/sales`
+- **Página**: `src/app/dashboard/sales/page.tsx` — Client Component
+- **Actions**: `sales.actions.ts` (810 líneas) → 5 funciones:
+  - `getSalesHistoryAction(date?)` — listado de ventas por fecha
+  - `getSalesForArqueoAction(date)` — datos para arqueo de caja
+  - `getDailyZReportAction(date?)` — Reporte Z completo del día
+  - `voidSalesOrderAction(params)` — anulación con PIN y razón
+  - `getEndOfDaySummaryAction(date?)` — resumen de cierre del día
+- **Actions adicionales**: `pos.actions.ts` → `validateCashierPinAction(pin)`
+- **Modelos**: SalesOrder, SalesOrderItem, SalesOrderPayment, PaymentSplit, OpenTab
+- **Lógica clave**:
+  - **Reporte Z**: Agrupa ventas por método de pago, calcula totales Bs/USD, service charge (detectado por splitLabel `+10% serv`), descuentos, anulaciones
+  - **Arqueo**: Exporta a Excel vía `export-arqueo-excel.ts`
+  - **Anulación**: Requiere PIN de cajera, razón obligatoria, marca `voidedAt/voidedById/voidReason`
+- **Libs**: `export-z-report.ts`, `export-arqueo-excel.ts`, `arqueo-excel-utils.ts`
+- **Estado**: Funcional
+- **Gap**: Service charge se detecta por string matching (`splitLabel.includes('| +10% serv')`) — frágil
+
+### 6.7 Comandera Cocina
+
+- **Ruta**: `/kitchen`
+- **Página**: `src/app/kitchen/page.tsx` — Client Component (fuera de `/dashboard`, sin sidebar)
+- **API**: `src/app/api/kitchen/orders/route.ts` → GET (órdenes pendientes) + PATCH (actualizar estado)
+- **Modelos**: SalesOrder (filtrado por `kitchenStatus: 'SENT'`), SalesOrderItem, MenuItem, MenuCategory
+- **Lógica**:
+  - Polling constante al API route (no Server Actions — necesita refresh sin navegación)
+  - Filtra items: excluye categoría "Bebidas" (constante `BAR_CATEGORIES = ['Bebidas']`)
+  - PATCH actualiza `kitchenStatus` de la orden
+  - Impresión de comanda vía `printKitchenCommand()` (`src/lib/print-command.ts`)
+- **Conexiones**: ← SalesOrder (órdenes con kitchenStatus SENT), → SalesOrder (marca como READY)
+- **Estado**: Funcional
+- **Gap**: `BAR_CATEGORIES` hardcodeado — debería ser configurable
+
+### 6.8 Comandera Barra
+
+- **Ruta**: `/kitchen/barra`
+- **Página**: `src/app/kitchen/barra/page.tsx` — Client Component
+- **API**: Mismo `src/app/api/kitchen/orders/route.ts` con `?station=bar`
+- **Lógica**: Idéntica a Comandera Cocina pero filtro invertido: **solo** categoría "Bebidas"
+- **Estado**: Funcional
+
+### 6.9 Configuración POS
+
+- **Ruta**: `/dashboard/config/pos`
+- **Página**: `src/app/dashboard/config/pos/page.tsx` — Server Component (lee SystemConfig)
+- **Actions**: `system-config.actions.ts` → `getStockValidationEnabled()`, `setStockValidationEnabled()`
+- **Lib**: `src/lib/pos-settings.ts` — POSConfig en localStorage (por terminal/estación):
+  ```typescript
+  interface POSConfig {
+    printComandaOnDelivery: boolean;      // default: false
+    printReceiptOnDelivery: boolean;      // default: true
+    printComandaOnRestaurant: boolean;    // default: true
+    printReceiptOnRestaurant: boolean;    // default: true
+    stockValidationEnabled: boolean;      // default: false
+  }
+  ```
+- **Lógica**: Configuración híbrida — `stockValidationEnabled` se lee de BD (SystemConfig) + localStorage. El resto es solo localStorage. Cada terminal puede tener configuración distinta.
+- **Estado**: Funcional
+- **Gap**: Mezcla de BD y localStorage dificulta administración centralizada
+
+### Flujo POS Completo End-to-End
+
+```
+1. Cajera abre POS
+   ├── getMenuForPOSAction() → carga menú completo (categorías, items, modificadores, precios)
+   └── getExchangeRateValue() → tasa del día para conversión Bs
+
+2. Selecciona items → arma carrito (CartItem[])
+   └── Cada CartItem: { menuItemId, name, price, quantity, modifiers[], notes? }
+
+3A. RESTAURANTE (mesa):
+   ├── openTabAction() → crea OpenTab + asigna zona/mesa/mesonero
+   ├── addItemsToOpenTabAction() → crea SalesOrder con kitchenStatus: SENT
+   │   └── Cocina: /kitchen ve la orden → marca como READY
+   ├── registerOpenTabPaymentAction() → pago parcial/total → PaymentSplit
+   │   ├── Pago único → 1 SalesOrderPayment
+   │   └── Pago mixto → N SalesOrderPayment (MixedPaymentSelector)
+   └── closeOpenTabAction() → cierra tab, actualiza totales
+
+3B. DELIVERY (directo):
+   └── createSalesOrderAction() → crea SalesOrder + items + pagos + descargo inventario
+       ├── Calcula delivery fee ($4.50 normal / $3.00 divisas)
+       ├── Aplica descuento si aplica (DIVISAS_33 / CORTESIA)
+       ├── Registra SalesOrderPayment[]
+       ├── registerSale() → descuenta ingredientes por receta de cada item
+       └── getNextCorrelativo('DELIVERY') → número único DEL-0042
+
+4. Descargo automático de inventario (inventory.service.ts)
+   ├── Para cada SalesOrderItem con MenuItem que tiene recipeId:
+   │   ├── Busca Recipe → RecipeIngredient[]
+   │   └── Crea InventoryMovement(SALE) por cada ingrediente
+   └── Actualiza InventoryLocation.currentStock
+
+5. Post-venta
+   ├── Historial: /dashboard/sales → getSalesHistoryAction()
+   ├── Reporte Z: getDailyZReportAction() → agrupa por método de pago
+   ├── Arqueo: getSalesForArqueoAction() → exporta Excel
+   └── Anulación: voidSalesOrderAction() → marca voidedAt, requiere PIN
+```
+
+### Valores Hardcodeados en POS (candidatos a Panel Admin)
+
+| Valor | Archivo | Línea | Descripción |
+|-------|---------|-------|-------------|
+| `DELIVERY_FEE_NORMAL = 4.5` | `pos.actions.ts` | 263 | Tarifa delivery pago Bs |
+| `DELIVERY_FEE_DIVISAS = 3` | `pos.actions.ts` | 264 | Tarifa delivery pago divisas |
+| `DELIVERY_FEE_NORMAL = 4.5` | `delivery/page.tsx` | 15 | Duplicado en frontend |
+| `DELIVERY_FEE_DIVISAS = 3` | `delivery/page.tsx` | 16 | Duplicado en frontend |
+| `* 0.1` (10% servicio) | `restaurante/page.tsx` | 696, 769 | Service charge restaurante |
+| `* 1.1` (total + 10%) | `restaurante/page.tsx` | 430 | Monto con servicio incluido |
+| `DIVISAS_33` (1/3 descuento) | `pos.actions.ts` | 276-280 | Descuento divisas fijo |
+| `CORTESIA_100` | `pos.actions.ts` | 285-286 | Cortesía 100% |
+| `CORTESIA_PERCENT` | `pos.actions.ts` | 290-292 | Cortesía porcentaje variable |
+| `'| +10% serv'` | `sales.actions.ts` | 120,264,428,737 | Detección service charge por string |
+| `BAR_CATEGORIES = ['Bebidas']` | `api/kitchen/orders/route.ts` | 7 | Categorías que van a barra |
+
+### Métodos de Pago Hardcodeados (3 archivos)
+
+**`MixedPaymentSelector.tsx:23-31`**:
+```typescript
+const METHODS = [
+  { id: 'CASH_USD',       label: '💵 Cash $' },
+  { id: 'CASH_EUR',       label: '€ Cash €' },
+  { id: 'ZELLE',          label: '⚡ Zelle' },
+  { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
+  { id: 'PDV_SHANKLISH',  label: '💳 PDV Shanklish' },
+  { id: 'PDV_SUPERFERRO', label: '💳 PDV Superferro' },
+  { id: 'MOVIL_NG',       label: '📱 Pago Móvil NG' },
+  { id: 'CORTESIA',       label: '🎁 Cortesía' },
+];
+const BS_METHODS = new Set(['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG','MOBILE_PAY','CARD','TRANSFER']);
+```
+
+**`restaurante/page.tsx:147-149`**:
+```typescript
+const BS_SINGLE_METHODS = new Set(["PDV_SHANKLISH","PDV_SUPERFERRO","MOVIL_NG","CASH_BS"]);
+const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_SUPERFERRO","MOVIL_NG","CASH_BS"];
+```
+
+**`delivery/page.tsx:226`**: Idéntico `BS_SINGLE_METHODS` inline.
+
+---
+
+*Continúa en Sección 7: Módulos de Administración...*
+
+*Generado el 2026-04-10 — Shanklish ERP / Cápsula SaaS — Partes 1-4*
