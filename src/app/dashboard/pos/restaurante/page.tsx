@@ -24,6 +24,7 @@ import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
+import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 
 // ============================================================================
 // TIPOS
@@ -268,6 +269,9 @@ export default function POSSportBarPage() {
   const [cashierName, setCashierName] = useState("");
   const [showChangeCashierModal, setShowChangeCashierModal] = useState(false);
   const [isPickupMode, setIsPickupMode] = useState(false);
+
+  // ── Subcuentas ────────────────────────────────────────────────────────────
+  const [subAccountMode, setSubAccountMode] = useState(false);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
   const [checkoutTip, setCheckoutTip] = useState(''); // propina en el momento del cobro
 
@@ -1698,8 +1702,27 @@ export default function POSSportBarPage() {
                     </span>
                   </div>
                 </div>
+                {/* Subcuentas toggle */}
+                <button
+                  onClick={() => setSubAccountMode((p) => !p)}
+                  className={`w-full py-2 rounded-xl text-xs font-black transition ${
+                    subAccountMode
+                      ? "bg-amber-500 text-black"
+                      : "bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70"
+                  }`}
+                >
+                  ÷ {subAccountMode ? "Viendo subcuentas — Volver a cobro normal" : "Dividir cuenta (subcuentas)"}
+                </button>
               </div>
 
+              {subAccountMode ? (
+                <SubAccountPanel
+                  openTabId={activeTab.id}
+                  exchangeRate={exchangeRate}
+                  onClose={() => setSubAccountMode(false)}
+                  onTabUpdated={() => loadData()}
+                />
+              ) : (
               <div className="flex-1 overflow-y-auto p-3 space-y-3">
                 {/* Temporary cart */}
                 <div className="rounded-xl border border-border bg-secondary p-3">
@@ -2036,6 +2059,7 @@ export default function POSSportBarPage() {
                   </button>
                 </div>
               </div>
+              )}
             </div>
           )}
         </aside>
