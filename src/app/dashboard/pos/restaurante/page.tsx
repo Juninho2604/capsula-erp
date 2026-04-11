@@ -1131,7 +1131,7 @@ export default function POSSportBarPage() {
       {/* ── MAIN GRID ────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* ══ LEFT: TABLE GRID ═══════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-72 xl:w-80 shrink-0 border-r border-border bg-card/30 flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-64 tablet-land:w-64 xl:w-72 shrink-0 border-r border-border bg-card/30 flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
           {/* Zone selector */}
           <div className="p-4 border-b border-border space-y-3">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Secciones</p>
@@ -1341,7 +1341,7 @@ export default function POSSportBarPage() {
               </button>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
 
               {/* ── Group buttons (one per unique posGroup, when no group is selected and not searching) ── */}
               {!selectedGroup && !productSearch && groupsInView.map((group) => {
@@ -1419,7 +1419,7 @@ export default function POSSportBarPage() {
         </main>
 
         {/* ══ RIGHT: ACCOUNT PANEL ════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-[420px] xl:w-[480px] shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-[380px] tablet-land:w-[380px] xl:w-[440px] shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
           {isPickupMode ? (
             <div className="flex-1 flex flex-col overflow-hidden bg-secondary/80">
               <div className="p-4 border-b border-indigo-900/50 bg-indigo-900/20 space-y-2 shrink-0">
