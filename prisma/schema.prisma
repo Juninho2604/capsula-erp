@@ -928,7 +928,9 @@ model SalesOrderItem {
   
   // Modificadores seleccionados
   modifiers       SalesOrderItemModifier[]
-  
+  // Asignaciones a subcuentas
+  subAccountItems SubAccountItem[]
+
   @@index([orderId])
   @@index([menuItemId])
 }
@@ -1587,6 +1589,7 @@ model OpenTab {
   orders          SalesOrder[]
   orderLinks      OpenTabOrder[]
   paymentSplits   PaymentSplit[]
+  subAccounts     TabSubAccount[]
 
   // Soft Delete
   deletedAt       DateTime?
@@ -1614,6 +1617,9 @@ model PaymentSplit {
   openTab        OpenTab   @relation(fields: [openTabId], references: [id], onDelete: Cascade)
   salesOrderId   String?
   salesOrder     SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  // null = pago de la mesa completa; set = pago de una subcuenta específica
+  subAccountId   String?
+  subAccount     TabSubAccount? @relation(fields: [subAccountId], references: [id])
   splitLabel     String
   splitType      String   @default("EQUAL") // EQUAL, ITEM_BASED, CUSTOM
   paymentMethod  String?
@@ -1631,6 +1637,59 @@ model PaymentSplit {
 
   @@index([openTabId, status])
   @@index([salesOrderId])
+  @@index([subAccountId])
+}
+
+// ─── SUBCUENTAS ──────────────────────────────────────────────────────────────
+// Una subcuenta es una división lógica dentro de una mesa (OpenTab).
+// Hasta 25 subcuentas por mesa. Cada una tiene su propio subtotal y service charge.
+// Los ítems se asignan a subcuentas via SubAccountItem (pueden ser parciales: qty < order item qty).
+
+model TabSubAccount {
+  id            String   @id @default(cuid())
+  openTabId     String
+  openTab       OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+
+  label         String            // "Cuenta 1", "Carlos", etc. — editable
+  sortOrder     Int      @default(0)
+  status        String   @default("OPEN") // OPEN | PAID | VOID
+
+  // Totales propios (recalculados por el server action en cada mutación)
+  subtotal      Float    @default(0)
+  serviceCharge Float    @default(0)  // siempre subtotal * 0.10
+  total         Float    @default(0)  // subtotal + serviceCharge
+
+  // Cobro (se populan cuando status = PAID)
+  paidAmount    Float    @default(0)
+  paymentMethod String?
+  paidAt        DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         SubAccountItem[]
+  paymentSplits PaymentSplit[]
+
+  @@index([openTabId, status])
+}
+
+model SubAccountItem {
+  id               String        @id @default(cuid())
+  subAccountId     String
+  subAccount       TabSubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  salesOrderItemId String
+  salesOrderItem   SalesOrderItem @relation(fields: [salesOrderItemId], references: [id], onDelete: Cascade)
+
+  // Cantidad asignada a esta subcuenta (puede ser menor que SalesOrderItem.quantity)
+  quantity         Int
+  // Snapshot del precio al momento de asignar (unitPrice * quantity + modificadores prorrateados)
+  lineTotal        Float
+
+  createdAt        DateTime @default(now())
+
+  @@index([subAccountId])
+  @@index([salesOrderItemId])
 }
 
 // Líneas de pago de una orden (pagos mixtos: efectivo + zelle + punto, etc.)
