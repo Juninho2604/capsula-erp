@@ -54,7 +54,7 @@ shanklish-erp-main/
 │   │   ├── users/                 # ChangePasswordDialog
 │   │   └── *.tsx                  # 2 parsers WhatsApp (compras + órdenes)
 │   ├── lib/
-│   │   ├── constants/             # modules-registry.ts, roles.ts, units.ts
+│   │   ├── constants/             # modules-registry.ts, roles.ts, permissions-registry.ts, units.ts
 │   │   ├── auth.ts                # JWT encrypt/decrypt/session
 │   │   ├── permissions.ts         # hasPermission() por nivel numérico
 │   │   ├── audit-log.ts           # writeAuditLog() — tabla forense
@@ -87,7 +87,7 @@ shanklish-erp-main/
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
-| **User** | id, email, passwordHash, pin, role, allowedModules, isActive, deletedAt | Usuarios del sistema. 10 roles posibles. `allowedModules` (JSON array nullable) filtra módulos por usuario individual |
+| **User** | id, email, passwordHash, pin, role, allowedModules, grantedPerms, revokedPerms, isActive, deletedAt | Usuarios del sistema. 9 roles activos. `allowedModules` (JSON array nullable) filtra módulos por usuario; `grantedPerms`/`revokedPerms` (JSON arrays de PERM keys) amplían o restringen permisos del rol base |
 | **Area** | id, name, branchId, isActive, deletedAt | Áreas/almacenes de trabajo (Cocina, Bodega, Barra, etc.) |
 | **Branch** | id, code, name, legalName, timezone, currencyCode | Sucursal física. Relaciona zonas, mesas, mesoneros |
 
@@ -246,57 +246,82 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 - `loginAction(prevState, formData)` — valida email+password, crea sesión
 - `logoutAction()` — elimina cookie de sesión
 
-### 3.2 Los 10 Roles del Sistema
+### 3.2 Los 9 Roles del Sistema
 
 **Archivo**: `src/lib/constants/roles.ts`
 
-| Rol | Nivel | Descripción |
-|-----|-------|-------------|
-| OWNER | 1 (100) | Acceso total. Único que activa/desactiva módulos |
-| AUDITOR | 2 (90) | Solo lectura en todo, acceso a auditoría y reportes |
-| ADMIN_MANAGER | 3 (80) | Gestión administrativa y financiera |
-| OPS_MANAGER | 4 (70) | Gestión de operaciones, inventario, producción |
-| HR_MANAGER | 5 (60) | Recursos humanos |
-| CHEF | 6 (50) | Recetas, producción, inventario (lectura) |
-| AREA_LEAD | 7 (40) | Gestión de área específica |
-| KITCHEN_CHEF | 7 (40) | Comandera de cocina (solo vista) |
-| CASHIER_RESTAURANT | 8 (10) | POS restaurante + historial propio |
-| CASHIER_DELIVERY | 8 (10) | POS delivery + historial propio |
+| Rol | Nivel RBAC | Nivel permisos | Descripción |
+|-----|-----------|---------------|-------------|
+| OWNER | 1 | 100 | Acceso total. Único que activa/desactiva módulos |
+| AUDITOR | 2 | 90 | Solo lectura en todo, acceso a auditoría y reportes |
+| ADMIN_MANAGER | 3 | 80 | Gestión administrativa y financiera |
+| OPS_MANAGER | 4 | 70 | Gestión de operaciones, inventario, producción |
+| HR_MANAGER | 5 | 60 | Recursos humanos |
+| CHEF | 6 | 50 | Recetas, producción, inventario (lectura) |
+| AREA_LEAD | 7 | 40 | Gestión de área específica |
+| KITCHEN_CHEF | 7 | 15 | Comandera de cocina (solo vista) |
+| CASHIER | 8 | 20 | Cajera unificada. Módulos accesibles controlados por `allowedModules` |
+| WAITER | 8 | 15 | Toma de pedidos en mesa |
 
-**Nota**: Existen dos sistemas de niveles numéricos paralelos:
-- `roles.ts:ROLE_HIERARCHY` — menor número = mayor rango (1-8)
-- `permissions.ts` — mayor número = mayor rango (10-100)
-- **Gap**: No están unificados. `permissions.ts` no incluye KITCHEN_CHEF, WAITER, ni CASHIER_DELIVERY con sus niveles correctos.
+**CASHIER es el rol canónico único para cajeras** (Fase 3 RBAC). Los roles `CASHIER_RESTAURANT` y `CASHIER_DELIVERY` fueron eliminados del codebase en Fase 4. El acceso a POS restaurante vs. delivery se controla ahora mediante `allowedModules` por usuario individual.
 
-### 3.3 Sistema de Permisos
+Existen dos sistemas de niveles numéricos paralelos (históricamente separados, no unificados en una sola fuente):
+- `roles.ts:ROLE_HIERARCHY` — menor número = mayor rango (1-8), usado en `canManageRole()`
+- `permissions.ts:roleLevels` — mayor número = mayor rango (15-100), usado en `hasPermission()`
 
-**Archivo**: `src/lib/permissions.ts` — Sistema numérico simple:
+### 3.3 Sistema de Permisos — 4 Capas
+
+El sistema RBAC opera en **4 capas apiladas**:
+
+| Capa | Mecanismo | Archivo | Alcance |
+|------|-----------|---------|---------|
+| 1 | **Middleware** — rutas protegidas por rol | `middleware.ts` | `/dashboard/usuarios`, `/dashboard/inventario/auditorias`, `/dashboard/config/*` |
+| 2 | **MODULE_ROLE_ACCESS** — módulos visibles en Sidebar | `modules-registry.ts` | Todos los módulos del sistema |
+| 3 | **allowedModules** — restricción por usuario | `User.allowedModules` (BD) | Subconjunto de módulos de Capa 2 |
+| 4 | **grantedPerms / revokedPerms** — permisos granulares | `User.grantedPerms/revokedPerms` (BD) | Acciones específicas dentro de módulos |
+
+#### Capa 1 — `src/lib/permissions.ts` (sistema numérico heredado)
 
 ```typescript
-// Nivel del rol → número. userLevel >= requiredLevel = acceso permitido
-const roleLevels = {
-  OWNER: 100, AUDITOR: 90, ADMIN_MANAGER: 80, OPS_MANAGER: 70,
-  HR_MANAGER: 60, CHEF: 50, AREA_LEAD: 40, STAFF: 10
-};
-
-export const PERMISSIONS = {
-  CONFIGURE_ROLES: 70,    // OPS_MANAGER+
-  APPROVE_TRANSFERS: 40,  // AREA_LEAD+
-  VIEW_COSTS: 80,         // ADMIN_MANAGER+
-  VIEW_USERS: 60,         // HR_MANAGER+
-  MANAGE_USERS: 70,       // OPS_MANAGER+
-};
+// userLevel >= requiredLevel = acceso permitido
+roleLevels = { OWNER: 100, AUDITOR: 90, ADMIN_MANAGER: 80, OPS_MANAGER: 70,
+               HR_MANAGER: 60, CHEF: 50, AREA_LEAD: 40, CASHIER: 20,
+               KITCHEN_CHEF: 15, WAITER: 15, STAFF: 10 }
+PERMISSIONS = { CONFIGURE_ROLES: 70, APPROVE_TRANSFERS: 40,
+                VIEW_COSTS: 80, VIEW_USERS: 60, MANAGE_USERS: 70 }
 ```
 
-**Archivo**: `src/lib/constants/roles.ts` — Matriz RBAC detallada:
-- `ROLE_PERMISSIONS` — por módulo y acción (view, create, edit, delete, approve, export)
-- `hasPermission(role, module, permission)` — verificación granular
+#### Capas 2–3 — `src/lib/constants/roles.ts`
+
+- `ROLE_PERMISSIONS` — matriz por módulo y acción (view, create, edit, delete, approve, export)
 - `canManageRole(actorRole, targetRole)` — jerarquía (solo superiores modifican inferiores)
 - `getManageableRoles(actorRole)` — qué roles puede crear/editar
 
+#### Capa 4 — `src/lib/constants/permissions-registry.ts` *(nuevo)*
+
+Catálogo de **17 permisos granulares** con resolución por usuario:
+
+```typescript
+// Permisos disponibles (PERM keys):
+// POS: VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS, REPRINT_COMANDA
+// Inventario: ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV
+// Financiero: EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES
+// Admin: MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST
+
+// ROLE_BASE_PERMS — set base por rol (sin override)
+// Resolución final: base ∪ grantedPerms - revokedPerms
+resolvePerms(role, grantedPerms?, revokedPerms?) → Set<PermKey>
+canDo(role, perm, grantedPerms?, revokedPerms?)   → boolean
+```
+
+`PERM_GROUPS` — 4 grupos para la UI (POS/Ventas, Inventario, Financiero, Administración).
+`PERM_LABELS` — etiquetas y descripciones legibles para cada permiso.
+
+**Flujo de resolución**: El JWT carga `grantedPerms`/`revokedPerms` en la sesión (`auth.actions.ts`). `resolvePerms()` aplica la fórmula `base ∪ granted − revoked` en runtime — no hay cache, siempre calculado desde la sesión.
+
 ### 3.4 Middleware RBAC
 
-**Archivo**: `src/middleware.ts` (56 líneas)
+**Archivo**: `src/middleware.ts`
 
 Matcher: `/dashboard/:path*` y `/login`
 
@@ -308,17 +333,19 @@ Matcher: `/dashboard/:path*` y `/login`
 | Auditorías | `/dashboard/inventario/auditorias`, `/dashboard/inventario/importar` | OWNER, ADMIN_MANAGER, OPS_MANAGER, AUDITOR |
 | Config global | `/dashboard/config/*` | Solo OWNER |
 
-**Gap**: El middleware solo cubre 3 rutas específicas. El control granular para el resto de módulos se hace client-side vía `MODULE_ROLE_ACCESS` en el Sidebar. Esto significa que un usuario podría acceder a `/dashboard/finanzas` directamente si conoce la URL, aunque no debería ver ese módulo.
+**Nota**: El middleware cubre las rutas de mayor riesgo. Para el resto de módulos, el control de acceso se aplica en dos niveles: el Sidebar filtra por `MODULE_ROLE_ACCESS` (no muestra el enlace), y cada Server Component/Action hace su propia verificación de rol antes de servir datos. Un usuario que acceda directamente a una URL no autorizada verá la página vacía o recibirá error del Server Action, pero no datos sensibles.
 
-### 3.5 Acceso por Módulos — Doble Filtro
+### 3.5 Acceso por Módulos — Triple Filtro
 
-El acceso real a un módulo requiere pasar **dos filtros**:
+Un módulo aparece en el Sidebar solo si pasa los **tres filtros** en orden:
 
-1. **Módulo habilitado** en la instalación → `SystemConfig.enabled_modules` (BD) o `NEXT_PUBLIC_ENABLED_MODULES` (env var fallback)
-2. **Rol autorizado** → `MODULE_ROLE_ACCESS[moduleId].includes(userRole)` en `modules-registry.ts:549-600`
-3. *(Opcional)* **Módulos individuales** → `User.allowedModules` (JSON array, null = sin restricción extra)
+1. **Habilitado** en la instalación → `SystemConfig.enabled_modules` (BD) o `NEXT_PUBLIC_ENABLED_MODULES` (env var fallback)
+2. **Rol autorizado** → `MODULE_ROLE_ACCESS[moduleId].includes(userRole)` en `modules-registry.ts`
+3. *(Restricción individual)* **allowedModules** → si `User.allowedModules` no es null, el módulo debe estar en ese array
 
-Función clave: `getVisibleModules(userRole, enabledIds, userAllowedModules)` en `modules-registry.ts:629`
+Función clave: `getVisibleModules(userRole, enabledIds, userAllowedModules)` en `modules-registry.ts`
+
+Los permisos granulares (Capa 4) no controlan visibilidad de módulos sino acciones dentro de ellos (anular orden, exportar, abrir caja, etc.).
 
 ---
 
@@ -406,8 +433,7 @@ Roles con acceso a **todos** los módulos de operaciones:
 Roles con acceso **restringido**:
 - CHEF → dashboard, estadísticas, inventario, conteo, auditorías, transferencias, recetas, producción, compras, proteínas, sku_studio, asistente
 - AREA_LEAD → dashboard, estadísticas, inventario diario/general, conteo, auditorías, transferencias, producción, compras, proteínas
-- CASHIER_RESTAURANT → estadísticas, pos_restaurant, sales_history, barra_display, pos_config, caja, reservations, queue
-- CASHIER_DELIVERY → estadísticas, pos_delivery, pedidosya, pos_config, caja, tasa_cambio
+- CASHIER → estadísticas, pos_restaurant, pos_delivery, pedidosya, sales_history, barra_display, pos_config, reservations, queue, tasa_cambio, caja *(módulos visibles filtrados además por `allowedModules`)*
 - KITCHEN_CHEF → estadísticas, kitchen_display, barra_display
 - WAITER → estadísticas, pos_waiter
 - HR_MANAGER → dashboard, users
@@ -985,17 +1011,26 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
 
 - **Ruta**: `/dashboard/usuarios`
 - **Página**: Server Component — importa `getUsers()` + `getEnabledModulesFromDB()`
-- **Actions**: `user.actions.ts` → 6 funciones:
-  - `getUsers()` — lista con roles y allowedModules
+- **Actions**: `user.actions.ts` → 7 funciones:
+  - `getUsers()` — lista con roles, allowedModules, grantedPerms, revokedPerms
   - `updateUserRole(userId, newRole)` — cambia rol (jerarquía: solo superiores)
   - `toggleUserStatus(userId, isActive)` — activar/desactivar
   - `changePasswordAction(currentPassword, newPassword)` — cambio propio
   - `updateUserModules(userId, allowedModules)` — asigna módulos individuales
   - `updateUserPin(userId, rawPin)` — asigna/cambia PIN de otro usuario (requiere MANAGE_USERS)
-- **Modelos**: User
-- **Componentes**: `ChangePasswordDialog`, `PinSection` (panel lateral derecho de `users-view.tsx`)
+  - `updateUserPermsAction(userId, grantedPerms, revokedPerms)` — sobreescribe permisos granulares
+- **Modelos**: User (`grantedPerms` y `revokedPerms` son campos `String?` en BD — JSON arrays de PERM keys)
+- **Componentes**: `ChangePasswordDialog`, `PinSection`, `PermsSection` (panel lateral derecho de `users-view.tsx`)
 - **Middleware**: Ruta protegida — solo OWNER, ADMIN_MANAGER
 - **Estado**: Funcional
+
+#### Panel de Permisos Granulares (`PermsSection`)
+
+UI dentro de `/dashboard/usuarios` para gestionar la Capa 4:
+- Muestra los 17 permisos agrupados en 4 grupos (`PERM_GROUPS`) con checkboxes tri-estado: **base** (gris — del rol), **granted** (verde — añadido), **revoked** (rojo — quitado)
+- Solo aparece la opción de revocar para permisos que el rol base tiene; solo aparece grant para los que no tiene
+- Persiste con `updateUserPermsAction(userId, granted[], revoked[])`
+- Visible solo para OWNER/ADMIN_MANAGER
 
 #### Gestión de PINs
 
@@ -1029,6 +1064,8 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
 - **Actions**: `user.actions.ts` → `updateUserRole(userId, newRole)`
 - **Lógica**: Vista de usuarios agrupados por rol. Permite reasignar roles respetando jerarquía (`canManageRole()`).
 - **Estado**: Funcional
+
+**Nota**: La configuración de permisos granulares (grantedPerms/revokedPerms) vive en `/dashboard/usuarios` dentro del panel de cada usuario (`PermsSection`), no en esta página. Esta página solo cambia el rol base.
 
 ### 7.4 Módulos (toggle por instalación)
 
@@ -1291,7 +1328,8 @@ Todos estos módulos están **deshabilitados por default** (`enabledByDefault: f
 | `mock-data.ts` | Datos de ejemplo para desarrollo |
 | `utils.ts` | Utilidades generales (cn, etc.) |
 | `constants/modules-registry.ts` | Registro maestro de módulos (682 líneas) |
-| `constants/roles.ts` | Roles, jerarquía, permisos RBAC (298 líneas) |
+| `constants/roles.ts` | Roles, jerarquía, ROLE_PERMISSIONS, canManageRole |
+| `constants/permissions-registry.ts` | Catálogo granular de 17 PERM keys, ROLE_BASE_PERMS, resolvePerms(), canDo(), PERM_GROUPS |
 | `constants/units.ts` | Unidades de medida con conversión |
 
 ---
@@ -1538,8 +1576,8 @@ ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
 | **P2** | Panel Admin — Fees y Porcentajes | Media (SystemConfig + 4 archivos) | Delivery fee, service charge configurables |
 | **P3** | Panel Admin — Tipos de Descuento | Media (toggle + POS refactor) | Descuentos configurables por instalación |
 | **P4** | Panel Admin — Canales de Orden | Baja (toggle de orderType) | Canales activables por cliente |
-| **P5** | Middleware RBAC completo | Media (middleware.ts) | Cerrar gap de acceso directo por URL |
-| **P6** | Unificar sistemas de permisos | Baja (refactor permissions.ts + roles.ts) | Un solo sistema numérico coherente |
+| **P5** | Middleware RBAC completo | Media (middleware.ts) | Cerrar gap de acceso directo por URL *(parcialmente mitigado por Capa 4)* |
+| **P6** | Unificar sistemas de niveles numéricos | Baja (permissions.ts ↔ roles.ts) | Un solo sistema numérico coherente |
 | **P7** | Service charge como dato (no string matching) | Media (schema + POS + sales) | Elimina detección frágil por splitLabel |
 
 ---
@@ -1561,8 +1599,8 @@ ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
 | # | Gap | Archivo | Impacto |
 |---|-----|---------|---------|
 | 6 | **JWT secret con fallback hardcodeado** | `src/lib/auth.ts:5` | Si no se configura env var, todos los JWT usan la misma key |
-| 7 | **Middleware RBAC incompleto** — solo 3 rutas protegidas | `middleware.ts` | Acceso directo por URL a módulos no autorizados |
-| 8 | **Dos sistemas de niveles numéricos** no unificados | `permissions.ts` vs `roles.ts` | KITCHEN_CHEF, WAITER, CASHIER_DELIVERY no en permissions.ts |
+| 7 | **Middleware RBAC cubre solo 3 rutas críticas** — resto se protege en Server Actions | `middleware.ts` | Acceso directo por URL posible, pero Server Actions no retornan datos a roles no autorizados |
+| 8 | **Dos sistemas de niveles numéricos** no unificados | `permissions.ts` vs `roles.ts` | KITCHEN_CHEF, WAITER sin nivel en ROLE_HIERARCHY; CASHIER_DELIVERY ya eliminado |
 
 ### Gaps Funcionales
 
