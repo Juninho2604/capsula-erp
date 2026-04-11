@@ -371,10 +371,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
         <div className="space-y-5">
             {/* Input Area */}
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="text-2xl">💬</span> Pegar Chat de WhatsApp
-                    </h3>
+                <div className="flex items-end justify-end mb-3">
                     <span className="text-xs text-gray-400">{allMenuItems.length} items en menú</span>
                 </div>
 

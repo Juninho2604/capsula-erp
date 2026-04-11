@@ -410,90 +410,73 @@ export default function POSDeliveryPage() {
 
             <div className="flex h-screen pt-16 md:pt-24 overflow-hidden">
                 <div className={`flex-1 flex flex-col overflow-hidden bg-background ${mobileView === "menu" ? "flex" : "hidden"} lg:flex`}>
-                    {/* WhatsApp Parser Panel */}
-                    {showWhatsAppParser ? (
-                        <div className="flex-1 overflow-y-auto p-6 pb-24 glass-panel m-4 rounded-3xl border-primary/5">
-                            <WhatsAppOrderParser
-                                onOrderReady={(items, name, phone, address) => {
-                                    setCart(items);
-                                    setCustomerName(name);
-                                    setCustomerPhone(phone);
-                                    setCustomerAddress(address);
-                                    setShowWhatsAppParser(false);
-                                }}
+                    {/* Search bar */}
+                    <div className="px-6 py-4 bg-background border-b border-border">
+                        <div className="relative group">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
+                            <input
+                                type="text"
+                                value={productSearch}
+                                onChange={(e) => setProductSearch(e.target.value)}
+                                placeholder="Buscar producto por nombre o SKU..."
+                                className="w-full bg-secondary/50 border border-border rounded-2xl py-4 pl-12 pr-12 text-base font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
                             />
+                            {productSearch && (
+                                <button
+                                    onClick={() => setProductSearch('')}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
+                                >
+                                    ✕
+                                </button>
+                            )}
                         </div>
-                    ) : (
-                        <>
-                            {/* Search bar */}
-                            <div className="px-6 py-4 bg-background border-b border-border">
-                                <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
-                                    <input
-                                        type="text"
-                                        value={productSearch}
-                                        onChange={(e) => setProductSearch(e.target.value)}
-                                        placeholder="Buscar producto por nombre o SKU..."
-                                        className="w-full bg-secondary/50 border border-border rounded-2xl py-4 pl-12 pr-12 text-base font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
-                                    />
-                                    {productSearch && (
-                                        <button
-                                            onClick={() => setProductSearch('')}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            {/* Categories */}
-                            {!productSearch && (
-                                <div className="flex gap-3 px-6 py-4 bg-background border-b border-border overflow-x-auto no-scrollbar scroll-smooth">
-                                    {categories.map((cat: any) => (
-                                        <button 
-                                            key={cat.id} 
-                                            onClick={() => setSelectedCategory(cat.id)} 
-                                            className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
-                                        >
-                                            <span className="text-xl group-hover:rotate-12 transition-transform">{getCategoryIcon(cat.name)}</span> {cat.name}
-                                        </button>
-                                    ))}
+                    </div>
+                    {/* Categories */}
+                    {!productSearch && (
+                        <div className="flex gap-3 px-6 py-4 bg-background border-b border-border overflow-x-auto no-scrollbar scroll-smooth">
+                            {categories.map((cat: any) => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setSelectedCategory(cat.id)}
+                                    className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
+                                >
+                                    <span className="text-xl group-hover:rotate-12 transition-transform">{getCategoryIcon(cat.name)}</span> {cat.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex-1 p-6 overflow-y-auto pb-24 scroll-smooth">
+                        {productSearch && (
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
+                                💡 {filteredMenuItems.length} productos coinciden con tu búsqueda
+                            </p>
+                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {filteredMenuItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleAddToCart(item)}
+                                    className="capsula-card group p-3 md:p-5 text-left h-32 md:h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="font-black text-base uppercase leading-tight tracking-tight group-hover:text-primary transition-colors">{item.name}</div>
+                                    <div className="flex items-end justify-between">
+                                        <div className="text-2xl font-black text-primary italic">
+                                            <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
+                                        </div>
+                                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:translate-y-4 lg:group-hover:translate-y-0">
+                                            ➕
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                            {filteredMenuItems.length === 0 && (
+                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
+                                    <span className="text-6xl mb-4">🔍</span>
+                                    <p className="font-black uppercase tracking-widest">Sin resultados</p>
                                 </div>
                             )}
-                            <div className="flex-1 p-6 overflow-y-auto pb-24 scroll-smooth">
-                                {productSearch && (
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
-                                        💡 {filteredMenuItems.length} productos coinciden con tu búsqueda
-                                    </p>
-                                )}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                    {filteredMenuItems.map(item => (
-                                        <button 
-                                            key={item.id} 
-                                            onClick={() => handleAddToCart(item)} 
-                                            className="capsula-card group p-3 md:p-5 text-left h-32 md:h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98] transition-transform"
-                                        >
-                                            <div className="font-black text-base uppercase leading-tight tracking-tight group-hover:text-primary transition-colors">{item.name}</div>
-                                            <div className="flex items-end justify-between">
-                                                <div className="text-2xl font-black text-primary italic">
-                                                    <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
-                                                </div>
-                                                <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:translate-y-4 lg:group-hover:translate-y-0">
-                                                    ➕
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                    {filteredMenuItems.length === 0 && (
-                                        <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
-                                            <span className="text-6xl mb-4">🔍</span>
-                                            <p className="font-black uppercase tracking-widest">Sin resultados</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </>
-                        )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className={`w-full lg:w-[460px] xl:w-[520px] bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
@@ -674,6 +657,36 @@ export default function POSDeliveryPage() {
                     </div>
                 </div>
             </div>
+
+            {/* WhatsApp Parser Modal */}
+            {showWhatsAppParser && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-card glass-panel w-full max-w-2xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl border-primary/20">
+                        <div className="p-5 border-b border-border flex justify-between items-center flex-shrink-0">
+                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                <span className="text-2xl">💬</span> Pegar Chat de WhatsApp
+                            </h3>
+                            <button
+                                onClick={() => setShowWhatsAppParser(false)}
+                                className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors text-2xl flex items-center justify-center"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-5 no-scrollbar">
+                            <WhatsAppOrderParser
+                                onOrderReady={(items, name, phone, address) => {
+                                    setCart(items);
+                                    setCustomerName(name);
+                                    setCustomerPhone(phone);
+                                    setCustomerAddress(address);
+                                    setShowWhatsAppParser(false);
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showModifierModal && selectedItemForModifier && (
                 <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in zoom-in duration-300">
