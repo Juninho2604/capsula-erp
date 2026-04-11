@@ -191,6 +191,16 @@ export async function closeCashRegisterAction(
       _sum: { total: true },
     });
 
+    // PROPINA COLECTIVA orders have total=0; we need amountPaid to count them correctly
+    const tipsAgg = await prisma.salesOrder.aggregate({
+      where: {
+        status: { in: ['COMPLETED', 'CONFIRMED'] },
+        createdAt: { gte: dayStart, lte: dayEnd },
+        customerName: 'PROPINA COLECTIVA',
+      },
+      _sum: { amountPaid: true },
+    });
+
     const expensesAgg = await prisma.expense.aggregate({
       where: {
         status: 'CONFIRMED',
@@ -200,8 +210,9 @@ export async function closeCashRegisterAction(
     });
 
     const totalSalesUsd = salesAgg._sum.total ?? 0;
+    const totalTipsUsd  = tipsAgg._sum.amountPaid ?? 0;
     const totalExpenses = expensesAgg._sum.amountUsd ?? 0;
-    const expectedCash = register.openingCashUsd + totalSalesUsd - totalExpenses;
+    const expectedCash = register.openingCashUsd + totalSalesUsd + totalTipsUsd - totalExpenses;
     const difference = input.closingCashUsd - expectedCash;
 
     await prisma.cashRegister.update({
@@ -227,7 +238,7 @@ export async function closeCashRegisterAction(
       entityId: id,
       description: `Cerró caja: ${register.registerName} — Diferencia: $${difference.toFixed(2)}`,
       module: 'POS',
-      metadata: { totalSalesUsd, totalExpenses, expectedCash, difference },
+      metadata: { totalSalesUsd, totalTipsUsd, totalExpenses, expectedCash, difference },
     });
 
     revalidatePath('/dashboard/caja');

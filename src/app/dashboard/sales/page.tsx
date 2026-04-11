@@ -237,7 +237,13 @@ export default function SalesHistoryPage() {
             }
         }
         // Tipo de orden
-        if (filterOrderType !== 'ALL') {
+        if (filterOrderType === 'PROPINAS') {
+            if ((s.customerName || '') !== 'PROPINA COLECTIVA') return false;
+        } else if (filterOrderType === 'RESTAURANT') {
+            // Mesa/Pickup: incluye RESTAURANT y PICKUP (propinas colectivas son PICKUP)
+            const ot = (s.orderType || '').toUpperCase();
+            if (ot !== 'RESTAURANT' && ot !== 'PICKUP') return false;
+        } else if (filterOrderType !== 'ALL') {
             if ((s.orderType || '').toUpperCase() !== filterOrderType) return false;
         }
         // Con descuento
@@ -367,6 +373,7 @@ export default function SalesHistoryPage() {
                         <option value="DELIVERY">🛵 Delivery</option>
                         <option value="RESTAURANT">🍽️ Mesa / Pickup</option>
                         <option value="PEDIDOSYA">🟡 PedidosYA</option>
+                        <option value="PROPINAS">🪙 Propinas</option>
                     </select>
                 </div>
                 {/* Con descuento */}
@@ -468,6 +475,7 @@ export default function SalesHistoryPage() {
                         )}
                         {filteredSales.map(sale => {
                             const isVoided = sale.status === 'CANCELLED';
+                            const isPropina = (sale.customerName || '') === 'PROPINA COLECTIVA';
                             const isExpanded = expandedRows.has(sale.id);
                             const itemCount = (sale.items || []).length;
                             const itemsSubtotal = (sale.items || []).reduce((s: number, i: any) => s + (i.lineTotal || 0), 0);
@@ -487,14 +495,17 @@ export default function SalesHistoryPage() {
                                     <tr
                                         key={sale.id}
                                         onClick={() => itemCount > 0 && toggleRow(sale.id)}
-                                        className={`transition-colors ${isVoided ? 'opacity-50 bg-red-900/10' : 'hover:bg-gray-700/40'} ${itemCount > 0 ? 'cursor-pointer' : ''}`}
+                                        className={`transition-colors ${isVoided ? 'opacity-50 bg-red-900/10' : isPropina ? 'bg-amber-950/20 hover:bg-amber-900/30' : 'hover:bg-gray-700/40'} ${itemCount > 0 ? 'cursor-pointer' : ''}`}
                                     >
                                         {/* ORDEN # */}
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className={`font-bold font-mono text-xs ${isVoided ? 'text-red-400 line-through' : 'text-blue-300'}`}>
+                                                <span className={`font-bold font-mono text-xs ${isVoided ? 'text-red-400 line-through' : isPropina ? 'text-amber-300' : 'text-blue-300'}`}>
                                                     {sale.orderNumber}
                                                 </span>
+                                                {isPropina && (
+                                                    <span className="bg-amber-800/60 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-600/40">🪙 PROPINA</span>
+                                                )}
                                                 {isVoided && (
                                                     <span className="bg-red-900 text-red-300 text-[10px] px-1.5 py-0.5 rounded font-bold">ANULADA</span>
                                                 )}
@@ -543,15 +554,21 @@ export default function SalesHistoryPage() {
                                         </td>
                                         {/* TOTAL FACTURA */}
                                         <td className="px-4 py-3 text-right text-gray-400 text-sm font-mono">
-                                            {formatMoney(totalFactura)}
+                                            {isPropina ? <span className="text-gray-600">—</span> : formatMoney(totalFactura)}
                                         </td>
                                         {/* COBRADO */}
-                                        <td className="px-4 py-3 text-right font-bold text-white font-mono">
-                                            {formatMoney(totalCobrado)}
-                                            {propina > 0.01 && (
-                                                <div className="text-[10px] text-amber-400 font-normal text-right">
-                                                    +{formatMoney(propina)} propina
-                                                </div>
+                                        <td className="px-4 py-3 text-right font-bold font-mono">
+                                            {isPropina ? (
+                                                <span className="text-amber-400">{formatMoney(totalCobrado)}</span>
+                                            ) : (
+                                                <>
+                                                    <span className="text-white">{formatMoney(totalCobrado)}</span>
+                                                    {propina > 0.01 && (
+                                                        <div className="text-[10px] text-amber-400 font-normal text-right">
+                                                            +{formatMoney(propina)} propina
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                         </td>
                                         {/* 10% SERV */}
@@ -765,7 +782,7 @@ export default function SalesHistoryPage() {
                                 <div className="flex justify-between text-blue-700"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
                             )}
                             {zReport.totalTips > 0 && (
-                                <div className="flex justify-between text-green-700"><span>(+) PROPINAS</span><span>+{formatMoney(zReport.totalTips)}</span></div>
+                                <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="flex justify-between font-black text-xl mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
@@ -868,7 +885,7 @@ export default function SalesHistoryPage() {
                                     <div className="flex justify-between"><span className="text-gray-400">10% Servicio:</span><span className="text-emerald-400 font-mono">+${daySummary.totalServiceFee.toFixed(2)}</span></div>
                                 )}
                                 {daySummary.propinas > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">Propinas:</span><span className="text-amber-400 font-mono">+${daySummary.propinas.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-400">Propinas{daySummary.propinaCount > 0 ? ` (${daySummary.propinaCount})` : ''}:</span><span className="text-amber-400 font-mono">+${daySummary.propinas.toFixed(2)}</span></div>
                                 )}
                                 <div className="flex justify-between pt-2 border-t border-gray-700">
                                     <span className="font-bold text-white">Total Cobrado:</span>

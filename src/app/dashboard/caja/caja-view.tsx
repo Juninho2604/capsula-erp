@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   getCashRegistersAction, openCashRegisterAction, closeCashRegisterAction,
   updateRegisterOperatorsAction,
   type CashRegisterData,
 } from '@/app/actions/cash-register.actions';
+import { getEndOfDaySummaryAction } from '@/app/actions/sales.actions';
 import { BillDenominationInput } from '@/components/pos/BillDenominationInput';
 
 const SHIFT_TYPES = [
@@ -76,6 +77,18 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
   const [showOpenDenom, setShowOpenDenom] = useState(false);
   const [showCloseDenom, setShowCloseDenom] = useState(false);
   const [denomModal, setDenomModal] = useState<CashRegisterData | null>(null);
+  const [shiftTips, setShiftTips] = useState<{ propinas: number; propinaCount: number } | null>(null);
+
+  // Fetch propinas for the shift being closed
+  useEffect(() => {
+    if (!closeTarget) { setShiftTips(null); return; }
+    const dateStr = new Date(closeTarget.shiftDate).toISOString().slice(0, 10);
+    getEndOfDaySummaryAction(dateStr).then(res => {
+      if (res.success && res.data) {
+        setShiftTips({ propinas: res.data.propinas, propinaCount: res.data.propinaCount });
+      }
+    });
+  }, [closeTarget]);
 
   // Gestión de operadoras por turno
   const [operatorModal, setOperatorModal] = useState<CashRegisterData | null>(null);
@@ -403,6 +416,12 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
             <div className="rounded-xl bg-muted/30 p-4 text-sm space-y-1">
               <div className="flex justify-between"><span className="text-muted-foreground">Fondo apertura</span><span className="font-semibold text-foreground">${fmt(closeTarget.openingCashUsd)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Apertura</span><span className="text-foreground">{new Date(closeTarget.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span></div>
+              {shiftTips && shiftTips.propinas > 0 && (
+                <div className="flex justify-between border-t border-border/50 pt-1 mt-1">
+                  <span className="text-amber-400/80">🪙 Propinas{shiftTips.propinaCount > 1 ? ` (${shiftTips.propinaCount})` : ''}</span>
+                  <span className="font-semibold text-amber-400">+${fmt(shiftTips.propinas)}</span>
+                </div>
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">

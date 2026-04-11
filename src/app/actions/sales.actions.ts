@@ -30,6 +30,7 @@ export interface ZReportData {
     netTotal: number;          // grossTotal - totalDiscounts
     totalServiceFee: number;   // +10% servicio acumulado de mesas
     totalTips: number;         // propinas voluntarias totales del día
+    tipCount: number;          // número de transacciones de propina
     totalCollected: number;    // dinero real que entró en caja
 
     discountBreakdown: {
@@ -410,6 +411,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         let totalDiscounts  = 0;
         let totalServiceFee = 0;
         let totalTips       = 0;
+        let tipCount        = 0;
         const byType = { restaurant: 0, delivery: 0, pickup: 0, pedidosya: 0, wink: 0, evento: 0, tablePong: 0 };
 
         // ── process tab groups (mesas) ────────────────────────────────────────
@@ -433,7 +435,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             const totalCobrado = splits.length > 0
                 ? splits.reduce((acc: number, sp: Split) => acc + (sp.paidAmount ?? 0), 0)
                 : totalFactura;
-            totalTips += Math.max(0, totalCobrado - totalFactura);
+            const tabTip = Math.max(0, totalCobrado - totalFactura);
+            totalTips += tabTip;
+            if (tabTip > 0) tipCount++;
 
             if (splits.length > 0) {
                 for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0);
@@ -451,8 +455,10 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             const amountPaid = o.amountPaid || o.total;
             // netReceived = lo que quedó en caja (excluye vuelto devuelto)
             const netReceived = amountPaid - (o.change || 0);
-            totalTips += (o.change === 0 && amountPaid > o.total)
+            const orderTip = (o.change === 0 && amountPaid > o.total)
                 ? Math.max(0, amountPaid - o.total) : 0;
+            totalTips += orderTip;
+            if (orderTip > 0) tipCount++;
             // Para pagos mixtos usar las líneas de SalesOrderPayment; si no, método único
             const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
             if (mixedLines && mixedLines.length > 0) {
@@ -486,6 +492,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 netTotal,
                 totalServiceFee,
                 totalTips,
+                tipCount,
                 totalCollected,
                 discountBreakdown: disc,
                 paymentBreakdown:  pay,
@@ -638,6 +645,7 @@ export interface EndOfDaySummary {
     totalDiscounts: number;   // total descuentos
     totalServiceFee: number;  // total 10% servicio
     propinas: number;         // propinas/excedentes
+    propinaCount: number;     // número de transacciones de propina
     // Desglose por tipo de moneda
     receivedInDivisas: number; // CASH, CASH_USD, CASH_EUR, ZELLE
     receivedInBs: number;      // CARD, MOBILE, TRANSFER, CASH_BS, etc. (en USD equiv)
@@ -684,6 +692,7 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
         let totalDiscounts = 0;
         let totalServiceFee = 0;
         let propinas = 0;
+        let propinaCount = 0;
         let receivedInDivisas = 0;
         let receivedInBs = 0;
         let totalInvoices = 0;
@@ -743,7 +752,9 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
 
             totalDiscounts += discount;
             totalServiceFee += serviceFee;
-            propinas += Math.max(0, totalCobrado - totalFactura);
+            const tabPropina = Math.max(0, totalCobrado - totalFactura);
+            propinas += tabPropina;
+            if (tabPropina > 0) propinaCount++;
             totalUSD += totalCobrado;
 
             byChannel.restaurant += totalCobrado;
@@ -768,6 +779,7 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
 
             totalDiscounts += o.discount;
             propinas += tip;
+            if (tip > 0) propinaCount++;
             totalUSD += netReceived;
 
             const ch = getChannel(o.orderType, o.sourceChannel);
@@ -795,6 +807,7 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
                 totalDiscounts,
                 totalServiceFee,
                 propinas,
+                propinaCount,
                 receivedInDivisas,
                 receivedInBs,
                 pctDivisas,
