@@ -16,6 +16,7 @@ import { printKitchenCommand } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
+import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 
 // ============================================================================
 // TIPOS (igual que restaurante)
@@ -166,6 +167,9 @@ export default function POSMeseroPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [layoutError, setLayoutError] = useState("");
   const [sendSuccess, setSendSuccess] = useState(false);
+
+  // ── Subcuentas ────────────────────────────────────────────────────────────
+  const [subAccountMode, setSubAccountMode] = useState(false);
 
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
@@ -669,6 +673,14 @@ export default function POSMeseroPage() {
           )}
 
           {/* Cuenta activa — items enviados */}
+          {subAccountMode && activeTab ? (
+            <SubAccountPanel
+              openTabId={activeTab.id}
+              exchangeRate={exchangeRate}
+              onClose={() => setSubAccountMode(false)}
+              onTabUpdated={() => loadData()}
+            />
+          ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {!activeTab ? (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
@@ -743,10 +755,17 @@ export default function POSMeseroPage() {
                   <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
                     El cobro lo gestiona el cajero
                   </p>
+                  <button
+                    onClick={() => setSubAccountMode(true)}
+                    className="mt-3 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                  >
+                    ÷ Dividir cuenta (subcuentas)
+                  </button>
                 </div>
               </>
             )}
           </div>
+          )}
         </aside>
       </div>
 
