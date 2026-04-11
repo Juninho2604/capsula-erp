@@ -1705,11 +1705,20 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 - Función: `updateSessionCashier(cashierId)` en `src/lib/auth.ts`
 - Resultado: cuando varias cajeras comparten terminal, cada orden queda bajo la cajera que validó el PIN
 
-### 18.5 Redondeo de Divisas
+### 18.5 Redondeo de Descuentos
 
-- Helper: `roundCents(n)` = `Math.round(n * 100) / 100` — en `pos.actions.ts`
-- Aplica en: descuento DIVISAS_33 (Delivery y Restaurante) antes de guardar en BD
+- Helper: `roundCents(n)` = `Math.round(n * 100) / 100` — en `pos.actions.ts` (función privada)
+- **Aplica a todos los tipos de descuento** en `calculateCartTotals`: `DIVISAS_33` y `CORTESIA_PERCENT` (ambas ramas DELIVERY y RESTAURANT/PICKUP)
+- El frontend (`handleCheckoutPickup` en restaurante/page.tsx) replica el redondeo con `rc()` inline para mantener consistencia de vuelto en pantalla
+- `CORTESIA_100` no requiere redondeo (siempre es subtotal exacto)
 - Regla: igual o mayor a 0.5 → redondea arriba; menor a 0.5 → redondea abajo
+
+### 18.7 Propina Colectiva — Conversión Bs a USD
+
+- `handleRecordTip` (restaurante/page.tsx) detecta si el método de pago es Bs (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`)
+- Si es Bs: convierte antes de llamar `recordCollectiveTipAction`: `tipAmountUSD = Math.round(amount / exchangeRate * 100) / 100`
+- `amountPaid` en `SalesOrder` siempre se guarda en USD
+- Toast muestra "Bs 50.00 ($1.96) registrada" para métodos Bs, "$5.00 registrada" para métodos USD
 
 ### 18.6 Skills Instalados en `.claude/skills/`
 
