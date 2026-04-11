@@ -1039,6 +1039,21 @@ UI dentro de `/dashboard/usuarios` para gestionar la Capa 4:
 - **Restricción**: Un usuario no puede modificar su propio PIN desde este panel (`session.id === userId` → error)
 - **Validación**: Numérico estricto, 4–6 dígitos (`/^\d{4,6}$/`)
 - **Almacenamiento**: Nunca en texto plano — se hashea con PBKDF2-SHA256 antes de guardar en BD
+- **Indicador visual**: `PinSection` muestra badge "Asignado" (verde) o "Sin PIN" (ámbar) según `pinSet: boolean` proveniente de `getUsers()`. El campo `pin` nunca se expone al cliente — solo el boolean derivado.
+
+#### Bug PIN resuelto (2026-04-11) — Zustand vs JWT desconectados
+
+**Causa raíz**: `loginAction` creaba el cookie JWT con el ID real del usuario en BD, pero **nunca llamaba `useAuthStore().login()`**. El store Zustand quedaba inicializado con `mockCurrentUser` (id: `'user-admin'`) de forma permanente, persisitido en localStorage.
+
+Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` comparaba contra `'user-admin'` (siempre distinto de cualquier ID real), por lo que el botón "Guardar PIN" aparecía incluso cuando el OWNER seleccionaba su propio usuario. En el servidor, `session.id === userId` (ambos el ID real del OWNER) lo bloqueaba correctamente, devolviendo `{ success: false }`. El toast de error se mostraba pero el origen del problema no era evidente.
+
+**Fix aplicado (commit `82cfb00`)**:
+- `auth.actions.ts`: `loginAction` ya **no hace `redirect()` server-side**. Retorna `{ success: true, user: { id, email, firstName, lastName, role } }` con datos reales de BD.
+- `login-form-client.tsx`: Al recibir `success: true`, llama `login(result.user)` en el store Zustand y luego `router.push('/dashboard')` client-side. El store siempre refleja el usuario real del JWT.
+- `user.actions.ts` → `getUsers()`: añade `pin: true` al select y lo mapea a `pinSet: pin !== null` — el hash PBKDF2 nunca llega al cliente.
+- `users-view.tsx`: interfaz `User` incluye `pinSet: boolean`; `PinSection` recibe `pinSet` y `onSaved()` que actualiza estado local al guardar; `ModulesPanelProps` incluye `onPinSaved`.
+
+**Regla permanente**: `currentUser.id` en el cliente viene del store Zustand (sincronizado en login). `session.id` en el servidor viene del JWT cookie. Deben ser idénticos tras el login. Cualquier lógica de "auto-edición bloqueada" debe verificarse en el servidor — la UI puede tener estado stale.
 
 #### Hashing PBKDF2 — Fuente Autoritativa
 
