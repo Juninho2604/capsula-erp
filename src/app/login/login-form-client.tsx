@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/actions/auth.actions';
 import { useFormStatus } from 'react-dom';
+import { useAuthStore } from '@/stores/auth.store';
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -27,17 +29,20 @@ function SubmitButton() {
 export default function LoginForm() {
     const [email, setEmail] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
+    const login = useAuthStore(s => s.login);
 
-    // Usamos el action directamente en el form, y capturamos errores si el action no redirige
     const handleSubmit = async (formData: FormData) => {
         setError(null);
         const result: any = await loginAction(null, formData);
 
-        // Si el action retorna (no redirige), es que hubo error
         if (result?.success === false) {
             setError(result.message);
+        } else if (result?.success && result.user) {
+            // Sincronizar Zustand con el usuario real del JWT antes de navegar
+            login(result.user);
+            router.push('/dashboard');
         }
-        // Si redirige, este código no continúa
     };
 
     return (

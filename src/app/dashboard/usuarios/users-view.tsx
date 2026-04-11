@@ -20,6 +20,7 @@ interface User {
     allowedModules: string | null;
     grantedPerms: string | null;
     revokedPerms: string | null;
+    pinSet: boolean;
 }
 
 interface UsersViewProps {
@@ -95,6 +96,13 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
         }
     };
 
+    const handlePinSaved = (userId: string) => {
+        setUsers(users.map(u => u.id === userId ? { ...u, pinSet: true } : u));
+        if (selectedUser?.id === userId) {
+            setSelectedUser(prev => prev ? { ...prev, pinSet: true } : null);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
@@ -157,6 +165,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                             onStatusToggle={handleStatusToggle}
                             onModulesSaved={handleModulesSaved}
                             onPermsSaved={handlePermsSaved}
+                            onPinSaved={handlePinSaved}
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -218,6 +227,7 @@ interface ModulesPanelProps {
     onStatusToggle: (userId: string, currentStatus: boolean) => void;
     onModulesSaved: (userId: string, modules: string[] | null) => void;
     onPermsSaved: (userId: string, granted: string[] | null, revoked: string[] | null) => void;
+    onPinSaved: (userId: string) => void;
 }
 
 const SECTIONS = [
@@ -227,7 +237,7 @@ const SECTIONS = [
     { key: 'admin',      label: 'Administración',  icon: '🔐' },
 ] as const;
 
-function PinSection({ userId, canManage }: { userId: string; canManage: boolean }) {
+function PinSection({ userId, canManage, pinSet, onSaved }: { userId: string; canManage: boolean; pinSet: boolean; onSaved: () => void }) {
     const [pin, setPin] = useState('');
     const [isPending, startTransition] = useTransition();
 
@@ -240,6 +250,7 @@ function PinSection({ userId, canManage }: { userId: string; canManage: boolean 
             if (res.success) {
                 toast.success(res.message);
                 setPin('');
+                onSaved();
             } else {
                 toast.error(res.message);
             }
@@ -248,13 +259,26 @@ function PinSection({ userId, canManage }: { userId: string; canManage: boolean 
 
     return (
         <div className="border-t border-border px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">PIN de acceso (POS)</p>
+            <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PIN de acceso (POS)</p>
+                {pinSet ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Asignado
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Sin PIN
+                    </span>
+                )}
+            </div>
             <div className="flex items-center gap-2">
                 <input
                     type="password"
                     value={pin}
                     onChange={e => setPin(e.target.value)}
-                    placeholder="4–6 dígitos"
+                    placeholder={pinSet ? 'Nuevo PIN (4–6 dígitos)' : '4–6 dígitos'}
                     maxLength={6}
                     inputMode="numeric"
                     pattern="\d*"
@@ -266,7 +290,7 @@ function PinSection({ userId, canManage }: { userId: string; canManage: boolean 
                     disabled={isPending || pin.trim().length < 4}
                     className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
                 >
-                    {isPending ? 'Guardando…' : 'Guardar PIN'}
+                    {isPending ? 'Guardando…' : pinSet ? 'Cambiar PIN' : 'Guardar PIN'}
                 </button>
             </div>
         </div>
@@ -418,7 +442,7 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
     );
 }
 
-function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange, onStatusToggle, onModulesSaved, onPermsSaved }: ModulesPanelProps) {
+function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange, onStatusToggle, onModulesSaved, onPermsSaved, onPinSaved }: ModulesPanelProps) {
     const [isPending, startTransition] = useTransition();
     const roleInfo = ROLE_INFO[user.role as UserRole] || { labelEs: user.role, color: '#6b7280' };
 
@@ -574,7 +598,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange
             </div>
 
             {/* PIN section */}
-            <PinSection userId={user.id} canManage={canManage} />
+            <PinSection userId={user.id} canManage={canManage} pinSet={user.pinSet} onSaved={() => onPinSaved(user.id)} />
 
             {/* Perms section */}
             <PermsSection

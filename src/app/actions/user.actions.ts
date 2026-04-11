@@ -76,10 +76,12 @@ export async function getUsers() {
             allowedModules: true,
             grantedPerms: true,
             revokedPerms: true,
+            pin: true,
         },
     });
 
-    return users;
+    // Mapear: exponer si el PIN está asignado sin revelar el hash
+    return users.map(({ pin, ...u }) => ({ ...u, pinSet: pin !== null }));
 }
 
 /**
