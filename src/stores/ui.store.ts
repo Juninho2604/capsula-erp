@@ -7,6 +7,8 @@ interface UIState {
     openSidebar: () => void;
     closeSidebar: () => void;
     toggleSidebar: () => void;
+    posFullscreen: boolean;
+    togglePosFullscreen: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -14,4 +16,6 @@ export const useUIStore = create<UIState>((set) => ({
     openSidebar: () => set({ sidebarOpen: true }),
     closeSidebar: () => set({ sidebarOpen: false }),
     toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+    posFullscreen: false,
+    togglePosFullscreen: () => set((state) => ({ posFullscreen: !state.posFullscreen })),
 }));
