@@ -1372,7 +1372,7 @@ Todos estos módulos están **deshabilitados por default** (`enabledByDefault: f
 |-----------|---------|-----------|
 | ChangePasswordDialog | `components/users/ChangePasswordDialog.tsx` | Cambio de contraseña |
 | whatsapp-purchase-order-parser | `components/whatsapp-purchase-order-parser.tsx` | Parser de OC desde mensaje WhatsApp |
-| whatsapp-order-parser | `components/whatsapp-order-parser.tsx` | Parser de órdenes desde WhatsApp |
+| whatsapp-order-parser | `components/whatsapp-order-parser.tsx` | Parser de órdenes desde WhatsApp — se usa en POS Delivery como modal z-60 (botón "💬 WhatsApp" en header abre modal centrado con backdrop, botón X para cerrar; NO inline) |
 | theme-provider | `components/theme-provider.tsx` | Provider de next-themes |
 
 ---
@@ -1707,7 +1707,7 @@ npm run db:seed            # tsx prisma/seed.ts (datos iniciales)
 |------|-------|-----------|
 | Header fijo | `z-30` | Navbar de cada módulo POS |
 | Nav móvil | `z-50` | `<nav>` inferior en Restaurante, Delivery, PedidosYA |
-| Modales POS | `z-60` | Modifier, PIN, Tip, Table, Remove-item, Open-tab — todos los módulos |
+| Modales POS | `z-60` | Modifier, PIN, Tip, Table, Remove-item, Open-tab, WhatsApp parser (Delivery) — todos los módulos |
 | NotificationBell / HelpPanel | `z-[70]` | Backdrop + modal card — siempre sobre todo lo anterior |
 
 **Regla**: Nunca poner un modal POS a `z-50` (colisiona con nav móvil). Verificar esta tabla ante cualquier nuevo modal.
