@@ -12,9 +12,11 @@ export const UserRole = {
   HR_MANAGER: 'HR_MANAGER',
   CHEF: 'CHEF',
   AREA_LEAD: 'AREA_LEAD',
-  CASHIER_RESTAURANT: 'CASHIER_RESTAURANT',
-  CASHIER_DELIVERY: 'CASHIER_DELIVERY',
+  CASHIER: 'CASHIER',                          // Cajera unificada (nuevo rol canónico)
+  CASHIER_RESTAURANT: 'CASHIER_RESTAURANT',    // @deprecated → usar CASHIER
+  CASHIER_DELIVERY: 'CASHIER_DELIVERY',        // @deprecated → usar CASHIER
   KITCHEN_CHEF: 'KITCHEN_CHEF',
+  WAITER: 'WAITER',
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
@@ -31,8 +33,10 @@ export const ROLE_HIERARCHY: Record<UserRoleType, number> = {
   [UserRole.CHEF]: 6,
   [UserRole.AREA_LEAD]: 7,
   [UserRole.KITCHEN_CHEF]: 7,
-  [UserRole.CASHIER_RESTAURANT]: 8,
-  [UserRole.CASHIER_DELIVERY]: 8,
+  [UserRole.WAITER]: 8,
+  [UserRole.CASHIER]: 8,
+  [UserRole.CASHIER_RESTAURANT]: 8,  // deprecated
+  [UserRole.CASHIER_DELIVERY]: 8,    // deprecated
 };
 
 /**
@@ -86,17 +90,29 @@ export const ROLE_INFO: Record<UserRoleType, {
     description: 'Gestión de área específica',
     color: '#6B7280', // Gray
   },
+  [UserRole.CASHIER]: {
+    label: 'Cashier',
+    labelEs: 'Cajera',
+    description: 'Punto de venta (restaurante o delivery según módulos)',
+    color: '#059669', // Teal
+  },
   [UserRole.CASHIER_RESTAURANT]: {
     label: 'Cashier Restaurant',
-    labelEs: 'Cajera Restaurante',
-    description: 'Punto de venta del restaurante',
+    labelEs: 'Cajera Restaurante (deprecated)',
+    description: 'Usar CASHIER con allowedModules',
     color: '#059669', // Teal
   },
   [UserRole.CASHIER_DELIVERY]: {
     label: 'Cashier Delivery',
-    labelEs: 'Cajera Delivery',
-    description: 'Punto de venta para delivery',
+    labelEs: 'Cajera Delivery (deprecated)',
+    description: 'Usar CASHIER con allowedModules',
     color: '#7C3AED', // Violet
+  },
+  [UserRole.WAITER]: {
+    label: 'Waiter',
+    labelEs: 'Mesero',
+    description: 'Toma de pedidos en mesa',
+    color: '#6B7280', // Gray
   },
   [UserRole.KITCHEN_CHEF]: {
     label: 'Kitchen Chef',
@@ -255,10 +271,17 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, Partial<Record<SystemModuleT
     [SystemModule.SALES_HISTORY]: ['view'], // Solo sus ventas del día
   },
 
+  [UserRole.CASHIER]: {
+    // Módulos controlados por allowedModules (POS restaurante y/o delivery)
+    [SystemModule.POS_RESTAURANT]: ['view', 'create'],
+    [SystemModule.POS_DELIVERY]: ['view', 'create'],
+    [SystemModule.SALES_HISTORY]: ['view'],
+  },
   [UserRole.KITCHEN_CHEF]: {
     // Solo acceso a la comandera de cocina
     [SystemModule.KITCHEN_DISPLAY]: ['view'],
   },
+  [UserRole.WAITER]: {},
 };
 
 /**

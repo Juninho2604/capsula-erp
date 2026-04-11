@@ -37,6 +37,8 @@ export async function loginAction(prevState: any, formData: FormData) {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
+            grantedPerms: user.grantedPerms ?? null,
+            revokedPerms: user.revokedPerms ?? null,
         });
 
         // Redirección fuera del try-catch para que next/navigation funcione

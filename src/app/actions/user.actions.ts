@@ -74,6 +74,8 @@ export async function getUsers() {
             role: true,
             isActive: true,
             allowedModules: true,
+            grantedPerms: true,
+            revokedPerms: true,
         },
     });
 
@@ -251,5 +253,41 @@ export async function updateUserPin(userId: string, rawPin: string) {
     } catch (error) {
         console.error('Error updating user PIN:', error);
         return { success: false, message: 'Error al actualizar el PIN' };
+    }
+}
+
+/**
+ * Actualiza los permisos granulares adicionales (granted) y revocados (revoked) de un usuario.
+ * grantedPerms y revokedPerms son arrays de PERM keys; null = sin override.
+ */
+export async function updateUserPerms(
+    userId: string,
+    grantedPerms: string[] | null,
+    revokedPerms: string[] | null,
+) {
+    const session = await getSession();
+
+    if (!session) {
+        return { success: false, message: 'No autenticado' };
+    }
+
+    if (!hasPermission(session.role, PERMISSIONS.MANAGE_USERS)) {
+        return { success: false, message: 'No tienes permisos para gestionar permisos de usuario' };
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                grantedPerms: grantedPerms && grantedPerms.length > 0 ? JSON.stringify(grantedPerms) : null,
+                revokedPerms: revokedPerms && revokedPerms.length > 0 ? JSON.stringify(revokedPerms) : null,
+            },
+        });
+
+        revalidatePath('/dashboard/usuarios');
+        return { success: true, message: 'Permisos actualizados correctamente' };
+    } catch (error) {
+        console.error('Error updating user perms:', error);
+        return { success: false, message: 'Error al actualizar permisos' };
     }
 }

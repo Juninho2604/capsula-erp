@@ -21,9 +21,11 @@ export type UserRole =
     | 'HR_MANAGER'
     | 'CHEF'
     | 'AREA_LEAD'
-    | 'CASHIER_RESTAURANT'
-    | 'CASHIER_DELIVERY'
-    | 'KITCHEN_CHEF';
+    | 'CASHIER'
+    | 'CASHIER_RESTAURANT'   // @deprecated
+    | 'CASHIER_DELIVERY'     // @deprecated
+    | 'KITCHEN_CHEF'
+    | 'WAITER';
 
 export type InventoryItemType = 'RAW_MATERIAL' | 'SUB_RECIPE' | 'FINISHED_GOOD';
 

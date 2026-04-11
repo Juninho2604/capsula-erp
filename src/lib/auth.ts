@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 const SECRET_KEY = process.env.JWT_SECRET || 'shanklish-super-secret-key-2024';
 const key = new TextEncoder().encode(SECRET_KEY);
 
-interface SessionPayload {
+export interface SessionPayload {
     id: string;
     email: string;
     firstName: string;
@@ -13,6 +13,10 @@ interface SessionPayload {
     role: string;
     /** ID del usuario cuyo PIN fue validado como cajera activa en este terminal */
     activeCashierId?: string;
+    /** JSON array de PERM keys adicionales concedidos al usuario */
+    grantedPerms?: string | null;
+    /** JSON array de PERM keys revocados del rol base del usuario */
+    revokedPerms?: string | null;
 }
 
 export async function encrypt(payload: SessionPayload) {
@@ -69,7 +73,9 @@ export async function updateSessionCashier(cashierId: string) {
 
 // === UTILIDADES DE PERMISOS ===
 
-
 // Exportar desde el archivo separado para evitar conflictos en cliente
 export { hasPermission, PERMISSIONS } from './permissions';
+
+// Exportar resolvePerms y canDo del nuevo registry granular
+export { resolvePerms, canDo } from './constants/permissions-registry';
 

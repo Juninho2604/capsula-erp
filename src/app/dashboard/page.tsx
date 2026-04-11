@@ -10,6 +10,10 @@ export default async function DashboardPage() {
     const session = await getSession();
 
     // Redirección para Cajeras
+    if (session?.role === 'CASHIER') {
+        // Rol unificado: módulos visibles controlados por allowedModules
+        redirect('/dashboard/pos/restaurante');
+    }
     if (session?.role === 'CASHIER_RESTAURANT') {
         redirect('/dashboard/pos/restaurante');
     }

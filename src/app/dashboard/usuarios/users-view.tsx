@@ -3,11 +3,12 @@
 import { useState, useTransition } from 'react';
 import { UserRole } from '@/types';
 import { ROLE_INFO } from '@/lib/constants/roles';
-import { updateUserRole, toggleUserStatus, updateUserModules, updateUserPin } from '@/app/actions/user.actions';
+import { updateUserRole, toggleUserStatus, updateUserModules, updateUserPin, updateUserPerms } from '@/app/actions/user.actions';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/auth.store';
 import { PERMISSIONS, hasPermission } from '@/lib/permissions';
 import { MODULE_REGISTRY, MODULE_ROLE_ACCESS } from '@/lib/constants/modules-registry';
+import { PERM_GROUPS, PERM_LABELS, ROLE_BASE_PERMS, type PermKey } from '@/lib/constants/permissions-registry';
 
 interface User {
     id: string;
@@ -17,6 +18,8 @@ interface User {
     role: string;
     isActive: boolean;
     allowedModules: string | null;
+    grantedPerms: string | null;
+    revokedPerms: string | null;
 }
 
 interface UsersViewProps {
@@ -69,6 +72,26 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
         setUsers(updated);
         if (selectedUser?.id === userId) {
             setSelectedUser(prev => prev ? { ...prev, allowedModules: newModules ? JSON.stringify(newModules) : null } : null);
+        }
+    };
+
+    const handlePermsSaved = (userId: string, granted: string[] | null, revoked: string[] | null) => {
+        const updated = users.map(u =>
+            u.id === userId
+                ? {
+                    ...u,
+                    grantedPerms: granted && granted.length > 0 ? JSON.stringify(granted) : null,
+                    revokedPerms: revoked && revoked.length > 0 ? JSON.stringify(revoked) : null,
+                }
+                : u
+        );
+        setUsers(updated);
+        if (selectedUser?.id === userId) {
+            setSelectedUser(prev => prev ? {
+                ...prev,
+                grantedPerms: granted && granted.length > 0 ? JSON.stringify(granted) : null,
+                revokedPerms: revoked && revoked.length > 0 ? JSON.stringify(revoked) : null,
+            } : null);
         }
     };
 
@@ -133,6 +156,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                             onRoleChange={handleRoleChange}
                             onStatusToggle={handleStatusToggle}
                             onModulesSaved={handleModulesSaved}
+                            onPermsSaved={handlePermsSaved}
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -193,6 +217,7 @@ interface ModulesPanelProps {
     onRoleChange: (userId: string, newRole: string) => void;
     onStatusToggle: (userId: string, currentStatus: boolean) => void;
     onModulesSaved: (userId: string, modules: string[] | null) => void;
+    onPermsSaved: (userId: string, granted: string[] | null, revoked: string[] | null) => void;
 }
 
 const SECTIONS = [
@@ -248,7 +273,152 @@ function PinSection({ userId, canManage }: { userId: string; canManage: boolean 
     );
 }
 
-function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange, onStatusToggle, onModulesSaved }: ModulesPanelProps) {
+// ─── Perms Section ────────────────────────────────────────────────────────────
+
+interface PermsSectionProps {
+    userId: string;
+    role: string;
+    grantedPerms: string | null;
+    revokedPerms: string | null;
+    canManage: boolean;
+    onSaved: (granted: string[] | null, revoked: string[] | null) => void;
+}
+
+function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onSaved }: PermsSectionProps) {
+    const [isPending, startTransition] = useTransition();
+
+    const basePerms = new Set<PermKey>(ROLE_BASE_PERMS[role] ?? []);
+
+    let initialGranted: Set<PermKey>;
+    let initialRevoked: Set<PermKey>;
+    try {
+        initialGranted = new Set((grantedPerms ? JSON.parse(grantedPerms) : []) as PermKey[]);
+        initialRevoked = new Set((revokedPerms ? JSON.parse(revokedPerms) : []) as PermKey[]);
+    } catch {
+        initialGranted = new Set();
+        initialRevoked = new Set();
+    }
+
+    const [granted, setGranted] = useState<Set<PermKey>>(initialGranted);
+    const [revoked, setRevoked] = useState<Set<PermKey>>(initialRevoked);
+
+    function togglePerm(perm: PermKey) {
+        if (basePerms.has(perm)) {
+            // Perm del rol base: togglear revocación
+            setRevoked(prev => {
+                const next = new Set(prev);
+                next.has(perm) ? next.delete(perm) : next.add(perm);
+                return next;
+            });
+        } else {
+            // Perm adicional: togglear concesión
+            setGranted(prev => {
+                const next = new Set(prev);
+                next.has(perm) ? next.delete(perm) : next.add(perm);
+                return next;
+            });
+        }
+    }
+
+    function handleSave() {
+        startTransition(async () => {
+            const grantedArr = granted.size > 0 ? Array.from(granted) : null;
+            const revokedArr = revoked.size > 0 ? Array.from(revoked) : null;
+            const res = await updateUserPerms(userId, grantedArr, revokedArr);
+            if (res.success) {
+                toast.success(res.message);
+                onSaved(grantedArr, revokedArr);
+            } else {
+                toast.error(res.message);
+            }
+        });
+    }
+
+    const hasChanges = granted.size > 0 || revoked.size > 0;
+
+    return (
+        <div className="border-t border-border px-5 py-4">
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Permisos granulares
+                </p>
+                {hasChanges && (
+                    <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
+                        {granted.size > 0 && `+${granted.size}`}
+                        {granted.size > 0 && revoked.size > 0 && ' / '}
+                        {revoked.size > 0 && `−${revoked.size}`}
+                    </span>
+                )}
+            </div>
+
+            <div className="space-y-4">
+                {PERM_GROUPS.map(group => (
+                    <div key={group.key}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                            <span>{group.icon}</span> {group.label}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            {group.perms.map(perm => {
+                                const isBase = basePerms.has(perm);
+                                const isGranted = granted.has(perm);
+                                const isRevoked = revoked.has(perm);
+                                // Effective check: base (not revoked) OR extra granted
+                                const isChecked = isBase ? !isRevoked : isGranted;
+                                const info = PERM_LABELS[perm];
+
+                                return (
+                                    <label
+                                        key={perm}
+                                        className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 border text-sm transition-all ${
+                                            isChecked
+                                                ? isBase
+                                                    ? 'bg-blue-500/5 border-blue-500/20'
+                                                    : 'bg-emerald-500/5 border-emerald-500/20'
+                                                : 'border-border bg-background/50 opacity-50'
+                                        } ${!canManage ? 'cursor-default' : ''}`}
+                                        title={info.description}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => canManage && togglePerm(perm)}
+                                            disabled={isPending || !canManage}
+                                            className="h-4 w-4 rounded border-gray-300 accent-amber-500 shrink-0"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-foreground leading-tight truncate">{info.label}</p>
+                                            {isBase && !isRevoked && (
+                                                <p className="text-[10px] text-blue-400/70 font-bold">del rol</p>
+                                            )}
+                                            {!isBase && isGranted && (
+                                                <p className="text-[10px] text-emerald-400/70 font-bold">extra</p>
+                                            )}
+                                            {isRevoked && (
+                                                <p className="text-[10px] text-red-400/70 font-bold">revocado</p>
+                                            )}
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {canManage && (
+                <button
+                    onClick={handleSave}
+                    disabled={isPending}
+                    className="mt-4 w-full rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
+                >
+                    {isPending ? 'Guardando…' : 'Guardar permisos'}
+                </button>
+            )}
+        </div>
+    );
+}
+
+function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange, onStatusToggle, onModulesSaved, onPermsSaved }: ModulesPanelProps) {
     const [isPending, startTransition] = useTransition();
     const roleInfo = ROLE_INFO[user.role as UserRole] || { labelEs: user.role, color: '#6b7280' };
 
@@ -405,6 +575,16 @@ function ModulesPanel({ user, enabledModuleIds, canManage, isOwner, onRoleChange
 
             {/* PIN section */}
             <PinSection userId={user.id} canManage={canManage} />
+
+            {/* Perms section */}
+            <PermsSection
+                userId={user.id}
+                role={user.role}
+                grantedPerms={user.grantedPerms}
+                revokedPerms={user.revokedPerms}
+                canManage={canManage}
+                onSaved={(granted, revoked) => onPermsSaved(user.id, granted, revoked)}
+            />
 
             {/* Footer actions */}
             {canManage && (
