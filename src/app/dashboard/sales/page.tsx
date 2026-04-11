@@ -449,7 +449,7 @@ export default function SalesHistoryPage() {
 
             {/* TABLA */}
             <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-x-auto shadow-xl">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[900px] text-left border-collapse">
                     <thead className="bg-gray-900/70 text-gray-400 uppercase text-xs font-bold tracking-wider">
                         <tr>
                             <th className="px-4 py-3">Orden #</th>
