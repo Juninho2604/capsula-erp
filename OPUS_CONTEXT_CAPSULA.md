@@ -1800,12 +1800,38 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 
 **Bug corregido (2026-04-11):** Entre DEL-0156 (10 abr) y DEL-0197 (11 abr), `amountPaid` se guardaba como `total / exchangeRate` en lugar de `total`. Root cause: el cajero ingresaba el monto USD (ej. `22.5`) en el campo Bs; el código lo dividía por el tipo de cambio → `22.5 / 476 = $0.047`. 25 órdenes afectadas (MOVIL_NG + PDV_SHANKLISH). Corregidas con `scripts/fix-movil-ng-amounts.ts` el 11 abr 2026 (`amountPaid = total`, `change = 0`). El historial de ventas y Z-Report usan `amountPaid - change` para la columna COBRADO — quedaron correctos tras el fix.
 
-### 18.8 Propina Colectiva — Conversión Bs a USD
+### 18.8 Flujo Completo de Propina Colectiva (resuelto 2026-04-11)
 
-- `handleRecordTip` (restaurante/page.tsx) detecta si el método de pago es Bs (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`)
-- Si es Bs: convierte antes de llamar `recordCollectiveTipAction`: `tipAmountUSD = Math.round(amount / exchangeRate * 100) / 100`
-- `amountPaid` en `SalesOrder` siempre se guarda en USD
-- Toast muestra "Bs 50.00 ($1.96) registrada" para métodos Bs, "$5.00 registrada" para métodos USD
+#### Creación
+- Botón "🪙 PROPINA" en POS Restaurante → modal → `handleRecordTip` (restaurante/page.tsx)
+- Si método es Bs (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`): convierte `tipAmountUSD = Math.round(amount / exchangeRate * 100) / 100`
+- Llama `recordCollectiveTipAction(data)` en `pos.actions.ts`
+- Crea `SalesOrder` con: `orderType='PICKUP'`, `total=0`, `amountPaid=tipAmountUSD`, `customerName='PROPINA COLECTIVA'`, correlativo `PKP-XXXX` (via `getNextCorrelativo('PICKUP')`)
+- `amountPaid` siempre en USD. Toast: "Bs 50.00 ($1.96) registrada" o "$5.00 registrada"
+
+#### Historial de Ventas (`sales/page.tsx`)
+- Filtro "Tipo → 🍽️ Mesa / Pickup" incluye `orderType='RESTAURANT'` Y `'PICKUP'` (ambos)
+- Filtro "Tipo → 🪙 Propinas" filtra por `customerName === 'PROPINA COLECTIVA'`
+- Filas PROPINA COLECTIVA: badge ámbar "🪙 PROPINA", correlativo en ámbar, fila con fondo `bg-amber-950/20`
+- Columna "Total Factura" muestra `—` (el total es $0), columna "Cobrado" muestra `amountPaid` en ámbar
+
+#### Reporte Z (`getDailyZReportAction` en `sales.actions.ts`)
+- `totalTips` acumula: para mesas (tab) → `totalCobrado - totalFactura`; para órdenes sueltas → `amountPaid - total` cuando `change=0` y `amountPaid > total`
+- `tipCount` cuenta las transacciones de propina (tanto de mesas como PROPINA COLECTIVA)
+- El Reporte Z imprimible muestra `(+) PROPINAS (N)` con el monto acumulado
+
+#### Cierre del Día (`getEndOfDaySummaryAction` en `sales.actions.ts`)
+- `propinas` acumula igual que Z-report; `propinaCount` cuenta transacciones
+- Modal "Cierre del Día" muestra `Propinas (N): +$X.XX`
+
+#### Control de Caja (`closeCashRegisterAction` en `cash-register.actions.ts`)
+- **Bug corregido**: `salesAgg._sum.total` era 0 para PROPINA COLECTIVA (su `total=0`)
+- Fix: agrega `tipsAgg._sum.amountPaid` de órdenes `customerName='PROPINA COLECTIVA'`
+- `expectedCash = openingCashUsd + totalSalesUsd + totalTipsUsd - totalExpenses`
+- Modal de cierre en `caja-view.tsx` muestra línea "🪙 Propinas (N): +$X.XX" obtenida via `getEndOfDaySummaryAction` en `useEffect` cuando se abre el modal
+
+#### Regla permanente
+> **PROPINA COLECTIVA siempre usa `amountPaid`, nunca `total`.** El campo `total` es 0 por diseño (no es una venta de producto). Cualquier lógica que agregue ingresos de propina debe usar `_sum.amountPaid` filtrado por `customerName='PROPINA COLECTIVA'`, no `_sum.total`.
 
 ### 18.6 Skills Instalados en `.claude/skills/`
 
