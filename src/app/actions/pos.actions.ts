@@ -1522,3 +1522,507 @@ export async function getUsersForTabAction(): Promise<ActionResult> {
         return { success: false, message: 'Error cargando mesoneros', data: [] };
     }
 }
+
+// ============================================================================
+// SUBCUENTAS — División de cuenta por persona / grupo
+// ============================================================================
+
+/** Helper interno: recalcula subtotal, serviceCharge y total de una subcuenta
+ *  sumando los SubAccountItems que tiene asignados. */
+async function recalcSubAccountTotals(tx: any, subAccountId: string) {
+    const items = await tx.subAccountItem.findMany({ where: { subAccountId } });
+    const subtotal = Math.round(items.reduce((s: number, i: any) => s + i.lineTotal, 0) * 100) / 100;
+    const serviceCharge = Math.round(subtotal * 0.10 * 100) / 100;
+    const total = Math.round((subtotal + serviceCharge) * 100) / 100;
+    await tx.tabSubAccount.update({
+        where: { id: subAccountId },
+        data: { subtotal, serviceCharge, total },
+    });
+    return { subtotal, serviceCharge, total };
+}
+
+/**
+ * Crea N subcuentas vacías para una mesa abierta.
+ * labels.length determina cuántas se crean. Máximo 25 por mesa.
+ */
+export async function createSubAccountsAction(data: {
+    openTabId: string;
+    labels: string[];
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const tab = await prisma.openTab.findUnique({
+            where: { id: data.openTabId },
+            include: { subAccounts: true },
+        });
+        if (!tab || !['OPEN', 'PARTIALLY_PAID'].includes(tab.status)) {
+            return { success: false, message: 'Cuenta no disponible' };
+        }
+
+        const existing = tab.subAccounts.length;
+        if (existing + data.labels.length > 25) {
+            return {
+                success: false,
+                message: `Máximo 25 subcuentas por mesa (ya hay ${existing})`,
+            };
+        }
+
+        const created = await prisma.$transaction(
+            data.labels.map((label, i) =>
+                prisma.tabSubAccount.create({
+                    data: {
+                        openTabId: data.openTabId,
+                        label: label.trim() || `Cuenta ${existing + i + 1}`,
+                        sortOrder: existing + i,
+                    },
+                })
+            )
+        );
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: `${created.length} subcuenta(s) creada(s)`, data: created };
+    } catch (error) {
+        console.error('Error creating sub accounts:', error);
+        return { success: false, message: 'Error creando subcuentas' };
+    }
+}
+
+/**
+ * Renombra la etiqueta de una subcuenta (ej: "Cuenta 1" → "Carlos").
+ */
+export async function renameSubAccountAction(
+    subAccountId: string,
+    label: string,
+): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const trimmed = label.trim();
+        if (!trimmed) return { success: false, message: 'El nombre no puede estar vacío' };
+
+        const updated = await prisma.tabSubAccount.update({
+            where: { id: subAccountId },
+            data: { label: trimmed },
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: 'Subcuenta renombrada', data: updated };
+    } catch (error) {
+        console.error('Error renaming sub account:', error);
+        return { success: false, message: 'Error renombrando subcuenta' };
+    }
+}
+
+/**
+ * Elimina una subcuenta OPEN. Los ítems asignados vuelven al pool (cascade borra SubAccountItems).
+ * No se puede eliminar una subcuenta ya cobrada (PAID).
+ */
+export async function deleteSubAccountAction(subAccountId: string): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const sub = await prisma.tabSubAccount.findUnique({ where: { id: subAccountId } });
+        if (!sub) return { success: false, message: 'Subcuenta no encontrada' };
+        if (sub.status === 'PAID') {
+            return { success: false, message: 'No se puede eliminar una subcuenta ya cobrada' };
+        }
+
+        await prisma.tabSubAccount.delete({ where: { id: subAccountId } });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: 'Subcuenta eliminada. Los ítems vuelven al pool.' };
+    } catch (error) {
+        console.error('Error deleting sub account:', error);
+        return { success: false, message: 'Error eliminando subcuenta' };
+    }
+}
+
+/**
+ * Asigna una cantidad de un SalesOrderItem a una subcuenta.
+ * Si ya había una asignación previa del mismo item a la misma subcuenta, la reemplaza.
+ * La cantidad disponible = item.quantity − ya asignado en OTRAS subcuentas.
+ */
+export async function assignItemToSubAccountAction(data: {
+    salesOrderItemId: string;
+    subAccountId: string;
+    quantity: number;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const item = await prisma.salesOrderItem.findUnique({
+            where: { id: data.salesOrderItemId },
+            include: { order: true, subAccountItems: true },
+        });
+        if (!item) return { success: false, message: 'Item no encontrado' };
+
+        const sub = await prisma.tabSubAccount.findUnique({ where: { id: data.subAccountId } });
+        if (!sub || sub.status !== 'OPEN') {
+            return { success: false, message: 'Subcuenta no disponible' };
+        }
+
+        if (item.order.openTabId !== sub.openTabId) {
+            return { success: false, message: 'El item no pertenece a la misma mesa' };
+        }
+
+        // Qty available = item total minus what's already in OTHER subcuentas
+        const assignedElsewhere = item.subAccountItems
+            .filter((si) => si.subAccountId !== data.subAccountId)
+            .reduce((s, si) => s + si.quantity, 0);
+        const available = item.quantity - assignedElsewhere;
+
+        if (data.quantity <= 0 || data.quantity > available) {
+            return {
+                success: false,
+                message: `Cantidad inválida. Disponible: ${available}`,
+            };
+        }
+
+        // Effective unit price includes modifier adjustments spread across quantity
+        const unitLineTotal = item.lineTotal / item.quantity;
+        const newLineTotal = Math.round(unitLineTotal * data.quantity * 100) / 100;
+
+        await prisma.$transaction(async (tx) => {
+            // Replace any existing assignment of this item to this subcuenta
+            await tx.subAccountItem.deleteMany({
+                where: { salesOrderItemId: data.salesOrderItemId, subAccountId: data.subAccountId },
+            });
+            await tx.subAccountItem.create({
+                data: {
+                    subAccountId: data.subAccountId,
+                    salesOrderItemId: data.salesOrderItemId,
+                    quantity: data.quantity,
+                    lineTotal: newLineTotal,
+                },
+            });
+            await recalcSubAccountTotals(tx, data.subAccountId);
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: 'Ítem asignado a la subcuenta' };
+    } catch (error) {
+        console.error('Error assigning item to sub account:', error);
+        return { success: false, message: 'Error asignando ítem' };
+    }
+}
+
+/**
+ * Desvincula un item de una subcuenta — el item vuelve al pool sin asignar.
+ */
+export async function unassignItemFromSubAccountAction(data: {
+    salesOrderItemId: string;
+    subAccountId: string;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const sub = await prisma.tabSubAccount.findUnique({ where: { id: data.subAccountId } });
+        if (!sub || sub.status === 'PAID') {
+            return { success: false, message: 'No se puede modificar una subcuenta cobrada' };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.subAccountItem.deleteMany({
+                where: {
+                    salesOrderItemId: data.salesOrderItemId,
+                    subAccountId: data.subAccountId,
+                },
+            });
+            await recalcSubAccountTotals(tx, data.subAccountId);
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: 'Ítem devuelto al pool' };
+    } catch (error) {
+        console.error('Error unassigning item:', error);
+        return { success: false, message: 'Error removiendo ítem de subcuenta' };
+    }
+}
+
+/**
+ * División automática igualitaria: distribuye TODOS los ítems de la mesa
+ * en `count` subcuentas usando round-robin por cantidad.
+ * Si no hay suficientes subcuentas OPEN, las crea.
+ * Resetea las asignaciones previas de ítems del pool (no afecta subcuentas ya PAID).
+ */
+export async function autoSplitEqualAction(data: {
+    openTabId: string;
+    count: number;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        if (data.count < 2 || data.count > 25) {
+            return { success: false, message: 'El número de divisiones debe estar entre 2 y 25' };
+        }
+
+        const tab = await prisma.openTab.findUnique({
+            where: { id: data.openTabId },
+            include: {
+                orders: { include: { items: true } },
+                subAccounts: { orderBy: { sortOrder: 'asc' } },
+            },
+        });
+        if (!tab || !['OPEN', 'PARTIALLY_PAID'].includes(tab.status)) {
+            return { success: false, message: 'Cuenta no disponible' };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Ensure exactly `count` OPEN subcuentas exist
+            const openSubs = tab.subAccounts.filter((s) => s.status === 'OPEN');
+            let subIds: string[] = openSubs.map((s) => s.id);
+
+            if (subIds.length < data.count) {
+                const toCreate = data.count - subIds.length;
+                const base = tab.subAccounts.length;
+                for (let i = 0; i < toCreate; i++) {
+                    const created = await tx.tabSubAccount.create({
+                        data: {
+                            openTabId: data.openTabId,
+                            label: `Cuenta ${base + i + 1}`,
+                            sortOrder: base + i,
+                        },
+                    });
+                    subIds.push(created.id);
+                }
+            } else if (subIds.length > data.count) {
+                subIds = subIds.slice(0, data.count);
+            }
+
+            // Gather all items from all orders
+            const allItems = tab.orders.flatMap((o) => o.items);
+            const allItemIds = allItems.map((i) => i.id);
+
+            // Clear existing assignments for items in this tab (only for open subcuentas)
+            if (allItemIds.length > 0) {
+                await tx.subAccountItem.deleteMany({
+                    where: {
+                        salesOrderItemId: { in: allItemIds },
+                        subAccountId: { in: subIds },
+                    },
+                });
+            }
+
+            // Distribute quantities round-robin across subIds
+            for (const item of allItems) {
+                const n = data.count;
+                const unitLine = item.lineTotal / item.quantity;
+                const base = Math.floor(item.quantity / n);
+                const remainder = item.quantity % n;
+
+                for (let idx = 0; idx < n; idx++) {
+                    const qty = base + (idx < remainder ? 1 : 0);
+                    if (qty === 0) continue;
+                    const lineTotal = Math.round(unitLine * qty * 100) / 100;
+                    await tx.subAccountItem.create({
+                        data: {
+                            subAccountId: subIds[idx],
+                            salesOrderItemId: item.id,
+                            quantity: qty,
+                            lineTotal,
+                        },
+                    });
+                }
+            }
+
+            // Recalculate totals for all involved subcuentas
+            for (const subId of subIds) {
+                await recalcSubAccountTotals(tx, subId);
+            }
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        return { success: true, message: `Cuenta dividida en ${data.count} partes iguales` };
+    } catch (error) {
+        console.error('Error auto-splitting:', error);
+        return { success: false, message: 'Error dividiendo la cuenta' };
+    }
+}
+
+/**
+ * Cobra una subcuenta individual.
+ * Crea un PaymentSplit con subAccountId. Descuenta de balanceDue del OpenTab.
+ * Si todas las subcuentas quedan PAID y balanceDue llega a 0 → cierra el OpenTab.
+ * Los ítems del pool sin asignar se cobran por separado con registerOpenTabPaymentAction.
+ */
+export async function paySubAccountAction(data: {
+    subAccountId: string;
+    paymentMethod: POSPaymentMethod;
+    amount: number;
+    serviceFeeIncluded?: boolean;
+    splitLabel?: string;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        if (data.amount <= 0) return { success: false, message: 'El monto debe ser mayor a cero' };
+
+        const sub = await prisma.tabSubAccount.findUnique({
+            where: { id: data.subAccountId },
+            include: {
+                openTab: {
+                    include: { subAccounts: true },
+                },
+            },
+        });
+        if (!sub) return { success: false, message: 'Subcuenta no encontrada' };
+        if (sub.status !== 'OPEN') {
+            return { success: false, message: 'Esta subcuenta ya fue cobrada' };
+        }
+
+        const openTab = sub.openTab;
+        if (!['OPEN', 'PARTIALLY_PAID'].includes(openTab.status)) {
+            return { success: false, message: 'La mesa no está disponible para cobro' };
+        }
+
+        const baseLabel = data.splitLabel || sub.label;
+        const splitLabel = data.serviceFeeIncluded ? `${baseLabel} | +10% serv` : baseLabel;
+
+        const updatedTab = await prisma.$transaction(async (tx) => {
+            // Mark subcuenta as PAID
+            await tx.tabSubAccount.update({
+                where: { id: data.subAccountId },
+                data: {
+                    status: 'PAID',
+                    paidAmount: data.amount,
+                    paymentMethod: data.paymentMethod,
+                    paidAt: new Date(),
+                },
+            });
+
+            // Create PaymentSplit for this subcuenta
+            await tx.paymentSplit.create({
+                data: {
+                    openTabId: openTab.id,
+                    subAccountId: data.subAccountId,
+                    splitLabel,
+                    splitType: 'CUSTOM',
+                    paymentMethod: data.paymentMethod,
+                    status: 'PAID',
+                    subtotal: sub.subtotal,
+                    serviceChargeAmount: data.serviceFeeIncluded ? sub.serviceCharge : 0,
+                    total: sub.total,
+                    paidAmount: data.amount,
+                    paidAt: new Date(),
+                },
+            });
+
+            // Update OpenTab: deduct from balanceDue
+            const newBalance = Math.max(0, openTab.balanceDue - sub.total);
+
+            // Tab closes when all subcuentas are PAID AND balance is 0
+            const allSubsPaid = openTab.subAccounts.every(
+                (s) => s.id === data.subAccountId || s.status === 'PAID'
+            );
+            const tabClosed = newBalance <= 0.01 && allSubsPaid;
+
+            await tx.openTab.update({
+                where: { id: openTab.id },
+                data: {
+                    balanceDue: newBalance,
+                    status: tabClosed ? 'CLOSED' : 'PARTIALLY_PAID',
+                    closedAt: tabClosed ? new Date() : undefined,
+                    closedById: tabClosed ? session.id : undefined,
+                    totalServiceCharge: data.serviceFeeIncluded
+                        ? openTab.totalServiceCharge + sub.serviceCharge
+                        : openTab.totalServiceCharge,
+                    version: { increment: 1 },
+                },
+            });
+
+            if (tabClosed && openTab.tableOrStationId) {
+                await tx.tableOrStation.update({
+                    where: { id: openTab.tableOrStationId },
+                    data: { currentStatus: 'AVAILABLE' },
+                });
+                await tx.salesOrder.updateMany({
+                    where: { openTabId: openTab.id },
+                    data: { paymentStatus: 'PAID', closedAt: new Date() },
+                });
+            }
+
+            return await tx.openTab.findUniqueOrThrow({
+                where: { id: openTab.id },
+                include: {
+                    subAccounts: {
+                        orderBy: { sortOrder: 'asc' },
+                        include: { items: { include: { salesOrderItem: { include: { modifiers: true } } } } },
+                    },
+                    paymentSplits: { orderBy: { createdAt: 'asc' } },
+                    orders: { include: { items: { include: { modifiers: true, subAccountItems: true } } } },
+                },
+            });
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/sales');
+        return {
+            success: true,
+            message: `${sub.label} cobrada correctamente`,
+            data: updatedTab,
+        };
+    } catch (error) {
+        console.error('Error paying sub account:', error);
+        return { success: false, message: 'Error procesando pago de subcuenta' };
+    }
+}
+
+/**
+ * Carga una mesa completa con todas sus subcuentas, ítems y splits.
+ * Usado para sincronizar el estado del panel de subcuentas en el frontend.
+ */
+export async function getOpenTabWithSubAccountsAction(openTabId: string): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const tab = await prisma.openTab.findUnique({
+            where: { id: openTabId },
+            include: {
+                subAccounts: {
+                    orderBy: { sortOrder: 'asc' },
+                    include: {
+                        items: {
+                            include: {
+                                salesOrderItem: { include: { modifiers: true } },
+                            },
+                        },
+                        paymentSplits: true,
+                    },
+                },
+                orders: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        items: {
+                            include: {
+                                modifiers: true,
+                                subAccountItems: true,
+                            },
+                        },
+                    },
+                },
+                paymentSplits: { orderBy: { createdAt: 'asc' } },
+            },
+        });
+
+        if (!tab) return { success: false, message: 'Cuenta no encontrada' };
+        return { success: true, message: 'OK', data: tab };
+    } catch (error) {
+        console.error('Error loading tab with sub accounts:', error);
+        return { success: false, message: 'Error cargando la cuenta' };
+    }
+}
