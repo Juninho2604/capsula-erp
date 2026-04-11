@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { getFinancialSummaryAction, type FinancialSummary } from '@/app/actions/finance.actions';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -21,7 +21,22 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
   TAKEOUT: 'Para llevar',
 };
 
-interface TrendItem { label: string; sales: number; expenses: number; profit: number }
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: 'Efectivo',
+  CASH_USD: 'Efectivo USD',
+  CASH_BS: 'Efectivo Bs',
+  CARD: 'Tarjeta',
+  ZELLE: 'Zelle',
+  TRANSFER: 'Transferencia',
+  BANK_TRANSFER: 'Transferencia',
+  MOBILE_PAY: 'Pago Móvil',
+  MULTIPLE: 'Múltiple',
+  CORTESIA: 'Cortesía',
+};
+
+const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+interface TrendItem { label: string; sales: number; cogs: number; expenses: number; profit: number }
 
 interface Props {
   initialSummary: FinancialSummary | null;
@@ -77,9 +92,9 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
         <>
           {/* P&L Summary */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <PnLCard label="Ventas Totales" value={`$${fmt(s.income.totalSalesUsd)}`} sub={`${s.income.ordersCount} órdenes`} color="border-emerald-500/30 bg-emerald-500/5" icon="💰" positive />
-            <PnLCard label="Costo de Ventas" value={`$${fmt(s.cogs.totalCogsUsd)}`} sub={`${s.income.totalSalesUsd > 0 ? ((s.cogs.totalCogsUsd/s.income.totalSalesUsd)*100).toFixed(1) : 0}% de ventas`} color="border-amber-500/30 bg-amber-500/5" icon="🏭" />
-            <PnLCard label="Gastos Operativos" value={`$${fmt(s.expenses.totalExpensesUsd)}`} sub={`${s.expenses.count} gastos`} color="border-red-500/30 bg-red-500/5" icon="💸" />
+            <PnLCard label="Ventas Totales" value={`$${fmt(s.income.totalSalesUsd)}`} sub={`${s.income.ordersCount} órdenes`} color="border-emerald-500/30 bg-emerald-500/5" icon="💰" positive change={s.mom?.salesChange ?? null} />
+            <PnLCard label="Ticket Promedio" value={`$${fmt(s.income.avgTicket ?? 0)}`} sub="Por orden" color="border-amber-500/30 bg-amber-500/5" icon="🎫" />
+            <PnLCard label="Gastos Operativos" value={`$${fmt(s.expenses.totalExpensesUsd)}`} sub={`${s.expenses.count} gastos`} color="border-red-500/30 bg-red-500/5" icon="💸" change={s.mom?.expensesChange ?? null} invertChange />
             <PnLCard
               label="Utilidad Operativa"
               value={`$${fmt(s.profitLoss.operatingProfit)}`}
@@ -87,7 +102,29 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               color={s.profitLoss.operatingProfit >= 0 ? "border-blue-500/30 bg-blue-500/5" : "border-red-500/30 bg-red-500/10"}
               icon={s.profitLoss.operatingProfit >= 0 ? "📈" : "📉"}
               positive={s.profitLoss.operatingProfit >= 0}
+              change={s.mom?.profitChange ?? null}
             />
+          </div>
+
+          {/* Cash Flow Summary */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ingresos (Entradas)</p>
+              <p className="text-2xl font-black text-emerald-500 mt-1">+${fmt(s.cashFlow?.inflows ?? 0)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Ventas cobradas</p>
+            </div>
+            <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Egresos (Salidas)</p>
+              <p className="text-2xl font-black text-red-500 mt-1">-${fmt(s.cashFlow?.outflows ?? 0)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Gastos + pagos a proveedores</p>
+            </div>
+            <div className={`glass-panel rounded-2xl border p-5 ${(s.cashFlow?.net ?? 0) >= 0 ? 'border-blue-500/30 bg-blue-500/5' : 'border-red-500/30 bg-red-500/10'}`}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Flujo Neto</p>
+              <p className={`text-2xl font-black mt-1 ${(s.cashFlow?.net ?? 0) >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                {(s.cashFlow?.net ?? 0) >= 0 ? '+' : '-'}${fmt(Math.abs(s.cashFlow?.net ?? 0))}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Balance del período</p>
+            </div>
           </div>
 
           {/* Estado de Resultados */}
@@ -122,6 +159,56 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
             </div>
           </div>
 
+          {/* Charts Row */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Daily Sales Line Chart */}
+            <div className="glass-panel rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Ventas Diarias del Mes</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={s.income.dailySales ?? []} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={50} />
+                    <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
+                    <Line type="monotone" dataKey="total" name="Ventas" stroke="#10b981" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Expense Donut Chart */}
+            <div className="glass-panel rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Gastos por Categoría</h3>
+              {(s.expenses.byCategory?.length ?? 0) > 0 ? (
+                <div className="flex items-center gap-4">
+                  <div className="h-56 w-56 flex-shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={s.expenses.byCategory} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
+                          {s.expenses.byCategory.map((entry, index) => (
+                            <Cell key={entry.name} fill={entry.color || PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 space-y-1.5 overflow-hidden">
+                    {s.expenses.byCategory.slice(0, 6).map((cat, i) => (
+                      <div key={cat.name} className="flex items-center gap-2 text-xs">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color || PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-foreground truncate flex-1">{cat.name}</span>
+                        <span className="text-muted-foreground font-semibold">{cat.pct.toFixed(0)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-12">Sin gastos registrados</p>
+              )}
+            </div>
+          </div>
+
           {/* Gráfica de tendencia */}
           {trend.length > 0 && (
             <div className="glass-panel rounded-2xl border border-border p-6">
@@ -137,6 +224,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                     />
                     <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }} />
                     <Bar dataKey="sales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cogs" name="COGS" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="profit" name="Utilidad" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -144,6 +232,53 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               </div>
             </div>
           )}
+
+          {/* Top Gastos + Métodos de Pago */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Top 5 Expenses */}
+            {(s.expenses.topExpenses?.length ?? 0) > 0 && (
+              <div className="glass-panel rounded-2xl border border-border p-6">
+                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Top 5 Gastos del Período</h3>
+                <div className="space-y-3">
+                  {s.expenses.topExpenses.map((exp, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-lg font-black text-muted-foreground w-6">{i + 1}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{exp.description}</p>
+                          <p className="text-xs text-muted-foreground">{exp.categoryName} · {new Date(exp.paidAt).toLocaleDateString('es-VE')}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-black text-red-500 ml-3">${fmt(exp.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Methods */}
+            {(s.income.byPaymentMethod?.length ?? 0) > 0 && (
+              <div className="glass-panel rounded-2xl border border-border p-6">
+                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Ventas por Método de Pago</h3>
+                <div className="space-y-2.5">
+                  {s.income.byPaymentMethod.map(pm => {
+                    const pct = s.income.totalSalesUsd > 0 ? (pm.total / s.income.totalSalesUsd) * 100 : 0;
+                    return (
+                      <div key={pm.method} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground font-medium">{PAYMENT_METHOD_LABELS[pm.method] ?? pm.method}</span>
+                          <span className="text-foreground font-bold">${fmt(pm.total)} <span className="text-muted-foreground font-normal text-xs">({pm.count})</span></span>
+                        </div>
+                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Alertas financieras */}
           {(s.accountsPayable.overdueUsd > 0 || s.profitLoss.operatingProfit < 0) && (
@@ -180,6 +315,31 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               <p className="text-xs text-muted-foreground mt-1">{s.purchases.ordersCount} órdenes recibidas</p>
             </div>
           </div>
+
+          {/* Aging Report */}
+          {(s.accountsPayable.aging ?? []).some((a: { range: string; amount: number; count: number }) => a.amount > 0) && (
+            <div className="glass-panel rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
+              <div className="grid grid-cols-4 gap-3">
+                {s.accountsPayable.aging.map((bucket: { range: string; amount: number; count: number }) => (
+                  <div key={bucket.range} className={`rounded-xl p-4 text-center ${
+                    bucket.range === '90+' ? 'bg-red-500/10 border border-red-500/20' :
+                    bucket.range === '61-90' ? 'bg-orange-500/10 border border-orange-500/20' :
+                    bucket.range === '31-60' ? 'bg-amber-500/10 border border-amber-500/20' :
+                    'bg-blue-500/10 border border-blue-500/20'
+                  }`}>
+                    <p className="text-xs font-bold text-muted-foreground">{bucket.range} días</p>
+                    <p className={`text-lg font-black mt-1 ${
+                      bucket.range === '90+' ? 'text-red-500' :
+                      bucket.range === '61-90' ? 'text-orange-500' :
+                      bucket.range === '31-60' ? 'text-amber-500' : 'text-blue-500'
+                    }`}>${fmt(bucket.amount)}</p>
+                    <p className="text-[10px] text-muted-foreground">{bucket.count} facturas</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -188,8 +348,9 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-function PnLCard({ label, value, sub, color, icon, positive }: {
+function PnLCard({ label, value, sub, color, icon, positive, change, invertChange }: {
   label: string; value: string; sub?: string; color: string; icon: string; positive?: boolean;
+  change?: number | null; invertChange?: boolean;
 }) {
   return (
     <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
@@ -199,6 +360,13 @@ function PnLCard({ label, value, sub, color, icon, positive }: {
       </div>
       <p className={`text-2xl font-black ${positive === false ? 'text-red-500' : 'text-foreground'}`}>{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {change != null && (
+        <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+          (invertChange ? change <= 0 : change >= 0) ? 'text-emerald-500' : 'text-red-500'
+        }`}>
+          {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}% vs mes ant.
+        </span>
+      )}
     </div>
   );
 }
