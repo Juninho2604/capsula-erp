@@ -1902,6 +1902,40 @@ PedidosYA: panel derecho `w-80 tablet-land:w-96 xl:w-96`.
 - `<table className="w-full min-w-[900px]">` en `sales/page.tsx`
 - El wrapper `overflow-x-auto` ya existía; el `min-w` evita compresión de columnas
 
+### 18.10 Subcuentas en POS Restaurante y Mesero (2026-04-11)
+
+#### Schema Prisma (commit d9dfc85)
+- `TabSubAccount`: división de un `OpenTab` en hasta 25 subcuentas; campos `subtotal`, `serviceCharge` (10%), `total`, `paidAmount`, `status (OPEN|PAID|VOID)`
+- `SubAccountItem`: vincula un `SalesOrderItem` a una `TabSubAccount`; `quantity` puede ser parcial (ej. 1 de 3 del mismo ítem)
+- `PaymentSplit.subAccountId`: FK nullable — `null` = cobro de mesa completa (comportamiento existente), set = cobro de subcuenta
+- Migración manual SQL en `prisma/migrations/20260411000000_add_tab_sub_accounts/migration.sql` (sin `prisma migrate dev` por shadow DB no disponible)
+
+#### Server Actions (commit b72a9bb) — `src/app/actions/pos.actions.ts`
+| Action | Descripción |
+|--------|-------------|
+| `createSubAccountsAction` | Crea N subcuentas con labels personalizados (máx 25) |
+| `renameSubAccountAction` | Renombra una subcuenta |
+| `deleteSubAccountAction` | Elimina subcuenta (solo si OPEN y sin ítems pagados) |
+| `assignItemToSubAccountAction` | Asigna qty parcial de un SalesOrderItem a una subcuenta |
+| `unassignItemFromSubAccountAction` | Desasigna un ítem de una subcuenta |
+| `autoSplitEqualAction` | División round-robin igualitaria (crea subcuentas + reparte ítems) |
+| `paySubAccountAction` | Cobra una subcuenta; cierra mesa si todas pagadas y saldo ≤ 0.01 |
+| `getOpenTabWithSubAccountsAction` | Deep include subcuentas → ítems → order ítems → modifiers |
+
+#### Componente UI (commits e5340a1, 9fc4954)
+- `src/components/pos/SubAccountPanel.tsx` — Client Component con sub-componentes top-level `PoolItemRow` y `SubAccountCard`
+- División rápida: botones 2/3/4/5/6 llaman `autoSplitEqualAction`
+- Pool: ítems sin asignar o parcialmente asignados — no bloquean cierre de mesa
+- Cobro por subcuenta: selector de método, toggle +10% servicio, input monto
+- Integrado en **POS Restaurante** (`restaurante/page.tsx`): botón "÷ Dividir cuenta" en header del tab activo; alterna con panel de cobro normal (state `subAccountMode`)
+- Integrado en **POS Mesero** (`mesero/page.tsx`): botón "÷ Dividir cuenta" en bloque "Total cuenta"; mesonero crea labels y asigna ítems sin acceso a cobro principal
+
+#### Reglas de diseño
+- Labels editables inline (click en nombre → input, Enter confirma)
+- Modificadores siempre siguen al ítem principal
+- Cocina no ve subcuentas — comanda normal
+- Pool sin asignar se cobra con el botón principal de la mesa (flow existente)
+
 ### 18.6 Skills Instalados en `.claude/skills/`
 
 Estos archivos son cargados automáticamente en toda sesión de Claude Code:
@@ -1918,4 +1952,4 @@ Estos archivos son cargados automáticamente en toda sesión de Claude Code:
 ---
 
 *Actualizado el 2026-04-11 — Shanklish ERP / Cápsula SaaS — Documento Completo*
-*42 modelos Prisma · 47 módulos · 40 actions · 4 API routes · 3 services · 23 componentes*
+*44 modelos Prisma · 47 módulos · 48 actions · 4 API routes · 3 services · 24 componentes*
