@@ -1099,12 +1099,31 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
 
 - **Ruta**: `/dashboard/finanzas`
 - **Página**: Server Component — importa `getFinancialSummaryAction()` + `getMonthlyTrendAction()`
-- **Actions**: `finance.actions.ts` → 2 funciones:
-  - `getFinancialSummaryAction(month?, year?)` — P&L mensual: ingresos (ventas), COGS (compras recibidas), gastos operativos, cuentas por pagar, utilidad neta
-  - `getMonthlyTrendAction(months)` — tendencia de últimos N meses
-- **Modelos**: SalesOrder (ingresos), PurchaseOrder (COGS), Expense (gastos), AccountPayable (deudas)
-- **Conexiones**: ← SalesOrder.total (ingresos), ← PurchaseOrder.totalAmount con status RECEIVED (COGS), ← Expense.amountUsd (gastos), ← AccountPayable.remainingUsd (deudas pendientes)
-- **Estado**: Funcional
+- **Actions**: `finance.actions.ts` → 3 funciones:
+  - `getFinancialSummaryAction(month?, year?)` — P&L mensual completo con:
+    - Ingresos: ventas totales, ticket promedio, desglose por tipo (Restaurant/Delivery), por método de pago, ventas diarias del mes
+    - COGS: calculado desde `SalesOrderItem.costTotal` (no desde PurchaseOrder)
+    - Gastos operativos: por categoría con % del total, top 5 gastos individuales
+    - Cuentas por pagar: pendientes, vencidas, aging report (0-30, 31-60, 61-90, 90+ días)
+    - Flujo de caja: inflows (ventas), outflows (gastos + pagos a proveedores), neto
+    - P&L: utilidad bruta (ventas - COGS), utilidad operativa (bruta - gastos), márgenes %
+    - MoM (Month-over-Month): % cambio vs mes anterior en ventas, gastos, utilidad, # órdenes
+  - `getMonthlyTrendAction(months)` — tendencia de últimos N meses con ventas, COGS, gastos y utilidad (profit = sales - cogs - expenses)
+  - `getDailySalesAction(month, year)` — ventas agrupadas por día del mes
+- **Vista** (`finanzas-view.tsx`): Dashboard con 10 secciones:
+  1. KPI Cards con badges MoM (ventas, ticket promedio, gastos, utilidad)
+  2. Flujo de Caja (3 tarjetas: entradas, salidas, neto)
+  3. Estado de Resultados P&L formal (ventas → COGS → utilidad bruta → gastos → utilidad operativa)
+  4. Gráficas: LineChart ventas diarias + PieChart donut gastos por categoría
+  5. BarChart tendencia 6 meses (ventas, COGS, gastos, utilidad)
+  6. Top 5 gastos del período + ventas por método de pago con barras de progreso
+  7. Alertas financieras (deudas vencidas, operación con pérdida)
+  8. Cuentas por pagar pendientes (3 tarjetas: deudas, vencido, compras)
+  9. Aging report de deudas (4 buckets coloreados azul→rojo)
+- **Modelos**: SalesOrder + SalesOrderItem (ingresos + COGS), Expense (gastos), AccountPayable + AccountPayment (deudas + pagos)
+- **Conexiones**: ← SalesOrder.total (ingresos), ← SalesOrderItem.costTotal (COGS), ← Expense.amountUsd (gastos), ← AccountPayable.remainingUsd (deudas), ← AccountPayment.amountUsd (pagos del período para flujo de caja)
+- **Charts**: recharts (BarChart, LineChart, PieChart con Pie + Cell)
+- **Estado**: Funcional — Mejorado con MoM, flujo de caja, gráficas, aging report
 
 ### 7.10 Gastos
 
@@ -1115,9 +1134,17 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
   - `getExpensesAction(filters)` — filtro por categoría, fecha, status
   - `createExpenseAction(input)` — registro con categoría, monto USD/Bs, método de pago, período
   - `voidExpenseAction(id, reason)` — anula gasto
+- **Vista** (`gastos-view.tsx`): Módulo con analítica visual:
+  - KPI Cards con MoM comparison (% cambio vs mes anterior, inverted logic: gastos menores = verde)
+  - Desglose por categoría con barras de progreso (existente)
+  - PieChart donut distribución por categoría + BarChart horizontal por método de pago
+  - Filtros avanzados: por categoría y por método de pago con conteo dinámico
+  - Tabla detallada con filtrado aplicado
+  - Modales: crear gasto, crear categoría, anular gasto
+- **Charts**: recharts (PieChart, BarChart horizontal)
 - **Modelos**: Expense, ExpenseCategory
 - **Conexiones**: → Finanzas (P&L como gasto operativo), → Caja (gastos del turno)
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con gráficas donut/barras, MoM, filtros avanzados
 
 ### 7.11 Control de Caja
 
@@ -1128,11 +1155,18 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
   - `openCashRegisterAction(input)` — apertura con fondo inicial USD/Bs + desglose billetes
   - `closeCashRegisterAction(input)` — cierre: conteo final, calcula diferencia vs esperado
   - `updateRegisterOperatorsAction(id, operators[])` — asigna operadoras al turno
+- **Vista** (`caja-view.tsx`): Módulo con analítica de cuadre:
+  - Cajas abiertas con gestión de operadoras y cambio de turno (existente)
+  - Resumen mensual KPIs: ventas del mes, gastos del mes, diferencia acumulada, precisión de cuadre (% turnos sin diferencia)
+  - BarChart mini tendencia de diferencias por cierre (positivo=sobrante, negativo=faltante) con ReferenceLine en 0
+  - Historial de cierres con desglose de billetes (existente)
+  - Modales: abrir caja, cerrar caja, desglose billetes, gestión operadoras
+- **Charts**: recharts (BarChart con ReferenceLine)
 - **Modelos**: CashRegister
 - **Componentes**: `BillDenominationInput` — entrada de billetes por denominación
 - **Conexiones**: ← SalesOrder (ventas del turno para calcular esperado), ← Expense (gastos del turno)
 - **Lógica**: Apertura → ventas del día → cierre con conteo → `expectedCash = apertura + ventas_efectivo - gastos` → `difference = cierre_contado - esperado`
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con KPIs mensuales, gráfica de tendencia diferencias, precisión de cuadre
 
 ### 7.12 Cuentas por Pagar
 
@@ -1142,9 +1176,16 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
   - `getAccountsPayableAction(filters)` — filtro por status, proveedor, fecha
   - `createAccountPayableAction(input)` — nueva deuda (manual o desde PurchaseOrder)
   - `registerPaymentAction(input)` — pago parcial/total → actualiza `paidAmountUsd`, `remainingUsd`, `status`
+- **Vista** (`cuentas-pagar-view.tsx`): Módulo con análisis de deudas:
+  - KPI Cards: pendiente, vencido, pagado, # acreedores (existente)
+  - Aging report: 5 buckets (Vigente, 0-30, 31-60, 61-90, 90+ días) coloreados verde→rojo
+  - Top acreedores: ranking de proveedores por monto pendiente con barras de progreso proporcionales
+  - Próximos vencimientos (14 días): lista con badges (HOY, MAÑANA, Nd) coloreados por urgencia
+  - Filtros (Activas/Todas/Pagadas) + tabla expandible con historial de pagos (existente)
+  - Modales: crear cuenta, registrar pago
 - **Modelos**: AccountPayable, AccountPayment, Supplier, PurchaseOrder
 - **Conexiones**: ← PurchaseOrder (puede crear deuda al recibir), ← Supplier (acreedor), → Finanzas (deudas pendientes en P&L)
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con aging report, ranking acreedores, alertas de vencimiento
 
 ### 7.13 Intercompany
 
@@ -1178,9 +1219,11 @@ const SINGLE_PAY_METHODS = ["CASH_USD","CASH_EUR","ZELLE","PDV_SHANKLISH","PDV_S
 ### Conexiones Críticas entre Módulos de Administración
 
 ```
-Finanzas ← SalesOrder (ingresos) + PurchaseOrder (COGS) + Expense (gastos) + AccountPayable (deudas)
+Finanzas ← SalesOrder (ingresos + COGS vía items.costTotal) + Expense (gastos) + AccountPayable (deudas) + AccountPayment (pagos período)
    ↓
 P&L = Ingresos - COGS - Gastos Operativos
+Flujo de Caja = Ventas - (Gastos + Pagos a Proveedores)
+MoM = % cambio vs mes anterior
 
 Caja ← SalesOrder (ventas del turno) + Expense (gastos del turno)
    ↓

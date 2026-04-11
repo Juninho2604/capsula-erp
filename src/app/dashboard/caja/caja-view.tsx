@@ -8,6 +8,7 @@ import {
   type CashRegisterData,
 } from '@/app/actions/cash-register.actions';
 import { BillDenominationInput } from '@/components/pos/BillDenominationInput';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const SHIFT_TYPES = [
   { value: 'MORNING', label: 'Mañana' },
@@ -175,6 +176,25 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
   const openRegisters = registers.filter(r => r.status === 'OPEN');
   const closedRegisters = registers.filter(r => r.status === 'CLOSED');
 
+  const monthlyStats = {
+    totalSales: closedRegisters.reduce((s: number, r) => s + (r.totalSalesUsd ?? 0), 0),
+    totalExpenses: closedRegisters.reduce((s: number, r) => s + (r.totalExpenses ?? 0), 0),
+    totalDifference: closedRegisters.reduce((s: number, r) => s + (r.difference ?? 0), 0),
+    avgDifference: closedRegisters.length > 0
+      ? closedRegisters.reduce((s: number, r) => s + (r.difference ?? 0), 0) / closedRegisters.length
+      : 0,
+    shiftsCount: closedRegisters.length,
+    perfectShifts: closedRegisters.filter(r => Math.abs(r.difference ?? 0) < 1).length,
+  };
+
+  const diffTrend = [...closedRegisters]
+    .sort((a, b) => new Date(a.shiftDate).getTime() - new Date(b.shiftDate).getTime())
+    .map(r => ({
+      date: new Date(r.shiftDate).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }),
+      name: r.registerName,
+      difference: r.difference ?? 0,
+    }));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -261,6 +281,48 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
         </div>
       )}
 
+      {/* Monthly Summary */}
+      {closedRegisters.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Mes</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>
+              <p className="text-2xl font-black text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.shiftsCount} turnos cerrados</p>
+            </div>
+            <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gastos del Mes</p>
+              <p className="text-2xl font-black text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Descontados de caja</p>
+            </div>
+            <div className={`glass-panel rounded-2xl border p-4 ${
+              Math.abs(monthlyStats.totalDifference) < 5 ? 'border-emerald-500/30 bg-emerald-500/5' :
+              monthlyStats.totalDifference < 0 ? 'border-red-500/30 bg-red-500/5' : 'border-blue-500/30 bg-blue-500/5'
+            }`}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Diferencia Acumulada</p>
+              <p className={`text-2xl font-black mt-1 ${
+                Math.abs(monthlyStats.totalDifference) < 5 ? 'text-emerald-500' :
+                monthlyStats.totalDifference < 0 ? 'text-red-500' : 'text-blue-500'
+              }`}>
+                {monthlyStats.totalDifference >= 0 ? '+' : ''}{fmt(monthlyStats.totalDifference)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Promedio: {fmt(monthlyStats.avgDifference)} por turno</p>
+            </div>
+            <div className="glass-panel rounded-2xl border border-border p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Precisión de Cuadre</p>
+              <p className={`text-2xl font-black mt-1 ${
+                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.8 ? 'text-emerald-500' :
+                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.5 ? 'text-amber-500' : 'text-red-500'
+              }`}>
+                {monthlyStats.shiftsCount > 0 ? Math.round((monthlyStats.perfectShifts / monthlyStats.shiftsCount) * 100) : 0}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.perfectShifts}/{monthlyStats.shiftsCount} turnos sin diferencia</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navegador de período */}
       <div className="flex items-center gap-3">
         <button onClick={() => handleMonthChange(-1)} className="rounded-lg border border-border p-2 hover:bg-accent transition-colors text-foreground">‹</button>
@@ -276,6 +338,31 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
         <div className="px-5 py-4 border-b border-border">
           <h3 className="font-semibold text-foreground">Historial de Cierres</h3>
         </div>
+        {/* Difference Trend */}
+        {diffTrend.length > 1 && (
+          <div className="px-5 py-4 border-b border-border">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Tendencia de Diferencias</p>
+            <div className="h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={diffTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
+                  <Tooltip
+                    formatter={(value: number) => [`$${fmt(value)}`, 'Diferencia']}
+                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 11 }}
+                  />
+                  <ReferenceLine y={0} stroke="var(--border)" />
+                  <Bar
+                    dataKey="difference"
+                    name="Diferencia"
+                    fill="#3b82f6"
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
         {closedRegisters.length === 0 ? (
           <div className="p-10 text-center">
             <p className="text-3xl">🏧</p>

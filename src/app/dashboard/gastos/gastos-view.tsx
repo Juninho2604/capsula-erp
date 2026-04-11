@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   getExpensesAction, createExpenseAction, voidExpenseAction,
   createExpenseCategoryAction,
   type ExpenseData, type ExpenseSummary, type ExpenseCategoryData,
 } from '@/app/actions/expense.actions';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
 
@@ -19,6 +20,8 @@ const PAYMENT_METHODS = [
   { value: 'CHECK', label: 'Cheque' },
   { value: 'OTHER', label: 'Otro' },
 ];
+
+const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -54,6 +57,9 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
   const [voidTarget, setVoidTarget] = useState<ExpenseData | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [prevSummary, setPrevSummary] = useState<ExpenseSummary | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterMethod, setFilterMethod] = useState<string>('');
 
   const canManage = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(currentUserRole);
   const canAdmin = ['OWNER', 'ADMIN_MANAGER'].includes(currentUserRole);
@@ -75,8 +81,24 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         setExpenses(result.data);
         setSummary(result.summary ?? { totalUsd: 0, countByCategory: [], countByPaymentMethod: [] });
       }
+      // Fetch previous month for comparison
+      const prevM = month === 1 ? 12 : month - 1;
+      const prevY = month === 1 ? year - 1 : year;
+      const prevResult = await getExpensesAction({ month: prevM, year: prevY });
+      if (prevResult.success) {
+        setPrevSummary(prevResult.summary ?? null);
+      }
     });
   };
+
+  // Load previous month on initial mount for MoM comparison
+  useEffect(() => {
+    const prevM = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevY = currentMonth === 1 ? currentYear - 1 : currentYear;
+    getExpensesAction({ month: prevM, year: prevY }).then(r => {
+      if (r.success) setPrevSummary(r.summary ?? null);
+    });
+  }, []);
 
   const handleMonthChange = (delta: number) => {
     let m = selectedMonth + delta;
@@ -150,6 +172,13 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
     });
   };
 
+  // ─── FILTRADO ────────────────────────────────────────────────────────────────
+  const filteredExpenses = expenses.filter(e => {
+    if (filterCategory && e.categoryId !== filterCategory) return false;
+    if (filterMethod && e.paymentMethod !== filterMethod) return false;
+    return true;
+  });
+
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -187,7 +216,14 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Gastos" value={`$${fmt(summary.totalUsd)}`} icon="💸" color="border-red-500/30 bg-red-500/5" />
+        <KpiCard
+          label="Total Gastos"
+          value={`$${fmt(summary.totalUsd)}`}
+          icon="💸"
+          color="border-red-500/30 bg-red-500/5"
+          change={prevSummary ? (prevSummary.totalUsd > 0 ? Math.round(((summary.totalUsd - prevSummary.totalUsd) / prevSummary.totalUsd) * 1000) / 10 : null) : null}
+          invertChange
+        />
         <KpiCard label="Nº de Gastos" value={`${expenses.length}`} icon="📋" color="border-blue-500/30 bg-blue-500/5" />
         <KpiCard
           label="Mayor Categoría"
@@ -228,12 +264,94 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         </div>
       )}
 
+      {/* Charts Row */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Pie Chart */}
+        {summary.countByCategory.length > 0 && (
+          <div className="glass-panel rounded-2xl border border-border p-6">
+            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Distribución por Categoría</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={summary.countByCategory}
+                    dataKey="totalUsd"
+                    nameKey="categoryName"
+                    cx="50%" cy="50%"
+                    innerRadius={45} outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {summary.countByCategory.map((entry, index) => (
+                      <Cell key={entry.categoryId} fill={entry.categoryColor || PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => [`$${fmt(value)}`, undefined]}
+                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Method Breakdown */}
+        {summary.countByPaymentMethod.length > 0 && (
+          <div className="glass-panel rounded-2xl border border-border p-6">
+            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Por Método de Pago</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.countByPaymentMethod} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <XAxis type="number" tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="method" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={100} tickFormatter={(v: string) => paymentLabel(v)} />
+                  <Tooltip formatter={(value: number) => [`$${fmt(value)}`, 'Monto']} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
+                  <Bar dataKey="totalUsd" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="">Todas las categorías</option>
+          {categories.filter(c => c.isActive).map(c => (
+            <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+          ))}
+        </select>
+        <select
+          value={filterMethod}
+          onChange={e => setFilterMethod(e.target.value)}
+          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="">Todos los métodos</option>
+          {PAYMENT_METHODS.map(m => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+        {(filterCategory || filterMethod) && (
+          <button
+            onClick={() => { setFilterCategory(''); setFilterMethod(''); }}
+            className="text-xs text-blue-500 hover:text-blue-400"
+          >
+            Limpiar filtros
+          </button>
+        )}
+        <span className="text-xs text-muted-foreground ml-auto">{filteredExpenses.length} gastos</span>
+      </div>
+
       {/* Tabla de gastos */}
       <div className="glass-panel rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
           <h3 className="font-semibold text-foreground">Detalle de Gastos</h3>
         </div>
-        {expenses.length === 0 ? (
+        {filteredExpenses.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-4xl">💸</p>
             <p className="mt-2 text-muted-foreground font-medium">Sin gastos en este período</p>
@@ -254,7 +372,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {expenses.map(e => (
+                {filteredExpenses.map(e => (
                   <tr key={e.id} className={`hover:bg-muted/20 transition-colors ${e.status === 'VOID' ? 'opacity-40' : ''}`}>
                     <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">
                       {new Date(e.paidAt).toLocaleDateString('es-VE')}
@@ -432,7 +550,10 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
 // ─── COMPONENTES AUXILIARES ──────────────────────────────────────────────────
 
-function KpiCard({ label, value, icon, color, sub }: { label: string; value: string; icon: string; color: string; sub?: string }) {
+function KpiCard({ label, value, icon, color, sub, change, invertChange }: {
+  label: string; value: string; icon: string; color: string; sub?: string;
+  change?: number | null; invertChange?: boolean;
+}) {
   return (
     <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
       <div className="flex items-center justify-between mb-1">
@@ -441,6 +562,13 @@ function KpiCard({ label, value, icon, color, sub }: { label: string; value: str
       </div>
       <p className="text-2xl font-black text-foreground truncate">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {change != null && (
+        <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+          (invertChange ? change <= 0 : change >= 0) ? 'text-emerald-500' : 'text-red-500'
+        }`}>
+          {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}% vs mes ant.
+        </span>
+      )}
     </div>
   );
 }
