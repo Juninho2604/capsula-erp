@@ -118,6 +118,13 @@ interface TableSummary {
   currentStatus: string;
   openTabs: OpenTabSummary[];
 }
+interface PickupTabLocal {
+  id: string;
+  pickupNumber: string;
+  customerName: string;
+  customerPhone: string;
+  cart: CartItem[];
+}
 interface ZoneSummary {
   id: string;
   name: string;
@@ -269,6 +276,14 @@ export default function POSSportBarPage() {
   const [showChangeCashierModal, setShowChangeCashierModal] = useState(false);
   const [isPickupMode, setIsPickupMode] = useState(false);
 
+  // ── Pickup Tabs (múltiples pickups simultáneos como mesas virtuales) ───────
+  const [pickupTabs, setPickupTabs] = useState<PickupTabLocal[]>([]);
+  const [activePickupTabId, setActivePickupTabId] = useState<string | null>(null);
+  const [showPickupOpenModal, setShowPickupOpenModal] = useState(false);
+  const [newPickupNumber, setNewPickupNumber] = useState("");
+  const [newPickupName, setNewPickupName] = useState("");
+  const [newPickupPhone, setNewPickupPhone] = useState("");
+
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
@@ -359,6 +374,11 @@ export default function POSSportBarPage() {
   );
 
   const activeTab = useMemo(() => selectedTable?.openTabs[0] || null, [selectedTable]);
+
+  const activePickupTab = useMemo(
+    () => pickupTabs.find((t) => t.id === activePickupTabId) ?? null,
+    [pickupTabs, activePickupTabId],
+  );
 
   const allMenuItems = useMemo(
     () => categories.flatMap((c) => (c.items || [])),
@@ -605,6 +625,89 @@ export default function POSSportBarPage() {
     setAmountReceived("");
     setSubAccountMode(false);
     setCheckoutTip("");
+  };
+
+  // ============================================================================
+  // PICKUP TABS — Gestión de múltiples pickups simultáneos
+  // ============================================================================
+
+  /** Guarda el carrito actual en el pickup tab activo antes de cambiar de contexto */
+  const saveActivePickupCart = (currentCart: CartItem[]) => {
+    if (!activePickupTabId) return;
+    setPickupTabs((prev) =>
+      prev.map((t) => (t.id === activePickupTabId ? { ...t, cart: currentCart } : t)),
+    );
+  };
+
+  /** Abre el modal para crear un nuevo pickup tab */
+  const openPickupModal = () => {
+    const nextNum = (pickupTabs.length + 1).toString().padStart(2, "0");
+    setNewPickupNumber(`PK-${nextNum}`);
+    setNewPickupName("");
+    setNewPickupPhone("");
+    setShowPickupOpenModal(true);
+  };
+
+  /** Confirma creación de un nuevo pickup tab */
+  const handleCreatePickupTab = () => {
+    // Guardar carrito del tab activo antes de cambiar
+    if (isPickupMode && activePickupTabId) {
+      saveActivePickupCart(cart);
+    }
+    const newTab: PickupTabLocal = {
+      id: crypto.randomUUID(),
+      pickupNumber: newPickupNumber.trim() || `PK-${(pickupTabs.length + 1).toString().padStart(2, "0")}`,
+      customerName: newPickupName.trim(),
+      customerPhone: newPickupPhone.trim(),
+      cart: [],
+    };
+    setPickupTabs((prev) => [...prev, newTab]);
+    setActivePickupTabId(newTab.id);
+    setPickupCustomerName(newTab.customerName);
+    setCart([]);
+    setDiscountType("NONE");
+    setAuthorizedManager(null);
+    setIsPickupMode(true);
+    setSelectedTableId("");
+    setSelectedZoneId("");
+    setShowPickupOpenModal(false);
+  };
+
+  /** Cambia al pickup tab seleccionado, guardando el carrito del activo */
+  const handleSelectPickupTab = (tabId: string) => {
+    if (activePickupTabId === tabId) return;
+    // Guardar carrito actual
+    if (isPickupMode && activePickupTabId) {
+      saveActivePickupCart(cart);
+    }
+    const tab = pickupTabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    setCart(tab.cart);
+    setActivePickupTabId(tabId);
+    setPickupCustomerName(tab.customerName);
+    setDiscountType("NONE");
+    setAuthorizedManager(null);
+    setIsPickupMode(true);
+    setSelectedTableId("");
+    setSelectedZoneId("");
+  };
+
+  /** Elimina un pickup tab (sin cobrar — descartado) */
+  const handleDiscardPickupTab = (tabId: string) => {
+    const remaining = pickupTabs.filter((t) => t.id !== tabId);
+    setPickupTabs(remaining);
+    if (activePickupTabId === tabId) {
+      if (remaining.length > 0) {
+        const next = remaining[remaining.length - 1];
+        setCart(next.cart);
+        setActivePickupTabId(next.id);
+        setPickupCustomerName(next.customerName);
+      } else {
+        setActivePickupTabId(null);
+        setIsPickupMode(false);
+        resetTableState();
+      }
+    }
   };
 
   // ============================================================================
@@ -949,11 +1052,24 @@ export default function POSSportBarPage() {
           customerName: pickupCustomerName || "Cliente en Caja",
         });
 
-        setCart([]);
+        // Eliminar el pickup tab completado y cambiar al siguiente (si existe)
+        const completedTabId = activePickupTabId;
+        const remaining = pickupTabs.filter((t) => t.id !== completedTabId);
+        setPickupTabs(remaining);
+        if (remaining.length > 0) {
+          const next = remaining[remaining.length - 1];
+          setCart(next.cart);
+          setActivePickupTabId(next.id);
+          setPickupCustomerName(next.customerName);
+        } else {
+          setCart([]);
+          setActivePickupTabId(null);
+          setIsPickupMode(false);
+          setPickupCustomerName("");
+        }
         setMixedPaymentsPickup([]); setIsPickupMixedMode(false);
         setCheckoutTip('');
         clearDiscount();
-        setPickupCustomerName("");
       } else {
         toast.error(result.message);
       }
@@ -1150,22 +1266,47 @@ export default function POSSportBarPage() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Secciones</p>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => {
-                  setIsPickupMode(true);
-                  setSelectedTableId("");
-                  setSelectedZoneId("");
-                }}
+                onClick={openPickupModal}
                 className={`capsula-btn min-h-0 py-3 text-sm ${isPickupMode ? "capsula-btn-primary" : "capsula-btn-secondary"}`}
               >
-                🛍️ Venta Directa / Pickup
+                🛍️ {pickupTabs.length > 0 ? `Nuevo Pickup (${pickupTabs.length} abiertos)` : "Venta Directa / Pickup"}
               </button>
+
+              {/* Lista de pickup tabs abiertos */}
+              {pickupTabs.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {pickupTabs.map((pt) => (
+                    <div key={pt.id} className={`flex items-center gap-1 rounded-xl border text-xs font-bold transition-all ${activePickupTabId === pt.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground/70 hover:border-primary/40"}`}>
+                      <button
+                        className="flex-1 py-2 pl-3 text-left truncate"
+                        onClick={() => handleSelectPickupTab(pt.id)}
+                      >
+                        {pt.pickupNumber}{pt.customerName ? ` · ${pt.customerName}` : ""}
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          ${pt.cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)}
+                          {activePickupTabId === pt.id && cart.length > 0 &&
+                            ` · ${cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)} (activo)`}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => handleDiscardPickupTab(pt.id)}
+                        className="px-2 py-2 text-red-400/70 hover:text-red-300 leading-none"
+                        title="Descartar pickup"
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 {layout?.serviceZones.map((z) => (
                   <button
                     key={z.id}
                     onClick={() => {
+                      if (isPickupMode && activePickupTabId) saveActivePickupCart(cart);
                       resetTableState();
                       setIsPickupMode(false);
+                      setActivePickupTabId(null);
                       setSelectedZoneId(z.id);
                       setSelectedTableId("");
                     }}
@@ -1202,7 +1343,14 @@ export default function POSSportBarPage() {
                 return (
                   <button
                     key={table.id}
-                    onClick={() => { resetTableState(); setSelectedTableId(table.id); setShowTableModal(true); }}
+                    onClick={() => {
+                      if (isPickupMode && activePickupTabId) saveActivePickupCart(cart);
+                      resetTableState();
+                      setIsPickupMode(false);
+                      setActivePickupTabId(null);
+                      setSelectedTableId(table.id);
+                      setShowTableModal(true);
+                    }}
                     className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
                       isSelected
                         ? "border-primary bg-primary/10 shadow-lg shadow-primary/10 z-10"
@@ -1437,13 +1585,27 @@ export default function POSSportBarPage() {
           {isPickupMode ? (
             <div className="flex-1 flex flex-col overflow-hidden bg-secondary/80">
               <div className="p-4 border-b border-indigo-900/50 bg-indigo-900/20 space-y-2 shrink-0">
-                <h2 className="font-black text-lg text-indigo-300 flex items-center gap-2">
-                  🛍️ Pickup - Venta Directa
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-black text-lg text-indigo-300 flex items-center gap-2">
+                    🛍️ {activePickupTab?.pickupNumber || "Pickup"}
+                  </h2>
+                  {activePickupTab?.customerPhone && (
+                    <span className="text-xs text-muted-foreground">📞 {activePickupTab.customerPhone}</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={pickupCustomerName}
-                  onChange={(e) => setPickupCustomerName(e.target.value)}
+                  onChange={(e) => {
+                    setPickupCustomerName(e.target.value);
+                    if (activePickupTabId) {
+                      setPickupTabs((prev) =>
+                        prev.map((t) =>
+                          t.id === activePickupTabId ? { ...t, customerName: e.target.value } : t,
+                        ),
+                      );
+                    }
+                  }}
                   placeholder="Nombre del Cliente..."
                   className="w-full bg-background/50 border border-indigo-500/30 rounded py-2 px-3 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 />
@@ -2142,6 +2304,81 @@ export default function POSSportBarPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: ABRIR CUENTA                                              */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: NUEVA VENTA PICKUP                                         */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {showPickupOpenModal && (
+        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
+            <div className="border-b border-border p-5 flex items-center justify-between">
+              <h3 className="text-lg font-black">🛍️ Nueva Venta Pickup</h3>
+              <button
+                onClick={() => setShowPickupOpenModal(false)}
+                className="text-muted-foreground hover:text-destructive text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Número de pickup <span className="text-muted-foreground font-normal">(auto-generado, editable)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newPickupNumber}
+                  onChange={(e) => setNewPickupNumber(e.target.value)}
+                  placeholder="PK-01"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-indigo-400 focus:outline-none font-black tracking-wide"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Nombre del cliente <span className="text-muted-foreground font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newPickupName}
+                  onChange={(e) => setNewPickupName(e.target.value)}
+                  placeholder="Ej: Juan Pérez"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-indigo-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Teléfono <span className="text-muted-foreground font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newPickupPhone}
+                  onChange={(e) => setNewPickupPhone(e.target.value)}
+                  placeholder="Ej: 0414-1234567"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-indigo-400 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="border-t border-border p-4 flex gap-3">
+              <button
+                onClick={() => setShowPickupOpenModal(false)}
+                className="flex-1 py-3 bg-secondary hover:bg-muted rounded-xl font-bold text-sm transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreatePickupTab}
+                disabled={isProcessing}
+                className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-black text-sm transition disabled:opacity-50"
+              >
+                ✓ Abrir Pickup
+              </button>
             </div>
           </div>
         </div>
