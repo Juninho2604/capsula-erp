@@ -809,7 +809,7 @@ export default function POSSportBarPage() {
         return;
       }
       // Imprimir factura: correlativo fijo por mesa (tabCode), 10% servicio solo si el cliente lo pagó
-      const subtotal = (activeTab as any).runningSubtotal ?? activeTab.orders.reduce((s, o) => s + o.items.reduce((si: number, i: any) => si + (i.lineTotal || 0), 0), 0);
+      const subtotal = activeTab.runningTotal;
       const discount = discountAmount > 0 ? discountAmount : ((activeTab as any).runningDiscount ?? 0);
       const totalAntesServicio = Math.max(0, activeTab.balanceDue - discountAmount);
       const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
@@ -1075,7 +1075,8 @@ export default function POSSportBarPage() {
         } else {
           setCart([]);
           setActivePickupTabId(null);
-          setIsPickupMode(false);
+          // Keep isPickupMode=true so the reprint button remains visible in the panel.
+          // The user exits pickup mode by clicking a zone button in the left column.
           setPickupCustomerName("");
         }
         setMixedPaymentsPickup([]); setIsPickupMixedMode(false);
