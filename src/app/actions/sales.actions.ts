@@ -197,12 +197,14 @@ export async function getSalesHistoryAction(date?: string) {
 }
 
 export interface ArqueoSaleRow {
-    orderType: 'RESTAURANT' | 'PICKUP' | 'DELIVERY';
+    orderType: 'RESTAURANT' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
     description: string;
     correlativo: string;
     total: number;
     paymentBreakdown: {
         cashUsd: number;
+        cashEur: number;
+        cashBs: number;
         zelle: number;
         cardPdVShanklish: number;
         cardPdVSuperferro: number;
@@ -259,7 +261,7 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                 const customerName = tab?.customerLabel || '';
                 const description = `${tableName} ${customerName}`.trim() || tableName;
 
-                const breakdown = { cashUsd: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
+                const breakdown = { cashUsd: 0, cashEur: 0, cashBs: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
                 const splits = tab?.paymentSplits || [];
                 let serviceFee = 0;
                 const hasService = splits.length > 0 && splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'));
@@ -272,22 +274,26 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     for (const s of splits) {
                         const pm = (s.paymentMethod || '').toUpperCase();
                         const amt = s.paidAmount || 0;
-                        if (pm === 'CASH' || pm === 'CASH_USD' || pm === 'CASH_EUR') breakdown.cashUsd += amt;
+                        if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd += amt;
+                        else if (pm === 'CASH_EUR') breakdown.cashEur += amt;
+                        else if (pm === 'CASH_BS') breakdown.cashBs += amt;
                         else if (pm === 'ZELLE') breakdown.zelle += amt;
                         else if (pm === 'CARD' || pm === 'BS_POS' || pm === 'PDV_SHANKLISH') breakdown.cardPdVShanklish += amt;
                         else if (pm === 'PDV_SUPERFERRO' || pm === 'TRANSFER') breakdown.cardPdVSuperferro += amt;
                         else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL' || pm === 'MOVIL_NG') breakdown.mobileShanklish += amt;
-                        // CASH_BS, MULTIPLE, CORTESIA → silently excluded
+                        // MULTIPLE, CORTESIA → silently excluded
                     }
                     serviceFee = hasService ? total * 0.1 : 0;
                 } else {
                     const pm = (group[0].paymentMethod || '').toUpperCase();
-                    if (pm === 'CASH' || pm === 'CASH_USD' || pm === 'CASH_EUR') breakdown.cashUsd = total;
+                    if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd = total;
+                    else if (pm === 'CASH_EUR') breakdown.cashEur = total;
+                    else if (pm === 'CASH_BS') breakdown.cashBs = total;
                     else if (pm === 'ZELLE') breakdown.zelle = total;
                     else if (pm === 'CARD' || pm === 'BS_POS' || pm === 'PDV_SHANKLISH') breakdown.cardPdVShanklish = total;
                     else if (pm === 'PDV_SUPERFERRO' || pm === 'TRANSFER') breakdown.cardPdVSuperferro = total;
                     else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL' || pm === 'MOVIL_NG') breakdown.mobileShanklish = total;
-                    // CASH_BS, MULTIPLE, CORTESIA → silently excluded
+                    // MULTIPLE, CORTESIA → silently excluded
                 }
 
                 result.push({
@@ -299,15 +305,17 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     serviceFee
                 });
             } else if (o.orderType !== 'RESTAURANT' || !o.openTabId) {
-                const breakdown = { cashUsd: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
+                const breakdown = { cashUsd: 0, cashEur: 0, cashBs: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
                 const addLine = (pm: string, amt: number) => {
                     const k = (pm || '').toUpperCase();
-                    if (k === 'CASH' || k === 'CASH_USD' || k === 'CASH_EUR') breakdown.cashUsd += amt;
+                    if (k === 'CASH' || k === 'CASH_USD') breakdown.cashUsd += amt;
+                    else if (k === 'CASH_EUR') breakdown.cashEur += amt;
+                    else if (k === 'CASH_BS') breakdown.cashBs += amt;
                     else if (k === 'ZELLE') breakdown.zelle += amt;
                     else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH') breakdown.cardPdVShanklish += amt;
                     else if (k === 'PDV_SUPERFERRO' || k === 'TRANSFER' || k === 'BANK_TRANSFER') breakdown.cardPdVSuperferro += amt;
                     else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG') breakdown.mobileShanklish += amt;
-                    // CASH_BS, MULTIPLE, CORTESIA, unknown → silently excluded
+                    // MULTIPLE, CORTESIA, unknown → silently excluded
                 };
                 const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
                 if (mixedLines && mixedLines.length > 0) {
@@ -316,13 +324,15 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                     addLine(o.paymentMethod || '', o.total);
                 }
 
-                const isPickup = !o.openTabId && (o.orderType === 'RESTAURANT' || o.orderType === 'PICKUP');
-                const isDelivery = o.orderType === 'DELIVERY';
-                const prefix = isPickup ? 'Pickup' : isDelivery ? 'Delivery' : '';
-                const description = prefix ? `${prefix}: ${o.customerName || 'Cliente'}` : (o.customerName || 'Cliente');
+                const ot = (o.orderType || '').toUpperCase();
+                const sc = (o.sourceChannel || '').toUpperCase();
+                const isPedidosYa = ot === 'PEDIDOSYA' || sc === 'POS_PEDIDOSYA';
+                const isDelivery = ot === 'DELIVERY';
+                const typeLabel = isPedidosYa ? 'PedidosYA' : isDelivery ? 'Delivery' : 'Pickup';
+                const description = `${typeLabel}: ${o.customerName || 'Cliente'}`;
 
                 result.push({
-                    orderType: isDelivery ? 'DELIVERY' : 'PICKUP',
+                    orderType: isPedidosYa ? 'PEDIDOSYA' : isDelivery ? 'DELIVERY' : 'PICKUP',
                     description,
                     correlativo: o.orderNumber || '',
                     total: o.total,

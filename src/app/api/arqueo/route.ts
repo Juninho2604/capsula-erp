@@ -24,9 +24,8 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const buffer = await buildArqueoWorkbookFromTemplate(result.data);
-
-        const dateStr = date.toLocaleDateString('es-VE');
+        const dateStr = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
+        const buffer = await buildArqueoWorkbookFromTemplate(result.data, dateStr);
         const fileName = getArqueoFileName(dateStr);
         const encodedFileName = encodeURIComponent(fileName);
 
