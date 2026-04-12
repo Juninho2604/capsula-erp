@@ -2247,6 +2247,64 @@ En modo mixto el target del `MixedPaymentSelector` es ahora el monto exacto con 
 
 ---
 
+### 18.16 Bugfix: reimpresión pickup y subtotal factura mesa (2026-04-12)
+
+#### commit `18eb9c3` — fix(pos): bugfix reimpresión pickup y subtotal en factura mesa
+
+---
+
+**BUG 1 — Reimpresión pickup: botón desaparece tras cobrar el último tab**
+
+**Síntoma**: Al cobrar el último pickup tab activo, la cajera ya no podía reimprimir la factura porque el botón "🖨️ Imprimir factura" quedaba invisible.
+
+**Causa**: En `handleCheckoutPickup`, al detectar `remaining.length === 0`, se llamaba `setIsPickupMode(false)`. Esto ocultaba todo el panel derecho de pickup (el bloque `{isPickupMode ? ... : ...}`), incluido el botón de reimpresión que vive dentro de ese bloque.
+
+**Fix**: Se eliminó `setIsPickupMode(false)` de la rama `remaining.length === 0`. El modo pickup **permanece activo** con el carrito vacío, manteniendo visible el botón de reimpresión. La cajera sale del modo pickup haciendo clic en cualquier zona/mesa de la columna izquierda (esos botones ya llamaban `setIsPickupMode(false)` antes del fix).
+
+```typescript
+// Antes:
+} else {
+  setCart([]);
+  setActivePickupTabId(null);
+  setIsPickupMode(false);  // ← ocultaba el panel y el botón de reimpresión
+  setPickupCustomerName("");
+}
+
+// Después:
+} else {
+  setCart([]);
+  setActivePickupTabId(null);
+  // isPickupMode=true se mantiene → panel sigue visible con botón de reimpresión
+  setPickupCustomerName("");
+}
+```
+
+---
+
+**BUG 2 — Subtotal incorrecto en factura de mesa**
+
+**Síntoma**: En el recibo de mesa, el subtotal mostrado no reflejaba el valor correcto del tab, lo que potencialmente causaba una inconsistencia entre la línea de descuento y el total.
+
+**Causa**: `handlePaymentPinConfirm` calculaba el subtotal usando `(activeTab as any).runningSubtotal` (campo no incluido en `OpenTabSummary`, casteado con `as any`). Siempre caía en el fallback `activeTab.orders.reduce(...)` que sumaba manualmente los `lineTotal` de todos los ítems. Este valor podía diferir de `runningTotal` si había descuentos o ajustes previos en la DB.
+
+**Fix**: Se reemplazó por `activeTab.runningTotal` — el campo tipado en `OpenTabSummary` (línea 102), que es la base canónica del tab. Es consistente con cómo `handlePrintPrecuenta` calcula su base:
+
+```typescript
+// Antes:
+const subtotal = (activeTab as any).runningSubtotal
+  ?? activeTab.orders.reduce((s, o) => s + o.items.reduce(...), 0);
+
+// Después:
+const subtotal = activeTab.runningTotal;
+```
+
+Con esto, la receta de mesa muestra:
+- `Subtotal: $110.00` (= `runningTotal`, base antes del descuento de caja)
+- `Desc. divisas (33.33%): -$36.67` (= `discountAmount = balanceDue / 3`)
+- `TOTAL: $73.33`
+
+---
+
 *Actualizado el 2026-04-12 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 48 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3*
