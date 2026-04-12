@@ -203,7 +203,6 @@ export default function POSSportBarPage() {
   // ── Open tab form (modal) ─────────────────────────────────────────────────
   const [showOpenTabModal, setShowOpenTabModal] = useState(false);
   const [openTabName, setOpenTabName] = useState("");
-  const [openTabPhone, setOpenTabPhone] = useState("");
   const [openTabGuests, setOpenTabGuests] = useState(2);
   const [openTabWaiter, setOpenTabWaiter] = useState("");
 
@@ -439,21 +438,12 @@ export default function POSSportBarPage() {
 
   const handleOpenTab = async () => {
     if (!selectedTable) return;
-    if (!openTabName.trim()) {
-      toast.error("El nombre del cliente es obligatorio");
-      return;
-    }
-    if (!openTabPhone.trim()) {
-      toast.error("El teléfono del cliente es obligatorio");
-      return;
-    }
     setIsProcessing(true);
     try {
       const selectedWaiter = users.find((u) => u.id === openTabWaiter);
       const result = await openTabAction({
         tableOrStationId: selectedTable.id,
-        customerLabel: openTabName.trim(),
-        customerPhone: openTabPhone.trim(),
+        customerLabel: openTabName.trim() || "Cliente",
         guestCount: openTabGuests,
         waiterLabel: selectedWaiter
           ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}`
@@ -465,7 +455,6 @@ export default function POSSportBarPage() {
       }
       setShowOpenTabModal(false);
       setOpenTabName("");
-      setOpenTabPhone("");
       setOpenTabGuests(2);
       setOpenTabWaiter("");
       await loadData();
@@ -2174,25 +2163,13 @@ export default function POSSportBarPage() {
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Nombre del cliente <span className="text-red-400">*</span>
+                  Nombre del cliente <span className="text-muted-foreground font-normal">(opcional)</span>
                 </label>
                 <input
                   type="text"
                   value={openTabName}
                   onChange={(e) => setOpenTabName(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Teléfono del cliente <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={openTabPhone}
-                  onChange={(e) => setOpenTabPhone(e.target.value)}
-                  placeholder="Ej: 0414-1234567"
                   className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none"
                 />
               </div>
@@ -2241,7 +2218,7 @@ export default function POSSportBarPage() {
               </button>
               <button
                 onClick={handleOpenTab}
-                disabled={isProcessing || !openTabName.trim() || !openTabPhone.trim()}
+                disabled={isProcessing}
                 className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition disabled:opacity-50"
               >
                 {isProcessing ? "Abriendo..." : "✓ Abrir cuenta"}
