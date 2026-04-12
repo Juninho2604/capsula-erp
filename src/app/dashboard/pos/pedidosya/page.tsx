@@ -357,7 +357,7 @@ export default function POSPedidosYAPage() {
 
             {/* Modal modificadores */}
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
                     <div className="bg-card w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-border">
                         <div className="p-5 border-b border-border flex justify-between">
                             <div>

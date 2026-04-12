@@ -602,6 +602,23 @@ export default function POSSportBarPage() {
   };
 
   // ============================================================================
+  // RESET TABLE STATE — limpia estado dependiente de la mesa activa
+  // Llamar al cambiar de mesa, zona o modo pickup para evitar contaminación
+  // ============================================================================
+
+  const resetTableState = () => {
+    setCart([]);
+    setDiscountType("NONE");
+    setAuthorizedManager(null);
+    setMixedPaymentsTable([]);
+    setIsTableMixedMode(false);
+    setCortesiaPercent("100");
+    setAmountReceived("");
+    setSubAccountMode(false);
+    setCheckoutTip("");
+  };
+
+  // ============================================================================
   // CORTESIA AUTH
   // ============================================================================
 
@@ -761,8 +778,9 @@ export default function POSSportBarPage() {
           .filter(Boolean) as string[],
       }))
     );
-    // Use balanceDue as the discount base — same math as paymentAmountToCharge on screen
-    const base = activeTab.balanceDue;
+    // Use runningTotal as base — balanceDue decrements with partial payments, causing
+    // a false "discount" line when items sum doesn't match the printed subtotal.
+    const base = activeTab.runningTotal;
     const discountAmt =
       discountType === "DIVISAS_33"
         ? (isTableMixedMode ? divisasUsdAmountTable / 3 : base / 3)  // partial vs full
@@ -1028,7 +1046,7 @@ export default function POSSportBarPage() {
 
       {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
       {showTipModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
@@ -1155,6 +1173,7 @@ export default function POSSportBarPage() {
                   <button
                     key={z.id}
                     onClick={() => {
+                      resetTableState();
                       setIsPickupMode(false);
                       setSelectedZoneId(z.id);
                       setSelectedTableId("");
@@ -1192,7 +1211,7 @@ export default function POSSportBarPage() {
                 return (
                   <button
                     key={table.id}
-                    onClick={() => { setSelectedTableId(table.id); setShowTableModal(true); }}
+                    onClick={() => { resetTableState(); setSelectedTableId(table.id); setShowTableModal(true); }}
                     className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
                       isSelected
                         ? "border-primary bg-primary/10 shadow-lg shadow-primary/10 z-10"
@@ -2070,8 +2089,8 @@ export default function POSSportBarPage() {
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showTableModal && selectedTable && (
         <div
-          className="fixed inset-0 z-60 bg-black/60 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setShowTableModal(false)}
+          className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4"
+          onClick={() => { setShowTableModal(false); resetTableState(); setSelectedTableId(""); }}
         >
           <div
             className="bg-card border border-border w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl"
@@ -2141,7 +2160,7 @@ export default function POSSportBarPage() {
       {/* MODAL: ABRIR CUENTA                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-60 bg-background/90 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
             <div className="border-b border-border p-5 flex items-center justify-between">
               <h3 className="text-lg font-black">Abrir cuenta — {selectedTable.name}</h3>
@@ -2236,7 +2255,7 @@ export default function POSSportBarPage() {
       {/* MODAL: PIN CAJERA — REGISTRAR PAGO                               */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showPaymentPinModal && activeTab && (
-        <div className="fixed inset-0 z-60 bg-background/90 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
             <div className="border-b border-border p-5 flex items-center justify-between">
               <h3 className="text-lg font-black">🔐 Autorizar cobro</h3>
@@ -2365,7 +2384,7 @@ export default function POSSportBarPage() {
       {/* MODAL: ELIMINAR ITEM (PIN + JUSTIFICACIÓN)                       */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showRemoveModal && removeTarget && (
-        <div className="fixed inset-0 z-60 bg-background/90 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
           <div className="bg-card border border-red-900/50 w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
             <div className="border-b border-border p-5 flex items-center justify-between">
               <h3 className="text-lg font-black text-red-400">🗑️ Eliminar item</h3>
@@ -2437,7 +2456,7 @@ export default function POSSportBarPage() {
       {/* MODAL: MODIFICADORES                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-background/90 p-4 text-foreground">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/90 p-4 text-foreground">
           <div className="max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg mx-auto overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-border bg-card shadow-2xl">
             <div className="border-b border-border p-5 flex items-start justify-between">
               <div>

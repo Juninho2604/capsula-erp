@@ -676,7 +676,7 @@ export default function POSDeliveryPage() {
 
             {/* WhatsApp Parser Modal */}
             {showWhatsAppParser && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-card glass-panel w-full max-w-2xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl border-primary/20">
                         <div className="p-5 border-b border-border flex justify-between items-center flex-shrink-0">
                             <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
@@ -705,7 +705,7 @@ export default function POSDeliveryPage() {
             )}
 
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in zoom-in duration-300">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in zoom-in duration-300">
                     <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border-primary/20">
                         <div className="p-6 border-b border-border flex justify-between items-center">
                             <div>
@@ -838,7 +838,7 @@ export default function POSDeliveryPage() {
             )}
             {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
             {showTipModal && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
