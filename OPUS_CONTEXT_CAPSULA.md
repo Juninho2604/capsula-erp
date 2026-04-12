@@ -2199,8 +2199,54 @@ interface PickupTabLocal {
 - En el pago de mesa (`handlePaymentPinConfirm`): `tipVal` se calcula antes de `printReceipt` y se pasa como `tipAmount`; luego se llama `recordCollectiveTipAction` con el mismo valor (sin cambio funcional).
 - En checkout pickup (`handleCheckoutPickup`): `pickupTipVal = parseFloat(checkoutTip) || 0` se pasa como `tipAmount` en `pickupReceiptData`.
 
+### 18.15 Bugfix: pago mixto mesa completamente bloqueado (2026-04-12)
+
+#### commit `9a23869` — fix(pos): pago mixto mesa bloqueado — 3 fixes
+
+**Síntoma**: Al activar "Pago Mixto" en el cobro de mesa, el botón "🔐 REGISTRAR PAGO" permanecía disabled aunque el usuario hubiera ingresado todos los montos (ej: $100 Efectivo + $10.05 PDV). El sistema no aceptaba el pago ni permitía imprimir la factura.
+
+---
+
+**Bug 1 — BLOQUEADOR: botón siempre disabled en modo mixto**
+
+`disabled={paidAmount <= 0 || isProcessing}` — `paidAmount` se deriva del input de pago único (`amountReceived`), que se limpia a `""` en la línea que activa el modo mixto:
+
+```javascript
+onClick={() => { setIsTableMixedMode(true); setAmountReceived(""); }}
+//                                                              ^^^  → paidAmount = 0 para siempre
+```
+
+Fix: la condición ahora es:
+```javascript
+disabled={isTableMixedMode
+  ? (totalMixedTablePaid <= 0 || isProcessing)
+  : (paidAmount <= 0 || isProcessing)}
+```
+El texto del botón también muestra el total mixto: `isTableMixedMode ? totalMixedTablePaid : paidAmount`.
+
+Añadido: `const totalMixedTablePaid = mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0)` como valor derivado explícito.
+
+---
+
+**Bug 2 — roundToWhole aplicado al target del MixedPaymentSelector**
+
+```typescript
+// Antes (single paymentMethod afectaba el modo mixto):
+const paymentAmountToCharge = roundToWhole(
+  serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount,
+  paymentMethod  // ← CASH_USD → Math.round → $110.05 se vuelve $110
+);
+
+// Después:
+const paymentAmountToCharge = isTableMixedMode
+  ? (serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount)  // exacto
+  : roundToWhole(..., paymentMethod);  // solo single-mode se redondea
+```
+
+En modo mixto el target del `MixedPaymentSelector` es ahora el monto exacto con centavos. Evita que un total de $110.05 se muestre como $110 causando que el selector marque "Completado" con $0.05 pendiente o que al cobrar exacto quede saldo residual.
+
 ---
 
 *Actualizado el 2026-04-12 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 48 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869*
