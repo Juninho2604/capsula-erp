@@ -31,6 +31,8 @@ interface ReceiptData {
     customerName?: string;
     customerAddress?: string;
     customerPhone?: string;
+    /** Nombre/número de la mesa física (ej: "Mesa 5", "VIP 1") */
+    tableLabel?: string;
     items: ReceiptItem[];
     subtotal?: number;
     discount?: number;
@@ -38,6 +40,7 @@ interface ReceiptData {
     deliveryFee?: number;
     total: number;
     serviceFee?: number;
+    tipAmount?: number;
     /** Cuando true imprime "PRE-CUENTA" en lugar de "RECIBO DE PAGO" y añade aviso informativo */
     isPrecuenta?: boolean;
     /** Cuando true no muestra la línea de descuento (ej: pago en divisas — solo muestra el total neto) */
@@ -136,6 +139,11 @@ export function printReceipt(data: ReceiptData) {
         <span class="info-label">Control / Correlativo:</span>
         <span class="bold">${data.orderNumber}</span>
     </div>
+    ${data.tableLabel ? `
+    <div class="info-row">
+        <span class="info-label">Mesa:</span>
+        <span class="bold">${data.tableLabel}</span>
+    </div>` : ''}
     <div class="info-row">
         <span class="info-label">Fecha:</span>
         <span>${formattedDate} ${formattedTime}</span>
