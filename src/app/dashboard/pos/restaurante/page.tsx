@@ -298,6 +298,7 @@ export default function POSSportBarPage() {
 
   const [lastPickupOrder, setLastPickupOrder] = useState<{
     orderNumber: string;
+    pickupNumber?: string;
     total: number;
     subtotal: number;
     discount: number;
@@ -1045,12 +1046,19 @@ export default function POSSportBarPage() {
           modifiers: i.modifiers.map((m) => m.name),
         }));
         const pickupTipVal = parseFloat(checkoutTip) || 0;
+        // Usar el nombre canónico del tab activo (no el estado pickupCustomerName
+        // que puede estar desincronizado si el usuario lo editó y no guardó).
+        const activeTabSnap = pickupTabs.find((t) => t.id === activePickupTabId);
         const pickupReceiptData = {
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT" as const,
           date: new Date(),
           cashierName: cashierName || "Cajera",
-          customerName: pickupCustomerName || "Cliente en Caja",
+          customerName: activeTabSnap?.customerName || pickupCustomerName || "Cliente en Caja",
+          // tableLabel reutiliza la infraestructura de impresión para mostrar PK-02
+          // en el recibo bajo el correlativo REST-XXXXX; tableLabelTitle lo etiqueta correctamente.
+          tableLabel: activeTabSnap?.pickupNumber,
+          tableLabelTitle: activeTabSnap?.pickupNumber ? "Pickup" : undefined,
           items: pickupReceiptItems,
           subtotal,
           discount,
@@ -1065,12 +1073,13 @@ export default function POSSportBarPage() {
         }
         setLastPickupOrder({
           orderNumber: result.data.orderNumber,
+          pickupNumber: activeTabSnap?.pickupNumber,
           total: finalTotal,
           subtotal,
           discount,
           hideDiscount: discountType === "DIVISAS_33",
           items: pickupReceiptItems,
-          customerName: pickupCustomerName || "Cliente en Caja",
+          customerName: activeTabSnap?.customerName || pickupCustomerName || "Cliente en Caja",
         });
 
         // Eliminar el pickup tab completado y cambiar al siguiente (si existe)
@@ -1846,6 +1855,8 @@ export default function POSSportBarPage() {
                         date: new Date(),
                         cashierName: cashierName || "Cajera",
                         customerName: lastPickupOrder.customerName,
+                        tableLabel: lastPickupOrder.pickupNumber,
+                        tableLabelTitle: lastPickupOrder.pickupNumber ? "Pickup" : undefined,
                         items: lastPickupOrder.items,
                         subtotal: lastPickupOrder.subtotal,
                         discount: lastPickupOrder.discount,
@@ -1857,7 +1868,7 @@ export default function POSSportBarPage() {
                     }}
                     className="w-full py-3 bg-secondary hover:bg-muted text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm"
                   >
-                    🖨️ Imprimir factura {lastPickupOrder.orderNumber}
+                    🖨️ Reimprimir {lastPickupOrder.pickupNumber || lastPickupOrder.orderNumber}
                   </button>
                 )}
               </div>

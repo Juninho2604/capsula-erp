@@ -31,8 +31,10 @@ interface ReceiptData {
     customerName?: string;
     customerAddress?: string;
     customerPhone?: string;
-    /** Nombre/número de la mesa física (ej: "Mesa 5", "VIP 1") */
+    /** Nombre/número de la mesa física (ej: "Mesa 5", "VIP 1") o pickup (ej: "PK-02") */
     tableLabel?: string;
+    /** Etiqueta a mostrar junto a tableLabel. Default: "Mesa". Usar "Pickup" para pickup tabs. */
+    tableLabelTitle?: string;
     items: ReceiptItem[];
     subtotal?: number;
     discount?: number;
@@ -142,7 +144,7 @@ export function printReceipt(data: ReceiptData) {
     </div>
     ${data.tableLabel ? `
     <div class="info-row">
-        <span class="info-label">Mesa:</span>
+        <span class="info-label">${data.tableLabelTitle ?? 'Mesa'}:</span>
         <span class="bold">${data.tableLabel}</span>
     </div>` : ''}
     <div class="info-row">
