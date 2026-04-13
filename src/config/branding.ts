@@ -14,7 +14,7 @@
 
 export const BRAND = {
   /** Nombre de la plataforma SaaS (ej. "Cápsula ERP") */
-  appName:      process.env.NEXT_PUBLIC_APP_NAME      ?? 'Cápsula ERP',
+  appName:      process.env.NEXT_PUBLIC_APP_NAME      ?? 'CAPSULA',
   /** Nombre del negocio cliente (ej. "Mi Restaurante") */
   businessName: process.env.NEXT_PUBLIC_BUSINESS_NAME ?? 'Mi Negocio',
   /** Email de soporte visible en pantallas de login/error */

@@ -1,6 +1,6 @@
 /**
- * SHANKLISH CARACAS ERP - Role & Permission Constants
- * 
+ * Cápsula ERP - Role & Permission Constants
+ *
  * Define la jerarquía de usuarios y permisos del sistema
  */
 
@@ -58,7 +58,7 @@ export const ROLE_INFO: Record<UserRoleType, {
   },
   [UserRole.ADMIN_MANAGER]: {
     label: 'Admin Manager',
-    labelEs: 'Gerente Administrativo',
+    labelEs: 'Administrador',
     description: 'Gestión administrativa y financiera',
     color: '#3B82F6', // Blue
   },
