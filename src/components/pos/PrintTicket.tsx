@@ -64,7 +64,7 @@ const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data }, ref)
         >
             {/* Header */}
             <div className="text-center mb-4">
-                <img src="/logo-shanklish.png" alt="Shanklish Caracas" className="max-w-[120px] mx-auto mb-2" />
+                <img src={process.env.NEXT_PUBLIC_LOGO_PATH ?? '/logo.png'} alt={process.env.NEXT_PUBLIC_BUSINESS_NAME ?? ''} className="max-w-[120px] mx-auto mb-2" />
                 <div className="font-bold text-[12px]">RIF: J413087278</div>
                 <div className="font-bold text-[12px] mt-2">RECIBO DE PAGO</div>
             </div>

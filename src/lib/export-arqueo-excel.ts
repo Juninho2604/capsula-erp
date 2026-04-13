@@ -49,7 +49,7 @@ function emptyRow(): (string | number)[] {
 
 function buildHeaderRows(dateStr: string): (string | number)[][] {
     return [
-        ['ARQUEO RESTAURANTE, PICKUP Y DELIVERY SHANKLISH', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['ARQUEO RESTAURANTE, PICKUP Y DELIVERY', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['TOTALES', '', '', '', '', 'CASH DÓLARES ($) CAJA FUERTE', '', '', 'CASH EUROS (€) CAJA FUERTE', '', '', 'CASH BOLÍVARES (BS) CAJA FUERTE', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['Capital Dólares ($) Inicio Cash', '', 'Cash Dólares ($) Ingreso ', 'Cash Dólares ($) Egreso', 'Capital Dólares ($) Cerrado Cash', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
@@ -57,13 +57,13 @@ function buildHeaderRows(dateStr: string): (string | number)[][] {
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['Capital Bolívares (Bs) en $ Inicio', '', 'Cash Bolívares (Bs) Ingreso en $', 'Cash Bolívares (Bs) Egresos en $', 'Capital Bolívares (Bs) en $ Cerrado Cash ', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['Vuelto PM en Bs', '', 'Vuelto PM en $', 'Pago Movil (Bs) SHANKLISH ', 'Pago Móvil  ($) SHANKLISH', '', 'Total $', '', '', 'Total $', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['Vuelto PM en Bs', '', 'Vuelto PM en $', 'Pago Movil (Bs) Terminal 1', 'Pago Móvil  ($) Terminal 1', '', 'Total $', '', '', 'Total $', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', 'Cuadre:', '', '', 'Cuadre:', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['PDV Provincial Shanklish en Bs', '', 'PDV Provincial Shanklish (EN $)', 'PDV Provincial Superferro SC en Bs', 'PDV Provincial Superferro SC ($)', 'Zelle  (EN $)', '', 'PROPINA', 'EXTRA', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['PDV Provincial Terminal 1 en Bs', '', 'PDV Provincial Terminal 1 (EN $)', 'PDV Provincial Terminal 2 en Bs', 'PDV Provincial Terminal 2 ($)', 'Zelle  (EN $)', '', 'PROPINA', 'EXTRA', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', 'TOTAL INGRESO $', '', 'TOTAL GASTO', '', 'PM (Bs) NOUR', 'PM ($) NOUR', 'PEDIDOS YA', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['Item ', 'Descripción/Nombre', 'Correlativo', 'Total Ingreso $', 'Total Gasto $', 'Cash Dólares ($) Ingreso ', 'Cash Dólares ($) Egreso', 'Cash Euros (€) Ingreso (EN $)', 'Cash Euros (€) Egreso (EN $)', 'Cash Bolívares (Bs) Ingreso (EN $)', 'Cash Bolívares (Bs) Egresos (EN $)', 'Zelle (EN $)', 'Vuelto PM en Bs', 'Vuelto PM (EN $)', 'Pago Movil Bs SHANLISH ', 'Pago Móvil (EN $) SHANKLISH', 'Pago Movil Bs NOUR', 'Pago Móvil (EN $) NOUR', 'PDV Provincial Shanklish en Bs', 'PDV Provincial Shanklish (EN $)', 'PDV Provincial Superferro SC en Bs', 'PDV Provincial Superferro SC (EN $)', 'SERVICIO 10%', 'PROPINA EXTRA'],
+        ['Item ', 'Descripción/Nombre', 'Correlativo', 'Total Ingreso $', 'Total Gasto $', 'Cash Dólares ($) Ingreso ', 'Cash Dólares ($) Egreso', 'Cash Euros (€) Ingreso (EN $)', 'Cash Euros (€) Egreso (EN $)', 'Cash Bolívares (Bs) Ingreso (EN $)', 'Cash Bolívares (Bs) Egresos (EN $)', 'Zelle (EN $)', 'Vuelto PM en Bs', 'Vuelto PM (EN $)', 'Pago Movil Bs Terminal 1', 'Pago Móvil (EN $) Terminal 1', 'Pago Movil Bs Terminal 2', 'Pago Móvil (EN $) Terminal 2', 'PDV Provincial Terminal 1 en Bs', 'PDV Provincial Terminal 1 (EN $)', 'PDV Provincial Terminal 2 en Bs', 'PDV Provincial Terminal 2 (EN $)', 'SERVICIO 10%', 'PROPINA EXTRA'],
     ];
 }
 
@@ -97,6 +97,6 @@ export function exportArqueoToExcel(sales: ArqueoSaleRow[], dateStr: string) {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Restaurante');
-    const fileName = `Arqueo_Caja_Shanklish_${dateStr.replace(/\//g, '-')}.xlsx`;
+    const fileName = `Arqueo_Caja_${(process.env.NEXT_PUBLIC_STORE_PREFIX ?? 'capsula')}_${dateStr.replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }

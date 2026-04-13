@@ -77,10 +77,10 @@ const COL_NAMES = [
     'Cash Bs Ingreso (EN $)', 'Cash Bs Egresos (EN $)',
     'Zelle (EN $)',
     'Vuelto PM en Bs', 'Vuelto PM (EN $)',
-    'PM Bs SHANKLISH', 'PM (EN $) SHANKLISH',
-    'PM Bs NOUR', 'PM (EN $) NOUR',
-    'PDV Shanklish Bs', 'PDV Shanklish (EN $)',
-    'PDV Superferro Bs', 'PDV Superferro (EN $)',
+    'PM Bs Terminal 1', 'PM (EN $) Terminal 1',
+    'PM Bs Terminal 2', 'PM (EN $) Terminal 2',
+    'PDV Terminal 1 Bs', 'PDV Terminal 1 (EN $)',
+    'PDV Terminal 2 Bs', 'PDV Terminal 2 (EN $)',
     'SERVICIO 10%', 'PROPINA EXTRA',
 ];
 
@@ -307,8 +307,8 @@ function buildSummary(sheet: ExcelJS.Worksheet, sales: ArqueoSaleRow[], dateStr:
     r11.height = 26;
     fillRow(r11, BG.section);
     const lbl11: [number, string][] = [
-        [1,  'PDV Provincial\nShanklish en Bs'],
-        [3,  'PDV Provincial\nShanklish (EN $)'],
+        [1,  'PDV Provincial\nTerminal 1 en Bs'],
+        [3,  'PDV Provincial\nTerminal 1 (EN $)'],
         [4,  'PDV Provincial\nSuperferro SC en Bs'],
         [5,  'PDV Provincial\nSuperferro SC (EN $)'],
         [6,  'Zelle\n(EN $)'],
@@ -562,7 +562,7 @@ export async function buildArqueoWorkbookFromTemplate(
     dateStr: string,
 ): Promise<ExcelJS.Buffer> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator  = 'Shanklish ERP';
+    workbook.creator  = process.env.NEXT_PUBLIC_APP_NAME ?? 'Cápsula ERP';
     workbook.created  = new Date();
 
     const sheet = workbook.addWorksheet('Arqueo Caja', {
@@ -588,5 +588,5 @@ export async function buildArqueoWorkbookFromTemplate(
 }
 
 export function getArqueoFileName(dateStr: string): string {
-    return `Arqueo_Caja_Shanklish_${dateStr.replace(/\//g, '-')}.xlsx`;
+    return `Arqueo_Caja_${(process.env.NEXT_PUBLIC_STORE_PREFIX ?? 'capsula')}_${dateStr.replace(/\//g, '-')}.xlsx`;
 }

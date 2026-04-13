@@ -394,7 +394,7 @@ export default function POSDeliveryPage() {
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 md:h-14 md:w-14 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-blue-500/20">🛵</div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">Shanklish <span className="text-foreground">Delivery</span></h1>
+                        <h1 className="text-xl md:text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">{process.env.NEXT_PUBLIC_BUSINESS_NAME ?? ''} <span className="text-foreground">Delivery</span></h1>
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                             Sistema de Despacho Táctil CAPSULA

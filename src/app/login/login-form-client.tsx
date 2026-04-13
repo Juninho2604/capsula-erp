@@ -60,7 +60,7 @@ export default function LoginForm() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="usuario@shanklish.com"
+                        placeholder="usuario@ejemplo.com"
                         className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
                     />
                 </div>

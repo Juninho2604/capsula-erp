@@ -64,7 +64,7 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['PedidosYA',                        String(zReport.ordersByType.pedidosya)],
         ...(zReport.ordersByType.wink      > 0 ? [['Wink',       String(zReport.ordersByType.wink)]      as [string,string]] : []),
         ...(zReport.ordersByType.evento    > 0 ? [['Evento',     String(zReport.ordersByType.evento)]    as [string,string]] : []),
-        ...(zReport.ordersByType.tablePong > 0 ? [['Table Pong', String(zReport.ordersByType.tablePong)] as [string,string]] : []),
+        ...(zReport.ordersByType.tablePong > 0 ? [['Entretenimiento', String(zReport.ordersByType.tablePong)] as [string,string]] : []),
         ['TOTAL TRANSACCIONES',              String(zReport.totalOrders)],
     ];
 

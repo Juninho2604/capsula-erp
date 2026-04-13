@@ -130,7 +130,7 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
     description: 'Define la composición de cada plato o bebida para el control de costos e inventario.',
     steps: [
       'Crea la receta con el nombre EXACTO del producto del menú',
-      'Vincula el ítem de inventario de salida (ej: "Plato Shanklish Tradicional")',
+      'Vincula el ítem de inventario de salida (ej: "Plato Principal")',
       'Agrega cada ingrediente con su cantidad y unidad',
       'Incluye el porcentaje de desperdicio de cada ingrediente',
       'Activa la receta — solo recetas activas se descuentan al vender',

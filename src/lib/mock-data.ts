@@ -15,7 +15,7 @@ export const mockAreas: Area[] = [
 // Usuario actual (simulado)
 export const mockCurrentUser: User = {
     id: 'user-admin',
-    email: 'admin@shanklish.com',
+    email: 'admin@capsulapp.com',
     firstName: 'Omar',
     lastName: 'Admin',
     role: 'OWNER',
@@ -24,9 +24,9 @@ export const mockCurrentUser: User = {
 // Todos los usuarios
 export const mockUsers: User[] = [
     mockCurrentUser,
-    { id: 'user-chef-victor', email: 'victor@shanklish.com', firstName: 'Víctor', lastName: 'García', role: 'CHEF', areaId: 'area-cocina' },
-    { id: 'user-chef-miguel', email: 'miguel@shanklish.com', firstName: 'Miguel', lastName: 'López', role: 'CHEF', areaId: 'area-cocina' },
-    { id: 'user-ops', email: 'gerente@shanklish.com', firstName: 'Ana', lastName: 'Martínez', role: 'OPS_MANAGER' },
+    { id: 'user-chef-victor', email: 'victor@ejemplo.com', firstName: 'Víctor', lastName: 'García', role: 'CHEF', areaId: 'area-cocina' },
+    { id: 'user-chef-miguel', email: 'miguel@ejemplo.com', firstName: 'Miguel', lastName: 'López', role: 'CHEF', areaId: 'area-cocina' },
+    { id: 'user-ops', email: 'gerente@ejemplo.com', firstName: 'Ana', lastName: 'Martínez', role: 'OPS_MANAGER' },
 ];
 
 // INSUMOS BASE (RAW_MATERIAL)
@@ -169,10 +169,10 @@ export const mockSubRecipes: InventoryItem[] = [
         costPerUnit: 14.04, // Calculado
     },
     {
-        id: 'sub-shanklish',
-        sku: 'SUB-SHANK-001',
-        name: 'Bola de Shanklish Seco',
-        description: "Queso shanklish curado con za'atar",
+        id: 'sub-producto-ejemplo',
+        sku: 'SUB-PROD-001',
+        name: 'Sub-receta Ejemplo',
+        description: 'Sub-receta de ejemplo para desarrollo',
         type: 'SUB_RECIPE',
         baseUnit: 'UNIT',
         minimumStock: 20,
@@ -199,10 +199,10 @@ export const mockSubRecipes: InventoryItem[] = [
 // PRODUCTOS FINALES
 export const mockFinishedGoods: InventoryItem[] = [
     {
-        id: 'prod-shanklish-merey',
-        sku: 'PROD-SHANK-MEREY-001',
-        name: 'Shanklish con Merey',
-        description: 'Plato de shanklish con merey tostado',
+        id: 'prod-ejemplo-001',
+        sku: 'PROD-EJEMPLO-001',
+        name: 'Producto Ejemplo',
+        description: 'Producto de ejemplo para desarrollo',
         type: 'FINISHED_GOOD',
         baseUnit: 'PORTION',
         minimumStock: 0,

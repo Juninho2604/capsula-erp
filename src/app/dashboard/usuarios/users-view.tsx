@@ -815,7 +815,7 @@ function CreateUserModal({ onClose, onCreated }: CreateUserModalProps) {
                             required
                             value={form.email}
                             onChange={e => handleChange('email', e.target.value)}
-                            placeholder="usuario@shanklish.com"
+                            placeholder="usuario@ejemplo.com"
                             disabled={isPending}
                             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50"
                         />

@@ -825,7 +825,7 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
             text += `\n📝 *Notas:* ${order.notes}\n`;
         }
 
-        text += `\n_Shanklish Caracas ERP_`;
+        text += `\n_${process.env.NEXT_PUBLIC_APP_NAME ?? 'Cápsula ERP'}_`;
 
         return text;
     } catch (error) {

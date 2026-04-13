@@ -6,9 +6,9 @@ import { Toaster } from 'react-hot-toast';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-    title: 'CAPSULA de Shanklish Caracas',
+    title: process.env.NEXT_PUBLIC_APP_NAME ?? 'Cápsula ERP',
     description: 'Sistema de Gestión e Inventario para Restauración y Manufactura de Alimentos',
-    keywords: ['CAPSULA', 'ERP', 'restaurante', 'inventario', 'recetas', 'Shanklish', 'Caracas'],
+    keywords: ['Cápsula', 'ERP', 'restaurante', 'inventario', 'recetas', 'gestión'],
 };
 
 import { ThemeProvider } from '@/components/theme-provider';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { PAYMENT_METHODS, BS_METHOD_IDS } from '@/config/branding';
 
 export interface PaymentLine {
   id: string;
@@ -20,19 +21,11 @@ interface Props {
   allowCortesia?: boolean;
 }
 
-const METHODS = [
-  { id: 'CASH_USD',       label: '💵 Cash $' },
-  { id: 'CASH_EUR',       label: '€ Cash €' },
-  { id: 'ZELLE',          label: '⚡ Zelle' },
-  { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-  { id: 'PDV_SHANKLISH',  label: '💳 PDV Shanklish' },
-  { id: 'PDV_SUPERFERRO', label: '💳 PDV Superferro' },
-  { id: 'MOVIL_NG',       label: '📱 Pago Móvil NG' },
-  { id: 'CORTESIA',       label: '🎁 Cortesía' },
-] as const;
+/** Methods sourced from branding config — labels configurables via env vars */
+const METHODS = PAYMENT_METHODS;
 
 /** These methods are paid in Bs — show conversion when exchangeRate available */
-const BS_METHODS = new Set(['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'MOBILE_PAY', 'CARD', 'TRANSFER']);
+const BS_METHODS = new Set([...BS_METHOD_IDS, 'MOBILE_PAY', 'CARD', 'TRANSFER']);
 
 function methodLabel(id: string) {
   return METHODS.find((m) => m.id === id)?.label ?? id;

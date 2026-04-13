@@ -161,7 +161,7 @@ async function ensureRestaurantSetup() {
     let branch = await prisma.branch.findFirst();
     if (!branch) {
         branch = await prisma.branch.create({
-            data: { code: 'SHK-CCS', name: 'Shanklish Caracas', legalName: 'Shanklish Caracas, C.A.' }
+            data: { code: 'TEN-001', name: process.env.NEXT_PUBLIC_BUSINESS_NAME ?? 'Mi Negocio', legalName: process.env.NEXT_PUBLIC_BUSINESS_NAME ?? 'Mi Negocio' }
         });
     }
 

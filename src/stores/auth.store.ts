@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
             },
         }),
         {
-            name: 'shanklish-auth',
+            name: (process.env.NEXT_PUBLIC_STORE_PREFIX ?? 'capsula') + '-auth',
             partialize: (state) => ({ user: state.user }),
         }
     )

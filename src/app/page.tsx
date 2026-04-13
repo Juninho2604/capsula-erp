@@ -26,7 +26,7 @@ export default function HomePage() {
                         </h1>
 
                         <p className="mx-auto mb-2 max-w-2xl text-xl text-gray-800 font-medium dark:text-gray-200">
-                            Shanklish Caracas
+                            {process.env.NEXT_PUBLIC_BUSINESS_NAME ?? ''}
                         </p>
 
                         <p className="mx-auto mb-2 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
@@ -101,7 +101,7 @@ export default function HomePage() {
             {/* Footer */}
             <footer className="border-t border-amber-200/50 bg-white/50 py-6 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/50">
                 <div className="mx-auto max-w-7xl px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    <p>© 2026 CAPSULA - Shanklish Caracas</p>
+                    <p>© 2026 {process.env.NEXT_PUBLIC_APP_NAME ?? 'Cápsula ERP'}{process.env.NEXT_PUBLIC_BUSINESS_NAME ? ` — ${process.env.NEXT_PUBLIC_BUSINESS_NAME}` : ''}</p>
                 </div>
             </footer>
         </div>

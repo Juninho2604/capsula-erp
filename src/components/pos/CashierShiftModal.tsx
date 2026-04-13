@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'shanklish_cashier_shift';
+const STORAGE_KEY = (process.env.NEXT_PUBLIC_STORE_PREFIX ?? 'capsula') + '_cashier_shift';
 
 function getTodayStr() {
     return new Date().toISOString().slice(0, 10);

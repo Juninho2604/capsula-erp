@@ -130,7 +130,7 @@ export function printReceipt(data: ReceiptData) {
 </head>
 <body>
     <div class="header text-center">
-        <img src="/logo-shanklish.png" alt="Shanklish Caracas" style="max-width: 120px; height: auto; margin-bottom: 8px;">
+        <img src="${process.env.NEXT_PUBLIC_LOGO_PATH ?? '/logo.png'}" alt="${process.env.NEXT_PUBLIC_BUSINESS_NAME ?? ''}" style="max-width: 120px; height: auto; margin-bottom: 8px;">
         <div style="font-size: 10px;">RIF: J413087278</div>
         <div class="doc-title" style="margin-top: 8px;">${data.isPrecuenta ? 'PRE-CUENTA' : data.orderType === 'DELIVERY' ? 'NOTA DE ENTREGA' : 'RECIBO DE PAGO'}</div>
         ${data.isPrecuenta ? '<div style="font-size:10px;font-style:italic;margin-top:2px;">Documento informativo — no es factura definitiva</div>' : ''}
@@ -496,7 +496,7 @@ export function printEndOfDaySummary(data: EndOfDaySummaryPrintData) {
         { label: 'PedidosYA',           key: 'pedidosya' as ChannelKey },
         { label: 'Wink',                key: 'wink' as ChannelKey },
         { label: 'Evento',              key: 'evento' as ChannelKey },
-        { label: 'Table Pong',          key: 'tablePong' as ChannelKey },
+        { label: 'Entretenimiento',      key: 'tablePong' as ChannelKey },
     ];
     const channelRows = allChannelRows.filter(r => data.byChannel[r.key] > 0 || data.countByChannel[r.key] > 0);
 

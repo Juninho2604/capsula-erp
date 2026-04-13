@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 export const metadata = {
-    title: 'Configuración de Roles | Shanklish App',
+    title: `Configuración de Roles | ${process.env.NEXT_PUBLIC_APP_NAME ?? 'Cápsula ERP'}`,
     description: 'Gestión de roles y permisos de usuarios',
 };
 

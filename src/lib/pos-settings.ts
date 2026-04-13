@@ -3,7 +3,7 @@
  * Permite activar/desactivar impresión de comanda y factura en cada módulo.
  */
 
-const STORAGE_KEY = 'shanklish_pos_config';
+const STORAGE_KEY = (process.env.NEXT_PUBLIC_STORE_PREFIX ?? 'capsula') + '_pos_config';
 
 export interface POSConfig {
   /** Imprimir comanda cocina al confirmar Delivery */

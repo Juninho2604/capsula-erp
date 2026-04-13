@@ -5,6 +5,7 @@ import { getSalesHistoryAction, getDailyZReportAction, getEndOfDaySummaryAction,
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';
+import { BRAND, PAYMENT_LABELS } from '@/config/branding';
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -79,7 +80,7 @@ export default function SalesHistoryPage() {
             }
             const blob = await res.blob();
             const contentDisposition = res.headers.get('Content-Disposition');
-            let fileName = `Arqueo_Caja_Shanklish_${dateParam}.xlsx`;
+            let fileName = `Arqueo_Caja_${BRAND.storePrefix}_${dateParam}.xlsx`;
             if (contentDisposition) {
                 const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/);
                 if (utf8Match) fileName = decodeURIComponent(utf8Match[1]);
@@ -183,8 +184,8 @@ export default function SalesHistoryPage() {
             case 'CASH_EUR': return <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-bold">Cash €</span>;
             case 'CARD':
             case 'BS_POS':
-            case 'PDV_SHANKLISH': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">PDV Shanklish</span>;
-            case 'PDV_SUPERFERRO': return <span className="bg-sky-900 text-sky-300 px-2 py-0.5 rounded text-xs font-bold">PDV Superferro</span>;
+            case 'PDV_SHANKLISH': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{PAYMENT_LABELS['PDV_SHANKLISH']}</span>;
+            case 'PDV_SUPERFERRO': return <span className="bg-sky-900 text-sky-300 px-2 py-0.5 rounded text-xs font-bold">{PAYMENT_LABELS['PDV_SUPERFERRO']}</span>;
             case 'ZELLE': return <span className="bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded text-xs font-bold">ZELLE</span>;
             case 'MOBILE_PAY': return <span className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded text-xs font-bold">PAGO MÓVIL</span>;
             case 'MOVIL_NG': return <span className="bg-violet-900 text-violet-300 px-2 py-0.5 rounded text-xs font-bold">MÓVIL NG</span>;
@@ -351,8 +352,8 @@ export default function SalesHistoryPage() {
                         <option value="CASH_USD">💵 Cash $</option>
                         <option value="CASH_EUR">€ Cash €</option>
                         <option value="ZELLE">⚡ Zelle</option>
-                        <option value="PDV_SHANKLISH">💳 PDV Shanklish</option>
-                        <option value="PDV_SUPERFERRO">💳 PDV Superferro</option>
+                        <option value="PDV_SHANKLISH">{PAYMENT_LABELS['PDV_SHANKLISH']}</option>
+                        <option value="PDV_SUPERFERRO">{PAYMENT_LABELS['PDV_SUPERFERRO']}</option>
                         <option value="MOBILE_PAY">📱 Pago Móvil</option>
                         <option value="MOVIL_NG">📱 Móvil NG</option>
                         <option value="TRANSFER">🏦 Transferencia</option>
@@ -811,7 +812,7 @@ export default function SalesHistoryPage() {
                                 {zReport.ordersByType.pedidosya > 0 && <div className="flex justify-between"><span>PedidosYA</span><span>{zReport.ordersByType.pedidosya}</span></div>}
                                 {zReport.ordersByType.wink > 0 && <div className="flex justify-between"><span>Wink</span><span>{zReport.ordersByType.wink}</span></div>}
                                 {zReport.ordersByType.evento > 0 && <div className="flex justify-between"><span>Evento</span><span>{zReport.ordersByType.evento}</span></div>}
-                                {zReport.ordersByType.tablePong > 0 && <div className="flex justify-between"><span>Table Pong</span><span>{zReport.ordersByType.tablePong}</span></div>}
+                                {zReport.ordersByType.tablePong > 0 && <div className="flex justify-between"><span>Entretenimiento</span><span>{zReport.ordersByType.tablePong}</span></div>}
                             </div>
                         </div>
 
@@ -861,7 +862,7 @@ export default function SalesHistoryPage() {
                                     { key: 'pedidosya',  label: 'PedidosYA' },
                                     { key: 'wink',       label: 'Wink' },
                                     { key: 'evento',     label: 'Evento' },
-                                    { key: 'tablePong',  label: 'Table Pong' },
+                                    { key: 'tablePong',  label: 'Entretenimiento' },
                                 ] as { key: keyof typeof daySummary.byChannel; label: string }[])
                                     .filter(r => daySummary.byChannel[r.key] > 0 || daySummary.countByChannel[r.key] > 0)
                                     .map(r => (
