@@ -2718,6 +2718,294 @@ NEXT_PUBLIC_BUSINESS_NAME="Mi Negocio"
 
 ---
 
+## 20. ARQUITECTURA MULTITENANT DETALLADA
+
+### 20.1 Modelo de Multi-Tenancy
+
+Cápsula ERP usa **tenant por instancia** (single-tenant per deployment): cada cliente recibe su propio servidor/VPS + base de datos PostgreSQL independiente. No hay una base de datos compartida entre clientes.
+
+```
+┌──────────────────────────────────────────────┐
+│  cliente-A.capsulapp.com  │  Next.js + PM2   │
+│  DB: capsula_db_a         │  Puerto: 3000     │
+└──────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────┐
+│  cliente-b.capsulapp.com  │  Next.js + PM2   │
+│  DB: capsula_db_b         │  Puerto: 3000     │
+└──────────────────────────────────────────────┘
+```
+
+Ventajas de este modelo:
+- Aislamiento total de datos (GDPR, PCI-DSS friendly)
+- Fácil offboarding — eliminar un servidor no afecta a otros
+- Rendimiento predecible por cliente
+- Sin riesgo de cross-tenant data leaks
+
+### 20.2 Agrupación de Módulos (4 Capas)
+
+#### CORE — Base Obligatoria
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| Auth / Usuarios | `/dashboard/usuarios` | Login JWT, roles, permisos |
+| Configuración | `/dashboard/config` | Roles, sucursales, ajustes globales |
+| Inventario | `/dashboard/inventario` | Items, stock, alertas |
+| Recetas | `/dashboard/recetas` | Sub-recetas, productos finales |
+
+#### OPERACIONES — Núcleo Comercial
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| POS (Caja) | `/dashboard/pos` | Ventas en mostrador, turnos cajero |
+| Delivery | `/dashboard/pos/delivery` | Órdenes para entrega |
+| Compras | `/dashboard/compras` | Órdenes de compra a proveedores |
+| Producción | `/dashboard/produccion` | Órdenes de fabricación |
+| Proveedores | `/dashboard/proveedores` | CRUD proveedores |
+
+#### ANALYTICS — Inteligencia de Negocio
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| Ventas / Arqueo | `/dashboard/sales` | Z-report, arqueo de caja, Excel |
+| Reportes | `/dashboard/reportes` | KPIs, gráficas, tendencias |
+| Dashboard | `/dashboard` | Resumen ejecutivo del día |
+
+#### IA — Funciones Avanzadas (Opcional)
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| WhatsApp Parser | componente integrado | Parseo de pedidos por WhatsApp |
+| OCR Facturas | API interna | Lectura de facturas con Google Vision |
+| Sugerencias de Compra | en desarrollo | IA para reorden automático |
+
+### 20.3 Sistema de Personalización por Tenant
+
+Toda la personalización visible para el cliente se configura en **`.env.local`** sin tocar código:
+
+```env
+# Identidad
+NEXT_PUBLIC_APP_NAME="Nombre del ERP"
+NEXT_PUBLIC_BUSINESS_NAME="Nombre del Negocio"
+NEXT_PUBLIC_SUPPORT_EMAIL="soporte@negocio.com"
+NEXT_PUBLIC_LOGO_PATH="/logo-cliente.png"
+NEXT_PUBLIC_STORE_PREFIX="cliente_prefix"
+
+# Métodos de Pago (labels configurables, IDs fijos en BD)
+NEXT_PUBLIC_PM_CASH_USD="💵 Cash"
+NEXT_PUBLIC_PM_CASH_EUR="€ Efectivo"
+NEXT_PUBLIC_PM_ZELLE="⚡ Zelle"
+NEXT_PUBLIC_PM_CASH_BS="💴 Efectivo Bs"
+NEXT_PUBLIC_PM_PDV1="💳 PDV Terminal 1"
+NEXT_PUBLIC_PM_PDV2="💳 PDV Terminal 2"
+NEXT_PUBLIC_PM_MOVIL="📱 Pago Móvil"
+
+# Módulos activos (futuro feature flag system)
+# NEXT_PUBLIC_ENABLED_MODULES="pos,delivery,inventory,recipes"
+```
+
+El archivo `src/config/branding.ts` centraliza el acceso a todas estas variables. Cualquier componente que necesite el nombre del negocio, logo o métodos de pago importa desde ahí.
+
+### 20.4 Portal Super-Admin (Estructura Propuesta)
+
+Para gestionar múltiples tenants desde un panel centralizado:
+
+```
+/admin
+  /admin/tenants          → Lista de todos los clientes activos
+  /admin/tenants/[id]     → Detalle: config, módulos, estado de BD
+  /admin/tenants/new      → Crear nuevo tenant (wizard 6 pasos)
+  /admin/billing          → Facturación y suscripciones
+  /admin/deployments      → Estado de servidores PM2
+  /admin/updates          → Rollout de actualizaciones
+```
+
+Este portal es una aplicación Next.js separada que se conecta a una BD de gestión (no a las BDs de los tenants directamente).
+
+### 20.5 Dependencias entre Módulos
+
+```
+Auth ──────────────────────────────── Requerido por TODO
+Inventario ────────────────────────── Requerido por Recetas, POS, Compras
+Recetas ───────────────────────────── Requerido por Producción, POS
+Proveedores ───────────────────────── Requerido por Compras
+POS ───────────────────────────────── Genera datos para Ventas/Arqueo
+Producción ────────────────────────── Consume Inventario, actualiza Stock
+Compras ───────────────────────────── Actualiza Stock de Inventario
+```
+
+### 20.6 Wizard de Onboarding (6 Pasos)
+
+Al crear un nuevo tenant, el wizard guía la configuración inicial:
+
+| Paso | Pantalla | Datos Requeridos |
+|------|----------|------------------|
+| 1 | Identidad del Negocio | Nombre, logo, email de soporte |
+| 2 | Configuración de Moneda | Tasa de cambio Bs/USD, decimales |
+| 3 | Métodos de Pago | Labels de PDV, Móvil, Zelle |
+| 4 | Creación de Usuarios | Owner + primer empleado |
+| 5 | Inventario Inicial | Importar desde Excel o manual |
+| 6 | Verificación | Test de venta, test de arqueo |
+
+---
+
+## 21. RECOMENDACIONES GO-TO-MARKET
+
+### 21.1 Nombres Amigables de Módulos (para ventas)
+
+| Nombre Técnico | Nombre Comercial | Emoji |
+|----------------|-----------------|-------|
+| POS / Caja | Punto de Venta | 🛒 |
+| Inventario | Control de Insumos | 📦 |
+| Recetas | Libro de Recetas | 📖 |
+| Producción | Órdenes de Cocina | 👨‍🍳 |
+| Delivery | Gestión de Delivery | 🚗 |
+| Compras | Control de Compras | 🛍️ |
+| Ventas / Arqueo | Reportes de Caja | 📊 |
+| WhatsApp Parser | Pedidos por WhatsApp | 💬 |
+| Dashboard | Panel de Control | 🏠 |
+
+### 21.2 Flujo Demo para Prospecto (15 minutos)
+
+```
+00:00 → Login como OWNER
+00:02 → Dashboard: mostrar resumen del día
+00:04 → POS: hacer una venta de prueba con pago mixto
+00:07 → Inventario: mostrar alertas de stock bajo
+00:09 → Recetas: ver costo de un plato
+00:11 → Arqueo: generar Z-report del día
+00:13 → WhatsApp Parser: parsear un pedido de ejemplo
+00:15 → Q&A
+```
+
+### 21.3 Setup Primeros 30 Minutos (Checklist)
+
+- [ ] Clonar repo en VPS del cliente
+- [ ] Copiar `.env.local` template y personalizar
+- [ ] Reemplazar `/public/logo.png` con logo del cliente
+- [ ] Ejecutar `npm run db:push && npm run db:seed`
+- [ ] Configurar PM2: `pm2 start ecosystem.config.js`
+- [ ] Crear usuario OWNER con email del cliente
+- [ ] Test de login + test de venta
+- [ ] Entregar credenciales al cliente
+
+### 21.4 Tiers de Precio (Propuesta)
+
+| Tier | Módulos Incluidos | Precio Mensual |
+|------|------------------|----------------|
+| **Starter** | POS + Inventario + Dashboard | $49/mes |
+| **Pro** | Todo Starter + Recetas + Producción + Delivery + Reportes | $99/mes |
+| **Enterprise** | Todo Pro + WhatsApp Parser + OCR + Soporte prioritario + Onboarding | $199/mes |
+
+### 21.5 Checklist LinKus Onboarding
+
+LinKus es el proceso interno de activación de un nuevo cliente:
+
+- [ ] **L**egal: Firmar contrato de servicio
+- [ ] **i**nfraestructura: VPS aprovisionado y configurado
+- [ ] **n**egocio: Datos del negocio en `.env.local`
+- [ ] **K**ey users: Usuarios creados (Owner + Chef + Ops)
+- [ ] **u**suarios capacitados: Training de 2h con equipo del cliente
+- [ ] **s**eguimiento: Check-in semanal los primeros 30 días
+
+---
+
+## 22. GESTIÓN VISUAL DE BASE DE DATOS
+
+### 22.1 Opciones Evaluadas
+
+#### Opción A: Prisma Studio (Recomendado para Desarrollo)
+
+**Pros:**
+- Incluido en Prisma, sin instalación adicional
+- Conoce el schema exacto (tipos, relaciones, enums)
+- Edición de registros con validación de tipos
+- Gratis
+
+**Contras:**
+- No apto para producción (sin auth propia)
+- No genera reportes ni gráficas
+- Solo para tablas Prisma (sin queries SQL libres)
+
+```bash
+# Uso local o en VPS con port-forward
+cd /home/capsula/capsula-erp
+npx prisma studio
+# Accesible en http://localhost:5555
+
+# Con port-forward desde local:
+ssh -L 5555:localhost:5555 ubuntu@147.93.6.70
+```
+
+#### Opción B: pgAdmin 4 (Recomendado para Producción)
+
+**Pros:**
+- Interface completa de administración PostgreSQL
+- Queries SQL libres, EXPLAIN, backups
+- Roles, permisos, monitoring de conexiones
+- Auth propia (usuario + contraseña)
+
+**Contras:**
+- Instalación más pesada
+- Curva de aprendizaje mayor
+
+```bash
+# Instalar en VPS (Ubuntu 24.04)
+curl https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo apt-key add -
+sudo sh -c 'echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list'
+sudo apt update
+sudo apt install pgadmin4-web -y
+sudo /usr/pgadmin4/bin/setup-web.sh
+# Accesible en http://147.93.6.70/pgadmin4
+```
+
+#### Opción C: Metabase (Recomendado para Analytics)
+
+**Pros:**
+- Dashboards y gráficas sin SQL
+- Ideal para dueños de negocio (no técnicos)
+- Puede conectarse directamente a `capsula_db`
+- Preguntas en lenguaje natural
+
+**Contras:**
+- Requiere Java (o Docker)
+- 500MB+ de RAM adicional
+- Overkill si solo se necesita ver tablas
+
+```bash
+# Instalar con Docker en VPS
+docker run -d -p 3001:3000 \
+  -e MB_DB_TYPE=postgres \
+  -e MB_DB_DBNAME=metabase \
+  -e MB_DB_PORT=5432 \
+  -e MB_DB_USER=postgres \
+  -e MB_DB_PASS=<password> \
+  -e MB_DB_HOST=localhost \
+  --name metabase metabase/metabase
+# Accesible en http://147.93.6.70:3001
+```
+
+### 22.2 Recomendación por Caso de Uso
+
+| Caso de Uso | Herramienta Recomendada |
+|-------------|------------------------|
+| Desarrollo y debugging del schema | Prisma Studio |
+| Administración de BD en producción | pgAdmin 4 |
+| Reportes para el cliente/dueño | Metabase |
+| Backup y restore de emergencia | `pg_dump` / `pg_restore` via CLI |
+| Ver datos en producción sin riesgo | pgAdmin 4 (read-only user) |
+
+### 22.3 Usuario Read-Only para Seguridad
+
+Para inspección segura de producción sin riesgo de modificar datos:
+
+```sql
+-- Crear usuario read-only en PostgreSQL
+CREATE USER capsula_readonly WITH PASSWORD '<password-seguro>';
+GRANT CONNECT ON DATABASE capsula_db TO capsula_readonly;
+GRANT USAGE ON SCHEMA public TO capsula_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO capsula_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO capsula_readonly;
+```
+
+---
+
 *Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
 *Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e*
