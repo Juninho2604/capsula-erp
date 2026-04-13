@@ -2573,6 +2573,40 @@ const res = await getDailyPickupCountAction(openNumbers);
 
 ---
 
+### 18.20 Debug: console.log en getDailyPickupCountAction para diagnóstico PK (2026-04-13)
+
+#### commit `0b2cb4e`
+
+**Contexto:** Se reportó que al abrir un segundo tab (PK-02) antes de cobrar el primero (PK-01), la action volvía a asignar PK-01. La lógica era correcta en teoría, pero se necesitaba verificar qué datos llegaban realmente al servidor.
+
+**Se agregaron 4 `console.log` en `getDailyPickupCountAction`** (`src/app/actions/pos.actions.ts`):
+
+```typescript
+// Después de la consulta a BD:
+console.log('[PK] openTabNumbers recibidos:', openTabNumbers);
+console.log('[PK] Órdenes en BD encontradas:', orders.map(o => o.notes));
+
+// Después de armar el Set combinado:
+console.log('[PK] usedNums (BD + memoria):', Array.from(usedNums).sort((a, b) => a - b));
+
+// Antes de retornar:
+console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')}`);
+```
+
+**Diagnóstico esperado** en los logs del servidor al abrir el segundo tab con PK-01 activo:
+```
+[PK] openTabNumbers recibidos: [ 'PK-01' ]
+[PK] Órdenes en BD encontradas: []
+[PK] usedNums (BD + memoria): [ 1 ]
+[PK] nextNumber calculado: PK-02
+```
+
+**Si `openTabNumbers` aparece vacío `[]`**, el bug está en el cliente — `pickupTabs.map(t => t.pickupNumber)` devuelve vacío porque el tab no tiene `pickupNumber` asignado en ese momento.
+
+**Estado:** logs temporales de diagnóstico — remover una vez confirmado el fix.
+
+---
+
 *Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e*
