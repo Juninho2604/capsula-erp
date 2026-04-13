@@ -2607,6 +2607,117 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 
 ---
 
+## 19. ESTADO DEL DEPLOYMENT
+
+### 19.1 Repositorio
+
+| Campo | Valor |
+|-------|-------|
+| Repo | `github.com/Juninho2604/capsula-erp` (privado) |
+| Rama principal | `main` |
+| Rama de trabajo | `claude/check-opus-context-file-nZPl8` |
+
+### 19.2 Infraestructura — Contabo VPS
+
+| Campo | Valor |
+|-------|-------|
+| Proveedor | Contabo |
+| IP pública | `147.93.6.70` |
+| SO | Ubuntu 24.04 LTS |
+| Región | New Jersey, USA |
+| Costo | **$7.68 / mes** |
+| URL de acceso | `http://147.93.6.70:3000` |
+
+### 19.3 Stack en Producción
+
+| Capa | Detalle |
+|------|---------|
+| Runtime | Node.js 22 |
+| Base de datos | PostgreSQL 16 — local en el VPS, base `capsula_db` |
+| Framework | Next.js 14 (output standalone) |
+| Process manager | PM2 |
+| SSL / HTTPS | **No activo** — HTTP plano en puerto 3000 |
+
+### 19.4 Fix de Autenticación para HTTP
+
+**Archivo**: `src/lib/auth.ts`
+
+La cookie de sesión usa `secure: false` para permitir el login sin HTTPS:
+
+```typescript
+// src/lib/auth.ts — configuración de cookie para VPS sin SSL
+cookies().set('session', encryptedSession, {
+  httpOnly: true,
+  secure: false,      // ← false en HTTP; cambiar a true al activar HTTPS/Nginx
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 24,
+  path: '/',
+});
+```
+
+> **Pendiente**: configurar Nginx como reverse proxy con certificado Let's Encrypt para activar HTTPS y volver `secure: true`.
+
+### 19.5 Usuario Administrador Inicial
+
+| Campo | Valor |
+|-------|-------|
+| Email | `admin@capsulapp.com` |
+| Rol | `ADMIN` (OWNER en términos del sistema RBAC) |
+
+### 19.6 Comandos de Operación en el VPS
+
+```bash
+# Ver estado de la app
+pm2 status
+
+# Ver logs en tiempo real
+pm2 logs capsula-erp
+
+# Reiniciar app
+pm2 restart capsula-erp
+
+# Detener app
+pm2 stop capsula-erp
+
+# Aplicar nuevo deploy (pull + build + restart)
+cd /var/www/capsula-erp
+git pull origin main
+npm install --production
+npm run build
+pm2 restart capsula-erp
+
+# Conectar a la base de datos
+psql -U postgres -d capsula_db
+
+# Backup manual
+pg_dump -U postgres capsula_db > backup_$(date +%Y%m%d).sql
+```
+
+### 19.7 Variables de Entorno Requeridas en el VPS
+
+Archivo: `/var/www/capsula-erp/.env`
+
+```env
+DATABASE_URL="postgresql://postgres:<password>@localhost:5432/capsula_db"
+JWT_SECRET="<secret-seguro-generado>"
+NEXT_PUBLIC_APP_NAME="Cápsula ERP"
+NEXT_PUBLIC_BUSINESS_NAME="Mi Negocio"
+# GOOGLE_VISION_API_KEY="..."   # opcional, para OCR
+# NEXT_PUBLIC_ENABLED_MODULES="..."  # opcional, fallback de módulos
+```
+
+### 19.8 Próximos Pasos de Infraestructura
+
+| # | Tarea | Prioridad |
+|---|-------|-----------|
+| 1 | Instalar Nginx + Let's Encrypt → HTTPS | Alta |
+| 2 | Activar `secure: true` en `src/lib/auth.ts` tras HTTPS | Alta |
+| 3 | Configurar backup automático diario de `capsula_db` | Media |
+| 4 | Dominio personalizado (ej. `app.capsulapp.com`) | Media |
+| 5 | Configurar `pm2 startup` para auto-arranque tras reboot | Alta |
+
+---
+
 *Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
 *Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e*
