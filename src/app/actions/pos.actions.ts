@@ -2034,24 +2034,61 @@ export async function getOpenTabWithSubAccountsAction(openTabId: string): Promis
 // ============================================================================
 
 /**
- * Retorna el siguiente número de pickup del día (PK-01, PK-02…).
- * Cuenta las órdenes de tipo PICKUP con sourceChannel POS_RESTAURANT
- * creadas en el rango horario del día de Caracas (04:00–27:59 UTC).
+ * Retorna el primer número de pickup disponible del día (PK-01, PK-02…).
+ *
+ * Reglas:
+ * - Solo cuenta órdenes con status != 'CANCELLED' (los anulados liberan su número).
+ * - Combina los PK de la BD con los de los tabs abiertos en memoria (openTabNumbers).
+ * - Busca el menor entero positivo que no esté en uso → devuelve el primer "hueco".
+ *   Ej: usados = {1, 3} → siguiente = 2 (no 4).
+ *
+ * El PK number se persiste en el campo notes de la orden como "…| PK-NN" al
+ * momento de hacer checkout, lo que permite recuperarlo aquí.
+ *
+ * @param openTabNumbers  Números PK de los tabs actualmente abiertos en memoria
+ *                        (p.ej. ["PK-01", "PK-03"]) — pasados desde el cliente.
  */
-export async function getDailyPickupCountAction(): Promise<{ success: boolean; nextNumber: string }> {
+export async function getDailyPickupCountAction(
+    openTabNumbers: string[] = [],
+): Promise<{ success: boolean; nextNumber: string }> {
     try {
         const { start, end } = getCaracasDayRange();
-        const count = await prisma.salesOrder.count({
+
+        // Consultar órdenes de pickup del día (no canceladas).
+        // Las ventas directas/pickup se crean con orderType='RESTAURANT' y
+        // llevan "Venta Directa Pickup" en notes. (orderType='PICKUP' solo lo
+        // usan las propinas colectivas registradas via recordCollectiveTipAction.)
+        const orders = await prisma.salesOrder.findMany({
             where: {
-                orderType: 'PICKUP',
+                orderType: 'RESTAURANT',
                 sourceChannel: 'POS_RESTAURANT',
+                status: { not: 'CANCELLED' },
+                notes: { contains: 'Venta Directa Pickup' },
                 createdAt: { gte: start, lte: end },
             },
+            select: { notes: true },
         });
-        const nextNum = (count + 1).toString().padStart(2, '0');
-        return { success: true, nextNumber: `PK-${nextNum}` };
+
+        // Extraer números PK de los notes (patrón "PK-NN")
+        const usedNums = new Set<number>();
+        for (const o of orders) {
+            const m = o.notes?.match(/PK-(\d+)/);
+            if (m) usedNums.add(parseInt(m[1], 10));
+        }
+
+        // Agregar los tabs abiertos en memoria
+        for (const pk of openTabNumbers) {
+            const m = pk.match(/PK-(\d+)/);
+            if (m) usedNums.add(parseInt(m[1], 10));
+        }
+
+        // Encontrar el menor entero positivo no usado (primer hueco)
+        let next = 1;
+        while (usedNums.has(next)) next++;
+
+        return { success: true, nextNumber: `PK-${next.toString().padStart(2, '0')}` };
     } catch (error) {
-        console.error('Error contando pickups del día:', error);
+        console.error('Error buscando siguiente número PK del día:', error);
         return { success: false, nextNumber: 'PK-01' };
     }
 }

@@ -658,7 +658,10 @@ export default function POSSportBarPage() {
     setNewPickupName("");
     setNewPickupPhone("");
     setShowPickupOpenModal(true);
-    const res = await getDailyPickupCountAction();
+    // Pasar los números de los tabs abiertos en memoria para que la action
+    // pueda buscar el primer hueco combinando BD + estado local.
+    const openNumbers = pickupTabs.map((t) => t.pickupNumber);
+    const res = await getDailyPickupCountAction(openNumbers);
     setNewPickupNumber(res.nextNumber);
   };
 
@@ -995,6 +998,10 @@ export default function POSSportBarPage() {
     if (cart.length === 0) return;
     setIsProcessing(true);
     try {
+      // Snapshot del tab activo tomado antes de cualquier await — el estado puede
+      // cambiar durante la operación asíncrona (p.ej. otro tab se cierra).
+      const activeTabSnap = pickupTabs.find((t) => t.id === activePickupTabId);
+
       const rc = (n: number) => Math.round(n * 100) / 100;
       const pickupDiscount = discountType === "DIVISAS_33"
         ? rc(isPickupMixedMode && divisasUsdAmountPickup != null
@@ -1018,7 +1025,11 @@ export default function POSSportBarPage() {
                 amountPaid: paidAmount || finalTotal }
             : { paymentMethod, amountPaid: paidAmount || finalTotal,
                 tipAtCheckout: parseFloat(checkoutTip) > 0 ? parseFloat(checkoutTip) : undefined }),
-        notes: "Venta Directa Pickup",
+        // El PK number se incrusta en notes para que getDailyPickupCountAction
+        // pueda recuperarlo y detectar huecos en la numeración del día.
+        notes: activeTabSnap?.pickupNumber
+          ? `Venta Directa Pickup | ${activeTabSnap.pickupNumber}`
+          : "Venta Directa Pickup",
         discountType,
         discountPercent: discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum : undefined,
         authorizedById: authorizedManager?.id,
@@ -1053,9 +1064,6 @@ export default function POSSportBarPage() {
           modifiers: i.modifiers.map((m) => m.name),
         }));
         const pickupTipVal = parseFloat(checkoutTip) || 0;
-        // Usar el nombre canónico del tab activo (no el estado pickupCustomerName
-        // que puede estar desincronizado si el usuario lo editó y no guardó).
-        const activeTabSnap = pickupTabs.find((t) => t.id === activePickupTabId);
         const pickupReceiptData = {
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT" as const,
