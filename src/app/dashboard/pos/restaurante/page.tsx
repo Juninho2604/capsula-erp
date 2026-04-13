@@ -155,6 +155,10 @@ const PAYMENT_LABELS: Record<string, string> = {
 const BS_SINGLE_METHODS = new Set(["PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG", "CASH_BS"]);
 
 const SINGLE_PAY_METHODS = ["CASH_USD", "CASH_EUR", "ZELLE", "PDV_SHANKLISH", "PDV_SUPERFERRO", "MOVIL_NG", "CASH_BS"] as const;
+
+/** Métodos donde la cajera debe ingresar el monto manualmente (efectivo, divisas, Bs efectivo).
+ *  PDV y MOVIL_NG no necesitan monto — el terminal procesa el monto exacto. */
+const METHODS_REQUIRING_AMOUNT = new Set(["CASH_USD", "CASH_EUR", "ZELLE", "CASH_BS"]);
 type SinglePayMethod = typeof SINGLE_PAY_METHODS[number];
 const CASHIER_ROLES = ["OWNER", "ADMIN_MANAGER", "OPS_MANAGER", "AREA_LEAD"];
 
@@ -1839,10 +1843,25 @@ export default function POSSportBarPage() {
 
                       <CurrencyCalculator totalUsd={pickupTotal} hasServiceFee={false} onRateUpdated={setExchangeRate} inline startCollapsed />
 
-                      <button onClick={handleCheckoutPickup} disabled={cart.length === 0 || isProcessing}
-                        className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-xl shadow-primary/20">
-                        {isProcessing ? "PROCESANDO..." : `COBRAR $${pickupTotal.toFixed(2)}`}
-                      </button>
+                      {(() => {
+                        const needsAmount = !isPickupMixedMode && METHODS_REQUIRING_AMOUNT.has(paymentMethod) && paidAmount <= 0;
+                        return (
+                          <>
+                            {needsAmount && (
+                              <div className="text-center text-xs text-amber-400 font-bold py-1">
+                                ⚠️ Ingresa el monto recibido
+                              </div>
+                            )}
+                            <button
+                              onClick={handleCheckoutPickup}
+                              disabled={cart.length === 0 || isProcessing || needsAmount}
+                              className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-xl shadow-primary/20"
+                            >
+                              {isProcessing ? "PROCESANDO..." : `COBRAR $${pickupTotal.toFixed(2)}`}
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
