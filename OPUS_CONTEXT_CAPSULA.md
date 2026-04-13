@@ -2504,6 +2504,75 @@ return { success: true, nextNumber: `PK-${(count + 1).toString().padStart(2, '0'
 
 ---
 
+### 18.19 Fix: numeración PK con huecos, sin anulados, persistida en BD (2026-04-13)
+
+#### commit `d1f82a9`
+
+**Tres bugs en la implementación anterior de `getDailyPickupCountAction`:**
+
+1. **`orderType: 'PICKUP'` incorrecto** — En la BD, `orderType='PICKUP'` solo lo usan las propinas colectivas (`recordCollectiveTipAction`). Las ventas directas/pickup reales tienen `orderType='RESTAURANT'`.
+2. **Cancelados contaban** — No había filtro de `status`, por lo que un PK anulado bloqueaba ese número para siempre en el día.
+3. **Sin persistencia del PK en BD** — El número PK era solo frontend. La action no podía saber qué números ya se habían usado, haciendo imposible la detección de huecos.
+
+---
+
+**Solución completa (`pos.actions.ts` + `page.tsx`):**
+
+**Persistencia del PK en `notes`** — `handleCheckoutPickup` ahora incrusta el número en el campo `notes` de la orden al hacer checkout:
+```typescript
+notes: activeTabSnap?.pickupNumber
+  ? `Venta Directa Pickup | ${activeTabSnap.pickupNumber}`   // → "Venta Directa Pickup | PK-02"
+  : "Venta Directa Pickup",
+```
+`activeTabSnap` se captura al inicio de `handleCheckoutPickup` (antes del primer `await`) para evitar carreras con el estado de `pickupTabs`.
+
+**`getDailyPickupCountAction` reescrita:**
+```typescript
+export async function getDailyPickupCountAction(
+    openTabNumbers: string[] = [],   // tabs abiertos en memoria, pasados desde el cliente
+): Promise<{ success: boolean; nextNumber: string }>
+```
+```typescript
+// 1. Consultar BD: RESTAURANT, no cancelados, con "Venta Directa Pickup" en notes
+const orders = await prisma.salesOrder.findMany({
+    where: {
+        orderType: 'RESTAURANT',
+        sourceChannel: 'POS_RESTAURANT',
+        status: { not: 'CANCELLED' },
+        notes: { contains: 'Venta Directa Pickup' },
+        createdAt: { gte: start, lte: end },
+    },
+    select: { notes: true },
+});
+
+// 2. Extraer números PK de los notes (patrón "PK-NN")
+const usedNums = new Set<number>();
+for (const o of orders) {
+    const m = o.notes?.match(/PK-(\d+)/);
+    if (m) usedNums.add(parseInt(m[1], 10));
+}
+
+// 3. Agregar tabs abiertos en memoria
+for (const pk of openTabNumbers) {
+    const m = pk.match(/PK-(\d+)/);
+    if (m) usedNums.add(parseInt(m[1], 10));
+}
+
+// 4. Primer entero positivo no usado (primer hueco)
+let next = 1;
+while (usedNums.has(next)) next++;
+```
+
+**`openPickupModal`** pasa los tabs en memoria:
+```typescript
+const openNumbers = pickupTabs.map((t) => t.pickupNumber);
+const res = await getDailyPickupCountAction(openNumbers);
+```
+
+**Resultado:** si hoy se crearon PK-01 y PK-03 (PK-02 fue anulado), la acción devuelve `PK-02`. Los cancelados liberan su número. Los tabs abiertos en RAM también se excluyen.
+
+---
+
 *Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9*
