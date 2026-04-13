@@ -673,6 +673,11 @@ export default function POSSportBarPage() {
     setCart([]);
     setDiscountType("NONE");
     setAuthorizedManager(null);
+    // Limpiar monto y propina al abrir nuevo tab — evita arrastre entre tabs
+    setAmountReceived("");
+    setCheckoutTip("");
+    setIsPickupMixedMode(false);
+    setMixedPaymentsPickup([]);
     setIsPickupMode(true);
     setSelectedTableId("");
     setSelectedZoneId("");
@@ -693,6 +698,11 @@ export default function POSSportBarPage() {
     setPickupCustomerName(tab.customerName);
     setDiscountType("NONE");
     setAuthorizedManager(null);
+    // Limpiar monto y propina al cambiar de tab — evita arrastre entre tabs
+    setAmountReceived("");
+    setCheckoutTip("");
+    setIsPickupMixedMode(false);
+    setMixedPaymentsPickup([]);
     setIsPickupMode(true);
     setSelectedTableId("");
     setSelectedZoneId("");
@@ -1776,33 +1786,43 @@ export default function POSSportBarPage() {
                         </div>
                       )}
 
-                      {/* Vuelto + Propina inline */}
+                      {/* Vuelto + Propina voluntaria */}
                       {pickupChange > 0.001 && (() => {
                         const tipVal = Math.min(parseFloat(checkoutTip) || 0, pickupChange);
                         const changeBack = pickupChange - tipVal;
                         return (
-                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Vuelto total:</span>
-                              <span className="font-black text-amber-400">${pickupChange.toFixed(2)}</span>
+                          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                            {/* Fila principal: vuelto a devolver (lo más importante) */}
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-black text-amber-400">💵 Vuelto a devolver:</span>
+                              <span className="text-lg font-black text-amber-400">${Math.max(0, changeBack).toFixed(2)}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground shrink-0">Propina extra:</span>
-                              <div className="flex-1 flex items-center bg-background border border-border rounded-lg px-2">
-                                <span className="text-xs text-muted-foreground mr-1">$</span>
-                                <input
-                                  type="number" min="0" step="0.01"
-                                  max={pickupChange}
-                                  value={checkoutTip}
-                                  onChange={e => setCheckoutTip(e.target.value)}
-                                  placeholder="0.00"
-                                  className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1.5 w-0"
-                                />
+                            {/* Separador antes de la propina opcional */}
+                            <div className="border-t border-amber-500/20 pt-2">
+                              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                                Propina voluntaria (opcional — solo si el cliente la deja)
                               </div>
-                            </div>
-                            <div className="flex justify-between items-center text-sm font-black pt-1 border-t border-amber-500/20">
-                              <span>Vuelto a devolver:</span>
-                              <span className="text-emerald-400">${Math.max(0, changeBack).toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 flex items-center bg-background border border-border rounded-lg px-2">
+                                  <span className="text-xs text-muted-foreground mr-1">$</span>
+                                  <input
+                                    type="number" min="0" step="0.01"
+                                    max={pickupChange}
+                                    value={checkoutTip}
+                                    onChange={e => setCheckoutTip(e.target.value)}
+                                    placeholder="0.00"
+                                    className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1.5 w-0"
+                                  />
+                                </div>
+                                {tipVal > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCheckoutTip("")}
+                                    className="text-muted-foreground hover:text-destructive text-lg leading-none px-1"
+                                    title="Limpiar propina"
+                                  >×</button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
