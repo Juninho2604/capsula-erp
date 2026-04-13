@@ -2607,6 +2607,107 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 
 ---
 
+### 18.21 Bugfixes impresión y subcuentas — 4 correcciones (2026-04-13)
+
+#### commits `786668d` (print) + `a95232e` (subcuentas)
+
+---
+
+#### BUG 1 — "Subtotal con desc." en recibo de impresión
+
+**Archivo:** `src/lib/print-command.ts`
+
+**Problema:** El recibo mostraba el descuento pero no el resultado post-descuento. La cajera no podía ver el subtotal neto de un vistazo.
+
+**Fix:** Después del bloque del descuento, se agrega una línea adicional solo cuando `discountAmount > 0`:
+```javascript
+${discountAmount > 0 ? `
+<div class="total-row">
+    <span>${data.discountReason || ...}:</span>
+    <span>-$${discountAmount.toFixed(2)}</span>
+</div>
+<div class="total-row">
+    <span>Subtotal con desc.:</span>
+    <span>$${(subtotal - discountAmount).toFixed(2)}</span>
+</div>
+` : ''}
+```
+
+**Resultado visual:**
+```
+Subtotal:             $30.00
+Cortesía Autorizada:  -$9.00
+Subtotal con desc.:   $21.00
+TOTAL:                $21.00
+```
+
+---
+
+#### BUG 2A — Infinite render/fetch loop al activar subcuentas (CRÍTICO)
+
+**Archivos:** `src/components/pos/SubAccountPanel.tsx`
+
+**Causa raíz:** `onTabUpdated={() => loadData()}` en `page.tsx` crea una nueva arrow function reference en cada render. Esto causaba un ciclo infinito:
+1. Parent render → nueva `onTabUpdated` fn
+2. `loadTab` useCallback (deps: `[openTabId, onTabUpdated]`) recrea
+3. `useEffect([loadTab])` dispara `loadTab()`
+4. `loadTab()` llama `onTabUpdated()` → `loadData()` → 4 API calls → parent re-render
+5. Volver al paso 1
+
+**Fix:** Patrón `useRef` para estabilizar el callback sin moverlo a los deps:
+```typescript
+// En SubAccountPanel:
+const onTabUpdatedRef = useRef(onTabUpdated);
+useEffect(() => { onTabUpdatedRef.current = onTabUpdated; }, [onTabUpdated]);
+
+const loadTab = useCallback(async () => {
+    const res = await getOpenTabWithSubAccountsAction(openTabId);
+    if (res.success && res.data) {
+        setTab(res.data as TabWithSubs);
+        onTabUpdatedRef.current(res.data);  // ref, nunca en deps
+    }
+}, [openTabId]); // ← onTabUpdated removido de deps
+```
+
+---
+
+#### BUG 2B — Extra round-trip innecesario en handlePay
+
+**Archivo:** `src/components/pos/SubAccountPanel.tsx`
+
+**Problema:** `handlePay` llamaba `loadTab()` después de `paySubAccountAction`, que ya devuelve el tab actualizado en `res.data`. Esto causaba un fetch extra y disparaba el ciclo `onTabUpdated` una vez más.
+
+**Fix:**
+```typescript
+if (res.data) {
+    setTab(res.data as TabWithSubs);   // usar datos devueltos directamente
+    onTabUpdatedRef.current(res.data);
+} else {
+    await loadTab(); // fallback
+}
+```
+
+---
+
+#### BUG 2C — balanceDue sobre-deducido al cobrar subcuenta
+
+**Archivo:** `src/app/actions/pos.actions.ts` — `paySubAccountAction`
+
+**Problema:** `balanceDue` del `OpenTab` acumula solo totales de ítems de comida (sin service charge). Pero `paySubAccountAction` descontaba `sub.total` (= `subtotal + serviceCharge`), resultando en sobre-deducción. En una mesa con dos subcuentas iguales de $30 comida + $3 service:
+- `balanceDue` inicial: $60
+- Tras pagar subcuenta A con `sub.total = $33`: `balanceDue = max(0, 60-33) = $27` ← incorrecto (debería ser $30)
+- Tras pagar subcuenta B con `sub.total = $33`: `balanceDue = max(0, 27-33) = $0` ← OK pero display intermedio era erróneo
+
+**Fix:**
+```typescript
+// Antes:
+const newBalance = Math.max(0, openTab.balanceDue - sub.total);
+// Después:
+const newBalance = Math.max(0, openTab.balanceDue - sub.subtotal);
+```
+
+---
+
 *Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e 786668d a95232e*
