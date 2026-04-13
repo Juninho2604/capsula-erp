@@ -1179,12 +1179,35 @@ Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` compar
 
 - **Ruta**: `/dashboard/finanzas`
 - **Página**: Server Component — importa `getFinancialSummaryAction()` + `getMonthlyTrendAction()`
-- **Actions**: `finance.actions.ts` → 2 funciones:
-  - `getFinancialSummaryAction(month?, year?)` — P&L mensual: ingresos (ventas), COGS (compras recibidas), gastos operativos, cuentas por pagar, utilidad neta
-  - `getMonthlyTrendAction(months)` — tendencia de últimos N meses
-- **Modelos**: SalesOrder (ingresos), PurchaseOrder (COGS), Expense (gastos), AccountPayable (deudas)
-- **Conexiones**: ← SalesOrder.total (ingresos), ← PurchaseOrder.totalAmount con status RECEIVED (COGS), ← Expense.amountUsd (gastos), ← AccountPayable.remainingUsd (deudas pendientes)
-- **Estado**: Funcional
+- **Actions**: `finance.actions.ts` → 3 funciones:
+  - `getFinancialSummaryAction(month?, year?)` — P&L mensual completo con:
+    - Ingresos: ventas totales, ticket promedio, desglose por tipo (Restaurant/Delivery), por método de pago, ventas diarias del mes
+    - COGS: calculado desde `SalesOrderItem.costTotal` (no desde PurchaseOrder)
+    - Gastos operativos: por categoría con % del total, top 5 gastos individuales
+    - Cuentas por pagar: pendientes, vencidas, aging report (0-30, 31-60, 61-90, 90+ días)
+    - Flujo de caja: inflows (ventas), outflows (gastos + pagos a proveedores), neto
+    - P&L: utilidad bruta (ventas - COGS), utilidad operativa (bruta - gastos), márgenes %
+    - MoM (Month-over-Month): % cambio vs mes anterior en ventas, gastos, utilidad, # órdenes
+  - `getMonthlyTrendAction(months)` — tendencia de últimos N meses con ventas, COGS, gastos y utilidad (profit = sales - cogs - expenses)
+  - `getDailySalesAction(month, year)` — ventas agrupadas por día del mes
+- **Vista** (`finanzas-view.tsx`): Dashboard con 10 secciones:
+  1. KPI Cards con badges MoM (ventas, ticket promedio, gastos, utilidad)
+  2. Flujo de Caja (3 tarjetas: entradas, salidas, neto)
+  3. Estado de Resultados P&L formal (ventas → COGS → utilidad bruta → gastos → utilidad operativa)
+  4. Gráficas: LineChart ventas diarias + PieChart donut gastos por categoría
+  5. BarChart tendencia 6 meses (ventas, COGS, gastos, utilidad)
+  6. Top 5 gastos del período + ventas por método de pago con barras de progreso
+  7. Alertas financieras expandidas (6 tipos: deudas vencidas, pérdida operativa, margen bruto bajo <30%, ratio gastos alto >40%, caída ventas MoM >15%, flujo de caja negativo) con severidad critical/warning/info
+  8. Cuentas por pagar pendientes (3 tarjetas: deudas, vencido, compras)
+  9. Aging report de deudas (4 buckets coloreados azul→rojo)
+- **Exportación Excel**: Botón "📥 Exportar Excel" genera archivo `.xlsx` con ExcelJS — incluye P&L completo (ventas por tipo, COGS, utilidad bruta, gastos por categoría, utilidad operativa) + sección Flujo de Caja
+- **Modelos**: SalesOrder + SalesOrderItem (ingresos + COGS), Expense (gastos), AccountPayable + AccountPayment (deudas + pagos)
+- **Conexiones**: ← SalesOrder.total (ingresos), ← SalesOrderItem.costTotal (COGS), ← Expense.amountUsd (gastos), ← AccountPayable.remainingUsd (deudas), ← AccountPayment.amountUsd (pagos del período para flujo de caja)
+- **Charts**: recharts (BarChart, LineChart, PieChart con Pie + Cell)
+- **Dependencias**: ExcelJS (exportación Excel)
+- **Widget en Dashboard Home** (`page.tsx`): Resumen financiero del mes con 5 tarjetas (Ventas, Gastos, Utilidad, Flujo Neto, Deudas) + indicadores MoM + enlace "Ver detalle →" a `/dashboard/finanzas`. Visible solo para roles con `VIEW_COSTS`. Fetch paralelo con `Promise.all` junto a stats generales.
+- **Acceso rápido**: Tarjeta "Finanzas" en sección de accesos rápidos del dashboard home (solo roles con `VIEW_COSTS`)
+- **Estado**: Funcional — Mejorado con MoM, flujo de caja, gráficas, aging report, exportación Excel P&L, alertas expandidas 6 tipos, widget resumen en dashboard home
 
 ### 7.10 Gastos
 
@@ -1195,9 +1218,20 @@ Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` compar
   - `getExpensesAction(filters)` — filtro por categoría, fecha, status
   - `createExpenseAction(input)` — registro con categoría, monto USD/Bs, método de pago, período
   - `voidExpenseAction(id, reason)` — anula gasto
+- **Vista** (`gastos-view.tsx`): Módulo con analítica visual:
+  - KPI Cards con MoM comparison (% cambio vs mes anterior, inverted logic: gastos menores = verde)
+  - Desglose por categoría con barras de progreso (existente)
+  - PieChart donut distribución por categoría + BarChart horizontal por método de pago
+  - BarChart tendencia 6 meses de gastos (carga automática vía useEffect, llama `getExpensesAction` por cada mes)
+  - Filtros avanzados: por categoría y por método de pago con conteo dinámico
+  - Tabla detallada con filtrado aplicado
+  - Modales: crear gasto, crear categoría, anular gasto
+- **Exportación Excel**: Botón "📥 Exportar Excel" genera archivo `.xlsx` con ExcelJS — tabla de gastos filtrados (Fecha, Descripción, Categoría, Método de Pago, Monto USD, Registrado por) + fila TOTAL
+- **Charts**: recharts (PieChart, BarChart horizontal, BarChart tendencia 6 meses)
+- **Dependencias**: ExcelJS (exportación Excel)
 - **Modelos**: Expense, ExpenseCategory
 - **Conexiones**: → Finanzas (P&L como gasto operativo), → Caja (gastos del turno)
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con gráficas donut/barras, MoM, filtros avanzados, tendencia 6 meses, exportación Excel
 
 ### 7.11 Control de Caja
 
@@ -1208,11 +1242,18 @@ Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` compar
   - `openCashRegisterAction(input)` — apertura con fondo inicial USD/Bs + desglose billetes
   - `closeCashRegisterAction(input)` — cierre: conteo final, calcula diferencia vs esperado
   - `updateRegisterOperatorsAction(id, operators[])` — asigna operadoras al turno
+- **Vista** (`caja-view.tsx`): Módulo con analítica de cuadre:
+  - Cajas abiertas con gestión de operadoras y cambio de turno (existente)
+  - Resumen mensual KPIs: ventas del mes, gastos del mes, diferencia acumulada, precisión de cuadre (% turnos sin diferencia)
+  - BarChart mini tendencia de diferencias por cierre (positivo=sobrante, negativo=faltante) con ReferenceLine en 0
+  - Historial de cierres con desglose de billetes (existente)
+  - Modales: abrir caja, cerrar caja, desglose billetes, gestión operadoras
+- **Charts**: recharts (BarChart con ReferenceLine)
 - **Modelos**: CashRegister
 - **Componentes**: `BillDenominationInput` — entrada de billetes por denominación
 - **Conexiones**: ← SalesOrder (ventas del turno para calcular esperado), ← Expense (gastos del turno)
 - **Lógica**: Apertura → ventas del día → cierre con conteo → `expectedCash = apertura + ventas_efectivo - gastos` → `difference = cierre_contado - esperado`
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con KPIs mensuales, gráfica de tendencia diferencias, precisión de cuadre
 
 ### 7.12 Cuentas por Pagar
 
@@ -1222,9 +1263,16 @@ Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` compar
   - `getAccountsPayableAction(filters)` — filtro por status, proveedor, fecha
   - `createAccountPayableAction(input)` — nueva deuda (manual o desde PurchaseOrder)
   - `registerPaymentAction(input)` — pago parcial/total → actualiza `paidAmountUsd`, `remainingUsd`, `status`
+- **Vista** (`cuentas-pagar-view.tsx`): Módulo con análisis de deudas:
+  - KPI Cards: pendiente, vencido, pagado, # acreedores (existente)
+  - Aging report: 5 buckets (Vigente, 0-30, 31-60, 61-90, 90+ días) coloreados verde→rojo
+  - Top acreedores: ranking de proveedores por monto pendiente con barras de progreso proporcionales
+  - Próximos vencimientos (14 días): lista con badges (HOY, MAÑANA, Nd) coloreados por urgencia
+  - Filtros (Activas/Todas/Pagadas) + tabla expandible con historial de pagos (existente)
+  - Modales: crear cuenta, registrar pago
 - **Modelos**: AccountPayable, AccountPayment, Supplier, PurchaseOrder
 - **Conexiones**: ← PurchaseOrder (puede crear deuda al recibir), ← Supplier (acreedor), → Finanzas (deudas pendientes en P&L)
-- **Estado**: Funcional
+- **Estado**: Funcional — Mejorado con aging report, ranking acreedores, alertas de vencimiento
 
 ### 7.13 Intercompany
 
@@ -1258,9 +1306,16 @@ Consecuencia directa: la guardia UI `selectedUser.id !== currentUser?.id` compar
 ### Conexiones Críticas entre Módulos de Administración
 
 ```
-Finanzas ← SalesOrder (ingresos) + PurchaseOrder (COGS) + Expense (gastos) + AccountPayable (deudas)
+Finanzas ← SalesOrder (ingresos + COGS vía items.costTotal) + Expense (gastos) + AccountPayable (deudas) + AccountPayment (pagos período)
    ↓
 P&L = Ingresos - COGS - Gastos Operativos
+Flujo de Caja = Ventas - (Gastos + Pagos a Proveedores)
+MoM = % cambio vs mes anterior
+Exportación: Excel P&L vía ExcelJS (finanzas) + Excel gastos filtrados (gastos)
+
+Dashboard Home ← getFinancialSummaryAction() (widget resumen 5 métricas con MoM, solo roles VIEW_COSTS)
+   ↓
+Acceso rápido a Finanzas desde dashboard principal
 
 Caja ← SalesOrder (ventas del turno) + Expense (gastos del turno)
    ↓
@@ -2305,6 +2360,94 @@ Con esto, la receta de mesa muestra:
 
 ---
 
+### 18.17 Merge rama finanzas de Gustavo + bugfix MoM (2026-04-12)
+
+#### Contexto
+Se integró la rama `claude/improve-finance-sections-S7urM` al master. Esta rama contenía mejoras sustanciales a los módulos de finanzas desarrolladas por Gustavo de forma independiente (sin fork).
+
+#### Lo que se integró (7 archivos)
+
+**`finance.actions.ts`** — Backend enriquecido:
+- `avgTicket` por orden calculado en servidor
+- `byPaymentMethod`: ventas desglosadas por método de pago con conteo
+- `dailySales`: ventas por día del mes para gráfico de línea
+- `byCategory[].pct`: porcentaje de cada categoría sobre total de gastos
+- `topExpenses`: top 5 gastos del período ordenados por monto
+- `aging`: buckets de cuentas por pagar vencidas (0-30, 31-60, 61-90, 90+ días)
+- `cashFlow`: inflows (ventas) + outflows (gastos + pagos a proveedores) + net
+- `mom`: Month-over-Month % de cambio en ventas, gastos, utilidad y órdenes
+- `getMonthlyTrendAction`: ahora incluye COGS en la tendencia histórica
+- `getDailySalesAction`: nueva action para ventas diarias por demanda
+
+**`finanzas-view.tsx`** — Dashboard financiero completo:
+- Indicadores MoM con flechas ▲▼ en todas las tarjetas KPI
+- Ticket promedio como nueva card (reemplaza "Costo de Ventas")
+- Cash Flow: panel de 3 columnas (entradas / salidas / flujo neto)
+- Gráfico de línea: ventas diarias del mes
+- Gráfico donut: gastos por categoría con % y leyenda
+- Gráfico de barras apiladas: tendencia 6 meses (ventas / COGS / gastos / utilidad)
+- Top 5 gastos del período con categoría y fecha
+- Barras de progreso: ventas por método de pago
+- Aging report de cuentas por pagar vencidas (4 buckets)
+- Alertas financieras automáticas (margen bajo, pérdida operativa, caída de ventas, flujo negativo)
+- Exportación Excel del P&L completo con sección de Cash Flow (ExcelJS)
+
+**`gastos-view.tsx`** — Módulo gastos enriquecido:
+- Indicador MoM en KPI de total gastos (vs mes anterior, cargado en mount)
+- Pie chart: distribución por categoría
+- Bar chart horizontal: por método de pago
+- Bar chart: tendencia 6 meses (6 llamadas secuenciales en `useEffect`)
+- Filtros por categoría y método de pago (client-side sobre `expenses[]`)
+- Exportación Excel con filtros aplicados (ExcelJS)
+
+**`caja-view.tsx`** — Resumen mensual:
+- `monthlyStats`: totalSales, totalExpenses, totalDifference, avgDifference, perfectShifts
+- Cards de resumen del mes (ventas, gastos, diferencia acumulada, % precisión de cuadre)
+- Bar chart: tendencia de diferencias por turno con `ReferenceLine` en y=0
+
+**`cuentas-pagar-view.tsx`** — Aging report expandido:
+- Aging de 5 buckets (Vigente + 4 overdue) calculado client-side sobre `accounts[]`
+- Resumen por proveedor/acreedor (top 8 por monto pendiente)
+- Próximos vencimientos: cuentas con vencimiento en los próximos 14 días
+- Supplier summary con conteo y monto agrupado por acreedor
+
+**`dashboard/page.tsx`** — Widget financiero:
+- Se llama `getFinancialSummaryAction()` en paralelo con `getDashboardStatsAction()`
+- Widget de 5 columnas: Ventas / Gastos / Utilidad / Flujo Neto / Deudas
+- Indicadores MoM inline (▲▼ con colores)
+- Acceso rápido a `/dashboard/finanzas` desde la grilla de módulos
+
+#### Bug corregido durante la integración
+
+**MoM utilidad operativa inconsistente** (`finance.actions.ts`):
+
+```typescript
+// ANTES — prevProfit no incluía COGS del mes anterior:
+const prevSales = prevSalesAgg._sum.total ?? 0;
+const prevProfit = prevSales - prevExpenses;  // ❌ missing prevCogs
+
+// DESPUÉS — se cambió aggregate por findMany para obtener items:
+const [prevSalesOrders, prevExpAgg] = await Promise.all([
+  prisma.salesOrder.findMany({
+    where: { status: 'COMPLETED', createdAt: { gte: prevStart, lte: prevEnd } },
+    select: { total: true, items: { select: { costTotal: true } } },
+  }),
+  ...
+]);
+const prevSales = prevSalesOrders.reduce((s, o) => s + o.total, 0);
+const prevCogs  = prevSalesOrders.reduce((s, o) => s + o.items.reduce((si, i) => si + (i.costTotal ?? 0), 0), 0);
+const prevProfit = prevSales - prevCogs - prevExpenses;  // ✅ fórmula consistente
+```
+
+Sin este fix, `profitChange` comparaba `operatingProfit` (que descuenta COGS) contra un `prevProfit` sin COGS, generando un % de cambio siempre inflado artificialmente.
+
+#### Notas de arquitectura
+- **ExcelJS en cliente**: `finanzas-view.tsx` y `gastos-view.tsx` importan ExcelJS a nivel de módulo (`import ExcelJS from 'exceljs'`). ExcelJS v4+ soporta browser via webpack. Funciona en Next.js 14 con su configuración por defecto. Si el bundle crece, migrar a dynamic import dentro de la función de exportación.
+- **Tendencia gastos**: `gastos-view.tsx` hace 6 llamadas secuenciales a `getExpensesAction` en `useEffect`. Aceptable para un panel admin con datos históricos.
+- **Cash Flow**: `outflows = totalExpensesUsd + accountPayments`. Son tablas independientes (`Expense` = gastos operativos directos; `AccountPayment` = pagos a proveedores por crédito). No hay doble conteo si el equipo no registra el mismo pago en ambas tablas.
+
+---
+
 *Actualizado el 2026-04-12 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 48 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 merge:improve-finance-sections*

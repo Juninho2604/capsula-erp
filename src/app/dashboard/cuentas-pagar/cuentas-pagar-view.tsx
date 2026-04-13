@@ -125,6 +125,50 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
   const overdueAmount = accounts.filter(a => a.status === 'OVERDUE').reduce((s, a) => s + a.remainingUsd, 0);
   const totalPaid = accounts.filter(a => a.status === 'PAID').reduce((s, a) => s + a.totalAmountUsd, 0);
 
+  // Aging Report
+  const now = new Date();
+  const agingBuckets: Record<string, { amount: number; count: number }> = {
+    'Vigente': { amount: 0, count: 0 },
+    '0-30': { amount: 0, count: 0 },
+    '31-60': { amount: 0, count: 0 },
+    '61-90': { amount: 0, count: 0 },
+    '90+': { amount: 0, count: 0 },
+  };
+  for (const a of accounts.filter(a => !['PAID', 'VOID'].includes(a.status))) {
+    if (!a.dueDate) { agingBuckets['Vigente'].amount += a.remainingUsd; agingBuckets['Vigente'].count++; continue; }
+    const daysPast = Math.floor((now.getTime() - new Date(a.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (daysPast <= 0) { agingBuckets['Vigente'].amount += a.remainingUsd; agingBuckets['Vigente'].count++; }
+    else if (daysPast <= 30) { agingBuckets['0-30'].amount += a.remainingUsd; agingBuckets['0-30'].count++; }
+    else if (daysPast <= 60) { agingBuckets['31-60'].amount += a.remainingUsd; agingBuckets['31-60'].count++; }
+    else if (daysPast <= 90) { agingBuckets['61-90'].amount += a.remainingUsd; agingBuckets['61-90'].count++; }
+    else { agingBuckets['90+'].amount += a.remainingUsd; agingBuckets['90+'].count++; }
+  }
+  const agingData = Object.entries(agingBuckets).map(([range, data]) => ({ range, ...data }));
+  const hasAging = agingData.some(b => b.amount > 0);
+
+  // Supplier Summary
+  const supplierMap = new Map<string, { name: string; total: number; count: number }>();
+  for (const a of accounts.filter(a => !['PAID', 'VOID'].includes(a.status))) {
+    const key = a.supplierId || a.creditorName || 'Sin asignar';
+    const name = a.supplierName || a.creditorName || 'Sin asignar';
+    const existing = supplierMap.get(key) || { name, total: 0, count: 0 };
+    existing.total += a.remainingUsd;
+    existing.count++;
+    supplierMap.set(key, existing);
+  }
+  const supplierSummary = Array.from(supplierMap.values()).sort((a, b) => b.total - a.total).slice(0, 8);
+
+  // Upcoming Due Dates (next 14 days)
+  const upcomingDue = accounts
+    .filter(a => !['PAID', 'VOID'].includes(a.status) && a.dueDate)
+    .filter(a => {
+      const due = new Date(a.dueDate!);
+      const daysUntil = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntil >= 0 && daysUntil <= 14;
+    })
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .slice(0, 5);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -148,6 +192,82 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
         <KpiCard label="Total Pagado" value={`$${fmt(totalPaid)}`} color="border-emerald-500/30 bg-emerald-500/5" icon="✅" />
         <KpiCard label="Acreedores" value={`${new Set(accounts.filter(a=>!['PAID','VOID'].includes(a.status)).map(a=>a.supplierId||a.creditorName)).size}`} color="border-blue-500/30 bg-blue-500/5" icon="🏢" />
       </div>
+
+      {/* Aging Report */}
+      {hasAging && (
+        <div className="glass-panel rounded-2xl border border-border p-6">
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {agingData.map(bucket => {
+              const colorMap: Record<string, string> = {
+                'Vigente': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500',
+                '0-30': 'bg-blue-500/10 border-blue-500/20 text-blue-500',
+                '31-60': 'bg-amber-500/10 border-amber-500/20 text-amber-500',
+                '61-90': 'bg-orange-500/10 border-orange-500/20 text-orange-500',
+                '90+': 'bg-red-500/10 border-red-500/20 text-red-500',
+              };
+              const colors = colorMap[bucket.range] || 'bg-muted border-border text-foreground';
+              const [bgColor, borderColor, textColor] = colors.split(' ');
+              return (
+                <div key={bucket.range} className={`rounded-xl p-3 text-center border ${bgColor} ${borderColor}`}>
+                  <p className="text-[10px] font-bold text-muted-foreground">{bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}</p>
+                  <p className={`text-lg font-black mt-1 ${textColor}`}>${fmt(bucket.amount)}</p>
+                  <p className="text-[10px] text-muted-foreground">{bucket.count} cuentas</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Acreedores */}
+      {supplierSummary.length > 0 && (
+        <div className="glass-panel rounded-2xl border border-border p-6">
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Principales Acreedores</h3>
+          <div className="space-y-2">
+            {supplierSummary.map((s, i) => {
+              const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-sm font-black text-muted-foreground w-5">{i + 1}</span>
+                  <span className="text-sm text-foreground flex-1 truncate">{s.name}</span>
+                  <span className="text-xs text-muted-foreground">{s.count} cuentas</span>
+                  <span className="text-sm font-bold text-foreground w-24 text-right">${fmt(s.total)}</span>
+                  <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Próximos Vencimientos */}
+      {upcomingDue.length > 0 && (
+        <div className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6">
+          <h3 className="text-sm font-black uppercase tracking-widest text-amber-500 mb-4">⏰ Próximos Vencimientos (14 días)</h3>
+          <div className="space-y-2">
+            {upcomingDue.map(a => {
+              const daysUntil = Math.floor((new Date(a.dueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              return (
+                <div key={a.id} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      daysUntil <= 3 ? 'bg-red-500/20 text-red-500' : daysUntil <= 7 ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
+                    }`}>
+                      {daysUntil === 0 ? 'HOY' : daysUntil === 1 ? 'MAÑANA' : `${daysUntil}d`}
+                    </span>
+                    <span className="text-foreground truncate">{a.description}</span>
+                    <span className="text-muted-foreground text-xs">— {a.supplierName || a.creditorName}</span>
+                  </div>
+                  <span className="font-bold text-foreground ml-2">${fmt(a.remainingUsd)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex gap-2">
