@@ -11,6 +11,7 @@ import { UserRole } from '@/types';
 import { logoutAction } from '@/app/actions/auth.actions';
 import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 import { getModulesBySection, type ModuleDefinition } from '@/lib/constants/modules-registry';
+import { CapsulaNavbarLogo } from '@/components/ui/CapsulaLogo';
 
 interface SidebarProps {
     initialUser?: any; // SessionPayload
@@ -37,14 +38,14 @@ function SidebarSection({
     if (modules.length === 0) return null;
 
     const activeGradients = {
-        amber: 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-400',
+        amber: 'bg-capsula-coral-subtle text-capsula-coral dark:bg-capsula-coral/10 dark:text-capsula-coral',
         green: 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 dark:text-green-400',
         purple: 'bg-gradient-to-r from-purple-500/10 to-violet-500/10 text-purple-700 dark:text-purple-400',
         blue: 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-700 dark:text-blue-400',
     };
 
     const dotColors = {
-        amber: 'bg-amber-500',
+        amber: 'bg-capsula-coral',
         green: 'bg-green-500',
         purple: 'bg-purple-500',
         blue: 'bg-blue-500',
@@ -139,16 +140,13 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                 )}
             >
                 {/* Logo */}
-                <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-6 dark:border-gray-700">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
-                        <span className="text-xl">🧀</span>
-                    </div>
-                    <div>
-                        <h1 className="font-bold text-gray-900 dark:text-white">CAPSULA</h1>
-                        <p className="text-xs text-gray-500">
-                            {process.env.NEXT_PUBLIC_BUSINESS_NAME || 'ERP System'}
+                <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-4 dark:border-gray-700">
+                    <CapsulaNavbarLogo />
+                    {process.env.NEXT_PUBLIC_BUSINESS_NAME && (
+                        <p className="text-xs text-gray-500 truncate">
+                            {process.env.NEXT_PUBLIC_BUSINESS_NAME}
                         </p>
-                    </div>
+                    )}
                     {/* Close button for mobile */}
                     <button
                         onClick={closeSidebar}
