@@ -3,6 +3,18 @@
 
 ---
 
+## CHANGELOG
+
+| Fecha | Commit | Descripción |
+|-------|--------|-------------|
+| 2026-04-13 | 03202e8 | Sección 19: deployment VPS |
+| 2026-04-13 | ec78da1 | Blank slate - 24 archivos |
+| 2026-04-13 | 050b84a | Secciones 20-22: multitenant + go-to-market + BD |
+| 2026-04-13 | 2632553 | Fix roles, branding, placeholders |
+| 2026-04-14 | a767279 | GitHub Actions deploy automático |
+
+---
+
 ## 1. Identidad del Sistema
 
 **Shanklish ERP** es un sistema POS + ERP para restaurantes y entretenimiento construido con
@@ -2607,6 +2619,32 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 
 ---
 
-*Actualizado el 2026-04-13 — Shanklish ERP / Cápsula SaaS — Documento Completo*
+## AUDITORÍA DE COMPLETITUD (2026-04-14)
+
+### Secciones faltantes
+
+| # | Gap | Detalle |
+|---|-----|---------|
+| 1 | **Secciones 19–22 ausentes** | Los commits `03202e8` y `050b84a` añadieron "Sección 19: deployment VPS", "Sección 20: multitenant", "Sección 21: go-to-market" y "Sección 22: BD". Ninguna aparece en el documento actual — se perdieron o nunca se mergearon al OPUS principal. |
+| 2 | **GitHub Actions CI/CD sin sección** | El workflow `.github/workflows/deploy.yml` (commit `a767279`) no tiene sección dedicada. Solo existe documentación de scripts PM2 dispersa, sin describir el pipeline completo de deploy automatizado. |
+
+### Secciones desactualizadas
+
+| Sección | Problema | Acción requerida |
+|---------|----------|-----------------|
+| **§1 Stack Técnico** — fila Deploy | Dice `Vercel (vercel-build: prisma generate + migrate deploy + next build)` | Actualizar a: VPS Ubuntu + PM2 + GitHub Actions (`push → SSH → git pull → npm ci → build → pm2 restart`) |
+| **§17.1 Deploy Principal** | Titula "Vercel (Producción actual)" y describe el flujo Vercel como primario | Renombrar a "Deploy VPS (Producción actual)"; reclasificar Vercel como alternativa legacy o eliminar |
+| **§17.5 Deploy Alternativo — AWS** | Nota: "La producción usa Vercel" | Corregir a: "La producción usa VPS con GitHub Actions" |
+| **§18.20 Debug console.logs** | Se marcaron como "temporales — remover una vez confirmado el fix" (commit `0b2cb4e`) | Verificar si los `console.log` en `getDailyPickupCountAction` fueron removidos del código; si sí, actualizar estado a "resuelto y removido" |
+| **Footer — conteo de modelos** | Footer dice "44 modelos Prisma"; §2 titula "42 Modelos Prisma" | Auditar `prisma/schema.prisma` y unificar el conteo real en ambos lugares |
+
+### Inconsistencias menores
+
+- §18 tiene numeración desordenada: `18.8` aparece dos veces (líneas 1846 y 1886), y `18.6` aparece fuera de secuencia (línea 2166 después de `18.14`). Requiere reordenación.
+- El mapa de carpetas en §1 apunta a `shanklish-erp-main/` pero el repo se llama `capsula-erp`.
+
+---
+
+*Actualizado el 2026-04-14 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e a767279*
