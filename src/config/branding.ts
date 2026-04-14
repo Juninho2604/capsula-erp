@@ -173,8 +173,13 @@ export const TENANT_LEGACY_COLORS = {
 } as const;
 
 // ─── TIPOS ───────────────────────────────────────────────────
-export type BrandColors = typeof CAPSULA_BRAND.colors;
-export type BrandFonts = typeof CAPSULA_BRAND.fonts;
+// Mapeamos las keys de CAPSULA_BRAND.colors a string (no literales).
+// Reason: getTenantBranding puede mezclar colores de tenants con valores
+// distintos a los defaults (#FF6B4A). Si usamos `typeof CAPSULA_BRAND.colors`
+// directamente, TypeScript espera literales exactos y falla al asignar
+// el resultado del merge del tenant.
+export type BrandColors = { [K in keyof typeof CAPSULA_BRAND.colors]: string };
+export type BrandFonts = { [K in keyof typeof CAPSULA_BRAND.fonts]: string };
 export type LogoVariant = typeof CAPSULA_BRAND.logo.variants[number];
 export type TenantSlug = keyof typeof TENANT_LEGACY_COLORS;
 
