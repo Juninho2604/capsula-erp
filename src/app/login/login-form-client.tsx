@@ -11,7 +11,7 @@ function SubmitButton() {
     return (
         <button
             type="submit"
-            className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+            className="w-full rounded-lg bg-capsula-gradient px-4 py-3 font-semibold text-white shadow-lg shadow-capsula-coral/25 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
             disabled={pending}
         >
             {pending ? (
@@ -61,7 +61,7 @@ export default function LoginForm() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="correo@ejemplo.com"
-                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
+                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-capsula-coral focus:outline-none focus:ring-capsula-coral sm:text-sm"
                     />
                 </div>
             </div>
@@ -78,7 +78,7 @@ export default function LoginForm() {
                         autoComplete="current-password"
                         required
                         placeholder="••••••••"
-                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:text-sm"
+                        className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-950 dark:text-white dark:bg-gray-800 placeholder-gray-400 focus:border-capsula-coral focus:outline-none focus:ring-capsula-coral sm:text-sm"
                     />
                 </div>
             </div>
