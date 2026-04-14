@@ -12,6 +12,9 @@
 | 2026-04-13 | 050b84a | Secciones 20-22: multitenant + go-to-market + BD |
 | 2026-04-13 | 2632553 | Fix roles, branding, placeholders |
 | 2026-04-14 | a767279 | GitHub Actions deploy automático |
+| 2026-04-14 | a6242e3 | Canales Externos - audit completo PedidosYA |
+| 2026-04-14 | dfda1de | Módulos unificado en panel con tabs Sistema + Por Usuario |
+| 2026-04-14 | 6bc92a1 | Fusión SKU Studio + Asistente de Insumos en 4 tabs |
 
 ---
 
