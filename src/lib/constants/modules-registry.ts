@@ -195,13 +195,13 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     id: 'mesoneros',
-    label: 'Mesoneros',
-    description: 'Gestión de mesoneros del restaurante: CRUD de nombre, apellido y estado activo',
+    label: 'Gestión de Mesoneros',
+    description: 'CRUD de mesoneros del restaurante: nombre, apellido, activar/desactivar',
     icon: '🧑‍🍽️',
     href: '/dashboard/mesoneros',
-    section: 'operations',
+    section: 'admin',
     enabledByDefault: true,
-    sortOrder: 55,
+    sortOrder: 529,
   },
   {
     id: 'sku_studio',
