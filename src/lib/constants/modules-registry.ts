@@ -215,17 +215,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     tags: ['sku', 'familias', 'plantillas', 'inventario'],
   },
   {
-    id: 'asistente',
-    label: 'Asistente de Nomenclatura',
-    description: 'Asistente guiado para crear insumos con nombres y unidades estandarizadas, y verificar recetas vinculadas al menú',
-    icon: '🧙',
-    href: '/dashboard/asistente',
-    section: 'operations',
-    enabledByDefault: true,
-    sortOrder: 105,
-    tags: ['sku', 'nomenclatura', 'recetas'],
-  },
-  {
     id: 'menu',
     label: 'Menú',
     description: 'Gestión del menú y productos de venta',
@@ -553,7 +542,6 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   purchases: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   proteins: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   sku_studio: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
-  asistente: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
   menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
@@ -575,9 +563,8 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   // Admin
   mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
-  modulos_usuario: ['OWNER', 'ADMIN_MANAGER'],
+  modulos: ['OWNER', 'ADMIN_MANAGER'],
   roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-  module_config: ['OWNER'], // Solo el OWNER puede activar/desactivar módulos
   almacenes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   tasa_cambio: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   anuncios: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
@@ -624,10 +611,6 @@ export function getVisibleModules(
   const ids = enabledIds ?? getEnabledModuleIds();
 
   const visibleIds = new Set(ids);
-  // module_config siempre visible para OWNER
-  if (userRole === 'OWNER') {
-    visibleIds.add('module_config');
-  }
 
   // Si el usuario tiene permisos individuales, intersectar
   const userFilter = userAllowedModules ? new Set(userAllowedModules) : null;
@@ -641,8 +624,7 @@ export function getVisibleModules(
     })
     .filter(m => {
       // Si hay restricciones individuales, el módulo debe estar en la lista
-      // module_config nunca se filtra por allowedModules (siempre visible para OWNER)
-      if (!userFilter || m.id === 'module_config') return true;
+      if (!userFilter) return true;
       return userFilter.has(m.id);
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
