@@ -328,7 +328,7 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                 const sc = (o.sourceChannel || '').toUpperCase();
                 const isPedidosYa = ot === 'PEDIDOSYA' || sc === 'POS_PEDIDOSYA';
                 const isDelivery = ot === 'DELIVERY';
-                const typeLabel = isPedidosYa ? 'PedidosYA' : isDelivery ? 'Delivery' : 'Pickup';
+                const typeLabel = isPedidosYa ? 'Canal Externo' : isDelivery ? 'Delivery' : 'Pickup';
                 const description = `${typeLabel}: ${o.customerName || 'Cliente'}`;
 
                 result.push({
