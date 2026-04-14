@@ -1,0 +1,44 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+
+            echo ">>> Entrando al proyecto"
+            cd /var/www/capsula-erp
+
+            echo ">>> Pull de main"
+            git pull origin main
+
+            echo ">>> Instalando dependencias"
+            npm ci --omit=dev
+
+            echo ">>> Build (prisma generate + next build)"
+            npm run build
+
+            echo ">>> Copiando estáticos al standalone"
+            cp -r .next/static .next/standalone/.next/static
+            cp -r public      .next/standalone/public
+
+            echo ">>> Reiniciando PM2"
+            pm2 restart capsula-erp --update-env
+
+            echo ">>> Deploy completado OK"
