@@ -39,7 +39,13 @@ export async function middleware(request: NextRequest) {
         }
 
         // C. Configuración Global
-        if (path.startsWith('/dashboard/config')) {
+        // /config/modulos: tab Sistema = OWNER only (handled in view), tab Por Usuario = OWNER + ADMIN_MANAGER
+        if (path.startsWith('/dashboard/config/modulos')) {
+            const allowed = ['OWNER', 'ADMIN_MANAGER'];
+            if (!allowed.includes(userRole)) {
+                return NextResponse.redirect(new URL('/dashboard?error=unauthorized_config', request.url));
+            }
+        } else if (path.startsWith('/dashboard/config')) {
             const allowed = ['OWNER'];
             if (!allowed.includes(userRole)) {
                 return NextResponse.redirect(new URL('/dashboard?error=unauthorized_config', request.url));
