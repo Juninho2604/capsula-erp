@@ -139,18 +139,20 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                     "md:translate-x-0"
                 )}
             >
-                {/* Logo */}
-                <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-4 dark:border-gray-700">
-                    <CapsulaNavbarLogo />
-                    {process.env.NEXT_PUBLIC_BUSINESS_NAME && (
-                        <p className="text-xs text-gray-500 truncate">
-                            {process.env.NEXT_PUBLIC_BUSINESS_NAME}
-                        </p>
-                    )}
+                {/* Logo + Wordmark */}
+                <div className="flex h-16 items-center border-b border-gray-200 px-4 dark:border-gray-700">
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                        <CapsulaNavbarLogo />
+                        {process.env.NEXT_PUBLIC_BUSINESS_NAME && (
+                            <p className="ml-0.5 truncate text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500 mt-0.5">
+                                {process.env.NEXT_PUBLIC_BUSINESS_NAME}
+                            </p>
+                        )}
+                    </div>
                     {/* Close button for mobile */}
                     <button
                         onClick={closeSidebar}
-                        className="ml-auto rounded-lg p-1 text-gray-400 hover:bg-gray-100 md:hidden dark:hover:bg-gray-800"
+                        className="ml-2 shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 md:hidden dark:hover:bg-gray-800"
                         aria-label="Cerrar menú"
                     >
                         ✕

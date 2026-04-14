@@ -46,11 +46,11 @@ function MetaCard({
       <ProgressBar pct={pct} color={over ? 'bg-emerald-500' : color} />
 
       <div className="flex items-center justify-between mt-2">
-        <span className={`text-sm font-black ${over ? 'text-emerald-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+        <span className={`text-sm font-black ${over ? 'text-emerald-400' : pct >= 70 ? 'text-[#FF6B4A]' : 'text-muted-foreground'}`}>
           {pct}%
         </span>
         {over && <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">✅ Meta superada</span>}
-        {!over && pct >= 70 && <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">🔥 Cerca</span>}
+        {!over && pct >= 70 && <span className="text-[10px] font-black text-[#FF6B4A] uppercase tracking-widest">🔥 Cerca</span>}
       </div>
     </div>
   );
@@ -126,7 +126,7 @@ export function MetasView({ data }: { data: MetasData }) {
         <MetaCard
           label="Meta Diaria" icon="☀️"
           target={config.daily} actual={actual.today} orders={actual.todayOrders}
-          pct={progress.daily} color="bg-amber-500" borderColor="border-amber-500/20"
+          pct={progress.daily} color="bg-[#FF6B4A]" borderColor="border-[#FF6B4A]/20"
         />
         <MetaCard
           label="Meta Semanal" icon="📅"
@@ -136,7 +136,7 @@ export function MetasView({ data }: { data: MetasData }) {
         <MetaCard
           label="Meta Mensual" icon="🗓️"
           target={config.monthly} actual={actual.month} orders={actual.monthOrders}
-          pct={progress.monthly} color="bg-purple-500" borderColor="border-purple-500/20"
+          pct={progress.monthly} color="bg-[#1B2D45]" borderColor="border-[#1B2D45]/20"
         />
       </div>
 
