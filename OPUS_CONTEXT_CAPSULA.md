@@ -15,6 +15,8 @@
 | 2026-04-14 | a6242e3 | Canales Externos - audit completo PedidosYA |
 | 2026-04-14 | dfda1de | Módulos unificado en panel con tabs Sistema + Por Usuario |
 | 2026-04-14 | 6bc92a1 | Fusión SKU Studio + Asistente de Insumos en 4 tabs |
+| 2026-04-14 | 964dc1b | Identidad gráfica - logos SVG + branding system + theme |
+| 2026-04-14 | d25edcc | Login premium coral→navy + wordmark sidebar + barras coral |
 
 ---
 
@@ -3129,6 +3131,112 @@ La Tienda Virtual es un **addon** del plan Enterprise de Cápsula:
 
 ---
 
+## 25. IDENTIDAD GRÁFICA — CÁPSULA Brand System
+
+### 25.1 Paleta — Coral Energy
+
+| Token | Hex | Uso |
+|-------|-----|-----|
+| Coral (primary) | `#FF6B4A` | Botones, CTAs, links, acciones principales, barras de progreso |
+| Coral hover | `#E85A3A` | Estados hover |
+| Coral light | `#FF8A6F` | Badges, highlights |
+| Coral subtle | `#FFF0EC` | Backgrounds de énfasis |
+| Navy (secondary) | `#1B2D45` | Textos, headers, fondos oscuros, wordmark |
+| Navy light | `#2A4060` | Subheadings |
+| Navy subtle | `#F0F2F5` | Backgrounds |
+| Dorado (accent) | `#FFD93D` | Alertas positivas, premium |
+| Warm bg | `#FFF8F5` | Landing, onboarding, login background |
+
+### 25.2 Tipografía
+
+| Rol | Fuente | Peso |
+|-----|--------|------|
+| Headings / Wordmark | **Nunito** | 800 ExtraBold, 900 Black |
+| Body / UI | **Inter** | 400–600 |
+| Monospace / IDs | **JetBrains Mono** | — |
+
+Cargada via `next/font/google` en `src/app/layout.tsx`:
+- `--font-heading` → Nunito
+- `--font-body` / `--font-inter` → Inter
+
+### 25.3 Archivos clave del Brand System
+
+```
+src/config/branding.ts          ← Config central: colores, tipografía, logo, social, tenants
+src/config/social-brand.ts      ← Constantes redes sociales + templates de contenido
+src/hooks/useBranding.ts        ← Hook useBranding() / useBrandColors() / useBrandStyles()
+src/components/ui/CapsulaLogo.tsx ← Componente logo (isotipo + wordmark)
+public/brand/logo-full-color.svg ← Logo completo color
+public/brand/logo-full-white.svg ← Logo completo blanco
+public/brand/logo-icon-color.svg ← Isotipo solo
+tailwind.config.ts              ← Tokens capsula.coral / capsula.navy / capsula.gold
+src/app/globals.css             ← Variables CSS --capsula-* + utilidades .bg-capsula-*
+```
+
+### 25.4 Componente CapsulaLogo
+
+```tsx
+import CapsulaLogo, {
+  CapsulaNavbarLogo,   // Sidebar: isotipo 36px + wordmark CÁPSULA
+  CapsulaLogoHero,     // Landing/splash: isotipo 64px + wordmark
+  CapsulaLogoDark,     // Sobre fondos oscuros: color=white textColor=white
+  CapsulaIsotipo,      // SVG puro inline (emails, PDFs)
+} from '@/components/ui/CapsulaLogo';
+
+// Props clave:
+// variant: 'full' (isotipo + texto) | 'icon' (solo isotipo) | 'favicon' (32px)
+// color: color del pill/isotipo (default: coral #FF6B4A)
+// textColor: color del wordmark (default: navy #1B2D45)
+// barColor: color de las barras internas — auto-contrasta si no se especifica
+//           (si color="white" → barras en coral; si color=coral → barras en blanco)
+// size: tamaño en px del isotipo
+```
+
+**Auto-contraste de barras**: cuando `color="white"` (logo sobre fondos oscuros), las barras internas se colorean automáticamente en coral `#FF6B4A` para ser visibles sobre el pill blanco. Sin necesidad de prop adicional.
+
+### 25.5 Login — Diseño Premium
+
+- **Fondo**: gradiente `145deg #FF6B4A → #E85A3A → #2A4060 → #1B2D45` con noise texture overlay
+- **Encima del card**: `CapsulaLogo variant="full" color="white" textColor="white"` — isotipo coral/barras + wordmark blanco; tagline `white/60` debajo
+- **Card**: `bg-white/97 backdrop-blur-sm rounded-2xl shadow-2xl ring-1 ring-white/20`
+- **Inputs**: focus con borde `#FF6B4A` + ring `rgba(255,107,74,0.12)` via inline style
+- **Botón**: gradient coral→coral-hover, shimmer hover animado
+- **Footer**: `© 2026 CÁPSULA · Todos los derechos reservados` en `white/30`
+
+### 25.6 Sidebar — Wordmark
+
+`CapsulaNavbarLogo` (variant="full", size=36) renderiza:
+- Isotipo barras modulares en coral `#FF6B4A`
+- Texto "CÁPSULA" en Nunito 800 navy `#1B2D45`
+- Si `NEXT_PUBLIC_BUSINESS_NAME` está definido, aparece como subtítulo de 10px debajo del wordmark
+
+### 25.7 Tokens Tailwind disponibles
+
+```tsx
+// Colores directos
+bg-capsula-coral / bg-capsula-coral-subtle
+bg-capsula-navy / bg-capsula-warm / bg-capsula-gold
+text-capsula-coral / text-capsula-navy / text-capsula-gold
+border-capsula-coral / border-capsula-navy
+
+// Gradientes (globals.css)
+bg-capsula-gradient        // coral → coral-hover (botones)
+bg-capsula-gradient-warm   // warm → muted (secciones suaves)
+bg-capsula-gradient-hero   // coral → navy (login, hero)
+
+// Tailwind config (con arbitrary values)
+bg-[#FF6B4A]   // coral exacto (barras, overlays)
+bg-[#1B2D45]   // navy exacto
+```
+
+### 25.8 Redes Sociales
+
+- **Handle universal**: `@capsulapp` (TikTok, Instagram, Facebook, X, LinkedIn)
+- **Prioridad de contenido**: TikTok (demos 40%) → Instagram (carruseles) → Facebook → X
+- Config completa en `src/config/social-brand.ts`
+
+---
+
 ## AUDITORÍA DE COMPLETITUD (2026-04-14) — RESUELTA
 
 Todos los gaps identificados en la auditoría del 2026-04-14 han sido corregidos en este mismo commit:
@@ -3150,5 +3258,5 @@ Todos los gaps identificados en la auditoría del 2026-04-14 han sido corregidos
 ---
 
 *Actualizado el 2026-04-14 — Shanklish ERP / Cápsula SaaS — Documento Completo*
-*66 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
+*66 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes · 25 secciones*
 *Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e a767279 9a4344a*

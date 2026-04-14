@@ -176,8 +176,8 @@ export default async function DashboardPage() {
                             📦
                         </div>
                     </div>
-                    <div className="mt-4 h-1 w-full bg-blue-500/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 w-2/3 rounded-full shimmer"></div>
+                    <div className="mt-4 h-1 w-full bg-[#FF6B4A]/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FF6B4A] w-2/3 rounded-full shimmer"></div>
                     </div>
                 </div>
 
@@ -222,8 +222,8 @@ export default async function DashboardPage() {
                             🧀
                         </div>
                     </div>
-                    <div className="mt-4 h-1 w-full bg-emerald-500/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 w-1/2 rounded-full shimmer"></div>
+                    <div className="mt-4 h-1 w-full bg-[#FF6B4A]/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FF6B4A] w-1/2 rounded-full shimmer"></div>
                     </div>
                 </div>
 
@@ -242,8 +242,8 @@ export default async function DashboardPage() {
                             🍽️
                         </div>
                     </div>
-                    <div className="mt-4 h-1 w-full bg-amber-500/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-500 w-3/4 rounded-full shimmer"></div>
+                    <div className="mt-4 h-1 w-full bg-[#FF6B4A]/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FF6B4A] w-3/4 rounded-full shimmer"></div>
                     </div>
                 </div>
             </div>

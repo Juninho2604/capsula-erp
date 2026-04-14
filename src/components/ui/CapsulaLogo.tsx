@@ -26,19 +26,33 @@ interface CapsulaLogoProps {
   showText?: boolean;
   /** Color del texto (solo variant="full") */
   textColor?: string;
+  /** Color de las barras internas. Por defecto contrasta automáticamente con `color` */
+  barColor?: string;
+}
+
+/** Detecta si un color se consideraría "claro" para calcular contraste */
+function isLightColor(c: string): boolean {
+  const light = ['white', '#fff', '#ffffff', 'rgb(255,255,255)'];
+  return light.includes(c.toLowerCase().replace(/\s/g, ''));
 }
 
 /**
  * Isotipo: Barras modulares dentro de forma cápsula (pill shape)
  * 3 barras de diferente altura representan los módulos del ERP
  */
-function CapsulaIsotipo({ 
-  color = CAPSULA_BRAND.colors.primary, 
-  size = 48 
-}: { 
-  color?: string; 
-  size?: number; 
+function CapsulaIsotipo({
+  color = CAPSULA_BRAND.colors.primary,
+  size = 48,
+  barColor,
+}: {
+  color?: string;
+  size?: number;
+  barColor?: string;
 }) {
+  // Si el pill es blanco, las barras usan coral para ser visibles.
+  // Si el pill es oscuro/coral, las barras usan blanco (comportamiento original).
+  const resolvedBarColor = barColor ?? (isLightColor(color) ? CAPSULA_BRAND.colors.primary : 'white');
+
   return (
     <svg
       width={size}
@@ -52,11 +66,11 @@ function CapsulaIsotipo({
       {/* Cápsula (pill shape) */}
       <rect x="8" y="16" width="48" height="32" rx="16" fill={color} />
       {/* Barra izquierda — módulo 1 */}
-      <rect x="22" y="24" width="6" height="16" rx="3" fill="white" opacity="0.9" />
+      <rect x="22" y="24" width="6" height="16" rx="3" fill={resolvedBarColor} opacity="0.9" />
       {/* Barra central — módulo 2 (más alta) */}
-      <rect x="32" y="20" width="6" height="24" rx="3" fill="white" opacity="0.7" />
+      <rect x="32" y="20" width="6" height="24" rx="3" fill={resolvedBarColor} opacity="0.7" />
       {/* Barra derecha — módulo 3 */}
-      <rect x="42" y="26" width="6" height="12" rx="3" fill="white" opacity="0.5" />
+      <rect x="42" y="26" width="6" height="12" rx="3" fill={resolvedBarColor} opacity="0.5" />
     </svg>
   );
 }
@@ -71,6 +85,7 @@ export default function CapsulaLogo({
   className = '',
   showText = true,
   textColor,
+  barColor,
 }: CapsulaLogoProps) {
   const defaultSize = size || CAPSULA_BRAND.logo.sizes[variant] || 48;
   const logoColor = color || CAPSULA_BRAND.colors.primary;
@@ -79,9 +94,10 @@ export default function CapsulaLogo({
   // Favicon — isotipo ultra compacto
   if (variant === 'favicon') {
     return (
-      <CapsulaIsotipo 
-        color={logoColor} 
-        size={defaultSize} 
+      <CapsulaIsotipo
+        color={logoColor}
+        size={defaultSize}
+        barColor={barColor}
       />
     );
   }
@@ -90,9 +106,10 @@ export default function CapsulaLogo({
   if (variant === 'icon') {
     return (
       <div className={`inline-flex items-center ${className}`}>
-        <CapsulaIsotipo 
-          color={logoColor} 
-          size={defaultSize} 
+        <CapsulaIsotipo
+          color={logoColor}
+          size={defaultSize}
+          barColor={barColor}
         />
       </div>
     );
@@ -100,13 +117,14 @@ export default function CapsulaLogo({
 
   // Full — isotipo + texto "CÁPSULA"
   return (
-    <div 
+    <div
       className={`inline-flex items-center gap-2 ${className}`}
       aria-label="CÁPSULA"
     >
-      <CapsulaIsotipo 
-        color={logoColor} 
-        size={defaultSize} 
+      <CapsulaIsotipo
+        color={logoColor}
+        size={defaultSize}
+        barColor={barColor}
       />
       {showText && (
         <span
