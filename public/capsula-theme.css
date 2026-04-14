@@ -1,0 +1,152 @@
+/* ============================================================================
+   CÁPSULA — Theme CSS Variables
+   ============================================================================
+   Paleta: Coral Energy
+   Concepto: Friendly SaaS — cálido, accesible, hospitalario
+   
+   Uso: Importar en globals.css o layout.tsx
+   Las variables siguen el patrón HSL de Shadcn/ui
+   ============================================================================ */
+
+/* ─── Google Fonts ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─── CÁPSULA Light Theme (default) ───────────────────────── */
+:root {
+  /* Base */
+  --background: 0 0% 100%;
+  --foreground: 214 43% 19%;
+
+  /* Cards & Popovers */
+  --card: 0 0% 100%;
+  --card-foreground: 214 43% 19%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 214 43% 19%;
+
+  /* Primary — Coral #FF6B4A */
+  --primary: 11 100% 64%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary — Navy #1B2D45 */
+  --secondary: 214 43% 19%;
+  --secondary-foreground: 0 0% 100%;
+
+  /* Muted */
+  --muted: 16 30% 95%;
+  --muted-foreground: 215 16% 47%;
+
+  /* Accent — Dorado #FFD93D */
+  --accent: 47 100% 62%;
+  --accent-foreground: 214 43% 19%;
+
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Borders & Inputs */
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 11 100% 64%;
+
+  /* Radius — Friendly rounded */
+  --radius: 0.625rem;
+
+  /* ─── CÁPSULA Custom Tokens ───────────────────────────── */
+  --capsula-coral: #FF6B4A;
+  --capsula-coral-hover: #E85A3A;
+  --capsula-coral-light: #FF8A6F;
+  --capsula-coral-subtle: #FFF0EC;
+  
+  --capsula-navy: #1B2D45;
+  --capsula-navy-light: #2A4060;
+
+  --capsula-gold: #FFD93D;
+  --capsula-gold-hover: #F0C830;
+  --capsula-gold-subtle: #FFFBEB;
+
+  --capsula-bg-warm: #FFF8F5;
+  --capsula-bg-muted: #FFE8E0;
+
+  --capsula-success: #10B981;
+  --capsula-warning: #F59E0B;
+  --capsula-info: #3B82F6;
+
+  /* Tipografía */
+  --font-heading: 'Nunito', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+/* ─── CÁPSULA Dark Theme ──────────────────────────────────── */
+.dark {
+  --background: 214 43% 12%;
+  --foreground: 16 100% 98%;
+  
+  --card: 214 43% 15%;
+  --card-foreground: 16 100% 98%;
+  --popover: 214 43% 15%;
+  --popover-foreground: 16 100% 98%;
+
+  --primary: 11 100% 64%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 214 30% 25%;
+  --secondary-foreground: 16 100% 98%;
+
+  --muted: 214 30% 20%;
+  --muted-foreground: 215 16% 65%;
+
+  --accent: 47 100% 62%;
+  --accent-foreground: 214 43% 19%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214 30% 22%;
+  --input: 214 30% 22%;
+  --ring: 11 100% 64%;
+
+  --capsula-coral: #FF6B4A;
+  --capsula-coral-hover: #FF8A6F;
+  --capsula-coral-light: #FF8A6F;
+  --capsula-coral-subtle: rgba(255, 107, 74, 0.1);
+
+  --capsula-navy: #E2E8F0;
+  --capsula-navy-light: #CBD5E1;
+
+  --capsula-bg-warm: hsl(214, 43%, 14%);
+  --capsula-bg-muted: hsl(214, 43%, 18%);
+}
+
+/* ─── Utilidades CÁPSULA ──────────────────────────────────── */
+.bg-capsula-warm { background-color: var(--capsula-bg-warm); }
+.bg-capsula-muted { background-color: var(--capsula-bg-muted); }
+.bg-capsula-coral { background-color: var(--capsula-coral); }
+.bg-capsula-coral-subtle { background-color: var(--capsula-coral-subtle); }
+.bg-capsula-navy { background-color: var(--capsula-navy); }
+.bg-capsula-gold { background-color: var(--capsula-gold); }
+.bg-capsula-gold-subtle { background-color: var(--capsula-gold-subtle); }
+
+.text-capsula-coral { color: var(--capsula-coral); }
+.text-capsula-navy { color: var(--capsula-navy); }
+.text-capsula-gold { color: var(--capsula-gold); }
+
+.border-capsula-coral { border-color: var(--capsula-coral); }
+.border-capsula-navy { border-color: var(--capsula-navy); }
+
+/* ─── Gradientes de marca ─────────────────────────────────── */
+.bg-capsula-gradient {
+  background: linear-gradient(135deg, var(--capsula-coral), var(--capsula-coral-hover));
+}
+
+.bg-capsula-gradient-warm {
+  background: linear-gradient(135deg, var(--capsula-bg-warm), var(--capsula-bg-muted));
+}
+
+.bg-capsula-gradient-hero {
+  background: linear-gradient(
+    145deg,
+    var(--capsula-coral) 0%,
+    var(--capsula-coral-hover) 50%,
+    var(--capsula-navy) 100%
+  );
+}
