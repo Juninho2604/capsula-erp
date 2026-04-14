@@ -20,7 +20,7 @@ export default async function LoginPage() {
                         Iniciar Sesión
                     </h2>
                     <p className="mt-2 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
-                        CAPSULA - Shanklish Caracas
+                        CAPSULA
                     </p>
                 </div>
 

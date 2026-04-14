@@ -13,7 +13,7 @@ interface Props {
 const AVAILABLE_ROLES: { value: UserRole; label: string }[] = [
     { value: 'OWNER', label: 'Dueño (Full Access)' },
     { value: 'AUDITOR', label: 'Auditor' },
-    { value: 'ADMIN_MANAGER', label: 'Gerente Adm.' },
+    { value: 'ADMIN_MANAGER', label: 'Administrador' },
     { value: 'OPS_MANAGER', label: 'Gerente Ops.' },
     { value: 'HR_MANAGER', label: 'RRHH' },
     { value: 'CHEF', label: 'Chef Ejecutivo' },

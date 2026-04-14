@@ -58,7 +58,7 @@ export const ROLE_INFO: Record<UserRoleType, {
   },
   [UserRole.ADMIN_MANAGER]: {
     label: 'Admin Manager',
-    labelEs: 'Gerente Administrativo',
+    labelEs: 'Administrador',
     description: 'Gestión administrativa y financiera',
     color: '#3B82F6', // Blue
   },
