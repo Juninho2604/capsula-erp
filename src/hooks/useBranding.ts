@@ -9,6 +9,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { CAPSULA_BRAND, getTenantBranding, type BrandColors } from '@/config/branding';
 
 // En futuro multitenant, esto vendrá de un context provider
@@ -97,7 +98,7 @@ export function useBrandStyles() {
       borderRadius: '10px',
       border: 'none',
       cursor: 'pointer',
-    } as React.CSSProperties,
+    } as CSSProperties,
 
     secondaryButton: {
       backgroundColor: 'transparent',
@@ -107,29 +108,29 @@ export function useBrandStyles() {
       borderRadius: '10px',
       border: `2px solid ${colors.primary}`,
       cursor: 'pointer',
-    } as React.CSSProperties,
+    } as CSSProperties,
 
     heading: {
       fontFamily: fonts.heading,
       fontWeight: 800,
       color: colors.secondary,
-    } as React.CSSProperties,
+    } as CSSProperties,
 
     body: {
       fontFamily: fonts.body,
       color: colors.foreground,
-    } as React.CSSProperties,
+    } as CSSProperties,
 
     card: {
       backgroundColor: colors.background,
       borderRadius: '12px',
       border: `1px solid ${colors.border}`,
       boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    } as React.CSSProperties,
+    } as CSSProperties,
 
     warmSection: {
       backgroundColor: colors.backgroundWarm,
-    } as React.CSSProperties,
+    } as CSSProperties,
   }), [colors, fonts]);
 }
 
