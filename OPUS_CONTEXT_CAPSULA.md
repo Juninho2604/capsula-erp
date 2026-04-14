@@ -45,13 +45,13 @@ SaaS multi-tenant llamado **Cápsula**.
 | OCR | Google Cloud Vision API |
 | Validación | Zod |
 | Charts | Recharts |
-| Deploy | Vercel (`vercel-build`: prisma generate + migrate deploy + next build) |
+| Deploy | VPS Contabo + PM2 + GitHub Actions (SSH deploy automático al push a `main`) |
 
 ### Mapa de carpetas del proyecto
 ```
-shanklish-erp-main/
+capsula-erp/
 ├── prisma/
-│   └── schema.prisma              # 2002 líneas, 42+ modelos
+│   └── schema.prisma              # 66 modelos
 ├── src/
 │   ├── app/
 │   │   ├── actions/               # 40 archivos .actions.ts (Server Actions)
@@ -93,7 +93,7 @@ shanklish-erp-main/
 
 ---
 
-## 2. Arquitectura de Datos — 42 Modelos Prisma
+## 2. Arquitectura de Datos — 66 Modelos Prisma
 
 ### 2.1 Core (3 modelos)
 
@@ -222,7 +222,20 @@ shanklish-erp-main/
 | **BroadcastMessage** | title, body, type (INFO/WARNING/ALERT/SUCCESS), targetRoles (JSON), startsAt, expiresAt | Anuncios internos |
 | **AuditLog** | userId, userName, userRole, action, entityType, entityId, description, changes (JSON), module, createdAt | Registro forense inmutable. NUNCA se borra |
 
-### 2.14 Diagrama de Relaciones Principales
+### 2.14 Modelos sin documentar en §2 (4 modelos)
+
+Presentes en `schema.prisma` pero no incluidos en las secciones anteriores:
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **Requisition** | code (unique), originAreaId, destinationAreaId, requestedById, status (PENDING/APPROVED/REJECTED/FULFILLED), notes | Requisición de traslado interno de insumos entre áreas |
+| **RequisitionItem** | requisitionId, inventoryItemId, requestedQuantity, approvedQuantity, unit | Línea de requisición |
+| **TabSubAccount** | openTabId, label, customerName, status (OPEN/PAID), total | Subcuenta de mesa (para dividir cuenta entre comensales) |
+| **SubAccountItem** | tabSubAccountId, salesOrderItemId, quantity, lineTotal | Línea de subcuenta — vincula ítem de orden con subcuenta específica |
+
+> **Nota**: La sección §2 originalmente contaba 42 modelos. El conteo real del schema es **66 modelos**. Los 4 anteriores más modelos como `TabSubAccount`/`SubAccountItem` (subcuentas POS), `MenuItemModifierGroup`, `AccountPayment`, `QueueTicket`, `SalesOrderPayment` completan la diferencia.
+
+### 2.15 Diagrama de Relaciones Principales
 
 ```
 MenuItem ←── recipeId ──→ Recipe ←── ingredientItemId ──→ InventoryItem
@@ -1735,15 +1748,19 @@ ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
 
 ## 17. Deploy e Infraestructura
 
-### 17.1 Deploy Principal — Vercel (Producción actual)
+### 17.1 Deploy Principal — VPS Contabo (Producción actual)
 
-- **Trigger**: Push a GitHub → Vercel detecta cambios → build automático
-- **Build command**: `prisma generate && prisma migrate deploy && next build` (definido en `package.json:vercel-build`)
-- **Variables de entorno** (configuradas en Vercel dashboard):
+- **Trigger**: Push a `main` → GitHub Actions → SSH al VPS Contabo → deploy automático
+- **Pipeline**: `git pull` → `npm ci` → `npm run build` → copiar estáticos → `pm2 restart`
+- **Process manager**: PM2 — proceso `capsula-erp`, standalone Node.js en puerto `3000`
+- **Ruta en servidor**: `/var/www/capsula-erp`
+- **Variables de entorno** (en `/var/www/capsula-erp/.env` en el VPS):
   - `DATABASE_URL` — conexión PostgreSQL (Google Cloud SQL)
   - `JWT_SECRET` — secret para firmar tokens de sesión
   - `GOOGLE_VISION_API_KEY` — para OCR de notas escritas a mano
   - `NEXT_PUBLIC_ENABLED_MODULES` — fallback de módulos habilitados (opcional, se lee de BD)
+
+**Vercel** fue el deploy anterior — ya no es producción. Se puede mantener como entorno de preview/staging si se desea.
 
 ### 17.2 Base de Datos — Google Cloud SQL
 
@@ -1792,7 +1809,7 @@ Existe una guía para deploy vía Docker en AWS como alternativa a Vercel:
    - Environment variables: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_VISION_API_KEY`
    - Deploy automático al pushear nuevas imágenes
 
-**Nota**: Este flujo no está activo actualmente. La producción usa Vercel. Se documentó como opción para clientes que prefieran AWS.
+**Nota**: Este flujo no está activo actualmente. La producción usa VPS Contabo con GitHub Actions. Se documentó como opción para clientes que prefieran AWS.
 
 ### 17.6 Comandos de BD Útiles
 
@@ -1855,7 +1872,7 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 - **Mesa consolidada** (`getSalesHistoryAction`): en el tab RESTAURANT, el grupo de órdenes de un OpenTab se consolida en una fila. `createdBy` toma de `last.createdBy` (la orden más reciente = quien procesó el pago final), no de `first`. Así el historial refleja la cajera de cierre, no de apertura.
 - **Modal de anulación** (`sales/page.tsx`): muestra `createdBy.firstName` (cajera) y, si `authorizedById` existe, también `authorizedBy.firstName` con label "Autorizado por:"
 
-### 18.8 Método de Pago PedidosYA
+### 18.4b Método de Pago PedidosYA
 
 - El método de pago para órdenes PedidosYA se guarda en BD como `'PY'` (antes era `'EXTERNAL'`)
 - Escritura: `pedidosya.actions.ts:60` — `paymentMethod: 'PY'`
@@ -2175,7 +2192,7 @@ Cada bloque tiene su **fila de subtotal** en verde oscuro y un separador visual.
 - `xlsx` (`^0.18.5`) sigue en `package.json` pero solo se usa en el fallback cliente `export-arqueo-excel.ts` (no en el flujo principal)
 - El archivo `public/templates/arqueo-plantilla.xlsx` ya no se usa — `buildArqueoWorkbookFromTemplate` genera desde cero siempre
 
-### 18.6 Skills Instalados en `.claude/skills/`
+### 18.13b Skills Instalados en `.claude/skills/`
 
 Estos archivos son cargados automáticamente en toda sesión de Claude Code:
 
@@ -2619,32 +2636,410 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 
 ---
 
-## AUDITORÍA DE COMPLETITUD (2026-04-14)
+## 19. Deployment VPS — Producción Actual
 
-### Secciones faltantes
+### 19.1 Infraestructura
 
-| # | Gap | Detalle |
-|---|-----|---------|
-| 1 | **Secciones 19–22 ausentes** | Los commits `03202e8` y `050b84a` añadieron "Sección 19: deployment VPS", "Sección 20: multitenant", "Sección 21: go-to-market" y "Sección 22: BD". Ninguna aparece en el documento actual — se perdieron o nunca se mergearon al OPUS principal. |
-| 2 | **GitHub Actions CI/CD sin sección** | El workflow `.github/workflows/deploy.yml` (commit `a767279`) no tiene sección dedicada. Solo existe documentación de scripts PM2 dispersa, sin describir el pipeline completo de deploy automatizado. |
+| Componente | Detalle |
+|-----------|---------|
+| Proveedor | VPS Contabo (Ubuntu) |
+| Process manager | PM2 — proceso `capsula-erp` |
+| Puerto | `3000` (Node.js standalone) |
+| Ruta del proyecto | `/var/www/capsula-erp` |
+| Build output | Next.js `output: 'standalone'` |
+| CI/CD | GitHub Actions — `.github/workflows/deploy.yml` |
 
-### Secciones desactualizadas
+### 19.2 Flujo Completo de Deploy
 
-| Sección | Problema | Acción requerida |
-|---------|----------|-----------------|
-| **§1 Stack Técnico** — fila Deploy | Dice `Vercel (vercel-build: prisma generate + migrate deploy + next build)` | Actualizar a: VPS Ubuntu + PM2 + GitHub Actions (`push → SSH → git pull → npm ci → build → pm2 restart`) |
-| **§17.1 Deploy Principal** | Titula "Vercel (Producción actual)" y describe el flujo Vercel como primario | Renombrar a "Deploy VPS (Producción actual)"; reclasificar Vercel como alternativa legacy o eliminar |
-| **§17.5 Deploy Alternativo — AWS** | Nota: "La producción usa Vercel" | Corregir a: "La producción usa VPS con GitHub Actions" |
-| **§18.20 Debug console.logs** | Se marcaron como "temporales — remover una vez confirmado el fix" (commit `0b2cb4e`) | Verificar si los `console.log` en `getDailyPickupCountAction` fueron removidos del código; si sí, actualizar estado a "resuelto y removido" |
-| **Footer — conteo de modelos** | Footer dice "44 modelos Prisma"; §2 titula "42 Modelos Prisma" | Auditar `prisma/schema.prisma` y unificar el conteo real en ambos lugares |
+```
+push a main
+    ↓
+GitHub Actions — job: SSH Deploy (ubuntu-latest)
+    ↓
+appleboy/ssh-action@v1.0.3 — conexión SSH al VPS
+    ↓
+cd /var/www/capsula-erp
+git pull origin main          # Actualiza código
+npm ci                        # Instala deps (reproducible)
+npm run build                 # prisma generate + next build
+cp -r .next/static .next/standalone/.next/static   # Estáticos
+cp -r public .next/standalone/public               # Assets públicos
+pm2 restart capsula-erp --update-env               # Recarga proceso
+```
 
-### Inconsistencias menores
+**Timeout**: 15 minutos. **script_stop: true** — aborta ante cualquier error.
 
-- §18 tiene numeración desordenada: `18.8` aparece dos veces (líneas 1846 y 1886), y `18.6` aparece fuera de secuencia (línea 2166 después de `18.14`). Requiere reordenación.
-- El mapa de carpetas en §1 apunta a `shanklish-erp-main/` pero el repo se llama `capsula-erp`.
+### 19.3 Por qué se copian los estáticos al standalone
+
+`output: 'standalone'` genera un servidor Node.js mínimo que NO incluye archivos estáticos ni `public/`. Sin el paso de copia, el servidor arranca pero las páginas aparecen sin estilos ni imágenes.
+
+### 19.4 Secrets de GitHub Actions
+
+Configurados en: GitHub → repo → Settings → Secrets and variables → Actions
+
+| Secret | Propósito |
+|--------|-----------|
+| `SSH_HOST` | IP o dominio del VPS Contabo |
+| `SSH_USER` | Usuario SSH (ej. `root` o usuario dedicado) |
+| `SSH_PRIVATE_KEY` | Clave privada RSA/ED25519 del usuario |
+
+### 19.5 Variables de Entorno en VPS
+
+En `/var/www/capsula-erp/.env`:
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=...
+GOOGLE_VISION_API_KEY=...
+NEXT_PUBLIC_ENABLED_MODULES=...   # opcional, fallback si no está en BD
+```
+
+`pm2 restart capsula-erp --update-env` recarga el entorno en cada deploy sin reiniciar el VPS.
+
+### 19.6 Comandos PM2 de emergencia
+
+```bash
+pm2 status                        # Ver estado del proceso
+pm2 logs capsula-erp --lines 100  # Ver últimas 100 líneas de log
+pm2 restart capsula-erp           # Reinicio manual
+pm2 stop capsula-erp              # Parar proceso
+pm2 start ecosystem.config.js     # Arranque desde config (si existe)
+```
+
+---
+
+## 20. Multi-tenant — Arquitectura Cápsula SaaS
+
+### 20.1 Estado Actual
+
+| Aspecto | Estado |
+|---------|--------|
+| Arquitectura | 1 base de datos por cliente (instancias separadas) |
+| Tenants activos | `shanklish-erp` (Restaurante Shanklish) + `table-pong` (Sala de juegos) |
+| Aislamiento | Físico — cada cliente tiene su propio VPS y BD PostgreSQL |
+| `tenantId` en modelos | **No existe** — los modelos no tienen campo `tenantId` |
+
+### 20.2 Objetivo: SaaS Multi-Tenant "Cápsula"
+
+La visión es unificar todas las instancias en una sola aplicación multi-tenant donde:
+- Múltiples clientes comparten infraestructura (un solo servidor, una sola BD)
+- Aislamiento total de datos a nivel de fila (`tenantId` en cada tabla)
+- Admin de cada tenant solo ve y modifica sus propios datos
+- Un Super Admin de Cápsula gestiona todos los tenants
+
+### 20.3 Estrategia de Migración
+
+**Fase 1 — Preparación (no rompe nada):**
+Agregar `tenantId String?` (nullable) a todos los modelos nuevos. Ejemplo en modelos de configuración:
+```prisma
+model PaymentMethod {
+  id       String  @id @default(cuid())
+  tenantId String?           // nullable — futuro multi-tenant
+  name     String
+  // ...
+}
+```
+
+**Fase 2 — Backfill:**
+```sql
+UPDATE "PaymentMethod" SET "tenantId" = 'tenant_shanklish' WHERE "tenantId" IS NULL;
+ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
+```
+
+**Fase 3 — Middleware de tenant:**
+Interceptar cada request, extraer `tenantId` del JWT/subdominio, y aplicar filtro automático en `PrismaClient` via middleware:
+```typescript
+prisma.$use(async (params, next) => {
+  if (params.action === 'findMany') {
+    params.args.where = { ...params.args.where, tenantId: ctx.tenantId };
+  }
+  return next(params);
+});
+```
+
+### 20.4 Modelos Prioritarios para tenantId
+
+Por orden de impacto en la configuración por cliente:
+1. `Branch` — central de todo el tenant
+2. Futuros: `PaymentMethod`, `DiscountType`, `OrderChannel`, `DeliveryFee`
+3. Eventualmente todos los modelos operativos
+
+### 20.5 Restricción Vigente
+
+> **Regla activa**: Todo modelo de configuración nuevo (`PaymentMethod`, etc.) debe nacer con `tenantId String?` nullable. NO implementar la lógica multi-tenant completa todavía — solo preparar el schema.
+
+---
+
+## 21. Go-to-Market — Cápsula SaaS
+
+### 21.1 Propuesta de Valor
+
+**Cápsula** es un ERP/POS para restaurantes y negocios de entretenimiento en Latinoamérica con foco inicial en Venezuela. Diferenciadores:
+
+| Diferenciador | Detalle |
+|--------------|---------|
+| **Dual-mode** | Restaurante + Entretenimiento en una sola plataforma |
+| **Offline-capable** | Operaciones críticas funcionan sin conexión estable |
+| **Economía local** | Manejo nativo de divisas (USD/Bs), tasas BCV, métodos de pago venezolanos |
+| **WhatsApp integrado** | Parser de órdenes y compras desde mensajes de WhatsApp |
+| **Trazabilidad total** | AuditLog inmutable + control de proteínas por lote |
+
+### 21.2 Segmentos Objetivo
+
+| Segmento | Tamaño | Producto |
+|---------|--------|---------|
+| Restaurantes medios (5–50 mesas) | Principal | POS + inventario + finanzas |
+| Bares / lounge | Secundario | POS + entretenimiento + reservas |
+| Food courts / dark kitchens | Futuro | Multi-branch + delivery integrado |
+
+### 21.3 Modelo de Monetización (propuesto)
+
+| Tier | Precio/mes | Incluye |
+|------|-----------|---------|
+| **Starter** | $49 USD | 1 terminal POS + inventario básico + 1 usuario admin |
+| **Pro** | $99 USD | 3 terminales + inventario completo + 5 usuarios + finanzas |
+| **Enterprise** | $199+ USD | Ilimitado + games + multi-branch + soporte dedicado |
+
+### 21.4 Roadmap Comercial
+
+```
+Q2 2026 — Estabilizar Shanklish como caso de éxito (producción en VPS)
+Q3 2026 — Panel Admin configurable (métodos de pago, fees, descuentos)
+Q3 2026 — Onboarding self-service (tenant creation automatizado)
+Q4 2026 — Primer cliente pago adicional (piloto Cápsula SaaS)
+Q1 2027 — Facturación recurrente + portal de clientes
+```
+
+### 21.5 Requisitos Técnicos para SaaS
+
+| Requisito | Estado | Prioridad |
+|-----------|--------|-----------|
+| Panel Admin por tenant | En diseño (§11) | P1 |
+| Métodos de pago CRUD | No existe | P1 |
+| tenantId en modelos nuevos | Restricción activa | P1 |
+| Onboarding automatizado | No existe | P2 |
+| Billing / subscriptions | No existe | P3 |
+| Super Admin dashboard | No existe | P3 |
+
+---
+
+## 22. BD Visual — Diagrama Extendido del Schema
+
+### 22.1 Núcleo del Sistema (entidades centrales)
+
+```
+                    ┌─────────────┐
+                    │    Branch   │
+                    │ (sucursal)  │
+                    └──────┬──────┘
+                           │ 1:N
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+   │ ServiceZone │  │TableOrStation│  │   Waiter    │
+   │  (zona)     │  │  (mesa)     │  │ (mesonero)  │
+   └──────┬──────┘  └──────┬──────┘  └─────────────┘
+          │                │
+          └───────┬─────────┘
+                  ▼
+           ┌─────────────┐         ┌─────────────┐
+           │   OpenTab   │────────▶│  SalesOrder │
+           │  (tab/mesa) │  1:N    │  (orden)    │
+           └──────┬──────┘         └──────┬──────┘
+                  │                       │ 1:N
+           ┌──────┴──────┐       ┌────────┴────────┐
+           │ TabSubAccount│      │ SalesOrderItem  │
+           │ (subcuenta) │       │ (línea de venta)│
+           └─────────────┘       └────────┬────────┘
+                                          │
+                                   ┌──────┴──────┐
+                                   │  MenuItem   │
+                                   │ (producto)  │
+                                   └──────┬──────┘
+                                          │ recipeId
+                                   ┌──────┴──────┐
+                                   │   Recipe    │
+                                   │  (receta)   │
+                                   └──────┬──────┘
+                                          │ 1:N
+                                   ┌──────┴──────┐
+                                   │RecipeIngredient│
+                                   └──────┬──────┘
+                                          │ ingredientItemId
+                                   ┌──────┴──────┐
+                                   │InventoryItem│
+                                   │  (insumo)   │
+                                   └──────┬──────┘
+                                          │ 1:N
+                                   ┌──────┴──────┐
+                                   │InventoryLocation│
+                                   │ (stock x área)  │
+                                   └─────────────┘
+```
+
+### 22.2 Flujo de Movimientos de Inventario
+
+```
+Cada operación genera InventoryMovement (registro inmutable):
+
+PURCHASE      ←── PurchaseOrder + PurchaseOrderItem
+SALE          ←── SalesOrder (via inventory.service.registerSale)
+PRODUCTION_IN ←── ProductionOrder (output del proceso)
+PRODUCTION_OUT←── ProductionOrder (consumo de insumos)
+TRANSFER      ←── Requisition (entre áreas)
+ADJUSTMENT_IN/OUT ←── InventoryAudit
+WASTE         ←── DailyInventory (conteo diario)
+```
+
+### 22.3 Módulo Financiero
+
+```
+SalesOrder ──────────────────────▶ CashRegister
+    │                                  │
+    │ (pagos)                   (turno cerrado)
+    ▼                                  ▼
+SalesOrderPayment            Expense + AccountPayable
+    │                                  │
+    └──────────┬────────────────────────┘
+               ▼
+         Dashboard Financiero (P&L)
+```
+
+### 22.4 Módulo Entretenimiento (Table Pong)
+
+```
+GameType ──▶ GameStation ──▶ GameSession ──▶ SalesOrder
+                │                │
+                ▼                ▼
+           Reservation       WristbandPlan
+                │
+                ▼
+           QueueTicket (cola de espera)
+```
+
+### 22.5 Grupos de Modelos por Dominio
+
+| Dominio | Modelos | Count |
+|---------|---------|-------|
+| Core | User, Area, Branch | 3 |
+| Inventario | InventoryItem, InventoryLocation, InventoryMovement, CostHistory, DailyInventory, DailyInventoryItem, InventoryLoan, InventoryAudit, InventoryAuditItem, InventoryCycle, InventoryCycleSnapshot, AreaCriticalItem | 12 |
+| Producción | Recipe, RecipeIngredient, ProductionOrder, ProteinProcessing, ProteinSubProduct, ProcessingTemplate, ProcessingTemplateOutput | 7 |
+| Requisiciones | Requisition, RequisitionItem | 2 |
+| Menú | MenuCategory, MenuItem, MenuModifierGroup, MenuModifier, MenuItemModifierGroup | 5 |
+| Ventas/POS | SalesOrder, SalesOrderItem, SalesOrderItemModifier, SalesOrderPayment, OpenTab, OpenTabOrder, PaymentSplit, TabSubAccount, SubAccountItem, InvoiceCounter | 10 |
+| Operativo | ServiceZone, TableOrStation, Waiter | 3 |
+| Compras | Supplier, SupplierItem, PurchaseOrder, PurchaseOrderItem | 4 |
+| Financiero | ExpenseCategory, Expense, CashRegister, AccountPayable, AccountPayment | 5 |
+| Entretenimiento | GameType, GameStation, WristbandPlan, Reservation, GameSession, QueueTicket | 6 |
+| Intercompany | IntercompanySettlement, IntercompanySettlementLine, IntercompanyItemMapping | 3 |
+| Configuración | SystemConfig, ExchangeRate, ProductFamily, SkuCreationTemplate | 4 |
+| Comunicación | BroadcastMessage, AuditLog | 2 |
+| **Total** | | **66** |
+
+---
+
+## 23. CI/CD — GitHub Actions
+
+### 23.1 Archivo del Workflow
+
+**Ruta**: `.github/workflows/deploy.yml`
+**Commit de creación**: `a767279` (2026-04-14)
+
+### 23.2 Workflow Completo
+
+```yaml
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd /var/www/capsula-erp
+            git pull origin main
+            npm ci
+            npm run build
+            cp -r .next/static .next/standalone/.next/static
+            cp -r public .next/standalone/public
+            pm2 restart capsula-erp --update-env
+```
+
+### 23.3 Decisiones de Diseño
+
+| Decisión | Razón |
+|----------|-------|
+| `appleboy/ssh-action` | Action oficial para SSH — no requiere instalar SSH client en runner |
+| `npm ci` (no `npm install`) | Reproducible: usa `package-lock.json`, falla si hay inconsistencias |
+| `script_stop: true` | Aborta el deploy completo si cualquier comando falla |
+| `timeout-minutes: 15` | Evita builds colgados que consuman minutos de GitHub Actions |
+| `--update-env` en PM2 | Recarga variables de entorno del `.env` sin reiniciar el servidor OS |
+
+### 23.4 Secrets Requeridos
+
+Configurar en: GitHub → repo → Settings → Secrets and variables → Actions → New repository secret
+
+| Secret | Ejemplo | Notas |
+|--------|---------|-------|
+| `SSH_HOST` | `123.456.789.0` | IP del VPS Contabo |
+| `SSH_USER` | `root` | Usuario con acceso a `/var/www/capsula-erp` |
+| `SSH_PRIVATE_KEY` | `-----BEGIN OPENSSH PRIVATE KEY-----...` | Todo el contenido del archivo `~/.ssh/id_ed25519` (o id_rsa) |
+
+### 23.5 Cómo Agregar la Clave SSH al VPS
+
+En el VPS, el contenido de `~/.ssh/id_ed25519.pub` (o `id_rsa.pub`) debe estar en `~/.ssh/authorized_keys`. Para la llave privada como secret, copiar el contenido completo de `~/.ssh/id_ed25519`:
+
+```bash
+cat ~/.ssh/id_ed25519  # copiar TODO el contenido como valor de SSH_PRIVATE_KEY
+```
+
+### 23.6 Verificar Último Deploy
+
+```bash
+# En el VPS:
+pm2 logs capsula-erp --lines 50   # Logs recientes
+pm2 describe capsula-erp           # Estado y uptime
+
+# En GitHub: Actions tab → último workflow run → ver logs del step "Deploy via SSH"
+```
+
+---
+
+## AUDITORÍA DE COMPLETITUD (2026-04-14) — RESUELTA
+
+Todos los gaps identificados en la auditoría del 2026-04-14 han sido corregidos en este mismo commit:
+
+| # | Gap | Estado |
+|---|-----|--------|
+| 1 | Secciones 19–22 ausentes | ✅ Añadidas: §19 Deployment VPS, §20 Multi-tenant, §21 Go-to-market, §22 BD Visual |
+| 2 | GitHub Actions sin sección | ✅ Añadida: §23 CI/CD GitHub Actions |
+| 3 | §1 Stack — Deploy decía Vercel | ✅ Actualizado a VPS Contabo + PM2 + GitHub Actions |
+| 4 | §17.1 llamaba "Producción actual" a Vercel | ✅ Actualizado a VPS Contabo |
+| 5 | §17.5 decía "La producción usa Vercel" | ✅ Corregido a VPS Contabo |
+| 6 | §18.8 duplicado | ✅ Primer §18.8 renombrado a §18.4b |
+| 7 | §18.6 fuera de secuencia | ✅ Renombrado a §18.13b |
+| 8 | `shanklish-erp-main/` en mapa de carpetas | ✅ Corregido a `capsula-erp/` |
+| 9 | Discrepancia 42 vs 44 modelos | ✅ Conteo real auditado: **66 modelos** — corregido en §2 y footer |
+
+**Pendiente**: §18.20 debug console.logs en `getDailyPickupCountAction` — verificar si fueron removidos del código (`pos.actions.ts`). Si sí, actualizar estado en §18.20.
 
 ---
 
 *Actualizado el 2026-04-14 — Shanklish ERP / Cápsula SaaS — Documento Completo*
-*44 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
-*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e a767279*
+*66 modelos Prisma · 47 módulos · 49 actions · 4 API routes · 3 services · 24 componentes*
+*Commits sesión: e5340a1 9fc4954 d269c74 24f7799 77fa94a 08e6969 80253d0 6122a00 4c36741 86d8d5b b5abd37 9a23869 93ff5d2 18eb9c3 fddab34 41c1c39 ea2318c 097a71a da496ac d1f82a9 0b2cb4e a767279 9a4344a*
