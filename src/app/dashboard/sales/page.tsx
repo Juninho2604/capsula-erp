@@ -372,7 +372,7 @@ export default function SalesHistoryPage() {
                         <option value="ALL">Todos</option>
                         <option value="DELIVERY">🛵 Delivery</option>
                         <option value="RESTAURANT">🍽️ Mesa / Pickup</option>
-                        <option value="PEDIDOSYA">🟡 PedidosYA</option>
+                        <option value="PEDIDOSYA">🟡 Canales Externos</option>
                         <option value="PROPINAS">🪙 Propinas</option>
                     </select>
                 </div>
@@ -796,7 +796,7 @@ export default function SalesHistoryPage() {
                                 {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
                                 {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
                                 {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
-                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
+                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>Canales Externos</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
                                 {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-500"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                             </div>
                         </div>
@@ -858,7 +858,7 @@ export default function SalesHistoryPage() {
                                     { key: 'restaurant', label: 'Restaurante / Mesas' },
                                     { key: 'delivery',   label: 'Delivery' },
                                     { key: 'pickup',     label: 'Pickup / Mostrador' },
-                                    { key: 'pedidosya',  label: 'PedidosYA' },
+                                    { key: 'pedidosya',  label: 'Canales Externos' },
                                     { key: 'wink',       label: 'Wink' },
                                     { key: 'evento',     label: 'Evento' },
                                     { key: 'tablePong',  label: 'Table Pong' },

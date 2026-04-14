@@ -43,7 +43,7 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['Punto PDV',                        fmtOpt(zReport.paymentBreakdown.card)],
         ['Pago Móvil',                       fmtOpt(zReport.paymentBreakdown.mobile)],
         ['Transferencia',                    fmtOpt(zReport.paymentBreakdown.transfer)],
-        ['PedidosYA / Externo',              fmtOpt(zReport.paymentBreakdown.external)],
+        ['Canales Externos',                 fmtOpt(zReport.paymentBreakdown.external)],
         ['Otros',                            fmtOpt(zReport.paymentBreakdown.other)],
         ['SUMA MÉTODOS DE PAGO',             fmt(
             zReport.paymentBreakdown.cash +
@@ -61,7 +61,7 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['Restaurante / Mesas',              String(zReport.ordersByType.restaurant)],
         ['Delivery',                         String(zReport.ordersByType.delivery)],
         ['Pickup / Mostrador',               String(zReport.ordersByType.pickup)],
-        ['PedidosYA',                        String(zReport.ordersByType.pedidosya)],
+        ['Canales Externos',                 String(zReport.ordersByType.pedidosya)],
         ...(zReport.ordersByType.wink      > 0 ? [['Wink',       String(zReport.ordersByType.wink)]      as [string,string]] : []),
         ...(zReport.ordersByType.evento    > 0 ? [['Evento',     String(zReport.ordersByType.evento)]    as [string,string]] : []),
         ...(zReport.ordersByType.tablePong > 0 ? [['Table Pong', String(zReport.ordersByType.tablePong)] as [string,string]] : []),

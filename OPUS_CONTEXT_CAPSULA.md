@@ -3020,6 +3020,112 @@ pm2 describe capsula-erp           # Estado y uptime
 
 ---
 
+## 24. MÓDULO TIENDA VIRTUAL
+
+### 24.1 Visión
+
+Cada tenant puede tener su propia tienda online accesible desde internet, integrada directamente con el POS de Cápsula. El pedido web se convierte en una orden que aparece en la comandera y descuenta inventario exactamente igual que un pedido del POS físico.
+
+**Caso actual (Shanklish)**: usa PedidosYA + Wink como canales externos. La integración hoy es manual — el cajero registra el pedido desde el módulo "Canales Externos". La Tienda Virtual automatizaría este flujo.
+
+### 24.2 Dos Modalidades de Integración
+
+#### Opción A — Tienda Hosteada por Cápsula
+
+```
+Cliente accede a: tienda.capsulapp.com/[tenant-slug]
+    ↓
+Catálogo del tenant (precios por canal, disponibilidad por turno)
+    ↓
+Checkout con pasarela de pago (Stripe / MercadoPago / Zelle QR)
+    ↓
+Orden creada automáticamente en el POS → comandera → inventario
+    ↓
+WhatsApp al cliente: "Tu pedido #123 fue recibido. Tiempo estimado: 20 min"
+```
+
+| Ventaja | Detalle |
+|---------|---------|
+| Zero config para el tenant | URL lista al activar el módulo |
+| Catálogo sincronizado | Mismo `MenuItem` del POS, precio por canal configurable |
+| Sin comisión de terceros | Cápsula cobra fee de plataforma, no PedidosYA |
+
+#### Opción B — API Pública (headless)
+
+El tenant conecta su propio sitio (Wix, Wink, app propia) a la API de Cápsula:
+
+```
+POST /api/v1/orders          # Crear orden desde canal externo
+GET  /api/v1/menu            # Catálogo público del tenant
+GET  /api/v1/order/{id}      # Estado de una orden
+POST /api/v1/webhooks        # Suscribirse a eventos (orden lista, etc.)
+```
+
+Autenticación: API Key por tenant (configurable en Panel Admin).
+
+### 24.3 Arquitectura del Flujo Completo
+
+```
+Pedido web (Opción A o B)
+    ↓
+createExternalOrderAction() — misma lógica que createPedidosYAOrderAction
+    ↓
+SalesOrder { sourceChannel: 'WEB_STORE' | 'WINK' | 'RAPPI' | ... }
+    ↓
+Comandera de cocina (kitchen display) — aparece con badge del canal
+    ↓
+inventory.service.registerSale() — descuenta stock
+    ↓
+WhatsApp webhook → notifica al cliente (estado: recibido → en preparación → listo)
+```
+
+### 24.4 Canales Externos — Concepto Multi-Canal
+
+El módulo "Canales Externos" (antes "PedidosYA") es la base de toda integración externa. Cada tenant puede configurar sus propios canales con nombre y precios independientes:
+
+| Canal | Precio | Estado Shanklish |
+|-------|--------|-----------------|
+| PedidosYA | `pedidosYaPrice` (~-33%) | Activo |
+| Wink | Precio configurable | Activo (manual) |
+| Rappi | Precio configurable | No activo |
+| Tienda Web propia | Precio = `price` base | Futuro |
+| Cápsula Store | Precio configurable | Futuro |
+
+**Regla**: cada canal tiene su propio `sourceChannel` en `SalesOrder` y puede tener precio independiente en `MenuItem` (hoy solo `pedidosYaPrice` existe, los demás son futuros).
+
+### 24.5 Requisitos Técnicos
+
+| Requisito | Estado | Notas |
+|-----------|--------|-------|
+| Pasarela de pago (Stripe / MP) | No existe | Integración con webhooks de pago |
+| Catálogo público por canal (`/api/v1/menu`) | No existe | Requiere auth por API Key |
+| `sourceChannel` configurable por tenant | Parcial | Hoy hardcodeado en enums |
+| Notificaciones WhatsApp al cliente | No existe | Twilio / WhatsApp Business API |
+| Subdominio `tienda.capsulapp.com/[slug]` | No existe | DNS wildcard + middleware de tenant |
+| API Key management en Panel Admin | No existe | Parte del roadmap SaaS (§21) |
+| Precio por canal en `MenuItem` | Parcial | Solo `pedidosYaPrice`, falta generalizar |
+
+### 24.6 Plan de Precios — Addon Premium
+
+La Tienda Virtual es un **addon** del plan Enterprise de Cápsula:
+
+| Plan | Tienda Virtual | API Pública |
+|------|---------------|-------------|
+| Starter | ❌ | ❌ |
+| Pro | ❌ | ❌ |
+| Enterprise | ✅ Opción A (hosted) | ✅ Opción B (API keys) |
+| Add-on independiente | $29/mes | $19/mes |
+
+### 24.7 Módulos Relacionados
+
+- **§6 Módulos de Ventas/POS** → Canales Externos (base actual)
+- **§11 Panel Admin** → configuración de canales y precios por canal
+- **§20 Multi-tenant** → subdominio por tenant
+- **§21 Go-to-Market** → addon en plan Enterprise
+- **§23 CI/CD** → deploys de la API pública requieren versionado (`/v1/`)
+
+---
+
 ## AUDITORÍA DE COMPLETITUD (2026-04-14) — RESUELTA
 
 Todos los gaps identificados en la auditoría del 2026-04-14 han sido corregidos en este mismo commit:

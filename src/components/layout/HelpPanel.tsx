@@ -168,7 +168,7 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   '/dashboard/ventas/cargar': {
     title: 'Cargar Ventas',
     icon: '💳',
-    description: 'Registro manual de ventas externas (PedidosYA, eventos, etc.)',
+    description: 'Registro manual de ventas externas (Canales Externos, eventos, etc.)',
     steps: [
       'Ingresa la fecha de la venta',
       'Selecciona el tipo (delivery externo, evento, etc.)',
@@ -177,7 +177,7 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
     ],
     tips: [
       'Solo usa este módulo para ventas que no pasan por el POS',
-      'Para PedidosYA activa el módulo específico en Admin → Módulos',
+      'Para Canales Externos activa el módulo específico en Admin → Módulos',
     ],
   },
   '/dashboard/sales': {

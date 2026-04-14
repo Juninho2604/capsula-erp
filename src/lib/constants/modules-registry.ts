@@ -283,8 +283,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     id: 'pedidosya',
-    label: 'PedidosYA',
-    description: 'Integración con plataforma PedidosYA',
+    label: 'Canales Externos',
+    description: 'Canales externos de pedidos (PedidosYA, Wink, Rappi, tienda web)',
     icon: '🍔',
     href: '/dashboard/pos/pedidosya',
     section: 'sales',

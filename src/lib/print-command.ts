@@ -493,7 +493,7 @@ export function printEndOfDaySummary(data: EndOfDaySummaryPrintData) {
         { label: 'Restaurante / Mesas', key: 'restaurant' as ChannelKey },
         { label: 'Delivery',            key: 'delivery' as ChannelKey },
         { label: 'Pickup / Mostrador',  key: 'pickup' as ChannelKey },
-        { label: 'PedidosYA',           key: 'pedidosya' as ChannelKey },
+        { label: 'Canales Externos',     key: 'pedidosya' as ChannelKey },
         { label: 'Wink',                key: 'wink' as ChannelKey },
         { label: 'Evento',              key: 'evento' as ChannelKey },
         { label: 'Table Pong',          key: 'tablePong' as ChannelKey },

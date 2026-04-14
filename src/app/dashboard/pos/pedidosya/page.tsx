@@ -213,7 +213,7 @@ export default function POSPedidosYAPage() {
         <div className="min-h-screen bg-background flex items-center justify-center">
             <div className="text-center">
                 <div className="text-4xl mb-4">🍔</div>
-                <div className="text-xl font-black text-foreground">Cargando PedidosYA...</div>
+                <div className="text-xl font-black text-foreground">Cargando Canales Externos...</div>
             </div>
         </div>
     );
@@ -225,7 +225,7 @@ export default function POSPedidosYAPage() {
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 md:h-12 md:w-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">🍔</div>
                     <div>
-                        <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-orange-500 italic">PedidosYA</span></h1>
+                        <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-orange-500 italic">Canales Externos</span></h1>
                         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
                             Registro de Pedidos Externos
@@ -296,7 +296,7 @@ export default function POSPedidosYAPage() {
                     <div className="p-4 bg-card border-b border-border space-y-2">
                         <h2 className="font-black text-base flex items-center gap-2 text-foreground">📦 Datos del Pedido</h2>
                         <div className="grid grid-cols-2 gap-2">
-                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# PedidosYA" className="col-span-2 bg-orange-500/10 border border-orange-500/40 rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-orange-500/40 font-mono" />
+                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# Canal Externo" className="col-span-2 bg-orange-500/10 border border-orange-500/40 rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-orange-500/40 font-mono" />
                             <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre cliente" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                             <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
@@ -334,7 +334,7 @@ export default function POSPedidosYAPage() {
                             <span className="font-bold text-foreground">${cartSubtotal.toFixed(2)}</span>
                         </div>
                         <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-xs text-orange-500">
-                            ℹ️ <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
+                            ℹ️ <strong>El canal externo gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
                         </div>
                         <button
                             onClick={handleSubmit}
