@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import KpiCard from '@/components/dashboard/KpiCard';
 import ExecutiveSummary from '@/components/dashboard/ExecutiveSummary';
+import FinancialSummaryWidget from '@/components/dashboard/FinancialSummaryWidget';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,22 +54,13 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border-primary/10 shadow-xl">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                        ¡Bienvenido, <span className="text-primary">{session?.firstName || 'Usuario'}</span>! 👋
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 font-medium">
-                        Resumen de operaciones · <span className="text-amber-600 dark:text-amber-500">Gerencia Operativa CAPSULA</span>
-                    </p>
-                </div>
-                <Link
-                    href="/dashboard/recetas/nueva"
-                    className="capsula-btn capsula-btn-primary shadow-amber-500/20 px-8"
-                >
-                    <span>➕</span>
-                    Nueva Receta
-                </Link>
+            <div className="glass-panel p-6 rounded-3xl border-primary/10 shadow-xl">
+                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                    ¡Bienvenido, <span className="text-primary">{session?.firstName || 'Usuario'}</span>! 👋
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 font-medium mt-1">
+                    Resumen de operaciones · <span className="text-amber-600 dark:text-amber-500">Gerencia Operativa CAPSULA</span>
+                </p>
             </div>
 
             {/* Sales KPIs — clickeables con sparklines y breakdown gerencial */}
@@ -161,7 +153,7 @@ export default async function DashboardPage() {
                 />
             )}
 
-            {/* Financial Summary Widget */}
+            {/* Financial Summary Widget — interactivo */}
             {finance && showCosts && (
               <div className="glass-panel rounded-2xl border border-border p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -181,52 +173,7 @@ export default async function DashboardPage() {
                     Ver detalle →
                   </Link>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas</p>
-                    <p className="text-xl font-black text-emerald-500 mt-0.5">
-                      ${finance.income.totalSalesUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    {finance.mom?.salesChange != null && (
-                      <p className={`text-[10px] font-bold mt-0.5 ${finance.mom.salesChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {finance.mom.salesChange >= 0 ? '▲' : '▼'} {Math.abs(finance.mom.salesChange).toFixed(1)}%
-                      </p>
-                    )}
-                  </div>
-                  <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gastos</p>
-                    <p className="text-xl font-black text-red-500 mt-0.5">
-                      ${finance.expenses.totalExpensesUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    {finance.mom?.expensesChange != null && (
-                      <p className={`text-[10px] font-bold mt-0.5 ${finance.mom.expensesChange <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {finance.mom.expensesChange >= 0 ? '▲' : '▼'} {Math.abs(finance.mom.expensesChange).toFixed(1)}%
-                      </p>
-                    )}
-                  </div>
-                  <div className={`rounded-xl p-3 ${finance.profitLoss.operatingProfit >= 0 ? 'bg-blue-500/5 border border-blue-500/20' : 'bg-red-500/5 border border-red-500/20'}`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Utilidad</p>
-                    <p className={`text-xl font-black mt-0.5 ${finance.profitLoss.operatingProfit >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                      ${Math.abs(finance.profitLoss.operatingProfit).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Margen: {finance.profitLoss.operatingMarginPct}%</p>
-                  </div>
-                  <div className={`rounded-xl p-3 ${(finance.cashFlow?.net ?? 0) >= 0 ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-red-500/5 border border-red-500/20'}`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Flujo Neto</p>
-                    <p className={`text-xl font-black mt-0.5 ${(finance.cashFlow?.net ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      ${Math.abs(finance.cashFlow?.net ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${finance.accountsPayable.overdueUsd > 0 ? 'bg-red-500/5 border-red-500/20' : 'bg-muted/30 border-border'}`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Deudas</p>
-                    <p className={`text-xl font-black mt-0.5 ${finance.accountsPayable.overdueUsd > 0 ? 'text-red-500' : 'text-foreground'}`}>
-                      ${finance.accountsPayable.totalPendingUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    {finance.accountsPayable.overdueUsd > 0 && (
-                      <p className="text-[10px] font-bold text-red-400 mt-0.5">${finance.accountsPayable.overdueUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} vencido</p>
-                    )}
-                  </div>
-                </div>
+                <FinancialSummaryWidget finance={finance} />
               </div>
             )}
 
