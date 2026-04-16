@@ -18,6 +18,7 @@
 | 2026-04-14 | 964dc1b | Identidad gráfica - logos SVG + branding system + theme |
 | 2026-04-14 | d25edcc | Login premium coral→navy + wordmark sidebar + barras coral |
 | 2026-04-16 | 591c161 | Dashboard UI — KPIs interactivos, sparklines, resumen gerencial, skeleton loading |
+| 2026-04-16 | 3da689e | Dashboard — widgets financieros interactivos + eliminar botón Nueva Receta del header |
 
 ---
 
@@ -2639,6 +2640,29 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 **Si `openTabNumbers` aparece vacío `[]`**, el bug está en el cliente — `pickupTabs.map(t => t.pickupNumber)` devuelve vacío porque el tab no tiene `pickupNumber` asignado en ese momento.
 
 **Estado:** logs temporales de diagnóstico — remover una vez confirmado el fix.
+
+### 18.22 Dashboard — Widgets financieros interactivos + header limpio (2026-04-16)
+
+#### commit `3da689e` — Rama: `claude/enhance-dashboard-kpis-NTceM`
+
+**Archivos creados:**
+
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `src/components/dashboard/FinancialSummaryWidget.tsx` | Client | Reemplaza los 5 `<div>` estáticos del bloque "Resumen Financiero del Mes". Cada widget es un `<button>` que abre un modal dedicado (`z-[60]`). Define `FinanceData` localmente (tipo espejo de `FinancialSummary` sin importar el server action). |
+
+**Modales por widget:**
+- **Ventas**: MoM vs mes anterior, órdenes + ticket promedio del mes, desglose por canal (Restaurante/Delivery/Pickup) con barras proporcionales, desglose por método de pago, sparkline de ventas diarias del mes
+- **Gastos**: MoM invertido (baja = verde), categorías con barras de progreso y %, top 5 gastos individuales con categoría
+- **Utilidad**: Waterfall P&L step-by-step (Ventas → COGS → Utilidad Bruta → Gastos Operativos → Utilidad Operativa), márgenes bruto y operativo, MoM, contexto de negocio (umbral 10–20% para restaurantes)
+- **Flujo Neto**: 3 cards (Entradas/Salidas/Neto) con contexto de liquidez, coloración según signo
+- **Deudas**: Total pendiente + vencido, aging report 4 buckets coloreados (0-30 amber → 31-60 orange → 61-90 red → 90+ red oscuro), enlace a `/dashboard/cuentas-pagar`
+
+**Archivos modificados:**
+- `page.tsx`: botón "Nueva Receta" eliminado del header (sigue presente en Quick Actions). Widget estático reemplazado por `<FinancialSummaryWidget finance={finance} />`. Header simplificado a solo título + subtítulo.
+- `loading.tsx`: skeleton del header actualizado — sin botón, solo dos líneas de texto.
+
+---
 
 ### 18.21 Dashboard UI Gerencial — KPIs interactivos con sparklines (2026-04-16)
 
