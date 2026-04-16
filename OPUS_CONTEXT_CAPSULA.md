@@ -17,6 +17,7 @@
 | 2026-04-14 | 6bc92a1 | Fusión SKU Studio + Asistente de Insumos en 4 tabs |
 | 2026-04-14 | 964dc1b | Identidad gráfica - logos SVG + branding system + theme |
 | 2026-04-14 | d25edcc | Login premium coral→navy + wordmark sidebar + barras coral |
+| 2026-04-16 | 591c161 | Dashboard UI — KPIs interactivos, sparklines, resumen gerencial, skeleton loading |
 
 ---
 
@@ -2638,6 +2639,36 @@ console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')
 **Si `openTabNumbers` aparece vacío `[]`**, el bug está en el cliente — `pickupTabs.map(t => t.pickupNumber)` devuelve vacío porque el tab no tiene `pickupNumber` asignado en ese momento.
 
 **Estado:** logs temporales de diagnóstico — remover una vez confirmado el fix.
+
+### 18.21 Dashboard UI Gerencial — KPIs interactivos con sparklines (2026-04-16)
+
+#### commit `591c161` — Rama: `claude/enhance-dashboard-kpis-NTceM`
+
+Transformación del dashboard principal de métricas estáticas a vista interactiva y accionable para gerencia. Solo se modificaron archivos de presentación — cero cambios a server actions, contratos de datos ni lógica de negocio.
+
+**Archivos creados:**
+
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `src/components/dashboard/SparklineChart.tsx` | Client | Mini AreaChart (recharts) sin ejes — degradación graceful si < 2 puntos. Usa `useId` para IDs de gradiente únicos por instancia. |
+| `src/components/dashboard/KpiCard.tsx` | Client | Card clickeable con modal breakdown (`z-[60]`, patrón §18.3). Contiene sparkline, flecha de tendencia (↑ verde / ↓ rojo / — gris) y contexto de negocio. 5 variantes de color: amber, blue, purple, orange, neutral. |
+| `src/components/dashboard/ExecutiveSummary.tsx` | Client | Sección colapsable con lenguaje de negocio. Mini-grid de 4 KPIs (Facturación, Stock Crítico, Cuentas Abiertas, Margen Mensual). Genera alerts/positives automáticamente según umbral (`revenueChange`, `lowStockCount`, `openTabs`). Alerta dedicada para deudas vencidas. |
+| `src/app/dashboard/loading.tsx` | Server | Skeleton layout con `animate-pulse` que replica exactamente la estructura del dashboard (header, 4 cards, executive summary, finance widget, stats grid, table, quick actions). Visible automáticamente en streaming SSR. |
+
+**Archivo modificado:**
+
+`src/app/dashboard/page.tsx`:
+- Importa `KpiCard` y `ExecutiveSummary`
+- Los 4 `<div>` estáticos de Sales KPIs reemplazados por `<KpiCard>` con `breakdown` object completo
+- `avgTicketChange` y `ordersChange` computados desde datos ya disponibles (sin nuevas queries)
+- `sparklineRevenue` / `sparklineOrders` derivados de `finance.dailySales` (últimos 7 días del mes) — degradan a `[]` si no hay datos de finanzas
+- `<ExecutiveSummary>` insertado entre Sales KPIs y Financial Widget
+- Cero cambios a fetches, acciones ni lógica de negocio
+
+**Comportamiento gerencial:**
+- Click en cualquier KPI abre modal con: comparativo hoy vs ayer, badge % cambio coloreado, sparkline ampliado (60px), contexto de negocio en lenguaje llano
+- Resumen Gerencial colapsable muestra salud operativa del día con score automático (verde/amarillo/rojo), lista de issues y positivos, alerta de deudas vencidas
+- Skeleton loading reemplaza carga estática con layout estable
 
 ---
 

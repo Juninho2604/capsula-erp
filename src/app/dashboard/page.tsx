@@ -4,6 +4,8 @@ import { getFinancialSummaryAction } from '@/app/actions/finance.actions';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import KpiCard from '@/components/dashboard/KpiCard';
+import ExecutiveSummary from '@/components/dashboard/ExecutiveSummary';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,30 @@ export default async function DashboardPage() {
       showCosts ? getFinancialSummaryAction() : Promise.resolve({ success: false } as any),
     ]);
     const finance = financeSummary?.data ?? null;
+
+    // Derived comparisons computed from existing data — no new fetches
+    const ordersChange =
+      salesKPIs && salesKPIs.yesterdayOrders > 0
+        ? ((salesKPIs.todayOrders - salesKPIs.yesterdayOrders) / salesKPIs.yesterdayOrders) * 100
+        : null;
+    const yesterdayAvgTicket =
+      salesKPIs && salesKPIs.yesterdayOrders > 0
+        ? salesKPIs.yesterdayRevenue / salesKPIs.yesterdayOrders
+        : null;
+    const avgTicketChange =
+      yesterdayAvgTicket && salesKPIs
+        ? ((salesKPIs.avgTicket - yesterdayAvgTicket) / yesterdayAvgTicket) * 100
+        : null;
+
+    // Sparkline data from daily sales already fetched with finance summary
+    const sparklineRevenue: { value: number }[] =
+      finance?.dailySales
+        ? finance.dailySales.slice(-7).map((d: { day: number; total: number; orders: number }) => ({ value: d.total }))
+        : [];
+    const sparklineOrders: { value: number }[] =
+      finance?.dailySales
+        ? finance.dailySales.slice(-7).map((d: { day: number; total: number; orders: number }) => ({ value: d.orders }))
+        : [];
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -45,49 +71,94 @@ export default async function DashboardPage() {
                 </Link>
             </div>
 
-            {/* Sales KPIs — solo para roles admin */}
+            {/* Sales KPIs — clickeables con sparklines y breakdown gerencial */}
             {salesKPIs && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Revenue Hoy */}
-                    <div className="glass-panel rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70 mb-1">Ventas Hoy</p>
-                        <p className="text-3xl font-black text-amber-500">${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        {salesKPIs.revenueChange !== null && (
-                            <p className={`text-xs font-bold mt-1 ${salesKPIs.revenueChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {salesKPIs.revenueChange >= 0 ? '▲' : '▼'} {Math.abs(salesKPIs.revenueChange).toFixed(1)}% vs ayer
-                            </p>
-                        )}
-                        {salesKPIs.revenueChange === null && (
-                            <p className="text-xs text-gray-500 mt-1">Sin datos de ayer</p>
-                        )}
-                    </div>
+                    <KpiCard
+                        title="Ventas Hoy"
+                        value={`$${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        change={salesKPIs.revenueChange}
+                        changeLabel="vs ayer"
+                        subtitle={salesKPIs.revenueChange === null ? 'Sin datos de ayer' : undefined}
+                        sparklineData={sparklineRevenue}
+                        colorVariant="amber"
+                        breakdown={{
+                            previousLabel: 'Ayer',
+                            previousValue: `$${salesKPIs.yesterdayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                            currentValue: `$${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                            changeText: 'comparado con ayer',
+                            trendNote: 'Ventas diarias — últimos 7 días del mes',
+                            businessContext: salesKPIs.revenueChange !== null && salesKPIs.revenueChange >= 0
+                                ? `Buen ritmo de ventas. Si mantienes este nivel, el mes cierra por encima del promedio reciente.`
+                                : `Ventas por debajo de ayer. Revisa si hay incidencias de servicio o menor afluencia de clientes.`,
+                        }}
+                    />
 
-                    {/* Órdenes Hoy */}
-                    <div className="glass-panel rounded-2xl p-5 border border-blue-500/20 bg-blue-500/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-400/70 mb-1">Órdenes Hoy</p>
-                        <p className="text-3xl font-black text-blue-400">{salesKPIs.todayOrders}</p>
-                        <p className="text-xs text-gray-500 mt-1">Ayer: {salesKPIs.yesterdayOrders} órdenes</p>
-                    </div>
+                    <KpiCard
+                        title="Órdenes Hoy"
+                        value={String(salesKPIs.todayOrders)}
+                        change={ordersChange}
+                        changeLabel="vs ayer"
+                        subtitle={`Ayer: ${salesKPIs.yesterdayOrders} órdenes`}
+                        sparklineData={sparklineOrders}
+                        colorVariant="blue"
+                        breakdown={{
+                            previousLabel: 'Ayer',
+                            previousValue: `${salesKPIs.yesterdayOrders} órdenes`,
+                            currentValue: `${salesKPIs.todayOrders} órdenes`,
+                            changeText: 'en volumen de órdenes vs ayer',
+                            trendNote: 'Órdenes diarias — últimos 7 días del mes',
+                            businessContext: 'El volumen de órdenes indica la demanda del día. Un ticket promedio mayor puede compensar menos órdenes y viceversa.',
+                        }}
+                    />
 
-                    {/* Ticket Promedio */}
-                    <div className="glass-panel rounded-2xl p-5 border border-purple-500/20 bg-purple-500/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-purple-400/70 mb-1">Ticket Promedio</p>
-                        <p className="text-3xl font-black text-purple-400">${salesKPIs.avgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        <p className="text-xs text-gray-500 mt-1">Por orden hoy</p>
-                    </div>
+                    <KpiCard
+                        title="Ticket Promedio"
+                        value={`$${salesKPIs.avgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        change={avgTicketChange}
+                        changeLabel="vs ayer"
+                        subtitle="Por orden hoy"
+                        colorVariant="purple"
+                        breakdown={{
+                            previousLabel: 'Ayer',
+                            previousValue: yesterdayAvgTicket
+                                ? `$${yesterdayAvgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : 'Sin datos',
+                            currentValue: `$${salesKPIs.avgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                            changeText: 'en ticket promedio vs ayer',
+                            businessContext: 'Un ticket promedio alto indica mayor consumo por cliente o mejor mezcla de productos. Busca superar los $15 por orden como referencia saludable.',
+                        }}
+                    />
 
-                    {/* Cuentas Abiertas */}
-                    <div className={`glass-panel rounded-2xl p-5 border ${salesKPIs.openTabs > 0 ? 'border-orange-500/30 bg-orange-500/5' : 'border-gray-700/30'}`}>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400/70 mb-1">Cuentas Abiertas</p>
-                        <p className={`text-3xl font-black ${salesKPIs.openTabs > 0 ? 'text-orange-400' : 'text-gray-500'}`}>{salesKPIs.openTabs}</p>
-                        {salesKPIs.openTabs > 0 && (
-                            <p className="text-xs text-orange-400/70 mt-1 font-bold">${salesKPIs.openTabsExposed.toFixed(2)} expuestos</p>
-                        )}
-                        {salesKPIs.openTabs === 0 && (
-                            <p className="text-xs text-gray-500 mt-1">Todo cobrado</p>
-                        )}
-                    </div>
+                    <KpiCard
+                        title="Cuentas Abiertas"
+                        value={String(salesKPIs.openTabs)}
+                        subtitle={salesKPIs.openTabs > 0 ? `$${salesKPIs.openTabsExposed.toFixed(2)} expuestos` : 'Todo cobrado'}
+                        colorVariant={salesKPIs.openTabs > 0 ? 'orange' : 'neutral'}
+                        breakdown={{
+                            previousLabel: 'Monto expuesto',
+                            previousValue: `$${salesKPIs.openTabsExposed.toFixed(2)}`,
+                            currentValue: `${salesKPIs.openTabs} ${salesKPIs.openTabs === 1 ? 'cuenta' : 'cuentas'}`,
+                            changeText: 'cuentas sin cobrar actualmente',
+                            businessContext: salesKPIs.openTabs > 0
+                                ? `Hay $${salesKPIs.openTabsExposed.toFixed(2)} en consumo no cobrado. Asegúrate de cerrar todas las cuentas antes de terminar el turno.`
+                                : 'Todas las cuentas del turno están cobradas. Excelente gestión de caja.',
+                        }}
+                    />
                 </div>
+            )}
+
+            {/* Resumen Gerencial — colapsable, lenguaje de negocio */}
+            {salesKPIs && (
+                <ExecutiveSummary
+                    todayRevenue={salesKPIs.todayRevenue}
+                    todayOrders={salesKPIs.todayOrders}
+                    revenueChange={salesKPIs.revenueChange}
+                    openTabs={salesKPIs.openTabs}
+                    openTabsExposed={salesKPIs.openTabsExposed}
+                    lowStockCount={stats.lowStockCount}
+                    finance={finance}
+                />
             )}
 
             {/* Financial Summary Widget */}
