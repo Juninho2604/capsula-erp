@@ -8,6 +8,8 @@ async function getActiveBranch() {
     return prisma.branch.findFirst({ where: { isActive: true } });
 }
 
+const PIN_MANAGER_ROLES = new Set(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER']);
+
 async function verifyPin(pin: string, stored: string): Promise<boolean> {
     try {
         if (stored.includes(':')) {
@@ -78,6 +80,9 @@ export async function createWaiterAction(data: { firstName: string; lastName: st
         if (!session) return { success: false, message: 'No autorizado' };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
+        if (data.pin && !PIN_MANAGER_ROLES.has(session.role)) {
+            return { success: false, message: 'No tienes permisos para asignar PIN' };
+        }
         const pinClean = sanitizePin(data.pin);
         const pinHash = pinClean ? await hashPin(pinClean) : null;
         const waiter = await prisma.waiter.create({
@@ -99,6 +104,9 @@ export async function updateWaiterAction(id: string, data: { firstName: string; 
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
+        if (data.pin !== undefined && !PIN_MANAGER_ROLES.has(session.role)) {
+            return { success: false, message: 'No tienes permisos para cambiar el PIN' };
+        }
         const updateData: { firstName: string; lastName: string; pin?: string | null } = {
             firstName: data.firstName.trim(),
             lastName: data.lastName.trim(),
