@@ -17,6 +17,12 @@ import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
+import {
+  WaiterIdentification,
+  type ActiveWaiter,
+} from "@/components/pos/WaiterIdentification";
+
+const ACTIVE_WAITER_KEY = "pos-mesero-active-waiter";
 
 // ============================================================================
 // TIPOS (igual que restaurante)
@@ -173,6 +179,32 @@ export default function POSMeseroPage() {
 
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
+
+  // ── Identificación del mesonero ───────────────────────────────────────────
+  const [activeWaiter, setActiveWaiter] = useState<ActiveWaiter | null>(null);
+  const [waiterHydrated, setWaiterHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_WAITER_KEY);
+      if (raw) setActiveWaiter(JSON.parse(raw) as ActiveWaiter);
+    } catch {
+      // ignore
+    }
+    setWaiterHydrated(true);
+  }, []);
+
+  const handleWaiterIdentified = (w: ActiveWaiter) => {
+    sessionStorage.setItem(ACTIVE_WAITER_KEY, JSON.stringify(w));
+    setActiveWaiter(w);
+  };
+
+  const handleWaiterLogout = () => {
+    sessionStorage.removeItem(ACTIVE_WAITER_KEY);
+    setActiveWaiter(null);
+    setCart([]);
+    setSelectedTableId("");
+  };
 
   // ============================================================================
   // DATA LOADING
@@ -396,7 +428,7 @@ export default function POSMeseroPage() {
   // RENDER
   // ============================================================================
 
-  if (isLoading) {
+  if (isLoading || !waiterHydrated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -405,6 +437,10 @@ export default function POSMeseroPage() {
         </div>
       </div>
     );
+  }
+
+  if (!activeWaiter) {
+    return <WaiterIdentification onIdentified={handleWaiterIdentified} />;
   }
 
   return (
@@ -427,6 +463,23 @@ export default function POSMeseroPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Mesonero identificado */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+            <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-xs">
+              {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
+            </span>
+            <div className="text-[10px] leading-tight">
+              <div className="font-black text-emerald-300 uppercase tracking-wider">{activeWaiter.firstName}</div>
+              <div className="text-[9px] text-muted-foreground">Mesonero activo</div>
+            </div>
+          </div>
+          <button
+            onClick={handleWaiterLogout}
+            className="h-9 px-3 rounded-xl bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-muted-foreground hover:text-red-400 hover:border-red-500/30 transition-all uppercase tracking-widest"
+            title="Cambiar mesonero"
+          >
+            Salir
+          </button>
           <button
             onClick={loadData}
             className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
@@ -434,7 +487,7 @@ export default function POSMeseroPage() {
           >
             🔄
           </button>
-          <div className="px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+          <div className="hidden md:block px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
