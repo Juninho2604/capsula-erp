@@ -224,8 +224,8 @@ export default function POSMeseroPage() {
   // DATA LOADING
   // ============================================================================
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
     setLayoutError("");
     try {
       const [menuResult, layoutResult, rate] = await Promise.all([
@@ -246,7 +246,7 @@ export default function POSMeseroPage() {
       }
       setExchangeRate(rate);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   };
 
@@ -783,7 +783,7 @@ export default function POSMeseroPage() {
               openTabId={activeTab.id}
               exchangeRate={exchangeRate}
               onClose={() => setSubAccountMode(false)}
-              onTabUpdated={() => loadData()}
+              onTabUpdated={() => loadData(false)}
             />
           ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">

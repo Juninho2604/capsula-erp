@@ -316,8 +316,8 @@ export default function POSSportBarPage() {
   // DATA LOADING
   // ============================================================================
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
     setLayoutError("");
     try {
       const [menuResult, layoutResult, usersResult, rate] = await Promise.all([
@@ -342,7 +342,7 @@ export default function POSSportBarPage() {
       }
       setExchangeRate(rate);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   };
 
@@ -1965,7 +1965,7 @@ export default function POSSportBarPage() {
                   openTabId={activeTab.id}
                   exchangeRate={exchangeRate}
                   onClose={() => setSubAccountMode(false)}
-                  onTabUpdated={() => loadData()}
+                  onTabUpdated={() => loadData(false)}
                 />
               ) : (
               <div className="flex-1 overflow-y-auto p-3 space-y-3">
