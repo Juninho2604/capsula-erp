@@ -191,9 +191,40 @@ export async function validateWaiterPinAction(pin: string): Promise<{
 
 // ============================================================================
 // TRANSFERENCIA DE MESA
-// Requiere PIN de un capitán (isCaptain=true). Registra el historial,
+// Acepta PIN de un capitán (Waiter.isCaptain=true) O de un gerente
+// (User con rol OWNER/ADMIN_MANAGER/OPS_MANAGER). Registra el historial,
 // actualiza waiterProfileId del OpenTab y devuelve el registro creado.
 // ============================================================================
+
+type AuthResult =
+    | { type: 'CAPTAIN'; name: string; waiterId: string }
+    | { type: 'MANAGER'; name: string; userId: string };
+
+async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult | null> {
+    const trimmed = pin.trim();
+    // Tipo 1: Waiter capitán activo en la sucursal
+    const captains = await prisma.waiter.findMany({
+        where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
+        select: { id: true, firstName: true, lastName: true, pin: true },
+    });
+    for (const c of captains) {
+        if (c.pin && await verifyPin(trimmed, c.pin)) {
+            return { type: 'CAPTAIN', name: `${c.firstName} ${c.lastName}`, waiterId: c.id };
+        }
+    }
+    // Tipo 2: User gerente/dueño activo (cualquier sucursal)
+    const managers = await prisma.user.findMany({
+        where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] }, isActive: true, pin: { not: null } },
+        select: { id: true, firstName: true, lastName: true, pin: true },
+    });
+    for (const m of managers) {
+        if (m.pin && await verifyPin(trimmed, m.pin)) {
+            return { type: 'MANAGER', name: `${m.firstName} ${m.lastName}`, userId: m.id };
+        }
+    }
+    return null;
+}
+
 export async function transferTableAction({
     openTabId,
     fromWaiterId,
@@ -241,20 +272,10 @@ export async function transferTableAction({
             return { success: false, message: 'Mesonero destino no encontrado o inactivo' };
         }
 
-        // Validar PIN contra capitanes activos del branch
-        const captains = await prisma.waiter.findMany({
-            where: { branchId: branch.id, isActive: true, isCaptain: true, pin: { not: null } },
-            select: { id: true, pin: true },
-        });
-        let authorizedCaptainId: string | null = null;
-        for (const c of captains) {
-            if (c.pin && await verifyPin(captainPin.trim(), c.pin)) {
-                authorizedCaptainId = c.id;
-                break;
-            }
-        }
-        if (!authorizedCaptainId) {
-            return { success: false, message: 'PIN de capitán incorrecto' };
+        // Validar PIN: capitán Waiter O gerente User
+        const auth = await resolveAuthPin(captainPin, branch.id);
+        if (!auth) {
+            return { success: false, message: 'PIN de capitán o gerente incorrecto' };
         }
 
         // Transacción: crear registro + actualizar OpenTab
@@ -264,7 +285,11 @@ export async function transferTableAction({
                     openTabId,
                     fromWaiterId,
                     toWaiterId,
-                    authorizedById: authorizedCaptainId!,
+                    authorizedByWaiterId: auth.type === 'CAPTAIN' ? auth.waiterId : null,
+                    authorizedByUserId:   auth.type === 'MANAGER' ? auth.userId   : null,
+                    authorizedNote:       auth.type === 'CAPTAIN'
+                        ? `Capitán: ${auth.name}`
+                        : `Gerente: ${auth.name}`,
                     reason: reason?.trim() || null,
                 },
             });

@@ -49,7 +49,8 @@ model User {
 
   // POS - Ventas
   salesOrders    SalesOrder[] @relation("SalesOrderCreator")
-  authorizedOrders SalesOrder[] @relation("SalesOrderAuthorizer")
+  authorizedOrders     SalesOrder[]    @relation("SalesOrderAuthorizer")
+  authorizedTransfers  TableTransfer[] @relation("TransferAuthorizedByUser")
   voidedOrders   SalesOrder[] @relation("SalesOrderVoider")
   openedTabs       OpenTab[]    @relation("OpenTabOpener")
   assignedTabs     OpenTab[]    @relation("OpenTabAssignee")
@@ -1516,27 +1517,31 @@ model Waiter {
   salesOrders SalesOrder[]
   transfersFrom       TableTransfer[] @relation("TransferFrom")
   transfersTo         TableTransfer[] @relation("TransferTo")
-  transfersAuthorized TableTransfer[] @relation("TransferAuthorizer")
+  transfersAuthorized TableTransfer[] @relation("TransferAuthorizedByWaiter")
 
   @@index([branchId, isActive])
 }
 
 model TableTransfer {
-  id             String   @id @default(cuid())
-  openTabId      String
-  openTab        OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
-  fromWaiterId   String
-  fromWaiter     Waiter   @relation("TransferFrom",     fields: [fromWaiterId],   references: [id])
-  toWaiterId     String
-  toWaiter       Waiter   @relation("TransferTo",       fields: [toWaiterId],     references: [id])
-  authorizedById String
-  authorizedBy   Waiter   @relation("TransferAuthorizer", fields: [authorizedById], references: [id])
-  reason         String?
-  transferredAt  DateTime @default(now())
+  id                   String   @id @default(cuid())
+  openTabId            String
+  openTab              OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  fromWaiterId         String
+  fromWaiter           Waiter   @relation("TransferFrom",     fields: [fromWaiterId],   references: [id])
+  toWaiterId           String
+  toWaiter             Waiter   @relation("TransferTo",       fields: [toWaiterId],     references: [id])
+  authorizedByWaiterId String?
+  authorizedByWaiter   Waiter?  @relation("TransferAuthorizedByWaiter", fields: [authorizedByWaiterId], references: [id])
+  authorizedByUserId   String?
+  authorizedByUser     User?    @relation("TransferAuthorizedByUser", fields: [authorizedByUserId], references: [id])
+  authorizedNote       String?
+  reason               String?
+  transferredAt        DateTime @default(now())
 
   @@index([openTabId])
   @@index([fromWaiterId])
   @@index([toWaiterId])
+  @@index([authorizedByUserId])
 }
 
 model ServiceZone {

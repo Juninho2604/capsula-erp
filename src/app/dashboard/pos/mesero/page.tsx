@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
   getMenuForPOSAction,
@@ -188,9 +189,14 @@ export default function POSMeseroPage() {
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
 
+  const { user: currentUser } = useAuthStore();
+  const MANAGER_ROLES = ["OWNER", "ADMIN_MANAGER", "OPS_MANAGER"];
+
   // ── Identificación del mesonero ───────────────────────────────────────────
   const [activeWaiter, setActiveWaiter] = useState<ActiveWaiter | null>(null);
   const [waiterHydrated, setWaiterHydrated] = useState(false);
+  const canUseCaptainFeatures =
+    activeWaiter?.isCaptain || MANAGER_ROLES.includes(currentUser?.role ?? "");
 
   useEffect(() => {
     try {
@@ -456,7 +462,7 @@ export default function POSMeseroPage() {
   const handleTransfer = async () => {
     if (!activeWaiter || !activeTab) return;
     if (!transferToWaiterId) { setTransferError("Selecciona el mesonero destino"); return; }
-    if (!transferCaptainPin.trim()) { setTransferError("Ingresa tu PIN de capitán"); return; }
+    if (!transferCaptainPin.trim()) { setTransferError("Ingresa el PIN de capitán o gerente"); return; }
     setIsProcessing(true); setTransferError("");
     try {
       const result = await transferTableAction({
@@ -861,7 +867,7 @@ export default function POSMeseroPage() {
                   >
                     🧾 Mostrar cuenta al cliente
                   </button>
-                  {activeWaiter?.isCaptain && (
+                  {canUseCaptainFeatures && (
                     <>
                       <button
                         onClick={() => setSubAccountMode(true)}
@@ -1127,7 +1133,7 @@ export default function POSMeseroPage() {
       )}
 
       {/* ══ MODAL: TRANSFERIR MESA (solo capitanes) ══════════════════════ */}
-      {showTransferModal && activeTab && activeWaiter?.isCaptain && (
+      {showTransferModal && activeTab && canUseCaptainFeatures && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30">
             <div className="flex items-center gap-3">
@@ -1174,7 +1180,7 @@ export default function POSMeseroPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
-                  PIN de capitán (confirmación)
+                  PIN de capitán o gerente (confirmación)
                 </label>
                 <input
                   type="password"
