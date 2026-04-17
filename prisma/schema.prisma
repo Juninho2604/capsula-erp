@@ -1502,6 +1502,8 @@ model Waiter {
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   firstName String
   lastName  String
+  pin       String?  // "saltHex:hashHex" — hash PBKDF2-SHA256 del PIN (4-6 dígitos)
+  isCaptain Boolean  @default(false) // Capitán: puede autorizar transferencias de mesa
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

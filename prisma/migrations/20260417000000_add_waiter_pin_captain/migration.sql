@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Waiter" ADD COLUMN "pin" TEXT;
+ALTER TABLE "Waiter" ADD COLUMN "isCaptain" BOOLEAN NOT NULL DEFAULT false;
