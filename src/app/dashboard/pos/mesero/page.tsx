@@ -48,6 +48,8 @@ interface MenuItem {
   sku: string;
   name: string;
   price: number;
+  posGroup?: string | null;
+  posSubcategory?: string | null;
   modifierGroups: { modifierGroup: ModifierGroup }[];
 }
 interface SelectedModifier {
@@ -134,6 +136,8 @@ export default function POSMeseroPage() {
   const [layout, setLayout] = useState<SportBarLayout | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
 
   // ── Zone / Table selection ─────────────────────────────────────────────────
   const [selectedZoneId, setSelectedZoneId] = useState("");
@@ -256,6 +260,8 @@ export default function POSMeseroPage() {
     if (!selectedCategory || !categories.length) return;
     const cat = categories.find((c) => c.id === selectedCategory);
     setMenuItems(cat?.items || []);
+    setSelectedSubcategory("");
+    setSelectedGroup("");
   }, [selectedCategory, categories]);
 
   // ============================================================================
@@ -278,6 +284,22 @@ export default function POSMeseroPage() {
     const q = productSearch.toLowerCase();
     return allMenuItems.filter((i) => i.name.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
   }, [menuItems, productSearch, allMenuItems]);
+
+  // ── POS Hierarchical Navigation (subcategoría → grupo → tamaños / singles) ──
+  const subcatFilteredItems = useMemo(() => {
+    if (!selectedSubcategory) return menuItems;
+    return menuItems.filter((i) => i.posSubcategory === selectedSubcategory);
+  }, [menuItems, selectedSubcategory]);
+
+  const subcategories = useMemo(() => {
+    const subcats = menuItems.map((i) => i.posSubcategory).filter(Boolean) as string[];
+    return Array.from(new Set(subcats));
+  }, [menuItems]);
+
+  const groupsInView = useMemo(() => {
+    const groups = subcatFilteredItems.map((i) => i.posGroup).filter(Boolean) as string[];
+    return Array.from(new Set(groups));
+  }, [subcatFilteredItems]);
 
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const cartBadgeCount = cart.length;
@@ -688,42 +710,125 @@ export default function POSMeseroPage() {
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setProductSearch(""); }}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setSelectedSubcategory("");
+                    setSelectedGroup("");
+                    setProductSearch("");
+                  }}
                   className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedCategory === cat.id ? "bg-emerald-500 text-black" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
                 >
                   {cat.name}
                 </button>
               ))}
             </div>
+
+            {/* Subcategories */}
+            {!productSearch && subcategories.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                <button
+                  onClick={() => { setSelectedSubcategory(""); setSelectedGroup(""); }}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${!selectedSubcategory ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                >
+                  Todos
+                </button>
+                {subcategories.map((subcat) => (
+                  <button
+                    key={subcat}
+                    onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubcategory === subcat ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                  >
+                    {subcat}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Menu items */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-              {filteredMenuItems.map((item) => (
+          <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+            {/* Back button cuando estás dentro de un grupo */}
+            {selectedGroup && !productSearch && (
+              <button
+                onClick={() => setSelectedGroup("")}
+                className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-400 hover:text-emerald-300 active:scale-95 transition"
+              >
+                ← {selectedGroup}
+              </button>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+
+              {/* ── Grupos (uno por cada posGroup único) ── */}
+              {!selectedGroup && !productSearch && groupsInView.map((group) => {
+                const gItems = subcatFilteredItems.filter((i) => i.posGroup === group);
+                const prices = gItems.map((i) => i.price);
+                const minP = Math.min(...prices);
+                const maxP = Math.max(...prices);
+                return (
+                  <button
+                    key={group}
+                    onClick={() => setSelectedGroup(group)}
+                    disabled={!activeTab}
+                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  >
+                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{group}</div>
+                    <div className="flex items-end justify-between mt-2">
+                      <div className="text-base font-black text-emerald-400">
+                        {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
+                      </div>
+                      <div className="text-[10px] font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                        {gItems.length} op →
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* ── Variantes de tamaño dentro del grupo seleccionado ── */}
+              {selectedGroup && !productSearch && subcatFilteredItems.filter((i) => i.posGroup === selectedGroup).map((item) => {
+                const sizeLabel = item.name.replace(new RegExp(selectedGroup.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() || item.name;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleAddToCart(item)}
+                    disabled={!activeTab}
+                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  >
+                    <div className="text-lg font-black text-gray-950 dark:text-foreground uppercase tracking-tight">{sizeLabel}</div>
+                    <div className="text-xl font-black text-emerald-400 mt-auto">
+                      <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* ── Items sueltos (sin posGroup) o resultados de búsqueda ── */}
+              {(productSearch || !selectedGroup) && (productSearch ? filteredMenuItems : subcatFilteredItems.filter((i) => !i.posGroup)).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleAddToCart(item)}
                   disabled={!activeTab}
-                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform"
+                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
                 >
-                  <div className="text-sm font-black text-foreground group-hover:text-emerald-400 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">
-                    {item.name}
-                  </div>
+                  <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
                   <div className="flex items-end justify-between mt-2">
-                    <div className="text-lg font-black text-emerald-400">
-                      ${item.price.toFixed(2)}
+                    <div className="text-xl font-black text-emerald-400">
+                      <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
                       ➕
                     </div>
                   </div>
                 </button>
               ))}
-              {filteredMenuItems.length === 0 && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">
-                  {productSearch ? `Sin resultados para "${productSearch}"` : "Sin productos en esta categoría"}
-                </div>
+
+              {/* Empty state */}
+              {!productSearch && groupsInView.length === 0 && subcatFilteredItems.filter((i) => !i.posGroup).length === 0 && !selectedGroup && (
+                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin productos en esta categoría</div>
+              )}
+              {productSearch && filteredMenuItems.length === 0 && (
+                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin resultados para &quot;{productSearch}&quot;</div>
               )}
             </div>
           </div>
