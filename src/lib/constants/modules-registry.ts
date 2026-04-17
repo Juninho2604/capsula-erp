@@ -566,7 +566,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   asistente: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
   menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-  pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AREA_LEAD'],
+  pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'],
   pos_waiter: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'WAITER', 'CASHIER', 'AREA_LEAD'],
   pos_delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   pedidosya: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
@@ -645,15 +645,14 @@ export function getVisibleModules(
   return MODULE_REGISTRY
     .filter(m => visibleIds.has(m.id))
     .filter(m => {
+      // module_config solo visible para OWNER, sin importar allowedModules
+      if (m.id === 'module_config') return userRole === 'OWNER';
+      // Si el usuario tiene allowedModules individuales, esa lista es la única autoridad
+      if (userFilter) return userFilter.has(m.id);
+      // Sin allowedModules → acceso por rol
       const allowedRoles = MODULE_ROLE_ACCESS[m.id];
       if (!allowedRoles) return true;
       return allowedRoles.includes(userRole);
-    })
-    .filter(m => {
-      // Si hay restricciones individuales, el módulo debe estar en la lista
-      // module_config nunca se filtra por allowedModules (siempre visible para OWNER)
-      if (!userFilter || m.id === 'module_config') return true;
-      return userFilter.has(m.id);
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
