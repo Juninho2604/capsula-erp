@@ -1514,8 +1514,29 @@ model Waiter {
 
   openTabs    OpenTab[]
   salesOrders SalesOrder[]
+  transfersFrom       TableTransfer[] @relation("TransferFrom")
+  transfersTo         TableTransfer[] @relation("TransferTo")
+  transfersAuthorized TableTransfer[] @relation("TransferAuthorizer")
 
   @@index([branchId, isActive])
+}
+
+model TableTransfer {
+  id             String   @id @default(cuid())
+  openTabId      String
+  openTab        OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  fromWaiterId   String
+  fromWaiter     Waiter   @relation("TransferFrom",     fields: [fromWaiterId],   references: [id])
+  toWaiterId     String
+  toWaiter       Waiter   @relation("TransferTo",       fields: [toWaiterId],     references: [id])
+  authorizedById String
+  authorizedBy   Waiter   @relation("TransferAuthorizer", fields: [authorizedById], references: [id])
+  reason         String?
+  transferredAt  DateTime @default(now())
+
+  @@index([openTabId])
+  @@index([fromWaiterId])
+  @@index([toWaiterId])
 }
 
 model ServiceZone {
@@ -1601,6 +1622,7 @@ model OpenTab {
   orderLinks      OpenTabOrder[]
   paymentSplits   PaymentSplit[]
   subAccounts     TabSubAccount[]
+  transfers       TableTransfer[]
 
   // Soft Delete
   deletedAt       DateTime?
