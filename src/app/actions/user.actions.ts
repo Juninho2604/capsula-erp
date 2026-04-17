@@ -382,6 +382,42 @@ export async function createUserAction(data: {
 }
 
 /**
+ * Actualiza nombre, apellido y/o email de un usuario.
+ * Requiere MANAGE_USERS. No puede editarse a sí mismo por esta vía.
+ */
+export async function updateUserNameAction(
+    userId: string,
+    data: { firstName: string; lastName: string; email: string },
+) {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'No autenticado' };
+    if (!hasPermission(session.role, PERMISSIONS.MANAGE_USERS)) {
+        return { success: false, message: 'Sin permisos para editar usuarios' };
+    }
+
+    const firstName = data.firstName.trim();
+    const lastName = data.lastName.trim();
+    const email = data.email.trim().toLowerCase();
+
+    if (!firstName || !lastName) return { success: false, message: 'Nombre y apellido son requeridos' };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { success: false, message: 'Correo electrónico inválido' };
+    }
+
+    try {
+        const conflict = await prisma.user.findUnique({ where: { email } });
+        if (conflict && conflict.id !== userId) {
+            return { success: false, message: 'Ese correo ya está en uso por otro usuario' };
+        }
+        await prisma.user.update({ where: { id: userId }, data: { firstName, lastName, email } });
+        revalidatePath('/dashboard/usuarios');
+        return { success: true, message: 'Datos actualizados correctamente' };
+    } catch {
+        return { success: false, message: 'Error al actualizar los datos' };
+    }
+}
+
+/**
  * Permite a OWNER o ADMIN_MANAGER resetear la contraseña de otro usuario.
  * No puede resetear la propia contraseña por esta vía (usar changePasswordAction).
  */
