@@ -7,9 +7,7 @@
  * - Salidas por venta
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Tipos locales (en vez de importar de Prisma)
 type MovementType = 'PURCHASE' | 'SALE' | 'PRODUCTION_IN' | 'PRODUCTION_OUT' | 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT' | 'TRANSFER' | 'WASTE';
@@ -275,18 +273,21 @@ export async function registerSale(input: SaleInput): Promise<SaleResult> {
                 },
             });
 
-            // Decrementar stock
-            const stockLocation = await tx.inventoryLocation.update({
+            // Decrementar stock (upsert para manejar el caso donde no existe ubicación)
+            const stockLocation = await tx.inventoryLocation.upsert({
                 where: {
                     inventoryItemId_areaId: {
                         inventoryItemId: input.inventoryItemId,
                         areaId: input.areaId,
                     },
                 },
-                data: {
-                    currentStock: {
-                        decrement: input.quantity,
-                    },
+                update: {
+                    currentStock: { decrement: input.quantity },
+                },
+                create: {
+                    inventoryItemId: input.inventoryItemId,
+                    areaId: input.areaId,
+                    currentStock: -input.quantity,
                 },
             });
 

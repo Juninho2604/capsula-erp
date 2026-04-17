@@ -3,6 +3,8 @@
 import { prisma } from '@/server/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
+import { softDelete } from '@/lib/soft-delete';
+import { logAudit } from '@/lib/audit-log';
 
 export async function createQuickItem(data: {
     name: string;
@@ -17,16 +19,13 @@ export async function createQuickItem(data: {
     isFinalProduct?: boolean; // Si es FINISHED_GOOD → también crear stub de receta
 }) {
     try {
-        // Generate a SKU
-        const skuPrefix = data.name.substring(0, 3).toUpperCase().replace(/\s/g, '');
-        const count = await prisma.inventoryItem.count();
-        const sku = `${skuPrefix}-${String(count + 1).padStart(4, '0')}`;
+        const skuPrefix = data.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'ITM';
 
-        // Create the item
+        // Create item first, then assign unique SKU from its generated ID (avoids COUNT race condition)
         const item = await prisma.inventoryItem.create({
             data: {
                 name: data.name,
-                sku: sku,
+                sku: `${skuPrefix}-INIT`,
                 type: data.type,
                 baseUnit: data.unit,
                 category: data.categoryId,
@@ -34,6 +33,10 @@ export async function createQuickItem(data: {
                 description: 'Creado en flujo de transferencia (migración)',
             },
         });
+
+        // Assign unique SKU using the item's ID (guaranteed unique, no race condition)
+        const sku = `${skuPrefix}-${item.id.slice(-4).toUpperCase()}`;
+        await prisma.inventoryItem.update({ where: { id: item.id }, data: { sku } });
 
         // Si se indicó área de origen + stock inicial → crear InventoryLocation y movimiento ADJUSTMENT_IN
         if (data.sourceAreaId && data.initialStock && data.initialStock > 0) {
@@ -86,7 +89,6 @@ export async function createQuickItem(data: {
                         createdById: data.userId,
                     }
                 });
-                console.log(`Receta stub creada para ${data.name}: ${recipe.id}`);
             } catch (recipeErr) {
                 console.warn('No se pudo crear receta stub:', recipeErr);
             }
@@ -160,6 +162,14 @@ export async function getAreasAction() {
 
 export async function updateInventoryItemAction(id: string, data: any) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const allowedRoles = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+        if (!allowedRoles.includes(session.role)) {
+            return { success: false, message: 'No tienes permisos para editar productos.' };
+        }
+
         await prisma.inventoryItem.update({
             where: { id },
             data: {
@@ -192,11 +202,21 @@ export async function deleteInventoryItemAction(id: string) {
             };
         }
 
-        // Verificar si tiene transacciones históricas importantes antes de 'eliminar'
-        // Por ahora haremos Soft Delete (isActive = false)
-        await prisma.inventoryItem.update({
-            where: { id },
-            data: { isActive: false }
+        const item = await prisma.inventoryItem.findUnique({ where: { id }, select: { name: true, sku: true } });
+        if (!item) return { success: false, message: 'Ítem no encontrado' };
+
+        await softDelete(prisma.inventoryItem, id, session.id);
+        await prisma.inventoryItem.update({ where: { id }, data: { isActive: false } });
+
+        await logAudit({
+            userId: session.id,
+            userName: `${session.firstName} ${session.lastName}`,
+            userRole: session.role,
+            action: 'DELETE',
+            entityType: 'InventoryItem',
+            entityId: id,
+            description: `Eliminó ítem: ${item.name} (${item.sku})`,
+            module: 'INVENTORY',
         });
 
         revalidatePath('/dashboard/inventario');
@@ -213,6 +233,9 @@ export async function getInventoryHistoryAction(filters?: {
     limit?: number;
 }) {
     try {
+        const session = await getSession();
+        if (!session) return [];
+
         const movements = await prisma.inventoryMovement.findMany({
             where: {
                 ...(filters?.type ? { movementType: filters.type } : {}),

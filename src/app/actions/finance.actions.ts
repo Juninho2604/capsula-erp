@@ -60,7 +60,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
 }> {
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
-  if (!['OWNER', 'ADMIN_MANAGER', 'AUDITOR'].includes(session.role)) {
+  if (!['OWNER', 'ADMIN_MANAGER', 'AUDITOR', 'OPS_MANAGER'].includes(session.role)) {
     return { success: false, error: 'Sin permisos para ver el resumen financiero' };
   }
 
@@ -73,7 +73,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
   try {
     // 1. Ventas del período
     const salesOrders = await prisma.salesOrder.findMany({
-      where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+      where: { status: { notIn: ['CANCELLED'] }, createdAt: { gte: startDate, lte: endDate } },
       select: {
         total: true,
         orderType: true,
@@ -218,7 +218,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
 
     const [prevSalesOrders, prevExpAgg] = await Promise.all([
       prisma.salesOrder.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: prevStart, lte: prevEnd } },
+        where: { status: { notIn: ['CANCELLED'] }, createdAt: { gte: prevStart, lte: prevEnd } },
         select: { total: true, items: { select: { costTotal: true } } },
       }),
       prisma.expense.aggregate({
@@ -311,7 +311,7 @@ export async function getMonthlyTrendAction(months = 6): Promise<{
       const endDate = new Date(y, m, 0, 23, 59, 59, 999);
 
       const salesOrders = await prisma.salesOrder.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+        where: { status: { notIn: ['CANCELLED'] }, createdAt: { gte: startDate, lte: endDate } },
         select: { total: true, items: { select: { costTotal: true } } },
       });
       const sales = salesOrders.reduce((s: number, o) => s + o.total, 0);
@@ -354,7 +354,7 @@ export async function getDailySalesAction(month: number, year: number): Promise<
 
   try {
     const salesOrders = await prisma.salesOrder.findMany({
-      where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+      where: { status: { notIn: ['CANCELLED'] }, createdAt: { gte: startDate, lte: endDate } },
       select: { total: true, createdAt: true },
     });
 
