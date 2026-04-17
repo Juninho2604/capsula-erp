@@ -19,6 +19,8 @@
 | 2026-04-14 | d25edcc | Login premium coral→navy + wordmark sidebar + barras coral |
 | 2026-04-16 | 591c161 | Dashboard UI — KPIs interactivos, sparklines, resumen gerencial, skeleton loading |
 | 2026-04-16 | 3da689e | Dashboard — widgets financieros interactivos + eliminar botón Nueva Receta del header |
+| 2026-04-17 | audit   | Auditoría funcional — 22 fallas encontradas (5 CRÍTICA, 7 ALTA, 7 MEDIA, 3 BAJA) |
+| 2026-04-17 | d30941e | Fix 17/22 fallas del audit: JWT, P&L status, singleton Prisma, COGS, kitchen auth, subcuentas, logAudit, softDelete, SKU |
 
 ---
 
@@ -1714,42 +1716,101 @@ ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
 
 ## 16. Gap Analysis — Qué falta para 100%
 
-### Gaps Críticos (afectan producción)
+### 16.1 Gaps Críticos (afectan producción)
 
-| # | Gap | Archivos afectados | Impacto |
-|---|-----|-------------------|---------|
-| 1 | **Métodos de pago hardcodeados** en 3+ archivos | `MixedPaymentSelector.tsx`, `restaurante/page.tsx`, `delivery/page.tsx` | No se pueden agregar/quitar métodos sin deploy |
-| 2 | **Delivery fees hardcodeados** duplicados front+back | `pos.actions.ts:263-264`, `delivery/page.tsx:15-16` | Cambiar tarifa requiere editar 2 archivos |
-| 3 | **Service charge 10% hardcodeado** | `restaurante/page.tsx:696,769`, `sales.actions.ts` | No configurable por instalación |
-| 4 | **Service charge detectado por string** (`'| +10% serv'`) | `sales.actions.ts:120,264,428,737` | Detección frágil, se rompe si cambia el texto |
-| 5 | **BAR_CATEGORIES hardcodeado** `['Bebidas']` | `api/kitchen/orders/route.ts:7` | No configurable qué va a barra vs cocina |
+| # | Gap | Archivos afectados | Impacto | Estado |
+|---|-----|-------------------|---------|--------|
+| 1 | **Métodos de pago hardcodeados** en 3+ archivos | `MixedPaymentSelector.tsx`, `restaurante/page.tsx`, `delivery/page.tsx` | No se pueden agregar/quitar métodos sin deploy | ⚠️ CONFIRMADO |
+| 2 | **Delivery fees hardcodeados** duplicados front+back | `pos.actions.ts:265-266`, `delivery/page.tsx:15-16` | Cambiar tarifa requiere editar 2 archivos | ⚠️ CONFIRMADO |
+| 3 | **Service charge 10% hardcodeado** | `restaurante/page.tsx:696,769`, `sales.actions.ts` | No configurable por instalación | ⚠️ CONFIRMADO |
+| 4 | **Service charge detectado por string** (`'| +10% serv'`) | `sales.actions.ts:124,267,440` | Detección frágil, se rompe si cambia el texto | ⚠️ CONFIRMADO |
+| 5 | **BAR_CATEGORIES hardcodeado** `['Bebidas']` | `api/kitchen/orders/route.ts:7` | No configurable qué va a barra vs cocina | ⚠️ CONFIRMADO |
 
-### Gaps de Seguridad
+### 16.2 Gaps de Seguridad
 
-| # | Gap | Archivo | Impacto |
-|---|-----|---------|---------|
-| 6 | **JWT secret con fallback hardcodeado** | `src/lib/auth.ts:5` | Si no se configura env var, todos los JWT usan la misma key |
-| 7 | **Middleware RBAC cubre solo 3 rutas críticas** — resto se protege en Server Actions | `middleware.ts` | Acceso directo por URL posible, pero Server Actions no retornan datos a roles no autorizados |
-| 8 | **Dos sistemas de niveles numéricos** no unificados | `permissions.ts` vs `roles.ts` | KITCHEN_CHEF, WAITER sin nivel en ROLE_HIERARCHY; CASHIER_DELIVERY ya eliminado |
+| # | Gap | Archivo | Impacto | Estado |
+|---|-----|---------|---------|--------|
+| 6 | **JWT secret con fallback hardcodeado** | `src/lib/auth.ts:5` | Si no se configura env var, todos los JWT usan la misma key conocida | ⚠️ CONFIRMADO |
+| 7 | **Middleware RBAC cubre solo 3 rutas críticas** — resto se protege en Server Actions | `middleware.ts` | Acceso directo por URL posible, pero Server Actions no retornan datos a roles no autorizados | ⚠️ CONFIRMADO |
+| 8 | **Dos sistemas de niveles numéricos** no unificados | `permissions.ts` vs `roles.ts` | KITCHEN_CHEF, WAITER sin nivel en ROLE_HIERARCHY; CASHIER_DELIVERY ya eliminado | ⚠️ CONFIRMADO |
 
-### Gaps Funcionales
+### 16.3 Gaps Funcionales
 
-| # | Gap | Detalle |
-|---|-----|---------|
-| 9 | **Descuentos no configurables** por instalación | DIVISAS_33, CORTESIA fijos en código |
-| 10 | **Canales de orden no configurables** | DELIVERY, PICKUP, PEDIDOSYA siempre disponibles si el módulo está activo |
-| 11 | **kitchenRouting no se usa** en comandera | MenuItem tiene campo `kitchenRouting` (BAR/KITCHEN/GRILL) pero la API filtra por categoría name |
-| 12 | **Inventario diario no sincroniza** producción ni transferencias automáticamente | Solo sincroniza ventas POS, no registra entradas/producción del día |
-| 13 | **CostHistory no se actualiza** automáticamente al recibir compra en todos los flujos | `receivePurchaseOrderItemsAction` lo hace, pero `registrarEntradaMercancia` podría no |
-| 14 | **Intercompany desconectado** de descargo automático | Items intercompany no generan InventoryMovement en el negocio proveedor |
+| # | Gap | Detalle | Estado |
+|---|-----|---------|--------|
+| 9 | **Descuentos no configurables** por instalación | DIVISAS_33, CORTESIA fijos en código | Sin cambios |
+| 10 | **Canales de orden no configurables** | DELIVERY, PICKUP, PEDIDOSYA siempre disponibles si el módulo está activo | Sin cambios |
+| 11 | **kitchenRouting no se usa** en comandera | MenuItem tiene campo `kitchenRouting` (BAR/KITCHEN/GRILL) pero la API filtra por categoría name | Sin cambios |
+| 12 | **Inventario diario no sincroniza** producción ni transferencias automáticamente | Solo sincroniza ventas POS, no registra entradas/producción del día | Sin cambios |
+| 13 | **CostHistory no se actualiza** automáticamente al recibir compra en todos los flujos | `receivePurchaseOrderItemsAction` lo hace, pero `registrarEntradaMercancia` podría no | Sin cambios |
+| 14 | **Intercompany desconectado** de descargo automático | Items intercompany no generan InventoryMovement en el negocio proveedor | Sin cambios |
 
-### Gaps de UX
+### 16.4 Gaps de UX
 
-| # | Gap | Detalle |
-|---|-----|---------|
-| 15 | **POSConfig mixto** BD + localStorage | `stockValidationEnabled` en BD, el resto en localStorage — difícil administrar centralizadamente |
-| 16 | **Páginas legacy** bajo `/dashboard/inventario/` sin registro en module-registry | `historial`, `importar`, `compras` existen como páginas pero no como módulos independientes |
-| 17 | **Mobile UX**: combobox difícil de usar en móvil | Estrategia propuesta: drawer desde abajo en `<640px`, cards apiladas en vez de tablas, botones `min-h-[44px]`, `inputMode="decimal"` en inputs numéricos |
+| # | Gap | Detalle | Estado |
+|---|-----|---------|--------|
+| 15 | **POSConfig mixto** BD + localStorage | `stockValidationEnabled` en BD, el resto en localStorage — difícil administrar centralizadamente | Sin cambios |
+| 16 | **Páginas legacy** bajo `/dashboard/inventario/` sin registro en module-registry | `historial`, `importar`, `compras` existen como páginas pero no como módulos independientes | Sin cambios |
+| 17 | **Mobile UX**: combobox difícil de usar en móvil | Estrategia propuesta: drawer desde abajo en `<640px`, cards apiladas en vez de tablas, botones `min-h-[44px]`, `inputMode="decimal"` en inputs numéricos | Sin cambios |
+
+---
+
+### 16.5 Hallazgos Nuevos — Auditoría Funcional 2026-04-17
+
+22 fallas encontradas: **5 CRÍTICA · 7 ALTA · 7 MEDIA · 3 BAJA** — **17 corregidas el 2026-04-17**
+
+#### CRÍTICAS
+
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-001 | ✅ CORREGIDO | Auth | `src/lib/auth.ts:5` | JWT secret fallback hardcodeado | Eliminado fallback; lanza error si `JWT_SECRET` no está en `.env` |
+| F-006 | ✅ CORREGIDO | Finanzas | `finance.actions.ts:76,221,314,357` | P&L filtraba `status:'COMPLETED'`; POS crea `CONFIRMED` → $0 | Cambiado a `status:{notIn:['CANCELLED']}` en los 4 queries |
+| F-007 | ✅ CORREGIDO | Inventario | `inventory.service.ts:10-12` | `new PrismaClient()` fuera del singleton | Reemplazado por `import { prisma } from '@/lib/prisma'` |
+| F-013 | ✅ CORREGIDO | POS/Finanzas | `pos.actions.ts` | `costPerUnit`/`costTotal` nunca populados → COGS = $0 | Pre-fetch de `MenuItem.cost`; ambos flujos (DIRECT y TAB) corregidos |
+| F-014 | ✅ CORREGIDO | Cocina | `api/kitchen/orders/route.ts:15,72` | GET y PATCH sin auth | `getSession()` agregado en ambos handlers + whitelist de estados válidos en PATCH |
+
+#### ALTAS
+
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-008 | ✅ CORREGIDO | Inventario | `inventory.service.ts:279-290` | `registerSale` usaba `update` → P2025 si no existe ubicación | Cambiado a `upsert` |
+| F-009 | ✅ CORREGIDO | POS Tabs | `pos.actions.ts` | `autoSplitEqualAction` permitía re-split con subs PAID → ítems duplicados | Guard: retorna error si `paidSubs.length > 0` |
+| F-010 | ✅ CORREGIDO | POS Tabs | `pos.actions.ts` | `paySubAccountAction` deducía `sub.total` (con 10%) de `balanceDue` (solo comida) | Cambiado a `sub.subtotal` para mantener aritmética del balance correcta |
+| F-011 | ✅ CORREGIDO | Ventas | `sales.actions.ts:615` | `voidSalesOrderAction` sin `logAudit` | `logAudit` con action `VOID`, metadata de orden y razón |
+| F-012 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:197-200` | `deleteInventoryItemAction` usaba `isActive:false` (sin soft delete completo) | Usa `softDelete()` helper + `logAudit` |
+| F-015 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:161` | `updateInventoryItemAction` sin `getSession()` | `getSession()` + verificación rol OWNER/ADMIN_MANAGER/OPS_MANAGER |
+| F-016 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:211` | `getInventoryHistoryAction` sin auth | `getSession()` agregado; retorna `[]` si no autenticado |
+
+#### MEDIAS
+
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-002 | ✅ CORREGIDO | Auth | `auth.actions.ts:45-80` | `loginAction` sin `logAudit` | `logAudit` en login exitoso y fallido |
+| F-003 | ⏳ PENDIENTE | Ventas | `sales.actions.ts:124,267,440` | Service charge detectado por string frágil | Requiere refactor de schema (almacenar flag boolean en `PaymentSplit`) |
+| F-004 | ⏳ PENDIENTE | POS | `pos.actions.ts:265-266` | Delivery fees hardcodeados en 2 archivos | Requiere `SystemConfig` CRUD en Panel Admin (P2 del roadmap) |
+| F-005 | ✅ CORREGIDO | POS | `pos.actions.ts:2073-2090` | 4× `console.log` de debug en `getDailyPickupCountAction` | Eliminados los 4 `console.log` |
+| F-017 | ✅ CORREGIDO | Auth | `auth.actions.ts:45-60` | Mensajes distintos revelan existencia de usuario | Unificado a `'Credenciales inválidas'` en ambos casos |
+| F-018 | ✅ CORREGIDO | Finanzas | `finance.actions.ts:63` | OPS_MANAGER excluido de P&L | Agregado a roles permitidos en `getFinancialSummaryAction` |
+| F-019 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:21-23` | SKU con `COUNT+1` → race condition | SKU generado desde `item.id` post-creación (garantía de unicidad sin lock) |
+
+#### BAJAS
+
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-020 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:89` | `console.log` de receta stub | Eliminado |
+| F-021 | ⏳ PENDIENTE | POS | `pos.actions.ts` | `SalesOrder` nunca transiciona de CONFIRMED a COMPLETED | Requiere definir ciclo de vida completo (fuera de scope inmediato) |
+| F-022 | ⏳ PENDIENTE | Ventas | `sales.actions.ts:~737` | Z-Report incluye CONFIRMED sin documentar intención | Documentación / comentario en código |
+
+#### Cobertura de AuditLog (estado post-correcciones 2026-04-17)
+
+`logAudit` ahora usado en **5 archivos** (+2 vs. estado inicial):
+- `cash-register.actions.ts` ✅
+- `account-payable.actions.ts` ✅
+- `expense.actions.ts` ✅
+- `auth.actions.ts` ✅ ← **NUEVO** (login/login-fallido)
+- `sales.actions.ts` ✅ ← **NUEVO** (void de ventas)
+- `inventory.actions.ts` ✅ ← **NUEVO** (delete + implícito en softDelete)
+- Producción, RRHH, compras, recetas — aún sin cobertura
 
 ---
 

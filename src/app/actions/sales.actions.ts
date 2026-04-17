@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { getCaracasDayRange } from '@/lib/datetime';
+import { logAudit } from '@/lib/audit-log';
 
 export interface SalesFilter {
     startDate?: Date;
@@ -612,6 +613,23 @@ export async function voidSalesOrderAction(params: {
                 voidedById: params.authorizedById !== 'demo-master-id' ? params.authorizedById : undefined,
                 voidReason: `[${params.authorizedByName}] ${params.voidReason}`
             }
+        });
+
+        await logAudit({
+            userId: session.id,
+            userName: `${session.firstName} ${session.lastName}`,
+            userRole: session.role,
+            action: 'VOID',
+            entityType: 'SalesOrder',
+            entityId: params.orderId,
+            description: `Orden ${order.orderNumber} anulada. Razón: ${params.voidReason}`,
+            module: 'POS',
+            metadata: {
+                orderNumber: order.orderNumber,
+                total: order.total,
+                authorizedBy: params.authorizedByName,
+                voidReason: params.voidReason,
+            },
         });
 
         revalidatePath('/dashboard/sales');

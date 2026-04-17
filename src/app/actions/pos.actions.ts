@@ -741,6 +741,16 @@ export async function createSalesOrderAction(
             finalNotes = finalNotes ? `${finalNotes} | ${discountReason}` : discountReason;
         }
 
+        // Fetch menu item costs for COGS tracking on each SalesOrderItem
+        const menuItemIds = data.items.map((i) => i.menuItemId);
+        const menuItemCosts = await prisma.menuItem.findMany({
+            where: { id: { in: menuItemIds } },
+            select: { id: true, cost: true },
+        });
+        const costMap = new Map<string, number>(
+            menuItemCosts.map((m) => [m.id, m.cost ?? 0] as [string, number])
+        );
+
         let newOrder;
         for (let attempt = 0; attempt < 10; attempt++) {
             try {
@@ -786,21 +796,26 @@ export async function createSalesOrderAction(
                         areaId: areaId,
 
                         items: {
-                            create: data.items.map(item => ({
-                                menuItemId: item.menuItemId,
-                                itemName: item.name,
-                                quantity: item.quantity,
-                                unitPrice: item.unitPrice,
-                                lineTotal: item.lineTotal,
-                                notes: item.notes,
-                                modifiers: {
-                                    create: item.modifiers?.map(m => ({
-                                        name: m.name,
-                                        priceAdjustment: m.priceAdjustment,
-                                        modifierId: m.modifierId
-                                    }))
-                                }
-                            }))
+                            create: data.items.map(item => {
+                                const unitCost = costMap.get(item.menuItemId) ?? 0;
+                                return {
+                                    menuItemId: item.menuItemId,
+                                    itemName: item.name,
+                                    quantity: item.quantity,
+                                    unitPrice: item.unitPrice,
+                                    lineTotal: item.lineTotal,
+                                    notes: item.notes,
+                                    costPerUnit: unitCost,
+                                    costTotal: unitCost * item.quantity,
+                                    modifiers: {
+                                        create: item.modifiers?.map(m => ({
+                                            name: m.name,
+                                            priceAdjustment: m.priceAdjustment,
+                                            modifierId: m.modifierId
+                                        }))
+                                    }
+                                };
+                            })
                         }
                     },
                     include: { items: { include: { modifiers: true } } }
@@ -1078,7 +1093,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
 
         const menuItemIds = Array.from(new Set(data.items.map(item => item.menuItemId)));
         const menuItems = await getMenuItemMetadata(menuItemIds);
-        const menuMap = new Map(menuItems.map(item => [item.id, item]));
+        const menuMap = new Map<string, any>(menuItems.map(item => [item.id, item]));
 
         // Stock validation — controlled via SystemConfig 'pos_stock_validation_enabled'
         const stockValidation = await getStockValidationEnabled();
@@ -1138,21 +1153,26 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     notes: data.notes,
                     createdById: session.activeCashierId ?? session.id,
                     items: {
-                        create: data.items.map(item => ({
-                            menuItemId: item.menuItemId,
-                            itemName: item.name,
-                            quantity: item.quantity,
-                            unitPrice: item.unitPrice,
-                            lineTotal: item.lineTotal,
-                            notes: item.notes,
-                            modifiers: {
-                                create: item.modifiers?.map(modifier => ({
-                                    modifierId: modifier.modifierId,
-                                    name: modifier.name,
-                                    priceAdjustment: modifier.priceAdjustment
-                                }))
-                            }
-                        }))
+                        create: data.items.map(item => {
+                            const unitCost = menuMap.get(item.menuItemId)?.cost ?? 0;
+                            return {
+                                menuItemId: item.menuItemId,
+                                itemName: item.name,
+                                quantity: item.quantity,
+                                unitPrice: item.unitPrice,
+                                lineTotal: item.lineTotal,
+                                notes: item.notes,
+                                costPerUnit: unitCost,
+                                costTotal: unitCost * item.quantity,
+                                modifiers: {
+                                    create: item.modifiers?.map(modifier => ({
+                                        modifierId: modifier.modifierId,
+                                        name: modifier.name,
+                                        priceAdjustment: modifier.priceAdjustment
+                                    }))
+                                }
+                            };
+                        })
                     }
                 },
                 include: {
@@ -1781,6 +1801,14 @@ export async function autoSplitEqualAction(data: {
             return { success: false, message: 'Cuenta no disponible' };
         }
 
+        const paidSubs = tab.subAccounts.filter((s) => s.status === 'PAID');
+        if (paidSubs.length > 0) {
+            return {
+                success: false,
+                message: 'No se puede redistribuir mientras existan subcuentas ya pagadas',
+            };
+        }
+
         await prisma.$transaction(async (tx) => {
             // Ensure exactly `count` OPEN subcuentas exist
             const openSubs = tab.subAccounts.filter((s) => s.status === 'OPEN');
@@ -1923,8 +1951,10 @@ export async function paySubAccountAction(data: {
                 },
             });
 
-            // Update OpenTab: deduct from balanceDue
-            const newBalance = Math.max(0, openTab.balanceDue - sub.total);
+            // Update OpenTab: deduct only the food subtotal from balanceDue.
+            // balanceDue tracks food totals (no service charge); service charge is
+            // collected from the customer but tracked separately via totalServiceCharge.
+            const newBalance = Math.max(0, openTab.balanceDue - sub.subtotal);
 
             // Tab closes when all subcuentas are PAID AND balance is 0
             const allSubsPaid = openTab.subAccounts.every(
@@ -2069,10 +2099,6 @@ export async function getDailyPickupCountAction(
             select: { notes: true },
         });
 
-        // DEBUG: Log incoming tab numbers from memory
-        console.log('[PK] openTabNumbers recibidos:', openTabNumbers);
-        console.log('[PK] Órdenes en BD encontradas:', orders.map(o => o.notes));
-
         // Extraer números PK de los notes (patrón "PK-NN")
         const usedNums = new Set<number>();
         for (const o of orders) {
@@ -2086,14 +2112,9 @@ export async function getDailyPickupCountAction(
             if (m) usedNums.add(parseInt(m[1], 10));
         }
 
-        // DEBUG: Log combined set before gap search
-        console.log('[PK] usedNums (BD + memoria):', Array.from(usedNums).sort((a, b) => a - b));
-
         // Encontrar el menor entero positivo no usado (primer hueco)
         let next = 1;
         while (usedNums.has(next)) next++;
-
-        console.log('[PK] nextNumber calculado:', `PK-${next.toString().padStart(2, '0')}`);
         return { success: true, nextNumber: `PK-${next.toString().padStart(2, '0')}` };
     } catch (error) {
         console.error('Error buscando siguiente número PK del día:', error);

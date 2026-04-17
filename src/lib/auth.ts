@@ -2,7 +2,8 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'shanklish-super-secret-key-2024';
+const SECRET_KEY = process.env.JWT_SECRET;
+if (!SECRET_KEY) throw new Error('JWT_SECRET environment variable is required');
 const key = new TextEncoder().encode(SECRET_KEY);
 
 export interface SessionPayload {

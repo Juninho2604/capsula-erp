@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,11 @@ const BAR_CATEGORIES = ['Bebidas'];
 // ?station=kitchen (default) → excluye Bebidas
 // ?station=bar              → solo Bebidas
 export async function GET(request: NextRequest) {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     try {
         const { searchParams } = new URL(request.url);
         const station = searchParams.get('station') ?? 'kitchen'; // 'kitchen' | 'bar'
@@ -69,14 +75,25 @@ export async function GET(request: NextRequest) {
     }
 }
 
+const ALLOWED_KITCHEN_STATUSES = ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED'] as const;
+
 // PATCH: Actualizar estado de orden
 export async function PATCH(request: NextRequest) {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     try {
         const body = await request.json();
         const { orderId, status } = body;
 
         if (!orderId || !status) {
             return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
+        }
+
+        if (!ALLOWED_KITCHEN_STATUSES.includes(status)) {
+            return NextResponse.json({ error: 'Estado no válido' }, { status: 400 });
         }
 
         const order = await prisma.salesOrder.update({
