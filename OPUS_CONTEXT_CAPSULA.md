@@ -21,6 +21,7 @@
 | 2026-04-16 | 3da689e | Dashboard — widgets financieros interactivos + eliminar botón Nueva Receta del header |
 | 2026-04-17 | audit   | Auditoría funcional — 22 fallas encontradas (5 CRÍTICA, 7 ALTA, 7 MEDIA, 3 BAJA) |
 | 2026-04-17 | d30941e | Fix 17/22 fallas del audit: JWT, P&L status, singleton Prisma, COGS, kitchen auth, subcuentas, logAudit, softDelete, SKU |
+| 2026-04-17 | aa969a6 | feat(pos): waiter PIN identification, table transfer, show bill — Fases 2-5 del sistema de mesoneros |
 
 ---
 
@@ -70,7 +71,7 @@ capsula-erp/
 │   │   └── login/                 # Página de login
 │   ├── components/
 │   │   ├── layout/                # Navbar, Sidebar, ThemeToggle, NotificationBell, HelpPanel
-│   │   ├── pos/                   # 6 componentes POS especializados
+│   │   ├── pos/                   # 9 componentes POS especializados
 │   │   ├── ui/                    # 7 componentes UI base (Card, button, combobox, dialog...)
 │   │   ├── users/                 # ChangePasswordDialog
 │   │   └── *.tsx                  # 2 parsers WhatsApp (compras + órdenes)
@@ -164,7 +165,7 @@ capsula-erp/
 | **SalesOrderItem** | orderId, menuItemId, itemName (snapshot), unitPrice, quantity, lineTotal, costPerUnit, marginPerUnit | Línea de venta con snapshot de precio y margen |
 | **SalesOrderItemModifier** | orderItemId, modifierId, name (snapshot), priceAdjustment | Modificador aplicado en la venta |
 | **SalesOrderPayment** | salesOrderId, method, amountUSD, amountBS, exchangeRate, reference | Línea de pago (para pagos mixtos) |
-| **OpenTab** | tabCode (unique), branchId, serviceZoneId, tableOrStationId, status (OPEN/PARTIALLY_PAID/CLOSED), runningTotal, balanceDue, totalServiceCharge, totalTip, waiterLabel | Mesa/tab abierta |
+| **OpenTab** | tabCode (unique), branchId, serviceZoneId, tableOrStationId, status (OPEN/PARTIALLY_PAID/CLOSED), runningTotal, balanceDue, totalServiceCharge, totalTip, waiterLabel, waiterProfileId? (FK→Waiter) | Mesa/tab abierta. waiterProfileId vincula al Waiter que atiende la mesa |
 | **OpenTabOrder** | openTabId + salesOrderId (unique) | Vincula órdenes con tab abierto |
 | **PaymentSplit** | openTabId, salesOrderId, splitLabel, splitType, paymentMethod, status, serviceChargeAmount, tipAmount, total | División de cuenta (pago parcial por persona) |
 | **InvoiceCounter** | channel (unique), lastValue | Correlativo global por canal. Nunca se resetea |
@@ -175,7 +176,7 @@ capsula-erp/
 |--------|-------------|-----------|
 | **ServiceZone** | branchId + name (unique), zoneType (DINING/BAR/TERRACE/VIP), sortOrder | Zona de servicio del local |
 | **TableOrStation** | branchId + code (unique), serviceZoneId, stationType (TABLE/BAR_SEAT/VIP_ROOM), capacity, currentStatus | Mesa o estación física |
-| **Waiter** | branchId, firstName, lastName, isActive | Mesonero del restaurante |
+| **Waiter** | branchId, firstName, lastName, pin?, isCaptain, isActive | Mesonero del restaurante. PIN PBKDF2 para identificación en POS. isCaptain habilita transferencia de mesas |
 
 ### 2.8 Compras (4 modelos)
 
@@ -616,12 +617,15 @@ getModulesBySection(userRole, enabledIds?, userAllowed?)  → { operations, sale
 
 - **Ruta**: `/dashboard/mesoneros`
 - **Página**: `src/app/dashboard/mesoneros/page.tsx` — Client Component
-- **Actions**: `waiter.actions.ts` → 6 funciones:
+- **Actions**: `waiter.actions.ts` → 9 funciones:
   - `getWaitersAction()` / `getActiveWaitersAction()`
   - `createWaiterAction(data)` / `updateWaiterAction(id, data)`
   - `toggleWaiterActiveAction(id, isActive)` / `deleteWaiterAction(id)`
-- **Modelos**: Waiter, Branch
-- **Conexiones**: → POS Restaurante (asignar mesonero a OpenTab vía `waiterLabel`)
+  - `getActiveWaitersForBranchAction()` — lista con `hasPin` e `isCaptain` para pantalla de identificación
+  - `validateWaiterPinAction(waiterId, pin)` — valida PIN PBKDF2 del mesonero
+  - `transferTableAction({openTabId, toWaiterId, reason, authPin})` — transfiere mesa con PIN de capitán/gerente
+- **Modelos**: Waiter (con pin?, isCaptain), Branch
+- **Conexiones**: → POS Mesonero (identificación PIN, asignación vía `waiterProfileId` en OpenTab)
 - **Estado**: Funcional
 
 ### 5.11 Recetas
@@ -844,16 +848,26 @@ Proteínas ──→ InventoryMovement (salida source, entrada subproductos) ─
 - **Estado**: Funcional
 - **Valores hardcodeados** (detallados en Sección 11)
 
-### 6.2 POS Mesero
+### 6.2 POS Mesero (con sistema PIN — Fases 2-5)
 
 - **Ruta**: `/dashboard/pos/mesero`
-- **Página**: `src/app/dashboard/pos/mesero/page.tsx` — Client Component
-- **Actions**: `pos.actions.ts` (subset: solo apertura de tab y agregar items, sin cobro)
-- **Modelos**: OpenTab, SalesOrder, SalesOrderItem, MenuItem
-- **Lógica**: Vista simplificada del POS Restaurante. Mesonero toma pedido por mesa, agrega items, envía a cocina. **No tiene acceso a cobro ni cierre de mesa.**
-- **Conexiones**: → OpenTab (abre/agrega items) → SalesOrder (crea con kitchenStatus: SENT)
+- **Página**: `src/app/dashboard/pos/mesero/page.tsx` — Client Component (reescrito completo)
+- **Actions**: `pos.actions.ts` (openTab, addItems, removeItem) + `waiter.actions.ts` (getActiveWaitersForBranch, validateWaiterPin, transferTable)
+- **Modelos**: OpenTab (con waiterProfileId FK→Waiter), SalesOrder, SalesOrderItem, MenuItem, Waiter
+- **Componentes**: `WaiterIdentification`, `TableTransferModal`, `ShowBillModal`
+- **Lógica**:
+  1. **Gate de identificación**: si `sessionStorage.activeWaiter` no existe, muestra `WaiterIdentification` (avatares + teclado numérico PIN 4-6 dígitos)
+  2. **Topbar**: avatar con iniciales, nombre, badge ⭐ Capitán si aplica, badge "Sin cobro", botón Salir
+  3. **Grilla de mesas**: color-coded — verde (waiterProfileId = yo), azul (otro mesonero), gris (libre). Leyenda en footer
+  4. **Click mesa libre** → Dialog z-[60] "¿Abrir esta mesa?" → `openTabAction` con `waiterProfileId`
+  5. **Click mesa con tab** → Panel derecho: items con botón −, menú rápido con categorías y búsqueda, subtotal + servicio 10% + total USD
+  6. **Mostrar cuenta** → `ShowBillModal` z-[70] con desglose items, subtotal, servicio 10%, total USD, total cripto (×1.33), total Bs (vía `getExchangeRateValue`)
+  7. **Transferir mesa** (solo capitán) → `TableTransferModal` con select mesonero destino, motivo opcional, PIN autorización
+  8. **Sin botón Cobrar** — mesonero no tiene acceso a cobro ni cierre
+- **Conexiones**: → Waiter (identificación PIN) → OpenTab (abre/agrega items con waiterProfileId) → SalesOrder (crea con kitchenStatus: SENT)
 - **Estado**: Funcional
 - **enabledByDefault**: false (debe habilitarse manualmente)
+- **Seed**: `mesonero@shanklish.com` (CASHIER, allowedModules: `["pos_waiter"]`)
 
 ### 6.3 POS Delivery
 
@@ -1486,6 +1500,9 @@ Todos estos módulos están **deshabilitados por default** (`enabledByDefault: f
 | CashierShiftModal | `components/pos/CashierShiftModal.tsx` | Modal para cambio de cajera (PIN) |
 | BillDenominationInput | `components/pos/BillDenominationInput.tsx` | Entrada de billetes por denominación |
 | CurrencyCalculator | `components/pos/CurrencyCalculator.tsx` | Calculadora de conversión USD↔Bs |
+| WaiterIdentification | `components/pos/WaiterIdentification.tsx` | Pantalla de login mesonero: avatares con iniciales, teclado numérico 3×4, 6 puntos PIN, valida con `validateWaiterPinAction` |
+| TableTransferModal | `components/pos/TableTransferModal.tsx` | Dialog para capitán: transferir mesa a otro mesonero con PIN de autorización |
+| ShowBillModal | `components/pos/ShowBillModal.tsx` | Dialog z-[70]: cuenta al cliente con items, subtotal, servicio 10%, total USD/cripto/Bs |
 
 ### UI Base (7)
 | Componente | Archivo | Propósito |
@@ -2178,7 +2195,9 @@ Existían dos funciones de validación de PIN en `pos.actions.ts`. `validateCash
 |---------|---------|-------|
 | `pos/restaurante/page.tsx` | `validateManagerPinAction` | Cortesía, pago checkout |
 | `pos/delivery/page.tsx` | `validateManagerPinAction` | Descuento / cortesía |
-| `pos/mesero/page.tsx` | `validateManagerPinAction` | Autorización subcuentas |
+| `pos/mesero/page.tsx` | `validateWaiterPinAction` (waiter.actions) | Identificación de mesonero por PIN |
+| `pos/mesero/page.tsx` | `transferTableAction` (waiter.actions) | Transferencia de mesa (PIN capitán/gerente) |
+| `pos/mesero/page.tsx` | `removeItemFromOpenTabAction` | Eliminar item (PIN supervisor) |
 | `dashboard/sales/page.tsx` | `validateManagerPinAction` | **Anulaciones** (corregido) |
 | (solo si aplica) | `validateCashierPinAction` | Registro de sesión cajera |
 
