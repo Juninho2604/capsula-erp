@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { UserRole } from '@/types';
 import { ROLE_INFO } from '@/lib/constants/roles';
-import { updateUserRole, toggleUserStatus, updateUserModules, updateUserPin, updateUserPerms, createUserAction, adminResetPasswordAction } from '@/app/actions/user.actions';
+import { updateUserRole, toggleUserStatus, updateUserModules, updateUserPin, updateUserPerms, createUserAction, adminResetPasswordAction, updateUserNameAction } from '@/app/actions/user.actions';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/auth.store';
 import { PERMISSIONS, hasPermission } from '@/lib/permissions';
@@ -110,6 +110,13 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
         }
     };
 
+    const handleNameSaved = (userId: string, firstName: string, lastName: string, email: string) => {
+        setUsers(users.map(u => u.id === userId ? { ...u, firstName, lastName, email } : u));
+        if (selectedUser?.id === userId) {
+            setSelectedUser(prev => prev ? { ...prev, firstName, lastName, email } : null);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
@@ -185,6 +192,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                             onModulesSaved={handleModulesSaved}
                             onPermsSaved={handlePermsSaved}
                             onPinSaved={handlePinSaved}
+                            onNameSaved={handleNameSaved}
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -256,6 +264,7 @@ interface ModulesPanelProps {
     onModulesSaved: (userId: string, modules: string[] | null) => void;
     onPermsSaved: (userId: string, granted: string[] | null, revoked: string[] | null) => void;
     onPinSaved: (userId: string) => void;
+    onNameSaved: (userId: string, firstName: string, lastName: string, email: string) => void;
 }
 
 const SECTIONS = [
@@ -520,9 +529,43 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
     );
 }
 
-function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isOwner, onRoleChange, onStatusToggle, onModulesSaved, onPermsSaved, onPinSaved }: ModulesPanelProps) {
+function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isOwner, onRoleChange, onStatusToggle, onModulesSaved, onPermsSaved, onPinSaved, onNameSaved }: ModulesPanelProps) {
     const [isPending, startTransition] = useTransition();
     const roleInfo = ROLE_INFO[user.role as UserRole] || { labelEs: user.role, color: '#6b7280' };
+
+    // ── Edición de nombre/apellido/email ──────────────────────────────────────
+    const [editingName, setEditingName] = useState(false);
+    const [editFirstName, setEditFirstName] = useState(user.firstName);
+    const [editLastName, setEditLastName] = useState(user.lastName);
+    const [editEmail, setEditEmail] = useState(user.email);
+    const [nameError, setNameError] = useState('');
+    const [isSavingName, startNameTransition] = useTransition();
+
+    function openNameEdit() {
+        setEditFirstName(user.firstName);
+        setEditLastName(user.lastName);
+        setEditEmail(user.email);
+        setNameError('');
+        setEditingName(true);
+    }
+
+    function handleSaveName() {
+        setNameError('');
+        startNameTransition(async () => {
+            const res = await updateUserNameAction(user.id, {
+                firstName: editFirstName,
+                lastName: editLastName,
+                email: editEmail,
+            });
+            if (res.success) {
+                toast.success(res.message);
+                onNameSaved(user.id, editFirstName.trim(), editLastName.trim(), editEmail.trim().toLowerCase());
+                setEditingName(false);
+            } else {
+                setNameError(res.message);
+            }
+        });
+    }
 
     const accessibleModules = MODULE_REGISTRY
         .filter(m => enabledModuleIds.includes(m.id))
@@ -580,43 +623,113 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
     return (
         <>
             {/* User header */}
-            <div className="px-5 py-4 border-b border-border flex items-center gap-3 shrink-0">
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0">👤</div>
-                <div className="flex-1 min-w-0">
-                    <p className="font-bold text-foreground">{user.firstName} {user.lastName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    <span
-                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase"
-                        style={{ backgroundColor: `${roleInfo.color}20`, color: roleInfo.color }}
-                    >
-                        {roleInfo.labelEs}
-                    </span>
-                    {canManage && (
-                        <select
-                            className="text-xs border border-border rounded-lg px-2 py-1 bg-background text-foreground"
-                            value={user.role}
-                            onChange={e => onRoleChange(user.id, e.target.value)}
-                        >
-                            {Object.keys(ROLE_INFO).map(role => (
-                                <option key={role} value={role}>{ROLE_INFO[role as UserRole].labelEs}</option>
-                            ))}
-                        </select>
-                    )}
-                    {canManage && (
-                        <button
-                            onClick={() => onStatusToggle(user.id, user.isActive)}
-                            className={`text-xs font-semibold px-3 py-1 rounded-full border transition ${
-                                user.isActive
-                                    ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
-                                    : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                            }`}
-                        >
-                            {user.isActive ? 'Desactivar' : 'Activar'}
-                        </button>
-                    )}
-                </div>
+            <div className="px-5 py-4 border-b border-border shrink-0">
+                {editingName ? (
+                    /* ── Modo edición ── */
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Nombre</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={editFirstName}
+                                    onChange={e => setEditFirstName(e.target.value)}
+                                    disabled={isSavingName}
+                                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Apellido</label>
+                                <input
+                                    type="text"
+                                    value={editLastName}
+                                    onChange={e => setEditLastName(e.target.value)}
+                                    disabled={isSavingName}
+                                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Correo electrónico</label>
+                            <input
+                                type="email"
+                                value={editEmail}
+                                onChange={e => setEditEmail(e.target.value)}
+                                disabled={isSavingName}
+                                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50"
+                            />
+                        </div>
+                        {nameError && <p className="text-xs text-red-400 font-bold">{nameError}</p>}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setEditingName(false)}
+                                disabled={isSavingName}
+                                className="flex-1 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50 transition"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveName}
+                                disabled={isSavingName || !editFirstName.trim() || !editLastName.trim()}
+                                className="flex-1 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50 transition"
+                            >
+                                {isSavingName ? 'Guardando…' : 'Guardar'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    /* ── Modo lectura ── */
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0">👤</div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                                <p className="font-bold text-foreground">{user.firstName} {user.lastName}</p>
+                                {canManage && (
+                                    <button
+                                        onClick={openNameEdit}
+                                        title="Editar nombre y correo"
+                                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition text-xs"
+                                    >
+                                        ✏️
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span
+                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase"
+                                style={{ backgroundColor: `${roleInfo.color}20`, color: roleInfo.color }}
+                            >
+                                {roleInfo.labelEs}
+                            </span>
+                            {canManage && (
+                                <select
+                                    className="text-xs border border-border rounded-lg px-2 py-1 bg-background text-foreground"
+                                    value={user.role}
+                                    onChange={e => onRoleChange(user.id, e.target.value)}
+                                >
+                                    {Object.keys(ROLE_INFO).map(role => (
+                                        <option key={role} value={role}>{ROLE_INFO[role as UserRole].labelEs}</option>
+                                    ))}
+                                </select>
+                            )}
+                            {canManage && (
+                                <button
+                                    onClick={() => onStatusToggle(user.id, user.isActive)}
+                                    className={`text-xs font-semibold px-3 py-1 rounded-full border transition ${
+                                        user.isActive
+                                            ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                                            : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                                    }`}
+                                >
+                                    {user.isActive ? 'Desactivar' : 'Activar'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Modules list */}

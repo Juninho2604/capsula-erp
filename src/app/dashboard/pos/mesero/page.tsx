@@ -5,18 +5,23 @@ import {
   addItemsToOpenTabAction,
   getMenuForPOSAction,
   getRestaurantLayoutAction,
-  getUsersForTabAction,
   openTabAction,
   removeItemFromOpenTabAction,
-  validateManagerPinAction,
   type CartItem,
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
+import { getActiveWaitersAction, transferTableAction } from "@/app/actions/waiter.actions";
 import { printKitchenCommand } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
+import {
+  WaiterIdentification,
+  type ActiveWaiter,
+} from "@/components/pos/WaiterIdentification";
+
+const ACTIVE_WAITER_KEY = "pos-mesero-active-waiter";
 
 // ============================================================================
 // TIPOS (igual que restaurante)
@@ -127,7 +132,6 @@ export default function POSMeseroPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [layout, setLayout] = useState<SportBarLayout | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [users, setUsers] = useState<UserSummary[]>([]);
   const [productSearch, setProductSearch] = useState("");
 
   // ── Zone / Table selection ─────────────────────────────────────────────────
@@ -139,7 +143,6 @@ export default function POSMeseroPage() {
   const [openTabName, setOpenTabName] = useState("");
   const [openTabPhone, setOpenTabPhone] = useState("");
   const [openTabGuests, setOpenTabGuests] = useState(2);
-  const [openTabWaiter, setOpenTabWaiter] = useState("");
 
   // ── Cart ──────────────────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -171,8 +174,45 @@ export default function POSMeseroPage() {
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
 
+  // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
+  const [showBillModal, setShowBillModal] = useState(false);
+
+  // ── Transferir mesa (solo capitanes) ──────────────────────────────────────
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferWaiters, setTransferWaiters] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [transferToWaiterId, setTransferToWaiterId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferCaptainPin, setTransferCaptainPin] = useState("");
+  const [transferError, setTransferError] = useState("");
+
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
+
+  // ── Identificación del mesonero ───────────────────────────────────────────
+  const [activeWaiter, setActiveWaiter] = useState<ActiveWaiter | null>(null);
+  const [waiterHydrated, setWaiterHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_WAITER_KEY);
+      if (raw) setActiveWaiter(JSON.parse(raw) as ActiveWaiter);
+    } catch {
+      // ignore
+    }
+    setWaiterHydrated(true);
+  }, []);
+
+  const handleWaiterIdentified = (w: ActiveWaiter) => {
+    sessionStorage.setItem(ACTIVE_WAITER_KEY, JSON.stringify(w));
+    setActiveWaiter(w);
+  };
+
+  const handleWaiterLogout = () => {
+    sessionStorage.removeItem(ACTIVE_WAITER_KEY);
+    setActiveWaiter(null);
+    setCart([]);
+    setSelectedTableId("");
+  };
 
   // ============================================================================
   // DATA LOADING
@@ -182,10 +222,9 @@ export default function POSMeseroPage() {
     setIsLoading(true);
     setLayoutError("");
     try {
-      const [menuResult, layoutResult, usersResult, rate] = await Promise.all([
+      const [menuResult, layoutResult, rate] = await Promise.all([
         getMenuForPOSAction(),
         getRestaurantLayoutAction(),
-        getUsersForTabAction(),
         getExchangeRateValue(),
       ]);
       if (menuResult.success && menuResult.data) {
@@ -198,9 +237,6 @@ export default function POSMeseroPage() {
         setSelectedZoneId((prev) => prev || nextLayout.serviceZones[0]?.id || "");
       } else if (!layoutResult.success) {
         setLayoutError(layoutResult.message || "Error cargando mesas");
-      }
-      if (usersResult.success && usersResult.data) {
-        setUsers(usersResult.data);
       }
       setExchangeRate(rate);
     } finally {
@@ -246,6 +282,7 @@ export default function POSMeseroPage() {
 
   const handleOpenTab = async () => {
     if (!selectedTable) return;
+    if (!activeWaiter) { toast.error("Identifícate con tu PIN antes de abrir una cuenta"); return; }
     if (!openTabName.trim()) { toast.error("El nombre del cliente es obligatorio"); return; }
     if (!openTabPhone.trim()) { toast.error("El teléfono del cliente es obligatorio"); return; }
     setIsProcessing(true);
@@ -255,11 +292,12 @@ export default function POSMeseroPage() {
         customerLabel: openTabName.trim(),
         customerPhone: openTabPhone.trim(),
         guestCount: openTabGuests,
-        waiterLabel: openTabWaiter ? `Mesonero ${openTabWaiter}` : undefined,
+        waiterLabel: `${activeWaiter.firstName} ${activeWaiter.lastName}`,
+        waiterProfileId: activeWaiter.id,
       });
       if (!result.success) { toast.error(result.message); return; }
       setShowOpenTabModal(false);
-      setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2); setOpenTabWaiter("");
+      setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2);
       await loadData();
     } finally {
       setIsProcessing(false);
@@ -339,9 +377,14 @@ export default function POSMeseroPage() {
 
   const handleSendToTab = async () => {
     if (!activeTab || cart.length === 0) return;
+    if (!activeWaiter) { toast.error("Identifícate con tu PIN antes de enviar a cocina"); return; }
     setIsProcessing(true);
     try {
-      const result = await addItemsToOpenTabAction({ openTabId: activeTab.id, items: cart });
+      const result = await addItemsToOpenTabAction({
+        openTabId: activeTab.id,
+        items: cart,
+        waiterProfileId: activeWaiter.id,
+      });
       if (!result.success) { toast.error(result.message); return; }
       if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
         printKitchenCommand({
@@ -383,6 +426,7 @@ export default function POSMeseroPage() {
         itemId: removeTarget.itemId,
         cashierPin: removePin,
         justification: removeJustification,
+        waiterProfileId: activeWaiter?.id,
       });
       if (!result.success) { setRemoveError(result.message); return; }
       setShowRemoveModal(false);
@@ -393,10 +437,49 @@ export default function POSMeseroPage() {
   };
 
   // ============================================================================
+  // TRANSFERIR MESA (solo capitanes)
+  // ============================================================================
+
+  const openTransferModal = async () => {
+    if (!activeWaiter || !activeTab) return;
+    setTransferToWaiterId("");
+    setTransferReason("");
+    setTransferCaptainPin("");
+    setTransferError("");
+    const res = await getActiveWaitersAction();
+    if (res.success) {
+      setTransferWaiters((res.data as { id: string; firstName: string; lastName: string }[]).filter((w) => w.id !== activeWaiter.id));
+    }
+    setShowTransferModal(true);
+  };
+
+  const handleTransfer = async () => {
+    if (!activeWaiter || !activeTab) return;
+    if (!transferToWaiterId) { setTransferError("Selecciona el mesonero destino"); return; }
+    if (!transferCaptainPin.trim()) { setTransferError("Ingresa tu PIN de capitán"); return; }
+    setIsProcessing(true); setTransferError("");
+    try {
+      const result = await transferTableAction({
+        openTabId: activeTab.id,
+        fromWaiterId: activeWaiter.id,
+        toWaiterId: transferToWaiterId,
+        captainPin: transferCaptainPin,
+        reason: transferReason.trim() || undefined,
+      });
+      if (!result.success) { setTransferError(result.message); return; }
+      toast.success(result.message);
+      setShowTransferModal(false);
+      await loadData();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ============================================================================
   // RENDER
   // ============================================================================
 
-  if (isLoading) {
+  if (isLoading || !waiterHydrated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -405,6 +488,10 @@ export default function POSMeseroPage() {
         </div>
       </div>
     );
+  }
+
+  if (!activeWaiter) {
+    return <WaiterIdentification onIdentified={handleWaiterIdentified} />;
   }
 
   return (
@@ -427,6 +514,23 @@ export default function POSMeseroPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Mesonero identificado */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+            <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-xs">
+              {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
+            </span>
+            <div className="text-[10px] leading-tight">
+              <div className="font-black text-emerald-300 uppercase tracking-wider">{activeWaiter.firstName}</div>
+              <div className="text-[9px] text-muted-foreground">Mesonero activo</div>
+            </div>
+          </div>
+          <button
+            onClick={handleWaiterLogout}
+            className="h-9 px-3 rounded-xl bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-muted-foreground hover:text-red-400 hover:border-red-500/30 transition-all uppercase tracking-widest"
+            title="Cambiar mesonero"
+          >
+            Salir
+          </button>
           <button
             onClick={loadData}
             className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
@@ -434,7 +538,7 @@ export default function POSMeseroPage() {
           >
             🔄
           </button>
-          <div className="px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+          <div className="hidden md:block px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
@@ -483,7 +587,13 @@ export default function POSMeseroPage() {
                     key={table.id}
                     onClick={() => {
                       setSelectedTableId(table.id);
-                      if (window.innerWidth < 1024) setMobileTab("menu");
+                      if (!tab) {
+                        // Mesa libre → abrir modal de cuenta directamente
+                        setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2);
+                        setShowOpenTabModal(true);
+                      } else if (window.innerWidth < 1024) {
+                        setMobileTab("account");
+                      }
                     }}
                     className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
                       isSelected
@@ -510,28 +620,17 @@ export default function POSMeseroPage() {
             </div>
           </div>
 
-          {/* Selected table info */}
-          {selectedTable && (
-            <div className="border-t border-border p-3 bg-card">
-              {!activeTab ? (
-                <button
-                  onClick={() => setShowOpenTabModal(true)}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition active:scale-95"
-                >
-                  + Abrir cuenta en {selectedTable.name}
-                </button>
-              ) : (
-                <div className="space-y-1 text-xs">
-                  <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
-                  {activeTab.customerPhone && (
-                    <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
-                  )}
-                  <div className="text-muted-foreground">
-                    Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
-                    <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
-                  </div>
-                </div>
+          {/* Info de mesa ocupada seleccionada */}
+          {selectedTable && activeTab && (
+            <div className="border-t border-border p-3 bg-card space-y-1 text-xs shrink-0">
+              <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
+              {activeTab.customerPhone && (
+                <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
               )}
+              <div className="text-muted-foreground">
+                Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
+                <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
+              </div>
             </div>
           )}
         </aside>
@@ -755,12 +854,29 @@ export default function POSMeseroPage() {
                   <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
                     El cobro lo gestiona el cajero
                   </p>
+                  {/* Mostrar cuenta al cliente */}
                   <button
-                    onClick={() => setSubAccountMode(true)}
-                    className="mt-3 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                    onClick={() => setShowBillModal(true)}
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
                   >
-                    ÷ Dividir cuenta (subcuentas)
+                    🧾 Mostrar cuenta al cliente
                   </button>
+                  {activeWaiter?.isCaptain && (
+                    <>
+                      <button
+                        onClick={() => setSubAccountMode(true)}
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                      >
+                        ÷ Dividir cuenta (subcuentas)
+                      </button>
+                      <button
+                        onClick={openTransferModal}
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-sky-500/20 hover:text-sky-400 text-foreground/70 transition"
+                      >
+                        ↔ Transferir mesa
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -794,10 +910,84 @@ export default function POSMeseroPage() {
         })}
       </nav>
 
+      {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
+      {showBillModal && activeTab && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-sm rounded-3xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <h3 className="font-black text-base text-foreground">Cuenta</h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                  {selectedTable?.name} · {activeTab.customerLabel}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBillModal(false)}
+                className="h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
+              >
+                ×
+              </button>
+            </div>
+            {/* Items */}
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
+              {activeTab.orders.flatMap(o => o.items).map((item, i) => (
+                <div key={i} className="flex justify-between items-baseline text-sm">
+                  <span className="text-foreground/80 font-semibold flex-1 mr-2">
+                    <span className="text-foreground/50 text-xs">×{item.quantity}</span> {item.itemName}
+                  </span>
+                  <span className="font-black tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            {/* Totals */}
+            {(() => {
+              const subtotal = activeTab.orders.reduce((s, o) => s + o.total, 0);
+              const serviceCharge = subtotal * 0.10;
+              const totalUsd = subtotal + serviceCharge;
+              const divisas33 = totalUsd * (1 - 0.33);
+              const totalBs = exchangeRate ? totalUsd * exchangeRate : null;
+              return (
+                <div className="px-5 py-4 border-t border-border space-y-2 shrink-0">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider">Subtotal</span>
+                    <span className="font-black tabular-nums">${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider">Servicio (10%)</span>
+                    <span className="font-black tabular-nums">${serviceCharge.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline border-t border-border pt-2 mt-1">
+                    <span className="text-sm font-black text-foreground uppercase tracking-widest">Total USD</span>
+                    <span className="text-2xl font-black text-emerald-400 tabular-nums">${totalUsd.toFixed(2)}</span>
+                  </div>
+                  <div className="rounded-xl bg-secondary/50 border border-border p-3 space-y-1.5 mt-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground font-bold uppercase tracking-wider">Divisas (33% desc.)</span>
+                      <span className="font-black tabular-nums text-amber-400">${divisas33.toFixed(2)}</span>
+                    </div>
+                    {totalBs !== null && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-muted-foreground font-bold uppercase tracking-wider">
+                          Bs. (Tasa {exchangeRate?.toFixed(2)})
+                        </span>
+                        <span className="font-black tabular-nums text-sky-400">
+                          Bs. {totalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
             <h3 className="font-black text-lg">Abrir cuenta — {selectedTable.name}</h3>
             <div className="space-y-3">
               <input
@@ -822,16 +1012,17 @@ export default function POSMeseroPage() {
                   <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-primary text-white font-black transition hover:opacity-90">+</button>
                 </div>
               </div>
-              <select
-                value={openTabWaiter}
-                onChange={(e) => setOpenTabWaiter(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-emerald-500 focus:outline-none"
-              >
-                <option value="">Mesonero responsable (opcional)</option>
-                {users.filter(u => ["WAITER", "AREA_LEAD"].includes(u.role)).map(u => (
-                  <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                ))}
-              </select>
+              {activeWaiter && (
+                <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs">
+                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black">
+                    {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
+                  </span>
+                  <div>
+                    <div className="font-black text-emerald-300">{activeWaiter.firstName} {activeWaiter.lastName}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Mesonero de la mesa</div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowOpenTabModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
@@ -929,6 +1120,90 @@ export default function POSMeseroPage() {
                 className="capsula-btn capsula-btn-primary flex-[2] py-4 text-sm bg-emerald-600 border-emerald-700 disabled:opacity-40"
               >
                 Agregar al pedido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL: TRANSFERIR MESA (solo capitanes) ══════════════════════ */}
+      {showTransferModal && activeTab && activeWaiter?.isCaptain && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-2xl">↔</div>
+              <div>
+                <h3 className="font-black text-base text-sky-400">Transferir mesa</h3>
+                <p className="text-xs text-muted-foreground">{selectedTable?.name} · {activeTab.customerLabel}</p>
+              </div>
+              <button
+                onClick={() => setShowTransferModal(false)}
+                className="ml-auto h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  Mesonero destino
+                </label>
+                <select
+                  value={transferToWaiterId}
+                  onChange={(e) => setTransferToWaiterId(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                >
+                  <option value="">— Seleccionar mesonero —</option>
+                  {transferWaiters.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.firstName} {w.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  Motivo (opcional)
+                </label>
+                <textarea
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="Ej: Cambio de turno, petición del cliente..."
+                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-sky-500 focus:outline-none resize-none h-16"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  PIN de capitán (confirmación)
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="••••"
+                  value={transferCaptainPin}
+                  onChange={(e) => setTransferCaptainPin(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            {transferError && (
+              <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                {transferError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTransferModal(false)}
+                className="capsula-btn capsula-btn-secondary flex-1 py-3"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleTransfer}
+                disabled={isProcessing || !transferToWaiterId || !transferCaptainPin.trim()}
+                className="flex-[2] py-3 bg-sky-600 hover:bg-sky-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+              >
+                {isProcessing ? "Transfiriendo..." : "↔ Confirmar transferencia"}
               </button>
             </div>
           </div>

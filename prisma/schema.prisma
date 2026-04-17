@@ -864,6 +864,10 @@ model SalesOrder {
   openTabId       String?
   openTab         OpenTab? @relation(fields: [openTabId], references: [id])
 
+  // Mesonero (del Waiter model, identificado por PIN en POS Mesero)
+  waiterProfileId String?
+  waiterProfile   Waiter?  @relation(fields: [waiterProfileId], references: [id])
+
   // Snapshot financiero
   exchangeRateId    String?
   exchangeRate      ExchangeRate? @relation(fields: [exchangeRateId], references: [id])
@@ -1500,13 +1504,39 @@ model Waiter {
   id        String   @id @default(cuid())
   branchId  String
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  firstName String
-  lastName  String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  firstName  String
+  lastName   String
+  pin        String?
+  isActive   Boolean  @default(true)
+  isCaptain  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  openTabs    OpenTab[]
+  salesOrders SalesOrder[]
+  transfersFrom       TableTransfer[] @relation("TransferFrom")
+  transfersTo         TableTransfer[] @relation("TransferTo")
+  transfersAuthorized TableTransfer[] @relation("TransferAuthorizer")
 
   @@index([branchId, isActive])
+}
+
+model TableTransfer {
+  id             String   @id @default(cuid())
+  openTabId      String
+  openTab        OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  fromWaiterId   String
+  fromWaiter     Waiter   @relation("TransferFrom",     fields: [fromWaiterId],   references: [id])
+  toWaiterId     String
+  toWaiter       Waiter   @relation("TransferTo",       fields: [toWaiterId],     references: [id])
+  authorizedById String
+  authorizedBy   Waiter   @relation("TransferAuthorizer", fields: [authorizedById], references: [id])
+  reason         String?
+  transferredAt  DateTime @default(now())
+
+  @@index([openTabId])
+  @@index([fromWaiterId])
+  @@index([toWaiterId])
 }
 
 model ServiceZone {
@@ -1583,6 +1613,8 @@ model OpenTab {
   openedBy        User     @relation("OpenTabOpener", fields: [openedById], references: [id])
   assignedWaiterId String?
   assignedWaiter  User?    @relation("OpenTabAssignee", fields: [assignedWaiterId], references: [id])
+  waiterProfileId String?
+  waiterProfile   Waiter?  @relation(fields: [waiterProfileId], references: [id])
   closedById      String?
   closedBy        User?    @relation("OpenTabCloser", fields: [closedById], references: [id])
 
@@ -1590,6 +1622,7 @@ model OpenTab {
   orderLinks      OpenTabOrder[]
   paymentSplits   PaymentSplit[]
   subAccounts     TabSubAccount[]
+  transfers       TableTransfer[]
 
   // Soft Delete
   deletedAt       DateTime?
