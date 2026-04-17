@@ -173,6 +173,9 @@ export default function POSMeseroPage() {
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
 
+  // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
+  const [showBillModal, setShowBillModal] = useState(false);
+
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
 
@@ -803,9 +806,16 @@ export default function POSMeseroPage() {
                   <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
                     El cobro lo gestiona el cajero
                   </p>
+                  {/* Mostrar cuenta al cliente */}
+                  <button
+                    onClick={() => setShowBillModal(true)}
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
+                  >
+                    🧾 Mostrar cuenta al cliente
+                  </button>
                   <button
                     onClick={() => setSubAccountMode(true)}
-                    className="mt-3 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                    className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
                   >
                     ÷ Dividir cuenta (subcuentas)
                   </button>
@@ -841,6 +851,80 @@ export default function POSMeseroPage() {
           );
         })}
       </nav>
+
+      {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
+      {showBillModal && activeTab && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-sm rounded-3xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <h3 className="font-black text-base text-foreground">Cuenta</h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                  {selectedTable?.name} · {activeTab.customerLabel}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBillModal(false)}
+                className="h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
+              >
+                ×
+              </button>
+            </div>
+            {/* Items */}
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
+              {activeTab.orders.flatMap(o => o.items).map((item, i) => (
+                <div key={i} className="flex justify-between items-baseline text-sm">
+                  <span className="text-foreground/80 font-semibold flex-1 mr-2">
+                    <span className="text-foreground/50 text-xs">×{item.quantity}</span> {item.itemName}
+                  </span>
+                  <span className="font-black tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            {/* Totals */}
+            {(() => {
+              const subtotal = activeTab.orders.reduce((s, o) => s + o.total, 0);
+              const serviceCharge = subtotal * 0.10;
+              const totalUsd = subtotal + serviceCharge;
+              const divisas33 = totalUsd * (1 - 0.33);
+              const totalBs = exchangeRate ? totalUsd * exchangeRate : null;
+              return (
+                <div className="px-5 py-4 border-t border-border space-y-2 shrink-0">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider">Subtotal</span>
+                    <span className="font-black tabular-nums">${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="font-bold uppercase tracking-wider">Servicio (10%)</span>
+                    <span className="font-black tabular-nums">${serviceCharge.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline border-t border-border pt-2 mt-1">
+                    <span className="text-sm font-black text-foreground uppercase tracking-widest">Total USD</span>
+                    <span className="text-2xl font-black text-emerald-400 tabular-nums">${totalUsd.toFixed(2)}</span>
+                  </div>
+                  <div className="rounded-xl bg-secondary/50 border border-border p-3 space-y-1.5 mt-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground font-bold uppercase tracking-wider">Divisas (33% desc.)</span>
+                      <span className="font-black tabular-nums text-amber-400">${divisas33.toFixed(2)}</span>
+                    </div>
+                    {totalBs !== null && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-muted-foreground font-bold uppercase tracking-wider">
+                          Bs. (Tasa {exchangeRate?.toFixed(2)})
+                        </span>
+                        <span className="font-black tabular-nums text-sky-400">
+                          Bs. {totalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
