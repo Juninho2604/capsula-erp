@@ -22,6 +22,7 @@
 | 2026-04-17 | audit   | Auditoría funcional — 22 fallas encontradas (5 CRÍTICA, 7 ALTA, 7 MEDIA, 3 BAJA) |
 | 2026-04-17 | d30941e | Fix 17/22 fallas del audit: JWT, P&L status, singleton Prisma, COGS, kitchen auth, subcuentas, logAudit, softDelete, SKU |
 | 2026-04-17 | aa969a6 | feat(pos): waiter PIN identification, table transfer, show bill — Fases 2-5 del sistema de mesoneros |
+| 2026-04-17 | 7429185 | feat(pos): kitchen cancel command on item removal — printKitchenCommand mode='cancel', comanda ANULAR a cocina |
 
 ---
 
@@ -1462,7 +1463,7 @@ Todos estos módulos están **deshabilitados por default** (`enabledByDefault: f
 | `audit-log.ts` | `writeAuditLog()` — registro forense inmutable |
 | `invoice-counter.ts` | `getNextCorrelativo(channel)` — correlativos atómicos |
 | `pos-settings.ts` | `POSConfig` en localStorage por terminal |
-| `print-command.ts` | Impresión térmica 80mm (comanda cocina + factura) |
+| `print-command.ts` | Impresión térmica 80mm (comanda cocina + factura). `printKitchenCommand(data, station, mode)` — `mode='cancel'` imprime comanda ANULAR |
 | `export-z-report.ts` | Generación Reporte Z a Excel |
 | `export-arqueo-excel.ts` | Exportación arqueo de caja a Excel |
 | `arqueo-excel-utils.ts` | Utilidades para formato de arqueo |
@@ -2773,6 +2774,64 @@ Transformación del dashboard principal de métricas estáticas a vista interact
 - Click en cualquier KPI abre modal con: comparativo hoy vs ayer, badge % cambio coloreado, sparkline ampliado (60px), contexto de negocio en lenguaje llano
 - Resumen Gerencial colapsable muestra salud operativa del día con score automático (verde/amarillo/rojo), lista de issues y positivos, alerta de deudas vencidas
 - Skeleton loading reemplaza carga estática con layout estable
+
+---
+
+### 18.23 Comanda de cancelación a cocina al eliminar ítems (2026-04-17)
+
+#### commit `7429185`
+
+**Archivos**: `src/lib/print-command.ts`, `src/app/dashboard/pos/mesero/page.tsx`, `src/app/dashboard/pos/restaurante/page.tsx`
+
+**Gap resuelto**: `removeItemFromOpenTabAction` borraba el ítem de BD sin notificar a cocina — la comanda impresa seguía en curso y el cocinero seguía preparando el plato cancelado.
+
+**Cambio 1 — `printKitchenCommand` nuevo parámetro `mode`**
+
+```typescript
+export function printKitchenCommand(
+  data: any,
+  station: 'kitchen' | 'bar' = 'kitchen',
+  mode: 'normal' | 'cancel' = 'normal'   // ← nuevo
+)
+```
+
+Cuando `mode === 'cancel'`:
+- **Encabezado**: bloque negro invertido (`background:#000; color:#fff`) con título `── ANULAR ──` (22px) y número de orden como referencia (16px)
+- **Ítems**: `text-decoration: line-through` + prefijo `✕ ` en cada nombre
+- **Footer**: línea adicional `ÍTEM(S) CANCELADO(S) — NO PREPARAR` en caja con borde (`border: 2px solid #000`)
+- **Mecanismo**: mismo iframe oculto del modo normal — no interrumpe la pantalla activa
+
+**Cambio 2 — `mesero/page.tsx`**
+
+- Agrega `import { printKitchenCommand } from "@/lib/print-command"`
+- En `handleRemoveItem`, después de `removeItemFromOpenTabAction` exitoso:
+  ```typescript
+  const cancelOrder = activeTab.orders.find(o => o.id === removeTarget.orderId);
+  const cancelQty = tabItems.find(it => it.id === removeTarget.itemId)?.quantity ?? 1;
+  printKitchenCommand({
+    orderNumber: cancelOrder?.orderNumber ?? activeTab.tabCode,
+    orderType: "RESTAURANT",
+    tableName: selectedTable?.code,
+    waiterLabel: activeWaiter?.firstName,
+    createdAt: new Date(),
+    items: [{ name: removeTarget.itemName, quantity: cancelQty }],
+  }, "kitchen", "cancel");
+  ```
+
+**Cambio 3 — `restaurante/page.tsx`**
+
+- En `handleRemoveItem`, después de `removeItemFromOpenTabAction` exitoso (ya tenía `printKitchenCommand` importado):
+  ```typescript
+  const cancelOrder = activeTab.orders.find(o => o.id === removeTarget.orderId);
+  printKitchenCommand({
+    orderNumber: cancelOrder?.orderNumber ?? activeTab.tabCode,
+    orderType: "RESTAURANT",
+    tableName: selectedTable?.name,
+    waiterLabel: activeTab.waiterLabel ?? undefined,
+    createdAt: new Date(),
+    items: [{ name: removeTarget.itemName, quantity: removeTarget.qty }],
+  }, "kitchen", "cancel");
+  ```
 
 ---
 
