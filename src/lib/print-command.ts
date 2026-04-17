@@ -257,7 +257,7 @@ export function printReceipt(data: ReceiptData) {
  *   --kiosk-printing
  */
 // station: 'kitchen' (default) | 'bar'
-export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kitchen') {
+export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kitchen', mode: 'normal' | 'cancel' = 'normal') {
     const date = new Date(data.createdAt);
     const formattedTime = date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
     const orderNum = data.orderNumber.split('-').pop();
@@ -382,6 +382,35 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
             letter-spacing: 1px;
             margin-top: 4px;
         }
+        .cancel-header-block {
+            background: #000;
+            color: #fff;
+            padding: 8px 4px;
+            margin: 6px 0 4px;
+            text-align: center;
+        }
+        .cancel-title {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+        .cancel-ref {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        .cancel-item-name {
+            text-decoration: line-through;
+        }
+        .cancel-footer {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            border: 2px solid #000;
+            padding: 4px 2px;
+            margin-top: 6px;
+        }
         @media print {
             @page { margin: 0mm 2mm; size: 80mm auto; }
             body { padding: 2mm 2mm 0 2mm; }
@@ -391,7 +420,10 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
 <body>
     <div class="sep">--------------------------------</div>
     <div class="title">${stationLabel}</div>
-    <div class="order-num">#${orderNum}</div>
+    ${mode === 'cancel'
+        ? `<div class="cancel-header-block"><div class="cancel-title">── ANULAR ──</div><div class="cancel-ref">#${orderNum}</div></div>`
+        : `<div class="order-num">#${orderNum}</div>`
+    }
     <div class="order-type">${
         data.orderType === 'DELIVERY'
             ? '🛵 DELIVERY'
@@ -412,7 +444,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     <div class="item">
         <div class="qty-box">${item.quantity}</div>
         <div class="details">
-            <div class="name">${item.name}</div>
+            <div class="name${mode === 'cancel' ? ' cancel-item-name' : ''}">${mode === 'cancel' ? '✕ ' : ''}${item.name}</div>
             ${item.takeaway ? `<div style="font-size:13px;font-weight:900;color:#000;background:#ffe066;display:inline-block;padding:1px 6px;margin:2px 0;border-radius:4px;">🥡 LLEVAR</div>` : ''}
             ${item.modifiers && item.modifiers.length > 0 ? `
                 <div class="mods">+ ${item.modifiers.join('<br>+ ')}</div>
@@ -423,6 +455,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     `).join('')}
 
     <div class="tail">--------------------------------</div>
+    ${mode === 'cancel' ? '<div class="cancel-footer">ÍTEM(S) CANCELADO(S) — NO PREPARAR</div>' : ''}
     <div class="correlativo">${data.orderNumber}</div>
     <br><br><br><br><br><br><br><br>
 </body>

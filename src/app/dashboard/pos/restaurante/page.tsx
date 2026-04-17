@@ -1166,6 +1166,15 @@ export default function POSSportBarPage() {
         return;
       }
       setShowRemoveModal(false);
+      const cancelOrder = activeTab.orders.find(o => o.id === removeTarget.orderId);
+      printKitchenCommand({
+        orderNumber: cancelOrder?.orderNumber ?? activeTab.tabCode,
+        orderType: "RESTAURANT",
+        tableName: selectedTable?.name,
+        waiterLabel: activeTab.waiterLabel ?? undefined,
+        createdAt: new Date(),
+        items: [{ name: removeTarget.itemName, quantity: removeTarget.qty }],
+      }, "kitchen", "cancel");
       await loadData();
     } finally {
       setIsProcessing(false);

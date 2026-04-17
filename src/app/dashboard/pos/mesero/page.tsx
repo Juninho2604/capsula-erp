@@ -10,6 +10,7 @@ import {
   type CartItem,
 } from "@/app/actions/pos.actions";
 import { getActiveWaitersForBranchAction } from "@/app/actions/waiter.actions";
+import { printKitchenCommand } from "@/lib/print-command";
 import { WaiterIdentification } from "@/components/pos/WaiterIdentification";
 import { TableTransferModal } from "@/components/pos/TableTransferModal";
 import { ShowBillModal } from "@/components/pos/ShowBillModal";
@@ -389,6 +390,16 @@ export default function POSMeseroPage() {
         return;
       }
       setShowRemoveModal(false);
+      const cancelOrder = activeTab.orders.find(o => o.id === removeTarget.orderId);
+      const cancelQty = tabItems.find(it => it.id === removeTarget.itemId)?.quantity ?? 1;
+      printKitchenCommand({
+        orderNumber: cancelOrder?.orderNumber ?? activeTab.tabCode,
+        orderType: "RESTAURANT",
+        tableName: selectedTable?.code,
+        waiterLabel: activeWaiter?.firstName,
+        createdAt: new Date(),
+        items: [{ name: removeTarget.itemName, quantity: cancelQty }],
+      }, "kitchen", "cancel");
       toast.success("Item eliminado");
       await loadData();
     } catch {
