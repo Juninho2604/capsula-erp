@@ -15,6 +15,8 @@ interface Waiter {
     firstName: string;
     lastName: string;
     isActive: boolean;
+    isCaptain: boolean;
+    hasPin: boolean;
     createdAt: Date | string;
 }
 
@@ -23,8 +25,12 @@ export default function MesonerosPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingHasPin, setEditingHasPin] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [pin, setPin] = useState('');
+    const [clearPin, setClearPin] = useState(false);
+    const [isCaptain, setIsCaptain] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     const load = async () => {
@@ -38,15 +44,23 @@ export default function MesonerosPage() {
 
     const openCreate = () => {
         setEditingId(null);
+        setEditingHasPin(false);
         setFirstName('');
         setLastName('');
+        setPin('');
+        setClearPin(false);
+        setIsCaptain(false);
         setShowForm(true);
     };
 
     const openEdit = (w: Waiter) => {
         setEditingId(w.id);
+        setEditingHasPin(w.hasPin);
         setFirstName(w.firstName);
         setLastName(w.lastName);
+        setPin('');
+        setClearPin(false);
+        setIsCaptain(w.isCaptain);
         setShowForm(true);
     };
 
@@ -55,11 +69,29 @@ export default function MesonerosPage() {
             toast.error('Nombre y apellido son obligatorios');
             return;
         }
+        if (pin && !/^\d{4,6}$/.test(pin)) {
+            toast.error('El PIN debe tener entre 4 y 6 dígitos numéricos');
+            return;
+        }
         setIsSaving(true);
         try {
-            const res = editingId
-                ? await updateWaiterAction(editingId, { firstName, lastName })
-                : await createWaiterAction({ firstName, lastName });
+            let res;
+            if (editingId) {
+                const pinField = clearPin ? null : (pin ? pin : undefined);
+                res = await updateWaiterAction(editingId, {
+                    firstName,
+                    lastName,
+                    pin: pinField,
+                    isCaptain,
+                });
+            } else {
+                res = await createWaiterAction({
+                    firstName,
+                    lastName,
+                    pin: pin || undefined,
+                    isCaptain,
+                });
+            }
             if (res.success) {
                 toast.success(res.message);
                 setShowForm(false);
@@ -95,6 +127,28 @@ export default function MesonerosPage() {
 
     const active = waiters.filter(w => w.isActive);
     const inactive = waiters.filter(w => !w.isActive);
+
+    const renderBadges = (w: Waiter) => (
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${w.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                {w.isActive ? 'Activo' : 'Inactivo'}
+            </span>
+            {w.hasPin ? (
+                <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    🔒 PIN
+                </span>
+            ) : (
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                    Sin PIN
+                </span>
+            )}
+            {w.isCaptain && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                    ⭐ Capitán
+                </span>
+            )}
+        </div>
+    );
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 animate-in">
@@ -132,13 +186,11 @@ export default function MesonerosPage() {
                     {active.map(w => (
                         <div key={w.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xl dark:bg-amber-900/30">
-                                🧑‍🍽️
+                                {w.isCaptain ? '⭐' : '🧑‍🍽️'}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-900 dark:text-white">{w.firstName} {w.lastName}</p>
-                                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                    Activo
-                                </span>
+                                {renderBadges(w)}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
@@ -174,9 +226,7 @@ export default function MesonerosPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-semibold text-gray-600 dark:text-gray-400">{w.firstName} {w.lastName}</p>
-                                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                            Inactivo
-                                        </span>
+                                        {renderBadges(w)}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <button
@@ -228,10 +278,59 @@ export default function MesonerosPage() {
                                     value={lastName}
                                     onChange={e => setLastName(e.target.value)}
                                     placeholder="Ej: López"
-                                    onKeyDown={e => e.key === 'Enter' && handleSave()}
                                     className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
+
+                            {/* PIN */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">
+                                    PIN <span className="text-gray-400 font-normal">(4-6 dígitos, opcional)</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="\d{4,6}"
+                                    maxLength={6}
+                                    value={pin}
+                                    onChange={e => {
+                                        const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setPin(v);
+                                        if (v) setClearPin(false);
+                                    }}
+                                    disabled={clearPin}
+                                    placeholder={editingHasPin ? '•••• (PIN existente — dejar vacío para no cambiar)' : 'Ej: 1234'}
+                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm tracking-widest focus:border-amber-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-700"
+                                />
+                                {editingId && editingHasPin && (
+                                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                        <input
+                                            type="checkbox"
+                                            checked={clearPin}
+                                            onChange={e => {
+                                                setClearPin(e.target.checked);
+                                                if (e.target.checked) setPin('');
+                                            }}
+                                            className="rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                                        />
+                                        <span>Eliminar PIN actual</span>
+                                    </label>
+                                )}
+                            </div>
+
+                            {/* Capitán toggle */}
+                            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 cursor-pointer hover:bg-amber-50 dark:border-gray-700 dark:hover:bg-amber-900/10">
+                                <input
+                                    type="checkbox"
+                                    checked={isCaptain}
+                                    onChange={e => setIsCaptain(e.target.checked)}
+                                    className="mt-0.5 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                                />
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">⭐ Capitán</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Puede autorizar transferencias de mesa entre mesoneros.</p>
+                                </div>
+                            </label>
                         </div>
                         <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
                             <button

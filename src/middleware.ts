@@ -30,7 +30,15 @@ export async function middleware(request: NextRequest) {
             }
         }
 
-        // B. Auditorías e Importación: Dueños, Gerentes, Auditores
+        // B. Mesoneros: Dueños, Gerentes Admin y Gerentes Operativos
+        if (path.startsWith('/dashboard/mesoneros')) {
+            const allowed = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+            if (!allowed.includes(userRole)) {
+                return NextResponse.redirect(new URL('/dashboard?error=unauthorized_waiters', request.url));
+            }
+        }
+
+        // C. Auditorías e Importación: Dueños, Gerentes, Auditores
         if (path.startsWith('/dashboard/inventario/auditorias') || path.startsWith('/dashboard/inventario/importar')) {
             const allowed = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'];
             if (!allowed.includes(userRole)) {
@@ -38,7 +46,7 @@ export async function middleware(request: NextRequest) {
             }
         }
 
-        // C. Configuración Global
+        // D. Configuración Global
         if (path.startsWith('/dashboard/config')) {
             const allowed = ['OWNER'];
             if (!allowed.includes(userRole)) {
