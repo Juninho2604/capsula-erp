@@ -536,7 +536,13 @@ export default function POSMeseroPage() {
                     key={table.id}
                     onClick={() => {
                       setSelectedTableId(table.id);
-                      if (window.innerWidth < 1024) setMobileTab("menu");
+                      if (!tab) {
+                        // Mesa libre → abrir modal de cuenta directamente
+                        setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2);
+                        setShowOpenTabModal(true);
+                      } else if (window.innerWidth < 1024) {
+                        setMobileTab("account");
+                      }
                     }}
                     className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
                       isSelected
@@ -563,28 +569,17 @@ export default function POSMeseroPage() {
             </div>
           </div>
 
-          {/* Selected table info */}
-          {selectedTable && (
-            <div className="border-t border-border p-3 bg-card">
-              {!activeTab ? (
-                <button
-                  onClick={() => setShowOpenTabModal(true)}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition active:scale-95"
-                >
-                  + Abrir cuenta en {selectedTable.name}
-                </button>
-              ) : (
-                <div className="space-y-1 text-xs">
-                  <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
-                  {activeTab.customerPhone && (
-                    <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
-                  )}
-                  <div className="text-muted-foreground">
-                    Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
-                    <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
-                  </div>
-                </div>
+          {/* Info de mesa ocupada seleccionada */}
+          {selectedTable && activeTab && (
+            <div className="border-t border-border p-3 bg-card space-y-1 text-xs shrink-0">
+              <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
+              {activeTab.customerPhone && (
+                <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
               )}
+              <div className="text-muted-foreground">
+                Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
+                <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
+              </div>
             </div>
           )}
         </aside>
@@ -849,8 +844,8 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
             <h3 className="font-black text-lg">Abrir cuenta — {selectedTable.name}</h3>
             <div className="space-y-3">
               <input
