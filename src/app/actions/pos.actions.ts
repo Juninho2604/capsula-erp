@@ -76,6 +76,7 @@ export interface OpenTabInput {
     guestCount?: number;
     assignedWaiterId?: string;
     waiterLabel?: string;
+    waiterProfileId?: string;
     notes?: string;
 }
 
@@ -221,6 +222,7 @@ async function ensureRestaurantSetup() {
                                 include: {
                                     openedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
                                     closedBy: { select: { id: true, firstName: true, lastName: true } },
+                                    waiterProfile: { select: { id: true, firstName: true, lastName: true, isCaptain: true } },
                                     paymentSplits: true,
                                     orders: {
                                         include: {
@@ -1027,7 +1029,8 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
                     guestCount: data.guestCount || 1,
                     notes: data.notes,
                     openedById: session.id,
-                    waiterLabel: data.waiterLabel || null, // Guardar label del mesonero (ej: "Mesonero 1")
+                    waiterLabel: data.waiterLabel || null,
+                    waiterProfileId: data.waiterProfileId || null,
                 },
                 include: {
                     openedBy: { select: { id: true, firstName: true, lastName: true, role: true } },

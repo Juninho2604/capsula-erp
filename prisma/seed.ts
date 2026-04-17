@@ -191,6 +191,21 @@ async function main() {
     });
     console.log('✅ Costos iniciales creados');
 
+    // 7b. Crear usuario mesonero (POS waiter-only)
+    const mesonero = await prisma.user.upsert({
+        where: { email: 'mesonero@shanklish.com' },
+        update: {},
+        create: {
+            email: 'mesonero@shanklish.com',
+            firstName: 'Mesonero',
+            lastName: 'Demo',
+            role: 'CASHIER',
+            allowedModules: JSON.stringify(['pos_waiter']),
+            passwordHash: 'temp-hash', // En producción usar hashPassword("WaiterTemp2024!")
+        },
+    });
+    console.log('✅ Usuario mesonero creado:', mesonero.email);
+
     // 8. Crear sub-receta (Cuajada)
     const cuajada = await prisma.inventoryItem.upsert({
         where: { sku: 'SUB-CUAJADA-001' },

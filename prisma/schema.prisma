@@ -1502,9 +1502,13 @@ model Waiter {
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   firstName String
   lastName  String
+  pin       String?
+  isCaptain Boolean  @default(false)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  openTabs  OpenTab[] @relation("OpenTabWaiterProfile")
 
   @@index([branchId, isActive])
 }
@@ -1585,6 +1589,8 @@ model OpenTab {
   assignedWaiter  User?    @relation("OpenTabAssignee", fields: [assignedWaiterId], references: [id])
   closedById      String?
   closedBy        User?    @relation("OpenTabCloser", fields: [closedById], references: [id])
+  waiterProfileId String?
+  waiterProfile   Waiter?  @relation("OpenTabWaiterProfile", fields: [waiterProfileId], references: [id])
 
   orders          SalesOrder[]
   orderLinks      OpenTabOrder[]
@@ -1597,6 +1603,7 @@ model OpenTab {
 
   @@index([branchId, status])
   @@index([tableOrStationId])
+  @@index([waiterProfileId])
 }
 
 model OpenTabOrder {
