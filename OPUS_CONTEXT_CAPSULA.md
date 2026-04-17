@@ -20,6 +20,7 @@
 | 2026-04-16 | 591c161 | Dashboard UI — KPIs interactivos, sparklines, resumen gerencial, skeleton loading |
 | 2026-04-16 | 3da689e | Dashboard — widgets financieros interactivos + eliminar botón Nueva Receta del header |
 | 2026-04-17 | audit   | Auditoría funcional — 22 fallas encontradas (5 CRÍTICA, 7 ALTA, 7 MEDIA, 3 BAJA) |
+| 2026-04-17 | d30941e | Fix 17/22 fallas del audit: JWT, P&L status, singleton Prisma, COGS, kitchen auth, subcuentas, logAudit, softDelete, SKU |
 
 ---
 
@@ -1756,57 +1757,60 @@ ALTER TABLE "PaymentMethod" ALTER COLUMN "tenantId" SET NOT NULL;
 
 ### 16.5 Hallazgos Nuevos — Auditoría Funcional 2026-04-17
 
-22 fallas encontradas: **5 CRÍTICA · 7 ALTA · 7 MEDIA · 3 BAJA**
+22 fallas encontradas: **5 CRÍTICA · 7 ALTA · 7 MEDIA · 3 BAJA** — **17 corregidas el 2026-04-17**
 
-#### CRÍTICAS (corregir antes de próxima caja)
+#### CRÍTICAS
 
-| ID | Módulo | Archivo | Línea | Descripción |
-|----|--------|---------|-------|-------------|
-| F-001 | Auth | `src/lib/auth.ts` | 5 | JWT secret fallback hardcodeado `'shanklish-super-secret-key-2024'` — cualquier entorno sin `JWT_SECRET` en `.env` genera tokens con key pública conocida |
-| F-006 | Finanzas | `src/app/actions/finance.actions.ts` | 76, 221, 314, 357 | P&L filtra `status: 'COMPLETED'` pero POS crea órdenes con `status: 'CONFIRMED'` que **nunca** transicionan → dashboard de finanzas muestra $0 en ventas POS |
-| F-007 | Inventario | `src/server/services/inventory.service.ts` | 12 | `const prisma = new PrismaClient()` crea instancia nueva en cada import — viola patrón singleton, agota pool de conexiones bajo carga |
-| F-013 | POS/Finanzas | `src/app/actions/pos.actions.ts` | ~1100 | `createSalesOrderAction` nunca popula `costPerUnit`/`costTotal` en `SalesOrderItem` → COGS = $0 en todos los reportes financieros |
-| F-014 | Cocina | `src/app/api/kitchen/orders/route.ts` | 15, 72 | Handlers GET y PATCH sin verificación de sesión — endpoint completamente público, cualquiera puede ver/modificar comandas |
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-001 | ✅ CORREGIDO | Auth | `src/lib/auth.ts:5` | JWT secret fallback hardcodeado | Eliminado fallback; lanza error si `JWT_SECRET` no está en `.env` |
+| F-006 | ✅ CORREGIDO | Finanzas | `finance.actions.ts:76,221,314,357` | P&L filtraba `status:'COMPLETED'`; POS crea `CONFIRMED` → $0 | Cambiado a `status:{notIn:['CANCELLED']}` en los 4 queries |
+| F-007 | ✅ CORREGIDO | Inventario | `inventory.service.ts:10-12` | `new PrismaClient()` fuera del singleton | Reemplazado por `import { prisma } from '@/lib/prisma'` |
+| F-013 | ✅ CORREGIDO | POS/Finanzas | `pos.actions.ts` | `costPerUnit`/`costTotal` nunca populados → COGS = $0 | Pre-fetch de `MenuItem.cost`; ambos flujos (DIRECT y TAB) corregidos |
+| F-014 | ✅ CORREGIDO | Cocina | `api/kitchen/orders/route.ts:15,72` | GET y PATCH sin auth | `getSession()` agregado en ambos handlers + whitelist de estados válidos en PATCH |
 
-#### ALTAS (corregir en sprint actual)
+#### ALTAS
 
-| ID | Módulo | Archivo | Línea | Descripción |
-|----|--------|---------|-------|-------------|
-| F-008 | Inventario | `src/server/services/inventory.service.ts` | 279-290 | `registerSale` usa `inventoryLocation.update` (no upsert) → lanza P2025 si el item nunca tuvo stock en esa área |
-| F-009 | POS Tabs | `src/app/actions/pos.actions.ts` | 1784-1855 | `autoSplitEqualAction` solo limpia items de subcuentas OPEN; subcuentas PAID conservan sus items → al reasignar, items quedan duplicados entre PAID y la nueva distribución |
-| F-010 | POS Tabs | `src/app/actions/pos.actions.ts` | 1536-1543 | `recalcSubAccountTotals` calcula `serviceCharge` sobre el subtotal de cada subcuenta e incluye el 10% en `sub.total`; `paySubAccountAction` descuenta ese total del `openTab.balanceDue` que ya incluye el service charge global → doble cobro del 10% |
-| F-011 | Ventas | `src/app/actions/sales.actions.ts` | 522-626 | `voidSalesOrderAction` anula órdenes sin llamar `logAudit` — operación financiera crítica sin trazabilidad forense |
-| F-012 | Inventario | `src/app/actions/inventory.actions.ts` | 197-200 | `deleteInventoryItemAction` usa `isActive: false` en vez del helper `softDelete()` → no popula `deletedAt`/`deletedById`, no llama `logAudit` |
-| F-015 | Inventario | `src/app/actions/inventory.actions.ts` | 161-179 | `updateInventoryItemAction` no llama `getSession()` — cualquier contexto autenticado puede modificar items sin validación de rol |
-| F-016 | Inventario | `src/app/actions/inventory.actions.ts` | 211-237 | `getInventoryHistoryAction` no verifica sesión — historial de movimientos accesible sin autenticación |
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-008 | ✅ CORREGIDO | Inventario | `inventory.service.ts:279-290` | `registerSale` usaba `update` → P2025 si no existe ubicación | Cambiado a `upsert` |
+| F-009 | ✅ CORREGIDO | POS Tabs | `pos.actions.ts` | `autoSplitEqualAction` permitía re-split con subs PAID → ítems duplicados | Guard: retorna error si `paidSubs.length > 0` |
+| F-010 | ✅ CORREGIDO | POS Tabs | `pos.actions.ts` | `paySubAccountAction` deducía `sub.total` (con 10%) de `balanceDue` (solo comida) | Cambiado a `sub.subtotal` para mantener aritmética del balance correcta |
+| F-011 | ✅ CORREGIDO | Ventas | `sales.actions.ts:615` | `voidSalesOrderAction` sin `logAudit` | `logAudit` con action `VOID`, metadata de orden y razón |
+| F-012 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:197-200` | `deleteInventoryItemAction` usaba `isActive:false` (sin soft delete completo) | Usa `softDelete()` helper + `logAudit` |
+| F-015 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:161` | `updateInventoryItemAction` sin `getSession()` | `getSession()` + verificación rol OWNER/ADMIN_MANAGER/OPS_MANAGER |
+| F-016 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:211` | `getInventoryHistoryAction` sin auth | `getSession()` agregado; retorna `[]` si no autenticado |
 
 #### MEDIAS
 
-| ID | Módulo | Archivo | Línea | Descripción |
-|----|--------|---------|-------|-------------|
-| F-002 | Auth | `src/app/actions/auth.actions.ts` | ~45-80 | `loginAction` no llama `logAudit` — logins y logins fallidos sin registro forense |
-| F-003 | Ventas | `src/app/actions/sales.actions.ts` | 124, 267, 440 | Service charge detectado por `splitLabel.includes('| +10% serv')` — frágil ante cambios de texto |
-| F-004 | POS | `src/app/actions/pos.actions.ts` | 265-266 | Delivery fees duplicados: `DELIVERY_FEE_NORMAL = 4.5` y `DELIVERY_FEE_DIVISAS = 3` también en `delivery/page.tsx:15-16` |
-| F-005 | POS | `src/app/actions/pos.actions.ts` | 2073-2090 | 4× `console.log` de debug en `getDailyPickupCountAction` — fuga de datos operacionales en logs de producción |
-| F-017 | Auth | `src/app/actions/auth.actions.ts` | ~45-60 | Login devuelve mensajes de error distintos para "usuario no existe" vs "contraseña incorrecta" — permite user enumeration |
-| F-018 | Finanzas | `src/app/actions/finance.actions.ts` | 63 | `getFinancialSummaryAction` excluye OPS_MANAGER — rol gerencial sin acceso a P&L propio |
-| F-019 | Inventario | `src/app/actions/inventory.actions.ts` | 21-23 | SKU generado con `COUNT(*) + 1` sin lock → race condition genera SKUs duplicados bajo carga concurrente |
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-002 | ✅ CORREGIDO | Auth | `auth.actions.ts:45-80` | `loginAction` sin `logAudit` | `logAudit` en login exitoso y fallido |
+| F-003 | ⏳ PENDIENTE | Ventas | `sales.actions.ts:124,267,440` | Service charge detectado por string frágil | Requiere refactor de schema (almacenar flag boolean en `PaymentSplit`) |
+| F-004 | ⏳ PENDIENTE | POS | `pos.actions.ts:265-266` | Delivery fees hardcodeados en 2 archivos | Requiere `SystemConfig` CRUD en Panel Admin (P2 del roadmap) |
+| F-005 | ✅ CORREGIDO | POS | `pos.actions.ts:2073-2090` | 4× `console.log` de debug en `getDailyPickupCountAction` | Eliminados los 4 `console.log` |
+| F-017 | ✅ CORREGIDO | Auth | `auth.actions.ts:45-60` | Mensajes distintos revelan existencia de usuario | Unificado a `'Credenciales inválidas'` en ambos casos |
+| F-018 | ✅ CORREGIDO | Finanzas | `finance.actions.ts:63` | OPS_MANAGER excluido de P&L | Agregado a roles permitidos en `getFinancialSummaryAction` |
+| F-019 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:21-23` | SKU con `COUNT+1` → race condition | SKU generado desde `item.id` post-creación (garantía de unicidad sin lock) |
 
 #### BAJAS
 
-| ID | Módulo | Archivo | Línea | Descripción |
-|----|--------|---------|-------|-------------|
-| F-020 | Inventario | `src/app/actions/inventory.actions.ts` | 89 | `console.log` de debug en `createQuickItem` fuga IDs de recetas en logs |
-| F-021 | POS | `src/app/actions/pos.actions.ts` | ~1100 | `SalesOrder` se crea en estado `CONFIRMED` pero nunca transiciona a `COMPLETED` — estado incompleto en modelo de datos |
-| F-022 | Ventas | `src/app/actions/sales.actions.ts` | ~737 | `getZReportDataAction` filtra `status: { notIn: ['CANCELLED'] }` correctamente pero no documenta que incluye CONFIRMED intencionalmente |
+| ID | Estado | Módulo | Archivo | Descripción | Corrección |
+|----|--------|--------|---------|-------------|------------|
+| F-020 | ✅ CORREGIDO | Inventario | `inventory.actions.ts:89` | `console.log` de receta stub | Eliminado |
+| F-021 | ⏳ PENDIENTE | POS | `pos.actions.ts` | `SalesOrder` nunca transiciona de CONFIRMED a COMPLETED | Requiere definir ciclo de vida completo (fuera de scope inmediato) |
+| F-022 | ⏳ PENDIENTE | Ventas | `sales.actions.ts:~737` | Z-Report incluye CONFIRMED sin documentar intención | Documentación / comentario en código |
 
-#### Cobertura de AuditLog (estado post-auditoría)
+#### Cobertura de AuditLog (estado post-correcciones 2026-04-17)
 
-Solo **3 de ~40 archivos de acciones** usan `logAudit`:
+`logAudit` ahora usado en **5 archivos** (+2 vs. estado inicial):
 - `cash-register.actions.ts` ✅
 - `account-payable.actions.ts` ✅
 - `expense.actions.ts` ✅
-- Todos los demás módulos (POS, ventas, inventario, producción, RRHH, compras) ❌ sin trazabilidad forense
+- `auth.actions.ts` ✅ ← **NUEVO** (login/login-fallido)
+- `sales.actions.ts` ✅ ← **NUEVO** (void de ventas)
+- `inventory.actions.ts` ✅ ← **NUEVO** (delete + implícito en softDelete)
+- Producción, RRHH, compras, recetas — aún sin cobertura
 
 ---
 
