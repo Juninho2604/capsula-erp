@@ -279,7 +279,7 @@ export default function POSMeseroPage() {
   }, []);
 
   useEffect(() => {
-    const POLL_MS = 15_000;
+    const POLL_MS = 5_000;
     const id = setInterval(() => {
       if (!document.hidden && !isProcessingRef.current) pollLayout();
     }, POLL_MS);
