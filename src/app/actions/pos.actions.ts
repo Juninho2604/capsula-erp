@@ -76,6 +76,7 @@ export interface OpenTabInput {
     guestCount?: number;
     assignedWaiterId?: string;
     waiterLabel?: string;
+    waiterProfileId?: string; // Waiter.id del mesonero identificado por PIN
     notes?: string;
 }
 
@@ -1012,7 +1013,8 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
                     guestCount: data.guestCount || 1,
                     notes: data.notes,
                     openedById: session.id,
-                    waiterLabel: data.waiterLabel || null, // Guardar label del mesonero (ej: "Mesonero 1")
+                    waiterLabel: data.waiterLabel || null,
+                    waiterProfileId: data.waiterProfileId || null,
                 },
                 include: {
                     openedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
@@ -1135,6 +1137,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     serviceZoneId: openTab.serviceZoneId,
                     tableOrStationId: openTab.tableOrStationId,
                     openTabId: openTab.id,
+                    waiterProfileId: openTab.waiterProfileId || null,
                     notes: data.notes,
                     createdById: session.activeCashierId ?? session.id,
                     items: {

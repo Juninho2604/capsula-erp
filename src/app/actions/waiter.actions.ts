@@ -248,3 +248,116 @@ export async function validateWaiterPinAction(pin: string) {
         return { success: false, message: 'Error validando PIN' };
     }
 }
+
+/**
+ * Valida un PIN contra: (1) capitanes activos de la sucursal,
+ * (2) usuarios OWNER/ADMIN_MANAGER/OPS_MANAGER con PIN.
+ * Retorna authorizedByWaiterId o indicación de usuario autorizado.
+ */
+async function validateTransferPin(pin: string, branchId: string): Promise<{
+    success: boolean;
+    authorizedByWaiterId?: string;
+    authorizedByUserId?: string;
+}> {
+    const err = validatePinFormat(pin);
+    if (err) return { success: false };
+
+    // 1) Capitanes de la sucursal
+    const captains = await prisma.waiter.findMany({
+        where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
+        select: { id: true, pin: true },
+    });
+    for (const c of captains) {
+        if (!c.pin) continue;
+        const [saltHex, hashHex] = c.pin.split(':');
+        if (!saltHex || !hashHex) continue;
+        if ((await pbkdf2Hex(pin, saltHex)) === hashHex) {
+            return { success: true, authorizedByWaiterId: c.id };
+        }
+    }
+
+    // 2) Usuarios admin con PIN (OWNER / ADMIN_MANAGER / OPS_MANAGER)
+    const admins = await prisma.user.findMany({
+        where: {
+            role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
+            pin: { not: null },
+            isActive: true,
+        },
+        select: { id: true, pin: true },
+    });
+    for (const u of admins) {
+        if (!u.pin) continue;
+        const [saltHex, hashHex] = u.pin.split(':');
+        if (!saltHex || !hashHex) continue;
+        if ((await pbkdf2Hex(pin, saltHex)) === hashHex) {
+            return { success: true, authorizedByUserId: u.id };
+        }
+    }
+
+    return { success: false };
+}
+
+/**
+ * Transfiere una mesa de un mesonero a otro.
+ * Requiere PIN de: capitán activo en la sucursal O usuario OWNER/ADMIN_MANAGER/OPS_MANAGER.
+ */
+export async function transferTableAction(data: {
+    openTabId: string;
+    fromWaiterId: string;
+    toWaiterId: string;
+    authPin: string;
+    reason?: string;
+}) {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const tab = await prisma.openTab.findUnique({
+            where: { id: data.openTabId },
+            select: { id: true, status: true, branchId: true, waiterProfileId: true },
+        });
+        if (!tab) return { success: false, message: 'Cuenta no encontrada' };
+        if (!['OPEN', 'PARTIALLY_PAID'].includes(tab.status)) {
+            return { success: false, message: 'La cuenta no está activa' };
+        }
+        if (data.fromWaiterId === data.toWaiterId) {
+            return { success: false, message: 'El mesonero destino debe ser diferente' };
+        }
+
+        const toWaiter = await prisma.waiter.findUnique({
+            where: { id: data.toWaiterId },
+            select: { id: true, isActive: true, branchId: true },
+        });
+        if (!toWaiter || !toWaiter.isActive || toWaiter.branchId !== tab.branchId) {
+            return { success: false, message: 'Mesonero destino no válido' };
+        }
+
+        const auth = await validateTransferPin(data.authPin, tab.branchId);
+        if (!auth.success) {
+            return { success: false, message: 'PIN de autorización incorrecto' };
+        }
+
+        await prisma.$transaction([
+            prisma.openTab.update({
+                where: { id: data.openTabId },
+                data: { waiterProfileId: data.toWaiterId },
+            }),
+            prisma.tableTransfer.create({
+                data: {
+                    openTabId: data.openTabId,
+                    fromWaiterId: data.fromWaiterId,
+                    toWaiterId: data.toWaiterId,
+                    reason: data.reason || null,
+                    authorizedByWaiterId: auth.authorizedByWaiterId || null,
+                },
+            }),
+        ]);
+
+        return { success: true, message: 'Mesa transferida correctamente' };
+    } catch {
+        return { success: false, message: 'Error al transferir mesa' };
+    }
+}
+
+/** Alias semántico de getActiveWaitersAction para uso en el POS Mesero. */
+export const getActiveWaitersForBranchAction = getActiveWaitersAction;
