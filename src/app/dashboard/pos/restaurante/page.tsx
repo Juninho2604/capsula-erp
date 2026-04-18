@@ -429,9 +429,12 @@ export default function POSSportBarPage() {
   const paidAmount = isBsPayMethod && exchangeRate && rawAmount > 0
     ? rawAmount / exchangeRate
     : rawAmount;
-  // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
+  // Regla de negocio — redondeo por método:
+  //   Divisas efectivo (CASH_USD, CASH_EUR, ZELLE): Math.round() sobre el neto FINAL (post-descuento).
+  //   Bolívares (CASH_BS, PDV_*, MOVIL_NG): sin redondeo — el monto Bs debe ser exacto.
+  //   NUNCA redondear el precio base ni antes del descuento.
   const roundToWhole = (amount: number, method: string): number =>
-    (method === 'CASH_USD' || method === 'ZELLE') ? Math.round(amount) : amount;
+    (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE') ? Math.round(amount) : amount;
   const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
   const isPagoDivisas = isDivisasMethod(paymentMethod);

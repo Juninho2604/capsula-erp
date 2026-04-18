@@ -279,13 +279,22 @@ function roundCents(n: number): number {
 }
 
 /**
- * Redondea al entero más cercano solo para métodos de efectivo donde aplica vuelto
- * (CASH_USD, ZELLE, CASH_BS). Para PDV_SHANKLISH, PDV_SUPERFERRO, MOVIL_NG, PY
- * y cualquier otro método devuelve el monto sin cambios.
- * Debe aplicarse como último paso, después de descuentos y service charge.
+ * Regla de negocio — redondeo por método de pago:
+ *
+ *  DIVISAS efectivo (CASH_USD, CASH_EUR, ZELLE):
+ *    Aplicar 33% de descuento → Math.round() al resultado FINAL.
+ *    El descuento se calcula como roundCents(base / 3) y LUEGO se redondea el neto.
+ *    Ejemplo: $26.75 → descuento $8.92 → neto $17.83 → Math.round → $18.
+ *
+ *  BOLÍVARES (CASH_BS, PDV_SHANKLISH, PDV_SUPERFERRO, MOVIL_NG):
+ *    SIN redondeo. El monto USD exacto × tasa BCV = Bs exactos.
+ *    NO aplicar Math.round() ni al base ni al total en Bs.
+ *
+ * Debe aplicarse como ÚLTIMO paso, después de descuentos y service charge.
+ * NUNCA al precio base ni al monto en Bs.
  */
 function roundToWhole(amount: number, paymentMethod?: string): number {
-    if (paymentMethod === 'CASH_USD' || paymentMethod === 'ZELLE' || paymentMethod === 'CASH_BS') {
+    if (paymentMethod === 'CASH_USD' || paymentMethod === 'CASH_EUR' || paymentMethod === 'ZELLE') {
         return Math.round(amount);
     }
     return amount;
