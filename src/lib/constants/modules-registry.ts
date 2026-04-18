@@ -430,16 +430,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 503,
   },
   {
-    id: 'permisos_usuario',
-    label: 'Permisos por Usuario',
-    description: 'Concede o revoca permisos granulares (PERM) por usuario, encima del rol base.',
-    icon: '🔑',
-    href: '/dashboard/config/permisos-usuario',
-    section: 'admin',
-    enabledByDefault: true,
-    sortOrder: 504,
-  },
-  {
     id: 'roles_config',
     label: 'Roles y Permisos',
     description: 'Configuración de roles y permisos',
@@ -596,7 +586,6 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
   modulos_usuario: ['OWNER', 'ADMIN_MANAGER'],
-  permisos_usuario: ['OWNER', 'ADMIN_MANAGER'],
   roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   module_config: ['OWNER'], // Solo el OWNER puede activar/desactivar módulos
   almacenes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
