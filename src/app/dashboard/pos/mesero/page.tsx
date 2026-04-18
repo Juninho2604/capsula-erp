@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -262,6 +262,30 @@ export default function POSMeseroPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  // ── Auto-polling: sincronización silenciosa del layout cada 15 s ─────────────
+  const isProcessingRef = useRef(isProcessing);
+  useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+  const pollLayout = useCallback(async () => {
+    const [layoutResult, rate] = await Promise.all([
+      getRestaurantLayoutAction(),
+      getExchangeRateValue(),
+    ]);
+    if (layoutResult.success && layoutResult.data) {
+      setLayout(layoutResult.data as SportBarLayout);
+    }
+    if (rate) setExchangeRate(rate);
+  }, []);
+
+  useEffect(() => {
+    const POLL_MS = 15_000;
+    const id = setInterval(() => {
+      if (!document.hidden && !isProcessingRef.current) pollLayout();
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [pollLayout]);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!selectedCategory || !categories.length) return;

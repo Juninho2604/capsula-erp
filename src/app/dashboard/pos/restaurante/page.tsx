@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addItemsToOpenTabAction,
   closeOpenTabAction,
@@ -355,6 +355,32 @@ export default function POSSportBarPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // ── Auto-polling: sincronización silenciosa del layout cada 15 s ─────────────
+  // Solo refresca mesas/tabs y tasa — el menú se carga una sola vez en loadData().
+  // Se omite si el tab está oculto (usuario cambió ventana) o hay una operación activa.
+  const isProcessingRef = useRef(isProcessing);
+  useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+  const pollLayout = useCallback(async () => {
+    const [layoutResult, rate] = await Promise.all([
+      getRestaurantLayoutAction(),
+      getExchangeRateValue(),
+    ]);
+    if (layoutResult.success && layoutResult.data) {
+      setLayout(layoutResult.data as SportBarLayout);
+    }
+    if (rate) setExchangeRate(rate);
+  }, []);
+
+  useEffect(() => {
+    const POLL_MS = 15_000;
+    const id = setInterval(() => {
+      if (!document.hidden && !isProcessingRef.current) pollLayout();
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [pollLayout]);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!isDivisasMethod(paymentMethod) && discountType === "DIVISAS_33") {
