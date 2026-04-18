@@ -155,7 +155,7 @@ shanklish-erp-main/
 | **ServiceZone** | branchId + name (unique), zoneType (DINING/BAR/TERRACE/VIP), sortOrder | Zona de servicio del local |
 | **TableOrStation** | branchId + code (unique), serviceZoneId, stationType (TABLE/BAR_SEAT/VIP_ROOM), capacity, currentStatus | Mesa o estación física |
 | **Waiter** | branchId, firstName, lastName, pin (PBKDF2 hash), isCaptain, isActive | Mesonero del restaurante. `pin` permite identificación sin sesión en POS Mesero. `isCaptain` habilita subcuentas y autorizaciones de transferencia |
-| **TableTransfer** | openTabId, fromWaiterId, toWaiterId, authorizedById, reason, transferredAt | Historial de transferencias de mesa. `authorizedById` = capitán que validó con su PIN |
+| **TableTransfer** | openTabId, fromWaiterId, toWaiterId, authorizedByWaiterId?, authorizedByUserId?, authorizedNote?, fromTableId?, toTableId?, reason, transferredAt | Historial de transferencias de mesonero y de mesa física. PIN dual: capitán Waiter O gerente User |
 
 ### 2.8 Compras (4 modelos)
 
@@ -2914,6 +2914,742 @@ Los capitanes son mesoneros con `isCaptain = true` y PIN configurado. Autorizan:
 
 ---
 
-*Actualizado el 2026-04-17 — Shanklish ERP / Cápsula SaaS — Documento Completo*
-*46 modelos Prisma · 47 módulos · 51 actions · 4 API routes · 3 services · 25 componentes*
-*Commits sesión (Fase 1-4): 9f486e2 cf25df0 ca0609c + fase4*
+### 18.24 Fix: mesonero@shanklish.com no debe ver POS Restaurante (2026-04-17)
+
+**Problema diagnosticado (3 capas):**
+
+1. **BD correcta** — `allowedModules = '["pos_waiter"]'` ya estaba en producción. Verificado con `scripts/fix-mesonero-modules.ts`.
+2. **MODULE_ROLE_ACCESS** — `pos_restaurant` incluía `CASHIER` en su array de roles, dando acceso por rol antes de que `allowedModules` pudiera bloquearlo.
+3. **Redirección hardcodeada** — `dashboard/page.tsx` redirigía todo CASHIER a `/dashboard/pos/restaurante` sin consultar `allowedModules`.
+
+---
+
+#### FIX 1 — `src/lib/constants/modules-registry.ts`
+
+**`MODULE_ROLE_ACCESS['pos_restaurant']`:** eliminado `CASHIER` del array de roles.
+
+```typescript
+// ANTES
+pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AREA_LEAD'],
+// DESPUÉS
+pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'],
+```
+
+**`getVisibleModules()`:** rediseñada — `allowedModules` es la **única autoridad** cuando está definido (reemplaza al rol, no se combina).
+
+```typescript
+// ANTES: dos filtros independientes (rol AND allowedModules)
+.filter(m => allowedRoles.includes(userRole))
+.filter(m => !userFilter || userFilter.has(m.id))
+
+// DESPUÉS: allowedModules reemplaza al rol cuando está presente
+.filter(m => {
+  if (m.id === 'module_config') return userRole === 'OWNER';
+  if (userFilter) return userFilter.has(m.id);   // override total
+  const allowedRoles = MODULE_ROLE_ACCESS[m.id];
+  if (!allowedRoles) return true;
+  return allowedRoles.includes(userRole);
+})
+```
+
+**Por qué importa:** con la lógica anterior, eliminar CASHIER de `pos_restaurant` también habría bloqueado a Elizabeth, Estefani, Gianni, cajera1 y cajera2, que tienen `pos_restaurant` en su `allowedModules`. Con el nuevo diseño, `allowedModules` garantiza acceso sin depender del rol.
+
+**Estado de cajeras verificado antes del cambio:**
+
+| Email | allowedModules relevantes |
+|-------|--------------------------|
+| elizabeth@shanklish.com | `pos_restaurant` ✅ |
+| estefani@shanklish.com | `pos_restaurant` ✅ |
+| gianni@shanklish.com | `pos_restaurant` ✅ |
+| cajera1@shanklish.com | `pos_restaurant` ✅ |
+| cajera2@shanklish.com | `pos_restaurant` ✅ |
+| **mesonero@shanklish.com** | solo `pos_waiter` — sin pos_restaurant ✅ |
+
+---
+
+#### FIX 2 — `src/app/dashboard/page.tsx`
+
+**Antes:** redirección hardcodeada ignorando `allowedModules`:
+```typescript
+if (session?.role === 'CASHIER') {
+    redirect('/dashboard/pos/restaurante');
+}
+```
+
+**Después:** consulta BD + `getVisibleModules()` → redirige al primer módulo visible real:
+```typescript
+if (session?.role === 'CASHIER' || session?.role === 'WAITER') {
+    // leer allowedModules desde BD
+    const dbUser = await prisma.user.findUnique({ where: { id: session.id }, select: { allowedModules: true } });
+    if (dbUser?.allowedModules) userAllowedModules = JSON.parse(dbUser.allowedModules);
+    const enabledIds = await getEnabledModulesFromDB();
+    const visible = getVisibleModules(session.role, enabledIds, userAllowedModules);
+    redirect(visible[0]?.href ?? '/dashboard/pos/restaurante');
+}
+```
+
+`mesonero@shanklish.com` → `visible[0]` = POS Mesero → redirige a `/dashboard/pos/mesero`.
+
+---
+
+#### Commits de esta sesión
+
+| Hash | Descripción |
+|------|-------------|
+| `474cde5` | fix(auth): allowedModules overrides role — remove CASHIER from pos_restaurant |
+| `899d3c2` | fix(auth): redirigir al primer módulo visible en lugar de hardcode pos_restaurant |
+
+---
+
+### 18.25 BD: allowedModules de Yair y Julhian ampliados (2026-04-17)
+
+Actualización directa en RDS. Ambos usuarios son `AREA_LEAD`. Se añadieron `pos_waiter` y `mesoneros` a sus `allowedModules` existentes sin quitar nada.
+
+| Usuario | allowedModules resultante |
+|---------|--------------------------|
+| yair@shanklish.com | `["pos_restaurant","inventory_daily","inventory","estadisticas","transfers","pos_waiter","mesoneros"]` |
+| julhian@shanklish.com | `["inventory","inventory_daily","transfers","pos_restaurant","pos_waiter","mesoneros"]` |
+
+`pos_restaurant` ya lo tenían — no se duplicó. Script ejecutado: `scripts/_update_yair_julhian_tmp.ts` (temporal, eliminado post-ejecución).
+
+---
+
+### 18.26 Sistema de transferencia de mesa física (2026-04-17)
+
+Implementado flujo completo para mover un OpenTab entre mesas físicas sin cerrar ni reabrir la cuenta.
+
+#### Schema — `TableTransfer` extendido
+
+```prisma
+model TableTransfer {
+  // ...campos existentes (fromWaiterId/toWaiterId para trazabilidad del mesonero)...
+  fromTableId  String?   // FK → TableOrStation (nullable, retrocompatible)
+  toTableId    String?   // FK → TableOrStation
+}
+```
+Migración: `20260417080000_add_table_fields_to_table_transfer`
+
+#### Action — `moveTabBetweenTablesAction` (`waiter.actions.ts`)
+
+```typescript
+moveTabBetweenTablesAction({
+  openTabId: string,   // tab a mover
+  toTableId: string,   // mesa destino (debe estar AVAILABLE)
+  captainPin: string,  // PIN dual: Waiter capitán O User gerente
+  reason?: string,
+})
+```
+
+**Validaciones:** mesa destino `AVAILABLE`, sin OpenTab activo conflictivo, misma sucursal.  
+**Transacción atómica:** `openTab.tableOrStationId = toTableId` + mesa origen → `AVAILABLE` + mesa destino → `OCCUPIED` + registro `TableTransfer` con `from/toTableId`.  
+**PIN dual:** `resolveAuthPin` — Waiter `isCaptain:true` O User con rol `OWNER/ADMIN_MANAGER/OPS_MANAGER`.
+
+#### UI — Modal en `mesero/page.tsx`
+
+- Botón "↔ Transferir mesa" visible para capitanes (`canUseCaptainFeatures`)
+- Grid 4 columnas con todas las mesas `AVAILABLE` del layout (con zona como subtítulo)
+- Header muestra `Mesa A → Mesa B` en tiempo real al seleccionar
+- Al éxito: `loadData(false)` (refresh silencioso) + `setSelectedTableId(toTableId)` para seguir viendo el tab
+
+#### Commits
+
+| Hash | Descripción |
+|------|-------------|
+| `99435c7` | feat(db): add fromTableId/toTableId to TableTransfer |
+| `ba1aa2e` | feat(actions): moveTabBetweenTablesAction |
+| `0b77982` | feat(ui): replace waiter-transfer modal with table-move modal |
+
+---
+
+### 18.27 Sistema de modificación de ítems enviados a cocina (2026-04-17)
+
+Implementado sistema completo de soft delete y modificación de ítems ya enviados, con comanda de notificación a cocina y PIN dual.
+
+#### Schema — `SalesOrderItem` extendido
+
+```prisma
+model SalesOrderItem {
+  // ...campos existentes...
+
+  // Soft delete / void tracking
+  voidedAt         DateTime?
+  voidReason       String?
+  voidedByWaiterId String?   // FK → Waiter (capitán que autorizó)
+  voidedByWaiter   Waiter?   @relation("ItemVoidedByWaiter", ...)
+  voidedByUserId   String?   // FK → User (gerente que autorizó)
+  voidedByUser     User?     @relation("ItemVoidedByUser", ...)
+  replacedByItemId String?   // auto-relación: apunta al ítem de reemplazo
+  replacedByItem   SalesOrderItem?  @relation("ItemReplacement", ...)
+  replacements     SalesOrderItem[] @relation("ItemReplacement")
+}
+```
+Migración: `20260417090000_add_item_void_tracking`
+
+Los ítems con `voidedAt != null` se filtran en `ensureRestaurantSetup` (`where: { voidedAt: null }`) para no aparecer en el layout ni en los totales de la UI.
+
+#### Action — `modifyTabItemAction` (`pos.actions.ts`)
+
+```typescript
+modifyTabItemAction({
+  openTabId: string,
+  orderId: string,
+  itemId: string,
+  captainPin: string,   // PIN dual: Waiter capitán O User gerente
+  reason: string,       // obligatorio
+  modification:
+    | { type: 'VOID' }
+    | { type: 'ADJUST_QTY'; newQuantity: number }   // newQuantity < item.quantity
+    | { type: 'REPLACE'; newMenuItemId: string; newQuantity?: number }
+})
+```
+
+**Modos de modificación:**
+
+| Modo | Qué hace |
+|------|----------|
+| `VOID` | Soft delete del ítem: `voidedAt = now`, limpia SubAccountItems, recalcula totales orden + tab |
+| `ADJUST_QTY` | Void del original + crea nuevo ítem con mismos datos pero `newQuantity`. Corrige totales para net delta |
+| `REPLACE` | Void del original + crea nuevo ítem con nuevo `menuItemId`/`itemName`/`unitPrice`. Corrige totales |
+
+En `ADJUST_QTY` y `REPLACE` el original queda con `replacedByItemId` apuntando al nuevo ítem (trazabilidad).
+
+**PIN dual:** helper `resolveVoidAuthPin` — Waiter `isCaptain:true` O User con rol `OWNER/ADMIN_MANAGER/OPS_MANAGER/AREA_LEAD`.
+
+**Devuelve `kitchenPrintData`** para que el cliente llame `printVoidKitchenCommand` inmediatamente.
+
+#### Action legacy — `removeItemFromOpenTabAction`
+
+Reescrita para usar soft delete + dual PIN (backward compat para integraciones externas). Ya no hace hard delete.
+
+#### Función de impresión — `printVoidKitchenCommand` (`print-command.ts`)
+
+```typescript
+printVoidKitchenCommand(data: VoidKitchenCommandData, station?: 'kitchen' | 'bar')
+
+interface VoidKitchenCommandData {
+  orderNumber: string;
+  tableName: string;
+  authorizerName: string;
+  waiterLabel?: string;
+  modificationType: 'VOID' | 'ADJUST_QTY' | 'REPLACE';
+  voidedItem:  { name: string; quantity: number; modifiers: string[] };
+  newItem?:    { name: string; quantity: number; modifiers: string[] };
+}
+```
+
+Imprime comanda 80mm con:
+- Encabezado `⚠️ MODIFICACIÓN ⚠️` + número de orden grande
+- Bloque ❌ CANCELADO con qty-box negro (ítem anulado)
+- Bloque ✅ NUEVA CANTIDAD / NUEVO ÍTEM con qty-box blanco (si hay reemplazo)
+- Usa iframe oculto (no interrumpe la pantalla activa)
+
+#### UI — Modal unificado en `mesero/page.tsx` y `restaurante/page.tsx`
+
+Al tocar `✕` (mesero, hover) o `🗑️` (restaurante) en un ítem enviado:
+
+1. **3 botones de opción:** ❌ Cancelar · ✏️ Ajustar · 🔄 Cambiar
+2. **Si ADJUST_QTY:** spinner numérico (mín 1, máx `quantity-1`)
+3. **Si REPLACE:** input de búsqueda + lista scrollable de ítems del menú
+4. **Motivo** (textarea, obligatorio)
+5. **PIN de capitán o gerente** (input password)
+6. **Al confirmar:** llama `modifyTabItemAction` → si éxito, imprime comanda de modificación → `loadData(false)` (refresh silencioso)
+
+#### Commits
+
+| Hash | Descripción |
+|------|-------------|
+| `bb934f3` | feat(paso1): void tracking on SalesOrderItem + modifyTabItemAction |
+| `7c71413` | feat(paso2): printVoidKitchenCommand for kitchen void/modification receipts |
+| `a2661c9` | feat(paso3): replace void modal with 3-option modify modal in mesero + restaurante |
+
+---
+
+### 18.28 Dual PIN auth en transferencia de mesa (2026-04-18)
+
+Antes, `transferTableAction` solo aceptaba PIN de Waiter capitán. Ahora acepta **también PIN de User gerente** (OWNER/ADMIN_MANAGER/OPS_MANAGER).
+
+#### Schema — `TableTransfer` actualizado
+
+```prisma
+model TableTransfer {
+  // ...campos existentes...
+  authorizedByWaiterId String?  // capitán Waiter (era authorizedById — renombrado)
+  authorizedByWaiter   Waiter?  @relation("TransferAuthorizedByWaiter", ...)
+  authorizedByUserId   String?  // gerente User (nuevo)
+  authorizedByUser     User?    @relation("TransferAuthorizedByUser", ...)
+  authorizedNote       String?  // "Capitán: Nombre" o "Gerente: Nombre"
+}
+```
+
+Migración: `20260417050000_dual_auth_table_transfer`
+- DROP CONSTRAINT fk antiguo (`authorizedById`) → RENAME a `authorizedByWaiterId`
+- DROP NOT NULL · ADD `authorizedByUserId` TEXT · ADD `authorizedNote` TEXT
+- Restaura FKs con `ON DELETE SET NULL` · ADD INDEX en `authorizedByUserId`
+
+#### Helper `resolveAuthPin` — `waiter.actions.ts`
+
+```typescript
+type AuthResult =
+    | { type: 'CAPTAIN'; name: string; waiterId: string }
+    | { type: 'MANAGER'; name: string; userId: string };
+
+async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult | null>
+```
+
+Prioridad 1: busca Waiters `isCaptain=true, isActive=true, pin≠null` en el branchId.
+Prioridad 2: busca Users con role `OWNER/ADMIN_MANAGER/OPS_MANAGER`, `isActive=true, pin≠null` (cualquier sucursal).
+
+#### `transferTableAction` actualizado
+
+Ahora guarda `authorizedByWaiterId` O `authorizedByUserId` según el tipo de auth, y `authorizedNote = "Capitán: Nombre"` / `"Gerente: Nombre"` para auditoría.
+
+#### `canUseCaptainFeatures` en POS Mesero
+
+```typescript
+const MANAGER_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+const canUseCaptainFeatures = activeWaiter?.isCaptain || MANAGER_ROLES.includes(currentUser?.role ?? '');
+```
+
+Reemplaza `activeWaiter?.isCaptain` en los dos condicionales del render (subcuentas + modal de transferencia). Los gerentes que usan el POS Mesero ahora ven los mismos controles que un capitán.
+
+---
+
+### 18.29 Fix: bucle infinito de carga en POS Restaurante y POS Mesero (2026-04-18)
+
+#### Causa raíz
+
+`SubAccountPanel.loadTab()` → llama `onTabUpdated()` → llama `loadData()` → `setIsLoading(true)` → condicional `if (isLoading) return <Spinner>` **desmonta** `SubAccountPanel` → al terminar la carga se **remonta** → `useEffect([loadTab])` se dispara → bucle infinito.
+
+#### Fix
+
+```typescript
+// ANTES
+const loadData = async () => {
+    setIsLoading(true);
+    ...
+    finally { setIsLoading(false); }
+};
+onTabUpdated={() => loadData()}
+
+// DESPUÉS
+const loadData = async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
+    ...
+    finally { if (showSpinner) setIsLoading(false); }
+};
+onTabUpdated={() => loadData(false)}   // refresh silencioso — no toca isLoading
+```
+
+Aplicado a: `restaurante/page.tsx` y `mesero/page.tsx`.
+
+También se corrigió el botón de retry que usaba `onClick={loadData}` — TypeScript rechazaba el `MouseEvent` como argumento de `showSpinner`. Cambiado a `onClick={() => loadData()}` en 3 lugares.
+
+---
+
+### 18.30 Menú jerárquico en POS Mesero (2026-04-18)
+
+El POS Mesero tenía grilla plana de productos. Se replicó el sistema de navegación jerárquico del POS Restaurante.
+
+#### Nuevos campos de estado
+
+```typescript
+const [selectedSubcategory, setSelectedSubcategory] = useState("");
+const [selectedGroup, setSelectedGroup] = useState("");
+```
+
+#### Extensión de interface `MenuItem`
+
+```typescript
+interface MenuItem {
+  // ...campos existentes...
+  posGroup?: string | null;
+  posSubcategory?: string | null;
+}
+```
+
+#### Memos derivados
+
+```typescript
+// Items dentro de la subcategoría seleccionada (o todos si no hay filtro)
+const subcatFilteredItems = useMemo(() => {
+    if (!selectedSubcategory) return menuItems;
+    return menuItems.filter((i) => i.posSubcategory === selectedSubcategory);
+}, [menuItems, selectedSubcategory]);
+
+// Chips de subcategoría únicos del catálogo de la categoría activa
+const subcategories = useMemo(() => {
+    return Array.from(new Set(menuItems.map((i) => i.posSubcategory).filter(Boolean)));
+}, [menuItems]);
+
+// Tiles de grupo únicos dentro de subcatFilteredItems
+const groupsInView = useMemo(() => {
+    return Array.from(new Set(subcatFilteredItems.map((i) => i.posGroup).filter(Boolean)));
+}, [subcatFilteredItems]);
+```
+
+#### Lógica de renderizado (3 capas)
+
+1. **Chips de subcategoría** — barra horizontal scrolleable. Al seleccionar, resetea `selectedGroup`.
+2. **Tiles de grupo** (`posGroup ≠ null`) — `groupsInView.map(group => ...)` con min-max precio y count. Al tocar → `setSelectedGroup(group)`.
+3. **Botón "← Volver"** — visible cuando `selectedGroup` activo; muestra ítems del grupo (variantes de tamaño).
+4. **Items sueltos** — `subcatFilteredItems.filter(i => !i.posGroup)` — rendered como grilla directa.
+5. **Búsqueda** — `productSearch` activa busca en todos los items del menú (`allMenuItems`).
+
+Grid: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4`. Tema emerald-500.
+
+El `useEffect([selectedCategory])` resetea `selectedSubcategory` y `selectedGroup` al cambiar categoría.
+
+---
+
+### 18.31 Restricción de módulos para mesonero@shanklish.com (2026-04-18)
+
+Migración `20260417060000_restrict_mesonero_to_pos_waiter`:
+
+```sql
+UPDATE "User"
+SET "allowedModules" = '["pos_waiter"]', "updatedAt" = NOW()
+WHERE "email" = 'mesonero@shanklish.com';
+```
+
+**Por qué no bastaba solo con esto**: ver sección 18.24 — la lógica de `getVisibleModules` y la redirección del dashboard también debían ser corregidas para que `allowedModules` tuviera efecto real.
+
+**Script de diagnóstico**: `scripts/fix-mesonero-modules.ts` — verifica y aplica el fix desde la máquina local con `DATABASE_URL` cargado. También reporta `posGroup` de todos los items Shakifel.
+
+---
+
+### 18.32 Fix: posGroup de variantes Shakifel Mixto (2026-04-18)
+
+#### Diagnóstico
+
+El filtro de categoría en el POS Mesero usa `categoryId` (via `categories.find(c => c.id === selectedCategory)`), no el nombre de la categoría. Los items `SHAWARMA SHAKIFEL MIXTO 350G` y `500G` estaban en la categoría correcta (Shawarmas) pero con `posGroup = NULL`, causando que se renderizaran como ítems sueltos en lugar de agruparse bajo un tile "Shakifel Mixto".
+
+#### Fix
+
+Migración `20260417070000_normalize_shakifel_mixto_posgroup`:
+
+```sql
+UPDATE "MenuItem"
+SET
+    "posGroup"       = 'Shakifel Mixto',
+    "posSubcategory" = COALESCE("posSubcategory", 'Shawarmas')
+WHERE
+    LOWER("name") LIKE '%shakifel%mixto%'
+    AND "isActive" = true;
+```
+
+Idempotente. Aplica a todas las variantes de gramaje (250G, 350G, 500G) para que queden bajo un único tile colapsado en el menú.
+
+---
+
+### 18.33 Fix: redondeo incorrecto en pagos con Efectivo Bs (2026-04-18)
+
+#### Bug
+
+La función `roundToWhole` en `restaurante/page.tsx` incluía `CASH_BS` junto con `CASH_USD` y `ZELLE`:
+
+```typescript
+// BUGGY — redondeaba $31.50 → $32 para Bs también
+const roundToWhole = (amount: number, method: string): number =>
+    (method === 'CASH_USD' || method === 'ZELLE' || method === 'CASH_BS') ? Math.round(amount) : amount;
+```
+
+Efecto: el total $31.50 se redondeaba a $32 en USD, y el equivalente en Bs se calculaba sobre $32 (15.368 Bs en lugar de los correctos 15.128 Bs). El botón COBRAR también mostraba `$32.00` en lugar de `$31.50`.
+
+#### Fix — dos cambios en `restaurante/page.tsx`
+
+```typescript
+// 1. Quitar CASH_BS del redondeo — solo USD y Zelle se redondean a entero
+const roundToWhole = (amount: number, method: string): number =>
+    (method === 'CASH_USD' || method === 'ZELLE') ? Math.round(amount) : amount;
+
+// 2. Placeholder Bs en modo mesa — mostrar con 2 decimales (no 0)
+// ANTES: `Bs ${(paymentAmountToCharge * exchangeRate).toFixed(0)}`
+// DESPUÉS:
+`Bs ${(paymentAmountToCharge * exchangeRate).toFixed(2)}`
+```
+
+**Regla de negocio**: Solo CASH_USD y ZELLE se redondean a dólar entero (quien paga con billete no da centavos). Bolívares (efectivo, PDV, móvil) deben cobrarse con la cifra exacta.
+
+---
+
+### Migraciones recientes (2026-04-18)
+
+| Migración | Contenido |
+|-----------|-----------|
+| `20260417050000_dual_auth_table_transfer` | Renombra `authorizedById` → `authorizedByWaiterId`, agrega `authorizedByUserId` + `authorizedNote`, FKs SET NULL |
+| `20260417060000_restrict_mesonero_to_pos_waiter` | UPDATE allowedModules para mesonero@shanklish.com |
+| `20260417070000_normalize_shakifel_mixto_posgroup` | UPDATE posGroup = 'Shakifel Mixto' para variantes Shakifel Mixto |
+
+---
+
+### 18.34 Auto-polling de layout POS cada 5s (2026-04-18)
+
+#### Problema
+
+Cuando dos dispositivos estaban en el mismo módulo POS (cajera + mesonero, o dos cajeras), los cambios que uno hacía no aparecían en el otro hasta refrescar manualmente (F5). El `router.refresh()` no sirve aquí porque las páginas POS son **Client Components** — no hay Server Components que re-fetchear.
+
+#### Solución — polling silencioso con `pollLayout`
+
+Patrón aplicado en `restaurante/page.tsx` y `mesero/page.tsx`:
+
+```typescript
+const isProcessingRef = useRef(isProcessing);
+useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+const pollLayout = useCallback(async () => {
+    const [layoutResult, rate] = await Promise.all([
+        getRestaurantLayoutAction(),
+        getExchangeRateValue(),
+    ]);
+    if (layoutResult.success && layoutResult.data) {
+        setLayout(layoutResult.data as SportBarLayout);
+    }
+    if (rate) setExchangeRate(rate);
+}, []);
+
+useEffect(() => {
+    const POLL_MS = 5_000;
+    const id = setInterval(() => {
+        if (!document.hidden && !isProcessingRef.current) pollLayout();
+    }, POLL_MS);
+    return () => clearInterval(id);
+}, [pollLayout]);
+```
+
+#### Guardas clave
+
+| Guard | Por qué |
+|-------|---------|
+| `document.hidden` | Pausa el polling cuando la pestaña no está visible (ahorro de BD y red) |
+| `isProcessingRef.current` | Evita pisar trabajo del usuario (agregando ítem, procesando cobro, etc.) |
+| `useCallback([])` | El `pollLayout` no depende de props/state mutables — el efecto no se recrea en cada render |
+| `useRef` para `isProcessing` | Leer el valor actual dentro del interval sin forzar re-creación del mismo |
+
+#### Por qué `pollLayout` y no `loadData`
+
+- `loadData()` toca muchos estados (productos, categorías, etc.) → re-renders agresivos
+- `pollLayout()` solo actualiza `layout` y `exchangeRate` → re-render mínimo
+- El menú de productos no cambia con frecuencia — no vale re-fetchearlo cada 5s
+
+Intervalo final elegido: **5 segundos** tras pruebas de UX (inicialmente 15s, se redujo a 5s).
+
+---
+
+### 18.35 Extensión regla de redondeo — CASH_EUR incluido + backend alineado (2026-04-18)
+
+Complemento de la sección 18.33. Dos fixes adicionales al `roundToWhole`:
+
+#### 1. CASH_EUR debe redondearse (antes no estaba incluido)
+
+Regla de negocio completa:
+
+> **DIVISAS efectivo** (`CASH_USD`, `CASH_EUR`, `ZELLE`): aplicar 33% descuento → `Math.round()` al resultado final.
+>
+> **BOLÍVARES** (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`): sin redondeo. El monto USD exacto × tasa BCV = Bs exactos.
+
+#### 2. Backend `pos.actions.ts` no estaba alineado
+
+`src/app/actions/pos.actions.ts::roundToWhole` tenía CASH_BS y le faltaba CASH_EUR — misma ley que el frontend. Corregido:
+
+```typescript
+/**
+ * Regla de negocio — redondeo por método de pago:
+ *  DIVISAS efectivo (CASH_USD, CASH_EUR, ZELLE):
+ *    Aplicar 33% de descuento → Math.round() al resultado FINAL.
+ *  BOLÍVARES (CASH_BS, PDV_SHANKLISH, PDV_SUPERFERRO, MOVIL_NG):
+ *    SIN redondeo. El monto USD exacto × tasa BCV = Bs exactos.
+ */
+function roundToWhole(amount: number, paymentMethod?: string): number {
+    if (paymentMethod === 'CASH_USD' || paymentMethod === 'CASH_EUR' || paymentMethod === 'ZELLE') {
+        return Math.round(amount);
+    }
+    return amount;
+}
+```
+
+Aplicado en frontend (`restaurante/page.tsx`) y backend (`pos.actions.ts`) — misma docstring para que nadie vuelva a introducir la regresión.
+
+---
+
+### 18.36 Sistema de permisos granular de 4 capas (2026-04-18)
+
+Reemplazo incremental del sistema previo (solo `role` + `allowedModules`). Mantiene retrocompatibilidad total: con `grantedPerms=null` y `revokedPerms=null`, el comportamiento es idéntico al sistema viejo.
+
+#### Las 4 capas — orden de evaluación
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CAPA 4: revokedPerms  ← excepciones que RESTRINGEN (win)   │
+│  CAPA 3: grantedPerms  ← excepciones que AMPLÍAN (bypass 2) │
+│  CAPA 2: allowedModules ← gating por módulo (si definido)   │
+│  CAPA 1: ROLE_BASE_PERMS[role] ← defaults por rol           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Reglas de resolución:**
+
+1. Si el permiso está en `revokedPerms` → **DENY** (Capa 4 gana siempre, incluso sobre OWNER)
+2. Si el permiso está en `grantedPerms` → **ALLOW** (Capa 3 bypassea Capa 1 y Capa 2)
+3. Si el rol base no tiene el permiso → **DENY**
+4. Si `allowedModules` está definido y ningún módulo del perm está en él → **DENY**
+5. En caso contrario → **ALLOW**
+
+#### Catálogo de permisos (`permissions-registry.ts`)
+
+17 permisos agrupados en 4 categorías:
+
+| Grupo | Permisos |
+|-------|----------|
+| 💳 POS / Ventas | VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS, REPRINT_COMANDA |
+| 📦 Inventario | ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV |
+| 💰 Financiero | EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES |
+| 🔐 Admin | MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST |
+
+Cada PERM se mapea a uno o más módulos vía `PERM_TO_MODULES`. Ejemplo: `VOID_ORDER → [pos_restaurant, pos_waiter, pos_delivery, pedidosya, sales_history]`.
+
+#### Archivos creados (`src/lib/permissions/`)
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `has-permission.ts` | Core engine — `hasPermission(permUser, permission)`, `visibleModules(user)`, `serializePerms(perms)`. Isomorfo (server + client). |
+| `perm-to-modules.ts` | Mapeo `PermKey → string[]` de módulos donde el perm aplica. |
+| `action-guard.ts` | `checkActionPermission(PERM)` — para Server Actions. Devuelve `{ ok, user/message }`. |
+| `api-guard.ts` | `requirePermission(PERM)` — para API routes. Devuelve `{ ok, status, message }`. |
+| `index.ts` | Barrel exports (excluye api-guard para no traer Next internals a contextos client). |
+
+#### Session enrichment — JWT con permisos
+
+`SessionPayload` extendido en `src/lib/auth.ts`:
+
+```typescript
+export interface SessionPayload {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    activeCashierId?: string;
+    allowedModules?: string | null;   // ← nuevo (espejo de BD)
+    grantedPerms?: string | null;     // ← nuevo
+    revokedPerms?: string | null;     // ← nuevo
+}
+```
+
+`loginAction` ahora carga `allowedModules`/`grantedPerms`/`revokedPerms` desde BD y los inyecta al JWT. Los guards server-side releen `allowedModules` de BD por cada request (para evitar JWTs stale tras cambios del admin), pero `grantedPerms`/`revokedPerms` se toman del JWT (cambios requieren re-login).
+
+#### DashboardLayout usa `visibleModules()`
+
+En lugar de parsear `dbUser.allowedModules` directamente, llama `visibleModules(permUser)` que devuelve `allowedModules ∪ módulos derivados de grantedPerms`. Así cuando el admin concede `VIEW_ALL_ORDERS` a una cajera cuyo `allowedModules=["pos_waiter"]`, la cajera ve también `sales_history` en el sidebar sin tocar `allowedModules`.
+
+**Fallback defensivo:** si `session.allowedModules === undefined` (JWT emitido antes de la session enrichment), el layout consulta BD una vez. Así ningún usuario ve de más hasta que re-loguee.
+
+#### Hook client `usePermission` (UX only)
+
+```typescript
+import { usePermission } from '@/hooks/use-permission';
+const canVoid = usePermission(PERM.VOID_ORDER);
+<button disabled={!canVoid}>Anular</button>
+```
+
+También `useAnyPermission([perms])` y `useAllPermissions([perms])`.
+
+⚠️ **Solo para UX.** La seguridad real vive en `checkActionPermission`. Cliente malicioso puede bypassear el hook.
+
+El store `useAuthStore` se extendió con `permissions: AuthPermissions | null` y action `setPermissions()`. El `Sidebar` sincroniza desde `session` → store en el mismo `useEffect` que sincroniza `user`.
+
+#### Migración de Server Actions existentes
+
+Reemplazamos el patrón legacy `hasPermission(session.role, PERMISSIONS.X)` por `checkActionPermission(PERM.X)` en 10 actions:
+
+| Archivo | Acciones migradas | PERM |
+|---------|-------------------|------|
+| `user.actions.ts` | `getUsers`, `updateUserRole`, `toggleUserStatus`, `updateUserModules`, `updateUserPerms`, `createUserAction`, `updateUserNameAction`, `adminResetPasswordAction` | `MANAGE_USERS` |
+| `user.actions.ts` | `updateUserPin` | `MANAGE_PINS` (más restrictivo) |
+| `inventory-daily.actions.ts` | `closeDailyInventoryAction` | `CLOSE_DAILY_INV` |
+| `sales.actions.ts` | `getSalesHistoryAction`, `getSalesForArqueoAction` | `EXPORT_SALES` |
+| `sales.actions.ts` | `voidSalesOrderAction` | `VOID_ORDER` |
+| `finance.actions.ts` | `getFinancialSummaryAction`, `getMonthlyTrendAction`, `getDailySalesAction` | `VIEW_FINANCES` |
+
+**No tocados** (por diseño):
+- `pos.actions.ts` — usa PIN-gating (manager PIN). Patrón distinto; requiere diseño aparte.
+- `reopenDailyInventoryAction` — raro, hardcoded OWNER/AUDITOR preservado explícitamente.
+- `changePasswordAction` — el usuario cambia su propia contraseña, no requiere perm admin.
+
+#### Admin UI — ya existente en `/dashboard/usuarios`
+
+El panel `/dashboard/usuarios` ya incluía:
+- Checkboxes de módulos (bulk update `allowedModules`)
+- Sección "PERMISOS GRANULARES" con tri-state por PERM: default (rol) / granted / revoked
+- Badges "del rol" / "revocado" / "personalizado"
+- Reset password, cambiar PIN, activar/desactivar
+
+La action `updateUserPerms(userId, granted[], revoked[])` escribe JSON serializado via `serializePerms()` (dedup + sort + null si vacío).
+
+#### Tests — vitest con 27 smoke tests
+
+`src/lib/permissions/has-permission.test.ts`:
+
+- Capa 1: OWNER full access, CASHIER subset, rol desconocido = ∅
+- Capa 2: null = sin restricción, subset filtra, JSON malformado tolerado, empty array bloquea no-globales
+- Capa 3: bypass de rol base Y de allowedModules (sales_history para mesonero con solo `pos_waiter`)
+- Capa 4: vence a Capa 1/2/3 — revoca incluso OWNER
+- `hasAnyPermission` / `hasAllPermissions` edge cases
+- `visibleModules`: null passthrough, unión con grantedPerms, dedup
+- `serializePerms`: empty→null, dedup, sort estable
+
+**Comandos:**
+
+```bash
+npm test          # corre todos (1 vez)
+npm run test:watch
+```
+
+Vitest 4.1.4, config mínima en `vitest.config.ts` (alias `@/` → `./src`, env node).
+
+**Estado:** ✅ 27/27 tests pasan en ~1s. Sin CI wiring todavía.
+
+---
+
+### 18.37 Fix: select "Dueño (Full Access)" fantasma en Roles y Permisos (2026-04-18)
+
+#### Bug visual
+
+Muchos usuarios (cajeras, mesoneros) aparecían en `/dashboard/config/roles` con el rol "Dueño (Full Access)" aunque en BD tenían rol `CASHIER`. El script de diagnóstico contra RDS confirmó que la BD estaba correcta — era bug de render.
+
+#### Causa raíz
+
+```typescript
+// src/app/dashboard/config/roles/roles-view.tsx
+const AVAILABLE_ROLES: { value: UserRole; label: string }[] = [
+    { value: 'OWNER', label: 'Dueño (Full Access)' },
+    { value: 'AUDITOR', label: 'Auditor' },
+    { value: 'ADMIN_MANAGER', label: 'Gerente Adm.' },
+    { value: 'OPS_MANAGER', label: 'Gerente Ops.' },
+    { value: 'HR_MANAGER', label: 'RRHH' },
+    { value: 'CHEF', label: 'Chef Ejecutivo' },
+    { value: 'AREA_LEAD', label: 'Jefe de Área' },
+    // ← FALTABAN: CASHIER, KITCHEN_CHEF, WAITER
+];
+```
+
+Cuando `<select value="CASHIER">` no encuentra `<option value="CASHIER">`, HTML muestra el **primer** option por defecto — en este caso "Dueño (Full Access)". El `value` controlado en React no dispara `onChange` hasta que el usuario interactúa, pero el texto visible es el equivocado.
+
+#### Fix
+
+Agregar las 3 opciones faltantes:
+
+```typescript
+    { value: 'AREA_LEAD', label: 'Jefe de Área' },
+    { value: 'CASHIER', label: 'Cajera' },
+    { value: 'KITCHEN_CHEF', label: 'Jefe de Cocina' },
+    { value: 'WAITER', label: 'Mesero' },
+];
+```
+
+**Lección:** los selects en data-driven UIs necesitan opciones para **todos** los valores posibles de la tabla. Este bug estuvo latente hasta que se creó el primer usuario CASHIER/mesonero.
+
+---
+
+*Actualizado el 2026-04-18 — Shanklish ERP / Cápsula SaaS — Documento Completo*
+*46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
+*Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349*
