@@ -191,9 +191,40 @@ export async function validateWaiterPinAction(pin: string): Promise<{
 
 // ============================================================================
 // TRANSFERENCIA DE MESA
-// Requiere PIN de un capitán (isCaptain=true). Registra el historial,
+// Acepta PIN de un capitán (Waiter.isCaptain=true) O de un gerente
+// (User con rol OWNER/ADMIN_MANAGER/OPS_MANAGER). Registra el historial,
 // actualiza waiterProfileId del OpenTab y devuelve el registro creado.
 // ============================================================================
+
+type AuthResult =
+    | { type: 'CAPTAIN'; name: string; waiterId: string }
+    | { type: 'MANAGER'; name: string; userId: string };
+
+async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult | null> {
+    const trimmed = pin.trim();
+    // Tipo 1: Waiter capitán activo en la sucursal
+    const captains = await prisma.waiter.findMany({
+        where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
+        select: { id: true, firstName: true, lastName: true, pin: true },
+    });
+    for (const c of captains) {
+        if (c.pin && await verifyPin(trimmed, c.pin)) {
+            return { type: 'CAPTAIN', name: `${c.firstName} ${c.lastName}`, waiterId: c.id };
+        }
+    }
+    // Tipo 2: User gerente/dueño activo (cualquier sucursal)
+    const managers = await prisma.user.findMany({
+        where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] }, isActive: true, pin: { not: null } },
+        select: { id: true, firstName: true, lastName: true, pin: true },
+    });
+    for (const m of managers) {
+        if (m.pin && await verifyPin(trimmed, m.pin)) {
+            return { type: 'MANAGER', name: `${m.firstName} ${m.lastName}`, userId: m.id };
+        }
+    }
+    return null;
+}
+
 export async function transferTableAction({
     openTabId,
     fromWaiterId,
@@ -241,20 +272,10 @@ export async function transferTableAction({
             return { success: false, message: 'Mesonero destino no encontrado o inactivo' };
         }
 
-        // Validar PIN contra capitanes activos del branch
-        const captains = await prisma.waiter.findMany({
-            where: { branchId: branch.id, isActive: true, isCaptain: true, pin: { not: null } },
-            select: { id: true, pin: true },
-        });
-        let authorizedCaptainId: string | null = null;
-        for (const c of captains) {
-            if (c.pin && await verifyPin(captainPin.trim(), c.pin)) {
-                authorizedCaptainId = c.id;
-                break;
-            }
-        }
-        if (!authorizedCaptainId) {
-            return { success: false, message: 'PIN de capitán incorrecto' };
+        // Validar PIN: capitán Waiter O gerente User
+        const auth = await resolveAuthPin(captainPin, branch.id);
+        if (!auth) {
+            return { success: false, message: 'PIN de capitán o gerente incorrecto' };
         }
 
         // Transacción: crear registro + actualizar OpenTab
@@ -264,7 +285,11 @@ export async function transferTableAction({
                     openTabId,
                     fromWaiterId,
                     toWaiterId,
-                    authorizedById: authorizedCaptainId!,
+                    authorizedByWaiterId: auth.type === 'CAPTAIN' ? auth.waiterId : null,
+                    authorizedByUserId:   auth.type === 'MANAGER' ? auth.userId   : null,
+                    authorizedNote:       auth.type === 'CAPTAIN'
+                        ? `Capitán: ${auth.name}`
+                        : `Gerente: ${auth.name}`,
                     reason: reason?.trim() || null,
                 },
             });
@@ -285,5 +310,140 @@ export async function transferTableAction({
         };
     } catch {
         return { success: false, message: 'Error realizando la transferencia' };
+    }
+}
+
+// ============================================================================
+// MOVER TAB ENTRE MESAS FÍSICAS
+// Reasigna el tableOrStationId del OpenTab sin cerrar ni reabrir la cuenta.
+// Actualiza currentStatus de ambas mesas y registra en TableTransfer.
+// ============================================================================
+export async function moveTabBetweenTablesAction({
+    openTabId,
+    toTableId,
+    captainPin,
+    reason,
+}: {
+    openTabId: string;
+    toTableId: string;
+    captainPin: string;
+    reason?: string;
+}): Promise<{
+    success: boolean;
+    message: string;
+    data?: { transferId: string; toTableName: string };
+}> {
+    try {
+        if (!captainPin || !/^\d{4,6}$/.test(captainPin.trim())) {
+            return { success: false, message: 'PIN inválido' };
+        }
+
+        const branch = await getActiveBranch();
+        if (!branch) return { success: false, message: 'Sin sucursal activa' };
+
+        // Cargar el OpenTab con su mesa y mesonero actuales
+        const openTab = await prisma.openTab.findUnique({
+            where: { id: openTabId },
+            select: {
+                id: true,
+                status: true,
+                tableOrStationId: true,
+                waiterProfileId: true,
+            },
+        });
+        if (!openTab) return { success: false, message: 'Cuenta no encontrada' };
+        if (!['OPEN', 'PARTIALLY_PAID'].includes(openTab.status)) {
+            return { success: false, message: 'La cuenta ya está cerrada' };
+        }
+
+        const fromTableId = openTab.tableOrStationId;
+        if (!fromTableId) return { success: false, message: 'La cuenta no tiene mesa asignada' };
+        if (fromTableId === toTableId) return { success: false, message: 'La mesa destino es la misma que la actual' };
+
+        // Validar que la mesa destino existe, pertenece a la sucursal y está AVAILABLE
+        const toTable = await prisma.tableOrStation.findUnique({
+            where: { id: toTableId },
+            select: { id: true, name: true, currentStatus: true, branchId: true, isActive: true },
+        });
+        if (!toTable || !toTable.isActive) {
+            return { success: false, message: 'Mesa destino no encontrada o inactiva' };
+        }
+        if (toTable.branchId !== branch.id) {
+            return { success: false, message: 'Mesa destino no pertenece a esta sucursal' };
+        }
+        if (toTable.currentStatus !== 'AVAILABLE') {
+            return { success: false, message: `La mesa "${toTable.name}" no está disponible (${toTable.currentStatus})` };
+        }
+
+        // Verificar que no haya otro OpenTab activo en la mesa destino
+        const conflictTab = await prisma.openTab.findFirst({
+            where: {
+                tableOrStationId: toTableId,
+                status: { in: ['OPEN', 'PARTIALLY_PAID'] },
+                deletedAt: null,
+            },
+            select: { id: true },
+        });
+        if (conflictTab) {
+            return { success: false, message: 'La mesa destino ya tiene una cuenta activa' };
+        }
+
+        // Validar PIN dual: capitán o gerente
+        const auth = await resolveAuthPin(captainPin, branch.id);
+        if (!auth) {
+            return { success: false, message: 'PIN de capitán o gerente incorrecto' };
+        }
+
+        const waiterId = openTab.waiterProfileId;
+        if (!waiterId) return { success: false, message: 'La cuenta no tiene mesonero asignado' };
+
+        // Transacción atómica
+        const transfer = await prisma.$transaction(async (tx) => {
+            // 1. Reasignar mesa en el OpenTab
+            await tx.openTab.update({
+                where: { id: openTabId },
+                data: { tableOrStationId: toTableId },
+            });
+
+            // 2. Mesa origen → AVAILABLE
+            await tx.tableOrStation.update({
+                where: { id: fromTableId },
+                data: { currentStatus: 'AVAILABLE' },
+            });
+
+            // 3. Mesa destino → OCCUPIED
+            await tx.tableOrStation.update({
+                where: { id: toTableId },
+                data: { currentStatus: 'OCCUPIED' },
+            });
+
+            // 4. Registrar en TableTransfer (waiter no cambia, solo cambia la mesa)
+            const record = await tx.tableTransfer.create({
+                data: {
+                    openTabId,
+                    fromWaiterId: waiterId,
+                    toWaiterId:   waiterId,
+                    fromTableId,
+                    toTableId,
+                    authorizedByWaiterId: auth.type === 'CAPTAIN' ? auth.waiterId : null,
+                    authorizedByUserId:   auth.type === 'MANAGER' ? auth.userId   : null,
+                    authorizedNote: auth.type === 'CAPTAIN'
+                        ? `Capitán: ${auth.name}`
+                        : `Gerente: ${auth.name}`,
+                    reason: reason?.trim() || null,
+                },
+            });
+
+            return record;
+        });
+
+        return {
+            success: true,
+            message: `Tab movido a mesa "${toTable.name}"`,
+            data: { transferId: transfer.id, toTableName: toTable.name },
+        };
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Error moviendo la mesa';
+        return { success: false, message: msg };
     }
 }

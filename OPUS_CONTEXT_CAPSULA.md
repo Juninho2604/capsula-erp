@@ -3652,4 +3652,4 @@ Agregar las 3 opciones faltantes:
 
 *Actualizado el 2026-04-18 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
-*Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349*
+*Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master

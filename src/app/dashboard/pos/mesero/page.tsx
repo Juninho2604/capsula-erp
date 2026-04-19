@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
   getMenuForPOSAction,
   getRestaurantLayoutAction,
   openTabAction,
-  removeItemFromOpenTabAction,
+  modifyTabItemAction,
   type CartItem,
+  type ModifyTabItemModification,
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
-import { getActiveWaitersAction, transferTableAction } from "@/app/actions/waiter.actions";
-import { printKitchenCommand } from "@/lib/print-command";
+import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
+import { printKitchenCommand, printVoidKitchenCommand, type VoidKitchenCommandData } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -47,6 +49,8 @@ interface MenuItem {
   sku: string;
   name: string;
   price: number;
+  posGroup?: string | null;
+  posSubcategory?: string | null;
   modifierGroups: { modifierGroup: ModifierGroup }[];
 }
 interface SelectedModifier {
@@ -133,6 +137,8 @@ export default function POSMeseroPage() {
   const [layout, setLayout] = useState<SportBarLayout | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
 
   // ── Zone / Table selection ─────────────────────────────────────────────────
   const [selectedZoneId, setSelectedZoneId] = useState("");
@@ -154,13 +160,20 @@ export default function POSMeseroPage() {
   const [itemQuantity, setItemQuantity] = useState(1);
   const [itemNotes, setItemNotes] = useState("");
 
-  // ── Remove item (con PIN de supervisor) ───────────────────────────────────
+  // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{
     orderId: string;
     itemId: string;
     itemName: string;
+    quantity: number;
+    lineTotal: number;
+    modifiers: string[];
   } | null>(null);
+  const [removeModType, setRemoveModType] = useState<"VOID" | "ADJUST_QTY" | "REPLACE">("VOID");
+  const [removeNewQty, setRemoveNewQty] = useState(1);
+  const [removeReplaceItemId, setRemoveReplaceItemId] = useState("");
+  const [removeReplaceSearch, setRemoveReplaceSearch] = useState("");
   const [removePin, setRemovePin] = useState("");
   const [removeJustification, setRemoveJustification] = useState("");
   const [removeError, setRemoveError] = useState("");
@@ -177,10 +190,9 @@ export default function POSMeseroPage() {
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
 
-  // ── Transferir mesa (solo capitanes) ──────────────────────────────────────
+  // ── Mover tab entre mesas físicas (solo capitanes) ────────────────────────
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferWaiters, setTransferWaiters] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
-  const [transferToWaiterId, setTransferToWaiterId] = useState("");
+  const [transferToTableId, setTransferToTableId] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferCaptainPin, setTransferCaptainPin] = useState("");
   const [transferError, setTransferError] = useState("");
@@ -188,9 +200,14 @@ export default function POSMeseroPage() {
   // ── Navegación móvil ──────────────────────────────────────────────────────
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
 
+  const { user: currentUser } = useAuthStore();
+  const MANAGER_ROLES = ["OWNER", "ADMIN_MANAGER", "OPS_MANAGER"];
+
   // ── Identificación del mesonero ───────────────────────────────────────────
   const [activeWaiter, setActiveWaiter] = useState<ActiveWaiter | null>(null);
   const [waiterHydrated, setWaiterHydrated] = useState(false);
+  const canUseCaptainFeatures =
+    activeWaiter?.isCaptain || MANAGER_ROLES.includes(currentUser?.role ?? "");
 
   useEffect(() => {
     try {
@@ -218,8 +235,8 @@ export default function POSMeseroPage() {
   // DATA LOADING
   // ============================================================================
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
     setLayoutError("");
     try {
       const [menuResult, layoutResult, rate] = await Promise.all([
@@ -240,16 +257,42 @@ export default function POSMeseroPage() {
       }
       setExchangeRate(rate);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, []);
 
+  // ── Auto-polling: sincronización silenciosa del layout cada 15 s ─────────────
+  const isProcessingRef = useRef(isProcessing);
+  useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+  const pollLayout = useCallback(async () => {
+    const [layoutResult, rate] = await Promise.all([
+      getRestaurantLayoutAction(),
+      getExchangeRateValue(),
+    ]);
+    if (layoutResult.success && layoutResult.data) {
+      setLayout(layoutResult.data as SportBarLayout);
+    }
+    if (rate) setExchangeRate(rate);
+  }, []);
+
+  useEffect(() => {
+    const POLL_MS = 5_000;
+    const id = setInterval(() => {
+      if (!document.hidden && !isProcessingRef.current) pollLayout();
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [pollLayout]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!selectedCategory || !categories.length) return;
     const cat = categories.find((c) => c.id === selectedCategory);
     setMenuItems(cat?.items || []);
+    setSelectedSubcategory("");
+    setSelectedGroup("");
   }, [selectedCategory, categories]);
 
   // ============================================================================
@@ -272,6 +315,22 @@ export default function POSMeseroPage() {
     const q = productSearch.toLowerCase();
     return allMenuItems.filter((i) => i.name.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q));
   }, [menuItems, productSearch, allMenuItems]);
+
+  // ── POS Hierarchical Navigation (subcategoría → grupo → tamaños / singles) ──
+  const subcatFilteredItems = useMemo(() => {
+    if (!selectedSubcategory) return menuItems;
+    return menuItems.filter((i) => i.posSubcategory === selectedSubcategory);
+  }, [menuItems, selectedSubcategory]);
+
+  const subcategories = useMemo(() => {
+    const subcats = menuItems.map((i) => i.posSubcategory).filter(Boolean) as string[];
+    return Array.from(new Set(subcats));
+  }, [menuItems]);
+
+  const groupsInView = useMemo(() => {
+    const groups = subcatFilteredItems.map((i) => i.posGroup).filter(Boolean) as string[];
+    return Array.from(new Set(groups));
+  }, [subcatFilteredItems]);
 
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const cartBadgeCount = cart.length;
@@ -410,27 +469,56 @@ export default function POSMeseroPage() {
   // ============================================================================
 
   const openRemoveModal = (orderId: string, item: OrderItemSummary) => {
-    setRemoveTarget({ orderId, itemId: item.id, itemName: item.itemName });
-    setRemovePin(""); setRemoveJustification(""); setRemoveError("");
+    setRemoveTarget({
+      orderId,
+      itemId: item.id,
+      itemName: item.itemName,
+      quantity: item.quantity,
+      lineTotal: item.lineTotal,
+      modifiers: (item.modifiers ?? []).map((m) => m.name),
+    });
+    setRemoveModType("VOID");
+    setRemoveNewQty(Math.max(1, item.quantity - 1));
+    setRemoveReplaceItemId("");
+    setRemoveReplaceSearch("");
+    setRemovePin("");
+    setRemoveJustification("");
+    setRemoveError("");
     setShowRemoveModal(true);
   };
 
   const handleRemoveItem = async () => {
     if (!removeTarget || !activeTab) return;
-    if (!removeJustification.trim()) { setRemoveError("La justificación es obligatoria"); return; }
+    if (!removeJustification.trim()) { setRemoveError("El motivo es obligatorio"); return; }
+    if (!removePin.trim()) { setRemoveError("Ingresa el PIN de capitán o gerente"); return; }
+    if (removeModType === "ADJUST_QTY" && (removeNewQty < 1 || removeNewQty >= removeTarget.quantity)) {
+      setRemoveError(`La cantidad debe ser entre 1 y ${removeTarget.quantity - 1}`); return;
+    }
+    if (removeModType === "REPLACE" && !removeReplaceItemId) {
+      setRemoveError("Selecciona el producto de reemplazo"); return;
+    }
+
+    const modification: ModifyTabItemModification =
+      removeModType === "VOID"       ? { type: "VOID" } :
+      removeModType === "ADJUST_QTY" ? { type: "ADJUST_QTY", newQuantity: removeNewQty } :
+                                       { type: "REPLACE", newMenuItemId: removeReplaceItemId };
+
     setIsProcessing(true); setRemoveError("");
     try {
-      const result = await removeItemFromOpenTabAction({
+      const result = await modifyTabItemAction({
         openTabId: activeTab.id,
         orderId: removeTarget.orderId,
         itemId: removeTarget.itemId,
-        cashierPin: removePin,
-        justification: removeJustification,
-        waiterProfileId: activeWaiter?.id,
+        captainPin: removePin,
+        reason: removeJustification,
+        modification,
       });
       if (!result.success) { setRemoveError(result.message); return; }
       setShowRemoveModal(false);
-      await loadData();
+      if (result.data?.kitchenPrintData) {
+        printVoidKitchenCommand(result.data.kitchenPrintData as VoidKitchenCommandData);
+      }
+      await loadData(false);
     } finally {
       setIsProcessing(false);
     }
@@ -440,36 +528,32 @@ export default function POSMeseroPage() {
   // TRANSFERIR MESA (solo capitanes)
   // ============================================================================
 
-  const openTransferModal = async () => {
+  const openTransferModal = () => {
     if (!activeWaiter || !activeTab) return;
-    setTransferToWaiterId("");
+    setTransferToTableId("");
     setTransferReason("");
     setTransferCaptainPin("");
     setTransferError("");
-    const res = await getActiveWaitersAction();
-    if (res.success) {
-      setTransferWaiters((res.data as { id: string; firstName: string; lastName: string }[]).filter((w) => w.id !== activeWaiter.id));
-    }
     setShowTransferModal(true);
   };
 
-  const handleTransfer = async () => {
-    if (!activeWaiter || !activeTab) return;
-    if (!transferToWaiterId) { setTransferError("Selecciona el mesonero destino"); return; }
-    if (!transferCaptainPin.trim()) { setTransferError("Ingresa tu PIN de capitán"); return; }
+  const handleTableTransfer = async () => {
+    if (!activeTab) return;
+    if (!transferToTableId) { setTransferError("Selecciona la mesa destino"); return; }
+    if (!transferCaptainPin.trim()) { setTransferError("Ingresa el PIN de capitán o gerente"); return; }
     setIsProcessing(true); setTransferError("");
     try {
-      const result = await transferTableAction({
+      const result = await moveTabBetweenTablesAction({
         openTabId: activeTab.id,
-        fromWaiterId: activeWaiter.id,
-        toWaiterId: transferToWaiterId,
+        toTableId: transferToTableId,
         captainPin: transferCaptainPin,
         reason: transferReason.trim() || undefined,
       });
       if (!result.success) { setTransferError(result.message); return; }
       toast.success(result.message);
       setShowTransferModal(false);
-      await loadData();
+      setSelectedTableId(transferToTableId);
+      await loadData(false);
     } finally {
       setIsProcessing(false);
     }
@@ -532,7 +616,7 @@ export default function POSMeseroPage() {
             Salir
           </button>
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
             title="Actualizar"
           >
@@ -570,7 +654,7 @@ export default function POSMeseroPage() {
               ))}
             </div>
             {layoutError && (
-              <button onClick={loadData} className="text-xs text-red-400 hover:text-red-300 py-1 text-center w-full">
+              <button onClick={() => loadData()} className="text-xs text-red-400 hover:text-red-300 py-1 text-center w-full">
                 ⚠️ Error · Reintentar
               </button>
             )}
@@ -682,42 +766,125 @@ export default function POSMeseroPage() {
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setProductSearch(""); }}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setSelectedSubcategory("");
+                    setSelectedGroup("");
+                    setProductSearch("");
+                  }}
                   className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedCategory === cat.id ? "bg-emerald-500 text-black" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
                 >
                   {cat.name}
                 </button>
               ))}
             </div>
+
+            {/* Subcategories */}
+            {!productSearch && subcategories.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                <button
+                  onClick={() => { setSelectedSubcategory(""); setSelectedGroup(""); }}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${!selectedSubcategory ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                >
+                  Todos
+                </button>
+                {subcategories.map((subcat) => (
+                  <button
+                    key={subcat}
+                    onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubcategory === subcat ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                  >
+                    {subcat}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Menu items */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-              {filteredMenuItems.map((item) => (
+          <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+            {/* Back button cuando estás dentro de un grupo */}
+            {selectedGroup && !productSearch && (
+              <button
+                onClick={() => setSelectedGroup("")}
+                className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-400 hover:text-emerald-300 active:scale-95 transition"
+              >
+                ← {selectedGroup}
+              </button>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+
+              {/* ── Grupos (uno por cada posGroup único) ── */}
+              {!selectedGroup && !productSearch && groupsInView.map((group) => {
+                const gItems = subcatFilteredItems.filter((i) => i.posGroup === group);
+                const prices = gItems.map((i) => i.price);
+                const minP = Math.min(...prices);
+                const maxP = Math.max(...prices);
+                return (
+                  <button
+                    key={group}
+                    onClick={() => setSelectedGroup(group)}
+                    disabled={!activeTab}
+                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  >
+                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{group}</div>
+                    <div className="flex items-end justify-between mt-2">
+                      <div className="text-base font-black text-emerald-400">
+                        {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
+                      </div>
+                      <div className="text-[10px] font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                        {gItems.length} op →
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* ── Variantes de tamaño dentro del grupo seleccionado ── */}
+              {selectedGroup && !productSearch && subcatFilteredItems.filter((i) => i.posGroup === selectedGroup).map((item) => {
+                const sizeLabel = item.name.replace(new RegExp(selectedGroup.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() || item.name;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleAddToCart(item)}
+                    disabled={!activeTab}
+                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  >
+                    <div className="text-lg font-black text-gray-950 dark:text-foreground uppercase tracking-tight">{sizeLabel}</div>
+                    <div className="text-xl font-black text-emerald-400 mt-auto">
+                      <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* ── Items sueltos (sin posGroup) o resultados de búsqueda ── */}
+              {(productSearch || !selectedGroup) && (productSearch ? filteredMenuItems : subcatFilteredItems.filter((i) => !i.posGroup)).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleAddToCart(item)}
                   disabled={!activeTab}
-                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform"
+                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
                 >
-                  <div className="text-sm font-black text-foreground group-hover:text-emerald-400 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">
-                    {item.name}
-                  </div>
+                  <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
                   <div className="flex items-end justify-between mt-2">
-                    <div className="text-lg font-black text-emerald-400">
-                      ${item.price.toFixed(2)}
+                    <div className="text-xl font-black text-emerald-400">
+                      <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
                       ➕
                     </div>
                   </div>
                 </button>
               ))}
-              {filteredMenuItems.length === 0 && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">
-                  {productSearch ? `Sin resultados para "${productSearch}"` : "Sin productos en esta categoría"}
-                </div>
+
+              {/* Empty state */}
+              {!productSearch && groupsInView.length === 0 && subcatFilteredItems.filter((i) => !i.posGroup).length === 0 && !selectedGroup && (
+                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin productos en esta categoría</div>
+              )}
+              {productSearch && filteredMenuItems.length === 0 && (
+                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin resultados para &quot;{productSearch}&quot;</div>
               )}
             </div>
           </div>
@@ -777,7 +944,7 @@ export default function POSMeseroPage() {
               openTabId={activeTab.id}
               exchangeRate={exchangeRate}
               onClose={() => setSubAccountMode(false)}
-              onTabUpdated={() => loadData()}
+              onTabUpdated={() => loadData(false)}
             />
           ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -861,7 +1028,7 @@ export default function POSMeseroPage() {
                   >
                     🧾 Mostrar cuenta al cliente
                   </button>
-                  {activeWaiter?.isCaptain && (
+                  {canUseCaptainFeatures && (
                     <>
                       <button
                         onClick={() => setSubAccountMode(true)}
@@ -1126,41 +1293,72 @@ export default function POSMeseroPage() {
         </div>
       )}
 
-      {/* ══ MODAL: TRANSFERIR MESA (solo capitanes) ══════════════════════ */}
-      {showTransferModal && activeTab && activeWaiter?.isCaptain && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-2xl">↔</div>
-              <div>
-                <h3 className="font-black text-base text-sky-400">Transferir mesa</h3>
-                <p className="text-xs text-muted-foreground">{selectedTable?.name} · {activeTab.customerLabel}</p>
-              </div>
-              <button
-                onClick={() => setShowTransferModal(false)}
-                className="ml-auto h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
-                  Mesonero destino
-                </label>
-                <select
-                  value={transferToWaiterId}
-                  onChange={(e) => setTransferToWaiterId(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
+      {/* ══ MODAL: MOVER TAB A OTRA MESA (solo capitanes) ═══════════════════ */}
+      {showTransferModal && activeTab && canUseCaptainFeatures && (() => {
+        const availableTables = layout?.serviceZones.flatMap((z) =>
+          z.tablesOrStations.filter(
+            (t) => t.currentStatus === "AVAILABLE" && t.id !== selectedTableId,
+          ).map((t) => ({ ...t, zoneName: z.name }))
+        ) ?? [];
+        return (
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-card glass-panel w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30 max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">↔</div>
+                <div>
+                  <h3 className="font-black text-base text-sky-400">Mover mesa</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedTable?.name}
+                    {activeTab.customerLabel ? ` · ${activeTab.customerLabel}` : ""}
+                    {" → "}
+                    <span className={transferToTableId ? "text-sky-400 font-bold" : "text-muted-foreground"}>
+                      {transferToTableId
+                        ? (availableTables.find((t) => t.id === transferToTableId)?.name ?? "...")
+                        : "selecciona destino"}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowTransferModal(false)}
+                  className="ml-auto h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground flex-shrink-0"
                 >
-                  <option value="">— Seleccionar mesonero —</option>
-                  {transferWaiters.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.firstName} {w.lastName}
-                    </option>
-                  ))}
-                </select>
+                  ×
+                </button>
               </div>
+
+              {/* Grid de mesas disponibles */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+                  Mesa destino (disponibles)
+                </label>
+                {availableTables.length === 0 ? (
+                  <p className="text-xs text-muted-foreground bg-secondary rounded-xl px-4 py-3">
+                    No hay mesas disponibles en este momento.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
+                    {availableTables.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTransferToTableId(t.id)}
+                        className={`rounded-xl py-3 px-2 text-xs font-black transition border flex flex-col items-center gap-0.5 ${
+                          transferToTableId === t.id
+                            ? "bg-sky-600 border-sky-500 text-white"
+                            : "bg-secondary border-border hover:border-sky-500/50 hover:text-sky-400"
+                        }`}
+                      >
+                        <span className="text-sm">{t.name}</span>
+                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-sky-200" : "text-muted-foreground"}`}>
+                          {t.zoneName}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Motivo */}
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
                   Motivo (opcional)
@@ -1168,13 +1366,15 @@ export default function POSMeseroPage() {
                 <textarea
                   value={transferReason}
                   onChange={(e) => setTransferReason(e.target.value)}
-                  placeholder="Ej: Cambio de turno, petición del cliente..."
-                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-sky-500 focus:outline-none resize-none h-16"
+                  placeholder="Ej: Petición del cliente, cambio de zona..."
+                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-sky-500 focus:outline-none resize-none h-14"
                 />
               </div>
+
+              {/* PIN */}
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
-                  PIN de capitán (confirmación)
+                  PIN de capitán o gerente
                 </label>
                 <input
                   type="password"
@@ -1185,72 +1385,186 @@ export default function POSMeseroPage() {
                   className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
                 />
               </div>
-            </div>
-            {transferError && (
-              <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
-                {transferError}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowTransferModal(false)}
-                className="capsula-btn capsula-btn-secondary flex-1 py-3"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleTransfer}
-                disabled={isProcessing || !transferToWaiterId || !transferCaptainPin.trim()}
-                className="flex-[2] py-3 bg-sky-600 hover:bg-sky-500 rounded-xl font-black text-sm transition disabled:opacity-40"
-              >
-                {isProcessing ? "Transfiriendo..." : "↔ Confirmar transferencia"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ══ MODAL: ANULAR ÍTEM (requiere PIN supervisor) ══════════════════ */}
-      {showRemoveModal && removeTarget && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl border border-red-900/30">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-2xl">🔒</div>
-              <div>
-                <h3 className="font-black text-base text-red-400">Anular ítem</h3>
-                <p className="text-xs text-muted-foreground">{removeTarget.itemName}</p>
+              {transferError && (
+                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                  {transferError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTransferModal(false)}
+                  className="capsula-btn capsula-btn-secondary flex-1 py-3"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleTableTransfer}
+                  disabled={isProcessing || !transferToTableId || !transferCaptainPin.trim()}
+                  className="flex-[2] py-3 bg-sky-600 hover:bg-sky-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                >
+                  {isProcessing ? "Moviendo..." : "↔ Confirmar movimiento"}
+                </button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground bg-red-950/30 border border-red-900/30 rounded-xl p-3">
-              Para anular un ítem ya enviado se requiere <b className="text-red-400">PIN de supervisor</b> y una justificación. Esto queda registrado en el log de auditoría.
-            </p>
-            <textarea
-              value={removeJustification}
-              onChange={(e) => setRemoveJustification(e.target.value)}
-              placeholder="Justificación obligatoria (ej: error del cliente, cambio de pedido...)"
-              className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none resize-none h-20"
-            />
-            <input
-              type="password"
-              placeholder="PIN de supervisor (opcional si tienes permiso)"
-              value={removePin}
-              onChange={(e) => setRemovePin(e.target.value)}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-red-500 focus:outline-none"
-            />
-            {removeError && <p className="text-red-400 text-xs font-bold">{removeError}</p>}
-            <div className="flex gap-3">
-              <button onClick={() => setShowRemoveModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">Cancelar</button>
-              <button
-                onClick={handleRemoveItem}
-                disabled={isProcessing || !removeJustification.trim()}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition disabled:opacity-40"
-              >
-                {isProcessing ? "Anulando..." : "Confirmar anulación"}
-              </button>
+          </div>
+        );
+      })()}
+
+      {/* ══ MODAL: ANULAR ÍTEM (requiere PIN supervisor) ══════════════════ */}
+      {showRemoveModal && removeTarget && (() => {
+        const replaceItems = allMenuItems.filter((m) =>
+          m.id !== removeTarget.itemId &&
+          (!removeReplaceSearch.trim() || m.name.toLowerCase().includes(removeReplaceSearch.toLowerCase()))
+        ).slice(0, 30);
+        return (
+          <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-red-900/30 max-h-[92vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 bg-red-500/10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">✏️</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-sm text-red-400">Modificar ítem enviado</h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    <span className="font-bold text-foreground">{removeTarget.quantity}×</span> {removeTarget.itemName}
+                    <span className="ml-2 text-muted-foreground">${removeTarget.lineTotal.toFixed(2)}</span>
+                  </p>
+                </div>
+                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 text-xl flex items-center justify-center flex-shrink-0">×</button>
+              </div>
+
+              {/* Opciones de modificación */}
+              <div className="grid grid-cols-3 gap-2">
+                {(["VOID", "ADJUST_QTY", "REPLACE"] as const).map((t) => {
+                  const labels = { VOID: "❌ Cancelar", ADJUST_QTY: "✏️ Ajustar", REPLACE: "🔄 Cambiar" };
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setRemoveModType(t)}
+                      className={`py-2.5 rounded-xl text-xs font-black border transition ${
+                        removeModType === t
+                          ? "bg-red-600 border-red-500 text-white"
+                          : "bg-secondary border-border hover:border-red-500/40 hover:text-red-400"
+                      }`}
+                    >
+                      {labels[t]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Ajustar cantidad */}
+              {removeModType === "ADJUST_QTY" && (
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                    Nueva cantidad (actual: {removeTarget.quantity})
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setRemoveNewQty((q) => Math.max(1, q - 1))}
+                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-red-500/40"
+                    >−</button>
+                    <span className="flex-1 text-center text-2xl font-black">{removeNewQty}</span>
+                    <button
+                      onClick={() => setRemoveNewQty((q) => Math.min(removeTarget.quantity - 1, q + 1))}
+                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-sky-500/40"
+                    >+</button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                    Se anularán {removeTarget.quantity - removeNewQty} unidad(es) y se reimprimirá la comanda
+                  </p>
+                </div>
+              )}
+
+              {/* Cambiar por otro ítem */}
+              {removeModType === "REPLACE" && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">
+                    Producto de reemplazo
+                  </label>
+                  <input
+                    value={removeReplaceSearch}
+                    onChange={(e) => setRemoveReplaceSearch(e.target.value)}
+                    placeholder="Buscar producto..."
+                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                  />
+                  <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                    {replaceItems.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setRemoveReplaceItemId(m.id)}
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-bold transition border ${
+                          removeReplaceItemId === m.id
+                            ? "bg-sky-600 border-sky-500 text-white"
+                            : "bg-secondary border-border hover:border-sky-500/40"
+                        }`}
+                      >
+                        <span className="truncate">{m.name}</span>
+                        <span className="ml-2 shrink-0 opacity-70">${m.price?.toFixed(2)}</span>
+                      </button>
+                    ))}
+                    {replaceItems.length === 0 && (
+                      <p className="text-xs text-muted-foreground px-2 py-1">Sin resultados</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Motivo */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  Motivo (obligatorio)
+                </label>
+                <textarea
+                  value={removeJustification}
+                  onChange={(e) => setRemoveJustification(e.target.value)}
+                  placeholder="Ej: error del cliente, cambio de pedido..."
+                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none resize-none h-14"
+                />
+              </div>
+
+              {/* PIN */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  PIN de capitán o gerente
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="••••"
+                  value={removePin}
+                  onChange={(e) => setRemovePin(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              {removeError && (
+                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                  {removeError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowRemoveModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleRemoveItem}
+                  disabled={isProcessing || !removeJustification.trim() || !removePin.trim()}
+                  className="flex-[2] py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                >
+                  {isProcessing ? "Procesando..." : (
+                    removeModType === "VOID"       ? "❌ Confirmar anulación" :
+                    removeModType === "ADJUST_QTY" ? "✏️ Ajustar cantidad" :
+                                                     "🔄 Confirmar cambio"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );
