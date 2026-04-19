@@ -47,6 +47,34 @@ const config: Config = {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))',
                 },
+                // ─── CÁPSULA Brand Tokens ─────────────────────────
+                capsula: {
+                    coral: {
+                        DEFAULT: '#FF6B4A',
+                        hover: '#E85A3A',
+                        light: '#FF8A6F',
+                        subtle: '#FFF0EC',
+                    },
+                    navy: {
+                        DEFAULT: '#1B2D45',
+                        light: '#2A4060',
+                        subtle: '#F0F2F5',
+                    },
+                    gold: {
+                        DEFAULT: '#FFD93D',
+                        hover: '#F0C830',
+                        subtle: '#FFFBEB',
+                    },
+                    warm: '#FFF8F5',
+                    muted: '#FFE8E0',
+                },
+                // ─── Colores legacy por tenant ────────────────────
+                tablepong: {
+                    navy: '#1A2B5B',
+                    red: '#E60023',
+                    white: '#FFFFFF',
+                    light: '#F8FAFC',
+                },
                 // Colores personalizados Shanklish
                 shanklish: {
                     gold: '#D4AF37',
@@ -62,7 +90,8 @@ const config: Config = {
                 sm: 'calc(var(--radius) - 4px)',
             },
             fontFamily: {
-                sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-body)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
+                heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
             },
             keyframes: {
                 'fade-in': {
@@ -73,15 +102,25 @@ const config: Config = {
                     '0%': { transform: 'translateX(-100%)' },
                     '100%': { transform: 'translateX(0)' },
                 },
+                'slide-up': {
+                    '0%': { opacity: '0', transform: 'translateY(20px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
                 pulse: {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.5' },
+                },
+                'spin-slow': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' },
                 },
             },
             animation: {
                 'fade-in': 'fade-in 0.3s ease-out',
                 'slide-in': 'slide-in 0.3s ease-out',
+                'slide-up': 'slide-up 0.4s ease-out',
                 pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'spin-slow': 'spin-slow 3s linear infinite',
             },
         },
     },

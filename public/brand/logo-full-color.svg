@@ -1,0 +1,12 @@
+<svg width="200" height="64" viewBox="0 0 200 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- CÁPSULA Logo Full — Barras Modulares + Coral Energy -->
+
+  <!-- Isotipo: Cápsula con barras -->
+  <rect x="8" y="16" width="48" height="32" rx="16" fill="#FF6B4A"/>
+  <rect x="22" y="24" width="6" height="16" rx="3" fill="white" opacity="0.9"/>
+  <rect x="32" y="20" width="6" height="24" rx="3" fill="white" opacity="0.7"/>
+  <rect x="42" y="26" width="6" height="12" rx="3" fill="white" opacity="0.5"/>
+
+  <!-- Texto: CÁPSULA -->
+  <text x="66" y="40" font-family="Nunito, system-ui, sans-serif" font-weight="800" font-size="22" fill="#1B2D45" letter-spacing="0.02em">CÁPSULA</text>
+</svg>
