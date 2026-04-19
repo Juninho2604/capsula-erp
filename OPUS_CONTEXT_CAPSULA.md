@@ -3382,6 +3382,274 @@ const roundToWhole = (amount: number, method: string): number =>
 
 ---
 
+### 18.34 Auto-polling de layout POS cada 5s (2026-04-18)
+
+#### Problema
+
+Cuando dos dispositivos estaban en el mismo módulo POS (cajera + mesonero, o dos cajeras), los cambios que uno hacía no aparecían en el otro hasta refrescar manualmente (F5). El `router.refresh()` no sirve aquí porque las páginas POS son **Client Components** — no hay Server Components que re-fetchear.
+
+#### Solución — polling silencioso con `pollLayout`
+
+Patrón aplicado en `restaurante/page.tsx` y `mesero/page.tsx`:
+
+```typescript
+const isProcessingRef = useRef(isProcessing);
+useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+
+const pollLayout = useCallback(async () => {
+    const [layoutResult, rate] = await Promise.all([
+        getRestaurantLayoutAction(),
+        getExchangeRateValue(),
+    ]);
+    if (layoutResult.success && layoutResult.data) {
+        setLayout(layoutResult.data as SportBarLayout);
+    }
+    if (rate) setExchangeRate(rate);
+}, []);
+
+useEffect(() => {
+    const POLL_MS = 5_000;
+    const id = setInterval(() => {
+        if (!document.hidden && !isProcessingRef.current) pollLayout();
+    }, POLL_MS);
+    return () => clearInterval(id);
+}, [pollLayout]);
+```
+
+#### Guardas clave
+
+| Guard | Por qué |
+|-------|---------|
+| `document.hidden` | Pausa el polling cuando la pestaña no está visible (ahorro de BD y red) |
+| `isProcessingRef.current` | Evita pisar trabajo del usuario (agregando ítem, procesando cobro, etc.) |
+| `useCallback([])` | El `pollLayout` no depende de props/state mutables — el efecto no se recrea en cada render |
+| `useRef` para `isProcessing` | Leer el valor actual dentro del interval sin forzar re-creación del mismo |
+
+#### Por qué `pollLayout` y no `loadData`
+
+- `loadData()` toca muchos estados (productos, categorías, etc.) → re-renders agresivos
+- `pollLayout()` solo actualiza `layout` y `exchangeRate` → re-render mínimo
+- El menú de productos no cambia con frecuencia — no vale re-fetchearlo cada 5s
+
+Intervalo final elegido: **5 segundos** tras pruebas de UX (inicialmente 15s, se redujo a 5s).
+
+---
+
+### 18.35 Extensión regla de redondeo — CASH_EUR incluido + backend alineado (2026-04-18)
+
+Complemento de la sección 18.33. Dos fixes adicionales al `roundToWhole`:
+
+#### 1. CASH_EUR debe redondearse (antes no estaba incluido)
+
+Regla de negocio completa:
+
+> **DIVISAS efectivo** (`CASH_USD`, `CASH_EUR`, `ZELLE`): aplicar 33% descuento → `Math.round()` al resultado final.
+>
+> **BOLÍVARES** (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`): sin redondeo. El monto USD exacto × tasa BCV = Bs exactos.
+
+#### 2. Backend `pos.actions.ts` no estaba alineado
+
+`src/app/actions/pos.actions.ts::roundToWhole` tenía CASH_BS y le faltaba CASH_EUR — misma ley que el frontend. Corregido:
+
+```typescript
+/**
+ * Regla de negocio — redondeo por método de pago:
+ *  DIVISAS efectivo (CASH_USD, CASH_EUR, ZELLE):
+ *    Aplicar 33% de descuento → Math.round() al resultado FINAL.
+ *  BOLÍVARES (CASH_BS, PDV_SHANKLISH, PDV_SUPERFERRO, MOVIL_NG):
+ *    SIN redondeo. El monto USD exacto × tasa BCV = Bs exactos.
+ */
+function roundToWhole(amount: number, paymentMethod?: string): number {
+    if (paymentMethod === 'CASH_USD' || paymentMethod === 'CASH_EUR' || paymentMethod === 'ZELLE') {
+        return Math.round(amount);
+    }
+    return amount;
+}
+```
+
+Aplicado en frontend (`restaurante/page.tsx`) y backend (`pos.actions.ts`) — misma docstring para que nadie vuelva a introducir la regresión.
+
+---
+
+### 18.36 Sistema de permisos granular de 4 capas (2026-04-18)
+
+Reemplazo incremental del sistema previo (solo `role` + `allowedModules`). Mantiene retrocompatibilidad total: con `grantedPerms=null` y `revokedPerms=null`, el comportamiento es idéntico al sistema viejo.
+
+#### Las 4 capas — orden de evaluación
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CAPA 4: revokedPerms  ← excepciones que RESTRINGEN (win)   │
+│  CAPA 3: grantedPerms  ← excepciones que AMPLÍAN (bypass 2) │
+│  CAPA 2: allowedModules ← gating por módulo (si definido)   │
+│  CAPA 1: ROLE_BASE_PERMS[role] ← defaults por rol           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Reglas de resolución:**
+
+1. Si el permiso está en `revokedPerms` → **DENY** (Capa 4 gana siempre, incluso sobre OWNER)
+2. Si el permiso está en `grantedPerms` → **ALLOW** (Capa 3 bypassea Capa 1 y Capa 2)
+3. Si el rol base no tiene el permiso → **DENY**
+4. Si `allowedModules` está definido y ningún módulo del perm está en él → **DENY**
+5. En caso contrario → **ALLOW**
+
+#### Catálogo de permisos (`permissions-registry.ts`)
+
+17 permisos agrupados en 4 categorías:
+
+| Grupo | Permisos |
+|-------|----------|
+| 💳 POS / Ventas | VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS, REPRINT_COMANDA |
+| 📦 Inventario | ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV |
+| 💰 Financiero | EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES |
+| 🔐 Admin | MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST |
+
+Cada PERM se mapea a uno o más módulos vía `PERM_TO_MODULES`. Ejemplo: `VOID_ORDER → [pos_restaurant, pos_waiter, pos_delivery, pedidosya, sales_history]`.
+
+#### Archivos creados (`src/lib/permissions/`)
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `has-permission.ts` | Core engine — `hasPermission(permUser, permission)`, `visibleModules(user)`, `serializePerms(perms)`. Isomorfo (server + client). |
+| `perm-to-modules.ts` | Mapeo `PermKey → string[]` de módulos donde el perm aplica. |
+| `action-guard.ts` | `checkActionPermission(PERM)` — para Server Actions. Devuelve `{ ok, user/message }`. |
+| `api-guard.ts` | `requirePermission(PERM)` — para API routes. Devuelve `{ ok, status, message }`. |
+| `index.ts` | Barrel exports (excluye api-guard para no traer Next internals a contextos client). |
+
+#### Session enrichment — JWT con permisos
+
+`SessionPayload` extendido en `src/lib/auth.ts`:
+
+```typescript
+export interface SessionPayload {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    activeCashierId?: string;
+    allowedModules?: string | null;   // ← nuevo (espejo de BD)
+    grantedPerms?: string | null;     // ← nuevo
+    revokedPerms?: string | null;     // ← nuevo
+}
+```
+
+`loginAction` ahora carga `allowedModules`/`grantedPerms`/`revokedPerms` desde BD y los inyecta al JWT. Los guards server-side releen `allowedModules` de BD por cada request (para evitar JWTs stale tras cambios del admin), pero `grantedPerms`/`revokedPerms` se toman del JWT (cambios requieren re-login).
+
+#### DashboardLayout usa `visibleModules()`
+
+En lugar de parsear `dbUser.allowedModules` directamente, llama `visibleModules(permUser)` que devuelve `allowedModules ∪ módulos derivados de grantedPerms`. Así cuando el admin concede `VIEW_ALL_ORDERS` a una cajera cuyo `allowedModules=["pos_waiter"]`, la cajera ve también `sales_history` en el sidebar sin tocar `allowedModules`.
+
+**Fallback defensivo:** si `session.allowedModules === undefined` (JWT emitido antes de la session enrichment), el layout consulta BD una vez. Así ningún usuario ve de más hasta que re-loguee.
+
+#### Hook client `usePermission` (UX only)
+
+```typescript
+import { usePermission } from '@/hooks/use-permission';
+const canVoid = usePermission(PERM.VOID_ORDER);
+<button disabled={!canVoid}>Anular</button>
+```
+
+También `useAnyPermission([perms])` y `useAllPermissions([perms])`.
+
+⚠️ **Solo para UX.** La seguridad real vive en `checkActionPermission`. Cliente malicioso puede bypassear el hook.
+
+El store `useAuthStore` se extendió con `permissions: AuthPermissions | null` y action `setPermissions()`. El `Sidebar` sincroniza desde `session` → store en el mismo `useEffect` que sincroniza `user`.
+
+#### Migración de Server Actions existentes
+
+Reemplazamos el patrón legacy `hasPermission(session.role, PERMISSIONS.X)` por `checkActionPermission(PERM.X)` en 10 actions:
+
+| Archivo | Acciones migradas | PERM |
+|---------|-------------------|------|
+| `user.actions.ts` | `getUsers`, `updateUserRole`, `toggleUserStatus`, `updateUserModules`, `updateUserPerms`, `createUserAction`, `updateUserNameAction`, `adminResetPasswordAction` | `MANAGE_USERS` |
+| `user.actions.ts` | `updateUserPin` | `MANAGE_PINS` (más restrictivo) |
+| `inventory-daily.actions.ts` | `closeDailyInventoryAction` | `CLOSE_DAILY_INV` |
+| `sales.actions.ts` | `getSalesHistoryAction`, `getSalesForArqueoAction` | `EXPORT_SALES` |
+| `sales.actions.ts` | `voidSalesOrderAction` | `VOID_ORDER` |
+| `finance.actions.ts` | `getFinancialSummaryAction`, `getMonthlyTrendAction`, `getDailySalesAction` | `VIEW_FINANCES` |
+
+**No tocados** (por diseño):
+- `pos.actions.ts` — usa PIN-gating (manager PIN). Patrón distinto; requiere diseño aparte.
+- `reopenDailyInventoryAction` — raro, hardcoded OWNER/AUDITOR preservado explícitamente.
+- `changePasswordAction` — el usuario cambia su propia contraseña, no requiere perm admin.
+
+#### Admin UI — ya existente en `/dashboard/usuarios`
+
+El panel `/dashboard/usuarios` ya incluía:
+- Checkboxes de módulos (bulk update `allowedModules`)
+- Sección "PERMISOS GRANULARES" con tri-state por PERM: default (rol) / granted / revoked
+- Badges "del rol" / "revocado" / "personalizado"
+- Reset password, cambiar PIN, activar/desactivar
+
+La action `updateUserPerms(userId, granted[], revoked[])` escribe JSON serializado via `serializePerms()` (dedup + sort + null si vacío).
+
+#### Tests — vitest con 27 smoke tests
+
+`src/lib/permissions/has-permission.test.ts`:
+
+- Capa 1: OWNER full access, CASHIER subset, rol desconocido = ∅
+- Capa 2: null = sin restricción, subset filtra, JSON malformado tolerado, empty array bloquea no-globales
+- Capa 3: bypass de rol base Y de allowedModules (sales_history para mesonero con solo `pos_waiter`)
+- Capa 4: vence a Capa 1/2/3 — revoca incluso OWNER
+- `hasAnyPermission` / `hasAllPermissions` edge cases
+- `visibleModules`: null passthrough, unión con grantedPerms, dedup
+- `serializePerms`: empty→null, dedup, sort estable
+
+**Comandos:**
+
+```bash
+npm test          # corre todos (1 vez)
+npm run test:watch
+```
+
+Vitest 4.1.4, config mínima en `vitest.config.ts` (alias `@/` → `./src`, env node).
+
+**Estado:** ✅ 27/27 tests pasan en ~1s. Sin CI wiring todavía.
+
+---
+
+### 18.37 Fix: select "Dueño (Full Access)" fantasma en Roles y Permisos (2026-04-18)
+
+#### Bug visual
+
+Muchos usuarios (cajeras, mesoneros) aparecían en `/dashboard/config/roles` con el rol "Dueño (Full Access)" aunque en BD tenían rol `CASHIER`. El script de diagnóstico contra RDS confirmó que la BD estaba correcta — era bug de render.
+
+#### Causa raíz
+
+```typescript
+// src/app/dashboard/config/roles/roles-view.tsx
+const AVAILABLE_ROLES: { value: UserRole; label: string }[] = [
+    { value: 'OWNER', label: 'Dueño (Full Access)' },
+    { value: 'AUDITOR', label: 'Auditor' },
+    { value: 'ADMIN_MANAGER', label: 'Gerente Adm.' },
+    { value: 'OPS_MANAGER', label: 'Gerente Ops.' },
+    { value: 'HR_MANAGER', label: 'RRHH' },
+    { value: 'CHEF', label: 'Chef Ejecutivo' },
+    { value: 'AREA_LEAD', label: 'Jefe de Área' },
+    // ← FALTABAN: CASHIER, KITCHEN_CHEF, WAITER
+];
+```
+
+Cuando `<select value="CASHIER">` no encuentra `<option value="CASHIER">`, HTML muestra el **primer** option por defecto — en este caso "Dueño (Full Access)". El `value` controlado en React no dispara `onChange` hasta que el usuario interactúa, pero el texto visible es el equivocado.
+
+#### Fix
+
+Agregar las 3 opciones faltantes:
+
+```typescript
+    { value: 'AREA_LEAD', label: 'Jefe de Área' },
+    { value: 'CASHIER', label: 'Cajera' },
+    { value: 'KITCHEN_CHEF', label: 'Jefe de Cocina' },
+    { value: 'WAITER', label: 'Mesero' },
+];
+```
+
+**Lección:** los selects en data-driven UIs necesitan opciones para **todos** los valores posibles de la tabla. Este bug estuvo latente hasta que se creó el primer usuario CASHIER/mesonero.
+
+---
+
 *Actualizado el 2026-04-18 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
-*Commits sesión 18.28-18.33: 4abcafa b38b563 42b3054 ac099e0 70a78ee 275717c 1fcd876 4851e5e*
+*Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master

@@ -3,15 +3,28 @@ import { persist } from 'zustand/middleware';
 import { User, UserRole, canViewCosts } from '@/types';
 import { mockCurrentUser } from '@/lib/mock-data';
 
+/**
+ * Bolsillo de permisos del usuario actual — sincronizado desde la session JWT.
+ * Se usan como strings JSON tal como viven en la BD para que el client-side
+ * `hasPermission()` los parsee con la misma lógica defensiva que el server.
+ */
+export interface AuthPermissions {
+    allowedModules: string | null;
+    grantedPerms: string | null;
+    revokedPerms: string | null;
+}
+
 interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    permissions: AuthPermissions | null;
 
     // Actions
     login: (user: User) => void;
     logout: () => void;
     setRole: (role: UserRole) => void; // Para testing de roles
+    setPermissions: (p: AuthPermissions | null) => void;
 
     // Helpers
     canViewCosts: () => boolean;
@@ -39,10 +52,13 @@ export const useAuthStore = create<AuthState>()(
             user: mockCurrentUser,
             isAuthenticated: true, // En desarrollo, siempre autenticado
             isLoading: false,
+            permissions: null,
 
             login: (user) => set({ user, isAuthenticated: true }),
 
-            logout: () => set({ user: null, isAuthenticated: false }),
+            logout: () => set({ user: null, isAuthenticated: false, permissions: null }),
+
+            setPermissions: (p) => set({ permissions: p }),
 
             // Permite cambiar rol para probar permisos en UI
             setRole: (role) => {
@@ -69,7 +85,7 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'shanklish-auth',
-            partialize: (state) => ({ user: state.user }),
+            partialize: (state) => ({ user: state.user, permissions: state.permissions }),
         }
     )
 );

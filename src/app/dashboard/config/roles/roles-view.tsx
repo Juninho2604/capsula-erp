@@ -18,6 +18,9 @@ const AVAILABLE_ROLES: { value: UserRole; label: string }[] = [
     { value: 'HR_MANAGER', label: 'RRHH' },
     { value: 'CHEF', label: 'Chef Ejecutivo' },
     { value: 'AREA_LEAD', label: 'Jefe de Área' },
+    { value: 'CASHIER', label: 'Cajera' },
+    { value: 'KITCHEN_CHEF', label: 'Jefe de Cocina' },
+    { value: 'WAITER', label: 'Mesero' },
 ];
 
 export function RolesView({ initialUsers, currentUserRole }: Props) {

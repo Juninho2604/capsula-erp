@@ -88,9 +88,10 @@ function SidebarSection({
 export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: SidebarProps) {
     const pathname = usePathname();
     const { user, login } = useAuthStore();
+    const setPermissions = useAuthStore(s => s.setPermissions);
     const { sidebarOpen, closeSidebar } = useUIStore();
 
-    // Sincronizar usuario real con el store al montar
+    // Sincronizar usuario real + permisos con el store al montar
     useEffect(() => {
         if (initialUser && (!user || initialUser.id !== user.id)) {
             login({
@@ -101,7 +102,17 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                 role: initialUser.role as UserRole,
             });
         }
-    }, [initialUser, login, user]);
+        // Los permisos viajan en el JWT (SessionPayload). Los sincronizamos siempre
+        // que la sesión exista — aunque el user ya esté en el store — porque pueden
+        // haber cambiado (re-login con grantedPerms editados).
+        if (initialUser) {
+            setPermissions({
+                allowedModules: initialUser.allowedModules ?? null,
+                grantedPerms: initialUser.grantedPerms ?? null,
+                revokedPerms: initialUser.revokedPerms ?? null,
+            });
+        }
+    }, [initialUser, login, user, setPermissions]);
 
     // Cerrar sidebar al cambiar de ruta (para móvil)
     useEffect(() => {
