@@ -3650,6 +3650,204 @@ Agregar las 3 opciones faltantes:
 
 ---
 
-*Actualizado el 2026-04-18 — Shanklish ERP / Cápsula SaaS — Documento Completo*
+## 19. Consolidación Cápsula (2026-04-19)
+
+Trabajo de unificación del branch `capsula/consolidation` para reconciliar dos repositorios divergentes en una única base productiva. Arranque diagnóstico: 2026-04-13. Estado al cierre de este registro: Fase 2 al 85% (sub-fases 2.A, 2.B, 2.C.1, 2.C.2, 2.C.3.a, 2.C.3.b y 2.F cerradas; 2.D y 2.E pendientes).
+
+### 19.1 Contexto
+
+El sistema vive desde el inicio del proyecto en dos repositorios con solapamiento funcional pero divergencia creciente: `shanklish-erp-main` (la base productiva actual de Shanklish Caracas, desplegada en AWS RDS) y `capsula-erp` (el fork hecho más tarde para desarrollar el branding y la visión SaaS "Cápsula"). Ambos compartían aproximadamente el 80% del código pero habían derivado en direcciones opuestas: shanklish concentró la evolución técnica (schema Prisma completo al nivel de 46 modelos, sistema de permisos 4-capa, suite de tests vitest, lógica POS madura con subcuentas y propinas colectivas), mientras capsula acumuló el trabajo visual (paleta Coral Energy `#FF6B4A / #1B2D45`, tipografía Nunito, `CapsulaLogo` en tres variantes, landing premium, login premium, sidebar colapsable).
+
+La estrategia adoptada invierte la intuición inicial: en lugar de traer la lógica de shanklish a capsula, se toma shanklish como base técnica y se porta la presentación de capsula sobre ella. Razón: el código crítico de negocio (permisos, actions, schema) es irremplazable y riesgoso de mover; el branding es JSX y CSS, portable sin tocar la lógica. El branch de trabajo es `capsula/consolidation` dentro de `shanklish-erp-main`. El diagnóstico formal de divergencia entre los dos repos vive en `C:\Users\Usuario\capsula-migration\DIVERGENCE_REPORT.md` (workspace root, fuera del repo).
+
+### 19.2 Modelo de portación — regla maestra y líneas rojas
+
+**Regla maestra**: la presentación se trae de `capsula-erp`, la lógica se preserva de `shanklish-erp-main`.
+
+Las definiciones operativas son precisas porque el modelo vive o muere por cómo se clasifica cada import:
+
+- **Presentación** = JSX estructural, `className`, tokens de diseño, colores, tipografía, assets estáticos, copy secundario (labels de UI, títulos, placeholders puramente visuales).
+- **Lógica** = hooks de sesión (`useAuthStore`, `getSession`), redirects (`redirect()`, `router.push`), guards RBAC, `useEffect` de bootstrap, stores Zustand, server actions, middleware, el módulo completo de permisos.
+
+**Excepción calibrada**: cuando shanklish tiene copy operativo más concreto que capsula (caso paradigmático: la guía de `HelpPanel` en `/dashboard/ventas/cargar` dice `"PedidosYA"` en shanklish y `"Canales Externos"` en capsula), gana shanklish. Esta asimetría se mantiene hasta Fase 3, que introducirá i18n o config por tenant y moverá el copy operativo a parámetro. Antes de esa fase, el genérico de capsula es una regresión porque oculta información que el cajero necesita ver tal cual.
+
+**Líneas rojas operativas** — paths que no se tocan durante toda la Fase 2:
+
+- `prisma/` — cualquier cambio de schema pasa por migración auditada, no por consolidación.
+- `.env*` — secrets fuera del flujo de branch.
+- `src/lib/permissions/` — el sistema 4-capa es el núcleo de seguridad.
+- `src/lib/auth.ts` — JWT custom, no se toca.
+- `src/middleware.ts` — RBAC edge, no se toca.
+- `src/stores/auth.store.ts` — store de sesión cliente, no se toca.
+- `src/app/actions/*.actions.ts` — toda la lógica de negocio server-side.
+- `package.json`, `package-lock.json` — cambios de dependencias en commits dedicados, nunca como efecto colateral.
+
+**Protocolo de commit**. Cada sub-fase tiene un prompt `.md` en `C:\Users\Usuario\capsula-migration\prompts\`. Antes de commitear se audita `git diff --stat` y `git status`, se verifica que ningún path protegido aparezca, se usa `git add` con archivos enumerados explícitamente (nunca `git add .`), y el mensaje sigue convención semántica (`feat(layout):`, `ci:`, `docs(OPUS):`). Si cualquier archivo fuera del scope aprobado aparece en el diff, el commit se aborta.
+
+### 19.3 Fase 1 — Migraciones Prisma (resolución de landmine)
+
+La consolidación arrancó golpeando una mina enterrada en la base de datos del servidor Contabo: 14 migraciones aplicadas por DDL directo pero solo 2 registradas en `_prisma_migrations`. Esto significa que la DB tenía las tablas, columnas e índices correctos al nivel estructural, pero Prisma no lo sabía — cualquier `prisma migrate deploy` intentaría reaplicar migraciones ya aplicadas y fallaría. Landmine secundario: la migración `20260308000000_add_order_name_to_purchase_order` estaba marcada como `failed` en `_prisma_migrations`, bloqueando la cadena entera.
+
+La resolución no se ejecutó desde Windows sino directamente en el host Contabo, para evitar roundtrips de red y porque la propia herramienta `prisma migrate resolve` necesita conectarse a la DB destino. Pasos efectivos: se creó un proyecto Prisma temporal en `/root/capsula-migrate` con el schema `shanklish`, se ejecutaron 14 invocaciones de `prisma migrate resolve --applied <migration-name>` para registrar las migraciones aplicadas por DDL, luego `prisma migrate resolve --rolled-back` seguido de `--applied` sobre la landmine `add_order_name_to_purchase_order` para limpiar el estado `failed`, y finalmente un `prisma migrate deploy` que aplicó limpio las 10 migraciones nuevas de shanklish que Contabo aún no tenía.
+
+Estado final: 26/26 migraciones registradas en `_prisma_migrations`, DB de Contabo sincronizada con el schema de `shanklish-erp-main`. Backups del estado pre-consolidación en `/var/backups/capsula/`, inmutables como seguro en caso de necesitar rollback durante Fase 4 o Fase 5.
+
+Esta fase fue condición previa para que Fase 2 pudiera avanzar: sin una base Prisma coherente, ninguna portación posterior hubiera podido desplegarse. Queda aún un problema estructural relacionado (ver §19.12: la falta de migración `0000_init` hace que cualquier DB vacía falle al intentar `migrate deploy` desde cero).
+
+### 19.4 Fase 2.A — Branding Coral Energy (commit `eec5e92`)
+
+Portación del sistema de diseño completo de `capsula-erp`, preservando `shanklish.*` como namespace secundario para retrocompatibilidad.
+
+Tokens Coral Energy que rigen la paleta por default:
+
+- `#FF6B4A` — coral primario (CTAs, acentos, badges).
+- `#E85A3A` — coral hover/press (gradientes).
+- `#1B2D45` — navy (títulos, contraste oscuro).
+- `#FFF8F5` — crema fondo (landing, hero backgrounds).
+- `#F0F2F5` — gris neutro (transiciones de gradiente).
+
+Tipografía principal: **Nunito** (700/800/900 para titulares), `system-ui` como fallback.
+
+Archivos nuevos:
+
+- `src/config/branding.ts` — exporta la config tipada con colores, typography, layout metrics.
+- `src/config/social-brand.ts` — social handles y OG defaults para metadata.
+- `src/hooks/useBranding.ts` — hook cliente que en Fase 3 permitirá overrides por tenant.
+- `src/components/ui/CapsulaLogo.tsx` — componente con tres variantes (`full` con wordmark, `icon` solo isotipo, `favicon` para usos pequeños).
+- `public/brand/logo-full-color.svg`, `logo-full-white.svg`, `logo-icon-color.svg` — assets estáticos.
+
+Archivos mergeados (no reescritos — merge dirigido):
+
+- `tailwind.config.ts` — se añaden los namespaces `capsula.*` y `tablepong.*` preservando `shanklish.*` preexistente. Ninguna clase `shanklish-*` en código existente se rompe.
+- `src/app/globals.css` — paleta Coral Energy como CSS custom properties default; variables de dark mode ajustadas; keyframes `shimmer` y `fade-in zoom-in-95` añadidos para uso en login y modales.
+- `src/app/layout.tsx` (raíz) — import de Nunito vía `next/font/google`, metadata actualizada (`title: "CÁPSULA — ERP para Restaurantes"`, `description`, `applicationName`, OG tags).
+
+Decisión de diseño fijada aquí: **Coral Energy es el tema por default del monorepo post-consolidación**. La configuración por tenant (cuando Shanklish Caracas quiera mantener un tema propio, por ejemplo) se aplicará vía `useBranding` en Fase 3, leyendo un campo `theme` de la tabla `Tenant` (aún no creada).
+
+### 19.5 Fase 2.B — Widgets de Dashboard (commit `b310466`)
+
+Cuatro componentes nuevos para el dashboard ejecutivo, alineados a los mocks de capsula pero cableados a los queries de shanklish.
+
+Nuevos:
+
+- `src/components/dashboard/KpiCard.tsx` — card con valor principal, variación porcentual, sparkline inline, iconografía por categoría.
+- `src/components/dashboard/SparklineChart.tsx` — gráfica minimalista sin ejes.
+- `src/components/dashboard/FinancialSummaryWidget.tsx` — bloque agregado de revenue/costos/margen del período seleccionado.
+- `src/components/dashboard/ExecutiveSummary.tsx` — orquestador de KPIs del día (revenue, órdenes, ticket promedio, top producto).
+- `src/app/dashboard/loading.tsx` — skeleton premium con shimmer Coral Energy.
+
+Mergeado:
+
+- `src/app/dashboard/page.tsx` — integra `ExecutiveSummary` y `FinancialSummaryWidget` en la vista principal. Queries, `getSession()`, filtros de permisos por rol y llamadas a `getDashboardStatsAction` permanecen intactos. La integración es puramente de composición JSX.
+
+**Pendiente documentado**: `KpiCard` está diseñado para exponer `previousValue` y delta (variación vs. período anterior), pero `getDashboardStatsAction` hoy no devuelve ese breakdown. El componente está en el árbol pero no renderiza variación hasta que se extienda la action. Queda como trabajo para Fase 2.D o 2.E según cuándo se priorice.
+
+### 19.6 Fase 2.C.1 — Login premium (commit `591d323`)
+
+Reescritura presentacional de `/login` sin tocar el flujo de autenticación.
+
+`src/app/login/page.tsx` — server component. Fondo con gradient coral → navy, overlay de noise/glow, `CapsulaLogo` centrado, card translúcida con `backdrop-blur`. Llamadas a `getSession()` y lógica de redirect a `/dashboard` si ya hay sesión activa preservadas byte a byte: son la primera línea de defensa contra rehash de cookies.
+
+`src/app/login/login-form-client.tsx` — client component. Botón primario con gradient coral y efecto `shimmer` (keyframe definido en `globals.css`), inputs `rounded-xl` con foco coral, `onFocus`/`onBlur` locales para estados visuales. `loginAction`, integración con `useAuthStore`, `router.push` post-login y manejo de errores preservados intactos. Nada de la cadena `action → store → redirect` fue tocado.
+
+### 19.7 Fase 2.C.2 — Sidebar colapsable (commits `1e0cdb6` + `3798142`)
+
+Portación del árbol de navegación colapsable de capsula preservando las 4 capas de permisos de shanklish. Es la sub-fase más delicada de la consolidación hasta ahora: `src/components/layout/Sidebar.tsx` pasó de 253 a 683 líneas porque el componente de capsula tiene estructura visual más rica (grupos expandibles, iconos por sección, active-state) pero se enchufa al sistema de permisos completo de shanklish.
+
+Cinco decisiones aplicadas durante el merge:
+
+- **D1** — El `useEffect` de sync con sesión llama `login()` y luego `setPermissions({ allowedModules, grantedPerms, revokedPerms })` exactamente como en shanklish. Intocado. Es el puente entre JWT y store cliente; romperlo desconecta la UI de los permisos reales.
+- **D2** — Grouping **híbrido**: la constante `SIDEBAR_TREE` define el árbol visual jerárquico de capsula, pero se añade una red de seguridad "Otros" con un `orphanSection` calculado vía `useMemo` que detecta módulos presentes en el `MODULES_REGISTRY` de shanklish pero no listados en el tree. Así ningún módulo queda invisible por olvido editorial.
+- **D3** — Se añaden explícitamente al tree: `asistente`, `modulos_usuario`, `module_config`. Se corrige el typo `modulos` heredado de capsula.
+- **D4** — Finanzas como sección top-level independiente del `registry.section`. Decisión de UX: los módulos financieros viven en su propio header, no bajo Administración.
+- **D5** — `CapsulaNavbarLogo` sin fallback al emoji placeholder que capsula usaba durante desarrollo. El logo real es el que renderiza.
+
+Fix técnico aplicado durante el port: `Array.from(visibleMap.keys())` en lugar de spread directo sobre el `MapIterator`, para evitar `TS2802: Type 'MapIterator<string>' can only be iterated through...` en el target del `tsconfig`.
+
+Infraestructura establecida colateralmente: se fijó `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` en Windows (necesario para que los scripts de npm corran desde PowerShell), se ejecutó un `npm install` completo (769 packages, `package-lock.json` normalizado en `1e0cdb6`), y se consolidó el pipeline local de validación: `npx tsc --noEmit` + `npm run test` (vitest con 27/27 smoke tests del engine de permisos). Esta tupla es el gate obligatorio antes de cada commit de Fase 2.
+
+### 19.8 Fase 2.C.3.a — HelpPanel + root page (commit `089dee5`)
+
+**`src/components/layout/HelpPanel.tsx`**: no-op efectivo. Diff byte a byte con `diff -u` contra la versión de capsula reveló que los dos archivos son idénticos excepto por 2 strings en la guía de `/dashboard/ventas/cargar`: shanklish dice `"PedidosYA"` (tanto en `description` como en `tips`), capsula dice `"Canales Externos"`. Por la excepción definida en §19.2, se preserva `"PedidosYA"`. Portar la versión de capsula y revertir esos 2 strings daría un archivo byte-idéntico al existente, así que no se escribe. Cero cambios al archivo.
+
+**`src/app/page.tsx`**: reescritura presentacional completa desde capsula. Nav superior con `CapsulaLogo variant="full"` y link `Iniciar Sesión → /login`, hero con badge coral pulsante (`ERP para Restaurantes`), título Nunito `"Tu negocio, una cápsula."` con tamaños responsive `5xl → 7xl`, párrafo de subtítulo, doble CTA (primario coral `/login`, secundario outline `/dashboard`), sección de features con tres cards de fondos sólidos por rol (azul `#EFF6FF` para Inventario, verde `#ECFDF5` para Recetas, coral `#FFF0EC` para Costos), footer con `CapsulaLogo variant="favicon"` y copyright.
+
+No hay lógica que preservar: la versión shanklish del root page era 100% presentacional (gradient amber/orange con emoji placeholder), sin `redirect()`, sin `getSession()`, sin guards. Es la única ruta completamente pública del sistema antes del login. Portación limpia.
+
+### 19.9 Fase 2.C.3.b — Layouts compartidos restantes (no-op, sin commit)
+
+Exploración de `src/components/layout/` y `src/app/**/layout.tsx` para cerrar el bloque 2.C. Resultado: cero escritura requerida.
+
+Auditoría con `cmp -s` byte a byte contra capsula:
+
+- `src/components/layout/DashboardShell.tsx` — 1 910 B idéntico.
+- `src/components/layout/Navbar.tsx` — 3 767 B idéntico.
+- `src/components/layout/NotificationBell.tsx` — 20 546 B idéntico.
+- `src/components/layout/ThemeToggle.tsx` — 1 087 B idéntico.
+
+Los cuatro ya están sincronizados byte a byte, probablemente porque derivan de un ancestro común pre-fork y ninguna de las dos ramas los modificó desde entonces. Sin trabajo.
+
+**Veto permanente sobre `src/app/dashboard/layout.tsx`**. Este archivo es `visual+logic` y shanklish está adelantado respecto a capsula: usa `visibleModules({ role, allowedModules, grantedPerms, revokedPerms })` del módulo `src/lib/permissions/` con fallback defensivo a BD para JWTs emitidos antes del Prompt 6 (cuando el campo `allowedModules` del JWT era `undefined`). Capsula solo hace `JSON.parse(dbUser.allowedModules)`, una versión más simple que no aplica el álgebra de 4 capas. Portar capsula aquí sería regresión directa del núcleo de seguridad y además tocaría `src/lib/permissions/` indirectamente vía import, cruzando una línea roja. La dirección correcta en Fase 4 es la inversa: capsula recibe este archivo de shanklish, no al revés.
+
+`src/app/layout.tsx` raíz ya fue mergeado en 2.A (metadata CÁPSULA + Nunito) y está explícitamente fuera de scope para esta sub-fase.
+
+### 19.10 Fase 2.F — CI/CD (commits `4f18704` + `19b85f6`)
+
+Primer workflow de GitHub Actions del branch, definido en `.github/workflows/ci.yml`. Dos jobs:
+
+**`validate`** — dispara en push y en PR contra `capsula/consolidation`. Levanta un servicio `postgres:16` efímero en el runner con DB `capsula_ci` y health check vía `pg_isready`. Pasos: checkout del repo → setup de Node 22 con caché npm → `npm ci` determinista contra `package-lock.json` → `prisma generate` → `prisma db push --skip-generate --accept-data-loss` contra la DB efímera → `npx tsc --noEmit` → `npm run test` (vitest run, 27 smoke tests). Sin `continue-on-error` en ninguna step: falla al primer error. El job es el gate para cualquier merge futuro hacia `master` o hacia `capsula-erp` (Fase 4).
+
+**`deploy`** — stub pensado como shape final para Fase 4. Trigger `workflow_dispatch` only (manual), `needs: validate`. Template listo para SSH a Contabo: `git pull` en el working dir del servidor, `npm ci`, `prisma migrate deploy`, `npm run build`, `pm2 reload all`. Los secrets esperados están declarados como referencia: `CONTABO_HOST`, `CONTABO_USER`, `CONTABO_SSH_KEY`, `DATABASE_URL_PROD`. Ninguno configurado aún en GitHub — se registran en Fase 4.
+
+**Switch de `migrate deploy` a `db push`** (commit `19b85f6`): la versión inicial del workflow (`4f18704`) usaba `prisma migrate deploy` para respetar el historial de migraciones, pero falló en la corrida inicial contra una DB vacía al llegar a la segunda migración (`20260308000000_add_order_name_to_purchase_order`), que ejecuta `ALTER TABLE "PurchaseOrder"` sobre una tabla que nunca fue creada. Diagnóstico: falta migración `0000_init` — ver ticket BASELINE-001 en §19.12. Mitigación: `prisma db push --accept-data-loss` sincroniza la DB efímera directamente desde `schema.prisma` sin recorrer el historial. Primera corrida verde justo tras el switch.
+
+CI operativo de forma estable a partir de `19b85f6`. Fase 2.F cerrada.
+
+### 19.11 Fases pendientes
+
+**2.D — admin UI de módulos**. Portación del panel de toggling de módulos bajo `src/app/dashboard/config/modulos/`. Riesgo medio: el componente hoy en shanklish ya tiene lógica de permisos acoplada, y cualquier archivo que importe de `src/lib/permissions/` activa veto automático a portar la versión de capsula (si la trae más avanzada o más simple). El prompt correspondiente previsiblemente seguirá el formato clasificatorio de 2.C.3.b (tabla `archivo | clasificación | dependencias`).
+
+**2.E — seed bootstrap CÁPSULA**. Reescritura de `prisma/seed.ts` para dejar la DB lista para un deploy desde cero con los dos tenants iniciales (Shanklish Caracas y Table Pong). Postpuesto intencionalmente a cerca de Fase 4 porque el shape exacto de la tabla `Tenant` y sus foreign keys a `User`, `InventoryItem`, etc., se decide en Fase 3 y aún no está definido. Un seed prematuro se re-trabaja dos veces.
+
+**Fase 3 — documentación de multi-tenancy (sin implementación)**. Escribir el diseño formal de cómo Cápsula se convierte en SaaS real: esquema `Tenant`, estrategia de aislamiento (shared schema con `tenantId` vs. schema-per-tenant), flujo de bootstrap de tenant nuevo, migración `0000_init` (ver §19.12), políticas de branding por tenant usando `useBranding`. Cero código escrito; producto: un `MULTI_TENANCY_DESIGN.md` que la Fase 4 ejecuta. Ver §14 de este doc para el contexto de diseño ya capturado.
+
+**Fase 4 — cutover al repo `capsula-erp`**. Dos caminos bajo evaluación: force-push del branch consolidado sobre `master` de `capsula-erp` (limpio pero destructivo del histórico de capsula), o archivar `capsula-erp` como legacy y abrir un repo nuevo `capsula` con `shanklish-erp-main` consolidado como punto de partida. La decisión se toma cuando 2.D y 2.E estén cerradas. Renaming de secrets SSH `SSH_*` → `CONTABO_*` si se reusan los existentes en GitHub.
+
+**Fase 5 — cutover producción AWS RDS → Contabo**. Migración de Shanklish Caracas desde AWS RDS (hosting actual de prod) a Contabo, reconvirtiendo Shanklish en el primer `tenant` de la base multi-tenant. Ventana de mantenimiento necesaria — no se puede hacer en caliente. El orden esperado es: snapshot RDS → restore en Contabo → `prisma migrate deploy` hasta paridad → script de re-etiquetado (`tenantId = 'shanklish-caracas'` en todos los registros) → switch de DNS/conexión en la app → monitoreo 48 h.
+
+### 19.12 Deuda técnica identificada durante la consolidación
+
+**BASELINE-001** (descubierto en Fase 2.F durante la primera corrida fallida del CI):
+
+`prisma/migrations/` carece de una migración inicial `0000_init` que cree desde cero el schema base. Las 26 migraciones actuales son únicamente **deltas**: la primera cronológicamente (`20260127011614_add_requisitions`) ya asume la existencia de un schema preexistente, creado originalmente vía `prisma db push` en la era pre-migrations del proyecto. En producción (AWS RDS) y en Contabo esto no se nota porque sus tablas ya existen y Prisma solo aplica los deltas incrementales. El problema aparece al primer intento de `prisma migrate deploy` contra una DB vacía: la segunda migración (`20260308000000_add_order_name_to_purchase_order`) ejecuta `ALTER TABLE "PurchaseOrder"` sobre una tabla que nunca fue creada y falla.
+
+Consecuencias directas:
+
+- CI no puede usar `prisma migrate deploy` y tiene que hacer `db push` (§19.10). Pierde la validación del historial de migraciones como efecto secundario.
+- Cualquier tenant nuevo que se cree en Fase 3 tendrá el mismo problema al bootstrapear su schema aislado.
+- Fase 4 no puede usar `migrate deploy` limpio en el flujo de deploy a Contabo si la ruta alguna vez toca una DB vacía.
+
+**Mitigación temporal** (ya aplicada): CI en `prisma db push --skip-generate --accept-data-loss`. Funcional para validación de schema, pero no prueba migraciones reales.
+
+**Fix definitivo** (postpuesto a Fase 3, día 0): generar el baseline con
+
+```bash
+prisma migrate diff \
+  --from-empty \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script > prisma/migrations/00000000000000_init/migration.sql
+```
+
+marcar como `--applied` en las DBs existentes (Contabo, AWS RDS) con `prisma migrate resolve --applied 00000000000000_init`, verificar que `_prisma_migrations` quede consistente, y cambiar el CI de vuelta a `prisma migrate deploy`. Operación de bajo riesgo si se hace aislada y con backup previo.
+
+---
+
+*Actualizado el 2026-04-19 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
 *Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master
+
+---
+
+*Extendido 2026-04-19 — Consolidación Cápsula (sección 19)*
+*Branch: `capsula/consolidation`*
+*Commits: `eec5e92` · `b310466` · `591d323` · `3798142` · `4f18704` · `19b85f6` · `089dee5`*
