@@ -3806,31 +3806,41 @@ CI operativo de forma estable a partir de `19b85f6`. Fase 2.F cerrada.
 ### 19.11 Fases pendientes (orden actualizado 2026-04-19)
 
 El orden de fases cambió el 2026-04-19 — ver §19.13 para el razonamiento.
-Orden de ejecución vigente:
+Estado actualizado al cierre del día 2026-04-19:
 
-- **Fase 4 — Cutover repo (INMEDIATA)**. Force-push de
-  `capsula/consolidation` → `capsula-erp/main`. Preview deploy en
-  Vercel para validación. Tag `pre-cutover-2026-04-19` del estado
-  previo de capsula-erp para rollback recuperable.
-- **Fase 5.a — Switch Vercel producción (INMEDIATA)**. Cambiar el
-  proyecto Vercel del cliente Shanklish Caracas para que apunte a
-  `capsula-erp` en vez de `shanklish-erp-main`. La DB sigue siendo
-  la misma AWS RDS de producción, sin migración. Las env vars se
-  copian 1-a-1 antes del switch. Downtime estimado: ~30 segundos
-  durante el redeploy de Vercel.
-- **Fase 2.D — Admin UI módulos (POST-CUTOVER)**. Se ejecuta
-  directamente en `capsula-erp` como feature normal, no como
-  portación. Scope: `src/app/dashboard/config/modulos/`. Riesgo
-  previsto medio por interacción con permisos 4-capa.
-- **Fase 2.E — Seed bootstrap (POST-CUTOVER)**. Se ejecuta cerca
-  del momento en que se agregue un segundo tenant real (Table Pong
-  o similar), cuando el shape de tenant esté definido.
-- **Fase 3 — Documentación multi-tenancy**. Documento `docs/MULTITENANCY.md`.
-  No bloquea nada, se hace cuando haya banda.
-- **Fase 5.b — Migración AWS RDS → Contabo (POSPUESTA)**. Ventana
-  de mantenimiento de 2-4h. Se dispara cuando se necesite agregar
-  un tenant real o cuando el costo de AWS RDS justifique el cambio.
-  BASELINE-001 (§19.12) debe resolverse antes o durante esta fase.
+- **Fase 4 — Cutover repo** ✅ **COMPLETADA 2026-04-19**. Force-push
+  de `capsula/consolidation` → `capsula-erp/main`. Safety tag
+  `pre-cutover-2026-04-19` creado en `6d57b00`. Remote local swap
+  ejecutado. Ver §19.14 para detalles de ejecución.
+- **Fase 5.a — Switch Vercel producción** ✅ **COMPLETADA 2026-04-19**.
+  Proyecto Vercel `shanklish-erp-main` reconectado de
+  `Juninho2604/shanklish-erp-main` → `Juninho2604/capsula-erp` manteniendo
+  mismo nombre de proyecto (URL pública preservada). Deploy `47JtCiTN`
+  (commit `ec37b51`) promovido manualmente a producción. DB sigue en
+  AWS RDS sin cambios. Ver §19.14 para detalles.
+- **Fase 2.D — Admin UI módulos (POST-CUTOVER)**. Se ejecuta directamente
+  en `capsula-erp` como feature normal, no como portación. Scope:
+  `src/app/dashboard/config/modulos/`. Riesgo previsto medio por
+  interacción con permisos 4-capa.
+- **Fase 2.E — Seed bootstrap (POST-CUTOVER)**. Se ejecuta cerca del
+  momento en que se agregue un segundo tenant real (Table Pong o
+  similar), cuando el shape de tenant esté definido.
+- **Fase 3 — Documentación multi-tenancy**. Documento
+  `docs/MULTITENANCY.md`. No bloquea nada, se hace cuando haya banda.
+- **Fase 5.b — Migración AWS RDS → Contabo (POSPUESTA)**. Ventana de
+  mantenimiento de 2-4h. Deadline flexible (próximos 1-3 meses por
+  decisión del humano). Contabo hoy tiene schema pero BD vacía. Pre-req:
+  resolver BASELINE-001 (§19.12) antes o durante esta fase. Pre-req
+  adicional: Contabo en grado producción (SSL, backups automáticos,
+  monitoring).
+- **Fase 6 — UI review del POS (POST-CUTOVER)**. Los colores coral del
+  branding Cápsula, heredados vía globals.css de 2.A, son inadecuados
+  para operación táctica en tableta del POS. Requiere paleta operativa
+  independiente del branding marketing. Alcance: POS Restaurante, POS
+  Mesero, POS Delivery, POS PedidosYA, vistas de Cajera. Usar skill
+  `tablepong-ui-review` ya instalada en el proyecto. Pre-req: test con
+  tableta real en condiciones de luz de cocina. Detectado durante
+  validación post-switch 2026-04-19.
 
 ### 19.12 Deuda técnica identificada durante la consolidación
 
@@ -3886,6 +3896,115 @@ justifique.
 La BD de producción AWS RDS NO se toca en este reorden. El cutover
 es solo de código y configuración Vercel.
 
+### 19.14 Ejecución del cutover — Fase 4 + Fase 5.a (2026-04-19)
+
+Fase 4 y Fase 5.a se ejecutaron en la misma sesión el 2026-04-19 entre
+aproximadamente las 20:30 y 21:30 hora local.
+
+**Fase 4 — Cutover repo (git)**
+
+Ejecución desde local en `C:\Users\Usuario\capsula-migration\shanklish-erp-main`:
+
+1. Safety tag `pre-cutover-2026-04-19` creado sobre `6d57b00` (HEAD
+   previo de `capsula-erp/main`) y pusheado al remote. Hace el estado
+   previo recuperable permanentemente.
+2. Force-push: `git push -f capsula-dest capsula/consolidation:main`.
+   Transición: `6d57b00` → `ec37b51` en `capsula-erp/main`.
+3. Remote swap local: `origin` renombrado a `shanklish-legacy`, nuevo
+   `origin` creado apuntando a `capsula-erp`.
+4. Branch local renombrado: `capsula/consolidation` → `main`, con
+   upstream `origin/main`.
+
+Rollback disponible post-Fase 4:
+`git push -f origin pre-cutover-2026-04-19:main` (restituye
+`capsula-erp/main` a `6d57b00`).
+
+**Fase 5.a — Switch Vercel producción**
+
+Ejecución desde UI de Vercel (no CLI). Proyecto: `shanklish-erp-main`
+(nombre preservado a propósito — cambiar el nombre del proyecto habría
+cambiado la URL pública y roto accesos del equipo).
+
+1. Settings → Git → Disconnect del repo `Juninho2604/shanklish-erp-main`.
+2. Connect Git Repository → `Juninho2604/capsula-erp`.
+3. Verificación: env vars intactas (3 variables), URL pública sirviendo
+   deploy viejo `6uY2rA6or` mientras tanto, zero downtime observable.
+4. Settings → Build and Deployment → Node.js Version cambiado de `24.x`
+   a `22.x` (Vercel había asignado 24 por default al reconectar, pero
+   el código se desarrolla contra Node 22).
+5. Deployments → click en preview `47JtCiTN` (commit `ec37b51`,
+   pre-construido exitosamente durante el día) → Promote to Production.
+6. Vercel re-apuntó la URL pública al deploy `47JtCiTN` en ~30-60s.
+
+Validación post-switch:
+
+- URL pública carga branding coral/navy con `CapsulaLogo` (confirmado
+  visualmente).
+- POS PedidosYA renderiza correctamente con datos reales de AWS RDS
+  (productos, precios, descuentos).
+- Login funciona con usuarios existentes (Dueño, Cajera, Mesonero con
+  PIN verificados).
+- Sidebar colapsable opera normalmente.
+
+Rollback disponible post-Fase 5.a:
+Deployments → click en `6uY2rA6or` → Promote to Production. ~30 segundos.
+DB no se tocó.
+
+**Hallazgos operativos de Vercel (Hobby plan)**
+
+- No existe setting explícito de "Production Branch" en Settings del
+  proyecto. Vercel usa la default branch del repo (`main` en
+  `capsula-erp`). Funciona bien pero sorprende si se espera encontrar
+  la config.
+- El reconnect a un repo nuevo NO dispara redeploy automático si el
+  commit HEAD del nuevo repo ya existe como preview previo. Hay que
+  promover manualmente el preview existente.
+- Al reconectar, Node.js version se resetea a default (24.x al momento
+  de esta ejecución). Verificar siempre post-reconnect.
+
+### 19.15 Branch protection en capsula-erp/main (2026-04-19)
+
+Activado Ruleset "Main" en GitHub `capsula-erp` tras el cutover.
+
+**Reglas activas:**
+
+- **Require pull request before merging** (1 approval requerido)
+- **Required status check: `validate`** (job del CI workflow creado en
+  Fase 2.F — tsc + vitest + prisma db push)
+- **Require branches to be up to date before merging**
+- **Block force pushes**
+- **Restrict deletions**
+
+**Lista de bypass:** solo `Rol de administrador del repositorio`
+(efectivamente Juninho2604). Permite que el owner haga push directo a
+main para hotfixes de emergencia o trabajo iterativo sin armar PR.
+
+**Claude App SIN bypass** (decisión tomada 2026-04-19 tras evaluar
+tradeoff velocidad vs riesgo). Razones documentadas:
+
+- Sesiones automatizadas de Claude cloud pueden fallar (bucle infinito
+  histórico, commits sin pedir permiso) y un bypass permitiría deploys
+  no filtrados a producción.
+- El valor real del bypass era ahorrar ~15s al mergear un PR — costo
+  menor que la red de seguridad del CI.
+- Flujo actual: Claude cloud abre PR → CI corre → Omar aprueba con 1
+  click. Mantiene velocidad + safety.
+- Omar (admin) sigue pudiendo push directo para emergencias reales.
+
+**Protocolo para Gustavo (colaborador con write access):**
+
+- Trabajo en branches con patrón `gustavo/feature-xxx`.
+- Push a esas branches permitido sin restricciones.
+- Para mergear a `main`: PR obligatorio con 1 approval (Omar) + CI verde.
+- Mensaje sobre el cambio enviado a Gustavo el 2026-04-19.
+
+**Revisar esta configuración cuando:**
+
+- El equipo crezca a 3+ desarrolladores activos.
+- Omar ya no sea el único admin funcional.
+- Aparezca un incidente de producción causado por push directo (del
+  admin o de un bypass).
+
 ---
 
 *Actualizado el 2026-04-19 — Shanklish ERP / Cápsula SaaS — Documento Completo*
@@ -3893,7 +4012,7 @@ es solo de código y configuración Vercel.
 *Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master
 
 ---
-
-*Extendido 2026-04-19 — Consolidación Cápsula (sección 19)*
-*Branch: `capsula/consolidation`*
-*Commits: `eec5e92` · `b310466` · `591d323` · `3798142` · `4f18704` · `19b85f6` · `089dee5`*
+Extendido 2026-04-19 — Consolidación Cápsula (secciones 19, 19.11 actualizada, 19.14, 19.15 nuevas)
+Repo canónico: capsula-erp
+Branch: main (post-cutover)
+Commits de consolidación: eec5e92 · b310466 · 591d323 · 3798142 · 4f18704 · 19b85f6 · 089dee5 · 95ba60e · ec37b51
