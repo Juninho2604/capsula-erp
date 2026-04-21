@@ -35,8 +35,7 @@ export default async function LoginPage() {
                 <CapsulaLogo
                     variant="full"
                     size={44}
-                    color="white"
-                    textColor="white"
+                    tone="ivory"
                 />
                 <p className="mt-1 text-sm font-medium tracking-wide text-white/60">
                     El ERP inteligente para tu restaurante

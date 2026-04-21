@@ -10,8 +10,8 @@ const config: Config = {
     theme: {
         extend: {
             screens: {
-                'tablet': '800px',        // Redmi Pad 2 portrait
-                'tablet-land': '1200px',  // Redmi Pad 2 landscape ← target principal
+                'tablet': '800px',
+                'tablet-land': '1200px',
             },
             colors: {
                 border: 'hsl(var(--border))',
@@ -47,35 +47,51 @@ const config: Config = {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))',
                 },
-                // ─── CÁPSULA Brand Tokens ─────────────────────────
+                // ─── CÁPSULA Brand Tokens — Minimal Navy ──────────
                 capsula: {
                     coral: {
-                        DEFAULT: '#FF6B4A',
-                        hover: '#E85A3A',
-                        light: '#FF8A6F',
-                        subtle: '#FFF0EC',
+                        DEFAULT: '#F25C3B',
+                        hover:   '#D84A2A',
+                        light:   '#F47C62',
+                        subtle:  '#F5E4DD',
                     },
                     navy: {
-                        DEFAULT: '#1B2D45',
-                        light: '#2A4060',
-                        subtle: '#F0F2F5',
+                        DEFAULT: '#1B2A3A',
+                        deep:    '#0B1727',
+                        light:   '#253D5C',
+                        soft:    '#E6EAEF',
+                        subtle:  '#F2F4F7',
                     },
+                    ivory: {
+                        DEFAULT: '#F7F5F0',
+                        surface: '#FDFBF7',
+                        alt:     '#EFECE5',
+                    },
+                    line: {
+                        DEFAULT: '#E7E2D7',
+                        strong:  '#D8D2C3',
+                    },
+                    ink: {
+                        DEFAULT: '#0F1A2A',
+                        soft:    '#3A4656',
+                        muted:   '#6B7584',
+                        faint:   '#94A0B0',
+                    },
+                    // Retained for legacy components
                     gold: {
                         DEFAULT: '#FFD93D',
-                        hover: '#F0C830',
-                        subtle: '#FFFBEB',
+                        hover:   '#F0C830',
+                        subtle:  '#FFFBEB',
                     },
-                    warm: '#FFF8F5',
-                    muted: '#FFE8E0',
+                    warm:  '#F7F5F0',
+                    muted: '#EFECE5',
                 },
-                // ─── Colores legacy por tenant ────────────────────
                 tablepong: {
                     navy: '#1A2B5B',
                     red: '#E60023',
                     white: '#FFFFFF',
                     light: '#F8FAFC',
                 },
-                // Colores personalizados Shanklish
                 shanklish: {
                     gold: '#D4AF37',
                     olive: '#556B2F',
@@ -90,30 +106,21 @@ const config: Config = {
                 sm: 'calc(var(--radius) - 4px)',
             },
             fontFamily: {
-                sans: ['var(--font-body)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
-                heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
+                sans:    ['var(--font-body)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
+                heading: ['var(--font-heading)', 'Georgia', 'serif'],
+                mono:    ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             },
             keyframes: {
-                'fade-in': {
-                    '0%': { opacity: '0', transform: 'translateY(10px)' },
-                    '100%': { opacity: '1', transform: 'translateY(0)' },
-                },
-                'slide-in': {
-                    '0%': { transform: 'translateX(-100%)' },
-                    '100%': { transform: 'translateX(0)' },
-                },
-                'slide-up': {
-                    '0%': { opacity: '0', transform: 'translateY(20px)' },
-                    '100%': { opacity: '1', transform: 'translateY(0)' },
-                },
-                pulse: {
-                    '0%, 100%': { opacity: '1' },
-                    '50%': { opacity: '0.5' },
-                },
-                'spin-slow': {
-                    '0%': { transform: 'rotate(0deg)' },
-                    '100%': { transform: 'rotate(360deg)' },
-                },
+                'fade-in':  { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                'slide-in': { '0%': { transform: 'translateX(-100%)' },              '100%': { transform: 'translateX(0)' } },
+                'slide-up': { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                pulse:      { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.5' } },
+                'spin-slow':{ '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
+                // Minimal mark animations
+                'cap-breathe': { '0%,100%': { transform: 'scale(.92)', opacity: '.6' }, '50%': { transform: 'scale(1.12)', opacity: '0' } },
+                'cap-orbit':   { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
+                'cap-orbit-r': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(-360deg)' } },
+                'cap-sweep':   { '0%': { transform: 'translateX(-22px)', opacity: '0' }, '20%,80%': { opacity: '1' }, '100%': { transform: 'translateX(22px)', opacity: '0' } },
             },
             animation: {
                 'fade-in': 'fade-in 0.3s ease-out',
@@ -121,6 +128,15 @@ const config: Config = {
                 'slide-up': 'slide-up 0.4s ease-out',
                 pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'spin-slow': 'spin-slow 3s linear infinite',
+                'cap-breathe':  'cap-breathe 3.6s ease-in-out infinite',
+                'cap-orbit':    'cap-orbit 10s linear infinite',
+                'cap-orbit-r':  'cap-orbit-r 14s linear infinite',
+                'cap-sweep':    'cap-sweep 4.5s ease-in-out infinite',
+            },
+            boxShadow: {
+                'cap-soft':   '0 1px 2px rgba(11,23,39,0.04), 0 2px 8px rgba(11,23,39,0.04)',
+                'cap-raised': '0 10px 24px -8px rgba(11,23,39,0.35)',
+                'cap-deep':   '0 14px 28px -8px rgba(11,23,39,0.5)',
             },
         },
     },

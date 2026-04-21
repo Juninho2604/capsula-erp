@@ -1,211 +1,104 @@
 'use client';
 
-import { useState } from 'react';
-import SparklineChart from './SparklineChart';
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 
-interface KpiBreakdown {
-  previousLabel: string;
-  previousValue: string;
-  currentValue: string;
-  changeText: string;
-  businessContext: string;
-  trendNote?: string;
+/**
+ * KpiCard — Minimal Navy.
+ * Drop-in reemplazo del KpiCard existente, API similar.
+ */
+
+export interface KpiCardProps {
+    label: string;
+    value: string | number;
+    /** Delta como string ya formateado ("+12%", "−3.4%") */
+    delta?: string;
+    /** Signo del delta; si se omite se infiere del string (+/−) */
+    trend?: 'up' | 'down' | 'flat';
+    /** Texto de contexto bajo el delta */
+    hint?: string;
+    icon?: LucideIcon;
+    /** Valor más chico (ej: comparación) */
+    secondary?: string;
+    className?: string;
+    onClick?: () => void;
+    /** Tamaño: md (default) | lg (más alto y value más grande) */
+    size?: 'md' | 'lg';
 }
 
-interface KpiCardProps {
-  title: string;
-  value: string;
-  subtitle?: string;
-  change?: number | null;
-  changeLabel?: string;
-  sparklineData?: { value: number }[];
-  colorVariant: 'amber' | 'blue' | 'purple' | 'orange' | 'neutral';
-  breakdown: KpiBreakdown;
-}
-
-const colorConfig = {
-  amber: {
-    border: 'border-amber-500/20',
-    bg: 'bg-amber-500/5',
-    text: 'text-amber-500',
-    labelText: 'text-amber-500/70',
-    sparkColor: '#F59E0B',
-    headerBg: 'bg-amber-500/10',
-  },
-  blue: {
-    border: 'border-blue-500/20',
-    bg: 'bg-blue-500/5',
-    text: 'text-blue-400',
-    labelText: 'text-blue-400/70',
-    sparkColor: '#60A5FA',
-    headerBg: 'bg-blue-500/10',
-  },
-  purple: {
-    border: 'border-purple-500/20',
-    bg: 'bg-purple-500/5',
-    text: 'text-purple-400',
-    labelText: 'text-purple-400/70',
-    sparkColor: '#A78BFA',
-    headerBg: 'bg-purple-500/10',
-  },
-  orange: {
-    border: 'border-orange-500/30',
-    bg: 'bg-orange-500/5',
-    text: 'text-orange-400',
-    labelText: 'text-gray-400/70',
-    sparkColor: '#FB923C',
-    headerBg: 'bg-orange-500/10',
-  },
-  neutral: {
-    border: 'border-gray-700/30',
-    bg: 'bg-transparent',
-    text: 'text-gray-500',
-    labelText: 'text-gray-400/70',
-    sparkColor: '#9CA3AF',
-    headerBg: 'bg-gray-500/10',
-  },
-};
-
-export default function KpiCard({
-  title,
-  value,
-  subtitle,
-  change,
-  changeLabel = 'vs período anterior',
-  sparklineData = [],
-  colorVariant,
-  breakdown,
+export function KpiCard({
+    label,
+    value,
+    delta,
+    trend,
+    hint,
+    icon: Icon,
+    secondary,
+    className,
+    onClick,
+    size = 'md',
 }: KpiCardProps) {
-  const [open, setOpen] = useState(false);
-  const colors = colorConfig[colorVariant];
+    const inferredTrend: 'up' | 'down' | 'flat' =
+        trend ??
+        (delta?.startsWith('+') ? 'up' :
+         delta?.match(/^[-−]/) ? 'down' : 'flat');
 
-  const trendIcon =
-    change === null || change === undefined ? '—' : change > 0 ? '↑' : change < 0 ? '↓' : '—';
-  const trendColor =
-    change === null || change === undefined
-      ? 'text-gray-400'
-      : change > 0
-      ? 'text-emerald-400'
-      : change < 0
-      ? 'text-red-400'
-      : 'text-gray-400';
+    const DeltaIcon = inferredTrend === 'up' ? ArrowUpRight : inferredTrend === 'down' ? ArrowDownRight : Minus;
+    const deltaColor =
+        inferredTrend === 'up'   ? 'border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]' :
+        inferredTrend === 'down' ? 'border-[#E8D9B8] bg-[#F3EAD6] text-[#946A1C]' :
+                                   'border-capsula-line bg-capsula-ivory-alt text-capsula-ink-soft';
 
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className={`glass-panel rounded-2xl p-5 border ${colors.border} ${colors.bg} w-full text-left transition-all duration-200 cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.99]`}
-      >
-        <div className="flex items-start justify-between mb-1">
-          <p className={`text-[10px] font-black uppercase tracking-widest ${colors.labelText}`}>
-            {title}
-          </p>
-          <span className="text-gray-400/40 text-[9px] font-medium leading-none mt-0.5">
-            ver detalle
-          </span>
-        </div>
+    const Comp: any = onClick ? 'button' : 'div';
 
-        <p className={`text-3xl font-black ${colors.text} mt-1`}>{value}</p>
-
-        {/* Sparkline */}
-        {sparklineData.length >= 2 && (
-          <div className="mt-2 -mx-1">
-            <SparklineChart data={sparklineData} color={colors.sparkColor} />
-          </div>
-        )}
-
-        {/* Trend indicator or subtitle */}
-        {change !== null && change !== undefined ? (
-          <p className={`text-xs font-bold mt-2 ${trendColor}`}>
-            {trendIcon} {Math.abs(change).toFixed(1)}% {changeLabel}
-          </p>
-        ) : subtitle ? (
-          <p className="text-xs text-gray-500 mt-2">{subtitle}</p>
-        ) : null}
-      </button>
-
-      {/* Modal */}
-      {open && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
+    return (
+        <Comp
+            onClick={onClick}
+            className={cn(
+                'group relative flex flex-col gap-3 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 text-left',
+                'transition-[box-shadow,transform,border-color] duration-[250ms] ease-[cubic-bezier(.2,.7,.2,1)]',
+                'shadow-cap-soft hover:-translate-y-px hover:shadow-cap-raised hover:border-capsula-line-strong',
+                onClick && 'cursor-pointer',
+                size === 'lg' && 'p-6',
+                className
+            )}
         >
-          <div
-            className="bg-card w-full max-w-sm rounded-2xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className={`p-5 border-b border-border ${colors.headerBg} flex-shrink-0`}>
-              <div className="flex items-center justify-between">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${colors.text}`}>
-                  {title}
-                </p>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="text-muted-foreground hover:text-foreground transition-colors text-base leading-none w-6 h-6 flex items-center justify-center rounded-lg hover:bg-muted"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className={`text-2xl font-black mt-1 ${colors.text}`}>{value}</p>
+            <div className="flex items-start justify-between">
+                <span className="capsula-stat-label">{label}</span>
+                {Icon && <Icon className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />}
             </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              {/* Hoy vs período anterior */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Hoy
-                  </p>
-                  <p className={`text-lg font-black mt-0.5 ${colors.text}`}>
-                    {breakdown.currentValue}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-muted/30 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    {breakdown.previousLabel}
-                  </p>
-                  <p className="text-lg font-black mt-0.5 text-muted-foreground">
-                    {breakdown.previousValue}
-                  </p>
-                </div>
-              </div>
-
-              {/* Badge cambio */}
-              {change !== null && change !== undefined && (
-                <div
-                  className={`rounded-xl p-3 ${change >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}
-                >
-                  <p
-                    className={`text-sm font-black ${change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
-                  >
-                    {change >= 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%{' '}
-                    {breakdown.changeText}
-                  </p>
-                </div>
-              )}
-
-              {/* Sparkline ampliado */}
-              {sparklineData.length >= 2 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">
-                    {breakdown.trendNote ?? 'Tendencia reciente'}
-                  </p>
-                  <SparklineChart data={sparklineData} color={colors.sparkColor} height={60} />
-                </div>
-              )}
-
-              {/* Contexto de negocio */}
-              <div className="rounded-xl bg-muted/20 border border-border p-3">
-                <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                  💡 {breakdown.businessContext}
-                </p>
-              </div>
+            <div className={size === 'lg' ? 'capsula-stat-value-lg' : 'capsula-stat-value'}>
+                {value}
             </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+
+            {(delta || hint || secondary) && (
+                <div className="flex items-end justify-between gap-2">
+                    <div className="space-y-1">
+                        {delta && (
+                            <span className={cn(
+                                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                                deltaColor
+                            )}>
+                                <DeltaIcon className="h-3 w-3" /> {delta}
+                            </span>
+                        )}
+                        {hint && (
+                            <div className="text-[11px] text-capsula-ink-muted">{hint}</div>
+                        )}
+                    </div>
+                    {secondary && (
+                        <div className="text-right">
+                            <div className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">vs. ayer</div>
+                            <div className="font-mono text-[13px] text-capsula-ink-soft">{secondary}</div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </Comp>
+    );
 }
+
+export default KpiCard;
