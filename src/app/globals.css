@@ -2,255 +2,330 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   CÁPSULA — Minimal Navy Theme
+   HSL tokens drive shadcn primitives; hex drives brand utilities.
+   ============================================================================ */
+
 @layer base {
   :root {
-    /* ── CÁPSULA Coral Energy — Light Theme ─────────────────── */
-    --background: 0 0% 100%;
-    --foreground: 214 43% 19%;
-    --card: 0 0% 100%;
-    --card-foreground: 214 43% 19%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 214 43% 19%;
+    /* Surfaces — ivory base */
+    --background: 42 27% 95%;          /* #F7F5F0 */
+    --foreground: 214 48% 12%;         /* ink #0F1A2A */
+    --card: 40 40% 98%;                /* #FDFBF7 */
+    --card-foreground: 214 48% 12%;
+    --popover: 40 40% 98%;
+    --popover-foreground: 214 48% 12%;
 
-    /* Primary — Coral #FF6B4A */
-    --primary: 11 100% 64%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary — Navy */
+    --primary: 214 55% 16%;            /* #11203A */
+    --primary-foreground: 42 27% 95%;
 
-    /* Secondary — Navy #1B2D45 */
-    --secondary: 214 43% 19%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary — ivory alt */
+    --secondary: 42 19% 92%;           /* #EFECE5 */
+    --secondary-foreground: 214 55% 16%;
 
-    --muted: 16 30% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 42 19% 92%;
+    --muted-foreground: 214 11% 47%;   /* #6B7584 */
 
-    /* Accent — Dorado #FFD93D */
-    --accent: 47 100% 62%;
-    --accent-foreground: 214 43% 19%;
+    /* Accent — Coral (restrained) */
+    --accent: 11 86% 59%;              /* #F25C3B */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 11 75% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 11 100% 64%;
-    --radius: 1rem; /* Redondeado generoso para tablet */
+
+    --border: 38 26% 87%;              /* #E7E2D7 */
+    --input:  38 26% 87%;
+    --ring:   214 55% 16%;
+
+    --radius: 0.625rem;                /* 10px */
 
     /* ── CÁPSULA Custom Tokens ────────────────────────────── */
-    --capsula-coral: #FF6B4A;
-    --capsula-coral-hover: #E85A3A;
-    --capsula-coral-light: #FF8A6F;
-    --capsula-coral-subtle: #FFF0EC;
-    --capsula-navy: #1B2D45;
-    --capsula-navy-light: #2A4060;
-    --capsula-gold: #FFD93D;
-    --capsula-gold-hover: #F0C830;
-    --capsula-gold-subtle: #FFFBEB;
-    --capsula-bg-warm: #FFF8F5;
-    --capsula-bg-muted: #FFE8E0;
-    --capsula-success: #10B981;
-    --capsula-warning: #F59E0B;
-    --capsula-info: #3B82F6;
-    --font-heading: 'Nunito', system-ui, sans-serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --capsula-coral:         #F25C3B;
+    --capsula-coral-hover:   #D84A2A;
+    --capsula-coral-light:   #F47C62;
+    --capsula-coral-subtle:  #F5E4DD;
 
-    /* ── Tactile / Glass Tokens ───────────────────────────── */
-    --tactile-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --tactile-shadow-raised: 0 10px 15px -3px rgba(255, 107, 74, 0.15), 0 4px 6px -2px rgba(255, 107, 74, 0.05);
-    --tactile-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-    --glass-background: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.5);
+    --capsula-navy:          #1B2A3A;
+    --capsula-navy-deep:     #0B1727;
+    --capsula-navy-light:    #253D5C;
+    --capsula-navy-soft:     #E6EAEF;
+
+    --capsula-ivory:         #F7F5F0;
+    --capsula-ivory-surface: #FDFBF7;
+    --capsula-ivory-alt:     #EFECE5;
+
+    --capsula-line:          #E7E2D7;
+    --capsula-line-strong:   #D8D2C3;
+
+    --capsula-ink:           #0F1A2A;
+    --capsula-ink-soft:      #3A4656;
+    --capsula-ink-muted:     #6B7584;
+    --capsula-ink-faint:     #94A0B0;
+
+    --capsula-ok:            #2F6B4E;
+    --capsula-ok-soft:       #E5EDE7;
+    --capsula-warn:          #946A1C;
+    --capsula-warn-soft:     #F3EAD6;
+
+    /* Legacy (keep for back-compat during transition) */
+    --capsula-bg-warm:       var(--capsula-ivory);
+    --capsula-bg-muted:      var(--capsula-ivory-alt);
+    --capsula-gold:          #FFD93D;
+    --capsula-gold-hover:    #F0C830;
+    --capsula-gold-subtle:   #FFFBEB;
+    --capsula-success:       var(--capsula-ok);
+    --capsula-warning:       var(--capsula-warn);
+    --capsula-info:          #3B82F6;
+
+    /* Type */
+    --font-heading: 'Instrument Serif', Georgia, serif;
+    --font-body:    'Inter Tight', 'Inter', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Shadows — minimal */
+    --tactile-shadow:        0 1px 2px rgba(11,23,39,0.04), 0 2px 8px rgba(11,23,39,0.04);
+    --tactile-shadow-raised: 0 10px 24px -8px rgba(11,23,39,0.22);
+    --tactile-inner:         inset 0 1px 2px rgba(11,23,39,0.04);
+    --glass-background:      rgba(253, 251, 247, 0.78);
+    --glass-border:          rgba(231, 226, 215, 0.6);
   }
 
   .dark {
-    /* ── CÁPSULA Coral Energy — Dark Theme ───────────────── */
-    --background: 214 43% 12%;
-    --foreground: 16 100% 98%;
-    --card: 214 43% 15%;
-    --card-foreground: 16 100% 98%;
-    --popover: 214 43% 15%;
-    --popover-foreground: 16 100% 98%;
-    --primary: 11 100% 64%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 214 30% 25%;
-    --secondary-foreground: 16 100% 98%;
-    --muted: 214 30% 20%;
-    --muted-foreground: 215 16% 65%;
-    --accent: 47 100% 62%;
-    --accent-foreground: 214 43% 19%;
-    --destructive: 0 84% 60%;
+    --background: 214 55% 8%;
+    --foreground: 42 27% 95%;
+    --card: 214 50% 11%;
+    --card-foreground: 42 27% 95%;
+    --popover: 214 50% 11%;
+    --popover-foreground: 42 27% 95%;
+    --primary: 42 27% 95%;
+    --primary-foreground: 214 55% 8%;
+    --secondary: 214 35% 18%;
+    --secondary-foreground: 42 27% 95%;
+    --muted: 214 35% 18%;
+    --muted-foreground: 214 12% 65%;
+    --accent: 11 86% 59%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 11 75% 52%;
     --destructive-foreground: 0 0% 100%;
     --border: 214 30% 22%;
     --input: 214 30% 22%;
-    --ring: 11 100% 64%;
+    --ring: 42 27% 95%;
 
-    --capsula-coral: #FF6B4A;
-    --capsula-coral-hover: #FF8A6F;
-    --capsula-coral-light: #FF8A6F;
-    --capsula-coral-subtle: rgba(255, 107, 74, 0.1);
-    --capsula-navy: #E2E8F0;
-    --capsula-navy-light: #CBD5E1;
-    --capsula-bg-warm: hsl(214, 43%, 14%);
-    --capsula-bg-muted: hsl(214, 43%, 18%);
-
-    /* ── Tactile / Glass Tokens Dark ─────────────────────── */
-    --tactile-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-    --tactile-shadow-raised: 0 10px 20px -5px rgba(0, 0, 0, 0.6);
-    --tactile-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.4);
-    --glass-background: rgba(15, 12, 10, 0.8);
-    --glass-border: rgba(255, 107, 74, 0.1);
+    --capsula-ivory:         #0F1A2A;
+    --capsula-ivory-surface: #152134;
+    --capsula-ivory-alt:     #0B1727;
+    --capsula-ink:           #F7F5F0;
+    --capsula-ink-soft:      #CDD5DE;
+    --capsula-ink-muted:     #94A0B0;
+    --capsula-line:          #253D5C;
+    --capsula-line-strong:   #35506F;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-body);
+    font-feature-settings: "ss01","cv11","rlig" 1,"calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, .font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    font-weight: 400;
   }
 }
 
 @layer components {
-  /* BOTONES VIVOS - FEEDBACK TÁCTIL INNOVADOR */
+  /* ── Buttons — minimal pill, expand on hover ───────────── */
   .capsula-btn {
-    @apply relative inline-flex items-center justify-center transition-all duration-200 active:scale-95 touch-manipulation min-h-[48px] px-6 rounded-xl font-bold;
-    box-shadow: var(--tactile-shadow);
+    @apply relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium text-sm;
+    padding: 12px 20px;
+    letter-spacing: -0.01em;
+    transition:
+      background .18s ease,
+      color .18s ease,
+      border-color .18s ease,
+      transform .25s cubic-bezier(.2,.7,.2,1),
+      box-shadow .25s ease,
+      padding .25s cubic-bezier(.2,.7,.2,1),
+      letter-spacing .25s ease;
   }
+  .capsula-btn:hover {
+    transform: translateY(-1px) scale(1.04);
+    letter-spacing: 0.005em;
+  }
+  .capsula-btn:active { transform: translateY(0) scale(1); }
 
   .capsula-btn-primary {
-    @apply bg-gradient-to-br from-primary to-accent text-white border-b-4 border-primary/40 active:border-b-0 active:translate-y-[2px];
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    background: var(--capsula-navy-deep);
+    color: var(--capsula-ivory);
+  }
+  .capsula-btn-primary:hover {
+    background: var(--capsula-navy);
+    box-shadow: 0 10px 24px -8px rgba(11,23,39,0.4);
   }
 
   .capsula-btn-secondary {
-    @apply bg-secondary text-secondary-foreground border-b-4 border-muted-foreground/20 active:border-b-0 active:translate-y-[2px];
+    background: transparent;
+    color: var(--capsula-ink);
+    border: 1px solid var(--capsula-line-strong);
+  }
+  .capsula-btn-secondary:hover {
+    border-color: var(--capsula-navy-deep);
+    background: var(--capsula-ivory-surface);
+    box-shadow: 0 6px 16px -8px rgba(11,23,39,0.18);
   }
 
-  /* TARJETAS CON PESO VISUAL */
+  /* ── Cards — minimal, 1px border, subtle shadow ────────── */
   .capsula-card {
-    @apply relative overflow-hidden rounded-2xl border bg-card p-6 transition-all duration-500 hover:translate-y-[-4px];
+    @apply relative overflow-hidden rounded-[var(--radius)] border bg-card;
+    border-color: var(--capsula-line);
     box-shadow: var(--tactile-shadow);
+    transition: box-shadow .25s ease, transform .25s cubic-bezier(.2,.7,.2,1), border-color .18s ease;
   }
-
   .capsula-card:hover {
     box-shadow: var(--tactile-shadow-raised);
+    transform: translateY(-1px);
+  }
+  .stat-card { @apply capsula-card; padding: 20px; }
+
+  /* Label + serif value ensemble for KPI / stat cards */
+  .capsula-stat-label {
+    font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--capsula-ink-muted);
+    font-weight: 500;
+  }
+  .capsula-stat-value {
+    font-family: var(--font-body);   /* sans — matches Ventas hoy */
+    font-weight: 500;
+    font-size: 34px; line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--capsula-navy-deep);
+  }
+  .capsula-stat-value-lg {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 48px; line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--capsula-navy-deep);
   }
 
-  .stat-card {
-    @apply capsula-card border-primary/10;
-  }
-
-  .stat-card::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 transition-opacity duration-300;
-  }
-
-  .stat-card:hover::before {
-    @apply opacity-100;
-  }
-
-  /* GLASSMORPHISM MEJORADO (CAPSULA MODERN) */
+  /* ── Glass ──────────────────────────────────────────── */
   .glass-panel {
     @apply backdrop-blur-xl border;
     background: var(--glass-background);
     border-color: var(--glass-border);
   }
 
+  /* ── Shimmer (legacy, progress bars / loaders) ────────── */
   .shimmer {
-    @apply relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent;
+    @apply relative overflow-hidden
+           before:absolute before:inset-0 before:-translate-x-full
+           before:animate-[shimmer_2s_infinite]
+           before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent;
   }
+
+  /* ── POS — táctil (excepción) ──────────────────────────── */
+  .pos-btn {
+    @apply relative inline-flex items-center justify-center transition-all duration-150 active:scale-[0.98] touch-manipulation min-h-[48px] px-5 rounded-xl font-semibold;
+    background: var(--capsula-navy-deep);
+    color: var(--capsula-ivory);
+    border-bottom: 4px solid rgba(11,23,39,0.35);
+    box-shadow: var(--tactile-shadow);
+  }
+  .pos-btn:active {
+    border-bottom-width: 0;
+    transform: translateY(2px);
+  }
+  .pos-btn-secondary {
+    background: var(--capsula-ivory-surface);
+    color: var(--capsula-ink);
+    border: 1px solid var(--capsula-line-strong);
+    border-bottom-width: 4px;
+  }
+  .pos-btn-danger {
+    background: var(--capsula-coral);
+    color: #fff;
+    border-bottom: 4px solid var(--capsula-coral-hover);
+  }
+  .pos-tile {
+    @apply relative rounded-xl p-4 text-left touch-manipulation min-h-[96px];
+    background: var(--capsula-ivory-surface);
+    border: 1px solid var(--capsula-line);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .pos-tile:hover {
+    border-color: var(--capsula-navy);
+    box-shadow: var(--tactile-shadow-raised);
+  }
+  .pos-tile:active { transform: scale(0.98); }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .animate-in {
-    animation: fade-in 0.3s ease-out forwards;
-  }
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+  .animate-in   { animation: fade-in 0.3s ease-out forwards; }
 }
 
-/* Mobile Drawer Animations */
-@keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
+/* Drawer / fade keyframes kept for compatibility */
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes shimmer  { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-fade-in  { animation: fade-in 0.2s ease-out; }
+.animate-scale-in { animation: scale-in 0.2s ease-out; }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
-
-/* Scrollbar personalizado */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted/50 rounded-full;
-}
-
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--capsula-ivory-alt); border-radius: 999px; }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+  background: var(--capsula-line-strong);
+  border-radius: 999px;
+  transition: background .2s;
 }
+::-webkit-scrollbar-thumb:hover { background: var(--capsula-ink-muted); }
 
 /* ============================================================================
    CÁPSULA Brand Utilities
    ============================================================================ */
-.bg-capsula-warm { background-color: var(--capsula-bg-warm); }
-.bg-capsula-muted { background-color: var(--capsula-bg-muted); }
-.bg-capsula-coral { background-color: var(--capsula-coral); }
-.bg-capsula-coral-subtle { background-color: var(--capsula-coral-subtle); }
-.bg-capsula-navy { background-color: var(--capsula-navy); }
-.bg-capsula-gold { background-color: var(--capsula-gold); }
-.bg-capsula-gold-subtle { background-color: var(--capsula-gold-subtle); }
-.text-capsula-coral { color: var(--capsula-coral); }
-.text-capsula-navy { color: var(--capsula-navy); }
-.text-capsula-gold { color: var(--capsula-gold); }
-.border-capsula-coral { border-color: var(--capsula-coral); }
-.border-capsula-navy { border-color: var(--capsula-navy); }
+.bg-capsula-ivory         { background-color: var(--capsula-ivory); }
+.bg-capsula-ivory-surface { background-color: var(--capsula-ivory-surface); }
+.bg-capsula-ivory-alt     { background-color: var(--capsula-ivory-alt); }
+.bg-capsula-warm          { background-color: var(--capsula-ivory); }      /* legacy alias */
+.bg-capsula-muted         { background-color: var(--capsula-ivory-alt); }  /* legacy alias */
+.bg-capsula-coral         { background-color: var(--capsula-coral); }
+.bg-capsula-coral-subtle  { background-color: var(--capsula-coral-subtle); }
+.bg-capsula-navy          { background-color: var(--capsula-navy); }
+.bg-capsula-navy-deep     { background-color: var(--capsula-navy-deep); }
+.bg-capsula-gold          { background-color: var(--capsula-gold); }
+.bg-capsula-gold-subtle   { background-color: var(--capsula-gold-subtle); }
 
-.bg-capsula-gradient {
-  background: linear-gradient(135deg, var(--capsula-coral), var(--capsula-coral-hover));
-}
-.bg-capsula-gradient-warm {
-  background: linear-gradient(135deg, var(--capsula-bg-warm), var(--capsula-bg-muted));
-}
-.bg-capsula-gradient-hero {
-  background: linear-gradient(145deg, var(--capsula-coral) 0%, var(--capsula-coral-hover) 50%, var(--capsula-navy) 100%);
-}
+.text-capsula-coral { color: var(--capsula-coral); }
+.text-capsula-navy  { color: var(--capsula-navy); }
+.text-capsula-ink   { color: var(--capsula-ink); }
+.text-capsula-muted { color: var(--capsula-ink-muted); }
+.text-capsula-gold  { color: var(--capsula-gold); }
+
+.border-capsula-coral { border-color: var(--capsula-coral); }
+.border-capsula-navy  { border-color: var(--capsula-navy); }
+.border-capsula-line  { border-color: var(--capsula-line); }
+
+/* Legacy gradient helpers — kept but flattened to minimal */
+.bg-capsula-gradient      { background-color: var(--capsula-navy-deep); }
+.bg-capsula-gradient-warm { background-color: var(--capsula-ivory); }
+.bg-capsula-gradient-hero { background-color: var(--capsula-ivory); }
 
 /* ============================================================================
-   KIOSCO / TABLET (Redmi Pad 2 — 800px–1280px)
-   Elimina scroll lateral y garantiza touch targets mínimos
+   KIOSCO / TABLET (Redmi Pad 2)
    ============================================================================ */
 @media (min-width: 800px) and (max-width: 1280px) {
-  body {
-    overflow-x: hidden;
-    touch-action: pan-y;
-  }
-  /* Touch targets mínimo 44px para dedos */
-  button, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
+  body { overflow-x: hidden; touch-action: pan-y; }
+  button, [role="button"] { min-height: 44px; min-width: 44px; }
 }
