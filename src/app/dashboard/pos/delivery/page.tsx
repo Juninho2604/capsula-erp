@@ -12,6 +12,13 @@ import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 import { PriceDisplay } from '@/components/pos/PriceDisplay';
 import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
+import type { LucideIcon } from 'lucide-react';
+import {
+    Bike, MessageCircle, Coins, Package, User, Phone, MapPin, Search, X,
+    Plus, Minus, Loader2, Check, ShoppingBag, Sandwich, Pizza, Soup,
+    Utensils, UtensilsCrossed, Beef, Wheat, Cookie, GlassWater, Salad,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const DELIVERY_FEE_NORMAL = 4.5;
 const DELIVERY_FEE_DIVISAS = 3;
@@ -143,12 +150,19 @@ export default function POSDeliveryPage() {
           )
         : menuItems;
 
-    const getCategoryIcon = (name: string) => {
-        if (name.includes('Tabla') || name.includes('Combo')) return '🍱';
-        if (name.includes('Queso')) return '🧀';
-        if (name.includes('Platos')) return '🍛';
-        // ... (resto igual)
-        return '📦';
+    const getCategoryIcon = (name: string): LucideIcon => {
+        const n = name.toLowerCase();
+        if (n.includes('tabla') || n.includes('combo')) return UtensilsCrossed;
+        if (n.includes('queso')) return Pizza;
+        if (n.includes('plato')) return Soup;
+        if (n.includes('sandwich') || n.includes('wrap')) return Sandwich;
+        if (n.includes('carne') || n.includes('proteína')) return Beef;
+        if (n.includes('pan') || n.includes('bread')) return Wheat;
+        if (n.includes('postre') || n.includes('dulce')) return Cookie;
+        if (n.includes('bebida') || n.includes('trago')) return GlassWater;
+        if (n.includes('ensalada')) return Salad;
+        if (n.includes('entrada') || n.includes('aperitivo')) return Utensils;
+        return Package;
     };
 
     const handleAddToCart = (item: MenuItem) => {
@@ -386,152 +400,199 @@ export default function POSDeliveryPage() {
     };
     const handlePinKey = (k: string) => { if (k === 'clear') setPinInput(''); else if (k === 'back') setPinInput(p => p.slice(0, -1)); else setPinInput(p => p + k); };
 
-    if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-center"><div className="text-4xl mb-4">🛵</div><div className="text-xl font-black text-foreground">Cargando Delivery...</div></div></div>;
+    if (isLoading) return (
+        <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
+            <div className="text-center">
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                <div className="text-[14px] font-medium text-capsula-ink">Cargando Delivery…</div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} bg-background text-foreground flex flex-col font-sans animate-in fade-in duration-700 pb-16 lg:pb-0`}>
-            <div className={`glass-panel px-3 md:px-6 py-3 md:py-4 ${posFullscreen ? 'fixed top-0 w-full z-30' : 'relative w-full z-[31]'} shadow-2xl flex justify-between items-center h-16 md:h-24 border-b-primary/10`}>
+        <div className={cn(
+            posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]',
+            'flex animate-in flex-col bg-capsula-ivory pb-16 font-sans text-capsula-ink duration-500 lg:pb-0',
+        )}>
+            <div className={cn(
+                'flex h-16 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 md:h-24 md:px-6',
+                posFullscreen ? 'fixed top-0 z-30 w-full' : 'relative z-[31] w-full',
+            )}>
                 <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 md:h-14 md:w-14 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-blue-500/20">🛵</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft md:h-14 md:w-14">
+                        <Bike className="h-5 w-5 text-capsula-navy md:h-7 md:w-7" strokeWidth={1.5} />
+                    </div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">Shanklish <span className="text-foreground">Delivery</span></h1>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            Sistema de Despacho Táctil CAPSULA
+                        <h1 className="font-heading text-[20px] leading-none tracking-[-0.01em] text-capsula-navy-deep md:text-[28px]">
+                            Shanklish <span className="text-capsula-coral">Delivery</span>
+                        </h1>
+                        <p className="mt-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-navy" />
+                            Sistema de despacho táctil CÁPSULA
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="glass-panel p-2 rounded-2xl border-primary/5">
+                <div className="flex items-center gap-2 md:gap-3">
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1.5">
                         <CurrencyCalculator totalUsd={finalTotal} hasServiceFee={false} onRateUpdated={setExchangeRate} />
                     </div>
-                    <button
+                    <Button
+                        variant={showWhatsAppParser ? 'primary' : 'ghost'}
+                        size="sm"
                         onClick={() => setShowWhatsAppParser(!showWhatsAppParser)}
-                        className={`capsula-btn min-h-0 py-3 px-6 text-sm ${showWhatsAppParser ? 'capsula-btn-primary bg-emerald-600 border-emerald-700' : 'capsula-btn-secondary'}`}
                     >
-                        💬 WhatsApp
-                    </button>
-                    <button
-                        type="button"
+                        <MessageCircle className="h-4 w-4" strokeWidth={1.5} /> WhatsApp
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowTipModal(true)}
-                        className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase hover:bg-amber-500/20 transition-colors"
                     >
-                        + Propina
-                    </button>
-                    <div className="px-4 py-2 bg-secondary/30 rounded-xl border border-border font-black text-sm tabular-nums text-foreground/70">
+                        <Coins className="h-4 w-4" strokeWidth={1.5} /> Propina
+                    </Button>
+                    <div className="rounded-full border border-capsula-line bg-capsula-ivory px-3 py-1.5 font-mono text-[11px] tabular-nums text-capsula-ink-soft">
                         {new Date().toLocaleDateString('es-VE')}
                     </div>
                 </div>
             </div>
 
-            <div className={`flex ${posFullscreen ? 'h-screen pt-16 md:pt-24' : 'flex-1 min-h-0'} overflow-hidden`}>
-
+            <div className={cn(
+                'flex overflow-hidden',
+                posFullscreen ? 'h-screen pt-16 md:pt-24' : 'min-h-0 flex-1',
+            )}>
                 {/* ══════════════════════════════════════════════════════
                     PANEL IZQUIERDO — Datos del cliente + Menú
                     ══════════════════════════════════════════════════════ */}
-                <div className={`flex-1 flex flex-col overflow-hidden bg-background ${mobileView === "menu" ? "flex" : "hidden"} lg:flex`}>
-
+                <div className={cn(
+                    'flex-1 flex-col overflow-hidden bg-capsula-ivory lg:flex',
+                    mobileView === 'menu' ? 'flex' : 'hidden',
+                )}>
                     {/* ── Barra de datos del cliente ───────────────────── */}
-                    <div className="px-4 py-3 bg-blue-950/40 border-b border-blue-500/20 shrink-0">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">📦 Datos del Cliente</span>
+                    <div className="shrink-0 border-b border-capsula-navy/10 bg-capsula-navy-soft/50 px-4 py-3">
+                        <div className="mb-2 flex items-center gap-2">
+                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy">
+                                <Package className="h-3 w-3" strokeWidth={1.5} />
+                                Datos del cliente
+                            </span>
                             {(customerName || customerPhone || customerAddress) && (
                                 <button
                                     onClick={() => { setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); }}
-                                    className="text-[10px] text-red-400/60 hover:text-red-400 font-bold transition-colors"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                                 >
-                                    Limpiar ✕
+                                    Limpiar <X className="h-3 w-3" strokeWidth={1.5} />
                                 </button>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                            <div className="relative">
+                                <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                                <input
+                                    type="text"
+                                    value={customerName}
+                                    onChange={e => setCustomerName(e.target.value)}
+                                    placeholder="Nombre del cliente"
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2 pl-8 pr-3 text-[13px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                                />
+                            </div>
+                            <div className="relative">
+                                <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                                <input
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={e => setCustomerPhone(e.target.value)}
+                                    placeholder="Teléfono"
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2 pl-8 pr-3 text-[13px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                                />
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
                             <input
                                 type="text"
-                                value={customerName}
-                                onChange={e => setCustomerName(e.target.value)}
-                                placeholder="👤 Nombre del cliente"
-                                className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
-                            />
-                            <input
-                                type="tel"
-                                value={customerPhone}
-                                onChange={e => setCustomerPhone(e.target.value)}
-                                placeholder="📞 Teléfono"
-                                className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
+                                value={customerAddress}
+                                onChange={e => setCustomerAddress(e.target.value)}
+                                placeholder="Dirección exacta de entrega…"
+                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2 pl-8 pr-3 text-[13px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                             />
                         </div>
-                        <input
-                            type="text"
-                            value={customerAddress}
-                            onChange={e => setCustomerAddress(e.target.value)}
-                            placeholder="📍 Dirección exacta de entrega..."
-                            className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
-                        />
                     </div>
 
                     {/* ── Buscador ─────────────────────────────────────── */}
-                    <div className="px-4 py-3 bg-background border-b border-border shrink-0">
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
+                    <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory px-4 py-3">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
                             <input
                                 type="text"
                                 value={productSearch}
                                 onChange={(e) => setProductSearch(e.target.value)}
-                                placeholder="Buscar producto por nombre o SKU..."
-                                className="w-full bg-secondary/50 border border-border rounded-2xl py-3 pl-12 pr-12 text-base font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                                placeholder="Buscar producto por nombre o SKU…"
+                                className="w-full rounded-full border border-capsula-line bg-capsula-ivory-surface py-2.5 pl-11 pr-11 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                             />
                             {productSearch && (
                                 <button
                                     onClick={() => setProductSearch('')}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
+                                    className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
                                 >
-                                    ✕
+                                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                                 </button>
                             )}
                         </div>
                     </div>
+
                     {/* Categories */}
                     {!productSearch && (
-                        <div className="flex gap-3 px-6 py-4 bg-background border-b border-border overflow-x-auto no-scrollbar scroll-smooth">
-                            {categories.map((cat: any) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setSelectedCategory(cat.id)}
-                                    className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
-                                >
-                                    <span className="text-xl group-hover:rotate-12 transition-transform">{getCategoryIcon(cat.name)}</span> {cat.name}
-                                </button>
-                            ))}
+                        <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-capsula-line bg-capsula-ivory px-4 py-3">
+                            {categories.map((cat: any) => {
+                                const CategoryIcon = getCategoryIcon(cat.name);
+                                const active = selectedCategory === cat.id;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={cn(
+                                            'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition-colors',
+                                            active
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink',
+                                        )}
+                                    >
+                                        <CategoryIcon className="h-3.5 w-3.5" strokeWidth={1.5} /> {cat.name}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
-                    <div className="flex-1 p-6 overflow-y-auto pb-24 scroll-smooth">
+
+                    <div className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
                         {productSearch && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
-                                💡 {filteredMenuItems.length} productos coinciden con tu búsqueda
+                            <p className="mb-4 text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                {filteredMenuItems.length} productos coinciden con tu búsqueda
                             </p>
                         )}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4">
                             {filteredMenuItems.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleAddToCart(item)}
-                                    className="capsula-card group p-3 md:p-5 text-left h-32 md:h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98] transition-transform"
+                                    className="group flex h-32 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised md:h-40"
                                 >
-                                    <div className="font-black text-base uppercase leading-tight tracking-tight group-hover:text-primary transition-colors">{item.name}</div>
+                                    <div className="text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-navy-deep md:text-[14px]">
+                                        {item.name}
+                                    </div>
                                     <div className="flex items-end justify-between">
-                                        <div className="text-2xl font-black text-primary italic">
+                                        <div className="font-mono text-[18px] font-semibold text-capsula-navy-deep md:text-[20px]">
                                             <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                         </div>
-                                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:translate-y-4 lg:group-hover:translate-y-0">
-                                            ➕
+                                        <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy-deep opacity-100 transition-all lg:translate-y-2 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
+                                            <Plus className="h-4 w-4" strokeWidth={2} />
                                         </div>
                                     </div>
                                 </button>
                             ))}
                             {filteredMenuItems.length === 0 && (
-                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
-                                    <span className="text-6xl mb-4">🔍</span>
-                                    <p className="font-black uppercase tracking-widest">Sin resultados</p>
+                                <div className="col-span-full flex flex-col items-center justify-center py-16 text-capsula-ink-muted">
+                                    <Search className="mb-3 h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                    <p className="text-[13px] font-medium">Sin resultados</p>
                                 </div>
                             )}
                         </div>
