@@ -2,6 +2,15 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import {
+  HelpCircle,
+  X,
+  ClipboardList,
+  Ruler,
+  Lightbulb,
+  ChevronRight,
+  AlertTriangle,
+} from 'lucide-react';
 
 // ============================================================================
 // GUÍAS POR MÓDULO
@@ -9,7 +18,6 @@ import { usePathname } from 'next/navigation';
 
 interface ModuleGuide {
   title: string;
-  icon: string;
   description: string;
   steps: string[];
   tips: string[];
@@ -19,7 +27,6 @@ interface ModuleGuide {
 const HELP_GUIDES: Record<string, ModuleGuide> = {
   '/dashboard/pos/restaurante': {
     title: 'POS Restaurante',
-    icon: '🥙',
     description: 'Punto de venta para consumo en el local. El cajero gestiona mesas, órdenes y cobros.',
     steps: [
       'Selecciona la zona (Sala Principal / Bar)',
@@ -44,7 +51,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/pos/delivery': {
     title: 'POS Delivery',
-    icon: '🛵',
     description: 'Para órdenes a domicilio. Registra datos del cliente y envía a cocina.',
     steps: [
       'Ingresa nombre, teléfono y dirección exacta del cliente',
@@ -65,7 +71,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/pos/mesero': {
     title: 'POS Mesero',
-    icon: '🧑‍🍳',
     description: 'Vista exclusiva para mesoneros. Solo toma de pedidos — el cajero gestiona el cobro.',
     steps: [
       'Selecciona la zona y la mesa asignada',
@@ -83,7 +88,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/inventario': {
     title: 'Inventario',
-    icon: '📦',
     description: 'Gestión completa de materias primas, sub-recetas y productos terminados.',
     steps: [
       'Crea cada ingrediente como un ítem de inventario (Materia Prima)',
@@ -110,7 +114,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/inventario/diario': {
     title: 'Inventario Diario',
-    icon: '📅',
     description: 'Registro del inventario al inicio y cierre de cada día.',
     steps: [
       'Al abrir el local: registra el conteo inicial de cada área',
@@ -126,7 +129,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/recetas': {
     title: 'Recetas',
-    icon: '📋',
     description: 'Define la composición de cada plato o bebida para el control de costos e inventario.',
     steps: [
       'Crea la receta con el nombre EXACTO del producto del menú',
@@ -150,7 +152,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/produccion': {
     title: 'Producción',
-    icon: '🏭',
     description: 'Registro de producciones internas: salsas, masas, sub-recetas y preparaciones.',
     steps: [
       'Selecciona la receta a producir',
@@ -167,7 +168,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/ventas/cargar': {
     title: 'Cargar Ventas',
-    icon: '💳',
     description: 'Registro manual de ventas externas (PedidosYA, eventos, etc.)',
     steps: [
       'Ingresa la fecha de la venta',
@@ -182,7 +182,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/sales': {
     title: 'Historial de Ventas',
-    icon: '📈',
     description: 'Registro completo de todas las ventas. Base para el arqueo y auditoría.',
     steps: [
       'Filtra por fecha para ver el día que necesitas',
@@ -199,7 +198,6 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
   '/dashboard/estadisticas': {
     title: 'Estadísticas',
-    icon: '📊',
     description: 'Panel de análisis en tiempo real. La información que ves depende de tu rol.',
     steps: [
       'DUEÑO/GERENTE: Ve revenue, métodos de pago, top productos, descuentos del día',
@@ -215,10 +213,8 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
   },
 };
 
-// Guía genérica para rutas sin guía específica
 const DEFAULT_GUIDE: ModuleGuide = {
-  title: 'CAPSULA ERP',
-  icon: '🧩',
+  title: 'CÁPSULA ERP',
   description: 'Sistema de gestión para restaurantes y locales tipo Sport Bar.',
   steps: [
     'Navega por los módulos del sidebar según tu rol',
@@ -239,9 +235,7 @@ const DEFAULT_GUIDE: ModuleGuide = {
 };
 
 function getGuide(pathname: string): ModuleGuide {
-  // Busca coincidencia exacta primero
   if (HELP_GUIDES[pathname]) return HELP_GUIDES[pathname];
-  // Luego por prefijo (para sub-rutas)
   const match = Object.keys(HELP_GUIDES)
     .filter((key) => pathname.startsWith(key))
     .sort((a, b) => b.length - a.length)[0];
@@ -263,137 +257,146 @@ export function HelpPanel() {
       {/* Botón ayuda */}
       <button
         onClick={() => setIsOpen(true)}
-        className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-lg bg-capsula-ivory-alt text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink"
         title="Ayuda y guía del módulo"
         aria-label="Abrir guía de ayuda"
       >
-        <span className="text-xl">❓</span>
+        <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
       </button>
 
-      {/* Modal centrado con backdrop oscuro */}
+      {/* Modal */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-capsula-navy-deep/55 p-4 backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="bg-card w-full max-w-sm rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            className="flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-raised animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-        {/* Header */}
-        <div className="p-5 border-b border-border flex items-center justify-between bg-primary/10">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">
-              {guide.icon}
-            </div>
-            <div>
-              <h2 className="font-black text-base text-foreground">{guide.title}</h2>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Guía de uso</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="h-9 w-9 rounded-xl hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-lg"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Tabs */}
-        {guide.standards && guide.standards.length > 0 && (
-          <div className="flex border-b border-border">
-            <button
-              onClick={() => setActiveTab('guide')}
-              className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${
-                activeTab === 'guide' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              📋 Guía de uso
-            </button>
-            <button
-              onClick={() => setActiveTab('standards')}
-              className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${
-                activeTab === 'standards' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              📐 Estándares
-            </button>
-          </div>
-        )}
-
-        {/* Contenido */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {activeTab === 'guide' ? (
-            <>
-              {/* Descripción */}
-              <div className="bg-secondary/40 rounded-2xl p-4 border border-border">
-                <p className="text-sm text-foreground/80 font-medium leading-relaxed">{guide.description}</p>
-              </div>
-
-              {/* Pasos */}
-              <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">
-                  Pasos del proceso
-                </h3>
-                <div className="space-y-2">
-                  {guide.steps.map((step, i) => (
-                    <div key={i} className="flex gap-3 items-start">
-                      <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
-                        {i + 1}
-                      </div>
-                      <p className="text-sm text-foreground/80 font-medium leading-snug">{step}</p>
-                    </div>
-                  ))}
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-navy-deep">
+                  <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">{guide.title}</h2>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-capsula-ink-muted">Guía de uso</p>
                 </div>
               </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-capsula-ink-muted transition-colors hover:bg-capsula-ivory hover:text-capsula-ink"
+                aria-label="Cerrar"
+              >
+                <X className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </div>
 
-              {/* Tips */}
-              <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">
-                  💡 Recomendaciones
-                </h3>
-                <div className="space-y-2">
-                  {guide.tips.map((tip, i) => (
-                    <div key={i} className="flex gap-2 items-start p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                      <span className="text-primary text-xs shrink-0 mt-0.5">→</span>
-                      <p className="text-xs text-foreground/70 font-medium leading-snug">{tip}</p>
-                    </div>
-                  ))}
-                </div>
+            {/* Tabs */}
+            {guide.standards && guide.standards.length > 0 && (
+              <div className="flex border-b border-capsula-line">
+                <button
+                  onClick={() => setActiveTab('guide')}
+                  className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+                    activeTab === 'guide'
+                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-navy-deep'
+                      : 'text-capsula-ink-muted hover:text-capsula-ink'
+                  }`}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Guía de uso
+                </button>
+                <button
+                  onClick={() => setActiveTab('standards')}
+                  className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+                    activeTab === 'standards'
+                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-navy-deep'
+                      : 'text-capsula-ink-muted hover:text-capsula-ink'
+                  }`}
+                >
+                  <Ruler className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Estándares
+                </button>
               </div>
-            </>
-          ) : (
-            /* Estándares de nomenclatura */
-            <div>
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-4">
-                <p className="text-xs font-bold text-amber-400">
-                  ⚠️ Los estándares son críticos para que el inventario se descuente correctamente.
-                  Un nombre inconsistente rompe la conexión receta → venta → inventario.
-                </p>
-              </div>
-              <div className="space-y-3">
-                {guide.standards!.map((s, i) => (
-                  <div key={i} className="p-4 bg-secondary/30 rounded-2xl border border-border">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">{s.label}</div>
-                    <div className="text-xs text-foreground/70 font-medium font-mono bg-background/50 rounded-lg p-2 mt-2">
-                      {s.example}
+            )}
+
+            {/* Contenido */}
+            <div className="flex-1 space-y-5 overflow-y-auto p-5">
+              {activeTab === 'guide' ? (
+                <>
+                  {/* Descripción */}
+                  <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-4">
+                    <p className="text-sm font-medium leading-relaxed text-capsula-ink-soft">{guide.description}</p>
+                  </div>
+
+                  {/* Pasos */}
+                  <div>
+                    <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                      Pasos del proceso
+                    </h3>
+                    <div className="space-y-2">
+                      {guide.steps.map((step, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-capsula-navy-soft text-xs font-semibold text-capsula-navy-deep">
+                            {i + 1}
+                          </div>
+                          <p className="text-sm font-medium leading-snug text-capsula-ink-soft">{step}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-border bg-secondary/40">
-          <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest text-center">
-            CAPSULA ERP · Módulo: {guide.title}
-          </p>
-          <p className="text-[9px] text-muted-foreground/40 text-center mt-0.5">
-            Para soporte contacta al administrador del sistema
-          </p>
-        </div>
+                  {/* Tips */}
+                  <div>
+                    <h3 className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                      <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      Recomendaciones
+                    </h3>
+                    <div className="space-y-2">
+                      {guide.tips.map((tip, i) => (
+                        <div key={i} className="flex items-start gap-2 rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-3">
+                          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-capsula-coral" strokeWidth={2} />
+                          <p className="text-xs font-medium leading-snug text-capsula-ink-soft">{tip}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Estándares de nomenclatura */
+                <div>
+                  <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" strokeWidth={1.75} />
+                    <p className="text-xs font-medium text-amber-700">
+                      Los estándares son críticos para que el inventario se descuente correctamente.
+                      Un nombre inconsistente rompe la conexión receta → venta → inventario.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {guide.standards!.map((s, i) => (
+                      <div key={i} className="rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-4">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-navy-deep">{s.label}</div>
+                        <div className="rounded-lg bg-capsula-ivory px-3 py-2 font-mono text-xs text-capsula-ink-soft">
+                          {s.example}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-capsula-line bg-capsula-ivory-alt px-4 py-3">
+              <p className="text-center text-[9px] font-medium uppercase tracking-[0.18em] text-capsula-ink-muted">
+                CÁPSULA · {guide.title}
+              </p>
+              <p className="mt-0.5 text-center text-[9px] text-capsula-ink-faint">
+                Para soporte contacta al administrador del sistema
+              </p>
+            </div>
           </div>
         </div>
       )}

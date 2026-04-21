@@ -1,6 +1,7 @@
 'use client';
 
 import { useUIStore } from '@/stores/ui.store';
+import { Minimize2 } from 'lucide-react';
 import { Navbar } from './Navbar';
 
 interface DashboardShellProps {
@@ -19,14 +20,9 @@ export function DashboardShell({ sidebar, children }: DashboardShellProps) {
                 <button
                     onClick={togglePosFullscreen}
                     title="Salir de pantalla completa"
-                    className="fixed bottom-4 right-4 z-[80] flex items-center gap-1.5 rounded-xl bg-gray-900/80 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-sm transition-all hover:bg-gray-800 dark:bg-gray-100/20 dark:hover:bg-gray-100/30"
+                    className="fixed bottom-4 right-4 z-[80] inline-flex items-center gap-1.5 rounded-full bg-capsula-navy-deep px-3.5 py-2 text-xs font-medium text-capsula-ivory shadow-cap-raised backdrop-blur-sm transition-all hover:bg-capsula-navy"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                        <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                        <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                        <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                    </svg>
+                    <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                     Salir POS
                 </button>
             </div>

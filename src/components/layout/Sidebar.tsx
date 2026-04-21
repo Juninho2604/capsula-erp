@@ -12,6 +12,7 @@ import { logoutAction } from '@/app/actions/auth.actions';
 import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 import { getVisibleModules, type ModuleDefinition } from '@/lib/constants/modules-registry';
 import { CapsulaNavbarLogo } from '@/components/ui/CapsulaLogo';
+import { X, User, LogOut } from 'lucide-react';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -122,60 +123,32 @@ const ORPHAN_SECTION_ID = 'otros';
 
 // ── Color scheme classes ───────────────────────────────────────────────────────
 
-const SCHEMES: Record<ColorScheme, {
-    sectionText:  string;
-    sectionHover: string;
-    activeLink:   string;
-    dot:          string;
-    sgHover:      string;
-    linkHover:    string;
-    chevron:      string;
-}> = {
-    coral: {
-        sectionText:  'text-capsula-coral',
-        sectionHover: 'hover:bg-capsula-coral-subtle',
-        activeLink:   'bg-capsula-coral-subtle text-capsula-coral font-medium',
-        dot:          'bg-capsula-coral',
-        sgHover:      'hover:bg-capsula-coral-subtle',
-        linkHover:    'hover:bg-capsula-coral-subtle hover:text-capsula-coral',
-        chevron:      'text-capsula-coral',
-    },
-    green: {
-        sectionText:  'text-emerald-700 dark:text-emerald-400',
-        sectionHover: 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30',
-        activeLink:   'bg-emerald-50 text-emerald-700 font-medium dark:bg-emerald-950/40 dark:text-emerald-400',
-        dot:          'bg-emerald-500',
-        sgHover:      'hover:bg-emerald-50 dark:hover:bg-emerald-950/30',
-        linkHover:    'hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30',
-        chevron:      'text-emerald-600 dark:text-emerald-400',
-    },
-    purple: {
-        sectionText:  'text-purple-700 dark:text-purple-400',
-        sectionHover: 'hover:bg-purple-50 dark:hover:bg-purple-950/30',
-        activeLink:   'bg-purple-50 text-purple-700 font-medium dark:bg-purple-950/40 dark:text-purple-400',
-        dot:          'bg-purple-500',
-        sgHover:      'hover:bg-purple-50 dark:hover:bg-purple-950/30',
-        linkHover:    'hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-950/30',
-        chevron:      'text-purple-600 dark:text-purple-400',
-    },
-    navy: {
-        sectionText:  'text-capsula-navy dark:text-blue-300',
-        sectionHover: 'hover:bg-capsula-navy-subtle dark:hover:bg-blue-950/30',
-        activeLink:   'bg-capsula-navy-subtle text-capsula-navy font-medium dark:bg-blue-950/40 dark:text-blue-300',
-        dot:          'bg-capsula-navy',
-        sgHover:      'hover:bg-capsula-navy-subtle dark:hover:bg-blue-950/30',
-        linkHover:    'hover:bg-capsula-navy-subtle hover:text-capsula-navy dark:hover:bg-blue-950/30 dark:hover:text-blue-300',
-        chevron:      'text-capsula-navy dark:text-blue-300',
-    },
-    blue: {
-        sectionText:  'text-blue-700 dark:text-blue-400',
-        sectionHover: 'hover:bg-blue-50 dark:hover:bg-blue-950/30',
-        activeLink:   'bg-blue-50 text-blue-700 font-medium dark:bg-blue-950/40 dark:text-blue-400',
-        dot:          'bg-blue-500',
-        sgHover:      'hover:bg-blue-50 dark:hover:bg-blue-950/30',
-        linkHover:    'hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30',
-        chevron:      'text-blue-600 dark:text-blue-400',
-    },
+// Minimal Navy: todos los schemes se unifican a tokens de marca.
+// Los 5 nombres se conservan para compatibilidad con SIDEBAR_TREE.
+const BASE_SCHEME = {
+    sectionText:  'text-capsula-ink-muted',
+    sectionHover: 'hover:bg-capsula-ivory-alt',
+    activeLink:   'bg-capsula-navy-soft text-capsula-navy-deep font-medium',
+    dot:          'bg-capsula-coral',
+    sgHover:      'hover:bg-capsula-ivory-alt',
+    linkHover:    'hover:bg-capsula-ivory-alt hover:text-capsula-ink',
+    chevron:      'text-capsula-ink-muted',
+} as const;
+
+const CORAL_SCHEME = {
+    ...BASE_SCHEME,
+    activeLink: 'bg-capsula-coral-subtle text-capsula-coral font-medium',
+    dot:        'bg-capsula-coral',
+    linkHover:  'hover:bg-capsula-coral-subtle hover:text-capsula-coral',
+} as const;
+
+type Scheme = { sectionText: string; sectionHover: string; activeLink: string; dot: string; sgHover: string; linkHover: string; chevron: string };
+const SCHEMES: Record<ColorScheme, Scheme> = {
+    coral:  CORAL_SCHEME,
+    green:  BASE_SCHEME,
+    purple: BASE_SCHEME,
+    navy:   BASE_SCHEME,
+    blue:   BASE_SCHEME,
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -300,7 +273,7 @@ function ModuleLink({
                 indent ? 'pl-9 pr-3' : 'px-3',
                 active
                     ? c.activeLink
-                    : cn('text-gray-600 dark:text-gray-400', c.linkHover),
+                    : cn('text-capsula-ink-soft', c.linkHover),
             )}
         >
             <span className="text-base leading-none">{mod.icon}</span>
@@ -346,7 +319,7 @@ function SubGroup({
                     'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
                     hasActive && !isOpen
                         ? c.activeLink
-                        : cn('text-gray-500 dark:text-gray-400', c.sgHover),
+                        : cn('text-capsula-ink-soft', c.sgHover),
                 )}
             >
                 <span className="text-base leading-none">{def.icon}</span>
@@ -600,27 +573,27 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
             {/* Sidebar panel */}
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-900',
+                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-capsula-line bg-capsula-ivory-surface transition-transform duration-300',
                     sidebarOpen ? 'translate-x-0' : '-translate-x-full',
                     'md:translate-x-0',
                 )}
             >
-                {/* D5 — Header con CapsulaNavbarLogo, sin fallback 🧀 */}
-                <div className="flex h-16 shrink-0 items-center border-b border-gray-200 px-4 dark:border-gray-700">
+                {/* D5 — Header con CapsulaNavbarLogo */}
+                <div className="flex h-16 shrink-0 items-center border-b border-capsula-line px-4">
                     <div className="flex min-w-0 flex-1 flex-col justify-center">
                         <CapsulaNavbarLogo />
                         {process.env.NEXT_PUBLIC_BUSINESS_NAME && (
-                            <p className="ml-0.5 mt-0.5 truncate text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500">
+                            <p className="ml-0.5 mt-0.5 truncate text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-capsula-ink-faint">
                                 {process.env.NEXT_PUBLIC_BUSINESS_NAME}
                             </p>
                         )}
                     </div>
                     <button
                         onClick={closeSidebar}
-                        className="ml-2 shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 md:hidden dark:hover:bg-gray-800"
+                        className="ml-2 shrink-0 rounded-lg p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink md:hidden"
                         aria-label="Cerrar menú"
                     >
-                        ✕
+                        <X className="h-4 w-4" strokeWidth={1.75} />
                     </button>
                 </div>
 
@@ -642,13 +615,13 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                 </nav>
 
                 {/* User footer — preservado de shanklish (ChangePasswordDialog + logout) */}
-                <div className="shrink-0 border-t border-gray-200 p-4 dark:border-gray-700">
+                <div className="shrink-0 border-t border-capsula-line p-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-lg dark:from-gray-600 dark:to-gray-700">
-                            👤
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-ivory-alt text-capsula-ink-muted">
+                            <User className="h-5 w-5" strokeWidth={1.75} />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                            <p className="truncate text-sm font-medium text-capsula-ink">
                                 {activeUser?.firstName} {activeUser?.lastName}
                             </p>
                             {roleInfo && (
@@ -670,9 +643,9 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                             <button
                                 type="submit"
                                 title="Cerrar Sesión"
-                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800"
+                                className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-coral"
                             >
-                                🚪
+                                <LogOut className="h-4 w-4" strokeWidth={1.75} />
                             </button>
                         </form>
                     </div>
