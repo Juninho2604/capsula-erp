@@ -526,47 +526,56 @@ export default function ProteinProcessingView() {
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
                     {/* Formulario principal */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                📋 Datos del Procesamiento
-                            </h2>
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="flex items-center gap-2 border-b border-capsula-line bg-capsula-ivory px-5 py-3">
+                            <ClipboardList className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                            <h2 className="font-medium text-capsula-ink">Datos del procesamiento</h2>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="space-y-4 p-5">
                             {/* Fecha */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Fecha</label>
                                 <input
                                     type="date"
                                     value={processDate}
                                     onChange={(e) => setProcessDate(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                 />
                             </div>
 
-                            {/* Paso del Procesamiento */}
+                            {/* Paso del procesamiento */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Paso del Procesamiento</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Paso del procesamiento</label>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                     {Object.entries(STEP_CONFIG).map(([value, config]) => {
+                                        const Icon = config.icon;
                                         const hasTemplate = templateChain.some((t: any) => t.processingStep === value);
+                                        const active = processingStep === value;
                                         return (
                                             <button
                                                 key={value}
                                                 type="button"
                                                 onClick={() => setProcessingStep(value)}
                                                 className={cn(
-                                                    'rounded-xl px-3 py-3 text-xs font-medium border-2 transition-all relative',
-                                                    processingStep === value
-                                                        ? `${config.bgColor} ${config.borderColor} ${config.color} ring-2 ring-offset-1`
-                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                    'relative rounded-[var(--radius)] border px-3 py-3 text-left transition-colors',
+                                                    active
+                                                        ? 'border-capsula-navy-deep bg-capsula-navy-soft'
+                                                        : 'border-capsula-line bg-capsula-ivory-surface hover:border-capsula-line-strong',
                                                 )}
                                             >
-                                                <span className="text-lg">{config.emoji}</span>
-                                                <span className="block mt-0.5">{config.label}</span>
+                                                <Icon
+                                                    className={cn('mb-1 h-4 w-4', active ? 'text-capsula-navy-deep' : 'text-capsula-ink-soft')}
+                                                    strokeWidth={1.5}
+                                                />
+                                                <span className={cn('block text-[12px] font-medium', active ? 'text-capsula-navy-deep' : 'text-capsula-ink')}>
+                                                    {config.label}
+                                                </span>
                                                 {hasTemplate && (
-                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Tiene plantilla"></span>
+                                                    <span
+                                                        className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-capsula-ivory-surface bg-capsula-coral"
+                                                        title="Tiene plantilla"
+                                                    />
                                                 )}
                                             </button>
                                         );
@@ -574,20 +583,26 @@ export default function ProteinProcessingView() {
                                 </div>
                                 {/* Template chain indicator */}
                                 {templateChain.length > 0 && (
-                                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                                        <span>📋 Cadena disponible:</span>
+                                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-capsula-ink-muted">
+                                        <ClipboardList className="h-3 w-3" strokeWidth={1.5} />
+                                        <span>Cadena disponible:</span>
                                         {templateChain
                                             .sort((a: any, b: any) => a.chainOrder - b.chainOrder)
                                             .map((t: any, i: number) => {
                                                 const sc = STEP_CONFIG[t.processingStep] || STEP_CONFIG['CUSTOM'];
+                                                const ChainIcon = sc.icon;
+                                                const activeStep = t.processingStep === processingStep;
                                                 return (
-                                                    <span key={t.id} className="flex items-center gap-0.5">
-                                                        {i > 0 && <span className="text-gray-300">→</span>}
+                                                    <span key={t.id} className="inline-flex items-center gap-1">
+                                                        {i > 0 && <ArrowRight className="h-3 w-3 text-capsula-ink-faint" strokeWidth={1.5} />}
                                                         <span className={cn(
-                                                            'rounded px-1.5 py-0.5 font-medium',
-                                                            t.processingStep === processingStep ? `${sc.bgColor} ${sc.color}` : 'text-gray-400'
+                                                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium',
+                                                            activeStep
+                                                                ? 'bg-capsula-navy-soft text-capsula-navy-deep'
+                                                                : 'text-capsula-ink-faint',
                                                         )}>
-                                                            {sc.emoji} {sc.label}
+                                                            <ChainIcon className="h-3 w-3" strokeWidth={1.5} />
+                                                            {sc.label}
                                                         </span>
                                                     </span>
                                                 );
@@ -596,29 +611,28 @@ export default function ProteinProcessingView() {
                                 )}
                             </div>
 
-                            {/* Encadenar con procesamiento previo (P5) */}
+                            {/* Encadenar con procesamiento previo */}
                             {processingStep !== 'LIMPIEZA' && completedProcessings.length > 0 && (
-                                <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 dark:border-purple-800 dark:bg-purple-900/10">
-                                    <label className="block text-sm font-medium text-purple-800 dark:text-purple-300 mb-1">
-                                        🔗 Encadenar con procesamiento anterior
+                                <div className="rounded-[var(--radius)] border border-capsula-coral/20 bg-capsula-coral-subtle/40 p-3">
+                                    <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-capsula-coral">
+                                        <Link2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                        Encadenar con procesamiento anterior
                                     </label>
                                     <select
                                         value={parentProcessingId}
                                         onChange={(e) => {
                                             setParentProcessingId(e.target.value);
-                                            // Auto-fill frozen weight from parent's total output
                                             if (e.target.value) {
                                                 const parent = completedProcessings.find(p => p.id === e.target.value);
                                                 if (parent) {
                                                     setFrozenWeight(parent.totalSubProducts);
-                                                    // Auto-select the first sub-product as source item
                                                     if (parent.subProducts.length > 0 && parent.subProducts[0].outputItemId) {
                                                         setSourceItemId(parent.subProducts[0].outputItemId);
                                                     }
                                                 }
                                             }
                                         }}
-                                        className="w-full rounded-lg border border-purple-200 bg-white px-4 py-2.5 text-sm dark:border-purple-700 dark:bg-gray-800"
+                                        className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                     >
                                         <option value="">Sin encadenar (nuevo procesamiento)</option>
                                         {completedProcessings.map(p => (
@@ -627,40 +641,37 @@ export default function ProteinProcessingView() {
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="mt-1 text-xs text-purple-600 dark:text-purple-400">
-                                        El peso de entrada se auto-llenará con la salida del paso anterior
+                                    <p className="mt-1 text-[11px] text-capsula-coral/80">
+                                        El peso de entrada se auto-llenará con la salida del paso anterior.
                                     </p>
                                 </div>
                             )}
 
                             {/* Producto a procesar */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Producto a Procesar*</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto a procesar *</label>
                                 <Combobox
                                     items={proteinItems.map(item => ({
                                         value: item.id,
-                                        label: `${item.name} (${item.category || 'Sin categoría'})`
+                                        label: `${item.name} (${item.category || 'Sin categoría'})`,
                                     }))}
                                     value={sourceItemId}
                                     onChange={(val) => setSourceItemId(val)}
-                                    placeholder="Seleccionar producto..."
-                                    searchPlaceholder="Buscar producto..."
+                                    placeholder="Seleccionar producto…"
+                                    searchPlaceholder="Buscar producto…"
                                     emptyMessage="No se encontró producto."
                                 />
                             </div>
 
                             {/* Proveedor */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Proveedor</label>
                                 <Combobox
-                                    items={suppliers.map(s => ({
-                                        value: s.id,
-                                        label: s.name
-                                    }))}
+                                    items={suppliers.map(s => ({ value: s.id, label: s.name }))}
                                     value={supplierId}
                                     onChange={(val) => setSupplierId(val)}
-                                    placeholder="Seleccionar proveedor..."
-                                    searchPlaceholder="Buscar proveedor..."
+                                    placeholder="Seleccionar proveedor…"
+                                    searchPlaceholder="Buscar proveedor…"
                                     emptyMessage="No se encontró proveedor."
                                 />
                                 {!supplierId && (
@@ -668,24 +679,21 @@ export default function ProteinProcessingView() {
                                         type="text"
                                         value={supplierName}
                                         onChange={(e) => setSupplierName(e.target.value)}
-                                        placeholder="O escribir nombre del proveedor..."
-                                        className="w-full mt-2 rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        placeholder="O escribir nombre del proveedor…"
+                                        className="mt-2 min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                     />
                                 )}
                             </div>
 
                             {/* Área */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Área de Procesamiento</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Área de procesamiento</label>
                                 <Combobox
-                                    items={areas.map(area => ({
-                                        value: area.id,
-                                        label: area.name
-                                    }))}
+                                    items={areas.map(area => ({ value: area.id, label: area.name }))}
                                     value={areaId}
                                     onChange={(val) => setAreaId(val)}
-                                    placeholder="Seleccionar área..."
-                                    searchPlaceholder="Buscar área..."
+                                    placeholder="Seleccionar área…"
+                                    searchPlaceholder="Buscar área…"
                                     emptyMessage="No se encontró área."
                                 />
                             </div>
@@ -693,39 +701,39 @@ export default function ProteinProcessingView() {
                             {/* Pesos */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Congelado (kg)*</label>
+                                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Peso congelado (kg) *</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={frozenWeight || ''}
                                         onChange={(e) => setFrozenWeight(parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-right font-mono text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Escurrido (kg)*</label>
+                                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Peso escurrido (kg) *</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={drainedWeight || ''}
                                         onChange={(e) => setDrainedWeight(parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-right font-mono text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Desperdicio Reportado (kg) - Entrada Manual</label>
+                                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Desperdicio reportado (kg) — entrada manual</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={reportedWaste || ''}
                                         onChange={(e) => setReportedWaste(parseFloat(e.target.value) || 0)}
-                                        placeholder="Ingresa el desperdicio real segun Excel..."
-                                        className="w-full rounded-lg border border-red-200 bg-red-50/30 px-4 py-2.5 focus:border-red-500 focus:outline-none"
+                                        placeholder="Ingresa el desperdicio real según Excel…"
+                                        className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/30 px-3 py-2 text-right font-mono text-[14px] text-capsula-ink outline-none focus:border-capsula-coral"
                                     />
-                                    <p className="text-[10px] text-gray-500 mt-1">
-                                        * Este valor se usará para tus reportes de merma real.
+                                    <p className="mt-1 text-[10.5px] text-capsula-ink-muted">
+                                        Este valor se usará para tus reportes de merma real.
                                     </p>
                                 </div>
                             </div>
@@ -733,17 +741,22 @@ export default function ProteinProcessingView() {
                             {/* Pérdida por escurrido / Ganancia de peso */}
                             {frozenWeight > 0 && drainedWeight > 0 && (
                                 <div className={cn(
-                                    'p-3 rounded-lg text-sm',
-                                    drainedWeight > frozenWeight ? 'bg-purple-50' : 'bg-blue-50'
+                                    'rounded-[var(--radius)] border px-3 py-2 text-[13px]',
+                                    drainedWeight > frozenWeight
+                                        ? 'border-capsula-coral/20 bg-capsula-coral-subtle text-capsula-coral'
+                                        : 'border-[#D1DCE9] bg-[#E6ECF4] text-[#2A4060]',
                                 )}>
                                     {drainedWeight > frozenWeight ? (
-                                        <span className="text-purple-700">
-                                            ⬆️ Ganancia de peso: <strong>{formatNumber(drainedWeight - frozenWeight)} kg</strong> ({formatNumber(((drainedWeight - frozenWeight) / frozenWeight) * 100)}%)
-                                            <span className="block text-xs mt-0.5 opacity-70">Se agregaron condimentos/marinado</span>
+                                        <span className="flex items-start gap-1.5">
+                                            <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                                            <span>
+                                                Ganancia de peso: <strong>{formatNumber(drainedWeight - frozenWeight)} kg</strong> ({formatNumber(((drainedWeight - frozenWeight) / frozenWeight) * 100)}%)
+                                                <span className="mt-0.5 block text-[11px] opacity-80">Se agregaron condimentos/marinado</span>
+                                            </span>
                                         </span>
                                     ) : (
-                                        <span className="text-blue-700">
-                                            💧 Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
+                                        <span>
+                                            Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
                                         </span>
                                     )}
                                 </div>
@@ -751,56 +764,56 @@ export default function ProteinProcessingView() {
 
                             {/* Notas */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Notas</label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Observaciones del procesamiento..."
+                                    placeholder="Observaciones del procesamiento…"
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Subproductos */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🍖 Subproductos ({subProducts.length})
-                            </h2>
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="flex items-center gap-2 border-b border-capsula-line bg-capsula-ivory px-5 py-3">
+                            <Beef className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                            <h2 className="font-medium text-capsula-ink">Subproductos</h2>
+                            <span className="text-[11px] text-capsula-ink-muted">({subProducts.length})</span>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="space-y-4 p-5">
                             {/* Agregar subproducto */}
-                            <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-sm font-medium text-gray-700">Nuevo corte / subproducto</label>
+                            <div className="space-y-3 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                                <div className="mb-1 flex items-center justify-between">
+                                    <label className="text-[12px] font-medium text-capsula-ink">Nuevo corte / subproducto</label>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
-                                        className="text-xs text-emerald-600 font-medium hover:text-emerald-700 underline"
+                                        className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-navy underline-offset-2 hover:text-capsula-coral hover:underline"
                                     >
-                                        {showCreateItem ? 'Cancelar creación' : '+ Crear nuevo item en inventario'}
+                                        {showCreateItem ? <><XCircle className="h-3 w-3" strokeWidth={1.5} /> Cancelar creación</> : <><Plus className="h-3 w-3" strokeWidth={2} /> Crear nuevo ítem en inventario</>}
                                     </button>
                                 </div>
 
                                 {/* Mini form crear item */}
                                 {showCreateItem && (
-                                    <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 animate-in fade-in slide-in-from-top-2">
-                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="mb-3 animate-in fade-in slide-in-from-top-2 rounded-[var(--radius)] border border-capsula-coral/20 bg-capsula-coral-subtle/30 p-3">
+                                        <div className="mb-3 grid grid-cols-2 gap-2">
                                             <input
                                                 type="text"
                                                 value={newItemName}
                                                 onChange={(e) => setNewItemName(e.target.value)}
-                                                placeholder="Nombre (ej: Huesos de Pollo)"
-                                                className="col-span-2 rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                placeholder="Nombre (ej: Huesos de pollo)"
+                                                className="col-span-2 min-h-[36px] rounded border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                                 autoFocus
                                             />
                                             <select
                                                 value={newItemUnit}
                                                 onChange={(e) => setNewItemUnit(e.target.value)}
-                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                className="min-h-[36px] rounded border border-capsula-line bg-capsula-ivory-surface px-2 py-1.5 text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                             >
                                                 <option value="KG">Kilogramos</option>
                                                 <option value="G">Gramos</option>
@@ -809,51 +822,58 @@ export default function ProteinProcessingView() {
                                             <select
                                                 value={newItemType}
                                                 onChange={(e) => setNewItemType(e.target.value)}
-                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                className="min-h-[36px] rounded border border-capsula-line bg-capsula-ivory-surface px-2 py-1.5 text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                             >
-                                                <option value="RAW_MATERIAL">Materia Prima</option>
+                                                <option value="RAW_MATERIAL">Materia prima</option>
                                                 <option value="SUB_RECIPE">Sub-receta</option>
-                                                <option value="FINISHED_GOOD">Producto Final</option>
+                                                <option value="FINISHED_GOOD">Producto final</option>
                                             </select>
                                         </div>
-                                        <button
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
                                             onClick={handleCreateItem}
                                             disabled={!newItemName.trim() || isCreatingItem}
-                                            className="w-full rounded bg-emerald-600 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                            isLoading={isCreatingItem}
+                                            className="w-full"
                                         >
-                                            {isCreatingItem ? 'Creando...' : 'Guardar Item'}
-                                        </button>
+                                            {isCreatingItem ? 'Creando…' : 'Guardar ítem'}
+                                        </Button>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <div className="flex-1">
-                                        {activeTemplate && (
-                                            <div className={cn(
-                                                'mb-2 px-3 py-2 rounded-lg border text-xs',
-                                                STEP_CONFIG[activeTemplate.processingStep]?.bgColor || 'bg-amber-50',
-                                                STEP_CONFIG[activeTemplate.processingStep]?.borderColor || 'border-amber-200',
-                                                STEP_CONFIG[activeTemplate.processingStep]?.color || 'text-amber-700'
-                                            )}>
-                                                <div className="flex items-center gap-1.5">
-                                                    {STEP_CONFIG[activeTemplate.processingStep]?.emoji || '📋'}
-                                                    <strong>{activeTemplate.name}</strong>
-                                                    <span className="opacity-70">({activeTemplate.allowedOutputs.length} subproductos)</span>
-                                                    {activeTemplate.canGainWeight && (
-                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">⬆️ Peso puede aumentar</span>
-                                                    )}
-                                                </div>
-                                                {activeTemplate.allowedOutputs.some((o: any) => o.isIntermediate) && (
-                                                    <p className="mt-1 text-[10px] opacity-70">
-                                                        🔗 Algunos productos son intermedios y pasarán al siguiente paso de la cadena.
-                                                    </p>
+                                {/* Info plantilla activa */}
+                                {activeTemplate && (() => {
+                                    const tplStep = STEP_CONFIG[activeTemplate.processingStep] || STEP_CONFIG['CUSTOM'];
+                                    const TplIcon = tplStep.icon;
+                                    return (
+                                        <div className="rounded-[var(--radius)] border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-2 text-[12px]">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <TplIcon className="h-3.5 w-3.5 text-capsula-navy" strokeWidth={1.5} />
+                                                <strong className="text-capsula-navy-deep">{activeTemplate.name}</strong>
+                                                <span className="text-capsula-ink-muted">({activeTemplate.allowedOutputs.length} subproductos)</span>
+                                                {activeTemplate.canGainWeight && (
+                                                    <Badge variant="coral">
+                                                        <TrendingUp className="h-3 w-3" strokeWidth={1.5} /> Peso puede aumentar
+                                                    </Badge>
                                                 )}
                                             </div>
-                                        )}
+                                            {activeTemplate.allowedOutputs.some((o: any) => o.isIntermediate) && (
+                                                <p className="mt-1 flex items-center gap-1 text-[10.5px] text-capsula-ink-muted">
+                                                    <Link2 className="h-3 w-3" strokeWidth={1.5} />
+                                                    Algunos productos son intermedios y pasarán al siguiente paso de la cadena.
+                                                </p>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <div className="flex-1">
                                         <Combobox
                                             items={availableSubItems.map((item: any) => ({
                                                 value: item.id,
-                                                label: `${item.name} (${item.baseUnit})${item.expectedWeight ? ` ~${item.expectedWeight}kg` : ''}`
+                                                label: `${item.name} (${item.baseUnit})${item.expectedWeight ? ` ~${item.expectedWeight}kg` : ''}`,
                                             }))}
                                             value={newSubProductItemId}
                                             onChange={(val) => {
@@ -862,7 +882,6 @@ export default function ProteinProcessingView() {
                                                 if (item) {
                                                     setNewSubProductName(item.name);
                                                     setNewSubProductUnitType(item.baseUnit);
-                                                    // Pre-fill expected weight from template if available
                                                     if (item.expectedWeight && newSubProductWeight === 0) {
                                                         setNewSubProductWeight(item.expectedWeight);
                                                     }
@@ -871,9 +890,9 @@ export default function ProteinProcessingView() {
                                                     }
                                                 }
                                             }}
-                                            placeholder={activeTemplate ? "-- Seleccionar subproducto de plantilla --" : "-- Seleccionar item existente --"}
-                                            searchPlaceholder="Buscar item..."
-                                            emptyMessage={activeTemplate ? "No hay más subproductos en esta plantilla." : "No se encontró el item."}
+                                            placeholder={activeTemplate ? '— Seleccionar subproducto de plantilla —' : '— Seleccionar ítem existente —'}
+                                            searchPlaceholder="Buscar ítem…"
+                                            emptyMessage={activeTemplate ? 'No hay más subproductos en esta plantilla.' : 'No se encontró el ítem.'}
                                         />
                                     </div>
                                     <div className="flex gap-2">
@@ -884,9 +903,9 @@ export default function ProteinProcessingView() {
                                                 value={newSubProductWeight || ''}
                                                 onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
                                                 placeholder="Peso"
-                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                                className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-right font-mono text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                             />
-                                            <span className="absolute right-2 top-2 text-xs text-gray-400">{newSubProductUnitType}</span>
+                                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10.5px] text-capsula-ink-muted">{newSubProductUnitType}</span>
                                         </div>
                                         <div className="relative w-20">
                                             <input
@@ -894,51 +913,59 @@ export default function ProteinProcessingView() {
                                                 value={newSubProductUnits || ''}
                                                 onChange={(e) => setNewSubProductUnits(parseInt(e.target.value) || 1)}
                                                 placeholder="Uds"
-                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                                className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-right font-mono text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                             />
-                                            <span className="absolute right-2 top-2 text-xs text-gray-400">pza</span>
+                                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10.5px] text-capsula-ink-muted">pza</span>
                                         </div>
                                         <button
                                             onClick={addSubProduct}
-                                            className="px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory transition-colors hover:bg-capsula-navy"
+                                            title="Agregar"
                                         >
-                                            +
+                                            <Plus className="h-4 w-4" strokeWidth={2} />
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Lista de subproductos */}
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            <div className="max-h-[300px] space-y-2 overflow-y-auto">
                                 {subProducts.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">
+                                    <p className="py-8 text-center text-[13px] text-capsula-ink-muted">
                                         Agrega los cortes/subproductos obtenidos
                                     </p>
                                 ) : (
                                     subProducts.map((sp, index) => {
-                                        // Check if this subproduct is intermediate
                                         const templateOutput = activeTemplate?.allowedOutputs?.find((o: any) => o.outputItem?.id === sp.outputItemId);
                                         const isIntermediate = templateOutput?.isIntermediate || false;
                                         return (
-                                            <div key={sp.id} className={cn(
-                                                'flex items-center justify-between p-3 rounded-lg',
-                                                isIntermediate ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
-                                            )}>
-                                                <div className="flex-1">
-                                                    <span className="text-gray-400 mr-2">{index + 1}.</span>
-                                                    <span className="font-medium">{sp.name}</span>
+                                            <div
+                                                key={sp.id}
+                                                className={cn(
+                                                    'flex items-center justify-between rounded-[var(--radius)] border px-3 py-2',
+                                                    isIntermediate
+                                                        ? 'border-capsula-coral/20 bg-capsula-coral-subtle/40'
+                                                        : 'border-capsula-line bg-capsula-ivory',
+                                                )}
+                                            >
+                                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                    <span className="font-mono text-[11px] text-capsula-ink-muted">{index + 1}.</span>
+                                                    <span className="truncate text-[13px] font-medium text-capsula-ink">{sp.name}</span>
                                                     {isIntermediate && (
-                                                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-200 text-orange-700 font-medium">🔗 Intermedio</span>
+                                                        <Badge variant="coral">
+                                                            <Link2 className="h-3 w-3" strokeWidth={1.5} /> Intermedio
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono text-sm">{formatNumber(sp.weight)} kg</span>
-                                                    <span className="text-xs text-gray-500">({sp.units} pza)</span>
+                                                <div className="ml-2 flex items-center gap-3">
+                                                    <span className="font-mono text-[12.5px] font-semibold text-capsula-ink">{formatNumber(sp.weight)} <span className="text-capsula-ink-muted">kg</span></span>
+                                                    <span className="text-[11px] text-capsula-ink-muted">({sp.units} pza)</span>
                                                     <button
                                                         onClick={() => removeSubProduct(sp.id)}
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                                                        title="Quitar"
                                                     >
-                                                        ✕
+                                                        <XCircle className="h-4 w-4" strokeWidth={1.5} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -948,22 +975,23 @@ export default function ProteinProcessingView() {
                             </div>
 
                             {/* Resumen */}
-                            <div className="border-t pt-4 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Total Subproductos:</span>
-                                    <span className="font-semibold">{formatNumber(totalSubProductsWeight)} kg</span>
+                            <div className="space-y-2 border-t border-capsula-line pt-4">
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-capsula-ink-muted">Total subproductos</span>
+                                    <span className="font-mono font-semibold text-capsula-ink">{formatNumber(totalSubProductsWeight)} kg</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Desperdicio:</span>
-                                    <span className={cn('font-semibold', wasteWeight > 0 ? 'text-red-600' : 'text-gray-600')}>
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-capsula-ink-muted">Desperdicio</span>
+                                    <span className={cn('font-mono font-semibold', wasteWeight > 0 ? 'text-capsula-coral' : 'text-capsula-ink-soft')}>
                                         {formatNumber(wasteWeight)} kg ({formatNumber(wastePercentage)}%)
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-lg font-bold">
-                                    <span>Rendimiento:</span>
+                                <div className="flex items-baseline justify-between">
+                                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Rendimiento</span>
                                     <span className={cn(
-                                        yieldPercentage >= 70 ? 'text-emerald-600' :
-                                            yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                        'font-mono text-[22px] font-semibold',
+                                        yieldPercentage >= 70 ? 'text-[#2F6B4E]' :
+                                        yieldPercentage >= 50 ? 'text-[#946A1C]' : 'text-capsula-coral',
                                     )}>
                                         {formatNumber(yieldPercentage)}%
                                     </span>
@@ -971,13 +999,17 @@ export default function ProteinProcessingView() {
                             </div>
 
                             {/* Botón guardar */}
-                            <button
+                            <Button
+                                variant="primary"
+                                size="lg"
                                 onClick={handleSubmit}
                                 disabled={!sourceItemId || frozenWeight <= 0 || subProducts.length === 0 || isSubmitting}
-                                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                                isLoading={isSubmitting}
+                                className="w-full"
                             >
-                                {isSubmitting ? 'Guardando...' : '💾 Guardar Procesamiento'}
-                            </button>
+                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
+                                {isSubmitting ? 'Guardando…' : 'Guardar procesamiento'}
+                            </Button>
                         </div>
                     </div>
                 </div>
