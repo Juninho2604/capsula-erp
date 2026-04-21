@@ -500,73 +500,80 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
 
                 {/* 2. EN PROCESO (PENDIENTES + DESPACHADAS) */}
                 {activeTab === 'PENDING' && (
-                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="space-y-8">
                         {activeReqs.length === 0 ? (
-                            <div className="py-24 text-center glass-panel rounded-[3rem] border-primary/5">
-                                <span className="text-7xl block mb-6 grayscale opacity-20">📭</span>
-                                <p className="font-black uppercase tracking-[0.3em] text-muted-foreground">Bandeja Vacía</p>
-                                <p className="text-xs font-bold text-muted-foreground/50 mt-2 uppercase">No hay solicitudes en curso actualmente</p>
+                            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-20 text-center">
+                                <Inbox className="mx-auto mb-4 h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                <p className="text-[14px] font-medium text-capsula-ink">Bandeja vacía</p>
+                                <p className="mt-1 text-[12px] text-capsula-ink-muted">No hay solicitudes en curso actualmente</p>
                             </div>
                         ) : (
                             <>
-                                {/* Sección PENDING - Esperando despacho */}
+                                {/* Sección PENDING — Esperando despacho */}
                                 {pendingReqs.length > 0 && (
-                                    <div className="space-y-4">
-                                        <h3 className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400 pl-2">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-orange-500/10 text-xs shadow-inner">1</span>
-                                            Esperando Despacho ({pendingReqs.length})
+                                    <div className="space-y-3">
+                                        <h3 className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory font-mono text-[11px] text-capsula-navy">1</span>
+                                            Esperando despacho ({pendingReqs.length})
                                         </h3>
-                                        <div className="grid gap-6">
+                                        <div className="grid gap-4">
                                             {pendingReqs.map(req => (
-                                                <div key={req.id} className="capsula-card p-6 border-orange-500/10 hover:border-orange-500/30 transition-all group overflow-hidden relative">
-                                                    <div className="absolute right-0 top-0 h-24 w-24 bg-orange-500/5 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
-                                                    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
+                                                <div key={req.id} className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft transition-colors hover:border-capsula-line-strong">
+                                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                                         <div>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-orange-600 tracking-tighter">{req.code}</span>
-                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-orange-500 text-white shadow-lg shadow-orange-500/20">⏳ Pendiente</span>
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <span className="font-mono text-[15px] font-semibold text-capsula-navy-deep">{req.code}</span>
+                                                                <Badge variant="warn">Pendiente</Badge>
                                                             </div>
-                                                            <div className="mt-4 flex items-center gap-4 text-sm font-bold">
-                                                                <div className="bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
-                                                                    <span className="text-[10px] block text-muted-foreground uppercase mb-0.5">Origen</span>
-                                                                    {req.sourceArea?.name || 'Almacén Central'}
+                                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+                                                                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-1.5">
+                                                                    <span className="block text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Origen</span>
+                                                                    <span className="font-medium text-capsula-ink">{req.sourceArea?.name || 'Almacén central'}</span>
                                                                 </div>
-                                                                <span className="text-muted-foreground">→</span>
-                                                                <div className="bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
-                                                                    <span className="text-[10px] block text-primary uppercase mb-0.5">Destino</span>
-                                                                    {req.targetArea.name}
+                                                                <ChevronRight className="h-4 w-4 text-capsula-ink-faint" strokeWidth={1.5} />
+                                                                <div className="rounded-[var(--radius)] border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-1.5">
+                                                                    <span className="block text-[10px] uppercase tracking-[0.08em] text-capsula-navy">Destino</span>
+                                                                    <span className="font-medium text-capsula-navy-deep">{req.targetArea.name}</span>
                                                                 </div>
                                                             </div>
-                                                            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-                                                                👤 {req.requestedBy.firstName} {req.requestedBy.lastName} • 📅 {new Date(req.createdAt).toLocaleString('es-VE')}
+                                                            <p className="mt-3 flex items-center gap-2 text-[11px] text-capsula-ink-muted">
+                                                                <User className="h-3 w-3" strokeWidth={1.5} /> {req.requestedBy.firstName} {req.requestedBy.lastName}
+                                                                <span className="text-capsula-ink-faint">·</span>
+                                                                <Calendar className="h-3 w-3" strokeWidth={1.5} /> {new Date(req.createdAt).toLocaleString('es-VE')}
                                                             </p>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
-                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">❌ Rechazar</button>
-                                                            <button onClick={() => handleDispatch(req)} disabled={isSubmitting} className="capsula-btn capsula-btn-primary min-h-0 py-3 px-8 text-sm">📦 Despachar</button>
-                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-500/20">✅ Aprobar Directo</button>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => handleReject(req)} disabled={isSubmitting}>
+                                                                <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} /> Rechazar
+                                                            </Button>
+                                                            <Button variant="primary" size="sm" onClick={() => handleDispatch(req)} disabled={isSubmitting}>
+                                                                <Package className="h-3.5 w-3.5" strokeWidth={1.5} /> Despachar
+                                                            </Button>
+                                                            <Button variant="secondary" size="sm" onClick={() => handleApprove(req)} disabled={isSubmitting}>
+                                                                <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} /> Aprobar directo
+                                                            </Button>
                                                         </div>
                                                     </div>
 
-                                                    <div className="mt-8 pt-6 border-t border-orange-500/10">
-                                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 block">Detalle de Solicitud (Ajusta si despachas menos)</label>
-                                                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                                    <div className="mt-5 border-t border-capsula-line pt-4">
+                                                        <label className="mb-3 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                                            Detalle de solicitud (ajusta si despachas menos)
+                                                        </label>
+                                                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                             {req.items.map(item => (
-                                                                <div key={item.inventoryItemId} className="glass-panel p-4 rounded-2xl border-orange-500/5 flex items-center justify-between">
-                                                                    <div className="flex-1 min-w-0 mr-3">
-                                                                        <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1 truncate">{item.inventoryItem.name}</span>
-                                                                        <span className="text-xs font-bold text-orange-600">Pedido: {formatNumber(item.quantity)} {item.inventoryItem.baseUnit}</span>
+                                                                <div key={item.inventoryItemId} className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2">
+                                                                    <div className="mr-3 min-w-0 flex-1">
+                                                                        <span className="block truncate text-[12px] font-medium text-capsula-ink">{item.inventoryItem.name}</span>
+                                                                        <span className="text-[11px] text-capsula-ink-muted">Pedido: {formatNumber(item.quantity)} {item.inventoryItem.baseUnit}</span>
                                                                     </div>
-                                                                    <div className="relative">
-                                                                        <input
-                                                                            type="number"
-                                                                            inputMode="decimal"
-                                                                            min={0}
-                                                                            defaultValue={item.quantity}
-                                                                            onChange={e => setDispatchQuantities(prev => ({ ...prev, [item.inventoryItemId]: parseFloat(e.target.value) || 0 }))}
-                                                                            className="w-24 bg-background border border-border rounded-xl px-3 py-2 text-center text-sm font-black focus:border-orange-500 focus:ring-0 transition-all"
-                                                                        />
-                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        inputMode="decimal"
+                                                                        min={0}
+                                                                        defaultValue={item.quantity}
+                                                                        onChange={e => setDispatchQuantities(prev => ({ ...prev, [item.inventoryItemId]: parseFloat(e.target.value) || 0 }))}
+                                                                        className="w-20 rounded border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-center font-mono text-[12.5px] font-semibold text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                                                    />
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -577,64 +584,77 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                     </div>
                                 )}
 
-                                {/* Sección DISPATCHED - Esperando aprobación gerencial */}
+                                {/* Sección DISPATCHED — Pendiente de recepción */}
                                 {dispatchedReqs.length > 0 && (
-                                    <div className="space-y-4">
-                                        <h3 className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 pl-2">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-blue-500/10 text-xs shadow-inner">2</span>
-                                            En Tránsito — Pendiente de Recepción ({dispatchedReqs.length})
+                                    <div className="space-y-3">
+                                        <h3 className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory font-mono text-[11px] text-capsula-navy">2</span>
+                                            En tránsito — pendiente de recepción ({dispatchedReqs.length})
                                         </h3>
-                                        <div className="grid gap-6">
+                                        <div className="grid gap-4">
                                             {dispatchedReqs.map(req => (
-                                                <div key={req.id} className="capsula-card p-6 border-blue-500/10 hover:border-blue-500/30 transition-all group overflow-hidden relative">
-                                                    <div className="absolute right-0 top-0 h-24 w-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
-                                                    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
+                                                <div key={req.id} className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft transition-colors hover:border-capsula-line-strong">
+                                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                                         <div>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-blue-600 tracking-tighter">{req.code}</span>
-                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-lg shadow-blue-500/20">📦 Despachado</span>
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <span className="font-mono text-[15px] font-semibold text-capsula-navy-deep">{req.code}</span>
+                                                                <Badge variant="info">
+                                                                    <Truck className="h-3 w-3" strokeWidth={1.5} /> Despachado
+                                                                </Badge>
                                                             </div>
-                                                            <div className="mt-4 flex items-center gap-4 text-sm font-bold">
-                                                                <div className="bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
-                                                                    <span className="text-[10px] block text-muted-foreground uppercase mb-0.5">Desde</span>
-                                                                    {req.sourceArea?.name || 'Almacén Central'}
+                                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+                                                                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-1.5">
+                                                                    <span className="block text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Desde</span>
+                                                                    <span className="font-medium text-capsula-ink">{req.sourceArea?.name || 'Almacén central'}</span>
                                                                 </div>
-                                                                <span className="text-muted-foreground">→</span>
-                                                                <div className="bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
-                                                                    <span className="text-[10px] block text-primary uppercase mb-0.5">Hacia</span>
-                                                                    {req.targetArea.name}
+                                                                <ChevronRight className="h-4 w-4 text-capsula-ink-faint" strokeWidth={1.5} />
+                                                                <div className="rounded-[var(--radius)] border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-1.5">
+                                                                    <span className="block text-[10px] uppercase tracking-[0.08em] text-capsula-navy">Hacia</span>
+                                                                    <span className="font-medium text-capsula-navy-deep">{req.targetArea.name}</span>
                                                                 </div>
                                                             </div>
-                                                            <div className="mt-4 p-3 bg-secondary/20 rounded-2xl border border-border inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                                                👤 {req.requestedBy.firstName} • 📤 {req.dispatchedBy?.firstName || '—'} • 📅 {req.dispatchedAt && new Date(req.dispatchedAt).toLocaleString('es-VE')}
-                                                            </div>
+                                                            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-capsula-ink-muted">
+                                                                <User className="h-3 w-3" strokeWidth={1.5} /> {req.requestedBy.firstName}
+                                                                <span className="text-capsula-ink-faint">·</span>
+                                                                <Send className="h-3 w-3" strokeWidth={1.5} /> {req.dispatchedBy?.firstName || '—'}
+                                                                <span className="text-capsula-ink-faint">·</span>
+                                                                <Calendar className="h-3 w-3" strokeWidth={1.5} /> {req.dispatchedAt && new Date(req.dispatchedAt).toLocaleString('es-VE')}
+                                                            </p>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
-                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">❌ Rechazar</button>
-                                                            <button onClick={() => handleReceive(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-purple-600 text-white shadow-lg shadow-purple-500/20 border-purple-700 font-black text-xs uppercase tracking-widest">📋 Confirmar Recepción</button>
-                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-emerald-700 font-black text-xs uppercase tracking-widest">✅ Aprobar Directo</button>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => handleReject(req)} disabled={isSubmitting}>
+                                                                <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} /> Rechazar
+                                                            </Button>
+                                                            <Button variant="primary" size="sm" onClick={() => handleReceive(req)} disabled={isSubmitting}>
+                                                                <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Confirmar recepción
+                                                            </Button>
+                                                            <Button variant="secondary" size="sm" onClick={() => handleApprove(req)} disabled={isSubmitting}>
+                                                                <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} /> Aprobar directo
+                                                            </Button>
                                                         </div>
                                                     </div>
 
-                                                    <div className="mt-4 border-t border-blue-200 pt-3 dark:border-blue-800">
-                                                        <p className="mb-2 text-xs font-semibold text-gray-500">ITEMS DESPACHADOS (verificar cantidades recibidas):</p>
+                                                    <div className="mt-5 border-t border-capsula-line pt-4">
+                                                        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                                            Ítems despachados (verificar cantidades recibidas):
+                                                        </p>
                                                         <div className="grid gap-2 sm:grid-cols-2">
                                                             {req.items.map(item => {
                                                                 const dispatchedQty = item.sentQuantity ?? item.dispatchedQuantity ?? item.quantity;
                                                                 return (
-                                                                    <div key={item.inventoryItemId} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 dark:bg-gray-800">
-                                                                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.inventoryItem.name}</span>
-                                                                        <div className="flex items-center gap-2 ml-2">
-                                                                            <span className="text-xs text-gray-400">Enviado: {formatNumber(dispatchedQty)}</span>
+                                                                    <div key={item.inventoryItemId} className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2">
+                                                                        <span className="truncate text-[12px] text-capsula-ink">{item.inventoryItem.name}</span>
+                                                                        <div className="ml-2 flex items-center gap-2">
+                                                                            <span className="text-[11px] text-capsula-ink-muted">Enviado: {formatNumber(dispatchedQty)}</span>
                                                                             <input
                                                                                 type="number"
                                                                                 inputMode="decimal"
                                                                                 min={0}
                                                                                 defaultValue={dispatchedQty}
                                                                                 onChange={e => setReceiveQuantities(prev => ({ ...prev, [item.inventoryItemId]: parseFloat(e.target.value) || 0 }))}
-                                                                                className="w-20 rounded border border-gray-200 px-2 py-1 text-center text-sm font-mono dark:border-gray-600 dark:bg-gray-700 min-h-[36px]"
+                                                                                className="w-20 rounded border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-center font-mono text-[12px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                                                             />
-                                                                            <span className="text-xs text-gray-500">{item.inventoryItem.baseUnit}</span>
+                                                                            <span className="text-[11px] text-capsula-ink-muted">{item.inventoryItem.baseUnit}</span>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -643,10 +663,10 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                         <div className="mt-3">
                                                             <input
                                                                 type="text"
-                                                                placeholder="Notas de recepción (opcional)..."
+                                                                placeholder="Notas de recepción (opcional)…"
                                                                 value={receiveNotes}
                                                                 onChange={e => setReceiveNotes(e.target.value)}
-                                                                className="w-full rounded border border-gray-200 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                                             />
                                                         </div>
                                                     </div>
