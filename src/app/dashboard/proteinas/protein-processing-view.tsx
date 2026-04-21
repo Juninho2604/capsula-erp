@@ -21,12 +21,22 @@ import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import ProcessingTemplates from './processing-templates';
+import type { LucideIcon } from 'lucide-react';
+import {
+    Sparkles, Utensils, Package, Settings, ClipboardList, Beef,
+    FileText, PlayCircle, CheckCircle2, XCircle, Plus, Eye, Trash2,
+    Loader2, Link2, TrendingUp, ListChecks, ArrowRight,
+} from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
-const STEP_CONFIG: Record<string, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
-    'LIMPIEZA': { label: 'Limpieza', emoji: '🧹', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
-    'MASERADO': { label: 'Maserado', emoji: '🥘', color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
-    'DISTRIBUCION': { label: 'Distribución', emoji: '📦', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
-    'CUSTOM': { label: 'Personalizado', emoji: '⚙️', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
+const STEP_CONFIG: Record<string, { label: string; icon: LucideIcon }> = {
+    'LIMPIEZA':     { label: 'Limpieza',      icon: Sparkles },
+    'MASERADO':     { label: 'Maserado',      icon: Utensils },
+    'DISTRIBUCION': { label: 'Distribución',  icon: Package },
+    'CUSTOM':       { label: 'Personalizado', icon: Settings },
 };
 
 interface SubProduct extends SubProductInput {
@@ -93,14 +103,14 @@ export default function ProteinProcessingView() {
                 setTemplateChain(chain);
                 setLoadingTemplate(false);
                 if (template) {
-                    toast.success(`📋 Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
+                    toast.success(`Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
                     // Auto-detect if this step can gain weight
                     if ((template as any).canGainWeight) {
-                        toast(`⬆️ En este paso el peso puede AUMENTAR (ej: condimentos)`, { icon: '🥘' });
+                        toast('En este paso el peso puede AUMENTAR (ej: condimentos)');
                     }
                 }
                 if (chain.length > 1) {
-                    toast(`🔗 Cadena de ${chain.length} pasos disponible para esta proteína`, { icon: '📋' });
+                    toast(`Cadena de ${chain.length} pasos disponible para esta proteína`);
                 }
             });
         } else {
@@ -326,196 +336,178 @@ export default function ProteinProcessingView() {
 
     // Status badges
     function getStatusBadge(status: string) {
-        const styles: Record<string, string> = {
-            'DRAFT': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-blue-100 text-blue-700',
-            'COMPLETED': 'bg-emerald-100 text-emerald-700',
-            'CANCELLED': 'bg-red-100 text-red-700'
+        const variantMap: Record<string, 'neutral' | 'info' | 'ok' | 'danger'> = {
+            DRAFT: 'neutral',
+            IN_PROGRESS: 'info',
+            COMPLETED: 'ok',
+            CANCELLED: 'danger',
         };
         const labels: Record<string, string> = {
-            'DRAFT': '📝 Borrador',
-            'IN_PROGRESS': '🔄 En Proceso',
-            'COMPLETED': '✅ Completado',
-            'CANCELLED': '❌ Cancelado'
+            DRAFT: 'Borrador',
+            IN_PROGRESS: 'En proceso',
+            COMPLETED: 'Completado',
+            CANCELLED: 'Cancelado',
         };
+        const StatusIcon =
+            status === 'DRAFT' ? FileText :
+            status === 'IN_PROGRESS' ? PlayCircle :
+            status === 'COMPLETED' ? CheckCircle2 :
+            status === 'CANCELLED' ? XCircle : FileText;
         return (
-            <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', styles[status] || 'bg-gray-100')}>
+            <Badge variant={variantMap[status] || 'neutral'}>
+                <StatusIcon className="h-3 w-3" strokeWidth={1.5} />
                 {labels[status] || status}
-            </span>
+            </Badge>
         );
     }
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex min-h-[60vh] items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Cargando...</p>
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                    <p className="mt-3 text-[13px] text-capsula-ink-muted">Cargando…</p>
                 </div>
             </div>
         );
     }
 
-    return (
-        <div className="space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        🥩 Procesamiento de Proteínas
-                    </h1>
-                    <p className="text-gray-500">
-                        Registro de desposte y rendimiento de carnes
-                    </p>
-                </div>
+    const viewTabs: { id: typeof viewMode; label: string; icon: LucideIcon }[] = [
+        { id: 'list', label: 'Ver registros', icon: ListChecks },
+        { id: 'create', label: 'Nuevo procesamiento', icon: Plus },
+        { id: 'templates', label: 'Plantillas', icon: ClipboardList },
+    ];
 
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => { setViewMode('list'); setSelectedProcessing(null); }}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'list'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        📋 Ver Registros
-                    </button>
-                    <button
-                        onClick={() => { setViewMode('create'); resetForm(); }}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'create'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        ➕ Nuevo Procesamiento
-                    </button>
-                    <button
-                        onClick={() => setViewMode('templates')}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'templates'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        📋 Plantillas
-                    </button>
-                </div>
-            </div>
+    return (
+        <div className="mx-auto max-w-[1400px] animate-in">
+            <PageHeader
+                kicker="Inventario"
+                title="Procesamiento de proteínas"
+                description="Registro de desposte y rendimiento de carnes."
+                actions={
+                    <div className="inline-flex rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                        {viewTabs.map(tab => {
+                            const Icon = tab.icon;
+                            const active = viewMode === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => {
+                                        if (tab.id === 'list') { setViewMode('list'); setSelectedProcessing(null); }
+                                        else if (tab.id === 'create') { setViewMode('create'); resetForm(); }
+                                        else setViewMode('templates');
+                                    }}
+                                    className={cn(
+                                        'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-medium transition-colors',
+                                        active
+                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'text-capsula-ink-muted hover:text-capsula-ink',
+                                    )}
+                                >
+                                    <Icon className="h-3.5 w-3.5" strokeWidth={1.5} /> {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                }
+            />
 
             {/* Estadísticas */}
             {stats && viewMode === 'list' && (
-                <div className="grid gap-4 sm:grid-cols-5">
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Total Procesamientos</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalProcessings}</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Peso Total Procesado</p>
-                        <p className="text-2xl font-bold text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Subproductos Obtenidos</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Rendimiento Promedio</p>
-                        <p className="text-2xl font-bold text-amber-600">{formatNumber(stats.avgYield)}%</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Desperdicio Promedio</p>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(stats.avgWaste)}%</p>
-                    </div>
+                <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <KpiCard label="Total procesamientos" value={stats.totalProcessings} icon={ClipboardList} />
+                    <KpiCard label="Peso total procesado" value={`${formatNumber(stats.totalFrozenWeight)} kg`} icon={Beef} />
+                    <KpiCard label="Subproductos obtenidos" value={`${formatNumber(stats.totalSubProducts)} kg`} icon={Package} />
+                    <KpiCard label="Rendimiento promedio" value={`${formatNumber(stats.avgYield)}%`} icon={TrendingUp} trend="up" />
+                    <KpiCard label="Desperdicio promedio" value={`${formatNumber(stats.avgWaste)}%`} icon={Trash2} trend={stats.avgWaste > 15 ? 'down' : 'flat'} />
                 </div>
             )}
 
             {/* Vista: Lista de procesamientos */}
             {viewMode === 'list' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b border-gray-200 bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Código</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Fecha</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Producto</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Proveedor</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Peso Inicial</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Rendimiento</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Estado</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                        <table className="w-full border-collapse text-[13px]">
+                            <thead>
+                                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Código</th>
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Fecha</th>
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto</th>
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Proveedor</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Peso inicial</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Rendimiento</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Estado</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody>
                                 {processings.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                            <span className="text-4xl">🥩</span>
-                                            <p className="mt-2">No hay procesamientos registrados</p>
-                                            <button
-                                                onClick={() => setViewMode('create')}
-                                                className="mt-4 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm hover:bg-amber-600"
-                                            >
-                                                Crear primer procesamiento
-                                            </button>
+                                        <td colSpan={8} className="px-5 py-14 text-center">
+                                            <Beef className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                            <p className="mt-3 text-[14px] font-medium text-capsula-ink">No hay procesamientos registrados</p>
+                                            <div className="mt-4">
+                                                <Button variant="primary" size="sm" onClick={() => setViewMode('create')}>
+                                                    <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Crear primer procesamiento
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
                                     processings.map((p: any) => (
-                                        <tr key={p.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4">
+                                        <tr key={p.id} className="border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory">
+                                            <td className="px-5 py-3">
                                                 <button
                                                     onClick={() => viewDetail(p.id)}
-                                                    className="font-medium text-amber-600 hover:underline"
+                                                    className="font-mono text-[12.5px] font-semibold text-capsula-navy hover:text-capsula-coral hover:underline"
                                                 >
                                                     {p.code}
                                                 </button>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                            <td className="px-5 py-3 text-capsula-ink-soft">
                                                 {new Date(p.processDate).toLocaleDateString('es-VE')}
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-gray-900">{p.sourceItem}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">{p.supplier}</td>
-                                            <td className="px-6 py-4 text-center font-mono">{formatNumber(p.frozenWeight)} kg</td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-5 py-3 font-medium text-capsula-ink">{p.sourceItem}</td>
+                                            <td className="px-5 py-3 text-capsula-ink-soft">{p.supplier}</td>
+                                            <td className="px-5 py-3 text-center font-mono text-[12.5px] text-capsula-ink">
+                                                {formatNumber(p.frozenWeight)} <span className="text-capsula-ink-muted">kg</span>
+                                            </td>
+                                            <td className="px-5 py-3 text-center">
                                                 <span className={cn(
-                                                    'font-semibold',
-                                                    p.yieldPercentage >= 70 ? 'text-emerald-600' :
-                                                        p.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                    'font-mono text-[13px] font-semibold',
+                                                    p.yieldPercentage >= 70 ? 'text-[#2F6B4E]' :
+                                                    p.yieldPercentage >= 50 ? 'text-[#946A1C]' : 'text-capsula-coral',
                                                 )}>
                                                     {formatNumber(p.yieldPercentage)}%
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-5 py-3 text-center">
                                                 {getStatusBadge(p.status)}
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex justify-center gap-2">
+                                            <td className="px-5 py-3">
+                                                <div className="flex items-center justify-center gap-1">
                                                     <button
                                                         onClick={() => viewDetail(p.id)}
-                                                        className="text-blue-500 hover:text-blue-700 text-sm"
+                                                        className="rounded-md p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-navy"
                                                         title="Ver detalle"
                                                     >
-                                                        👁️
+                                                        <Eye className="h-4 w-4" strokeWidth={1.5} />
                                                     </button>
                                                     {p.status === 'DRAFT' && (
                                                         <>
                                                             <button
                                                                 onClick={() => handleComplete(p.id)}
-                                                                className="text-emerald-500 hover:text-emerald-700 text-sm"
+                                                                className="rounded-md p-1.5 text-capsula-ink-muted transition-colors hover:bg-[#E5EDE7] hover:text-[#2F6B4E]"
                                                                 title="Completar"
                                                             >
-                                                                ✅
+                                                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleCancel(p.id)}
-                                                                className="text-red-500 hover:text-red-700 text-sm"
+                                                                className="rounded-md p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                                                                 title="Cancelar"
                                                             >
-                                                                ❌
+                                                                <XCircle className="h-4 w-4" strokeWidth={1.5} />
                                                             </button>
                                                         </>
                                                     )}
