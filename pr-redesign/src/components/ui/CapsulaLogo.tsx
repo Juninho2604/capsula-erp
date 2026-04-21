@@ -1,0 +1,85 @@
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+
+type Variant = 'mark' | 'full' | 'favicon' | 'wordmark';
+
+interface CapsulaLogoProps {
+    variant?: Variant;
+    size?: number;
+    className?: string;
+    tone?: 'default' | 'ivory' | 'navy';
+}
+
+/**
+ * CÁPSULA logo — bicolor circle (navy top / coral bottom) + wordmark.
+ * Minimal Navy direction.
+ */
+export default function CapsulaLogo({
+    variant = 'full',
+    size = 32,
+    className,
+    tone = 'default',
+}: CapsulaLogoProps) {
+    const wordColor =
+        tone === 'ivory' ? '#F7F5F0' : tone === 'navy' ? '#1B2A3A' : '#0F1A2A';
+
+    const Mark = (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            className="flex-shrink-0"
+        >
+            <defs>
+                <clipPath id={`cap-logo-clip-${size}`}>
+                    <circle cx="12" cy="12" r="11" />
+                </clipPath>
+            </defs>
+            <g clipPath={`url(#cap-logo-clip-${size})`}>
+                <rect x="0" y="0" width="24" height="12" fill="#1B2A3A" />
+                <rect x="0" y="12" width="24" height="12" fill="#F25C3B" />
+            </g>
+        </svg>
+    );
+
+    if (variant === 'mark' || variant === 'favicon') {
+        return <span className={cn('inline-flex', className)}>{Mark}</span>;
+    }
+
+    if (variant === 'wordmark') {
+        return (
+            <span
+                className={cn('inline-flex items-center', className)}
+                style={{
+                    fontFamily: "'Inter Tight', 'Inter', system-ui, sans-serif",
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    fontSize: Math.round(size * 0.5),
+                    color: wordColor,
+                }}
+            >
+                CÁPSULA
+            </span>
+        );
+    }
+
+    return (
+        <span className={cn('inline-flex items-center gap-2.5', className)}>
+            {Mark}
+            <span
+                style={{
+                    fontFamily: "'Inter Tight', 'Inter', system-ui, sans-serif",
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    fontSize: Math.max(12, Math.round(size * 0.5)),
+                    color: wordColor,
+                    lineHeight: 1,
+                }}
+            >
+                CÁPSULA
+            </span>
+        </span>
+    );
+}
