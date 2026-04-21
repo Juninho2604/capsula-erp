@@ -17,6 +17,8 @@ import {
     Bike, MessageCircle, Coins, Package, User, Phone, MapPin, Search, X,
     Plus, Minus, Loader2, Check, ShoppingBag, Sandwich, Pizza, Soup,
     Utensils, UtensilsCrossed, Beef, Wheat, Cookie, GlassWater, Salad,
+    Banknote, Euro, Zap, CreditCard, Smartphone, Gift, Split,
+    MessageSquare, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -602,14 +604,19 @@ export default function POSDeliveryPage() {
                 {/* ══════════════════════════════════════════════════════
                     PANEL DERECHO — Carrito + Cobro
                     ══════════════════════════════════════════════════════ */}
-                <div className={`w-full lg:w-[420px] xl:w-[480px] bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
-
+                <div className={cn(
+                    'z-20 w-full flex-col border-l border-capsula-line bg-capsula-ivory-surface lg:flex lg:w-[420px] xl:w-[480px]',
+                    mobileView === 'order' ? 'flex' : 'hidden',
+                )}>
                     {/* ── Encabezado del carrito ────────────────────────── */}
-                    <div className="px-4 py-3 bg-secondary/20 border-b border-border shrink-0 flex items-center justify-between">
+                    <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory px-4 py-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-black uppercase tracking-tight">🛒 Pedido</span>
+                            <span className="inline-flex items-center gap-2 text-[13px] font-medium text-capsula-ink">
+                                <ShoppingBag className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                                Pedido
+                            </span>
                             {cart.length > 0 && (
-                                <span className="text-[10px] font-black bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                                <span className="rounded-full bg-capsula-navy-soft px-2 py-0.5 font-mono text-[10px] font-semibold text-capsula-navy-deep">
                                     {cart.length} ítem{cart.length > 1 ? 's' : ''}
                                 </span>
                             )}
@@ -617,76 +624,95 @@ export default function POSDeliveryPage() {
                         {cart.length > 0 && (
                             <button
                                 onClick={() => setCart([])}
-                                className="text-[10px] text-red-400/60 hover:text-red-400 font-bold transition-colors"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                             >
-                                Vaciar ✕
+                                <Trash2 className="h-3 w-3" strokeWidth={1.5} /> Vaciar
                             </button>
                         )}
                     </div>
 
-                    {/* ── Resumen cliente (readonly, visible cuando hay datos) ── */}
+                    {/* ── Resumen cliente ── */}
                     {(customerName || customerPhone || customerAddress) && (
-                        <div className="px-4 py-2 bg-blue-950/30 border-b border-blue-500/20 shrink-0">
-                            <div className="text-[10px] text-blue-300 font-bold leading-snug truncate">
+                        <div className="shrink-0 border-b border-capsula-navy/10 bg-capsula-navy-soft/40 px-4 py-2">
+                            <div className="truncate text-[11px] font-medium leading-snug text-capsula-navy-deep">
                                 {[customerName, customerPhone, customerAddress].filter(Boolean).join(' · ')}
                             </div>
                         </div>
                     )}
 
-                    {/* ── Lista del carrito ─────────────────────────────── */}
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-card/50 no-scrollbar min-h-0">
+                    {/* ── Lista del carrito ── */}
+                    <div className="no-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto bg-capsula-ivory p-3">
                         {cart.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 py-10">
-                                <span className="text-5xl mb-2">🛒</span>
-                                <p className="text-xs font-black uppercase tracking-widest">Carrito Vacío</p>
+                            <div className="flex h-full flex-col items-center justify-center py-10 text-capsula-ink-muted">
+                                <ShoppingBag className="mb-3 h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                <p className="text-[12px] font-medium uppercase tracking-[0.12em]">Carrito vacío</p>
                             </div>
                         )}
                         {cart.map((item, i) => (
-                            <div key={i} className="bg-card border border-border/60 rounded-xl px-3 py-2.5 flex justify-between items-start gap-2 active:scale-[0.98] transition-transform">
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-black text-sm flex gap-1.5 items-baseline">
-                                        <span className="text-primary tracking-tighter shrink-0">×{item.quantity}</span>
+                            <div key={i} className="flex items-start justify-between gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-1.5 text-[13px] font-medium text-capsula-ink">
+                                        <span className="shrink-0 font-mono text-capsula-navy-deep">×{item.quantity}</span>
                                         <span className="truncate">{item.name}</span>
                                     </div>
                                     {item.modifiers.length > 0 && (
-                                        <div className="text-[10px] text-muted-foreground mt-0.5 pl-5 truncate">{item.modifiers.map(m => m.name).join(' · ')}</div>
+                                        <div className="mt-0.5 truncate pl-5 text-[10.5px] text-capsula-ink-muted">
+                                            {item.modifiers.map(m => m.name).join(' · ')}
+                                        </div>
                                     )}
-                                    {item.notes && <div className="text-[10px] font-black text-blue-400 pl-5 italic mt-0.5">💬 {item.notes}</div>}
+                                    {item.notes && (
+                                        <div className="mt-0.5 flex items-center gap-1 pl-5 text-[10.5px] italic text-capsula-navy">
+                                            <MessageSquare className="h-3 w-3" strokeWidth={1.5} />
+                                            {item.notes}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <span className="font-black text-sm">${item.lineTotal.toFixed(2)}</span>
-                                    <button onClick={() => removeFromCart(i)} className="h-6 w-6 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all text-xs">✕</button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className="font-mono text-[13px] font-semibold text-capsula-ink">${item.lineTotal.toFixed(2)}</span>
+                                    <button
+                                        onClick={() => removeFromCart(i)}
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                                    >
+                                        <X className="h-3 w-3" strokeWidth={1.5} />
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* ── Sección de cobro (siempre visible, scroll interno) ── */}
-                    <div className="overflow-y-auto p-4 bg-secondary/30 border-t border-border space-y-3 shrink-0" style={{ maxHeight: '62%' }}>
-
+                    {/* ── Sección de cobro ── */}
+                    <div
+                        className="shrink-0 space-y-3 overflow-y-auto border-t border-capsula-line bg-capsula-ivory-alt p-4"
+                        style={{ maxHeight: '62%' }}
+                    >
                         {/* Totales compactos */}
-                        <div className="bg-card border border-border rounded-xl px-4 py-3 space-y-1.5">
-                            <div className="flex justify-between text-xs font-black text-muted-foreground">
-                                <span>Subtotal</span>
-                                <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
+                        <div className="space-y-1.5 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-3">
+                            <div className="flex items-baseline justify-between text-[12px]">
+                                <span className="text-capsula-ink-muted">Subtotal</span>
+                                <span className="font-mono text-capsula-ink">
+                                    <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
+                                </span>
                             </div>
-                            <div className="flex justify-between text-xs font-black text-blue-500">
-                                <span>🛵 Delivery</span>
-                                <span>+${deliveryFee.toFixed(2)}</span>
+                            <div className="flex items-center justify-between text-[12px]">
+                                <span className="inline-flex items-center gap-1.5 text-capsula-navy">
+                                    <Bike className="h-3 w-3" strokeWidth={1.5} /> Delivery
+                                </span>
+                                <span className="font-mono text-capsula-navy">+${deliveryFee.toFixed(2)}</span>
                             </div>
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
-                                <div className="flex justify-between text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                                    <span>Dto. Divisas</span>
-                                    <span>-${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                <div className="flex items-center justify-between rounded bg-capsula-navy-soft px-2 py-1 text-[12px]">
+                                    <span className="text-capsula-navy-deep">Dto. divisas</span>
+                                    <span className="font-mono text-capsula-navy-deep">
+                                        -${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}
+                                    </span>
                                 </div>
                             )}
-                            <div className="flex justify-between font-black text-xl border-t border-border pt-2">
-                                <span className="uppercase tracking-tighter italic">Total</span>
-                                <div className="text-primary italic">
+                            <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
+                                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Total</span>
+                                <div className="font-mono text-[22px] font-semibold text-capsula-navy-deep">
                                     <PriceDisplay usd={finalTotal} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
-                            {/* Calculadora USD → Bs inline en el panel de cobro */}
                             <div className="pt-1">
                                 <CurrencyCalculator
                                     totalUsd={finalTotal}
@@ -700,39 +726,76 @@ export default function POSDeliveryPage() {
 
                         {/* Descuentos + Método + Cobro */}
                         <div className="space-y-3">
-
-                            {/* Descuentos — 3 botones compactos en una fila */}
+                            {/* Descuentos */}
                             <div className="grid grid-cols-3 gap-1.5">
-                                <button onClick={() => handleDiscountSelect('NONE')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'NONE' ? 'bg-secondary text-foreground border-2 border-primary/50' : 'bg-background border border-border text-muted-foreground'}`}>
+                                <button
+                                    onClick={() => handleDiscountSelect('NONE')}
+                                    className={cn(
+                                        'rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors',
+                                        discountType === 'NONE'
+                                            ? 'border border-capsula-navy-deep bg-capsula-navy-soft text-capsula-navy-deep'
+                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink',
+                                    )}
+                                >
                                     Normal
                                 </button>
-                                <button onClick={() => handleDiscountSelect('DIVISAS_33')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-primary'}`}>
-                                    Divisa -33%
+                                <button
+                                    onClick={() => handleDiscountSelect('DIVISAS_33')}
+                                    className={cn(
+                                        'rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors',
+                                        discountType === 'DIVISAS_33'
+                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-navy hover:bg-capsula-navy-soft',
+                                    )}
+                                >
+                                    Divisa −33%
                                 </button>
-                                <button onClick={() => handleDiscountSelect('CORTESIA_100')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white' : 'bg-background border border-border text-purple-600'}`}>
+                                <button
+                                    onClick={() => handleDiscountSelect('CORTESIA_100')}
+                                    className={cn(
+                                        'inline-flex items-center justify-center gap-1 rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors',
+                                        (discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
+                                            ? 'bg-capsula-coral text-white'
+                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-coral hover:bg-capsula-coral-subtle',
+                                    )}
+                                >
+                                    <Gift className="h-3 w-3" strokeWidth={1.5} />
                                     {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
-                                        ? `🎁 ${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'}`
-                                        : '🎁 Cortesía'}
+                                        ? (discountType === 'CORTESIA_PERCENT' ? `${cortesiaPercentNum}%` : '100%')
+                                        : 'Cortesía'}
                                 </button>
                             </div>
                             {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') && authorizedManager && (
-                                <div className="text-[10px] text-purple-400 font-bold text-center">
+                                <div className="text-center text-[10.5px] font-medium text-capsula-coral">
                                     Auth: {authorizedManager.name}
                                 </div>
                             )}
 
                             {/* Modo de pago */}
                             <div className="grid grid-cols-2 gap-1.5">
-                                <button type="button" onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${!isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                    Pago Único
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
+                                    className={cn(
+                                        'rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors',
+                                        !isMixedMode
+                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink',
+                                    )}
+                                >
+                                    Pago único
                                 </button>
-                                <button type="button" onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                    💳 Pago Mixto
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
+                                    className={cn(
+                                        'inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors',
+                                        isMixedMode
+                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink',
+                                    )}
+                                >
+                                    <Split className="h-3 w-3" strokeWidth={1.5} /> Pago mixto
                                 </button>
                             </div>
 
@@ -741,38 +804,59 @@ export default function POSDeliveryPage() {
                                 <div className="space-y-2">
                                     <div className="grid grid-cols-3 gap-1.5">
                                         {([
-                                            { id: 'CASH_USD',       label: '💵 Cash $' },
-                                            { id: 'CASH_EUR',       label: '€ Cash €' },
-                                            { id: 'ZELLE',          label: '⚡ Zelle' },
-                                            { id: 'PDV_SHANKLISH',  label: '💳 PDV Shan.' },
-                                            { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-                                            { id: 'MOVIL_NG',       label: '📱 Móvil NG' },
-                                            { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-                                        ] as const).map(m => (
-                                            <button key={m.id} type="button" onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
-                                                className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${paymentMethod === m.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                                {m.label}
-                                            </button>
-                                        ))}
+                                            { id: 'CASH_USD',       label: 'Cash $',      icon: Banknote },
+                                            { id: 'CASH_EUR',       label: 'Cash €',      icon: Euro },
+                                            { id: 'ZELLE',          label: 'Zelle',       icon: Zap },
+                                            { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',   icon: CreditCard },
+                                            { id: 'PDV_SUPERFERRO', label: 'PDV Super.',  icon: CreditCard },
+                                            { id: 'MOVIL_NG',       label: 'Móvil NG',    icon: Smartphone },
+                                            { id: 'CASH_BS',        label: 'Efectivo Bs', icon: Banknote },
+                                        ] as const).map(m => {
+                                            const MIcon = m.icon;
+                                            const active = paymentMethod === m.id;
+                                            return (
+                                                <button
+                                                    key={m.id}
+                                                    type="button"
+                                                    onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
+                                                    className={cn(
+                                                        'inline-flex items-center justify-center gap-1 rounded-[var(--radius)] py-2 text-[11px] font-medium transition-colors',
+                                                        active
+                                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                                            : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink',
+                                                    )}
+                                                >
+                                                    <MIcon className="h-3 w-3" strokeWidth={1.5} /> {m.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                    <div className="flex items-center gap-2 bg-background border border-border p-1 rounded-xl">
-                                        <input type="number" value={amountReceived} onChange={e => setAmountReceived(e.target.value)}
-                                            placeholder={isBsPayMethod && exchangeRate ? `Bs ${(finalTotal * exchangeRate).toFixed(0)}` : 'Monto recibido...'}
-                                            className="flex-1 bg-transparent border-none rounded-lg px-3 py-2.5 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30" />
-                                        <div className="pr-3 text-xs font-black text-muted-foreground uppercase">
+                                    <div className="flex items-center gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1">
+                                        <input
+                                            type="number"
+                                            value={amountReceived}
+                                            onChange={e => setAmountReceived(e.target.value)}
+                                            placeholder={isBsPayMethod && exchangeRate ? `Bs ${(finalTotal * exchangeRate).toFixed(0)}` : 'Monto recibido…'}
+                                            className="flex-1 rounded border-none bg-transparent px-3 py-2 font-mono text-[16px] font-semibold text-capsula-ink outline-none placeholder:text-capsula-ink-faint"
+                                        />
+                                        <div className="pr-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                                             {isBsPayMethod ? 'Bs' : 'USD'}
                                         </div>
                                     </div>
                                     {isBsPayMethod && exchangeRate && (parseFloat(amountReceived) || 0) > 0 && (
-                                        <div className="flex justify-between text-xs px-1">
-                                            <span className="text-muted-foreground">Equiv. USD</span>
-                                            <span className="font-bold text-emerald-400">${((parseFloat(amountReceived) || 0) / exchangeRate).toFixed(2)}</span>
+                                        <div className="flex justify-between px-1 text-[11px]">
+                                            <span className="text-capsula-ink-muted">Equiv. USD</span>
+                                            <span className="font-mono font-medium text-[#2F6B4E]">
+                                                ${((parseFloat(amountReceived) || 0) / exchangeRate).toFixed(2)}
+                                            </span>
                                         </div>
                                     )}
                                     {paymentMethod === 'CASH_USD' && (parseFloat(amountReceived) || 0) > finalTotal + 0.001 && (
-                                        <div className="flex justify-between text-sm font-black px-1">
-                                            <span className="text-amber-400">Vuelto</span>
-                                            <span className="text-amber-400">${Math.max(0, (parseFloat(amountReceived) || 0) - finalTotal).toFixed(2)}</span>
+                                        <div className="flex justify-between px-1 text-[13px]">
+                                            <span className="font-medium text-[#946A1C]">Vuelto</span>
+                                            <span className="font-mono font-semibold text-[#946A1C]">
+                                                ${Math.max(0, (parseFloat(amountReceived) || 0) - finalTotal).toFixed(2)}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
@@ -790,23 +874,30 @@ export default function POSDeliveryPage() {
                                         disabled={isProcessing}
                                     />
                                     {discountType === 'DIVISAS_33' && (divisasUsdAmount ?? 0) > 0 && (
-                                        <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 text-xs text-indigo-300 space-y-0.5">
+                                        <div className="space-y-0.5 rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft px-3 py-2 text-[12px] text-capsula-navy-deep">
                                             <div className="flex justify-between">
                                                 <span>Divisas sobre ${(divisasUsdAmount ?? 0).toFixed(2)} USD</span>
-                                                <span className="font-black">-${((divisasUsdAmount ?? 0) / 3).toFixed(2)}</span>
+                                                <span className="font-mono font-semibold">-${((divisasUsdAmount ?? 0) / 3).toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between font-black text-white">
+                                            <div className="flex justify-between font-semibold">
                                                 <span>Total a cobrar</span>
-                                                <span>${finalTotal.toFixed(2)}</span>
+                                                <span className="font-mono">${finalTotal.toFixed(2)}</span>
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-2xl shadow-primary/30">
-                                {isProcessing ? 'PROCESANDO...' : `CONFIRMAR ORDEN`}
-                            </button>
+                            <Button
+                                variant="primary"
+                                size="xl"
+                                onClick={handleCheckout}
+                                disabled={cart.length === 0 || isProcessing}
+                                isLoading={isProcessing}
+                                className="w-full"
+                            >
+                                {isProcessing ? 'PROCESANDO…' : 'CONFIRMAR ORDEN'}
+                            </Button>
                         </div>
                     </div>
                 </div>
