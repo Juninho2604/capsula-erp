@@ -8,7 +8,8 @@ import {
     executeBulkTransferAction
 } from '@/app/actions/requisition.actions';
 import { formatNumber, cn } from '@/lib/utils';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Zap, Loader2, CheckCircle2, AlertOctagon, Info, Rocket } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Area {
     id: string;
@@ -26,6 +27,10 @@ interface Props {
     areasList: Area[];
 }
 
+const inputClass =
+    'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors focus:border-capsula-navy-deep';
+const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+
 export default function BulkTransferPanel({ areasList }: Props) {
     const { user } = useAuthStore();
     const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -38,7 +43,6 @@ export default function BulkTransferPanel({ areasList }: Props) {
     const [isExecuting, setIsExecuting] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
-    // Cargar categorías al montar
     useEffect(() => {
         getCategoriesForTransferAction().then(res => {
             if (res.success && res.categories) {
@@ -47,7 +51,6 @@ export default function BulkTransferPanel({ areasList }: Props) {
         });
     }, []);
 
-    // Preview cuando cambia categoría o área origen
     useEffect(() => {
         if (selectedCategory && sourceAreaId) {
             setIsLoading(true);
@@ -96,7 +99,6 @@ export default function BulkTransferPanel({ areasList }: Props) {
             setMessage({ type: 'success', text: res.message });
             setPreviewItems([]);
             setSelectedCategory('');
-            // Reload after short delay
             setTimeout(() => window.location.reload(), 1500);
         } else {
             setMessage({ type: 'error', text: res.message });
@@ -104,35 +106,45 @@ export default function BulkTransferPanel({ areasList }: Props) {
         setIsExecuting(false);
     };
 
+    const MessageIcon =
+        message?.type === 'success' ? CheckCircle2 :
+        message?.type === 'error' ? AlertOctagon : Info;
+    const messageStyles =
+        message?.type === 'success' ? 'border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]' :
+        message?.type === 'error' ? 'border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]' :
+        'border-[#D1DCE9] bg-[#E6ECF4] text-[#2A4060]';
+
+    const activeCount = previewItems.length - excludedIds.length;
+
     return (
-        <div className="capsula-card border-primary/20 bg-gradient-to-br from-background to-secondary/30 p-8">
-            <div className="mb-6 flex items-center justify-between">
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="flex items-center gap-2 text-xl font-bold text-primary dark:text-primary">
-                        ⚡ Transferencia Rápida
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">
+                        Transferencias
+                    </div>
+                    <h3 className="flex items-center gap-2 font-heading text-[24px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                        <Zap className="h-5 w-5 text-capsula-coral" strokeWidth={1.5} /> Transferencia rápida
                     </h3>
-                    <p className="text-sm text-muted-foreground">
-                        Mueve stock por categoría con un solo toque táctil
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                        Mueve stock por categoría con un solo toque.
                     </p>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">
-                    🚀
+                <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory">
+                    <Rocket className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
                 </div>
             </div>
 
             {/* Selectores */}
-            <div className="mb-8 grid gap-6 sm:grid-cols-3">
-                {/* Categoría */}
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-foreground/80 ml-1">
-                        Categoría
-                    </label>
+            <div className="mb-8 grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label className={labelClass}>Categoría</label>
                     <select
                         value={selectedCategory}
                         onChange={e => setSelectedCategory(e.target.value)}
-                        className="w-full rounded-xl border-2 border-border bg-card px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 dark:text-white min-h-[52px]"
+                        className={inputClass}
                     >
-                        <option value="">Seleccionar...</option>
+                        <option value="">Seleccionar…</option>
                         {categories.map(cat => (
                             <option key={cat.name} value={cat.name}>
                                 {cat.name} ({cat.count})
@@ -141,34 +153,28 @@ export default function BulkTransferPanel({ areasList }: Props) {
                     </select>
                 </div>
 
-                {/* Origen */}
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-foreground/80 ml-1">
-                        Desde (Origen)
-                    </label>
+                <div>
+                    <label className={labelClass}>Desde (Origen)</label>
                     <select
                         value={sourceAreaId}
                         onChange={e => setSourceAreaId(e.target.value)}
-                        className="w-full rounded-xl border-2 border-border bg-card px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 dark:text-white min-h-[52px]"
+                        className={inputClass}
                     >
-                        <option value="">Seleccionar...</option>
+                        <option value="">Seleccionar…</option>
                         {areasList.map(a => (
                             <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
                     </select>
                 </div>
 
-                {/* Destino */}
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-foreground/80 ml-1">
-                        Hacia (Destino)
-                    </label>
+                <div>
+                    <label className={labelClass}>Hacia (Destino)</label>
                     <select
                         value={targetAreaId}
                         onChange={e => setTargetAreaId(e.target.value)}
-                        className="w-full rounded-xl border-2 border-border bg-card px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 dark:text-white min-h-[52px]"
+                        className={inputClass}
                     >
-                        <option value="">Seleccionar...</option>
+                        <option value="">Seleccionar…</option>
                         {areasList.filter(a => a.id !== sourceAreaId).map(a => (
                             <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
@@ -178,34 +184,34 @@ export default function BulkTransferPanel({ areasList }: Props) {
 
             {/* Preview */}
             {isLoading ? (
-                <div className="py-12 text-center text-primary">
-                    <div className="inline-block animate-bounce text-3xl mb-2">🔄</div>
-                    <p className="font-bold animate-pulse">Preparando lotes...</p>
+                <div className="py-12 text-center">
+                    <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                    <p className="text-[13px] font-medium text-capsula-ink-soft">Preparando lotes…</p>
                 </div>
             ) : previewItems.length > 0 ? (
-                <div className="mb-8 max-h-64 overflow-y-auto rounded-2xl border-2 border-border bg-card shadow-inner">
-                    <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-secondary/50 backdrop-blur-md">
-                            <tr>
-                                <th className="px-6 py-4 text-left font-bold text-foreground/70 uppercase tracking-wider">Producto</th>
-                                <th className="px-6 py-4 text-right font-bold text-foreground/70 uppercase tracking-wider">Stock</th>
-                                <th className="w-16 px-6 py-4"></th>
+                <div className="mb-6 max-h-64 overflow-y-auto rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
+                    <table className="w-full border-collapse text-[13px]">
+                        <thead className="sticky top-0 bg-capsula-ivory">
+                            <tr className="border-b border-capsula-line">
+                                <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto</th>
+                                <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Stock</th>
+                                <th className="w-12 px-5 py-3"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody>
                             {previewItems.filter(i => !excludedIds.includes(i.id)).map(item => (
-                                <tr key={item.id} className="hover:bg-primary/5 transition-colors group">
-                                    <td className="px-6 py-4 font-medium text-foreground">{item.name}</td>
-                                    <td className="px-6 py-4 text-right font-mono font-bold text-primary">
-                                        {formatNumber(item.currentStock)} {item.unit}
+                                <tr key={item.id} className="border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory">
+                                    <td className="px-5 py-3 text-capsula-ink">{item.name}</td>
+                                    <td className="px-5 py-3 text-right font-mono text-[12.5px] font-semibold text-capsula-navy">
+                                        {formatNumber(item.currentStock)} <span className="text-capsula-ink-muted">{item.unit}</span>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="px-5 py-3 text-center">
                                         <button
                                             onClick={() => setExcludedIds([...excludedIds, item.id])}
-                                            className="h-10 w-10 flex items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all active:scale-90"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                                             title="Excluir"
                                         >
-                                            <Trash2 className="h-5 w-5" />
+                                            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                         </button>
                                     </td>
                                 </tr>
@@ -218,34 +224,32 @@ export default function BulkTransferPanel({ areasList }: Props) {
             {/* Message */}
             {message && (
                 <div className={cn(
-                    "mb-6 rounded-2xl p-4 text-sm font-bold flex items-center gap-3 animate-in fade-in zoom-in duration-300",
-                    message.type === 'success' ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-200" :
-                        message.type === 'error' ? "bg-red-100 text-red-800 border-2 border-red-200" :
-                            "bg-blue-100 text-blue-800 border-2 border-blue-200"
+                    'mb-6 flex items-center gap-3 rounded-[var(--radius)] border px-4 py-3 text-[13px] font-medium',
+                    messageStyles,
                 )}>
-                    <span className="text-xl">
-                        {message.type === 'success' ? '✅' : message.type === 'error' ? '❌' : 'ℹ️'}
-                    </span>
+                    <MessageIcon className="h-4 w-4" strokeWidth={1.5} />
                     {message.text}
                 </div>
             )}
 
             {/* Botón de ejecución */}
-            <button
+            <Button
                 onClick={handleExecuteTransfer}
                 disabled={isExecuting || previewItems.length === 0 || !targetAreaId}
-                className="capsula-btn capsula-btn-primary w-full text-lg shadow-primary/20"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                isLoading={isExecuting}
             >
                 {isExecuting ? (
-                    <span className="flex items-center justify-center gap-3">
-                        <span className="animate-spin text-2xl">⚡</span> Procesando transferencia...
-                    </span>
+                    'Procesando transferencia…'
                 ) : (
-                    <span className="flex items-center justify-center gap-2">
-                        🚀 Confirmar Movimiento de {previewItems.length - excludedIds.length} Items
-                    </span>
+                    <>
+                        <Rocket className="h-4 w-4" strokeWidth={1.5} />
+                        Confirmar movimiento de {activeCount} {activeCount === 1 ? 'ítem' : 'ítems'}
+                    </>
                 )}
-            </button>
+            </Button>
         </div>
     );
 }
