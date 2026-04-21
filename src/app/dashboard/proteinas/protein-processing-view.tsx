@@ -1017,67 +1017,68 @@ export default function ProteinProcessingView() {
 
             {/* Vista: Detalle */}
             {viewMode === 'detail' && selectedProcessing && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex justify-between items-center">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                    <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory px-5 py-4">
                         <div>
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
+                            <h2 className="font-mono text-[16px] font-semibold text-capsula-navy-deep">
                                 {selectedProcessing.code}
                             </h2>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-[12px] text-capsula-ink-muted">
                                 {new Date(selectedProcessing.processDate).toLocaleDateString('es-VE', {
-                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                                 })}
                             </p>
                         </div>
                         {getStatusBadge(selectedProcessing.status)}
                     </div>
 
-                    <div className="p-6 grid gap-6 lg:grid-cols-2">
+                    <div className="grid gap-6 p-6 lg:grid-cols-2">
                         {/* Info general */}
                         <div className="space-y-4">
-                            <h3 className="font-medium text-gray-900">Información General</h3>
-                            <div className="space-y-2 text-sm">
+                            <h3 className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Información general</h3>
+                            <div className="space-y-2 text-[13px]">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Producto:</span>
-                                    <span className="font-medium">{selectedProcessing.sourceItem.name}</span>
+                                    <span className="text-capsula-ink-muted">Producto</span>
+                                    <span className="font-medium text-capsula-ink">{selectedProcessing.sourceItem.name}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Proveedor:</span>
-                                    <span>{selectedProcessing.supplier?.name || selectedProcessing.supplierName || '-'}</span>
+                                    <span className="text-capsula-ink-muted">Proveedor</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.supplier?.name || selectedProcessing.supplierName || '—'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Área:</span>
-                                    <span>{selectedProcessing.area.name}</span>
+                                    <span className="text-capsula-ink-muted">Área</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.area.name}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Creado por:</span>
-                                    <span>{selectedProcessing.createdBy.firstName} {selectedProcessing.createdBy.lastName}</span>
+                                    <span className="text-capsula-ink-muted">Creado por</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.createdBy.firstName} {selectedProcessing.createdBy.lastName}</span>
                                 </div>
                             </div>
 
-                            <h3 className="font-medium text-gray-900 pt-4">Pesos y Rendimiento</h3>
-                            <div className="space-y-2 text-sm">
+                            <h3 className="pt-4 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Pesos y rendimiento</h3>
+                            <div className="space-y-2 text-[13px]">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Peso Congelado:</span>
-                                    <span className="font-mono">{formatNumber(selectedProcessing.frozenWeight)} kg</span>
+                                    <span className="text-capsula-ink-muted">Peso congelado</span>
+                                    <span className="font-mono text-capsula-ink">{formatNumber(selectedProcessing.frozenWeight)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Peso Escurrido:</span>
-                                    <span className="font-mono">{formatNumber(selectedProcessing.drainedWeight)} kg</span>
+                                    <span className="text-capsula-ink-muted">Peso escurrido</span>
+                                    <span className="font-mono text-capsula-ink">{formatNumber(selectedProcessing.drainedWeight)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Total Subproductos:</span>
-                                    <span className="font-mono text-emerald-600">{formatNumber(selectedProcessing.totalSubProducts)} kg</span>
+                                    <span className="text-capsula-ink-muted">Total subproductos</span>
+                                    <span className="font-mono text-[#2F6B4E]">{formatNumber(selectedProcessing.totalSubProducts)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Desperdicio:</span>
-                                    <span className="font-mono text-red-600">{formatNumber(selectedProcessing.wasteWeight)} kg ({formatNumber(selectedProcessing.wastePercentage)}%)</span>
+                                    <span className="text-capsula-ink-muted">Desperdicio</span>
+                                    <span className="font-mono text-capsula-coral">{formatNumber(selectedProcessing.wasteWeight)} kg ({formatNumber(selectedProcessing.wastePercentage)}%)</span>
                                 </div>
-                                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                                    <span>Rendimiento:</span>
+                                <div className="flex items-baseline justify-between border-t border-capsula-line pt-3">
+                                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Rendimiento</span>
                                     <span className={cn(
-                                        selectedProcessing.yieldPercentage >= 70 ? 'text-emerald-600' :
-                                            selectedProcessing.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                        'font-mono text-[22px] font-semibold',
+                                        selectedProcessing.yieldPercentage >= 70 ? 'text-[#2F6B4E]' :
+                                        selectedProcessing.yieldPercentage >= 50 ? 'text-[#946A1C]' : 'text-capsula-coral',
                                     )}>
                                         {formatNumber(selectedProcessing.yieldPercentage)}%
                                     </span>
@@ -1087,22 +1088,23 @@ export default function ProteinProcessingView() {
 
                         {/* Subproductos */}
                         <div>
-                            <h3 className="font-medium text-gray-900 mb-4">Subproductos Obtenidos</h3>
+                            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Subproductos obtenidos</h3>
                             <div className="space-y-2">
                                 {selectedProcessing.subProducts.map((sp: any, index: number) => (
-                                    <div key={sp.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                                        <div>
-                                            <span className="text-gray-400 mr-2">{index + 1}.</span>
-                                            <span className="font-medium">{sp.name}</span>
+                                    <div key={sp.id} className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2">
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            <span className="font-mono text-[11px] text-capsula-ink-muted">{index + 1}.</span>
+                                            <span className="truncate text-[13px] font-medium text-capsula-ink">{sp.name}</span>
                                             {sp.outputItem && (
-                                                <span className="ml-2 text-xs text-amber-600">
-                                                    → {sp.outputItem.name}
+                                                <span className="inline-flex items-center gap-0.5 text-[11px] text-capsula-coral">
+                                                    <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
+                                                    {sp.outputItem.name}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-right">
-                                            <span className="font-mono">{formatNumber(sp.weight)} kg</span>
-                                            <span className="text-xs text-gray-500 ml-2">({sp.units} pza)</span>
+                                        <div className="ml-2 text-right">
+                                            <span className="font-mono text-[12.5px] text-capsula-ink">{formatNumber(sp.weight)} <span className="text-capsula-ink-muted">kg</span></span>
+                                            <span className="ml-2 text-[11px] text-capsula-ink-muted">({sp.units} pza)</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1112,25 +1114,25 @@ export default function ProteinProcessingView() {
 
                     {/* Acciones */}
                     {selectedProcessing.status === 'DRAFT' && (
-                        <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
-                            <button
+                        <div className="flex justify-end gap-2 border-t border-capsula-line bg-capsula-ivory px-5 py-4">
+                            <Button
+                                variant="outline"
                                 onClick={() => handleCancel(selectedProcessing.id)}
-                                className="px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
                             >
-                                ❌ Cancelar
-                            </button>
-                            <button
+                                <XCircle className="h-4 w-4" strokeWidth={1.5} /> Cancelar
+                            </Button>
+                            <Button
+                                variant="primary"
                                 onClick={() => handleComplete(selectedProcessing.id)}
-                                className="px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600"
                             >
-                                ✅ Completar y Actualizar Inventario
-                            </button>
+                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} /> Completar y actualizar inventario
+                            </Button>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Vista: Plantillas de Procesamiento */}
+            {/* Vista: Plantillas de procesamiento */}
             {viewMode === 'templates' && (
                 <ProcessingTemplates />
             )}
