@@ -9,6 +9,10 @@ import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
 import { printKitchenCommand } from '@/lib/print-command';
 import { getPOSConfig } from '@/lib/pos-settings';
 import toast from 'react-hot-toast';
+import {
+    Search, X, Package, Info, Loader2, Printer, Check, Plus, Minus, Pizza, ShoppingBag,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ModifierOption {
     id: string;
@@ -45,6 +49,9 @@ interface SelectedModifier {
     priceAdjustment: number;
     quantity: number;
 }
+
+const inputClass =
+    'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
 
 export default function POSPedidosYAPage() {
     const { posFullscreen } = useUIStore();
@@ -150,7 +157,7 @@ export default function POSPedidosYAPage() {
         const exploded = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment }));
         setCart([...cart, {
             menuItemId: selectedItemForModifier.id, name: selectedItemForModifier.name, quantity: itemQuantity,
-            unitPrice: pyaBase, modifiers: exploded, notes: itemNotes || undefined, lineTotal
+            unitPrice: pyaBase, modifiers: exploded, notes: itemNotes || undefined, lineTotal,
         }]);
         setShowModifierModal(false);
     };
@@ -171,7 +178,6 @@ export default function POSPedidosYAPage() {
             });
 
             if (result.success && result.data) {
-                // Comanda cocina
                 const cfg = getPOSConfig();
                 if (cfg.printComandaOnDelivery) {
                     printKitchenCommand({
@@ -210,79 +216,113 @@ export default function POSPedidosYAPage() {
     };
 
     if (isLoading) return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
             <div className="text-center">
-                <div className="text-4xl mb-4">🍔</div>
-                <div className="text-xl font-black text-foreground">Cargando PedidosYA...</div>
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-capsula-coral" strokeWidth={1.5} />
+                <div className="text-[14px] font-medium text-capsula-ink">Cargando PedidosYA…</div>
             </div>
         </div>
     );
 
     return (
-        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} bg-background text-foreground flex flex-col font-sans`}>
+        <div className={cn(
+            posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]',
+            'flex flex-col bg-capsula-ivory font-sans text-capsula-ink',
+        )}>
             {/* Header */}
-            <div className={`glass-panel px-3 md:px-6 py-3 md:py-4 ${posFullscreen ? 'fixed top-0 w-full z-30' : 'relative w-full z-[31]'} shadow-2xl flex justify-between items-center h-16 md:h-20 border-b border-border`}>
+            <div className={cn(
+                'flex h-16 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 md:h-20 md:px-6',
+                posFullscreen ? 'fixed top-0 z-30 w-full' : 'relative z-[31] w-full',
+            )}>
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">🍔</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle md:h-12 md:w-12">
+                        <Pizza className="h-5 w-5 text-capsula-coral md:h-6 md:w-6" strokeWidth={1.5} />
+                    </div>
                     <div>
-                        <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-orange-500 italic">PedidosYA</span></h1>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-                            Registro de Pedidos Externos
+                        <h1 className="font-heading text-[18px] leading-none tracking-[-0.01em] text-capsula-navy-deep md:text-[24px]">
+                            POS <span className="text-capsula-coral">PedidosYA</span>
+                        </h1>
+                        <p className="mt-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
+                            Registro de pedidos externos
                         </p>
                     </div>
                 </div>
-                <div className="px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+                <div className="rounded-full border border-capsula-line bg-capsula-ivory px-3 py-1.5 font-mono text-[11px] tabular-nums text-capsula-ink-soft">
                     {new Date().toLocaleDateString('es-VE')}
                 </div>
             </div>
 
-            <div className={`flex ${posFullscreen ? 'h-screen pt-16 md:pt-20' : 'flex-1 min-h-0'} overflow-hidden`}>
+            <div className={cn(
+                'flex overflow-hidden',
+                posFullscreen ? 'h-screen pt-16 md:pt-20' : 'min-h-0 flex-1',
+            )}>
                 {/* Menú izquierda */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                <div className="flex flex-1 flex-col overflow-hidden bg-capsula-ivory">
                     {/* Búsqueda */}
-                    <div className="px-4 py-3 bg-background border-b border-border">
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
+                    <div className="border-b border-capsula-line bg-capsula-ivory-surface px-4 py-3">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
                             <input
                                 type="text"
                                 value={productSearch}
                                 onChange={e => setProductSearch(e.target.value)}
-                                placeholder="Buscar producto por nombre o SKU..."
-                                className="w-full bg-secondary/50 border border-border rounded-2xl py-3 pl-12 pr-12 text-sm font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                                placeholder="Buscar producto por nombre o SKU…"
+                                className="w-full rounded-full border border-capsula-line bg-capsula-ivory py-2.5 pl-11 pr-11 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                             />
                             {productSearch && (
-                                <button onClick={() => setProductSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">✕</button>
+                                <button
+                                    onClick={() => setProductSearch('')}
+                                    className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                >
+                                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                </button>
                             )}
                         </div>
                     </div>
+
                     {/* Categorías */}
                     {!productSearch && (
-                        <div className="flex gap-3 px-4 py-3 bg-background border-b border-border overflow-x-auto no-scrollbar">
-                            {categories.map((cat: any) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setSelectedCategory(cat.id)}
-                                    className={`shrink-0 px-5 py-2.5 rounded-2xl font-black text-sm transition-all active:scale-95 border-2 ${selectedCategory === cat.id ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-card border-border text-foreground/50 hover:border-orange-400/40'}`}
-                                >
-                                    {cat.name}
-                                </button>
-                            ))}
+                        <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-capsula-line bg-capsula-ivory-surface px-4 py-3">
+                            {categories.map((cat: any) => {
+                                const active = selectedCategory === cat.id;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={cn(
+                                            'shrink-0 rounded-full border px-4 py-2 text-[13px] font-medium transition-colors',
+                                            active
+                                                ? 'border-capsula-coral bg-capsula-coral text-white'
+                                                : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink',
+                                        )}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
+
                     {/* Productos */}
-                    <div className="flex-1 p-4 overflow-y-auto pb-24">
-                        <div className="grid grid-cols-2 md:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3">
+                    <div className="flex-1 overflow-y-auto p-4 pb-24">
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4">
                             {filteredMenuItems.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleAddToCart(item)}
-                                    className="capsula-card group p-4 text-left h-32 flex flex-col justify-between border-primary/5 hover:border-orange-400/40 active:scale-[0.98] transition-transform"
+                                    className="group flex h-32 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-coral/40 hover:shadow-cap-raised active:translate-y-0"
                                 >
-                                    <div className="font-black text-sm uppercase leading-tight tracking-tight group-hover:text-orange-500 transition-colors">{item.name}</div>
+                                    <div className="text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-coral">
+                                        {item.name}
+                                    </div>
                                     <div>
-                                        <div className="text-2xl font-black text-orange-500 italic">${getPYAPrice(item).toFixed(2)}</div>
-                                        <div className="text-xs text-muted-foreground line-through">${item.price.toFixed(2)}</div>
+                                        <div className="font-mono text-[20px] font-semibold text-capsula-coral">
+                                            ${getPYAPrice(item).toFixed(2)}
+                                        </div>
+                                        <div className="font-mono text-[11px] text-capsula-ink-muted line-through">
+                                            ${item.price.toFixed(2)}
+                                        </div>
                                     </div>
                                 </button>
                             ))}
@@ -291,65 +331,121 @@ export default function POSPedidosYAPage() {
                 </div>
 
                 {/* Panel derecho */}
-                <div className="w-80 tablet-land:w-96 xl:w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20">
+                <div className="z-20 flex w-80 flex-col border-l border-capsula-line bg-capsula-ivory-surface tablet-land:w-96 xl:w-96">
                     {/* Datos del pedido */}
-                    <div className="p-4 bg-card border-b border-border space-y-2">
-                        <h2 className="font-black text-base flex items-center gap-2 text-foreground">📦 Datos del Pedido</h2>
+                    <div className="space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-4">
+                        <h2 className="flex items-center gap-2 text-[14px] font-medium text-capsula-ink">
+                            <Package className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                            Datos del pedido
+                        </h2>
                         <div className="grid grid-cols-2 gap-2">
-                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# PedidosYA" className="col-span-2 bg-orange-500/10 border border-orange-500/40 rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-orange-500/40 font-mono" />
-                            <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre cliente" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                            <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <input
+                                type="text"
+                                value={externalOrderId}
+                                onChange={e => setExternalOrderId(e.target.value)}
+                                placeholder="# PedidosYA"
+                                className="col-span-2 rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/40 px-3 py-2 font-mono text-[13px] text-capsula-ink outline-none placeholder:text-capsula-coral/50 focus:border-capsula-coral"
+                            />
+                            <input
+                                type="text"
+                                value={customerName}
+                                onChange={e => setCustomerName(e.target.value)}
+                                placeholder="Nombre cliente"
+                                className={inputClass}
+                            />
+                            <input
+                                type="text"
+                                value={customerPhone}
+                                onChange={e => setCustomerPhone(e.target.value)}
+                                placeholder="Teléfono"
+                                className={inputClass}
+                            />
                         </div>
-                        <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Dirección..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 h-16 resize-none" />
-                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas adicionales..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        <textarea
+                            value={customerAddress}
+                            onChange={e => setCustomerAddress(e.target.value)}
+                            placeholder="Dirección…"
+                            className={cn(inputClass, 'h-16 resize-none')}
+                        />
+                        <input
+                            type="text"
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                            placeholder="Notas adicionales…"
+                            className={inputClass}
+                        />
                     </div>
 
                     {/* Carrito */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div className="flex-1 space-y-2 overflow-y-auto p-4">
                         {cart.length === 0 && (
-                            <div className="text-center text-muted-foreground py-8 text-sm">
-                                <p className="text-3xl mb-2">🍔</p>
+                            <div className="py-8 text-center text-[13px] text-capsula-ink-muted">
+                                <ShoppingBag className="mx-auto mb-3 h-8 w-8 text-capsula-ink-faint" strokeWidth={1.5} />
                                 <p>Agrega productos del menú</p>
                             </div>
                         )}
                         {cart.map((item, i) => (
-                            <div key={i} className="bg-card/50 p-4 rounded-2xl border border-border flex justify-between group">
-                                <div>
-                                    <div className="font-black text-sm flex gap-2"><span className="text-orange-500">x{item.quantity}</span> {item.name}</div>
-                                    {item.modifiers.length > 0 && <div className="text-xs text-muted-foreground pl-6">{item.modifiers.map(m => m.name).join(', ')}</div>}
-                                    {item.notes && <div className="text-xs text-orange-400 pl-6 italic">"{item.notes}"</div>}
+                            <div key={i} className="group flex justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-3">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-2 text-[13px] font-medium text-capsula-ink">
+                                        <span className="font-mono text-capsula-coral">×{item.quantity}</span>
+                                        <span className="truncate">{item.name}</span>
+                                    </div>
+                                    {item.modifiers.length > 0 && (
+                                        <div className="pl-7 text-[11px] text-capsula-ink-muted">
+                                            {item.modifiers.map(m => m.name).join(', ')}
+                                        </div>
+                                    )}
+                                    {item.notes && (
+                                        <div className="pl-7 text-[11px] italic text-capsula-coral">
+                                            "{item.notes}"
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="text-right">
-                                    <div className="font-black text-sm">${item.lineTotal.toFixed(2)}</div>
-                                    <button onClick={() => removeFromCart(i)} className="text-destructive text-xs hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Borrar</button>
+                                <div className="ml-2 text-right">
+                                    <div className="font-mono text-[13px] font-semibold text-capsula-ink">
+                                        ${item.lineTotal.toFixed(2)}
+                                    </div>
+                                    <button
+                                        onClick={() => removeFromCart(i)}
+                                        className="text-[11px] text-capsula-coral opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+                                    >
+                                        Borrar
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* Footer: total + botones */}
-                    <div className="p-4 bg-card border-t border-border space-y-3">
-                        <div className="flex justify-between text-sm text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
-                            <span>Total estimado</span>
-                            <span className="font-bold text-foreground">${cartSubtotal.toFixed(2)}</span>
+                    <div className="space-y-3 border-t border-capsula-line bg-capsula-ivory-surface p-4">
+                        <div className="flex items-baseline justify-between rounded-[var(--radius)] bg-capsula-ivory px-3 py-2">
+                            <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Total estimado</span>
+                            <span className="font-mono text-[15px] font-semibold text-capsula-ink">${cartSubtotal.toFixed(2)}</span>
                         </div>
-                        <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-xs text-orange-500">
-                            ℹ️ <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
+                        <div className="flex items-start gap-2 rounded-[var(--radius)] border border-capsula-coral/20 bg-capsula-coral-subtle/40 px-3 py-2 text-[11px] text-capsula-coral">
+                            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                            <span>
+                                <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
+                            </span>
                         </div>
                         <button
                             onClick={handleSubmit}
                             disabled={cart.length === 0 || isProcessing}
-                            className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-2xl font-black text-lg shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                            className="w-full rounded-full bg-capsula-coral py-3 text-[14px] font-semibold text-white transition-colors hover:bg-capsula-coral-hover disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isProcessing ? '⏳ REGISTRANDO...' : 'REGISTRAR PEDIDO'}
+                            {isProcessing ? 'REGISTRANDO…' : 'REGISTRAR PEDIDO'}
                         </button>
                         {lastOrder && (
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={handleReprintComanda}
-                                className="w-full py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm transition-all"
+                                className="w-full"
                             >
-                                🖨️ Reimprimir comanda {lastOrder.orderNumber}
-                            </button>
+                                <Printer className="h-4 w-4" strokeWidth={1.5} />
+                                Reimprimir comanda {lastOrder.orderNumber}
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -357,28 +453,55 @@ export default function POSPedidosYAPage() {
 
             {/* Modal modificadores */}
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-card w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-border">
-                        <div className="p-5 border-b border-border flex justify-between">
+                <div className="fixed inset-0 z-[60] flex animate-in fade-in zoom-in items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm duration-200">
+                    <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <div className="flex items-start justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="text-2xl font-black text-foreground">{selectedItemForModifier.name}</h3>
-                                <p className="text-orange-500 font-black text-xl">
-                                    ${getPYAPrice(selectedItemForModifier).toFixed(2)}
-                                    <span className="text-sm text-muted-foreground line-through ml-2">${selectedItemForModifier.price.toFixed(2)}</span>
+                                <h3 className="font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                    {selectedItemForModifier.name}
+                                </h3>
+                                <p className="flex items-baseline gap-2">
+                                    <span className="font-mono text-[20px] font-semibold text-capsula-coral">
+                                        ${getPYAPrice(selectedItemForModifier).toFixed(2)}
+                                    </span>
+                                    <span className="font-mono text-[12px] text-capsula-ink-muted line-through">
+                                        ${selectedItemForModifier.price.toFixed(2)}
+                                    </span>
                                 </p>
                             </div>
-                            <button onClick={() => setShowModifierModal(false)} className="text-4xl leading-none text-muted-foreground hover:text-destructive transition-colors">&times;</button>
+                            <button
+                                onClick={() => setShowModifierModal(false)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                            >
+                                <X className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+                        <div className="flex-1 space-y-3 overflow-y-auto p-5">
                             {selectedItemForModifier.modifierGroups?.map(groupRel => {
                                 const group = groupRel.modifierGroup;
                                 const totalSelected = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                                 return (
-                                    <div key={group.id} className={`p-4 rounded-xl border ${isValid ? 'border-border' : 'border-destructive bg-destructive/5'}`}>
-                                        <div className="flex justify-between mb-2">
-                                            <h4 className="font-bold text-foreground">{group.name}</h4>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isValid ? 'bg-orange-500/10 text-orange-500' : 'bg-destructive/10 text-destructive'}`}>{totalSelected}/{group.maxSelections}</span>
+                                    <div
+                                        key={group.id}
+                                        className={cn(
+                                            'rounded-[var(--radius)] border p-4',
+                                            isValid
+                                                ? 'border-capsula-line bg-capsula-ivory-surface'
+                                                : 'border-capsula-coral/40 bg-capsula-coral-subtle/30',
+                                        )}
+                                    >
+                                        <div className="mb-2 flex justify-between">
+                                            <h4 className="text-[13px] font-medium text-capsula-ink">{group.name}</h4>
+                                            <span className={cn(
+                                                'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                                isValid
+                                                    ? 'bg-capsula-coral-subtle text-capsula-coral'
+                                                    : 'bg-[#F7E3DB] text-[#B04A2E]',
+                                            )}>
+                                                {totalSelected}/{group.maxSelections}
+                                            </span>
                                         </div>
                                         <div className="grid gap-2">
                                             {group.modifiers.filter(m => m.isAvailable).map(mod => {
@@ -386,16 +509,66 @@ export default function POSPedidosYAPage() {
                                                 const qty = existing ? existing.quantity : 0;
                                                 const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                                                 const isRadio = group.maxSelections === 1;
+                                                const selected = qty > 0;
                                                 return (
-                                                    <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${qty > 0 ? 'bg-orange-500/10 border-orange-500/50' : 'bg-secondary/30 border-border'}`}>
-                                                        <span className="text-sm text-foreground">{mod.name}{mod.priceAdjustment !== 0 && <span className="text-xs text-orange-500 ml-1">{mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}</span>}</span>
+                                                    <div
+                                                        key={mod.id}
+                                                        className={cn(
+                                                            'flex items-center justify-between rounded-[var(--radius)] border px-3 py-2 transition-colors',
+                                                            selected
+                                                                ? 'border-capsula-coral/40 bg-capsula-coral-subtle/50'
+                                                                : 'border-capsula-line bg-capsula-ivory',
+                                                        )}
+                                                    >
+                                                        <span className="text-[13px] text-capsula-ink">
+                                                            {mod.name}
+                                                            {mod.priceAdjustment !== 0 && (
+                                                                <span className="ml-1 font-mono text-[11px] text-capsula-coral">
+                                                                    {mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}
+                                                                </span>
+                                                            )}
+                                                        </span>
                                                         {isRadio ? (
-                                                            <button onClick={() => updateModifierQuantity(group, mod, 1)} className={`w-6 h-6 rounded-full border-2 flex justify-center items-center text-xs transition-colors ${qty > 0 ? 'bg-orange-500 border-orange-500 text-white' : 'border-border text-transparent'}`}>✓</button>
+                                                            <button
+                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                className={cn(
+                                                                    'inline-flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors',
+                                                                    selected
+                                                                        ? 'border-capsula-coral bg-capsula-coral text-white'
+                                                                        : 'border-capsula-line text-transparent',
+                                                                )}
+                                                            >
+                                                                <Check className="h-3 w-3" strokeWidth={2} />
+                                                            </button>
                                                         ) : (
-                                                            <div className="flex gap-1 bg-background border border-border p-1 rounded-lg">
-                                                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${qty === 0 ? 'text-muted-foreground/30' : 'text-foreground hover:bg-secondary'}`}>−</button>
-                                                                <span className="font-bold text-orange-500 w-5 text-center text-sm flex items-center justify-center">{qty}</span>
-                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${isMax ? 'text-muted-foreground/30' : 'text-orange-500 hover:bg-orange-500/10'}`}>+</button>
+                                                            <div className="flex gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
+                                                                    disabled={qty === 0}
+                                                                    className={cn(
+                                                                        'inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors',
+                                                                        qty === 0
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-ink hover:bg-capsula-ivory-alt',
+                                                                    )}
+                                                                >
+                                                                    <Minus className="h-3 w-3" strokeWidth={2} />
+                                                                </button>
+                                                                <span className="inline-flex w-5 items-center justify-center font-mono text-[12px] font-semibold text-capsula-coral">
+                                                                    {qty}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                    disabled={isMax}
+                                                                    className={cn(
+                                                                        'inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors',
+                                                                        isMax
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-coral hover:bg-capsula-coral-subtle',
+                                                                    )}
+                                                                >
+                                                                    <Plus className="h-3 w-3" strokeWidth={2} />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -405,25 +578,53 @@ export default function POSPedidosYAPage() {
                                     </div>
                                 );
                             })}
-                            <div className="p-4 rounded-xl border border-border bg-secondary/20">
-                                <label className="text-xs font-bold uppercase text-muted-foreground mb-2 block">Notas</label>
-                                <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 h-16 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="Instrucciones especiales..." />
+
+                            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Notas
+                                </label>
+                                <textarea
+                                    value={itemNotes}
+                                    onChange={e => setItemNotes(e.target.value)}
+                                    className="h-16 w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                    placeholder="Instrucciones especiales…"
+                                />
                             </div>
-                            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/20">
-                                <span className="font-bold text-foreground">Cantidad</span>
-                                <div className="flex bg-background border border-border rounded-xl overflow-hidden">
-                                    <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="w-12 h-10 font-bold text-foreground hover:bg-secondary transition-colors">−</button>
-                                    <span className="w-10 h-10 flex items-center justify-center font-black text-foreground">{itemQuantity}</span>
-                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="w-12 h-10 bg-orange-500 hover:bg-orange-400 font-bold text-white transition-colors">+</button>
+
+                            <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-3">
+                                <span className="text-[13px] font-medium text-capsula-ink">Cantidad</span>
+                                <div className="flex overflow-hidden rounded-full border border-capsula-line bg-capsula-ivory-surface">
+                                    <button
+                                        onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                                        className="inline-flex h-9 w-10 items-center justify-center text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                    >
+                                        <Minus className="h-4 w-4" strokeWidth={2} />
+                                    </button>
+                                    <span className="inline-flex h-9 w-10 items-center justify-center font-mono text-[14px] font-semibold text-capsula-ink">
+                                        {itemQuantity}
+                                    </span>
+                                    <button
+                                        onClick={() => setItemQuantity(itemQuantity + 1)}
+                                        className="inline-flex h-9 w-10 items-center justify-center bg-capsula-coral text-white transition-colors hover:bg-capsula-coral-hover"
+                                    >
+                                        <Plus className="h-4 w-4" strokeWidth={2} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 border-t border-border flex gap-3">
-                            <button onClick={() => setShowModifierModal(false)} className="flex-1 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold transition-colors">Cancelar</button>
+
+                        <div className="flex gap-2 border-t border-capsula-line p-4">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowModifierModal(false)}
+                                className="flex-1"
+                            >
+                                Cancelar
+                            </Button>
                             <button
                                 onClick={confirmAddToCart}
                                 disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
-                                className="flex-[2] py-3 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="flex-[2] rounded-full bg-capsula-coral py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-capsula-coral-hover disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 AGREGAR
                             </button>
