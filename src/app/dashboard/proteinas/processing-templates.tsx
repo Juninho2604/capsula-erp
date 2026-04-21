@@ -9,6 +9,13 @@ import {
     getProteinItemsAction
 } from '@/app/actions/protein-processing.actions';
 import { Combobox } from '@/components/ui/combobox';
+import type { LucideIcon } from 'lucide-react';
+import {
+    Sparkles, Utensils, Package, Settings, ClipboardList, Trash2,
+    Plus, X, Save, Loader2, Link2, TrendingUp, Beef, Lightbulb, Check,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 interface TemplateOutput {
     outputItemId: string;
@@ -36,12 +43,16 @@ interface Template {
     }[];
 }
 
-const STEP_CONFIG: Record<string, { label: string; emoji: string; color: string; bgColor: string; borderColor: string; description: string }> = {
-    'LIMPIEZA': { label: 'Limpieza', emoji: '🧹', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', description: 'Limpiar y separar la proteína cruda' },
-    'MASERADO': { label: 'Maserado', emoji: '🥘', color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', description: 'Agregar condimentos/marinado (peso puede aumentar)' },
-    'DISTRIBUCION': { label: 'Distribución', emoji: '📦', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', description: 'Repartir en productos finales para venta' },
-    'CUSTOM': { label: 'Personalizado', emoji: '⚙️', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', description: 'Paso personalizado' },
+const STEP_CONFIG: Record<string, { label: string; icon: LucideIcon; description: string }> = {
+    'LIMPIEZA':     { label: 'Limpieza',      icon: Sparkles,       description: 'Limpiar y separar la proteína cruda' },
+    'MASERADO':     { label: 'Maserado',      icon: Utensils,       description: 'Agregar condimentos/marinado (peso puede aumentar)' },
+    'DISTRIBUCION': { label: 'Distribución',  icon: Package,        description: 'Repartir en productos finales para venta' },
+    'CUSTOM':       { label: 'Personalizado', icon: Settings,       description: 'Paso personalizado' },
 };
+
+const inputClass =
+    'min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[14px] text-capsula-ink outline-none transition-colors focus:border-capsula-navy-deep';
+const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
 
 export default function ProcessingTemplates() {
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -49,7 +60,6 @@ export default function ProcessingTemplates() {
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
 
-    // Form state
     const [templateName, setTemplateName] = useState('');
     const [templateDescription, setTemplateDescription] = useState('');
     const [sourceItemId, setSourceItemId] = useState('');
@@ -64,7 +74,6 @@ export default function ProcessingTemplates() {
         loadData();
     }, []);
 
-    // Auto-set canGainWeight when step is MASERADO
     useEffect(() => {
         if (processingStep === 'MASERADO') {
             setCanGainWeight(true);
@@ -73,7 +82,6 @@ export default function ProcessingTemplates() {
         }
     }, [processingStep]);
 
-    // Auto-generate name based on source item and step
     useEffect(() => {
         if (sourceItemId && processingStep) {
             const item = items.find(i => i.id === sourceItemId);
@@ -136,7 +144,7 @@ export default function ProcessingTemplates() {
         });
 
         if (res.success) {
-            setMsg({ type: 'success', text: '✅ Plantilla creada exitosamente' });
+            setMsg({ type: 'success', text: 'Plantilla creada exitosamente' });
             setShowCreate(false);
             resetForm();
             loadData();
@@ -166,7 +174,6 @@ export default function ProcessingTemplates() {
         }
     };
 
-    // Agrupar plantillas por source item para visualización de cadena
     const templatesBySource = templates.reduce((acc, t) => {
         const key = t.sourceItem.id;
         if (!acc[key]) {
@@ -180,8 +187,8 @@ export default function ProcessingTemplates() {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-500">Cargando plantillas...</p>
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                    <p className="mt-2 text-[13px] text-capsula-ink-muted">Cargando plantillas…</p>
                 </div>
             </div>
         );
@@ -190,91 +197,101 @@ export default function ProcessingTemplates() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        📋 Plantillas de Procesamiento
+                    <h2 className="flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                        <ClipboardList className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
+                        Plantillas de procesamiento
                     </h2>
-                    <p className="text-sm text-gray-500">
-                        Define los pasos y sub-productos de cada proteína. Puedes crear plantillas por paso (Limpieza → Maserado → Distribución).
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                        Define los pasos y sub-productos de cada proteína. Podés crear plantillas por paso (Limpieza → Maserado → Distribución).
                     </p>
                 </div>
-                <button
+                <Button
+                    variant={showCreate ? 'ghost' : 'primary'}
                     onClick={() => { setShowCreate(!showCreate); if (showCreate) resetForm(); }}
-                    className="min-h-[44px] rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:shadow-md transition-all"
                 >
-                    {showCreate ? '✕ Cancelar' : '+ Nueva Plantilla'}
-                </button>
+                    {showCreate ? <><X className="h-4 w-4" strokeWidth={1.5} /> Cancelar</> : <><Plus className="h-4 w-4" strokeWidth={2} /> Nueva plantilla</>}
+                </Button>
             </div>
 
             {/* Mensaje */}
             {msg && (
                 <div className={cn(
-                    "rounded-lg px-4 py-3 text-sm font-medium",
-                    msg.type === 'success' ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                        "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                    'flex items-center gap-2 rounded-[var(--radius)] border px-4 py-3 text-[13px] font-medium',
+                    msg.type === 'success'
+                        ? 'border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]'
+                        : 'border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]',
                 )}>
+                    {msg.type === 'success'
+                        ? <Check className="h-4 w-4" strokeWidth={1.5} />
+                        : <X className="h-4 w-4" strokeWidth={1.5} />}
                     {msg.text}
                 </div>
             )}
 
-            {/* Formulario de Creación */}
+            {/* Formulario de creación */}
             {showCreate && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-900/50 dark:bg-amber-900/10 space-y-5">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Nueva Plantilla de Procesamiento</h3>
+                <div className="space-y-5 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                    <h3 className="font-heading text-[18px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                        Nueva plantilla de procesamiento
+                    </h3>
 
                     {/* Paso del procesamiento */}
                     <div>
-                        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Paso del Procesamiento *
-                        </label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {Object.entries(STEP_CONFIG).map(([value, config]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    onClick={() => setProcessingStep(value)}
-                                    className={cn(
-                                        'rounded-xl px-4 py-3 text-sm font-medium border-2 transition-all text-left',
-                                        processingStep === value
-                                            ? `${config.bgColor} ${config.borderColor} ${config.color} ring-2 ring-offset-1 ring-opacity-50`
-                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400'
-                                    )}
-                                >
-                                    <div className="text-lg mb-1">{config.emoji}</div>
-                                    <div className="font-semibold">{config.label}</div>
-                                    <div className="text-[10px] opacity-70 mt-0.5 leading-tight">{config.description}</div>
-                                </button>
-                            ))}
+                        <label className={labelClass}>Paso del procesamiento *</label>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {Object.entries(STEP_CONFIG).map(([value, config]) => {
+                                const Icon = config.icon;
+                                const active = processingStep === value;
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setProcessingStep(value)}
+                                        className={cn(
+                                            'rounded-[var(--radius)] border px-3 py-3 text-left transition-colors',
+                                            active
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-soft'
+                                                : 'border-capsula-line bg-capsula-ivory-surface hover:border-capsula-line-strong',
+                                        )}
+                                    >
+                                        <Icon
+                                            className={cn('mb-1 h-4 w-4', active ? 'text-capsula-navy-deep' : 'text-capsula-ink-soft')}
+                                            strokeWidth={1.5}
+                                        />
+                                        <div className={cn('text-[13px] font-medium', active ? 'text-capsula-navy-deep' : 'text-capsula-ink')}>
+                                            {config.label}
+                                        </div>
+                                        <div className="mt-0.5 text-[10.5px] leading-tight text-capsula-ink-muted">
+                                            {config.description}
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {/* Proteína Fuente */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Proteína / Item Fuente *
-                            </label>
+                            <label className={labelClass}>Proteína / Ítem fuente *</label>
                             <Combobox
                                 items={items.map(i => ({ value: i.id, label: i.name }))}
                                 value={sourceItemId}
                                 onChange={setSourceItemId}
-                                placeholder="Seleccionar proteína..."
-                                searchPlaceholder="Buscar proteína..."
+                                placeholder="Seleccionar proteína…"
+                                searchPlaceholder="Buscar proteína…"
                             />
                         </div>
 
-                        {/* Nombre */}
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Nombre de la Plantilla *
-                            </label>
+                            <label className={labelClass}>Nombre de la plantilla *</label>
                             <input
                                 type="text"
                                 value={templateName}
                                 onChange={e => setTemplateName(e.target.value)}
-                                placeholder="Se auto-genera basado en item y paso"
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[44px]"
+                                placeholder="Se auto-genera basado en ítem y paso"
+                                className={inputClass}
                             />
                         </div>
                     </div>
@@ -282,72 +299,65 @@ export default function ProcessingTemplates() {
                     {/* Opciones avanzadas */}
                     <div className="grid gap-4 sm:grid-cols-3">
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Descripción (opcional)
-                            </label>
+                            <label className={labelClass}>Descripción (opcional)</label>
                             <input
                                 type="text"
                                 value={templateDescription}
                                 onChange={e => setTemplateDescription(e.target.value)}
                                 placeholder="Notas sobre esta plantilla"
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[44px]"
+                                className={inputClass}
                             />
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Orden en Cadena
-                            </label>
+                            <label className={labelClass}>Orden en cadena</label>
                             <input
                                 type="number"
                                 min={0}
                                 value={chainOrder}
                                 onChange={e => setChainOrder(parseInt(e.target.value) || 0)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[44px]"
+                                className={inputClass + ' font-mono'}
                             />
-                            <p className="text-[10px] text-gray-400 mt-0.5">0 = primer paso, 1 = segundo, etc.</p>
+                            <p className="mt-1 text-[10.5px] text-capsula-ink-faint">0 = primer paso, 1 = segundo, etc.</p>
                         </div>
-                        <div className="flex items-center gap-3 pt-5">
-                            <label className="relative inline-flex items-center cursor-pointer">
+                        <div className="flex items-center gap-3 pt-6">
+                            <label className="relative inline-flex cursor-pointer items-center">
                                 <input
                                     type="checkbox"
                                     checked={canGainWeight}
                                     onChange={e => setCanGainWeight(e.target.checked)}
-                                    className="sr-only peer"
+                                    className="peer sr-only"
                                 />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 dark:bg-gray-700"></div>
+                                <div className="peer h-6 w-11 rounded-full bg-capsula-line after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-capsula-line-strong after:bg-white after:transition-all after:content-[''] peer-checked:bg-capsula-navy-deep peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
                             </label>
                             <div>
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">¿Peso puede aumentar?</span>
-                                <p className="text-[10px] text-gray-400">Ej: maserado agrega condimentos</p>
+                                <span className="text-[13px] font-medium text-capsula-ink">¿Peso puede aumentar?</span>
+                                <p className="text-[10.5px] text-capsula-ink-muted">Ej: maserado agrega condimentos</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Sub-productos permitidos */}
+                    {/* Sub-productos */}
                     <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Sub-Productos / Salidas de este Paso *
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                Sub-productos / salidas de este paso *
                             </label>
-                            <button
-                                onClick={addOutput}
-                                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400 min-h-[36px]"
-                            >
-                                + Agregar Sub-Producto
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={addOutput}>
+                                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar sub-producto
+                            </Button>
                         </div>
 
                         {outputs.length === 0 ? (
-                            <div className="rounded-lg border-2 border-dashed border-gray-300 py-6 text-center dark:border-gray-600">
-                                <p className="text-sm text-gray-500">
+                            <div className="rounded-[var(--radius)] border border-dashed border-capsula-line bg-capsula-ivory py-6 text-center">
+                                <p className="text-[13px] text-capsula-ink-muted">
                                     Agrega los cortes/sub-productos que se obtienen en este paso
                                 </p>
                             </div>
                         ) : (
                             <div className="space-y-2">
                                 {outputs.map((output, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 rounded-lg bg-white p-3 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                        <div className="flex-1">
+                                    <div key={idx} className="flex flex-wrap items-center gap-3 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3">
+                                        <div className="min-w-[220px] flex-1">
                                             <Combobox
                                                 items={items.map(i => ({ value: i.id, label: i.name }))}
                                                 value={output.outputItemId}
@@ -355,8 +365,8 @@ export default function ProcessingTemplates() {
                                                     const itemFound = items.find(i => i.id === val);
                                                     updateOutput(idx, { outputItemId: val, outputItemName: itemFound?.name || '' });
                                                 }}
-                                                placeholder="Seleccionar sub-producto..."
-                                                searchPlaceholder="Buscar..."
+                                                placeholder="Seleccionar sub-producto…"
+                                                searchPlaceholder="Buscar…"
                                             />
                                         </div>
                                         <div className="w-24">
@@ -368,141 +378,127 @@ export default function ProcessingTemplates() {
                                                 value={output.expectedWeight ?? ''}
                                                 onChange={e => updateOutput(idx, { expectedWeight: parseFloat(e.target.value) || undefined })}
                                                 placeholder="Peso kg"
-                                                className="w-full rounded border border-gray-200 px-2 py-2 text-center text-sm dark:border-gray-600 dark:bg-gray-700 min-h-[40px]"
+                                                className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-2 py-2 text-center font-mono text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                             />
                                         </div>
-                                        {/* Toggle intermedio */}
                                         <div className="flex items-center gap-1.5" title="¿Es producto intermedio? (pasa al siguiente paso)">
-                                            <label className="relative inline-flex items-center cursor-pointer">
+                                            <label className="relative inline-flex cursor-pointer items-center">
                                                 <input
                                                     type="checkbox"
                                                     checked={output.isIntermediate || false}
                                                     onChange={e => updateOutput(idx, { isIntermediate: e.target.checked })}
-                                                    className="sr-only peer"
+                                                    className="peer sr-only"
                                                 />
-                                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 dark:bg-gray-700"></div>
+                                                <div className="peer h-5 w-9 rounded-full bg-capsula-line after:absolute after:start-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-capsula-line-strong after:bg-white after:transition-all after:content-[''] peer-checked:bg-capsula-coral peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
                                             </label>
-                                            <span className="text-[10px] text-gray-500 leading-tight w-12">
-                                                {output.isIntermediate ? '🔗 Inter.' : 'Final'}
+                                            <span className="inline-flex w-14 items-center gap-0.5 text-[10.5px] leading-tight text-capsula-ink-muted">
+                                                {output.isIntermediate ? <><Link2 className="h-3 w-3" strokeWidth={1.5} /> Inter.</> : 'Final'}
                                             </span>
                                         </div>
                                         <button
                                             onClick={() => removeOutput(idx)}
-                                            className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 min-h-[44px] min-w-[44px]"
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                                         >
-                                            🗑️
+                                            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
                         )}
-                        <p className="text-[10px] text-gray-400 mt-2">
-                            💡 Marca como &quot;Intermedio&quot; los productos que serán input del siguiente paso (ej: Lomito Limpio → Maserado).
-                            Los productos finales se agregan directamente al inventario.
+                        <p className="mt-2 flex items-start gap-1.5 text-[10.5px] text-capsula-ink-muted">
+                            <Lightbulb className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
+                            Marcá como &quot;Intermedio&quot; los productos que serán input del siguiente paso (ej: Lomito Limpio → Maserado). Los productos finales se agregan directamente al inventario.
                         </p>
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex justify-end border-t border-amber-200 pt-4 dark:border-amber-800">
-                        <button
+                    <div className="flex justify-end border-t border-capsula-line pt-4">
+                        <Button
+                            variant="primary"
                             onClick={handleCreate}
                             disabled={isSubmitting}
-                            className="min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-2.5 font-medium text-white shadow-sm hover:shadow-md disabled:opacity-50 transition-all"
+                            isLoading={isSubmitting}
                         >
-                            {isSubmitting ? '⏳ Guardando...' : '💾 Crear Plantilla'}
-                        </button>
+                            <Save className="h-4 w-4" strokeWidth={1.5} />
+                            {isSubmitting ? 'Guardando…' : 'Crear plantilla'}
+                        </Button>
                     </div>
                 </div>
             )}
 
-            {/* Lista de Plantillas - Agrupadas por Proteína */}
+            {/* Lista de plantillas */}
             {templates.length === 0 && !showCreate ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-300 py-12 text-center dark:border-gray-600">
-                    <span className="text-5xl">📋</span>
-                    <p className="mt-3 text-gray-500">No hay plantillas de procesamiento definidas.</p>
-                    <p className="text-sm text-gray-400">Crea una para estandarizar el procesamiento de proteínas.</p>
+                <div className="rounded-[var(--radius)] border border-dashed border-capsula-line bg-capsula-ivory-surface py-12 text-center">
+                    <ClipboardList className="mx-auto h-8 w-8 text-capsula-ink-faint" strokeWidth={1.5} />
+                    <p className="mt-3 text-[14px] font-medium text-capsula-ink">No hay plantillas de procesamiento definidas.</p>
+                    <p className="text-[13px] text-capsula-ink-muted">Crea una para estandarizar el procesamiento de proteínas.</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                     {Object.entries(templatesBySource).map(([sourceId, group]) => (
-                        <div key={sourceId} className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-                            {/* Header del grupo */}
-                            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
-                                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    🥩 {group.sourceItem.name}
-                                    <span className="text-xs font-normal text-gray-500">
-                                        ({group.templates.length} {group.templates.length === 1 ? 'paso' : 'pasos'})
-                                    </span>
-                                </h3>
+                        <div key={sourceId} className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                            <div className="flex items-center gap-2 border-b border-capsula-line bg-capsula-ivory px-5 py-3">
+                                <Beef className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                                <h3 className="font-medium text-capsula-ink">{group.sourceItem.name}</h3>
+                                <span className="text-[11px] text-capsula-ink-muted">
+                                    ({group.templates.length} {group.templates.length === 1 ? 'paso' : 'pasos'})
+                                </span>
                             </div>
 
-                            {/* Cadena de pasos como timeline */}
                             <div className="p-5">
                                 <div className="relative">
-                                    {/* Línea de conexión */}
                                     {group.templates.length > 1 && (
-                                        <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-300 via-purple-300 to-green-300 dark:from-blue-700 dark:via-purple-700 dark:to-green-700"></div>
+                                        <div className="absolute bottom-8 left-6 top-8 w-px bg-capsula-line-strong"></div>
                                     )}
 
                                     <div className="space-y-4">
                                         {group.templates
                                             .sort((a, b) => a.chainOrder - b.chainOrder)
-                                            .map((template, tIdx) => {
+                                            .map((template) => {
                                                 const stepConfig = STEP_CONFIG[template.processingStep] || STEP_CONFIG['CUSTOM'];
+                                                const StepIcon = stepConfig.icon;
                                                 return (
-                                                    <div key={template.id} className="relative flex gap-4">
-                                                        {/* Step indicator */}
-                                                        <div className={cn(
-                                                            'relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border-2 text-lg flex-shrink-0',
-                                                            stepConfig.bgColor, stepConfig.borderColor
-                                                        )}>
-                                                            {stepConfig.emoji}
+                                                    <div key={template.id} className="group relative flex gap-4">
+                                                        <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory">
+                                                            <StepIcon className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
                                                         </div>
 
-                                                        {/* Content */}
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-start justify-between mb-2">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="mb-2 flex items-start justify-between gap-2">
                                                                 <div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <h4 className={cn('font-semibold text-sm', stepConfig.color)}>
-                                                                            {stepConfig.label}
-                                                                        </h4>
-                                                                        <span className="text-xs text-gray-400">Paso {template.chainOrder + 1}</span>
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <h4 className="text-[14px] font-medium text-capsula-ink">{stepConfig.label}</h4>
+                                                                        <span className="text-[11px] text-capsula-ink-muted">Paso {template.chainOrder + 1}</span>
                                                                         {template.canGainWeight && (
-                                                                            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                                                                ⬆️ Peso puede aumentar
-                                                                            </span>
+                                                                            <Badge variant="coral">
+                                                                                <TrendingUp className="h-3 w-3" strokeWidth={1.5} />
+                                                                                Peso puede aumentar
+                                                                            </Badge>
                                                                         )}
                                                                     </div>
-                                                                    <p className="text-xs text-gray-500">{template.name}</p>
+                                                                    <p className="text-[12px] text-capsula-ink-muted">{template.name}</p>
                                                                 </div>
                                                                 <button
                                                                     onClick={() => handleDelete(template.id)}
-                                                                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all dark:hover:bg-red-900/20"
+                                                                    className="rounded-md p-1.5 text-capsula-ink-muted opacity-0 transition-all hover:bg-capsula-coral-subtle hover:text-capsula-coral group-hover:opacity-100"
                                                                     title="Eliminar"
                                                                 >
-                                                                    🗑️
+                                                                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                                                 </button>
                                                             </div>
 
-                                                            {/* Outputs */}
                                                             <div className="flex flex-wrap gap-1.5">
                                                                 {template.allowedOutputs.map(out => (
-                                                                    <span
+                                                                    <Badge
                                                                         key={out.id}
-                                                                        className={cn(
-                                                                            'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium',
-                                                                            out.isIntermediate
-                                                                                ? 'bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-900/20 dark:text-orange-400'
-                                                                                : 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-700/50 dark:text-gray-300'
-                                                                        )}
+                                                                        variant={out.isIntermediate ? 'coral' : 'neutral'}
                                                                     >
-                                                                        {out.isIntermediate && '🔗 '}
+                                                                        {out.isIntermediate && <Link2 className="h-3 w-3" strokeWidth={1.5} />}
                                                                         {out.outputItem.name}
                                                                         {out.expectedWeight && (
-                                                                            <span className="font-mono text-[10px] opacity-60">~{out.expectedWeight}kg</span>
+                                                                            <span className="font-mono text-[10px] opacity-70">~{out.expectedWeight}kg</span>
                                                                         )}
-                                                                    </span>
+                                                                    </Badge>
                                                                 ))}
                                                             </div>
                                                         </div>
