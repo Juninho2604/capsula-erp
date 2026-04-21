@@ -5,9 +5,16 @@ import { useAuthStore } from '@/stores/auth.store';
 import { createRequisition, dispatchRequisition, approveRequisition, rejectRequisition, receiveRequisition, completeRequisition } from '@/app/actions/requisition.actions';
 import { formatNumber, cn } from '@/lib/utils';
 import { UserRole } from '@/types';
-import { Trash2 } from 'lucide-react';
+import {
+    Trash2, FileEdit, Clock, History, Inbox, Plus, Send, Package,
+    CheckCircle2, XCircle, ClipboardCheck, ChevronRight, FileDown,
+    User, Calendar, Truck,
+} from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { QuickCreateItemDialog } from '@/components/ui/quick-create-item-dialog';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 // Tipos locales para props
 interface Item {
@@ -66,7 +73,7 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove, onRequest
     const comboboxItems = itemsList.map(i => ({ value: i.id, label: i.name }));
 
     return (
-        <tr>
+        <tr className="border-b border-capsula-line last:border-b-0">
             <td className="p-2">
                 <Combobox
                     items={comboboxItems}
@@ -81,8 +88,8 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove, onRequest
                             });
                         }
                     }}
-                    placeholder="Seleccionar Item..."
-                    searchPlaceholder="Buscar item..."
+                    placeholder="Seleccionar ítem…"
+                    searchPlaceholder="Buscar ítem…"
                     className="w-full justify-between"
                     allowCreate={true}
                     onCreateNew={(term) => onRequestCreate(term, index)}
@@ -99,19 +106,19 @@ function TransferItemRow({ index, item, itemsList, onUpdate, onRemove, onRequest
                         onUpdate(index, { quantity: isNaN(val) ? 0 : val });
                     }}
                     placeholder="0"
-                    className="w-full rounded border border-gray-200 px-3 py-2 text-center focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 min-h-[44px]"
+                    className="min-h-[40px] w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-center font-mono text-[13px] text-capsula-ink outline-none transition-colors focus:border-capsula-navy-deep"
                 />
             </td>
-            <td className="p-2 text-center text-gray-500 font-mono text-xs">
+            <td className="p-2 text-center font-mono text-[11px] text-capsula-ink-muted">
                 {item.unit}
             </td>
             <td className="p-2 text-center">
                 <button
                     onClick={() => onRemove(index)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                     title="Eliminar fila"
                 >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                 </button>
             </td>
         </tr>
@@ -315,106 +322,115 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
     // Asumimos que cualquiera puede pedir, pero aprobar/rechazar requiere rol > CHEF
     // Por ahora mostramos botones a todos, el backend valida si acaso.
 
+    const tabConfig: { id: 'NEW' | 'PENDING' | 'HISTORY'; label: string; icon: typeof FileEdit; count?: number }[] = [
+        { id: 'NEW', label: 'Nueva solicitud', icon: FileEdit },
+        { id: 'PENDING', label: 'En proceso', icon: Clock, count: activeReqs.length },
+        { id: 'HISTORY', label: 'Historial', icon: History },
+    ];
+
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            {/* TABS HEADER - CAPSULA STYLE */}
-            <div className="flex p-1.5 bg-secondary/30 backdrop-blur-xl rounded-2xl border border-border w-fit shadow-inner">
-                <button
-                    onClick={() => setActiveTab('NEW')}
-                    className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl",
-                        activeTab === 'NEW'
-                            ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    📝 Nueva Solicitud
-                </button>
-                <button
-                    onClick={() => setActiveTab('PENDING')}
-                    className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl flex items-center gap-2",
-                        activeTab === 'PENDING'
-                            ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    ⏳ En Proceso <span className="bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full text-[10px]">{activeReqs.length}</span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('HISTORY')}
-                    className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl",
-                        activeTab === 'HISTORY'
-                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    📜 Historial
-                </button>
+        <div className="mx-auto max-w-[1400px] animate-in">
+            <PageHeader
+                kicker="Inventario"
+                title="Transferencias"
+                description="Mueve stock entre áreas con trazabilidad de requisición, despacho y recepción."
+            />
+
+            {/* TABS */}
+            <div className="mb-6 inline-flex rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                {tabConfig.map(tab => {
+                    const Icon = tab.icon;
+                    const active = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                                'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-medium transition-colors',
+                                active
+                                    ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                    : 'text-capsula-ink-muted hover:text-capsula-ink'
+                            )}
+                        >
+                            <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            {tab.label}
+                            {tab.count !== undefined && tab.count > 0 && (
+                                <span className={cn(
+                                    'ml-1 inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold',
+                                    active
+                                        ? 'bg-capsula-ivory/20 text-capsula-ivory'
+                                        : 'bg-capsula-coral-subtle text-capsula-coral'
+                                )}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* CONTENIDO */}
             <div className="min-h-[500px]">
                 {/* 1. NUEVA SOLICITUD */}
                 {activeTab === 'NEW' && (
-                    <div className="capsula-card p-8 border-primary/5 shadow-2xl animate-in slide-in-from-bottom-4 duration-500">
-                        <div className="mb-10 flex items-center justify-between">
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft sm:p-8">
+                        <div className="mb-8 flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="text-2xl font-black uppercase tracking-tighter italic text-primary">Nueva Requisición</h3>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Gestión de Transferencias CAPSULA</p>
+                                <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Gestión</div>
+                                <h3 className="font-heading text-[24px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                    Nueva requisición
+                                </h3>
+                                <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                                    Solicita insumos desde un área origen hacia un área destino.
+                                </p>
                             </div>
-                            <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl">📥</div>
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory">
+                                <Inbox className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
+                            </div>
                         </div>
 
-                        <div className="mb-10 grid gap-8 sm:grid-cols-2">
-                            {/* Origen */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
-                                    Punto de Origen
+                        <div className="mb-8 grid gap-5 sm:grid-cols-2">
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Punto de origen
                                 </label>
-                                <div className="glass-panel p-1 rounded-2xl border-primary/5 focus-within:border-primary/30 transition-all">
-                                    <Combobox
-                                        items={areasList.map(a => ({ value: a.id, label: a.name }))}
-                                        value={sourceAreaId}
-                                        onChange={setSourceAreaId}
-                                        placeholder="Seleccionar origen..."
-                                        searchPlaceholder="Buscar área..."
-                                        className="border-none focus:ring-0"
-                                    />
-                                </div>
+                                <Combobox
+                                    items={areasList.map(a => ({ value: a.id, label: a.name }))}
+                                    value={sourceAreaId}
+                                    onChange={setSourceAreaId}
+                                    placeholder="Seleccionar origen…"
+                                    searchPlaceholder="Buscar área…"
+                                    className="w-full justify-between"
+                                />
                             </div>
 
-                            {/* Destino */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
-                                    Punto de Destino
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Punto de destino
                                 </label>
-                                <div className="glass-panel p-1 rounded-2xl border-primary/5 focus-within:border-primary/30 transition-all">
-                                    <Combobox
-                                        items={areasList.map(a => ({ value: a.id, label: a.name }))}
-                                        value={targetAreaId}
-                                        onChange={setTargetAreaId}
-                                        placeholder="Seleccionar área destino..."
-                                        searchPlaceholder="Buscar área..."
-                                        className="border-none focus:ring-0"
-                                    />
-                                </div>
+                                <Combobox
+                                    items={areasList.map(a => ({ value: a.id, label: a.name }))}
+                                    value={targetAreaId}
+                                    onChange={setTargetAreaId}
+                                    placeholder="Seleccionar destino…"
+                                    searchPlaceholder="Buscar área…"
+                                    className="w-full justify-between"
+                                />
                             </div>
                         </div>
 
                         {/* Tabla de Items */}
-                        <div className="mb-10 overflow-hidden rounded-[2rem] border border-border shadow-inner bg-card">
-                            <table className="w-full text-sm">
-                                <thead className="bg-secondary/30 text-left">
-                                    <tr>
-                                        <th className="px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground">Insumo</th>
-                                        <th className="w-32 px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground text-center">Cantidad</th>
-                                        <th className="w-24 px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground text-center">Unidad</th>
-                                        <th className="w-16 px-6 py-4"></th>
+                        <div className="mb-6 overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
+                            <table className="w-full border-collapse text-[13px]">
+                                <thead>
+                                    <tr className="border-b border-capsula-line bg-capsula-ivory">
+                                        <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Insumo</th>
+                                        <th className="w-32 px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Cantidad</th>
+                                        <th className="w-24 px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Unidad</th>
+                                        <th className="w-12 px-5 py-3"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border">
+                                <tbody>
                                     {requestItems.map((item, index) => (
                                         <TransferItemRow
                                             key={index}
@@ -446,27 +462,38 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
 
                             <button
                                 onClick={() => setRequestItems([...requestItems, { id: '', name: '', quantity: 0, unit: '-' }])}
-                                className="flex w-full items-center justify-center gap-2 bg-secondary/10 py-5 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all active:scale-[0.99]"
+                                className="flex w-full items-center justify-center gap-2 border-t border-capsula-line bg-capsula-ivory py-3 text-[12px] font-medium text-capsula-navy transition-colors hover:bg-capsula-ivory-alt"
                             >
-                                <span className="text-xl font-black">+</span> Agregar otra fila
+                                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar otra fila
                             </button>
                         </div>
 
                         {/* Acciones */}
-                        <div className="flex flex-col items-end gap-6 pt-6 border-t border-border">
+                        <div className="flex flex-col items-end gap-4 border-t border-capsula-line pt-6">
                             {msg && (
-                                <div className={cn("rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-widest animate-in slide-in-from-right-4", msg.type === 'success' ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-red-500/10 text-red-600 border border-red-500/20")}>
+                                <div className={cn(
+                                    'inline-flex items-center gap-2 rounded-[var(--radius)] border px-4 py-2 text-[13px] font-medium',
+                                    msg.type === 'success'
+                                        ? 'border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]'
+                                        : 'border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]',
+                                )}>
+                                    {msg.type === 'success'
+                                        ? <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
+                                        : <XCircle className="h-4 w-4" strokeWidth={1.5} />}
                                     {msg.text}
                                 </div>
                             )}
 
-                            <button
+                            <Button
                                 onClick={handleCreateRequisition}
                                 disabled={isSubmitting || requestItems.filter(i => i.id && i.quantity > 0).length === 0 || !targetAreaId}
-                                className="capsula-btn capsula-btn-primary px-12 py-5 text-sm shadow-xl shadow-primary/20"
+                                isLoading={isSubmitting}
+                                variant="primary"
+                                size="lg"
                             >
-                                {isSubmitting ? 'PROCESANDO...' : '📨 ENVIAR REQUISICIÓN'}
-                            </button>
+                                <Send className="h-4 w-4" strokeWidth={1.5} />
+                                {isSubmitting ? 'Procesando…' : 'Enviar requisición'}
+                            </Button>
                         </div>
                     </div>
                 )}
