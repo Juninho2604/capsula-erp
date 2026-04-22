@@ -435,28 +435,53 @@ export default function POSPedidosYAPage() {
 
             {/* Modal modificadores */}
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-card w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh] shadow-2xl border border-border">
-                        <div className="p-5 border-b border-border flex justify-between">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+                    <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
+                        <div className="flex justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="text-2xl font-black text-foreground">{selectedItemForModifier.name}</h3>
-                                <p className="text-orange-500 font-black text-xl">
+                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-navy-deep">
+                                    {selectedItemForModifier.name}
+                                </h3>
+                                <p className="font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-coral">
                                     ${getPYAPrice(selectedItemForModifier).toFixed(2)}
-                                    <span className="text-sm text-muted-foreground line-through ml-2">${selectedItemForModifier.price.toFixed(2)}</span>
+                                    <span className="ml-2 text-sm tabular-nums text-capsula-ink-muted line-through">
+                                        ${selectedItemForModifier.price.toFixed(2)}
+                                    </span>
                                 </p>
                             </div>
-                            <button onClick={() => setShowModifierModal(false)} className="text-4xl leading-none text-muted-foreground hover:text-destructive transition-colors">&times;</button>
+                            <button
+                                onClick={() => setShowModifierModal(false)}
+                                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                aria-label="Cerrar modal"
+                            >
+                                <XIcon className="h-5 w-5" />
+                            </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                        <div className="flex-1 space-y-4 overflow-y-auto p-5">
                             {selectedItemForModifier.modifierGroups?.map(groupRel => {
                                 const group = groupRel.modifierGroup;
                                 const totalSelected = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                                 return (
-                                    <div key={group.id} className={`p-4 rounded-xl border ${isValid ? 'border-border' : 'border-destructive bg-destructive/5'}`}>
-                                        <div className="flex justify-between mb-2">
-                                            <h4 className="font-bold text-foreground">{group.name}</h4>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isValid ? 'bg-orange-500/10 text-orange-500' : 'bg-destructive/10 text-destructive'}`}>{totalSelected}/{group.maxSelections}</span>
+                                    <div
+                                        key={group.id}
+                                        className={`rounded-xl border p-4 ${
+                                            isValid
+                                                ? 'border-capsula-line bg-capsula-ivory-surface'
+                                                : 'border-[#EFD2C8] bg-[#F7E3DB]/40'
+                                        }`}
+                                    >
+                                        <div className="mb-2 flex justify-between">
+                                            <h4 className="font-medium text-capsula-ink">{group.name}</h4>
+                                            <span
+                                                className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
+                                                    isValid
+                                                        ? 'border border-capsula-navy/10 bg-capsula-navy-soft text-capsula-navy'
+                                                        : 'border border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]'
+                                                }`}
+                                            >
+                                                {totalSelected}/{group.maxSelections}
+                                            </span>
                                         </div>
                                         <div className="grid gap-2">
                                             {group.modifiers.filter(m => m.isAvailable).map(mod => {
@@ -465,15 +490,61 @@ export default function POSPedidosYAPage() {
                                                 const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                                                 const isRadio = group.maxSelections === 1;
                                                 return (
-                                                    <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${qty > 0 ? 'bg-orange-500/10 border-orange-500/50' : 'bg-secondary/30 border-border'}`}>
-                                                        <span className="text-sm text-foreground">{mod.name}{mod.priceAdjustment !== 0 && <span className="text-xs text-orange-500 ml-1">{mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}</span>}</span>
+                                                    <div
+                                                        key={mod.id}
+                                                        className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
+                                                            qty > 0
+                                                                ? 'border-capsula-navy-deep bg-capsula-navy-soft'
+                                                                : 'border-capsula-line bg-capsula-ivory'
+                                                        }`}
+                                                    >
+                                                        <span className="text-sm text-capsula-ink">
+                                                            {mod.name}
+                                                            {mod.priceAdjustment !== 0 && (
+                                                                <span className="ml-1 text-xs tabular-nums text-capsula-coral">
+                                                                    {mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}
+                                                                </span>
+                                                            )}
+                                                        </span>
                                                         {isRadio ? (
-                                                            <button onClick={() => updateModifierQuantity(group, mod, 1)} className={`w-6 h-6 rounded-full border-2 flex justify-center items-center text-xs transition-colors ${qty > 0 ? 'bg-orange-500 border-orange-500 text-white' : 'border-border text-transparent'}`}>✓</button>
+                                                            <button
+                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs transition-colors ${
+                                                                    qty > 0
+                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                                        : 'border-capsula-line text-transparent'
+                                                                }`}
+                                                                aria-label="Seleccionar"
+                                                            >
+                                                                ✓
+                                                            </button>
                                                         ) : (
-                                                            <div className="flex gap-1 bg-background border border-border p-1 rounded-lg">
-                                                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${qty === 0 ? 'text-muted-foreground/30' : 'text-foreground hover:bg-secondary'}`}>−</button>
-                                                                <span className="font-bold text-orange-500 w-5 text-center text-sm flex items-center justify-center">{qty}</span>
-                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`w-7 h-7 rounded-lg font-bold text-base transition-colors ${isMax ? 'text-muted-foreground/30' : 'text-orange-500 hover:bg-orange-500/10'}`}>+</button>
+                                                            <div className="flex gap-1 rounded-lg border border-capsula-line bg-capsula-ivory p-1">
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
+                                                                    disabled={qty === 0}
+                                                                    className={`h-7 w-7 rounded-lg text-base font-medium transition-colors ${
+                                                                        qty === 0
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-ink hover:bg-capsula-ivory-alt'
+                                                                    }`}
+                                                                >
+                                                                    −
+                                                                </button>
+                                                                <span className="flex w-5 items-center justify-center text-sm font-medium tabular-nums text-capsula-navy-deep">
+                                                                    {qty}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                    disabled={isMax}
+                                                                    className={`h-7 w-7 rounded-lg text-base font-medium transition-colors ${
+                                                                        isMax
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-navy-deep hover:bg-capsula-navy-soft'
+                                                                    }`}
+                                                                >
+                                                                    +
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -483,27 +554,49 @@ export default function POSPedidosYAPage() {
                                     </div>
                                 );
                             })}
-                            <div className="p-4 rounded-xl border border-border bg-secondary/20">
-                                <label className="text-xs font-bold uppercase text-muted-foreground mb-2 block">Notas</label>
-                                <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 h-16 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="Instrucciones especiales..." />
+                            <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-4">
+                                <label className="pos-label">Notas</label>
+                                <textarea
+                                    value={itemNotes}
+                                    onChange={e => setItemNotes(e.target.value)}
+                                    className="h-16 w-full resize-none rounded-xl border border-capsula-line bg-capsula-ivory p-3 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                                    placeholder="Instrucciones especiales…"
+                                />
                             </div>
-                            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/20">
-                                <span className="font-bold text-foreground">Cantidad</span>
-                                <div className="flex bg-background border border-border rounded-xl overflow-hidden">
-                                    <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="w-12 h-10 font-bold text-foreground hover:bg-secondary transition-colors">−</button>
-                                    <span className="w-10 h-10 flex items-center justify-center font-black text-foreground">{itemQuantity}</span>
-                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="w-12 h-10 bg-orange-500 hover:bg-orange-400 font-bold text-white transition-colors">+</button>
+                            <div className="flex items-center justify-between rounded-xl border border-capsula-line bg-capsula-ivory-alt p-4">
+                                <span className="font-medium text-capsula-ink">Cantidad</span>
+                                <div className="flex overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory">
+                                    <button
+                                        onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                                        className="h-10 w-12 font-medium text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                    >
+                                        −
+                                    </button>
+                                    <span className="flex h-10 w-10 items-center justify-center font-medium tabular-nums text-capsula-navy-deep">
+                                        {itemQuantity}
+                                    </span>
+                                    <button
+                                        onClick={() => setItemQuantity(itemQuantity + 1)}
+                                        className="h-10 w-12 bg-capsula-navy-deep font-medium text-capsula-ivory transition-colors hover:bg-capsula-navy"
+                                    >
+                                        +
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 border-t border-border flex gap-3">
-                            <button onClick={() => setShowModifierModal(false)} className="flex-1 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold transition-colors">Cancelar</button>
+                        <div className="flex gap-3 border-t border-capsula-line p-4">
+                            <button
+                                onClick={() => setShowModifierModal(false)}
+                                className="pos-btn pos-btn-secondary flex-1 !min-h-0 py-3 text-sm"
+                            >
+                                Cancelar
+                            </button>
                             <button
                                 onClick={confirmAddToCart}
                                 disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
-                                className="flex-[2] py-3 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="pos-btn flex-[2] !min-h-0 py-3 text-sm tracking-[0.04em] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                AGREGAR
+                                Agregar al pedido
                             </button>
                         </div>
                     </div>
