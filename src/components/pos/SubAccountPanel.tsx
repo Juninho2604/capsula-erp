@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check } from 'lucide-react';
+import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -577,7 +577,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
     if (isLoading) {
         return (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center text-sm text-capsula-ink-muted">
                 Cargando subcuentas…
             </div>
         );
@@ -589,30 +589,39 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const paidSubs = tab.subAccounts.filter((s) => s.status === 'PAID');
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
             {/* ── Header ──────────────────────────────────────────────────── */}
-            <div className="px-3 py-2.5 border-b border-border bg-card/80 shrink-0 space-y-2">
+            <div className="shrink-0 space-y-2 border-b border-capsula-line bg-capsula-ivory-alt px-3 py-2.5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-foreground">÷ Subcuentas</span>
-                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-capsula-ink">
+                            <SplitSquareHorizontal className="h-4 w-4 text-capsula-ink-muted" />
+                            Subcuentas
+                        </span>
+                        <span className="rounded-full border border-capsula-navy/10 bg-capsula-navy-soft px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-capsula-navy">
                             {tab.subAccounts.length}/25
                         </span>
                     </div>
-                    <button onClick={onClose}
-                        className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-secondary">
-                        ← Volver
+                    <button
+                        onClick={onClose}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-surface hover:text-capsula-ink"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Volver
                     </button>
                 </div>
 
                 {/* Quick split */}
                 <div className="space-y-1">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">División rápida</div>
+                    <div className="pos-label">División rápida</div>
                     <div className="flex gap-1">
                         {[2, 3, 4, 5, 6].map((n) => (
-                            <button key={n} disabled={isProcessing}
+                            <button
+                                key={n}
+                                disabled={isProcessing}
                                 onClick={() => handleAutoSplit(n)}
-                                className="flex-1 py-2 bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-xs font-black rounded-xl transition disabled:opacity-40">
+                                className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium tabular-nums text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-navy-deep disabled:opacity-40"
+                            >
                                 {n}
                             </button>
                         ))}
@@ -626,23 +635,24 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onChange={(e) => setNewLabel(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleCreateSub()}
                         placeholder={`Cuenta ${tab.subAccounts.length + 1}`}
-                        className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs focus:border-amber-500 focus:outline-none"
+                        className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2 text-xs text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                     />
                     <button
                         disabled={isProcessing || tab.subAccounts.length >= 25}
                         onClick={handleCreateSub}
-                        className="px-3 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-xs font-black rounded-xl transition"
+                        className="pos-btn !min-h-0 px-3 py-2 text-xs disabled:opacity-40"
                     >
-                        + Nueva
+                        <Plus className="h-3.5 w-3.5" />
+                        Nueva
                     </button>
                 </div>
             </div>
 
             {/* ── Content ─────────────────────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto p-3">
                 {/* Open subcuentas */}
                 {openSubs.length === 0 && paidSubs.length === 0 && (
-                    <div className="text-xs text-muted-foreground text-center py-6">
+                    <div className="py-6 text-center text-xs text-capsula-ink-muted">
                         Crea subcuentas o usa División rápida
                     </div>
                 )}
@@ -663,11 +673,11 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 {poolItems.length > 0 && (
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                            <div className="h-px flex-1 bg-border/50" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">
+                            <div className="h-px flex-1 bg-capsula-line" />
+                            <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                                 Pool sin asignar ({poolItems.length})
                             </span>
-                            <div className="h-px flex-1 bg-border/50" />
+                            <div className="h-px flex-1 bg-capsula-line" />
                         </div>
                         {poolItems.map((item) => (
                             <PoolItemRow
@@ -679,7 +689,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                                 onUnassign={handleUnassign}
                             />
                         ))}
-                        <div className="text-[10px] text-muted-foreground text-center">
+                        <div className="text-center text-[11px] text-capsula-ink-muted">
                             Los ítems del pool se cobran con el botón principal de la mesa
                         </div>
                     </div>
@@ -687,14 +697,14 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
                 {/* Summary row */}
                 {tab.subAccounts.length > 0 && (
-                    <div className="rounded-xl bg-secondary/50 border border-border/50 px-3 py-2 text-[10px] space-y-0.5">
-                        <div className="flex justify-between text-muted-foreground">
+                    <div className="space-y-0.5 rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-[11px] tabular-nums">
+                        <div className="flex justify-between text-capsula-ink-muted">
                             <span>Subcuentas cobradas</span>
                             <span>{paidSubs.length} / {tab.subAccounts.length}</span>
                         </div>
-                        <div className="flex justify-between font-black text-foreground">
+                        <div className="flex justify-between font-medium text-capsula-ink">
                             <span>Saldo restante mesa</span>
-                            <span className="text-amber-400">${tab.balanceDue.toFixed(2)}</span>
+                            <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${tab.balanceDue.toFixed(2)}</span>
                         </div>
                     </div>
                 )}
