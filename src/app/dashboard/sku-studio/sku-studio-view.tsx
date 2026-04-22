@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { CheckCircle2, ClipboardList, Package } from 'lucide-react';
 import { createSkuItemAction, createProductFamily, getProductFamilies } from '@/app/actions/sku-studio.actions';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
 
 // ── Chip helper ──────────────────────────────────────────────────────────────
 function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
@@ -9,10 +12,10 @@ function Chip({ label, selected, onClick }: { label: string; selected: boolean; 
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
         selected
-          ? 'bg-primary/20 border-primary text-primary'
-          : 'border-border text-muted-foreground hover:border-primary/50'
+          ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+          : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
       }`}
     >
       {label}
@@ -34,6 +37,9 @@ const TRACKING_MODES  = ['Por unidad', 'Receta', 'Compuesto', 'Solo display'];
 
 interface Family { id: string; code: string; name: string; icon: string | null; _count: { items: number; templates: number } }
 interface Template { id: string; name: string; productFamily: { id: string; code: string; name: string } | null }
+
+const FIELD_LABEL = 'mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted';
+const FIELD_INPUT = 'w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none';
 
 export default function SkuStudioView({ families: initFamilies, templates }: { families: Family[]; templates: Template[] }) {
   const [tab, setTab] = useState<Tab>('nuevo');
@@ -98,242 +104,275 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
     });
   };
 
+  const feedbackClass = (ok: boolean) =>
+    `rounded-lg px-3 py-2 text-xs ${ok ? 'bg-[#E5EDE7]/60 text-[#2F6B4E]' : 'bg-[#F7E3DB]/60 text-[#B04A2E]'}`;
+
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="glass-panel rounded-3xl p-6">
-        <h1 className="text-2xl font-black text-foreground">SKU Studio</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Creación guiada de productos con familias y plantillas. Pensado para alta rotación de carta.
-        </p>
-      </div>
+    <div className="max-w-3xl mx-auto">
+      <PageHeader
+        kicker="Catálogo"
+        title="SKU Studio"
+        description="Creación guiada de productos con familias y plantillas. Pensado para alta rotación de carta."
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-secondary/50 rounded-2xl p-1">
-        {([['nuevo', 'Nuevo SKU'], ['familias', 'Familias'], ['plantillas', 'Plantillas']] as [Tab, string][]).map(([t, l]) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-colors ${tab === t ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {/* ── TAB: Nuevo SKU ────────────────────────────────────────────────── */}
-      {tab === 'nuevo' && (
-        <div className="glass-panel rounded-2xl p-5 border border-border space-y-5">
-          {lastCreated && (
-            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
-              <span className="text-emerald-400 text-lg">✅</span>
-              <div>
-                <p className="text-sm font-bold text-emerald-400">{lastCreated.name}</p>
-                <p className="text-xs font-mono text-muted-foreground">SKU: {lastCreated.sku}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Nombre */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Nombre del Ítem</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ej. Pechuga deshuesada MAP"
-              className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm text-foreground focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* Familia */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Familia / Categoría</label>
-            <select
-              value={familyId}
-              onChange={e => setFamilyId(e.target.value)}
-              className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm text-foreground focus:outline-none focus:border-primary"
+      <div className="space-y-5">
+        {/* Tabs */}
+        <div className="flex gap-1 rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-1">
+          {([['nuevo', 'Nuevo SKU'], ['familias', 'Familias'], ['plantillas', 'Plantillas']] as [Tab, string][]).map(([t, l]) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                tab === t
+                  ? 'bg-capsula-ivory-surface text-capsula-ink shadow-cap-soft'
+                  : 'text-capsula-ink-muted hover:text-capsula-ink'
+              }`}
             >
-              <option value="">— Sin familia —</option>
-              {families.map(f => (
-                <option key={f.id} value={f.id}>{f.icon ? `${f.icon} ` : ''}{f.name} ({f.code})</option>
-              ))}
-            </select>
-          </div>
+              {l}
+            </button>
+          ))}
+        </div>
 
-          {/* Tipo de inventario */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Tipo de Inventario</label>
-            <div className="flex flex-wrap gap-2">
-              {ITEM_TYPES.map(t => (
-                <Chip key={t.value} label={t.label} selected={itemType === t.value} onClick={() => setItemType(t.value)} />
-              ))}
-            </div>
-          </div>
+        {/* ── TAB: Nuevo SKU ────────────────────────────────────────────────── */}
+        {tab === 'nuevo' && (
+          <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft space-y-5">
+            {lastCreated && (
+              <div className="flex items-center gap-3 rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-3">
+                <CheckCircle2 className="h-4 w-4 text-[#2F6B4E]" />
+                <div>
+                  <p className="text-sm font-medium text-[#2F6B4E]">{lastCreated.name}</p>
+                  <p className="font-mono text-xs text-capsula-ink-soft">SKU: {lastCreated.sku}</p>
+                </div>
+              </div>
+            )}
 
-          {/* Rol operativo */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Rol Operativo <span className="normal-case font-normal">(opcional)</span></label>
-            <div className="flex flex-wrap gap-2">
-              {OPERATIVE_ROLES.map(r => (
-                <Chip key={r} label={r} selected={operRole === r} onClick={() => setOperRole(r)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Unidad base */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Unidad Base</label>
-            <div className="flex flex-wrap gap-2">
-              {BASE_UNITS.map(u => (
-                <Chip key={u} label={u} selected={unit === u} onClick={() => setUnit(u)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Seguimiento de stock */}
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Seguimiento de Stock</label>
-            <div className="flex flex-wrap gap-2">
-              {TRACKING_MODES.map(m => (
-                <Chip key={m} label={m} selected={tracking === m} onClick={() => setTracking(m)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Bebida + Prefijo SKU + Costo inicial */}
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="beverage" checked={isBeverage} onChange={e => setIsBeverage(e.target.checked)} className="rounded" />
-            <label htmlFor="beverage" className="text-sm text-muted-foreground">Bebida (marca para reportes de bar)</label>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Nombre */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Prefijo SKU <span className="normal-case font-normal">(opcional)</span></label>
+              <label className={FIELD_LABEL}>Nombre del ítem</label>
               <input
                 type="text"
-                value={skuPrefix}
-                onChange={e => setSkuPrefix(e.target.value.toUpperCase())}
-                placeholder="Ej. CARN"
-                maxLength={8}
-                className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm font-mono text-foreground focus:outline-none focus:border-primary uppercase"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Ej. Pechuga deshuesada MAP"
+                className={FIELD_INPUT}
               />
             </div>
+
+            {/* Familia */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Costo Inicial $ <span className="normal-case font-normal">(opcional)</span></label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={initialCost}
-                onChange={e => setInitialCost(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm text-foreground focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-
-          {feedback && (
-            <p className={`text-xs px-3 py-2 rounded-lg ${feedback.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-              {feedback.msg}
-            </p>
-          )}
-
-          <button
-            onClick={handleCreate}
-            disabled={isPending}
-            className="capsula-btn capsula-btn-primary text-sm px-6 py-2.5 min-h-0 w-full disabled:opacity-50"
-          >
-            {isPending ? 'Creando...' : 'Crear Ítem en Inventario'}
-          </button>
-        </div>
-      )}
-
-      {/* ── TAB: Familias ────────────────────────────────────────────────── */}
-      {tab === 'familias' && (
-        <div className="space-y-4">
-          {/* Crear familia */}
-          <div className="glass-panel rounded-2xl p-5 border border-border space-y-3">
-            <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Nueva Familia</h2>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Código *</label>
-                <input type="text" value={famCode} onChange={e => setFamCode(e.target.value.toUpperCase())} placeholder="Ej. CARNE"
-                  className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm font-mono text-foreground focus:outline-none focus:border-primary" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Nombre *</label>
-                <input type="text" value={famName} onChange={e => setFamName(e.target.value)} placeholder="Ej. Carnes y proteínas"
-                  className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm text-foreground focus:outline-none focus:border-primary" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Ícono</label>
-                <input type="text" value={famIcon} onChange={e => setFamIcon(e.target.value)} placeholder="Ej. 🥩"
-                  className="w-full bg-secondary/50 border border-border rounded-xl py-2 px-3 text-sm text-foreground focus:outline-none focus:border-primary" />
-              </div>
-            </div>
-            {famFeedback && (
-              <p className={`text-xs px-3 py-2 rounded-lg ${famFeedback.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                {famFeedback.msg}
-              </p>
-            )}
-            <button onClick={handleCreateFamily} disabled={isPending} className="capsula-btn capsula-btn-primary text-sm px-5 py-2 min-h-0 disabled:opacity-50">
-              {isPending ? 'Creando...' : 'Crear Familia'}
-            </button>
-          </div>
-
-          {/* Lista familias */}
-          <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-            <div className="px-5 py-3 border-b border-border bg-secondary/30">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Familias ({families.length})</span>
-            </div>
-            {families.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-sm">Sin familias — crea la primera arriba</div>
-            ) : (
-              <div className="divide-y divide-border">
+              <label className={FIELD_LABEL}>Familia / categoría</label>
+              <select
+                value={familyId}
+                onChange={e => setFamilyId(e.target.value)}
+                className={FIELD_INPUT}
+              >
+                <option value="">— Sin familia —</option>
                 {families.map(f => (
-                  <div key={f.id} className="flex items-center gap-3 px-5 py-3 hover:bg-secondary/20">
-                    <span className="text-xl">{f.icon || '📦'}</span>
+                  <option key={f.id} value={f.id}>{f.icon ? `${f.icon} ` : ''}{f.name} ({f.code})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tipo de inventario */}
+            <div>
+              <label className={FIELD_LABEL + ' mb-2'}>Tipo de inventario</label>
+              <div className="flex flex-wrap gap-2">
+                {ITEM_TYPES.map(t => (
+                  <Chip key={t.value} label={t.label} selected={itemType === t.value} onClick={() => setItemType(t.value)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Rol operativo */}
+            <div>
+              <label className={FIELD_LABEL + ' mb-2'}>
+                Rol operativo <span className="font-normal normal-case tracking-normal text-capsula-ink-faint">(opcional)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {OPERATIVE_ROLES.map(r => (
+                  <Chip key={r} label={r} selected={operRole === r} onClick={() => setOperRole(r)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Unidad base */}
+            <div>
+              <label className={FIELD_LABEL + ' mb-2'}>Unidad base</label>
+              <div className="flex flex-wrap gap-2">
+                {BASE_UNITS.map(u => (
+                  <Chip key={u} label={u} selected={unit === u} onClick={() => setUnit(u)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Seguimiento de stock */}
+            <div>
+              <label className={FIELD_LABEL + ' mb-2'}>Seguimiento de stock</label>
+              <div className="flex flex-wrap gap-2">
+                {TRACKING_MODES.map(m => (
+                  <Chip key={m} label={m} selected={tracking === m} onClick={() => setTracking(m)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Bebida */}
+            <label className="flex items-center gap-2 text-sm text-capsula-ink-soft">
+              <input
+                type="checkbox"
+                checked={isBeverage}
+                onChange={e => setIsBeverage(e.target.checked)}
+                className="h-4 w-4 rounded accent-capsula-navy-deep"
+              />
+              Bebida (marca para reportes de bar)
+            </label>
+
+            {/* Prefijo SKU + Costo inicial */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={FIELD_LABEL}>
+                  Prefijo SKU <span className="font-normal normal-case tracking-normal text-capsula-ink-faint">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={skuPrefix}
+                  onChange={e => setSkuPrefix(e.target.value.toUpperCase())}
+                  placeholder="Ej. CARN"
+                  maxLength={8}
+                  className={FIELD_INPUT + ' font-mono uppercase'}
+                />
+              </div>
+              <div>
+                <label className={FIELD_LABEL}>
+                  Costo inicial $ <span className="font-normal normal-case tracking-normal text-capsula-ink-faint">(opcional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={initialCost}
+                  onChange={e => setInitialCost(e.target.value)}
+                  placeholder="0.00"
+                  className={FIELD_INPUT}
+                />
+              </div>
+            </div>
+
+            {feedback && <p className={feedbackClass(feedback.ok)}>{feedback.msg}</p>}
+
+            <Button onClick={handleCreate} disabled={isPending} isLoading={isPending} className="w-full">
+              {isPending ? 'Creando…' : 'Crear ítem en inventario'}
+            </Button>
+          </div>
+        )}
+
+        {/* ── TAB: Familias ────────────────────────────────────────────────── */}
+        {tab === 'familias' && (
+          <div className="space-y-4">
+            {/* Crear familia */}
+            <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft space-y-3">
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                Nueva familia
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={FIELD_LABEL}>Código *</label>
+                  <input
+                    type="text"
+                    value={famCode}
+                    onChange={e => setFamCode(e.target.value.toUpperCase())}
+                    placeholder="Ej. CARNE"
+                    className={FIELD_INPUT + ' font-mono uppercase'}
+                  />
+                </div>
+                <div>
+                  <label className={FIELD_LABEL}>Nombre *</label>
+                  <input
+                    type="text"
+                    value={famName}
+                    onChange={e => setFamName(e.target.value)}
+                    placeholder="Ej. Carnes y proteínas"
+                    className={FIELD_INPUT}
+                  />
+                </div>
+                <div>
+                  <label className={FIELD_LABEL}>Ícono</label>
+                  <input
+                    type="text"
+                    value={famIcon}
+                    onChange={e => setFamIcon(e.target.value)}
+                    placeholder="Ej. 🥩"
+                    className={FIELD_INPUT}
+                  />
+                </div>
+              </div>
+              {famFeedback && <p className={feedbackClass(famFeedback.ok)}>{famFeedback.msg}</p>}
+              <Button size="sm" onClick={handleCreateFamily} disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Creando…' : 'Crear familia'}
+              </Button>
+            </div>
+
+            {/* Lista familias */}
+            <div className="overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+              <div className="border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                  Familias ({families.length})
+                </span>
+              </div>
+              {families.length === 0 ? (
+                <div className="py-8 text-center text-sm text-capsula-ink-muted">
+                  Sin familias — crea la primera arriba
+                </div>
+              ) : (
+                <div className="divide-y divide-capsula-line">
+                  {families.map(f => (
+                    <div key={f.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-capsula-ivory-alt/60">
+                      <span className="text-xl" aria-hidden>{f.icon || '📦'}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-capsula-ink">{f.name}</p>
+                        <p className="font-mono text-[11px] text-capsula-ink-muted">
+                          {f.code} · {f._count.items} ítems · {f._count.templates} plantillas
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: Plantillas ──────────────────────────────────────────────── */}
+        {tab === 'plantillas' && (
+          <div className="overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+            <div className="border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                Plantillas ({templates.length})
+              </span>
+            </div>
+            {templates.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-10 text-center text-capsula-ink-muted">
+                <ClipboardList className="h-6 w-6 opacity-50" />
+                <p className="text-sm font-medium">Sin plantillas</p>
+                <p className="text-xs">Las plantillas permiten pre-rellenar chips al crear nuevos SKUs</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-capsula-line">
+                {templates.map(t => (
+                  <div key={t.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-capsula-ivory-alt/60">
+                    <Package className="h-4 w-4 text-capsula-ink-muted" />
                     <div className="flex-1">
-                      <p className="font-bold text-sm text-foreground">{f.name}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground">{f.code} · {f._count.items} ítems · {f._count.templates} plantillas</p>
+                      <p className="text-sm font-medium text-capsula-ink">{t.name}</p>
+                      {t.productFamily && (
+                        <p className="font-mono text-[11px] text-capsula-ink-muted">{t.productFamily.name}</p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* ── TAB: Plantillas ──────────────────────────────────────────────── */}
-      {tab === 'plantillas' && (
-        <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-          <div className="px-5 py-3 border-b border-border bg-secondary/30">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Plantillas ({templates.length})</span>
-          </div>
-          {templates.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">
-              <p className="text-2xl mb-1">📋</p>
-              <p className="text-sm font-bold">Sin plantillas</p>
-              <p className="text-xs mt-1">Las plantillas permiten pre-rellenar chips al crear nuevos SKUs</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {templates.map(t => (
-                <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-secondary/20">
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-foreground">{t.name}</p>
-                    {t.productFamily && (
-                      <p className="text-[10px] font-mono text-muted-foreground">{t.productFamily.name}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
