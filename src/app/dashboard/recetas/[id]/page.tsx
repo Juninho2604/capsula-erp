@@ -1,9 +1,10 @@
-
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { formatNumber, formatCurrency, cn } from '@/lib/utils';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 import { getRecipeByIdAction } from '@/app/actions/recipe.actions';
 import { UNIT_INFO } from '@/lib/constants/units';
+import { ArrowLeft, Pencil, Coins, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 import { getSession } from '@/lib/auth';
 import { canViewCosts, UserRole } from '@/types';
@@ -23,30 +24,25 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
 
     return (
         <div className="space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 border-b border-capsula-line pb-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard/recetas"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
                     </Link>
                     <div>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Receta</div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
                                 {recipe.name}
                             </h1>
-                            <span className={cn(
-                                'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                                recipe.outputItem.type === 'SUB_RECIPE'
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            )}>
-                                {recipe.outputItem.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto Final'}
-                            </span>
+                            <Badge variant={recipe.outputItem.type === 'SUB_RECIPE' ? 'coral' : 'ok'}>
+                                {recipe.outputItem.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto final'}
+                            </Badge>
                         </div>
-                        <p className="text-gray-500">
+                        <p className="mt-1 text-[13px] text-capsula-ink-soft">
                             {recipe.description || 'Sin descripción'}
                         </p>
                     </div>
@@ -55,71 +51,68 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                 <div className="flex gap-2">
                     <Link
                         href={`/dashboard/recetas/${params.id}/editar`}
-                        className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-2 text-[13px] font-medium text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
                     >
-                        🖊️ Editar
+                        <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                        Editar
                     </Link>
-                    {/* Placeholder for future actions like 'Print' or 'Export' */}
                 </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
-                {/* Main Content - Ingredients & Instructions */}
-                <div className="lg:col-span-2 space-y-6">
-
-                    {/* Ingredients Table */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Ingredientes ({recipe.ingredients.length})
+                <div className="space-y-6 lg:col-span-2">
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="border-b border-capsula-line px-6 py-4">
+                            <h3 className="font-heading text-[16px] text-capsula-navy-deep">
+                                Ingredientes <span className="ml-1 font-mono text-[13px] text-capsula-ink-muted">({recipe.ingredients.length})</span>
                             </h3>
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
+                            <table className="w-full text-left text-[13px]">
+                                <thead className="bg-capsula-ivory-alt text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                                     <tr>
-                                        <th className="px-6 py-3 font-medium">Ingrediente</th>
-                                        <th className="px-6 py-3 font-medium text-right">Cant. Neta</th>
-                                        <th className="px-6 py-3 font-medium text-right">Merma</th>
-                                        <th className="px-6 py-3 font-medium text-right">Cant. Bruta</th>
+                                        <th className="px-6 py-3">Ingrediente</th>
+                                        <th className="px-6 py-3 text-right">Cant. neta</th>
+                                        <th className="px-6 py-3 text-right">Merma</th>
+                                        <th className="px-6 py-3 text-right">Cant. bruta</th>
                                         {showCosts && (
                                             <>
-                                                <th className="px-6 py-3 font-medium text-right">Costo Unit.</th>
-                                                <th className="px-6 py-3 font-medium text-right">Total</th>
+                                                <th className="px-6 py-3 text-right">Costo unit.</th>
+                                                <th className="px-6 py-3 text-right">Total</th>
                                             </>
                                         )}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="divide-y divide-capsula-line">
                                     {recipe.ingredients.map((ing) => {
                                         const grossQty = ing.quantity / (1 - ing.wastePercentage / 100);
-                                        const totalIngCost = grossQty * ing.currentCost; // Approximate if units match
+                                        const totalIngCost = grossQty * ing.currentCost;
 
                                         return (
-                                            <tr key={ing.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                            <tr key={ing.id} className="transition-colors hover:bg-capsula-ivory-alt/50">
+                                                <td className="px-6 py-4 font-medium text-capsula-ink">
                                                     {ing.ingredientItem.name}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">
+                                                <td className="px-6 py-4 text-right font-mono text-capsula-ink">
                                                     {formatNumber(ing.quantity)} {ing.unit}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-500">
+                                                <td className="px-6 py-4 text-right">
                                                     {ing.wastePercentage > 0 ? (
-                                                        <span className="text-red-600 dark:text-red-400">
+                                                        <span className="font-mono text-capsula-coral">
                                                             {ing.wastePercentage}%
                                                         </span>
-                                                    ) : '-'}
+                                                    ) : <span className="text-capsula-ink-muted">—</span>}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">
+                                                <td className="px-6 py-4 text-right font-mono text-capsula-ink-soft">
                                                     {formatNumber(grossQty, 3)} {ing.unit}
                                                 </td>
                                                 {showCosts && (
                                                     <>
-                                                        <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">
+                                                        <td className="px-6 py-4 text-right font-mono text-capsula-ink-soft">
                                                             {formatCurrency(ing.currentCost)}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
+                                                        <td className="px-6 py-4 text-right font-mono font-medium text-capsula-navy-deep">
                                                             ~{formatCurrency(totalIngCost)}
                                                         </td>
                                                     </>
@@ -133,66 +126,62 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                     </div>
                 </div>
 
-                {/* Sidebar - Stats & Costs */}
                 <div className="space-y-6">
-                    {/* Production Info */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">
-                            Detalles de Producción
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                        <h3 className="mb-4 font-heading text-[16px] text-capsula-navy-deep">
+                            Detalles de producción
                         </h3>
-                        <div className="space-y-4">
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Cantidad Base</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="space-y-3">
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-[12px] uppercase tracking-[0.08em] text-capsula-ink-muted">Cantidad base</span>
+                                <span className="font-mono text-[13px] text-capsula-ink">
                                     {formatNumber(recipe.outputQuantity)} {recipe.outputUnit}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Rendimiento (Yield)</span>
-                                <span className={`text-sm font-medium ${recipe.yieldPercentage < 100 ? 'text-amber-600' : 'text-green-600'
-                                    }`}>
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-[12px] uppercase tracking-[0.08em] text-capsula-ink-muted">Rendimiento</span>
+                                <span className={`font-mono text-[13px] ${recipe.yieldPercentage < 100 ? 'text-[#946A1C]' : 'text-[#2F6B4E]'}`}>
                                     {recipe.yieldPercentage}%
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Producción Efectiva</span>
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-[12px] uppercase tracking-[0.08em] text-capsula-ink-muted">Producción efectiva</span>
+                                <span className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                                     {formatNumber(effectiveOutput)} {recipe.outputUnit}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-sm text-gray-500">Tiempo Total</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                <span className="text-[12px] uppercase tracking-[0.08em] text-capsula-ink-muted">Tiempo total</span>
+                                <span className="font-mono text-[13px] text-capsula-ink">
                                     {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Cost Summary */}
                     {showCosts && (
-                        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-[#F3EAD6]/40 p-6 shadow-cap-soft">
                             <div className="mb-4 flex items-center gap-2">
-                                <span className="text-2xl">💰</span>
-                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                    Análisis de Costos
+                                <Coins className="h-5 w-5 text-[#946A1C]" strokeWidth={1.5} />
+                                <h3 className="font-heading text-[16px] text-capsula-navy-deep">
+                                    Análisis de costos
                                 </h3>
                             </div>
 
                             <div className="space-y-1">
-                                <p className="text-xs text-gray-500 uppercase tracking-wider">Costo Unitario</p>
-                                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                                <p className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">Costo unitario</p>
+                                <p className="font-mono text-[28px] font-semibold text-capsula-navy-deep">
                                     {formatCurrency(recipe.outputItem.currentCost)}
                                 </p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-[12px] text-capsula-ink-soft">
                                     por {UNIT_INFO[recipe.outputUnit as keyof typeof UNIT_INFO]?.labelEs || recipe.outputUnit}
                                 </p>
                             </div>
 
-                            <div className="mt-6 space-y-3 border-t border-amber-200 pt-4 dark:border-amber-700">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Costo Total Lote:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                            <div className="mt-6 space-y-3 border-t border-[#946A1C]/20 pt-4">
+                                <div className="flex justify-between text-[12px]">
+                                    <span className="text-capsula-ink-soft">Costo total lote</span>
+                                    <span className="font-mono font-medium text-capsula-navy-deep">
                                         {formatCurrency(totalCost)}
                                     </span>
                                 </div>
@@ -200,9 +189,10 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                         </div>
                     )}
 
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-blue-800 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
-                        <p className="text-xs">
-                            <span className="font-bold">Info:</span> Los costos mostrados son calculados automáticamente basados en el precio actual de inventario (FIFO/Promedio) de cada ingrediente.
+                    <div className="flex gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-alt/50 p-4">
+                        <Info className="h-4 w-4 shrink-0 text-capsula-navy-deep" strokeWidth={1.5} />
+                        <p className="text-[11.5px] text-capsula-ink-soft">
+                            <span className="font-medium text-capsula-navy-deep">Info:</span> Los costos mostrados son calculados automáticamente basados en el precio actual de inventario (FIFO/Promedio) de cada ingrediente.
                         </p>
                     </div>
                 </div>
