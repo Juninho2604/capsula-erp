@@ -151,21 +151,21 @@ export default function MenuManagementPage() {
     })).filter(cat => cat.items.length > 0);
 
     if (isLoading) {
-        return <div className="p-8 text-center text-white">Cargando menú...</div>;
+        return <div className="p-8 text-center text-capsula-ivory-surface">Cargando menú...</div>;
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto text-white">
+        <div className="p-6 max-w-7xl mx-auto text-capsula-ivory-surface">
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
                         Gestión de Menú
                     </h1>
-                    <p className="text-gray-400">Administra precios, productos y disponibilidad</p>
+                    <p className="text-capsula-ink-muted">Administra precios, productos y disponibilidad</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+                    className="bg-capsula-navy-deep hover:bg-capsula-navy-ink text-capsula-ivory-surface px-6 py-3 rounded-xl font-medium shadow-cap-soft transition-all flex items-center gap-2"
                 >
                     <span className="text-xl">+</span> Nuevo Plato
                 </button>
@@ -174,21 +174,21 @@ export default function MenuManagementPage() {
             {/* Barra de búsqueda + filtros */}
             <div className="mb-6 flex gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                    <span className="absolute left-4 top-3 text-gray-500">🔍</span>
+                    <span className="absolute left-4 top-3 text-capsula-ink-soft">🔍</span>
                     <input
                         type="text"
                         placeholder="Buscar plato..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl py-3 pl-12 pr-4 text-capsula-ivory-surface focus:outline-none focus:border-capsula-navy-deep transition-colors"
                     />
                 </div>
                 <button
                     onClick={() => setShowOnlyNoRecipe(!showOnlyNoRecipe)}
-                    className={`px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border ${showOnlyNoRecipe ? 'bg-red-500/20 border-red-500 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500/50'}`}
+                    className={`px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border ${showOnlyNoRecipe ? 'bg-capsula-coral/10 border-capsula-coral text-capsula-coral' : 'bg-capsula-ivory-surface border-capsula-line text-capsula-ink-muted hover:border-capsula-coral/50'}`}
                 >
                     ⚠️ Sin Receta
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${itemsWithoutRecipe > 0 ? 'bg-red-500 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${itemsWithoutRecipe > 0 ? 'bg-capsula-coral text-capsula-ivory-surface' : 'bg-capsula-ivory-alt text-capsula-ink-soft'}`}>
                         {itemsWithoutRecipe}
                     </span>
                 </button>
@@ -197,16 +197,16 @@ export default function MenuManagementPage() {
             {/* Lista por Categorías */}
             <div className="space-y-8">
                 {filteredCategories.map(category => (
-                    <div key={category.id} className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
-                        <div className="px-6 py-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+                    <div key={category.id} className="bg-capsula-ivory-surface border border-capsula-line rounded-2xl overflow-hidden">
+                        <div className="px-6 py-4 bg-capsula-ivory-surface border-b border-capsula-line flex items-center gap-3">
                             <span className="text-2xl">{category.name.includes('Bebida') ? '🥤' : '🍽️'}</span>
-                            <h2 className="text-xl font-bold text-gray-200">{category.name}</h2>
-                            <span className="text-gray-500 text-sm ml-auto">{category.items.length} items</span>
+                            <h2 className="text-xl font-bold text-capsula-navy-deep">{category.name}</h2>
+                            <span className="text-capsula-ink-soft text-sm ml-auto">{category.items.length} items</span>
                         </div>
 
                         <div className="divide-y divide-gray-700">
                             {category.items.map((item: any) => (
-                                <div key={item.id} className={`flex items-center justify-between p-4 hover:bg-gray-700/50 transition-colors ${!item.isActive ? 'opacity-50 grayscale' : ''}`}>
+                                <div key={item.id} className={`flex items-center justify-between p-4 hover:bg-capsula-ivory-alt/60/60 transition-colors ${!item.isActive ? 'opacity-50 grayscale' : ''}`}>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             {editingNameId === item.id ? (
@@ -220,7 +220,7 @@ export default function MenuManagementPage() {
                                                         if (e.key === 'Enter') handleNameChange(item.id, editingNameValue);
                                                         if (e.key === 'Escape') setEditingNameId(null);
                                                     }}
-                                                    className="bg-gray-900 border border-amber-500 rounded px-2 py-1 text-lg font-semibold text-white focus:outline-none w-full max-w-md"
+                                                    className="bg-capsula-ivory-alt border border-capsula-navy-deep rounded px-2 py-1 text-lg font-semibold text-capsula-ivory-surface focus:outline-none w-full max-w-md"
                                                 />
                                             ) : (
                                                 <>
@@ -230,7 +230,7 @@ export default function MenuManagementPage() {
                                                             setEditingNameId(item.id);
                                                             setEditingNameValue(item.name);
                                                         }}
-                                                        className="text-gray-500 hover:text-amber-400 transition-colors text-sm"
+                                                        className="text-capsula-ink-soft hover:text-[#946A1C] transition-colors text-sm"
                                                         title="Editar nombre"
                                                     >
                                                         ✏️
@@ -238,7 +238,7 @@ export default function MenuManagementPage() {
                                                 </>
                                             )}
                                         </div>
-                                        <div className="text-sm text-gray-400">{item.description || 'Sin descripción'}</div>
+                                        <div className="text-sm text-capsula-ink-muted">{item.description || 'Sin descripción'}</div>
                                     </div>
 
                                     <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -246,14 +246,14 @@ export default function MenuManagementPage() {
                                         {(() => {
                                             const rs = getRecipeStatus(item);
                                             if (rs === 'COMPLETE') return (
-                                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1">
+                                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#2F6B4E]/30 flex items-center gap-1">
                                                     ✅ Receta lista
                                                 </span>
                                             );
                                             if (rs === 'STUB') return (
                                                 <a
                                                     href={`/dashboard/recetas`}
-                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors flex items-center gap-1"
+                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-[#F3EAD6]/60 text-[#946A1C] border border-[#946A1C]/30 hover:bg-[#F3EAD6]/80 transition-colors flex items-center gap-1"
                                                     title="Receta creada pero sin ingredientes — complétala en Recetas"
                                                 >
                                                     🟡 Receta vacía
@@ -263,7 +263,7 @@ export default function MenuManagementPage() {
                                                 <button
                                                     onClick={() => handleCreateRecipeStub(item.id)}
                                                     disabled={creatingRecipeFor === item.id}
-                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30 hover:bg-capsula-coral/20 transition-colors disabled:opacity-50 flex items-center gap-1"
                                                     title="Sin receta — click para crear estructura vacía"
                                                 >
                                                     {creatingRecipeFor === item.id ? '⏳' : '❌'} Sin receta
@@ -273,25 +273,25 @@ export default function MenuManagementPage() {
 
                                         {/* Precio Editable */}
                                         <div className="flex items-center gap-2">
-                                            <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-1">
-                                                <span className="text-amber-500 font-bold mr-1">$</span>
+                                            <div className="flex items-center bg-capsula-ivory-alt rounded-lg border border-capsula-line px-3 py-1">
+                                                <span className="text-[#946A1C] font-bold mr-1">$</span>
                                                 <input
                                                     type="number"
                                                     defaultValue={item.price}
                                                     onBlur={(e) => handlePriceChange(item.id, e.target.value)}
-                                                    className="bg-transparent w-20 text-white font-mono font-bold focus:outline-none"
+                                                    className="bg-transparent w-20 text-capsula-ivory-surface font-mono font-bold focus:outline-none"
                                                 />
                                             </div>
-                                            <div className="flex items-center bg-orange-500/10 rounded-lg border border-orange-500/30 px-2 py-1 gap-1" title="Precio PedidosYA (~-33%)">
-                                                <span className="text-orange-400 text-xs">PYA</span>
-                                                <span className="text-orange-500 font-mono font-bold text-xs">${(item.pedidosYaPrice ?? calcPedidosYaPrice(item.price)).toFixed(2)}</span>
+                                            <div className="flex items-center bg-capsula-coral/5 rounded-lg border border-capsula-coral/30 px-2 py-1 gap-1" title="Precio PedidosYA (~-33%)">
+                                                <span className="text-capsula-coral text-xs">PYA</span>
+                                                <span className="text-capsula-coral font-mono font-bold text-xs">${(item.pedidosYaPrice ?? calcPedidosYaPrice(item.price)).toFixed(2)}</span>
                                             </div>
                                         </div>
 
                                         {/* Switch Activo/Inactivo */}
                                         <button
                                             onClick={() => handleToggleStatus(item.id, item.isActive)}
-                                            className={`px-3 py-1 rounded-full text-xs font-bold ${item.isActive ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}
+                                            className={`px-3 py-1 rounded-full text-xs font-bold ${item.isActive ? 'bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#2F6B4E]/30' : 'bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30'}`}
                                         >
                                             {item.isActive ? 'ACTIVO' : 'INACTIVO'}
                                         </button>
@@ -299,7 +299,7 @@ export default function MenuManagementPage() {
                                 </div>
                             ))}
                             {category.items.length === 0 && (
-                                <div className="p-8 text-center text-gray-500">
+                                <div className="p-8 text-center text-capsula-ink-soft">
                                     No hay productos en esta categoría
                                 </div>
                             )}
@@ -311,15 +311,15 @@ export default function MenuManagementPage() {
             {/* Modal Nuevo Producto */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-700 shadow-2xl">
+                    <div className="bg-capsula-ivory-surface rounded-2xl w-full max-w-md p-6 border border-capsula-line shadow-2xl">
                         <h2 className="text-2xl font-bold mb-6">Nuevo Producto</h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Nombre</label>
+                                <label className="block text-sm text-capsula-ink-muted mb-1">Nombre</label>
                                 <input
                                     autoFocus
-                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none"
+                                    className="w-full bg-capsula-ivory-alt border border-capsula-line rounded-lg p-3 focus:border-capsula-navy-deep focus:outline-none"
                                     value={newItem.name}
                                     onChange={e => setNewItem({ ...newItem, name: e.target.value })}
                                     placeholder="Ej. Shawarma Mixto"
@@ -328,19 +328,19 @@ export default function MenuManagementPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Precio ($)</label>
+                                    <label className="block text-sm text-capsula-ink-muted mb-1">Precio ($)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none font-mono"
+                                        className="w-full bg-capsula-ivory-alt border border-capsula-line rounded-lg p-3 focus:border-capsula-navy-deep focus:outline-none font-mono"
                                         value={newItem.price}
                                         onChange={e => setNewItem({ ...newItem, price: e.target.value })}
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Categoría</label>
+                                    <label className="block text-sm text-capsula-ink-muted mb-1">Categoría</label>
                                     <select
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none"
+                                        className="w-full bg-capsula-ivory-alt border border-capsula-line rounded-lg p-3 focus:border-capsula-navy-deep focus:outline-none"
                                         value={newItem.categoryId}
                                         onChange={e => setNewItem({ ...newItem, categoryId: e.target.value })}
                                     >
@@ -352,9 +352,9 @@ export default function MenuManagementPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Descripción (Opcional)</label>
+                                <label className="block text-sm text-capsula-ink-muted mb-1">Descripción (Opcional)</label>
                                 <textarea
-                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none resize-none h-24"
+                                    className="w-full bg-capsula-ivory-alt border border-capsula-line rounded-lg p-3 focus:border-capsula-navy-deep focus:outline-none resize-none h-24"
                                     value={newItem.description}
                                     onChange={e => setNewItem({ ...newItem, description: e.target.value })}
                                     placeholder="Ingredientes..."
@@ -365,14 +365,14 @@ export default function MenuManagementPage() {
                         <div className="flex gap-3 mt-8">
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-medium"
+                                className="flex-1 py-3 bg-capsula-ivory-alt hover:bg-capsula-ivory-alt rounded-xl font-medium"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleCreateItem}
                                 disabled={isSaving}
-                                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold flex justify-center items-center"
+                                className="flex-1 py-3 bg-capsula-navy-deep hover:bg-capsula-navy-ink rounded-xl font-bold flex justify-center items-center"
                             >
                                 {isSaving ? 'Guardando...' : 'Crear Plato'}
                             </button>
