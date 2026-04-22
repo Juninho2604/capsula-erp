@@ -120,27 +120,27 @@ export default function PhysicalCountClient({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 text-gray-900 dark:text-gray-100">
+    <div className="max-w-5xl mx-auto space-y-8 text-capsula-ink">
       <div>
         <Link
           href="/dashboard/inventario"
-          className="text-sm text-amber-600 dark:text-amber-400 hover:underline mb-2 inline-block"
+          className="text-sm text-[#946A1C] hover:underline mb-2 inline-block"
         >
           ← Volver a Inventario
         </Link>
         <h1 className="text-2xl font-bold">Conteo físico semanal (carga tipo Excel)</h1>
-        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+        <p className="text-capsula-ink-soft text-sm mt-1">
           Mismo formato que su hoja <strong>INVENTARIO GENERAL</strong>: fila con encabezado{' '}
-          <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PRODUCTO</code> y columna de cantidades.
+          <code className="bg-capsula-ivory-alt px-1 rounded">PRODUCTO</code> y columna de cantidades.
           Opcionalmente tres columnas para cargar <strong>Almacén principal</strong> y{' '}
           <strong>Producción/Cocina</strong> en una sola pasada.
         </p>
       </div>
 
       {canReset && (
-        <section className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/20 p-5">
-          <h2 className="font-bold text-red-800 dark:text-red-300 mb-2">1. Reinicio (solo gerencia)</h2>
-          <p className="text-sm text-red-900/80 dark:text-red-200/80 mb-3">
+        <section className="rounded-xl border border-capsula-coral/30 bg-capsula-coral/5 p-5">
+          <h2 className="font-bold text-capsula-coral mb-2">1. Reinicio (solo gerencia)</h2>
+          <p className="text-sm text-capsula-coral/80 mb-3">
             Antes del conteo del domingo puede poner <strong>todas</strong> las ubicaciones en <strong>0</strong>.
             Luego cargue el Excel con las cantidades contadas.
           </p>
@@ -151,14 +151,14 @@ export default function PhysicalCountClient({
                 value={resetPhrase}
                 onChange={(e) => setResetPhrase(e.target.value)}
                 placeholder="PONER EN CERO"
-                className="border rounded-lg px-3 py-2 bg-white dark:bg-gray-900 border-red-300 dark:border-red-800 w-48"
+                className="border rounded-lg px-3 py-2 bg-capsula-ivory-surface border-capsula-coral/30 w-48"
               />
             </div>
             <button
               type="button"
               onClick={onReset}
               disabled={resetting}
-              className="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-capsula-coral text-capsula-ivory-surface font-medium hover:bg-capsula-coral/90 disabled:opacity-50"
             >
               {resetting ? '…' : 'Poner inventario en cero'}
             </button>
@@ -166,31 +166,31 @@ export default function PhysicalCountClient({
         </section>
       )}
 
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+      <section className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-5">
         <h2 className="font-bold mb-3">2. Plantillas Excel</h2>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => downloadTemplate(false)}
-            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-semibold text-sm"
+            className="px-4 py-2 rounded-lg bg-capsula-ivory-alt border border-capsula-line font-medium text-sm text-capsula-ink"
           >
             Descargar plantilla (1 almacén)
           </button>
           <button
             type="button"
             onClick={() => downloadTemplate(true)}
-            className="px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 font-semibold text-sm"
+            className="px-4 py-2 rounded-lg bg-[#F3EAD6]/60 border border-[#946A1C]/30 font-medium text-sm text-[#946A1C]"
           >
             Descargar plantilla (Principal + Producción)
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-capsula-ink-soft mt-2">
           También puede usar su archivo actual: debe incluir la fila con <strong>PRODUCTO</strong> en la primera
           columna, como en su archivo de almacén principal.
         </p>
       </section>
 
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+      <section className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-5">
         <h2 className="font-bold mb-3">3. Almacenes destino</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
@@ -198,7 +198,7 @@ export default function PhysicalCountClient({
             <select
               value={principalId}
               onChange={(e) => setPrincipalId(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900"
+              className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
             >
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -214,7 +214,7 @@ export default function PhysicalCountClient({
             <select
               value={productionId}
               onChange={(e) => setProductionId(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900"
+              className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
             >
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -226,7 +226,7 @@ export default function PhysicalCountClient({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+      <section className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-5">
         <h2 className="font-bold mb-3">4. Subir Excel</h2>
         <input
           type="file"
@@ -235,18 +235,18 @@ export default function PhysicalCountClient({
           disabled={loading}
           className="text-sm"
         />
-        {loading && <p className="text-sm text-gray-500 mt-2">Procesando…</p>}
+        {loading && <p className="text-sm text-capsula-ink-soft mt-2">Procesando…</p>}
       </section>
 
       {preview && (
-        <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+        <section className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-5">
           <h2 className="font-bold mb-2">Vista previa</h2>
           <p className="text-sm mb-3">
             Modo:{' '}
             <strong>{isDual ? 'Dos almacenes (3 columnas)' : 'Un almacén (cantidad → almacén principal)'}</strong>
             . Coincidencias: {matched.length} / {preview.length}
             {unmatched.length > 0 && (
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-[#946A1C]">
                 {' '}
                 — {unmatched.length} sin coincidencia en el catálogo
               </span>
@@ -254,7 +254,7 @@ export default function PhysicalCountClient({
           </p>
           <div className="overflow-x-auto max-h-96 border rounded-lg">
             <table className="w-full text-sm">
-              <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0">
+              <thead className="bg-capsula-ivory-alt sticky top-0">
                 <tr>
                   <th className="text-left p-2">Producto (Excel)</th>
                   <th className="text-right p-2">Cant. 1</th>
@@ -266,18 +266,18 @@ export default function PhysicalCountClient({
                 {preview.map((r, i) => (
                   <tr
                     key={i}
-                    className={r.inventoryItemId ? '' : 'bg-amber-50 dark:bg-amber-950/20'}
+                    className={r.inventoryItemId ? '' : 'bg-[#F3EAD6]/40'}
                   >
-                    <td className="p-2 border-t border-gray-100 dark:border-gray-800">{r.productName}</td>
+                    <td className="p-2 border-t border-capsula-line">{r.productName}</td>
                     <td className="p-2 border-t text-right font-mono">{r.qtyPrincipal}</td>
                     {isDual && (
                       <td className="p-2 border-t text-right font-mono">{r.qtyProduction ?? '—'}</td>
                     )}
                     <td className="p-2 border-t text-xs">
                       {r.inventoryItemId ? (
-                        <span className="text-green-600 dark:text-green-400">✓ {r.matchedName}</span>
+                        <span className="text-[#2F6B4E]">✓ {r.matchedName}</span>
                       ) : (
-                        <span className="text-amber-700 dark:text-amber-300">Sin coincidencia</span>
+                        <span className="text-[#946A1C]">Sin coincidencia</span>
                       )}
                     </td>
                   </tr>
@@ -289,7 +289,7 @@ export default function PhysicalCountClient({
             type="button"
             onClick={onApply}
             disabled={loading || matched.length === 0}
-            className="mt-4 w-full sm:w-auto px-6 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-50"
+            className="mt-4 w-full sm:w-auto px-6 py-3 rounded-xl bg-capsula-navy-deep text-capsula-ivory-surface font-medium hover:bg-capsula-navy-ink disabled:opacity-50"
           >
             Aplicar conteo al sistema
           </button>

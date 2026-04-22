@@ -94,13 +94,13 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
 
     const getTypeLabel = (type: string) => {
         switch (type) {
-            case 'INCOMING': return { label: 'Entrada de Mercancía', color: 'text-green-600 bg-green-50 border-green-200' };
-            case 'OUTGOING': return { label: 'Salida / Merma', color: 'text-red-600 bg-red-50 border-red-200' };
-            case 'TRANSFER_IN': return { label: 'Transferencia Recibida', color: 'text-blue-600 bg-blue-50 border-blue-200' };
-            case 'TRANSFER_OUT': return { label: 'Transferencia Enviada', color: 'text-orange-600 bg-orange-50 border-orange-200' };
-            case 'ADJUSTMENT_IN': return { label: 'Ajuste de Inventario (+)', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
-            case 'ADJUSTMENT_OUT': return { label: 'Ajuste de Inventario (-)', color: 'text-rose-600 bg-rose-50 border-rose-200' };
-            default: return { label: type, color: 'text-gray-600 bg-gray-50 border-gray-200' };
+            case 'INCOMING': return { label: 'Entrada de mercancía', color: 'text-[#2F6B4E] bg-[#E5EDE7]/60 border-[#2F6B4E]/30' };
+            case 'OUTGOING': return { label: 'Salida / merma', color: 'text-capsula-coral bg-capsula-coral/10 border-capsula-coral/30' };
+            case 'TRANSFER_IN': return { label: 'Transferencia recibida', color: 'text-capsula-navy bg-capsula-navy/10 border-capsula-navy/30' };
+            case 'TRANSFER_OUT': return { label: 'Transferencia enviada', color: 'text-[#946A1C] bg-[#F3EAD6]/60 border-[#946A1C]/30' };
+            case 'ADJUSTMENT_IN': return { label: 'Ajuste de inventario (+)', color: 'text-[#2F6B4E] bg-[#E5EDE7]/60 border-[#2F6B4E]/30' };
+            case 'ADJUSTMENT_OUT': return { label: 'Ajuste de inventario (-)', color: 'text-capsula-coral bg-capsula-coral/10 border-capsula-coral/30' };
+            default: return { label: type, color: 'text-capsula-ink-soft bg-capsula-ivory-alt border-capsula-line' };
         }
     };
 
@@ -134,7 +134,7 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
             <div className="flex justify-end">
                 <button
                     onClick={handleExportCSV}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm"
+                    className="flex items-center gap-2 bg-capsula-navy-deep hover:bg-capsula-navy-ink text-capsula-ivory-surface px-4 py-2 rounded-lg font-medium transition shadow-sm"
                 >
                     <Download className="w-4 h-4" />
                     Descargar Excel (CSV)
@@ -147,7 +147,7 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
                         const isExpanded = expandedGroups.has(group.id);
 
                         return (
-                            <div key={group.id} className="rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                            <div key={group.id} className="rounded-xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft transition-all hover:shadow-md">
                                 {/* Header del Grupo */}
                                 <div
                                     onClick={() => toggleGroup(group.id)}
@@ -159,14 +159,14 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                                                <h3 className="font-semibold text-capsula-navy-deep">
                                                     {typeStyle.label}
                                                 </h3>
-                                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                <span className="rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-soft border border-capsula-line">
                                                     {group.totalItems} items
                                                 </span>
                                             </div>
-                                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-capsula-ink-soft">
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="h-3.5 w-3.5" />
                                                     {group.date.toLocaleString()}
@@ -188,29 +188,29 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
 
                                 {/* Detalles Desplegables */}
                                 {isExpanded && (
-                                    <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/20">
+                                    <div className="border-t border-capsula-line bg-capsula-ivory-alt/40 px-4 py-3">
                                         <table className="w-full text-sm">
                                             <thead>
-                                                <tr className="text-left text-xs font-medium text-gray-500">
+                                                <tr className="text-left text-xs font-medium text-capsula-ink-soft">
                                                     <th className="pb-2 pl-2">Producto</th>
                                                     <th className="pb-2 text-right">Cantidad</th>
                                                     <th className="pb-2 pl-4">Nota Item</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                            <tbody className="divide-y divide-capsula-line">
                                                 {group.items.map((item) => (
                                                     <tr key={item.id}>
                                                         <td className="py-2 pl-2">
-                                                            <span className="font-medium text-gray-900 dark:text-white">{item.inventoryItem.name}</span>
-                                                            <span className="ml-2 text-xs text-gray-400">{item.inventoryItem.sku}</span>
+                                                            <span className="font-medium text-capsula-navy-deep">{item.inventoryItem.name}</span>
+                                                            <span className="ml-2 text-xs text-capsula-ink-muted">{item.inventoryItem.sku}</span>
                                                         </td>
                                                         <td className={cn(
                                                             "py-2 text-right font-mono",
-                                                            item.quantity > 0 ? "text-emerald-600" : "text-rose-600"
+                                                            item.quantity > 0 ? "text-[#2F6B4E]" : "text-capsula-coral"
                                                         )}>
                                                             {item.quantity > 0 ? '+' : ''}{formatNumber(item.quantity)} {item.unit}
                                                         </td>
-                                                        <td className="py-2 pl-4 text-gray-500 text-xs">
+                                                        <td className="py-2 pl-4 text-capsula-ink-soft text-xs">
                                                             {item.notes || '-'}
                                                         </td>
                                                     </tr>
@@ -224,7 +224,7 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
                     })}
 
                     {groupedTransactions.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500">
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-capsula-ink-soft">
                             <p>No hay movimientos registrados recientes</p>
                         </div>
                     )}
