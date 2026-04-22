@@ -746,63 +746,76 @@ export default function POSMeseroPage() {
         </aside>
 
         {/* ══ CENTER: MENU ════════════════════════════════════════════════ */}
-        <main className={`flex-1 flex flex-col border-r border-border bg-background overflow-hidden ${mobileTab === "menu" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <main className={cn(
+          "absolute inset-0 z-10 flex-1 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory lg:relative lg:z-auto lg:flex",
+          mobileTab === "menu" ? "flex" : "hidden",
+        )}>
           {/* Search + Categories */}
-          <div className="p-3 border-b border-border space-y-2 shrink-0">
+          <div className="shrink-0 space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-3">
             {/* Active tab banner */}
             {activeTab ? (
-              <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                <span className="text-emerald-200">
+              <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft px-3 py-2 text-[12px]">
+                <span className="text-capsula-navy-deep">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                 </span>
-                <span className="text-emerald-400 font-black text-xs">
+                <span className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                   ${activeTab.balanceDue.toFixed(2)}
                 </span>
               </div>
             ) : selectedTable ? (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[12px] text-capsula-ink-muted">
                 {selectedTable.name} · Sin cuenta abierta — presiona &quot;Abrir cuenta&quot; para empezar
               </div>
             ) : (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[12px] text-capsula-ink-muted">
                 Selecciona una mesa para comenzar
               </div>
             )}
 
             {/* Search */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">🔍</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar producto..."
-                className="w-full bg-secondary border border-border rounded-xl py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500"
+                placeholder="Buscar producto…"
+                className="w-full rounded-full border border-capsula-line bg-capsula-ivory py-2 pl-9 pr-9 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
               />
               {productSearch && (
                 <button
                   onClick={() => setProductSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                >✕</button>
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
               )}
             </div>
 
             {/* Categories */}
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedSubcategory("");
-                    setSelectedGroup("");
-                    setProductSearch("");
-                  }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedCategory === cat.id ? "bg-emerald-500 text-black" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
-                >
-                  {cat.name}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const active = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setSelectedSubcategory("");
+                      setSelectedGroup("");
+                      setProductSearch("");
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                      active
+                        ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                        : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink",
+                    )}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Subcategories */}
@@ -810,36 +823,49 @@ export default function POSMeseroPage() {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 <button
                   onClick={() => { setSelectedSubcategory(""); setSelectedGroup(""); }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${!selectedSubcategory ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                    !selectedSubcategory
+                      ? "border-capsula-navy/30 bg-capsula-navy-soft text-capsula-navy-deep"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+                  )}
                 >
                   Todos
                 </button>
-                {subcategories.map((subcat) => (
-                  <button
-                    key={subcat}
-                    onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
-                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubcategory === subcat ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
-                  >
-                    {subcat}
-                  </button>
-                ))}
+                {subcategories.map((subcat) => {
+                  const active = selectedSubcategory === subcat;
+                  return (
+                    <button
+                      key={subcat}
+                      onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                        active
+                          ? "border-capsula-navy/30 bg-capsula-navy-soft text-capsula-navy-deep"
+                          : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+                      )}
+                    >
+                      {subcat}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Menu items */}
-          <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-4">
             {/* Back button cuando estás dentro de un grupo */}
             {selectedGroup && !productSearch && (
               <button
                 onClick={() => setSelectedGroup("")}
-                className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-400 hover:text-emerald-300 active:scale-95 transition"
+                className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-capsula-navy transition-colors hover:text-capsula-navy-deep"
               >
-                ← {selectedGroup}
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} /> {selectedGroup}
               </button>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 md:gap-4">
 
               {/* ── Grupos (uno por cada posGroup único) ── */}
               {!selectedGroup && !productSearch && groupsInView.map((group) => {
@@ -852,16 +878,18 @@ export default function POSMeseroPage() {
                     key={group}
                     onClick={() => setSelectedGroup(group)}
                     disabled={!activeTab}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                   >
-                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{group}</div>
-                    <div className="flex items-end justify-between mt-2">
-                      <div className="text-base font-black text-emerald-400">
+                    <div className="line-clamp-2 text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                      {group}
+                    </div>
+                    <div className="mt-2 flex items-end justify-between">
+                      <div className="font-mono text-[14px] font-semibold text-capsula-navy-deep">
                         {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
                       </div>
-                      <div className="text-[10px] font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                        {gItems.length} op →
-                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory px-2 py-0.5 text-[10px] font-medium text-capsula-ink-muted">
+                        {gItems.length} op <ChevronRight className="h-2.5 w-2.5" strokeWidth={1.5} />
+                      </span>
                     </div>
                   </button>
                 );
@@ -875,31 +903,33 @@ export default function POSMeseroPage() {
                     key={item.id}
                     onClick={() => handleAddToCart(item)}
                     disabled={!activeTab}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                   >
-                    <div className="text-lg font-black text-gray-950 dark:text-foreground uppercase tracking-tight">{sizeLabel}</div>
-                    <div className="text-xl font-black text-emerald-400 mt-auto">
+                    <div className="text-[16px] font-medium text-capsula-ink">{sizeLabel}</div>
+                    <div className="mt-auto font-mono text-[18px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                   </button>
                 );
               })}
 
-              {/* ── Items sueltos (sin posGroup) o resultados de búsqueda ── */}
+              {/* ── Items sueltos o resultados de búsqueda ── */}
               {(productSearch || !selectedGroup) && (productSearch ? filteredMenuItems : subcatFilteredItems.filter((i) => !i.posGroup)).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleAddToCart(item)}
                   disabled={!activeTab}
-                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                 >
-                  <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
-                  <div className="flex items-end justify-between mt-2">
-                    <div className="text-xl font-black text-emerald-400">
+                  <div className="line-clamp-2 text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                    {item.name}
+                  </div>
+                  <div className="mt-2 flex items-end justify-between">
+                    <div className="font-mono text-[18px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
-                      ➕
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy-deep opacity-100 transition-all lg:translate-y-1 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
+                      <Plus className="h-3.5 w-3.5" strokeWidth={2} />
                     </div>
                   </div>
                 </button>
@@ -907,10 +937,10 @@ export default function POSMeseroPage() {
 
               {/* Empty state */}
               {!productSearch && groupsInView.length === 0 && subcatFilteredItems.filter((i) => !i.posGroup).length === 0 && !selectedGroup && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin productos en esta categoría</div>
+                <div className="col-span-full py-12 text-center text-[13px] text-capsula-ink-muted">Sin productos en esta categoría</div>
               )}
               {productSearch && filteredMenuItems.length === 0 && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin resultados para &quot;{productSearch}&quot;</div>
+                <div className="col-span-full py-12 text-center text-[13px] text-capsula-ink-muted">Sin resultados para &quot;{productSearch}&quot;</div>
               )}
             </div>
           </div>
