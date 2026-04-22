@@ -1409,83 +1409,115 @@ export default function POSSportBarPage() {
       {/* ── MAIN GRID ────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* ══ LEFT: TABLE GRID ═══════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-64 tablet-land:w-64 xl:w-72 shrink-0 border-r border-border bg-card/30 flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={cn(
+          "absolute inset-0 z-10 w-full shrink-0 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory-surface lg:relative lg:z-auto lg:flex lg:w-64 tablet-land:w-64 xl:w-72",
+          mobileTab === "tables" ? "flex" : "hidden",
+        )}>
           {/* Zone selector */}
-          <div className="p-4 border-b border-border space-y-3">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Secciones</p>
+          <div className="space-y-3 border-b border-capsula-line p-4">
+            <p className="pl-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Secciones</p>
             <div className="flex flex-col gap-2">
-              <button
+              <Button
+                variant={isPickupMode ? "primary" : "outline"}
+                size="sm"
                 onClick={openPickupModal}
-                className={`capsula-btn min-h-0 py-3 text-sm ${isPickupMode ? "capsula-btn-primary" : "capsula-btn-secondary"}`}
+                className="w-full"
               >
-                🛍️ {pickupTabs.length > 0 ? `Nuevo Pickup (${pickupTabs.length} abiertos)` : "Venta Directa / Pickup"}
-              </button>
+                <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
+                {pickupTabs.length > 0 ? `Nuevo Pickup (${pickupTabs.length} abiertos)` : "Venta directa / Pickup"}
+              </Button>
 
               {/* Lista de pickup tabs abiertos */}
               {pickupTabs.length > 0 && (
                 <div className="flex flex-col gap-1">
-                  {pickupTabs.map((pt) => (
-                    <div key={pt.id} className={`flex items-center gap-1 rounded-xl border text-xs font-bold transition-all ${activePickupTabId === pt.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground/70 hover:border-primary/40"}`}>
-                      <button
-                        className="flex-1 py-2 pl-3 text-left truncate"
-                        onClick={() => handleSelectPickupTab(pt.id)}
+                  {pickupTabs.map((pt) => {
+                    const active = activePickupTabId === pt.id;
+                    return (
+                      <div
+                        key={pt.id}
+                        className={cn(
+                          "flex items-center gap-1 rounded-[var(--radius)] border text-[12px] transition-colors",
+                          active
+                            ? "border-capsula-navy-deep bg-capsula-navy-soft text-capsula-navy-deep"
+                            : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep/40",
+                        )}
                       >
-                        {pt.pickupNumber}{pt.customerName ? ` · ${pt.customerName}` : ""}
-                        <span className="ml-1 font-normal text-muted-foreground">
-                          ${pt.cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)}
-                          {activePickupTabId === pt.id && cart.length > 0 &&
-                            ` · ${cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)} (activo)`}
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => handleDiscardPickupTab(pt.id)}
-                        className="px-2 py-2 text-red-400/70 hover:text-red-300 leading-none"
-                        title="Descartar pickup"
-                      >×</button>
-                    </div>
-                  ))}
+                        <button
+                          className="flex-1 truncate py-2 pl-3 text-left"
+                          onClick={() => handleSelectPickupTab(pt.id)}
+                        >
+                          <span className="font-mono font-semibold">{pt.pickupNumber}</span>
+                          {pt.customerName ? ` · ${pt.customerName}` : ""}
+                          <span className="ml-1 font-mono font-normal text-capsula-ink-muted">
+                            ${pt.cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)}
+                            {active && cart.length > 0 &&
+                              ` · ${cart.reduce((s, i) => s + i.lineTotal, 0).toFixed(2)} (activo)`}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => handleDiscardPickupTab(pt.id)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                          title="Descartar pickup"
+                        >
+                          <X className="h-3 w-3" strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               <div className="flex gap-2">
-                {layout?.serviceZones.map((z) => (
-                  <button
-                    key={z.id}
-                    onClick={() => {
-                      if (isPickupMode && activePickupTabId) saveActivePickupCart(cart);
-                      resetTableState();
-                      setIsPickupMode(false);
-                      setActivePickupTabId(null);
-                      setSelectedZoneId(z.id);
-                      setSelectedTableId("");
-                    }}
-                    className={`flex-1 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id && !isPickupMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-gray-900 dark:text-foreground/60 hover:border-primary/50"}`}
-                  >
-                    {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
-                  </button>
-                ))}
+                {layout?.serviceZones.map((z) => {
+                  const ZoneIcon = z.zoneType === "BAR" ? Beer : Leaf;
+                  const active = selectedZoneId === z.id && !isPickupMode;
+                  return (
+                    <button
+                      key={z.id}
+                      onClick={() => {
+                        if (isPickupMode && activePickupTabId) saveActivePickupCart(cart);
+                        resetTableState();
+                        setIsPickupMode(false);
+                        setActivePickupTabId(null);
+                        setSelectedZoneId(z.id);
+                        setSelectedTableId("");
+                      }}
+                      className={cn(
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[12px] font-medium transition-colors",
+                        active
+                          ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                          : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink",
+                      )}
+                    >
+                      <ZoneIcon className="h-3.5 w-3.5" strokeWidth={1.5} /> {z.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             {!layout && !layoutError && (
-              <div className="flex-1 text-center text-xs text-muted-foreground py-2">Cargando...</div>
+              <div className="flex-1 py-2 text-center text-[12px] text-capsula-ink-muted">Cargando…</div>
             )}
             {layoutError && (
-              <button onClick={() => loadData()} className="flex-1 text-xs text-red-400 hover:text-red-300 py-2 text-center">
-                ⚠️ Error · Reintentar
+              <button
+                onClick={() => loadData()}
+                className="inline-flex w-full items-center justify-center gap-1 py-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
+              >
+                <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> Error · Reintentar
               </button>
             )}
           </div>
 
           {/* Error detail */}
           {layoutError && (
-            <div className="px-3 py-2 text-[10px] text-red-400 bg-red-950/30 border-b border-red-900/30">
+            <div className="border-b border-capsula-coral/30 bg-capsula-coral-subtle/40 px-3 py-2 text-[10.5px] text-capsula-coral">
               {layoutError}
             </div>
           )}
 
           {/* Table grid */}
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-3">
               {selectedZone?.tablesOrStations.map((table) => {
                 const tab = table.openTabs[0];
                 const isSelected = table.id === selectedTableId;
@@ -1500,21 +1532,25 @@ export default function POSSportBarPage() {
                       setSelectedTableId(table.id);
                       setShowTableModal(true);
                     }}
-                    className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
+                    className={cn(
+                      "relative flex aspect-square flex-col items-center justify-center rounded-[var(--radius)] border transition-all duration-200",
                       isSelected
-                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/10 z-10"
+                        ? "z-10 border-capsula-navy-deep bg-capsula-navy-soft shadow-cap-raised ring-2 ring-capsula-navy-deep ring-offset-2 ring-offset-capsula-ivory-surface"
                         : tab
-                          ? "border-emerald-500/50 bg-emerald-500/5"
-                          : "border-border bg-card/50 hover:border-primary/30"
-                    }`}
+                          ? "border-capsula-navy/40 bg-capsula-navy-soft/40"
+                          : "border-capsula-line bg-capsula-ivory-surface hover:border-capsula-navy-deep/30",
+                    )}
                   >
-                    <div className={`text-sm md:text-base font-black ${isSelected ? 'text-primary' : tab ? 'text-emerald-600' : 'text-gray-900 dark:text-foreground/40'}`}>{table.code}</div>
-                    {tab ? (
-                      <div className="absolute top-1 right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-background animate-pulse"></div>
-                    ) : null}
+                    <div className={cn(
+                      "font-mono text-[14px] font-semibold md:text-[15px]",
+                      isSelected ? "text-capsula-navy-deep" : tab ? "text-capsula-navy" : "text-capsula-ink-faint",
+                    )}>{table.code}</div>
                     {tab && (
-                      <div className="mt-1 text-[9px] font-black text-gray-950 dark:text-foreground/70 truncate w-full px-1 text-center">
-                         ${tab.balanceDue.toFixed(0)}
+                      <div className="absolute right-1 top-1 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-capsula-ivory-surface bg-capsula-navy" />
+                    )}
+                    {tab && (
+                      <div className="mt-0.5 w-full truncate px-1 text-center font-mono text-[9px] text-capsula-ink-soft">
+                        ${tab.balanceDue.toFixed(0)}
                       </div>
                     )}
                   </button>
@@ -1525,28 +1561,33 @@ export default function POSSportBarPage() {
 
           {/* Selected table info & open tab CTA */}
           {selectedTable && (
-            <div className="border-t border-border p-3 bg-card">
+            <div className="border-t border-capsula-line bg-capsula-ivory p-3">
               {!activeTab ? (
-                <button
+                <Button
+                  variant="primary"
                   onClick={() => setShowOpenTabModal(true)}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition"
+                  className="w-full"
                 >
-                  + Abrir cuenta en {selectedTable.name}
-                </button>
+                  <Plus className="h-4 w-4" strokeWidth={2} /> Abrir cuenta en {selectedTable.name}
+                </Button>
               ) : (
-                <div className="space-y-1 text-xs">
-                  <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
-                  {activeTab.customerPhone && <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>}
-                  <div className="text-muted-foreground">
+                <div className="space-y-1 text-[12px]">
+                  <div className="truncate font-medium text-capsula-navy-deep">{activeTab.customerLabel}</div>
+                  {activeTab.customerPhone && (
+                    <div className="inline-flex items-center gap-1 text-capsula-ink-muted">
+                      <Phone className="h-3 w-3" strokeWidth={1.5} /> {activeTab.customerPhone}
+                    </div>
+                  )}
+                  <div className="text-capsula-ink-muted">
                     Abrió:{" "}
-                    <span className="text-foreground">
+                    <span className="font-medium text-capsula-ink">
                       {activeTab.openedBy.firstName} {activeTab.openedBy.lastName}
                     </span>
-                    <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
+                    <span className="text-capsula-ink-muted"> · {formatTime(activeTab.openedAt)}</span>
                   </div>
                   {activeTab.assignedWaiter && (
-                    <div className="text-muted-foreground">
-                      Mesonero: <span className="text-foreground">{(activeTab as any).waiterLabel || "—"}</span>
+                    <div className="text-capsula-ink-muted">
+                      Mesonero: <span className="font-medium text-capsula-ink">{(activeTab as any).waiterLabel || "—"}</span>
                     </div>
                   )}
                 </div>
@@ -1556,105 +1597,132 @@ export default function POSSportBarPage() {
         </aside>
 
         {/* ══ CENTER: MENU ════════════════════════════════════════════════ */}
-        <main className={`flex-1 flex flex-col border-r border-border bg-background overflow-hidden ${mobileTab === "menu" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <main className={cn(
+          "absolute inset-0 z-10 flex-1 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory lg:relative lg:z-auto lg:flex",
+          mobileTab === "menu" ? "flex" : "hidden",
+        )}>
           {/* Search + Categories */}
-          <div className="p-3 border-b border-border space-y-2 shrink-0">
+          <div className="shrink-0 space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-3">
             {/* Active tab banner */}
             {activeTab ? (
-              <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                <span className="text-emerald-950 dark:text-emerald-200">
+              <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft px-3 py-2 text-[12px]">
+                <span className="text-capsula-navy-deep">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                   {activeTab.customerPhone && <> · {activeTab.customerPhone}</>}
                 </span>
-                <span className="text-emerald-400 font-black">
+                <span className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                   <PriceDisplay usd={activeTab.balanceDue} rate={exchangeRate} size="sm" />
                 </span>
               </div>
             ) : selectedTable ? (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[12px] text-capsula-ink-muted">
                 {selectedTable.name} · Sin cuenta abierta — presiona &quot;Abrir cuenta&quot; para empezar
               </div>
             ) : (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[12px] text-capsula-ink-muted">
                 Selecciona una mesa para empezar
               </div>
             )}
 
             {/* Search */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">🔍</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder={`Buscar producto... ${isPickupMode ? "(Modo Pickup)" : ""}`}
-                className={`w-full bg-secondary border ${isPickupMode ? "border-indigo-600/50" : "border-border"} rounded-xl py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-amber-500`}
+                placeholder={`Buscar producto…${isPickupMode ? " (Modo Pickup)" : ""}`}
+                className={cn(
+                  "w-full rounded-full border bg-capsula-ivory py-2 pl-9 pr-9 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep",
+                  isPickupMode ? "border-capsula-coral/40" : "border-capsula-line",
+                )}
               />
               {productSearch && (
                 <button
                   onClick={() => setProductSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
                 >
-                  ✕
+                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>
               )}
             </div>
 
             {/* Categories */}
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedSubcategory("");
-                    setSelectedGroup("");
-                    setProductSearch("");
-                  }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedCategory === cat.id ? "bg-amber-500 text-black" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
-                >
-                  {cat.name}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const active = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setSelectedSubcategory("");
+                      setSelectedGroup("");
+                      setProductSearch("");
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                      active
+                        ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                        : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink",
+                    )}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Subcategories (Bebidas, etc.) */}
+            {/* Subcategories */}
             {!productSearch && subcategories.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 <button
                   onClick={() => { setSelectedSubcategory(""); setSelectedGroup(""); }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${!selectedSubcategory ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                    !selectedSubcategory
+                      ? "border-capsula-navy/30 bg-capsula-navy-soft text-capsula-navy-deep"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+                  )}
                 >
                   Todos
                 </button>
-                {subcategories.map((subcat) => (
-                  <button
-                    key={subcat}
-                    onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
-                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubcategory === subcat ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
-                  >
-                    {subcat}
-                  </button>
-                ))}
+                {subcategories.map((subcat) => {
+                  const active = selectedSubcategory === subcat;
+                  return (
+                    <button
+                      key={subcat}
+                      onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                        active
+                          ? "border-capsula-navy/30 bg-capsula-navy-soft text-capsula-navy-deep"
+                          : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+                      )}
+                    >
+                      {subcat}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Menu items */}
-          <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-4">
             {/* Back button when inside a group */}
             {selectedGroup && !productSearch && (
               <button
                 onClick={() => setSelectedGroup("")}
-                className="mb-3 flex items-center gap-1.5 text-sm font-bold text-amber-400 hover:text-amber-300 active:scale-95 transition"
+                className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-capsula-navy transition-colors hover:text-capsula-navy-deep"
               >
-                ← {selectedGroup}
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} /> {selectedGroup}
               </button>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 md:gap-4">
 
-              {/* ── Group buttons (one per unique posGroup, when no group is selected and not searching) ── */}
+              {/* ── Group buttons ── */}
               {!selectedGroup && !productSearch && groupsInView.map((group) => {
                 const gItems = subcatFilteredItems.filter((i) => i.posGroup === group);
                 const prices = gItems.map((i) => i.price);
@@ -1665,22 +1733,24 @@ export default function POSSportBarPage() {
                     key={group}
                     onClick={() => setSelectedGroup(group)}
                     disabled={!activeTab && !isPickupMode}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-amber-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                   >
-                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-amber-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{group}</div>
-                    <div className="flex items-end justify-between mt-2">
-                      <div className="text-base font-black text-primary">
+                    <div className="line-clamp-2 text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                      {group}
+                    </div>
+                    <div className="mt-2 flex items-end justify-between">
+                      <div className="font-mono text-[14px] font-semibold text-capsula-navy-deep">
                         {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
                       </div>
-                      <div className="text-[10px] font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                        {gItems.length} op →
-                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory px-2 py-0.5 text-[10px] font-medium text-capsula-ink-muted">
+                        {gItems.length} op <ChevronRight className="h-2.5 w-2.5" strokeWidth={1.5} />
+                      </span>
                     </div>
                   </button>
                 );
               })}
 
-              {/* ── Size variant buttons (when inside a group) ── */}
+              {/* ── Size variants ── */}
               {selectedGroup && !productSearch && subcatFilteredItems.filter((i) => i.posGroup === selectedGroup).map((item) => {
                 const sizeLabel = item.name.replace(new RegExp(selectedGroup.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() || item.name;
                 return (
@@ -1688,31 +1758,33 @@ export default function POSSportBarPage() {
                     key={item.id}
                     onClick={() => handleAddToCart(item)}
                     disabled={!activeTab && !isPickupMode}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-amber-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                   >
-                    <div className="text-lg font-black text-gray-950 dark:text-foreground uppercase tracking-tight">{sizeLabel}</div>
-                    <div className="text-xl font-black text-primary mt-auto">
+                    <div className="text-[16px] font-medium text-capsula-ink">{sizeLabel}</div>
+                    <div className="mt-auto font-mono text-[18px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                   </button>
                 );
               })}
 
-              {/* ── Single items (no posGroup) or search results ── */}
+              {/* ── Items sueltos o resultados ── */}
               {(productSearch || !selectedGroup) && (productSearch ? filteredMenuItems : subcatFilteredItems.filter((i) => !i.posGroup)).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleAddToCart(item)}
                   disabled={!activeTab && !isPickupMode}
-                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-primary/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  className="group flex h-28 flex-col justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left shadow-cap-soft transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-raised disabled:cursor-not-allowed disabled:opacity-50 md:h-32 md:p-4"
                 >
-                  <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
-                  <div className="flex items-end justify-between mt-2">
-                    <div className="text-xl font-black text-primary">
+                  <div className="line-clamp-2 text-[13px] font-medium leading-tight text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                    {item.name}
+                  </div>
+                  <div className="mt-2 flex items-end justify-between">
+                    <div className="font-mono text-[18px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
-                      ➕
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy-deep opacity-100 transition-all lg:translate-y-1 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
+                      <Plus className="h-3.5 w-3.5" strokeWidth={2} />
                     </div>
                   </div>
                 </button>
@@ -1720,10 +1792,10 @@ export default function POSSportBarPage() {
 
               {/* Empty state */}
               {!productSearch && groupsInView.length === 0 && subcatFilteredItems.filter((i) => !i.posGroup).length === 0 && !selectedGroup && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin productos en esta categoría</div>
+                <div className="col-span-full py-12 text-center text-[13px] text-capsula-ink-muted">Sin productos en esta categoría</div>
               )}
               {productSearch && filteredMenuItems.length === 0 && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin resultados para &quot;{productSearch}&quot;</div>
+                <div className="col-span-full py-12 text-center text-[13px] text-capsula-ink-muted">Sin resultados para &quot;{productSearch}&quot;</div>
               )}
             </div>
           </div>
