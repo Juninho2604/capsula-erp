@@ -47,44 +47,43 @@ const config: Config = {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))',
                 },
-                // ─── CÁPSULA Brand Tokens — Minimal Navy ──────────
+                // ─── CÁPSULA Brand Tokens — Minimal Navy (dark-mode aware) ──
+                // Consumen vars RGB triplet de globals.css (:root / .dark)
                 capsula: {
                     coral: {
-                        DEFAULT: '#F25C3B',
-                        hover:   '#D84A2A',
-                        light:   '#F47C62',
-                        subtle:  '#F5E4DD',
+                        DEFAULT: 'rgb(var(--capsula-coral-rgb) / <alpha-value>)',
+                        hover:   'rgb(var(--capsula-coral-hover-rgb) / <alpha-value>)',
+                        light:   'rgb(var(--capsula-coral-light-rgb) / <alpha-value>)',
+                        subtle:  'rgb(var(--capsula-coral-subtle-rgb) / <alpha-value>)',
                     },
                     navy: {
-                        DEFAULT: '#1B2A3A',
-                        deep:    '#0B1727',
-                        light:   '#253D5C',
-                        soft:    '#E6EAEF',
-                        subtle:  '#F2F4F7',
+                        DEFAULT: 'rgb(var(--capsula-navy-rgb) / <alpha-value>)',
+                        deep:    'rgb(var(--capsula-navy-deep-rgb) / <alpha-value>)',
+                        light:   'rgb(var(--capsula-navy-light-rgb) / <alpha-value>)',
+                        soft:    'rgb(var(--capsula-navy-soft-rgb) / <alpha-value>)',
                     },
                     ivory: {
-                        DEFAULT: '#F7F5F0',
-                        surface: '#FDFBF7',
-                        alt:     '#EFECE5',
+                        DEFAULT: 'rgb(var(--capsula-ivory-rgb) / <alpha-value>)',
+                        surface: 'rgb(var(--capsula-ivory-surface-rgb) / <alpha-value>)',
+                        alt:     'rgb(var(--capsula-ivory-alt-rgb) / <alpha-value>)',
                     },
                     line: {
-                        DEFAULT: '#E7E2D7',
-                        strong:  '#D8D2C3',
+                        DEFAULT: 'rgb(var(--capsula-line-rgb) / <alpha-value>)',
+                        strong:  'rgb(var(--capsula-line-strong-rgb) / <alpha-value>)',
                     },
                     ink: {
-                        DEFAULT: '#0F1A2A',
-                        soft:    '#3A4656',
-                        muted:   '#6B7584',
-                        faint:   '#94A0B0',
+                        DEFAULT: 'rgb(var(--capsula-ink-rgb) / <alpha-value>)',
+                        soft:    'rgb(var(--capsula-ink-soft-rgb) / <alpha-value>)',
+                        muted:   'rgb(var(--capsula-ink-muted-rgb) / <alpha-value>)',
+                        faint:   'rgb(var(--capsula-ink-faint-rgb) / <alpha-value>)',
                     },
-                    // Retained for legacy components
                     gold: {
-                        DEFAULT: '#FFD93D',
-                        hover:   '#F0C830',
-                        subtle:  '#FFFBEB',
+                        DEFAULT: 'rgb(var(--capsula-gold-rgb) / <alpha-value>)',
+                        subtle:  'rgb(var(--capsula-gold-subtle-rgb) / <alpha-value>)',
                     },
-                    warm:  '#F7F5F0',
-                    muted: '#EFECE5',
+                    // Legacy aliases
+                    warm:  'rgb(var(--capsula-ivory-rgb) / <alpha-value>)',
+                    muted: 'rgb(var(--capsula-ivory-alt-rgb) / <alpha-value>)',
                 },
                 tablepong: {
                     navy: '#1A2B5B',
