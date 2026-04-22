@@ -2,36 +2,36 @@
 
 import { useState, useMemo } from 'react';
 import type { DishMargin, DishMarginsResult } from '@/app/actions/cost.actions';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
+import {
+  FileDown, Search, AlertOctagon, CheckCircle2, AlertTriangle,
+  ChevronUp, ChevronDown, ChevronsUpDown, UtensilsCrossed,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 function fmt(n: number) {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function marginColor(pct: number, status: string) {
-  if (status !== 'COMPLETE') return { bar: 'bg-gray-400', text: 'text-muted-foreground', badge: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
-  if (pct < 20)  return { bar: 'bg-red-500',    text: 'text-red-400',    badge: 'bg-red-500/10 text-red-400 border-red-500/30' };
-  if (pct < 35)  return { bar: 'bg-orange-500', text: 'text-orange-400', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/30' };
-  if (pct < 50)  return { bar: 'bg-amber-500',  text: 'text-amber-400',  badge: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
-  return           { bar: 'bg-emerald-500', text: 'text-emerald-400', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+  if (status !== 'COMPLETE') return { bar: 'bg-capsula-line-strong', text: 'text-capsula-ink-muted' };
+  if (pct < 20)  return { bar: 'bg-capsula-coral',  text: 'text-capsula-coral' };
+  if (pct < 35)  return { bar: 'bg-[#D96A2E]',       text: 'text-[#D96A2E]' };
+  if (pct < 50)  return { bar: 'bg-[#946A1C]',       text: 'text-[#946A1C]' };
+  return           { bar: 'bg-[#2F6B4E]',           text: 'text-[#2F6B4E]' };
 }
 
 function statusLabel(d: DishMargin) {
-  if (d.status === 'NO_RECIPE')     return { text: 'Sin receta',          cls: 'text-red-400' };
-  if (d.status === 'EMPTY_RECIPE')  return { text: 'Receta vacía',        cls: 'text-amber-400' };
-  if (d.status === 'PARTIAL_COSTS') return { text: `${d.missingCostCount} sin costo`, cls: 'text-amber-400' };
-  return { text: 'Completo', cls: 'text-emerald-400' };
+  if (d.status === 'NO_RECIPE')     return { text: 'Sin receta',          variant: 'danger' as const };
+  if (d.status === 'EMPTY_RECIPE')  return { text: 'Receta vacía',        variant: 'warn' as const };
+  if (d.status === 'PARTIAL_COSTS') return { text: `${d.missingCostCount} sin costo`, variant: 'warn' as const };
+  return { text: 'Completo', variant: 'ok' as const };
 }
 
 type SortKey = 'marginPct' | 'margin' | 'price' | 'recipeCost' | 'name';
 type FilterKey = 'all' | 'at_risk' | 'healthy' | 'incomplete';
-
-// ============================================================================
-// COMPONENTE
-// ============================================================================
 
 export function MargenView({ result }: { result: DishMarginsResult }) {
   const { data = [], summary } = result;
@@ -78,51 +78,60 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
   };
 
   const SortBtn = ({ col, label }: { col: SortKey; label: string }) => (
-    <button onClick={() => toggleSort(col)} className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+    <button onClick={() => toggleSort(col)} className="inline-flex items-center gap-1 text-left text-capsula-ink-muted transition-colors hover:text-capsula-ink">
       {label}
-      <span className="text-[10px]">{sort === col ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      {sort === col
+        ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" strokeWidth={2} /> : <ChevronDown className="h-3 w-3" strokeWidth={2} />)
+        : <ChevronsUpDown className="h-3 w-3" strokeWidth={1.5} />}
     </button>
   );
 
+  const filterOptions: [FilterKey, string, typeof AlertOctagon | null][] = [
+    ['all',        'Todos',        null],
+    ['at_risk',    'En riesgo',    AlertOctagon],
+    ['healthy',    'Rentables',    CheckCircle2],
+    ['incomplete', 'Incompletos',  AlertTriangle],
+  ];
+
   return (
-    <div className="space-y-5 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-foreground">Margen por Plato</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Costo de receta vs precio de venta · En tiempo real</p>
-        </div>
-        <button onClick={exportCSV} className="capsula-btn capsula-btn-secondary text-sm px-5 py-2 min-h-0">
-          📥 Exportar CSV
-        </button>
-      </div>
+    <div className="mx-auto max-w-7xl animate-in">
+      <PageHeader
+        kicker="Costos"
+        title="Margen por plato"
+        description="Costo de receta vs precio de venta · en tiempo real."
+        actions={
+          <Button variant="ghost" size="sm" onClick={exportCSV}>
+            <FileDown className="h-4 w-4" strokeWidth={1.5} /> Exportar CSV
+          </Button>
+        }
+      />
 
       {/* KPI cards */}
       {summary && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="glass-panel rounded-2xl p-4 border border-border">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Margen promedio</p>
-            <p className={`text-3xl font-black mt-1 ${summary.avgMarginPct < 35 ? 'text-amber-400' : 'text-emerald-400'}`}>
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Margen promedio</p>
+            <p className={cn("mt-1 font-mono text-[28px] font-semibold", summary.avgMarginPct < 35 ? "text-[#946A1C]" : "text-[#2F6B4E]")}>
               {summary.avgMarginPct}%
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{summary.withFullData} platos con datos completos</p>
+            <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{summary.withFullData} platos con datos completos</p>
           </div>
-          <div className="glass-panel rounded-2xl p-4 border border-red-500/20 bg-red-500/5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">En riesgo (&lt;30%)</p>
-            <p className="text-3xl font-black mt-1 text-red-400">{summary.atRisk}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Margen insuficiente</p>
+          <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/40 p-4 shadow-cap-soft">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">En riesgo (&lt;30%)</p>
+            <p className="mt-1 font-mono text-[28px] font-semibold text-capsula-coral">{summary.atRisk}</p>
+            <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Margen insuficiente</p>
           </div>
-          <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 bg-emerald-500/5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rentables (≥50%)</p>
-            <p className="text-3xl font-black mt-1 text-emerald-400">{summary.healthy}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Margen saludable</p>
+          <div className="rounded-[var(--radius)] border border-[#D3E2D8] bg-[#E5EDE7]/50 p-4 shadow-cap-soft">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Rentables (≥50%)</p>
+            <p className="mt-1 font-mono text-[28px] font-semibold text-[#2F6B4E]">{summary.healthy}</p>
+            <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Margen saludable</p>
           </div>
-          <div className="glass-panel rounded-2xl p-4 border border-border">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total platos</p>
-            <p className="text-3xl font-black mt-1 text-foreground">{summary.total}</p>
+          <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Total platos</p>
+            <p className="mt-1 font-mono text-[28px] font-semibold text-capsula-ink">{summary.total}</p>
             {summary.worstDish && (
-              <p className="text-xs text-red-400 mt-0.5 truncate" title={`Menor margen: ${summary.worstDish}`}>
-                ↓ {summary.worstDish}
+              <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[11px] text-capsula-coral" title={`Menor margen: ${summary.worstDish}`}>
+                <ChevronDown className="h-3 w-3" strokeWidth={1.5} /> {summary.worstDish}
               </p>
             )}
           </div>
@@ -130,98 +139,102 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
       )}
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[180px]">
-          <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">🔍</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[180px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
           <input
-            type="text" placeholder="Buscar plato o categoría..."
+            type="text" placeholder="Buscar plato o categoría…"
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full bg-secondary/50 border border-border rounded-xl py-2 pl-9 pr-3 text-sm text-foreground focus:outline-none focus:border-primary"
+            className="w-full rounded-full border border-capsula-line bg-capsula-ivory-surface py-2 pl-9 pr-3 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
           />
         </div>
-        {([
-          ['all', 'Todos'],
-          ['at_risk', '🔴 En riesgo'],
-          ['healthy', '✅ Rentables'],
-          ['incomplete', '⚠️ Incompletos'],
-        ] as [FilterKey, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${filter === key ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
-          >
-            {label}
-          </button>
-        ))}
-        <span className="text-xs text-muted-foreground ml-auto">{filtered.length} platos</span>
+        {filterOptions.map(([key, label, Icon]) => {
+          const active = filter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-3 py-2 text-[12px] font-medium transition-colors",
+                active
+                  ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                  : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+              )}
+            >
+              {Icon && <Icon className="h-3 w-3" strokeWidth={1.5} />}
+              {label}
+            </button>
+          );
+        })}
+        <span className="ml-auto text-[11px] text-capsula-ink-muted">{filtered.length} platos</span>
       </div>
 
       {/* Tabla */}
-      <div className="glass-panel rounded-2xl border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <tr className="border-b border-capsula-line bg-capsula-ivory">
+                <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em]">
                   <SortBtn col="name" label="Plato" />
                 </th>
-                <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground hidden sm:table-cell">
+                <th className="hidden px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted sm:table-cell">
                   Categoría
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em]">
                   <SortBtn col="price" label="Precio" />
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground hidden md:table-cell">
+                <th className="hidden px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] md:table-cell">
                   <SortBtn col="recipeCost" label="Costo receta" />
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground hidden md:table-cell">
+                <th className="hidden px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] md:table-cell">
                   <SortBtn col="margin" label="Margen $" />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em]">
                   <SortBtn col="marginPct" label="Margen %" />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground hidden lg:table-cell">
+                <th className="hidden px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted lg:table-cell">
                   Estado
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {filtered.map(dish => {
                 const colors = marginColor(dish.marginPct, dish.status);
                 const sl = statusLabel(dish);
                 const pctCapped = Math.min(dish.marginPct, 100);
                 return (
-                  <tr key={dish.id} className="hover:bg-secondary/30 transition-colors">
+                  <tr key={dish.id} className="border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory">
                     <td className="px-4 py-3">
-                      <div className="font-bold text-foreground">{dish.name}</div>
-                      <div className="text-[10px] font-mono text-muted-foreground">{dish.sku}</div>
+                      <div className="font-medium text-capsula-ink">{dish.name}</div>
+                      <div className="font-mono text-[10.5px] text-capsula-ink-muted">{dish.sku}</div>
                     </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className="text-xs bg-secondary px-2 py-0.5 rounded font-medium text-muted-foreground">{dish.categoryName}</span>
+                    <td className="hidden px-4 py-3 sm:table-cell">
+                      <span className="rounded-full border border-capsula-line bg-capsula-ivory px-2 py-0.5 text-[11px] text-capsula-ink-muted">{dish.categoryName}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-foreground">
+                    <td className="px-4 py-3 text-right font-mono font-semibold text-capsula-ink">
                       ${fmt(dish.price)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-muted-foreground hidden md:table-cell">
+                    <td className="hidden px-4 py-3 text-right font-mono text-capsula-ink-muted md:table-cell">
                       {dish.status === 'NO_RECIPE' ? '—' : `$${fmt(dish.recipeCost)}`}
                     </td>
-                    <td className={`px-4 py-3 text-right font-mono font-bold hidden md:table-cell ${colors.text}`}>
+                    <td className={cn("hidden px-4 py-3 text-right font-mono font-semibold md:table-cell", colors.text)}>
                       {dish.status === 'NO_RECIPE' ? '—' : `$${fmt(dish.margin)}`}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-center gap-1">
-                        <span className={`text-sm font-black ${colors.text}`}>
+                        <span className={cn("font-mono text-[13px] font-semibold", colors.text)}>
                           {dish.status === 'NO_RECIPE' ? '—' : `${dish.marginPct.toFixed(1)}%`}
                         </span>
                         {dish.status === 'COMPLETE' && (
-                          <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${pctCapped}%` }} />
+                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-capsula-line">
+                            <div className={cn("h-full rounded-full", colors.bar)} style={{ width: `${pctCapped}%` }} />
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center hidden lg:table-cell">
-                      <span className={`text-[10px] font-black ${sl.cls}`}>{sl.text}</span>
+                    <td className="hidden px-4 py-3 text-center lg:table-cell">
+                      <Badge variant={sl.variant}>{sl.text}</Badge>
                     </td>
                   </tr>
                 );
@@ -231,28 +244,28 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
         </div>
 
         {filtered.length === 0 && (
-          <div className="py-12 text-center text-muted-foreground">
-            <p className="text-3xl mb-2">🍽️</p>
-            <p className="font-bold">Sin resultados</p>
-            <p className="text-xs mt-1">Prueba cambiando el filtro o la búsqueda</p>
+          <div className="py-12 text-center">
+            <UtensilsCrossed className="mx-auto mb-2 h-8 w-8 text-capsula-ink-faint" strokeWidth={1.5} />
+            <p className="font-medium text-capsula-ink">Sin resultados</p>
+            <p className="mt-1 text-[11px] text-capsula-ink-muted">Prueba cambiando el filtro o la búsqueda</p>
           </div>
         )}
       </div>
 
       {/* Leyenda */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground px-1">
+      <div className="mt-4 flex flex-wrap gap-4 px-1 text-[11px] text-capsula-ink-muted">
         {[
-          { cls: 'bg-red-500',    label: 'Crítico < 20%' },
-          { cls: 'bg-orange-500', label: 'Bajo 20–35%' },
-          { cls: 'bg-amber-500',  label: 'Regular 35–50%' },
-          { cls: 'bg-emerald-500',label: 'Saludable ≥ 50%' },
+          { cls: 'bg-capsula-coral', label: 'Crítico < 20%' },
+          { cls: 'bg-[#D96A2E]',     label: 'Bajo 20–35%' },
+          { cls: 'bg-[#946A1C]',     label: 'Regular 35–50%' },
+          { cls: 'bg-[#2F6B4E]',     label: 'Saludable ≥ 50%' },
         ].map(({ cls, label }) => (
           <div key={label} className="flex items-center gap-1.5">
-            <div className={`h-2.5 w-2.5 rounded-full ${cls}`} />
+            <div className={cn("h-2.5 w-2.5 rounded-full", cls)} />
             {label}
           </div>
         ))}
-        <span className="ml-auto italic">Los costos requieren insumos con precio registrado en Módulo Costos</span>
+        <span className="ml-auto italic">Los costos requieren insumos con precio registrado en módulo Costos.</span>
       </div>
     </div>
   );

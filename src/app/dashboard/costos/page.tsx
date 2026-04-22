@@ -2,6 +2,10 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { CostImporter } from './CostImporter';
 import { getCurrentCostsAction } from '@/app/actions/cost.actions';
+import { CheckCircle2, AlertTriangle, Package, ClipboardList, Coins } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { Badge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +16,6 @@ export default async function CostosPage() {
         redirect('/login');
     }
 
-    // Get current costs for summary
     const costsResult = await getCurrentCostsAction();
     const items = costsResult.items || [];
 
@@ -20,83 +23,34 @@ export default async function CostosPage() {
     const withoutCost = items.filter(i => i.currentCost === null).length;
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        💰 Módulo de Costos
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-500">
-                        Gestión de precios de compra y cálculo de COGS
-                    </p>
-                </div>
-            </div>
+        <div className="mx-auto max-w-[1400px] animate-in">
+            <PageHeader
+                kicker="Finanzas"
+                title="Módulo de costos"
+                description="Gestión de precios de compra y cálculo de COGS."
+            />
 
-            {/* Summary Cards */}
-            <div className="grid gap-6 md:grid-cols-3">
-                {/* Card 1: Materias Primas con Costo */}
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-2xl dark:bg-green-900/30">
-                            ✅
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Con Costo
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Materias primas
-                            </p>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-3xl font-bold text-green-600">
-                        {withCost}
-                    </div>
-                    <p className="text-xs text-gray-400">Ítems con precio registrado</p>
-                </div>
-
-                {/* Card 2: Sin Costo */}
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 text-2xl dark:bg-amber-900/30">
-                            ⚠️
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Sin Costo
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Pendientes de precio
-                            </p>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-3xl font-bold text-amber-600">
-                        {withoutCost}
-                    </div>
-                    <p className="text-xs text-gray-400">Requieren actualización</p>
-                </div>
-
-                {/* Card 3: Total */}
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-2xl dark:bg-blue-900/30">
-                            📦
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Total Items
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Materias primas
-                            </p>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-3xl font-bold text-blue-600">
-                        {items.length}
-                    </div>
-                    <p className="text-xs text-gray-400">En el inventario</p>
-                </div>
+            {/* KPI Cards */}
+            <div className="mb-6 grid gap-4 md:grid-cols-3">
+                <KpiCard
+                    label="Con costo"
+                    value={withCost}
+                    icon={CheckCircle2}
+                    hint="Ítems con precio registrado"
+                />
+                <KpiCard
+                    label="Sin costo"
+                    value={withoutCost}
+                    icon={AlertTriangle}
+                    hint="Requieren actualización"
+                    trend={withoutCost > 0 ? 'down' : 'flat'}
+                />
+                <KpiCard
+                    label="Total ítems"
+                    value={items.length}
+                    icon={Package}
+                    hint="Materias primas en inventario"
+                />
             </div>
 
             {/* Cost Importer */}
@@ -104,48 +58,44 @@ export default async function CostosPage() {
 
             {/* Current Costs Table */}
             {items.length > 0 && (
-                <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            📋 Costos Actuales de Materias Primas
-                        </h3>
+                <div className="mt-6 overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                    <div className="flex items-center gap-2 border-b border-capsula-line bg-capsula-ivory px-5 py-3">
+                        <ClipboardList className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                        <h3 className="font-medium text-capsula-ink">Costos actuales de materias primas</h3>
                     </div>
-                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unidad</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Costo Actual</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Moneda</th>
+                    <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
+                        <table className="w-full border-collapse text-[13px]">
+                            <thead className="sticky top-0">
+                                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                                    <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto</th>
+                                    <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">SKU</th>
+                                    <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Categoría</th>
+                                    <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Unidad</th>
+                                    <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Costo actual</th>
+                                    <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Moneda</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody>
                                 {items.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{item.name}</td>
-                                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{item.sku || '-'}</td>
-                                        <td className="px-4 py-3 text-gray-500">{item.category || '-'}</td>
-                                        <td className="px-4 py-3 text-gray-500">{item.baseUnit}</td>
+                                    <tr key={item.id} className="border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory">
+                                        <td className="px-4 py-3 font-medium text-capsula-ink">{item.name}</td>
+                                        <td className="px-4 py-3 font-mono text-[11.5px] text-capsula-ink-muted">{item.sku || '—'}</td>
+                                        <td className="px-4 py-3 text-capsula-ink-soft">{item.category || '—'}</td>
+                                        <td className="px-4 py-3 text-capsula-ink-soft">{item.baseUnit}</td>
                                         <td className="px-4 py-3 text-right font-mono">
                                             {item.currentCost !== null ? (
-                                                <span className="text-green-600 font-semibold">
+                                                <span className="font-semibold text-[#2F6B4E]">
                                                     {item.currentCost.toFixed(2)}
                                                 </span>
                                             ) : (
-                                                <span className="text-amber-500">Sin precio</span>
+                                                <span className="text-[#946A1C]">Sin precio</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             {item.currentCost !== null && (
-                                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${item.currency === 'USD'
-                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                                                    }`}>
+                                                <Badge variant={item.currency === 'USD' ? 'ok' : 'info'}>
                                                     {item.currency === 'USD' ? '$' : 'Bs'}
-                                                </span>
+                                                </Badge>
                                             )}
                                         </td>
                                     </tr>
