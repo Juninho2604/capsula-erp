@@ -3,12 +3,13 @@
 import { useState, useTransition } from 'react';
 import type { BroadcastRecord } from '@/app/actions/notifications.actions';
 import { createBroadcastAction, dismissBroadcastAction, getAllBroadcastsAdminAction } from '@/app/actions/notifications.actions';
+import { Inbox } from 'lucide-react';
 
 const TYPE_COLORS: Record<string, string> = {
-  INFO:    'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  WARNING: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  ALERT:   'bg-red-500/10 text-red-400 border-red-500/30',
-  SUCCESS: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  INFO:    'bg-capsula-navy/10 text-capsula-navy border-capsula-navy/30',
+  WARNING: 'bg-[#F3EAD6]/40 text-[#946A1C] border-[#946A1C]/30',
+  ALERT:   'bg-capsula-coral/10 text-capsula-coral border-capsula-coral/30',
+  SUCCESS: 'bg-[#E5EDE7]/60 text-[#2F6B4E] border-[#2F6B4E]/30',
 };
 const TYPE_LABELS: Record<string, string> = { INFO: 'Info', WARNING: 'Aviso', ALERT: 'Alerta', SUCCESS: 'Éxito' };
 
@@ -100,7 +101,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
         </div>
 
         {feedback && (
-          <p className={`text-xs px-3 py-2 rounded-lg ${feedback.startsWith('Error') || feedback.includes('obligatorio') ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+          <p className={`text-xs px-3 py-2 rounded-lg ${feedback.startsWith('Error') || feedback.includes('obligatorio') ? 'bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30' : 'bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#2F6B4E]/30'}`}>
             {feedback}
           </p>
         )}
@@ -123,7 +124,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
         </div>
         {active.length === 0 ? (
           <div className="py-10 text-center text-muted-foreground">
-            <p className="text-2xl mb-1">📭</p>
+            <Inbox className="mx-auto mb-2 h-8 w-8 text-capsula-ink-muted/50" strokeWidth={1.25} />
             <p className="text-sm font-bold">Sin mensajes activos</p>
           </div>
         ) : (
@@ -141,7 +142,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
                 <button
                   onClick={() => handleDismiss(m.id)}
                   disabled={isPending}
-                  className="text-xs text-red-400 hover:text-red-300 font-bold shrink-0 mt-0.5"
+                  className="text-xs text-capsula-coral hover:text-capsula-coral/80 font-bold shrink-0 mt-0.5"
                 >
                   Archivar
                 </button>

@@ -32,7 +32,7 @@ function MetaCard({
 }) {
   const over = pct >= 100;
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${over ? 'border-emerald-500/40 bg-emerald-500/5' : borderColor}`}>
+    <div className={`glass-panel rounded-2xl p-5 border ${over ? 'border-[#2F6B4E]/40 bg-[#E5EDE7]/30' : borderColor}`}>
       <div className="flex items-center justify-between mb-1">
         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
         <span className="text-lg">{icon}</span>
@@ -43,14 +43,14 @@ function MetaCard({
         de ${fmt(target)} · {orders} orden{orders !== 1 ? 'es' : ''}
       </p>
 
-      <ProgressBar pct={pct} color={over ? 'bg-emerald-500' : color} />
+      <ProgressBar pct={pct} color={over ? 'bg-[#2F6B4E]' : color} />
 
       <div className="flex items-center justify-between mt-2">
-        <span className={`text-sm font-black ${over ? 'text-emerald-400' : pct >= 70 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+        <span className={`text-sm font-black ${over ? 'text-[#2F6B4E]' : pct >= 70 ? 'text-[#946A1C]' : 'text-muted-foreground'}`}>
           {pct}%
         </span>
-        {over && <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">✅ Meta superada</span>}
-        {!over && pct >= 70 && <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">🔥 Cerca</span>}
+        {over && <span className="text-[10px] font-black text-[#2F6B4E] uppercase tracking-widest">✅ Meta superada</span>}
+        {!over && pct >= 70 && <span className="text-[10px] font-black text-[#946A1C] uppercase tracking-widest">🔥 Cerca</span>}
       </div>
     </div>
   );
@@ -103,13 +103,13 @@ export function MetasView({ data }: { data: MetasData }) {
       {/* Proyección del día */}
       <div className={`rounded-2xl p-5 border flex items-center gap-5 ${
         projection.willHitDaily
-          ? 'bg-emerald-500/10 border-emerald-500/30'
-          : 'bg-amber-500/10 border-amber-500/30'
+          ? 'bg-[#E5EDE7]/60 border-[#2F6B4E]/30'
+          : 'bg-[#F3EAD6]/40 border-[#946A1C]/30'
       }`}>
         <div className="text-4xl shrink-0">{projection.willHitDaily ? '🚀' : '⏱️'}</div>
         <div>
           <p className="font-black text-foreground text-lg">
-            Proyección del día: <span className={projection.willHitDaily ? 'text-emerald-400' : 'text-amber-400'}>
+            Proyección del día: <span className={projection.willHitDaily ? 'text-[#2F6B4E]' : 'text-[#946A1C]'}>
               ${fmt(projection.dailyProjected)}
             </span>
           </p>
@@ -126,22 +126,22 @@ export function MetasView({ data }: { data: MetasData }) {
         <MetaCard
           label="Meta Diaria" icon="☀️"
           target={config.daily} actual={actual.today} orders={actual.todayOrders}
-          pct={progress.daily} color="bg-amber-500" borderColor="border-amber-500/20"
+          pct={progress.daily} color="bg-[#946A1C]" borderColor="border-[#946A1C]/20"
         />
         <MetaCard
           label="Meta Semanal" icon="📅"
           target={config.weekly} actual={actual.week} orders={actual.weekOrders}
-          pct={progress.weekly} color="bg-blue-500" borderColor="border-blue-500/20"
+          pct={progress.weekly} color="bg-capsula-navy" borderColor="border-capsula-navy/20"
         />
         <MetaCard
           label="Meta Mensual" icon="🗓️"
           target={config.monthly} actual={actual.month} orders={actual.monthOrders}
-          pct={progress.monthly} color="bg-purple-500" borderColor="border-purple-500/20"
+          pct={progress.monthly} color="bg-capsula-coral" borderColor="border-capsula-coral/20"
         />
       </div>
 
       {/* Merma */}
-      <div className={`glass-panel rounded-2xl p-5 border ${wasteOk ? 'border-emerald-500/20' : 'border-red-500/30 bg-red-500/5'}`}>
+      <div className={`glass-panel rounded-2xl p-5 border ${wasteOk ? 'border-[#2F6B4E]/20' : 'border-capsula-coral/30 bg-capsula-coral/5'}`}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
@@ -150,7 +150,7 @@ export function MetasView({ data }: { data: MetasData }) {
             <div className="flex items-center gap-4 flex-wrap">
               <div>
                 <p className="text-xs text-muted-foreground">Merma registrada</p>
-                <p className={`text-2xl font-black ${wasteOk ? 'text-foreground' : 'text-red-400'}`}>
+                <p className={`text-2xl font-black ${wasteOk ? 'text-foreground' : 'text-capsula-coral'}`}>
                   ${fmt(actual.wasteThisMonth)}
                 </p>
               </div>
@@ -163,7 +163,7 @@ export function MetasView({ data }: { data: MetasData }) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">% real de ventas</p>
-                <p className={`text-2xl font-black ${wasteOk ? 'text-emerald-400' : 'text-red-400'}`}>
+                <p className={`text-2xl font-black ${wasteOk ? 'text-[#2F6B4E]' : 'text-capsula-coral'}`}>
                   {wasteRisk.toFixed(1)}%
                 </p>
               </div>
@@ -252,7 +252,7 @@ export function MetasView({ data }: { data: MetasData }) {
           </div>
 
           {feedback && (
-            <div className={`px-4 py-3 rounded-xl text-sm font-bold ${feedback.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}`}>
+            <div className={`px-4 py-3 rounded-xl text-sm font-bold ${feedback.ok ? 'bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#2F6B4E]/30' : 'bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30'}`}>
               {feedback.ok ? '✅' : '❌'} {feedback.msg}
             </div>
           )}
