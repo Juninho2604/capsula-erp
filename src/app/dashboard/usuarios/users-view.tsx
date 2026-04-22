@@ -122,8 +122,8 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
             {/* Header */}
             <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Módulos por Usuario</h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h1 className="text-2xl font-bold text-capsula-navy-deep">Módulos por Usuario</h1>
+                    <p className="text-sm text-capsula-ink-soft mt-1">
                         Selecciona un usuario para configurar qué módulos del sistema puede ver en su menú.
                         Si usas <span className="font-semibold">acceso por rol</span>, el sistema aplica las reglas predeterminadas del rol.
                     </p>
@@ -131,7 +131,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                 {canManageUsers && (
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="shrink-0 flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white shadow-lg hover:bg-amber-600 active:scale-95 transition-all"
+                        className="shrink-0 flex items-center gap-2 rounded-xl bg-capsula-navy-deep px-4 py-2 text-sm font-medium text-capsula-ivory-surface shadow-cap-soft hover:bg-capsula-navy-ink active:scale-95 transition-all"
                     >
                         <span className="text-base leading-none">➕</span>
                         Nuevo Usuario
@@ -226,11 +226,11 @@ function UserCard({ user, isSelected, onClick, dimmed }: { user: User; isSelecte
             onClick={onClick}
             className={`w-full text-left rounded-xl px-3 py-2.5 transition-all border ${
                 isSelected
-                    ? 'bg-amber-500/10 border-amber-500/40'
+                    ? 'bg-[#F3EAD6]/40 border-[#946A1C]/30'
                     : 'border-transparent hover:bg-muted'
             } ${dimmed ? 'opacity-50' : ''}`}
         >
-            <p className={`font-semibold text-sm ${isSelected ? 'text-amber-500' : 'text-foreground'}`}>
+            <p className={`font-semibold text-sm ${isSelected ? 'text-[#946A1C]' : 'text-foreground'}`}>
                 {user.firstName} {user.lastName}
             </p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -299,13 +299,13 @@ function PinSection({ userId, canManage, pinSet, onSaved }: { userId: string; ca
             <div className="flex items-center gap-2 mb-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PIN de acceso (POS)</p>
                 {pinSet ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#E5EDE7]/60 px-2 py-0.5 text-xs font-semibold text-[#2F6B4E]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#2F6B4E]" />
                         Asignado
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#F3EAD6]/40 px-2 py-0.5 text-xs font-semibold text-[#946A1C]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#946A1C]" />
                         Sin PIN
                     </span>
                 )}
@@ -325,7 +325,7 @@ function PinSection({ userId, canManage, pinSet, onSaved }: { userId: string; ca
                 <button
                     onClick={handleSavePin}
                     disabled={isPending || pin.trim().length < 4}
-                    className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
+                    className="rounded-xl bg-capsula-navy-deep px-4 py-2 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink active:scale-95 disabled:opacity-50 transition"
                 >
                     {isPending ? 'Guardando…' : pinSet ? 'Cambiar PIN' : 'Guardar PIN'}
                 </button>
@@ -372,7 +372,7 @@ function PasswordResetSection({ userId, canResetPassword }: { userId: string; ca
                 <button
                     onClick={handleReset}
                     disabled={isPending || newPassword.trim().length < 6}
-                    className="shrink-0 rounded-xl bg-red-600/80 px-4 py-2 text-sm font-bold text-white hover:bg-red-600 active:scale-95 disabled:opacity-50 transition"
+                    className="shrink-0 rounded-xl bg-capsula-coral/80 px-4 py-2 text-sm font-bold text-white hover:bg-capsula-coral active:scale-95 disabled:opacity-50 transition"
                 >
                     {isPending ? 'Guardando…' : 'Resetear'}
                 </button>
@@ -454,7 +454,7 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
                     Permisos granulares
                 </p>
                 {hasChanges && (
-                    <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
+                    <span className="text-[10px] font-bold text-[#946A1C] bg-[#F3EAD6]/40 px-2 py-0.5 rounded-full uppercase">
                         {granted.size > 0 && `+${granted.size}`}
                         {granted.size > 0 && revoked.size > 0 && ' / '}
                         {revoked.size > 0 && `−${revoked.size}`}
@@ -483,8 +483,8 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
                                         className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 border text-sm transition-all ${
                                             isChecked
                                                 ? isBase
-                                                    ? 'bg-blue-500/5 border-blue-500/20'
-                                                    : 'bg-emerald-500/5 border-emerald-500/20'
+                                                    ? 'bg-capsula-navy/5 border-capsula-navy/20'
+                                                    : 'bg-[#E5EDE7]/30 border-[#2F6B4E]/20'
                                                 : 'border-border bg-background/50 opacity-50'
                                         } ${!canManage ? 'cursor-default' : ''}`}
                                         title={info.description}
@@ -499,13 +499,13 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
                                         <div className="min-w-0 flex-1">
                                             <p className="font-semibold text-foreground leading-tight truncate">{info.label}</p>
                                             {isBase && !isRevoked && (
-                                                <p className="text-[10px] text-blue-400/70 font-bold">del rol</p>
+                                                <p className="text-[10px] text-capsula-navy/70 font-bold">del rol</p>
                                             )}
                                             {!isBase && isGranted && (
-                                                <p className="text-[10px] text-emerald-400/70 font-bold">extra</p>
+                                                <p className="text-[10px] text-[#2F6B4E]/70 font-bold">extra</p>
                                             )}
                                             {isRevoked && (
-                                                <p className="text-[10px] text-red-400/70 font-bold">revocado</p>
+                                                <p className="text-[10px] text-capsula-coral/70 font-bold">revocado</p>
                                             )}
                                         </div>
                                     </label>
@@ -520,7 +520,7 @@ function PermsSection({ userId, role, grantedPerms, revokedPerms, canManage, onS
                 <button
                     onClick={handleSave}
                     disabled={isPending}
-                    className="mt-4 w-full rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
+                    className="mt-4 w-full rounded-xl bg-capsula-navy-deep px-4 py-2 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink active:scale-95 disabled:opacity-50 transition"
                 >
                     {isPending ? 'Guardando…' : 'Guardar permisos'}
                 </button>
@@ -660,7 +660,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50"
                             />
                         </div>
-                        {nameError && <p className="text-xs text-red-400 font-bold">{nameError}</p>}
+                        {nameError && <p className="text-xs text-capsula-coral font-bold">{nameError}</p>}
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setEditingName(false)}
@@ -672,7 +672,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                             <button
                                 onClick={handleSaveName}
                                 disabled={isSavingName || !editFirstName.trim() || !editLastName.trim()}
-                                className="flex-1 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50 transition"
+                                className="flex-1 rounded-xl bg-capsula-navy-deep px-3 py-1.5 text-xs font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink disabled:opacity-50 transition"
                             >
                                 {isSavingName ? 'Guardando…' : 'Guardar'}
                             </button>
@@ -689,7 +689,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                                     <button
                                         onClick={openNameEdit}
                                         title="Editar nombre y correo"
-                                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition text-xs"
+                                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-[#946A1C] hover:bg-[#F3EAD6]/40 transition text-xs"
                                     >
                                         ✏️
                                     </button>
@@ -720,8 +720,8 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                                     onClick={() => onStatusToggle(user.id, user.isActive)}
                                     className={`text-xs font-semibold px-3 py-1 rounded-full border transition ${
                                         user.isActive
-                                            ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
-                                            : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                                            ? 'border-capsula-coral/30 text-capsula-coral hover:bg-capsula-coral/10'
+                                            : 'border-[#2F6B4E]/30 text-[#2F6B4E] hover:bg-[#E5EDE7]/60'
                                     }`}
                                 >
                                     {user.isActive ? 'Desactivar' : 'Activar'}
@@ -757,7 +757,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                                             key={mod.id}
                                             className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 border transition-all ${
                                                 checked
-                                                    ? 'bg-amber-500/5 border-amber-500/20'
+                                                    ? 'bg-[#F3EAD6]/30 border-[#946A1C]/20'
                                                     : 'border-border bg-background/50 opacity-50'
                                             } ${!canManage ? 'cursor-default' : ''}`}
                                         >
@@ -819,7 +819,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                     <button
                         onClick={handleSave}
                         disabled={isPending}
-                        className="ml-auto rounded-xl bg-amber-500 px-5 py-2 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
+                        className="ml-auto rounded-xl bg-capsula-navy-deep px-5 py-2 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink active:scale-95 disabled:opacity-50 transition"
                     >
                         {isPending ? 'Guardando…' : `Guardar (${selected.size} módulos)`}
                     </button>
@@ -976,7 +976,7 @@ function CreateUserModal({ onClose, onCreated }: CreateUserModalProps) {
 
                     {/* Error */}
                     {error && (
-                        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                        <div className="rounded-xl bg-capsula-coral/10 border border-capsula-coral/30 px-4 py-3 text-sm text-capsula-coral">
                             ⚠️ {error}
                         </div>
                     )}
@@ -994,7 +994,7 @@ function CreateUserModal({ onClose, onCreated }: CreateUserModalProps) {
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="flex-1 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600 active:scale-95 disabled:opacity-50 transition"
+                            className="flex-1 rounded-xl bg-capsula-navy-deep px-4 py-2.5 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink active:scale-95 disabled:opacity-50 transition"
                         >
                             {isPending ? (
                                 <span className="flex items-center justify-center gap-2">
