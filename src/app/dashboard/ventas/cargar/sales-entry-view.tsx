@@ -298,54 +298,60 @@ export default function SalesEntryView() {
             {viewMode === 'entry' && (
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Catálogo de productos */}
-                    <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft lg:col-span-2">
+                        <div className="border-b border-capsula-line bg-capsula-ivory px-5 py-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    📋 Menú
+                                <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                                    <ClipboardList className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} /> Menú
                                 </h2>
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Buscar producto..."
-                                    className="w-full sm:w-64 rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-amber-500 focus:outline-none"
-                                />
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Buscar producto…"
+                                        className="w-full rounded-full border border-capsula-line bg-capsula-ivory-surface py-2 pl-9 pr-3 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                                    />
+                                </div>
                             </div>
 
                             {/* Categorías */}
-                            <div className="flex gap-2 mt-3 flex-wrap">
+                            <div className="mt-3 flex flex-wrap gap-2">
                                 <button
                                     onClick={() => setSelectedCategory('')}
                                     className={cn(
-                                        'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                                        'rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors',
                                         selectedCategory === ''
-                                            ? 'bg-amber-100 text-amber-700'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink',
                                     )}
                                 >
                                     Todos
                                 </button>
-                                {categories.map(cat => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => setSelectedCategory(cat.id)}
-                                        className={cn(
-                                            'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                                            selectedCategory === cat.id
-                                                ? 'bg-amber-100 text-amber-700'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        )}
-                                    >
-                                        {cat.name}
-                                    </button>
-                                ))}
+                                {categories.map(cat => {
+                                    const active = selectedCategory === cat.id;
+                                    return (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setSelectedCategory(cat.id)}
+                                            className={cn(
+                                                'rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors',
+                                                active
+                                                    ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                    : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink',
+                                            )}
+                                        >
+                                            {cat.name}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <div className="p-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[50vh] overflow-y-auto">
+                        <div className="grid max-h-[50vh] gap-2 overflow-y-auto p-4 sm:grid-cols-2 lg:grid-cols-3">
                             {filteredItems.length === 0 ? (
-                                <p className="col-span-full text-center text-gray-500 py-8">
+                                <p className="col-span-full py-8 text-center text-[13px] text-capsula-ink-muted">
                                     No se encontraron productos
                                 </p>
                             ) : (
@@ -353,13 +359,13 @@ export default function SalesEntryView() {
                                     <button
                                         key={item.id}
                                         onClick={() => addToCart(item)}
-                                        className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-amber-300 hover:bg-amber-50 transition-all text-left"
+                                        className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-left transition-all hover:-translate-y-px hover:border-capsula-navy-deep/40 hover:shadow-cap-soft"
                                     >
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-gray-900 truncate">{item.name}</p>
-                                            <p className="text-xs text-gray-500">{item.categoryName}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[13px] font-medium text-capsula-ink">{item.name}</p>
+                                            <p className="text-[11px] text-capsula-ink-muted">{item.categoryName}</p>
                                         </div>
-                                        <span className="ml-2 font-semibold text-amber-600">
+                                        <span className="ml-2 font-mono text-[13px] font-semibold text-capsula-navy-deep">
                                             {formatCurrency(item.price)}
                                         </span>
                                     </button>
@@ -369,120 +375,128 @@ export default function SalesEntryView() {
                     </div>
 
                     {/* Carrito y checkout */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🛒 Comanda ({cart.length})
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="border-b border-capsula-line bg-capsula-ivory px-5 py-4">
+                            <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                                <ShoppingBag className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                                Comanda <span className="text-[11px] text-capsula-ink-muted">({cart.length})</span>
                             </h2>
                         </div>
 
-                        <div className="p-4 space-y-4 max-h-[30vh] overflow-y-auto">
+                        <div className="max-h-[30vh] space-y-3 overflow-y-auto p-4">
                             {cart.length === 0 ? (
-                                <p className="text-center text-gray-500 py-4">
+                                <p className="py-4 text-center text-[13px] text-capsula-ink-muted">
                                     Agrega productos del menú
                                 </p>
                             ) : (
                                 cart.map(item => (
                                     <div key={item.menuItemId} className="flex items-center gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{item.menuItemName}</p>
-                                            <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[13px] font-medium text-capsula-ink">{item.menuItemName}</p>
+                                            <p className="font-mono text-[11px] text-capsula-ink-muted">{formatCurrency(item.unitPrice)}</p>
                                         </div>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory p-1">
                                             <button
                                                 onClick={() => updateQuantity(item.menuItemId, item.quantity - 1)}
-                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
                                             >
-                                                -
+                                                <Minus className="h-3 w-3" strokeWidth={2} />
                                             </button>
-                                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                            <span className="inline-flex w-7 items-center justify-center font-mono text-[13px] font-semibold text-capsula-navy-deep">{item.quantity}</span>
                                             <button
                                                 onClick={() => updateQuantity(item.menuItemId, item.quantity + 1)}
-                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory transition-colors hover:bg-capsula-navy"
                                             >
-                                                +
+                                                <Plus className="h-3 w-3" strokeWidth={2} />
                                             </button>
                                         </div>
                                         <button
                                             onClick={() => removeFromCart(item.menuItemId)}
-                                            className="text-red-500 hover:text-red-700"
+                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                                         >
-                                            ✕
+                                            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                                         </button>
                                     </div>
                                 ))
                             )}
                         </div>
 
-                        <div className="border-t border-gray-200 p-4 space-y-3 dark:border-gray-700">
+                        <div className="space-y-3 border-t border-capsula-line p-4">
                             {/* Tipo de orden */}
                             <div className="grid grid-cols-3 gap-2">
-                                {(['RESTAURANT', 'DELIVERY', 'TAKEOUT'] as const).map(type => (
-                                    <button
-                                        key={type}
-                                        onClick={() => setOrderType(type)}
-                                        className={cn(
-                                            'py-2 rounded-lg text-xs font-medium transition-all',
-                                            orderType === type
-                                                ? 'bg-amber-500 text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        )}
-                                    >
-                                        {type === 'RESTAURANT' ? '🍽️ Mesa' : type === 'DELIVERY' ? '🛵 Delivery' : '📦 Para llevar'}
-                                    </button>
-                                ))}
+                                {([
+                                    { id: 'RESTAURANT' as const, label: 'Mesa', icon: UtensilsCrossed },
+                                    { id: 'DELIVERY' as const, label: 'Delivery', icon: Bike },
+                                    { id: 'TAKEOUT' as const, label: 'Para llevar', icon: ShoppingBag },
+                                ]).map(type => {
+                                    const TIcon = type.icon;
+                                    const active = orderType === type.id;
+                                    return (
+                                        <button
+                                            key={type.id}
+                                            onClick={() => setOrderType(type.id)}
+                                            className={cn(
+                                                'inline-flex items-center justify-center gap-1 rounded-full py-2 text-[11px] font-medium transition-colors',
+                                                active
+                                                    ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                                    : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink',
+                                            )}
+                                        >
+                                            <TIcon className="h-3 w-3" strokeWidth={1.5} /> {type.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             {/* Cliente (para delivery) */}
                             {orderType === 'DELIVERY' && (
                                 <div className="space-y-2">
-                                    <input
-                                        type="text"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        placeholder="Nombre del cliente"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={customerName}
+                                            onChange={(e) => setCustomerName(e.target.value)}
+                                            placeholder="Nombre del cliente"
+                                            className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                                        />
+                                    </div>
                                     <input
                                         type="text"
                                         value={customerPhone}
                                         onChange={(e) => setCustomerPhone(e.target.value)}
                                         placeholder="Teléfono"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                        className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                                     />
                                     <input
                                         type="text"
                                         value={deliveryAddress}
                                         onChange={(e) => setDeliveryAddress(e.target.value)}
                                         placeholder="Dirección de entrega"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                        className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                                     />
                                 </div>
                             )}
 
-                            {/* Área */}
                             <select
                                 value={areaId}
                                 onChange={(e) => setAreaId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                             >
                                 {areas.map(area => (
                                     <option key={area.id} value={area.id}>{area.name}</option>
                                 ))}
                             </select>
 
-                            {/* Método de pago */}
                             <select
                                 value={paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                             >
                                 {paymentMethods.map(pm => (
                                     <option key={pm.id} value={pm.id}>{pm.label}</option>
                                 ))}
                             </select>
 
-                            {/* Descuento */}
                             <select
                                 value={discountType}
                                 onChange={(e) => {
@@ -492,7 +506,7 @@ export default function SalesEntryView() {
                                         setDiscountAmount(subtotal * (dt.percent / 100));
                                     }
                                 }}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                             >
                                 {discountTypes.map(dt => (
                                     <option key={dt.id} value={dt.id}>{dt.label}</option>
@@ -500,31 +514,35 @@ export default function SalesEntryView() {
                             </select>
 
                             {/* Totales */}
-                            <div className="border-t pt-3 space-y-1">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Subtotal:</span>
-                                    <span>{formatCurrency(subtotal)}</span>
+                            <div className="space-y-1 border-t border-capsula-line pt-3">
+                                <div className="flex justify-between text-[12px]">
+                                    <span className="text-capsula-ink-muted">Subtotal:</span>
+                                    <span className="font-mono text-capsula-ink">{formatCurrency(subtotal)}</span>
                                 </div>
                                 {discountAmount > 0 && (
-                                    <div className="flex justify-between text-sm text-red-600">
+                                    <div className="flex justify-between text-[12px] text-capsula-coral">
                                         <span>Descuento:</span>
-                                        <span>-{formatCurrency(discountAmount)}</span>
+                                        <span className="font-mono">-{formatCurrency(discountAmount)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between text-lg font-bold">
-                                    <span>Total:</span>
-                                    <span className="text-emerald-600">{formatCurrency(total)}</span>
+                                <div className="flex items-baseline justify-between">
+                                    <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Total:</span>
+                                    <span className="font-mono text-[22px] font-semibold text-capsula-navy-deep">{formatCurrency(total)}</span>
                                 </div>
                             </div>
 
                             {/* Botón registrar */}
-                            <button
+                            <Button
+                                variant="primary"
+                                size="lg"
                                 onClick={handleSubmit}
                                 disabled={cart.length === 0 || isSubmitting}
-                                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                                isLoading={isSubmitting}
+                                className="w-full"
                             >
-                                {isSubmitting ? 'Registrando...' : '✅ Registrar Venta'}
-                            </button>
+                                <Check className="h-4 w-4" strokeWidth={1.5} />
+                                {isSubmitting ? 'Registrando…' : 'Registrar venta'}
+                            </Button>
                         </div>
                     </div>
                 </div>
