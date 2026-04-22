@@ -300,22 +300,22 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
           {/* Gráfica de tendencia */}
           {trend.length > 0 && (
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Tendencia 6 Meses</h3>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+              <h3 className="mb-5 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Tendencia 6 meses</h3>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={trend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={55} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: '#6B7584' }} axisLine={false} tickLine={false} width={55} />
                     <Tooltip
                       formatter={(value: number) => [`$${fmt(value)}`, undefined]}
-                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }}
+                      contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }} />
-                    <Bar dataKey="sales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cogs" name="COGS" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="profit" name="Utilidad" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: '#6B7584' }} />
+                    <Bar dataKey="sales" name="Ventas" fill="#2F6B4E" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cogs" name="COGS" fill="#946A1C" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expenses" name="Gastos" fill="#F25C3B" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="profit" name="Utilidad" fill="#11203A" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -324,42 +324,43 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
           {/* Top Gastos + Métodos de Pago */}
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Top 5 Expenses */}
             {(s.expenses.topExpenses?.length ?? 0) > 0 && (
-              <div className="glass-panel rounded-2xl border border-border p-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Top 5 Gastos del Período</h3>
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Top 5 gastos del período</h3>
                 <div className="space-y-3">
                   {s.expenses.topExpenses.map((exp, i) => (
                     <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-lg font-black text-muted-foreground w-6">{i + 1}</span>
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className="w-6 font-mono text-[16px] font-semibold text-capsula-ink-muted">{i + 1}</span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{exp.description}</p>
-                          <p className="text-xs text-muted-foreground">{exp.categoryName} · {new Date(exp.paidAt).toLocaleDateString('es-VE')}</p>
+                          <p className="truncate text-[13px] font-medium text-capsula-ink">{exp.description}</p>
+                          <p className="text-[11px] text-capsula-ink-muted">{exp.categoryName} · {new Date(exp.paidAt).toLocaleDateString('es-VE')}</p>
                         </div>
                       </div>
-                      <span className="text-sm font-black text-red-500 ml-3">${fmt(exp.amount)}</span>
+                      <span className="ml-3 font-mono text-[13px] font-semibold text-capsula-coral">${fmt(exp.amount)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Payment Methods */}
             {(s.income.byPaymentMethod?.length ?? 0) > 0 && (
-              <div className="glass-panel rounded-2xl border border-border p-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Ventas por Método de Pago</h3>
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas por método de pago</h3>
                 <div className="space-y-2.5">
                   {s.income.byPaymentMethod.map(pm => {
                     const pct = s.income.totalSalesUsd > 0 ? (pm.total / s.income.totalSalesUsd) * 100 : 0;
                     return (
                       <div key={pm.method} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-foreground font-medium">{PAYMENT_METHOD_LABELS[pm.method] ?? pm.method}</span>
-                          <span className="text-foreground font-bold">${fmt(pm.total)} <span className="text-muted-foreground font-normal text-xs">({pm.count})</span></span>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="font-medium text-capsula-ink">{PAYMENT_METHOD_LABELS[pm.method] ?? pm.method}</span>
+                          <span className="font-mono font-semibold text-capsula-ink">
+                            ${fmt(pm.total)}{' '}
+                            <span className="text-[11px] font-normal text-capsula-ink-muted">({pm.count})</span>
+                          </span>
                         </div>
-                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-capsula-line">
+                          <div className="h-full rounded-full bg-[#2F6B4E] transition-all" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -371,35 +372,44 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
           {/* Alertas financieras */}
           {(() => {
-            const alerts: { icon: string; text: string; href?: string; severity: 'critical' | 'warning' | 'info' }[] = [];
+            type Severity = 'critical' | 'warning' | 'info';
+            type AlertDef = { Icon: typeof AlertOctagon; text: string; href?: string; severity: Severity };
+            const alerts: AlertDef[] = [];
             if (s.accountsPayable.overdueUsd > 0) {
-              alerts.push({ icon: '🚨', text: `Tienes $${fmt(s.accountsPayable.overdueUsd)} en cuentas por pagar vencidas`, href: '/dashboard/cuentas-pagar', severity: 'critical' });
+              alerts.push({ Icon: AlertOctagon, text: `Tienes $${fmt(s.accountsPayable.overdueUsd)} en cuentas por pagar vencidas`, href: '/dashboard/cuentas-pagar', severity: 'critical' });
             }
             if (s.profitLoss.operatingProfit < 0) {
-              alerts.push({ icon: '📉', text: `El negocio operó con pérdida de $${fmt(Math.abs(s.profitLoss.operatingProfit))} este período`, severity: 'critical' });
+              alerts.push({ Icon: TrendingDown, text: `El negocio operó con pérdida de $${fmt(Math.abs(s.profitLoss.operatingProfit))} este período`, severity: 'critical' });
             }
             if (s.profitLoss.grossMarginPct < 30 && s.income.totalSalesUsd > 0) {
-              alerts.push({ icon: '⚠️', text: `Margen bruto bajo: ${s.profitLoss.grossMarginPct}% (se recomienda >30%)`, href: '/dashboard/costos/margen', severity: 'warning' });
+              alerts.push({ Icon: AlertTriangle, text: `Margen bruto bajo: ${s.profitLoss.grossMarginPct}% (se recomienda >30%)`, href: '/dashboard/costos/margen', severity: 'warning' });
             }
             if (s.expenses.totalExpensesUsd > 0 && s.income.totalSalesUsd > 0 && (s.expenses.totalExpensesUsd / s.income.totalSalesUsd) > 0.40) {
-              alerts.push({ icon: '💸', text: `Gastos operativos representan ${((s.expenses.totalExpensesUsd / s.income.totalSalesUsd) * 100).toFixed(1)}% de las ventas (se recomienda <40%)`, href: '/dashboard/gastos', severity: 'warning' });
+              alerts.push({ Icon: Receipt, text: `Gastos operativos representan ${((s.expenses.totalExpensesUsd / s.income.totalSalesUsd) * 100).toFixed(1)}% de las ventas (se recomienda <40%)`, href: '/dashboard/gastos', severity: 'warning' });
             }
             if (s.mom?.salesChange != null && s.mom.salesChange < -15) {
-              alerts.push({ icon: '📊', text: `Ventas cayeron ${Math.abs(s.mom.salesChange).toFixed(1)}% vs mes anterior`, severity: 'warning' });
+              alerts.push({ Icon: BarChart3, text: `Ventas cayeron ${Math.abs(s.mom.salesChange).toFixed(1)}% vs mes anterior`, severity: 'warning' });
             }
             if ((s.cashFlow?.net ?? 0) < 0) {
-              alerts.push({ icon: '🏦', text: `Flujo de caja negativo: -$${fmt(Math.abs(s.cashFlow?.net ?? 0))}. Los egresos superan los ingresos`, severity: 'warning' });
+              alerts.push({ Icon: Landmark, text: `Flujo de caja negativo: -$${fmt(Math.abs(s.cashFlow?.net ?? 0))}. Los egresos superan los ingresos`, severity: 'warning' });
             }
             if (alerts.length === 0) return null;
             const hasCritical = alerts.some(a => a.severity === 'critical');
             return (
-              <div className={`glass-panel rounded-2xl border p-5 ${hasCritical ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-                <h3 className={`text-sm font-black uppercase tracking-widest mb-3 ${hasCritical ? 'text-red-500' : 'text-amber-500'}`}>
-                  {hasCritical ? '🚨 Alertas Financieras' : '⚠️ Atención'}
+              <div className={cn(
+                "rounded-[var(--radius)] border p-5 shadow-cap-soft",
+                hasCritical ? "border-capsula-coral/30 bg-capsula-coral-subtle/40" : "border-[#E8D9B8] bg-[#F3EAD6]/40",
+              )}>
+                <h3 className={cn(
+                  "mb-3 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em]",
+                  hasCritical ? "text-capsula-coral" : "text-[#946A1C]",
+                )}>
+                  {hasCritical ? <AlertOctagon className="h-3.5 w-3.5" strokeWidth={1.5} /> : <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                  {hasCritical ? 'Alertas financieras' : 'Atención'}
                 </h3>
                 <div className="space-y-2">
                   {alerts.map((alert, i) => (
-                    <AlertItem key={i} icon={alert.icon} text={alert.text} href={alert.href} />
+                    <AlertItem key={i} Icon={alert.Icon} text={alert.text} href={alert.href} />
                   ))}
                 </div>
               </div>
@@ -408,46 +418,47 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
           {/* Cuentas por pagar pendientes */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Deudas Pendientes</p>
-              <p className="text-3xl font-black text-foreground mt-1">${fmt(s.accountsPayable.totalPendingUsd)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.accountsPayable.count} facturas activas</p>
+            <div className="rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6]/40 p-5 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Deudas pendientes</p>
+              <p className="mt-1 font-mono text-[28px] font-semibold text-capsula-ink">${fmt(s.accountsPayable.totalPendingUsd)}</p>
+              <p className="mt-1 text-[11px] text-capsula-ink-muted">{s.accountsPayable.count} facturas activas</p>
             </div>
-            <div className={`glass-panel rounded-2xl border p-5 ${s.accountsPayable.overdueUsd > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-border'}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Vencido</p>
-              <p className={`text-3xl font-black mt-1 ${s.accountsPayable.overdueUsd > 0 ? 'text-red-500' : 'text-foreground'}`}>
+            <div className={cn(
+              "rounded-[var(--radius)] border p-5 shadow-cap-soft",
+              s.accountsPayable.overdueUsd > 0 ? "border-capsula-coral/30 bg-capsula-coral-subtle/40" : "border-capsula-line bg-capsula-ivory-surface",
+            )}>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Vencido</p>
+              <p className={cn("mt-1 font-mono text-[28px] font-semibold", s.accountsPayable.overdueUsd > 0 ? "text-capsula-coral" : "text-capsula-ink")}>
                 ${fmt(s.accountsPayable.overdueUsd)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Pendiente de pago urgente</p>
+              <p className="mt-1 text-[11px] text-capsula-ink-muted">Pendiente de pago urgente</p>
             </div>
-            <div className="glass-panel rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Compras del Período</p>
-              <p className="text-3xl font-black text-foreground mt-1">${fmt(s.purchases.totalPurchasesUsd)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.purchases.ordersCount} órdenes recibidas</p>
+            <div className="rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft/40 p-5 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Compras del período</p>
+              <p className="mt-1 font-mono text-[28px] font-semibold text-capsula-ink">${fmt(s.purchases.totalPurchasesUsd)}</p>
+              <p className="mt-1 text-[11px] text-capsula-ink-muted">{s.purchases.ordersCount} órdenes recibidas</p>
             </div>
           </div>
 
           {/* Aging Report */}
           {(s.accountsPayable.aging ?? []).some((a: { range: string; amount: number; count: number }) => a.amount > 0) && (
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+              <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Envejecimiento de deudas</h3>
               <div className="grid grid-cols-4 gap-3">
-                {s.accountsPayable.aging.map((bucket: { range: string; amount: number; count: number }) => (
-                  <div key={bucket.range} className={`rounded-xl p-4 text-center ${
-                    bucket.range === '90+' ? 'bg-red-500/10 border border-red-500/20' :
-                    bucket.range === '61-90' ? 'bg-orange-500/10 border border-orange-500/20' :
-                    bucket.range === '31-60' ? 'bg-amber-500/10 border border-amber-500/20' :
-                    'bg-blue-500/10 border border-blue-500/20'
-                  }`}>
-                    <p className="text-xs font-bold text-muted-foreground">{bucket.range} días</p>
-                    <p className={`text-lg font-black mt-1 ${
-                      bucket.range === '90+' ? 'text-red-500' :
-                      bucket.range === '61-90' ? 'text-orange-500' :
-                      bucket.range === '31-60' ? 'text-amber-500' : 'text-blue-500'
-                    }`}>${fmt(bucket.amount)}</p>
-                    <p className="text-[10px] text-muted-foreground">{bucket.count} facturas</p>
-                  </div>
-                ))}
+                {s.accountsPayable.aging.map((bucket: { range: string; amount: number; count: number }) => {
+                  const style =
+                    bucket.range === '90+' ? { border: 'border-capsula-coral/30', bg: 'bg-capsula-coral-subtle/40', text: 'text-capsula-coral' } :
+                    bucket.range === '61-90' ? { border: 'border-[#E8D9B8]', bg: 'bg-[#F3EAD6]/40', text: 'text-[#946A1C]' } :
+                    bucket.range === '31-60' ? { border: 'border-[#E8D9B8]', bg: 'bg-[#F3EAD6]/30', text: 'text-[#946A1C]' } :
+                    { border: 'border-capsula-navy/20', bg: 'bg-capsula-navy-soft/40', text: 'text-capsula-navy-deep' };
+                  return (
+                    <div key={bucket.range} className={cn("rounded-[var(--radius)] border p-4 text-center", style.border, style.bg)}>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">{bucket.range} días</p>
+                      <p className={cn("mt-1 font-mono text-[16px] font-semibold", style.text)}>${fmt(bucket.amount)}</p>
+                      <p className="text-[10px] text-capsula-ink-muted">{bucket.count} facturas</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -459,23 +470,45 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-function PnLCard({ label, value, sub, color, icon, positive, change, invertChange }: {
-  label: string; value: string; sub?: string; color: string; icon: string; positive?: boolean;
-  change?: number | null; invertChange?: boolean;
+type PnLAccent = 'ok' | 'warn' | 'coral' | 'navy';
+
+function PnLCard({ label, value, sub, accent, Icon, positive, change, invertChange }: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent: PnLAccent;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  positive?: boolean;
+  change?: number | null;
+  invertChange?: boolean;
 }) {
+  const accentClass: Record<PnLAccent, string> = {
+    ok:    'border-[#D3E2D8] bg-[#E5EDE7]/50',
+    warn:  'border-[#E8D9B8] bg-[#F3EAD6]/40',
+    coral: 'border-capsula-coral/30 bg-capsula-coral-subtle/40',
+    navy:  'border-capsula-navy/20 bg-capsula-navy-soft/40',
+  };
+  const iconClass: Record<PnLAccent, string> = {
+    ok:    'text-[#2F6B4E]',
+    warn:  'text-[#946A1C]',
+    coral: 'text-capsula-coral',
+    navy:  'text-capsula-navy',
+  };
+  const positivePct = invertChange ? (change != null && change <= 0) : (change != null && change >= 0);
+  const ChangeIcon = change != null && change >= 0 ? TrendingUp : TrendingDown;
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-        <span className="text-lg">{icon}</span>
+    <div className={cn("rounded-[var(--radius)] border p-5 shadow-cap-soft", accentClass[accent])}>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
+        <Icon className={cn("h-4 w-4", iconClass[accent])} strokeWidth={1.5} />
       </div>
-      <p className={`text-2xl font-black ${positive === false ? 'text-red-500' : 'text-foreground'}`}>{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p className={cn("font-mono text-[22px] font-semibold", positive === false ? 'text-capsula-coral' : 'text-capsula-ink')}>
+        {value}
+      </p>
+      {sub && <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{sub}</p>}
       {change != null && (
-        <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${
-          (invertChange ? change <= 0 : change >= 0) ? 'text-emerald-500' : 'text-red-500'
-        }`}>
-          {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}% vs mes ant.
+        <span className={cn("mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium", positivePct ? 'text-[#2F6B4E]' : 'text-capsula-coral')}>
+          <ChangeIcon className="h-3 w-3" strokeWidth={1.5} /> {Math.abs(change).toFixed(1)}% vs mes ant.
         </span>
       )}
     </div>
@@ -487,21 +520,33 @@ function PnLRow({ label, amount, bold, indent, positive }: {
 }) {
   const isPositive = positive !== undefined ? positive : amount >= 0;
   return (
-    <div className={`flex items-center justify-between ${indent ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
-      <span className={bold ? 'font-bold text-foreground' : ''}>{label}</span>
-      <span className={`${bold ? 'font-black text-base' : 'font-semibold'} ${amount < 0 ? 'text-red-500' : amount > 0 && isPositive ? 'text-emerald-500' : 'text-foreground'}`}>
+    <div className={cn("flex items-center justify-between", indent ? "text-[11px] text-capsula-ink-muted" : "text-[13px]")}>
+      <span className={bold ? 'font-medium text-capsula-ink' : 'text-capsula-ink-soft'}>{label}</span>
+      <span className={cn(
+        "font-mono",
+        bold ? 'text-[15px] font-semibold' : 'font-semibold',
+        amount < 0 ? 'text-capsula-coral' : amount > 0 && isPositive ? 'text-[#2F6B4E]' : 'text-capsula-ink',
+      )}>
         {amount >= 0 ? `+$${fmt(amount)}` : `-$${fmt(Math.abs(amount))}`}
       </span>
     </div>
   );
 }
 
-function AlertItem({ icon, text, href }: { icon: string; text: string; href?: string }) {
+function AlertItem({ Icon, text, href }: {
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  text: string;
+  href?: string;
+}) {
   return (
-    <div className="flex items-start gap-2 text-sm text-foreground">
-      <span>{icon}</span>
-      <span>{text}</span>
-      {href && <a href={href} className="ml-auto text-xs text-blue-500 hover:underline whitespace-nowrap">Ver →</a>}
+    <div className="flex items-start gap-2 text-[13px] text-capsula-ink">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-capsula-ink-muted" strokeWidth={1.5} />
+      <span className="flex-1">{text}</span>
+      {href && (
+        <a href={href} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[11px] font-medium text-capsula-coral hover:underline">
+          Ver <ChevronRightArrow className="h-3 w-3" strokeWidth={1.5} />
+        </a>
+      )}
     </div>
   );
 }
