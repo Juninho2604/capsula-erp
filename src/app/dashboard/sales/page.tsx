@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getSalesHistoryAction, getDailyZReportAction, getEndOfDaySummaryAction, voidSalesOrderAction, type ZReportData, type EndOfDaySummary } from '@/app/actions/sales.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
@@ -186,22 +186,25 @@ export default function SalesHistoryPage() {
 
     // ---- BADGES ----
     const getPaymentBadge = (method: string) => {
-        switch (method?.toUpperCase()) {
-            case 'CASH':
-            case 'CASH_USD': return <span className="bg-green-900 text-green-300 px-2 py-0.5 rounded text-xs font-bold">Cash $</span>;
-            case 'CASH_EUR': return <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-bold">Cash €</span>;
-            case 'CARD':
-            case 'BS_POS':
-            case 'PDV_SHANKLISH': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">PDV Shanklish</span>;
-            case 'PDV_SUPERFERRO': return <span className="bg-sky-900 text-sky-300 px-2 py-0.5 rounded text-xs font-bold">PDV Superferro</span>;
-            case 'ZELLE': return <span className="bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded text-xs font-bold">ZELLE</span>;
-            case 'MOBILE_PAY': return <span className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded text-xs font-bold">PAGO MÓVIL</span>;
-            case 'MOVIL_NG': return <span className="bg-violet-900 text-violet-300 px-2 py-0.5 rounded text-xs font-bold">MÓVIL NG</span>;
-            case 'TRANSFER': return <span className="bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded text-xs font-bold">TRANSFER</span>;
-            case 'CASH_BS': return <span className="bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded text-xs font-bold">Bs</span>;
-            case 'CORTESIA': return <span className="bg-purple-900 text-purple-200 px-2 py-0.5 rounded text-xs font-bold">CORTESÍA</span>;
-            default: return <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs font-bold">{method || '-'}</span>;
-        }
+        const map: Record<string, { label: string; variant: 'ok' | 'info' | 'coral' | 'warn' | 'neutral' | 'navy'; Icon: typeof Banknote }> = {
+            CASH:            { label: 'Cash $',        variant: 'ok',      Icon: Banknote },
+            CASH_USD:        { label: 'Cash $',        variant: 'ok',      Icon: Banknote },
+            CASH_EUR:        { label: 'Cash €',        variant: 'ok',      Icon: Euro },
+            CARD:            { label: 'PDV Shanklish', variant: 'info',    Icon: CreditCard },
+            BS_POS:          { label: 'PDV Shanklish', variant: 'info',    Icon: CreditCard },
+            PDV_SHANKLISH:   { label: 'PDV Shanklish', variant: 'info',    Icon: CreditCard },
+            PDV_SUPERFERRO:  { label: 'PDV Superferro', variant: 'navy',   Icon: CreditCard },
+            ZELLE:           { label: 'Zelle',         variant: 'info',    Icon: Zap },
+            MOBILE_PAY:      { label: 'Pago móvil',    variant: 'coral',   Icon: Smartphone },
+            MOVIL_NG:        { label: 'Móvil NG',      variant: 'coral',   Icon: Smartphone },
+            TRANSFER:        { label: 'Transfer',      variant: 'info',    Icon: Landmark },
+            CASH_BS:         { label: 'Bs',            variant: 'warn',    Icon: Banknote },
+            CORTESIA:        { label: 'Cortesía',      variant: 'coral',   Icon: Gift },
+        };
+        const m = map[method?.toUpperCase()];
+        if (!m) return <Badge variant="neutral">{method || '-'}</Badge>;
+        const { label, variant, Icon } = m;
+        return <Badge variant={variant}><Icon className="h-3 w-3" strokeWidth={1.5} /> {label}</Badge>;
     };
 
     const formatMoney = (amount: number) => `$${(amount || 0).toFixed(2)}`;
@@ -460,27 +463,27 @@ export default function SalesHistoryPage() {
             </div>
 
             {/* TABLA */}
-            <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-x-auto shadow-xl">
-                <table className="w-full min-w-[900px] text-left border-collapse">
-                    <thead className="bg-gray-900/70 text-gray-400 uppercase text-xs font-bold tracking-wider">
-                        <tr>
-                            <th className="px-4 py-3">Orden #</th>
-                            <th className="px-4 py-3">Fecha</th>
-                            <th className="px-4 py-3">Hora</th>
-                            <th className="px-4 py-3">Cliente</th>
-                            <th className="px-4 py-3">Método</th>
-                            <th className="px-4 py-3 text-right">Total Factura</th>
-                            <th className="px-4 py-3 text-right">Cobrado</th>
-                            <th className="px-4 py-3 text-center">10% Serv.</th>
-                            <th className="px-4 py-3">Descuento / Auth</th>
-                            <th className="px-4 py-3 text-center">Ítems</th>
-                            <th className="px-4 py-3 text-center">Acciones</th>
+            <div className="overflow-x-auto rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                <table className="w-full min-w-[900px] border-collapse text-left">
+                    <thead>
+                        <tr className="border-b border-capsula-line bg-capsula-ivory">
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Orden #</th>
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Fecha</th>
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Hora</th>
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Cliente</th>
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Método</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Total factura</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Cobrado</th>
+                            <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">10% Serv.</th>
+                            <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Descuento / Auth</th>
+                            <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Ítems</th>
+                            <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-700 text-sm">
+                    <tbody className="text-[13px]">
                         {filteredSales.length === 0 && (
                             <tr>
-                                <td colSpan={11} className="p-10 text-center text-gray-500">
+                                <td colSpan={11} className="p-10 text-center text-[13px] text-capsula-ink-muted">
                                     No hay ventas en este período.
                                 </td>
                             </tr>
@@ -503,51 +506,62 @@ export default function SalesHistoryPage() {
                                 : '-';
 
                             return (
-                                <>
+                                <React.Fragment key={sale.id}>
                                     <tr
-                                        key={sale.id}
                                         onClick={() => itemCount > 0 && toggleRow(sale.id)}
-                                        className={`transition-colors ${isVoided ? 'opacity-50 bg-red-900/10' : isPropina ? 'bg-amber-950/20 hover:bg-amber-900/30' : 'hover:bg-gray-700/40'} ${itemCount > 0 ? 'cursor-pointer' : ''}`}
+                                        className={cn(
+                                            "border-b border-capsula-line transition-colors",
+                                            isVoided ? "bg-capsula-coral-subtle/20 opacity-60" :
+                                            isPropina ? "bg-[#F3EAD6]/40 hover:bg-[#F3EAD6]/60" :
+                                            "hover:bg-capsula-ivory",
+                                            itemCount > 0 && "cursor-pointer",
+                                        )}
                                     >
                                         {/* ORDEN # */}
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className={`font-bold font-mono text-xs ${isVoided ? 'text-red-400 line-through' : isPropina ? 'text-amber-300' : 'text-blue-300'}`}>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className={cn(
+                                                    "font-mono text-[12.5px] font-semibold",
+                                                    isVoided ? "text-capsula-coral line-through" :
+                                                    isPropina ? "text-[#946A1C]" :
+                                                    "text-capsula-navy-deep",
+                                                )}>
                                                     {sale.orderNumber}
                                                 </span>
                                                 {isPropina && (
-                                                    <span className="bg-amber-800/60 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-600/40">🪙 PROPINA</span>
+                                                    <Badge variant="warn">
+                                                        <Coins className="h-3 w-3" strokeWidth={1.5} /> Propina
+                                                    </Badge>
                                                 )}
-                                                {isVoided && (
-                                                    <span className="bg-red-900 text-red-300 text-[10px] px-1.5 py-0.5 rounded font-bold">ANULADA</span>
-                                                )}
+                                                {isVoided && <Badge variant="danger">Anulada</Badge>}
                                             </div>
                                             {sale._consolidated && sale.orderNumbers?.length > 1 && (
-                                                <div className="text-[10px] text-gray-500 font-mono mt-0.5" title={sale.orderNumbers.join(', ')}>
+                                                <div className="mt-0.5 font-mono text-[10px] text-capsula-ink-muted" title={sale.orderNumbers.join(', ')}>
                                                     {sale.orderNumbers.length} tandas
                                                 </div>
                                             )}
                                             {isVoided && sale.voidReason && (
-                                                <div className="text-[10px] text-red-400/70 mt-0.5 max-w-[160px] truncate" title={sale.voidReason}>
+                                                <div className="mt-0.5 max-w-[160px] truncate text-[10px] text-capsula-coral/80" title={sale.voidReason}>
                                                     {sale.voidReason}
                                                 </div>
                                             )}
                                         </td>
                                         {/* FECHA */}
-                                        <td className="px-4 py-3 text-gray-400 text-xs font-mono whitespace-nowrap">
+                                        <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-capsula-ink-muted">
                                             {saleDate}
                                             {isVoided && sale.voidedAt && (
-                                                <div className="text-red-400/60 mt-0.5">
-                                                    ✕ {new Date(sale.voidedAt).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric' })}
+                                                <div className="mt-0.5 inline-flex items-center gap-0.5 text-capsula-coral/70">
+                                                    <X className="h-3 w-3" strokeWidth={1.5} />
+                                                    {new Date(sale.voidedAt).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric' })}
                                                 </div>
                                             )}
                                         </td>
                                         {/* HORA */}
-                                        <td className="px-4 py-3 text-gray-400 text-xs font-mono whitespace-nowrap">
+                                        <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-capsula-ink-muted">
                                             {saleTime}
                                         </td>
                                         {/* CLIENTE */}
-                                        <td className="px-4 py-3 text-gray-200 font-medium truncate max-w-[120px]">
+                                        <td className="max-w-[120px] truncate px-4 py-3 font-medium text-capsula-ink">
                                             {sale.customerName || 'Gral.'}
                                         </td>
                                         {/* MÉTODO */}
@@ -555,9 +569,7 @@ export default function SalesHistoryPage() {
                                             {(sale.paymentBreakdown || []).length > 1 ? (
                                                 <div className="flex flex-wrap gap-1" title={(sale.paymentBreakdown || []).map((p: { method: string; amount: number }) => `${p.method}: $${p.amount.toFixed(2)}`).join(' | ')}>
                                                     {(sale.paymentBreakdown || []).map((p: { method: string; amount: number }, i: number) => (
-                                                        <span key={i} className="flex items-center gap-0.5">
-                                                            {getPaymentBadge(p.method)}
-                                                        </span>
+                                                        <span key={i}>{getPaymentBadge(p.method)}</span>
                                                     ))}
                                                 </div>
                                             ) : (
@@ -565,18 +577,18 @@ export default function SalesHistoryPage() {
                                             )}
                                         </td>
                                         {/* TOTAL FACTURA */}
-                                        <td className="px-4 py-3 text-right text-gray-400 text-sm font-mono">
-                                            {isPropina ? <span className="text-gray-600">—</span> : formatMoney(totalFactura)}
+                                        <td className="px-4 py-3 text-right font-mono text-capsula-ink-soft">
+                                            {isPropina ? <span className="text-capsula-ink-faint">—</span> : formatMoney(totalFactura)}
                                         </td>
                                         {/* COBRADO */}
-                                        <td className="px-4 py-3 text-right font-bold font-mono">
+                                        <td className="px-4 py-3 text-right font-mono font-semibold">
                                             {isPropina ? (
-                                                <span className="text-amber-400">{formatMoney(totalCobrado)}</span>
+                                                <span className="text-[#946A1C]">{formatMoney(totalCobrado)}</span>
                                             ) : (
                                                 <>
-                                                    <span className="text-white">{formatMoney(totalCobrado)}</span>
+                                                    <span className="text-capsula-ink">{formatMoney(totalCobrado)}</span>
                                                     {propina > 0.01 && (
-                                                        <div className="text-[10px] text-amber-400 font-normal text-right">
+                                                        <div className="text-right text-[10px] font-normal text-[#946A1C]">
                                                             +{formatMoney(propina)} propina
                                                         </div>
                                                     )}
@@ -587,12 +599,14 @@ export default function SalesHistoryPage() {
                                         <td className="px-4 py-3 text-center">
                                             {sale.orderType === 'RESTAURANT' ? (
                                                 sale.serviceFeeIncluded ? (
-                                                    <span className="text-emerald-400 text-xs font-bold">✓ Sí</span>
+                                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#2F6B4E]">
+                                                        <Check className="h-3 w-3" strokeWidth={2} /> Sí
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-gray-600 text-xs">No</span>
+                                                    <span className="text-[11px] text-capsula-ink-faint">No</span>
                                                 )
                                             ) : (
-                                                <span className="text-gray-700">-</span>
+                                                <span className="text-capsula-ink-faint">—</span>
                                             )}
                                         </td>
                                         {/* DESCUENTO / AUTH */}
@@ -600,34 +614,35 @@ export default function SalesHistoryPage() {
                                             {sale.discount > 0 ? (
                                                 <div className="flex flex-col gap-0.5">
                                                     {sale.discountType === 'DIVISAS_33' && (
-                                                        <span className="text-blue-400 text-xs">📉 -{formatMoney(sale.discount)}</span>
+                                                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-capsula-navy">
+                                                            <Banknote className="h-3 w-3" strokeWidth={1.5} /> -{formatMoney(sale.discount)}
+                                                        </span>
                                                     )}
-                                                    {(sale.discountType === 'CORTESIA_100' || sale.discountType === 'CORTESIA') && (
-                                                        <span className="text-purple-400 text-xs font-bold">🎁 -{formatMoney(sale.discount)}</span>
-                                                    )}
-                                                    {sale.discountType === 'CORTESIA_PERCENT' && (
-                                                        <span className="text-purple-400 text-xs font-bold">🎁 -{formatMoney(sale.discount)}</span>
+                                                    {(sale.discountType === 'CORTESIA_100' || sale.discountType === 'CORTESIA' || sale.discountType === 'CORTESIA_PERCENT') && (
+                                                        <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-capsula-coral">
+                                                            <Gift className="h-3 w-3" strokeWidth={1.5} /> -{formatMoney(sale.discount)}
+                                                        </span>
                                                     )}
                                                     {sale.authorizedById && (
-                                                        <span className="text-green-500 text-[10px] bg-green-900/30 px-1 rounded w-fit">
-                                                            ✓ {sale.authorizedBy?.firstName}
+                                                        <span className="inline-flex w-fit items-center gap-0.5 rounded border border-capsula-line bg-capsula-ivory px-1 text-[10px] text-[#2F6B4E]">
+                                                            <Check className="h-2.5 w-2.5" strokeWidth={2} /> {sale.authorizedBy?.firstName}
                                                         </span>
                                                     )}
                                                 </div>
-                                            ) : <span className="text-gray-700">-</span>}
+                                            ) : <span className="text-capsula-ink-faint">—</span>}
                                         </td>
                                         {/* ÍTEMS */}
                                         <td className="px-4 py-3 text-center">
                                             {itemCount > 0 ? (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleRow(sale.id); }}
-                                                    className="inline-flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded text-xs font-bold transition-colors"
+                                                    className="inline-flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory px-2.5 py-1 text-[11px] font-medium text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
                                                 >
                                                     {itemCount}
-                                                    <span className={`transition-transform text-[10px] ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                                                    <ChevronDown className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-180")} strokeWidth={1.5} />
                                                 </button>
                                             ) : (
-                                                <span className="text-gray-600">-</span>
+                                                <span className="text-capsula-ink-faint">—</span>
                                             )}
                                         </td>
                                         {/* ACCIONES */}
@@ -636,15 +651,15 @@ export default function SalesHistoryPage() {
                                                 <button
                                                     onClick={(e) => handleReprint(sale, e)}
                                                     title="Reimprimir factura"
-                                                    className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                    className="inline-flex items-center gap-1 rounded-md border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-[11px] font-medium text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep/40 hover:text-capsula-ink"
                                                 >
-                                                    🖨️ Imprimir
+                                                    <Printer className="h-3 w-3" strokeWidth={1.5} /> Imprimir
                                                 </button>
                                                 {!isVoided && (
                                                     <button
                                                         onClick={(e) => openVoidModal(sale, e)}
                                                         title="Anular venta"
-                                                        className="bg-red-900/40 hover:bg-red-800 text-red-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                        className="inline-flex items-center gap-1 rounded-md border border-capsula-coral/30 bg-capsula-coral-subtle/50 px-2 py-1 text-[11px] font-medium text-capsula-coral transition-colors hover:bg-capsula-coral hover:text-white"
                                                     >
                                                         Anular
                                                     </button>
@@ -654,36 +669,36 @@ export default function SalesHistoryPage() {
                                     </tr>
                                     {/* FILA EXPANDIDA - ÍTEMS */}
                                     {isExpanded && itemCount > 0 && (
-                                        <tr key={`${sale.id}-expanded`} className="bg-gray-900/60">
+                                        <tr className="bg-capsula-ivory">
                                             <td colSpan={11} className="px-6 py-4">
                                                 {/* Tabla de productos */}
-                                                <div className="rounded-lg overflow-hidden border border-gray-700 mb-3">
-                                                    <table className="w-full text-xs">
-                                                        <thead className="bg-gray-800 text-gray-400 uppercase text-[10px] font-bold">
-                                                            <tr>
-                                                                <th className="px-3 py-2 text-left">Producto</th>
-                                                                <th className="px-3 py-2 text-center">Cant.</th>
-                                                                <th className="px-3 py-2 text-right">P. Unit.</th>
-                                                                <th className="px-3 py-2 text-right">Subtotal</th>
+                                                <div className="mb-3 overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
+                                                    <table className="w-full text-[12px]">
+                                                        <thead>
+                                                            <tr className="border-b border-capsula-line bg-capsula-ivory">
+                                                                <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto</th>
+                                                                <th className="px-3 py-2 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Cant.</th>
+                                                                <th className="px-3 py-2 text-right text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">P. unit.</th>
+                                                                <th className="px-3 py-2 text-right text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Subtotal</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y divide-gray-800">
+                                                        <tbody>
                                                             {(sale.items || []).map((item: any, idx: number) => {
                                                                 const unitPrice = item.unitPrice ?? (item.lineTotal / (item.quantity || 1));
                                                                 const modifiers = Array.isArray(item.modifiers)
                                                                     ? item.modifiers.map((m: any) => typeof m === 'string' ? m : m?.name).filter(Boolean)
                                                                     : [];
                                                                 return (
-                                                                    <tr key={idx} className="hover:bg-gray-800/40">
-                                                                        <td className="px-3 py-2 text-gray-200">
+                                                                    <tr key={idx} className="border-b border-capsula-line last:border-b-0 hover:bg-capsula-ivory">
+                                                                        <td className="px-3 py-2 text-capsula-ink">
                                                                             {item.itemName || item.name}
                                                                             {modifiers.length > 0 && (
-                                                                                <div className="text-gray-500 text-[10px]">+ {modifiers.join(', ')}</div>
+                                                                                <div className="text-[10px] text-capsula-ink-muted">+ {modifiers.join(', ')}</div>
                                                                             )}
                                                                         </td>
-                                                                        <td className="px-3 py-2 text-center text-gray-300">×{item.quantity}</td>
-                                                                        <td className="px-3 py-2 text-right text-gray-400 font-mono">${unitPrice.toFixed(2)}</td>
-                                                                        <td className="px-3 py-2 text-right text-white font-bold font-mono">${(item.lineTotal || 0).toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-center font-mono text-capsula-ink-soft">×{item.quantity}</td>
+                                                                        <td className="px-3 py-2 text-right font-mono text-capsula-ink-muted">${unitPrice.toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-right font-mono font-semibold text-capsula-ink">${(item.lineTotal || 0).toFixed(2)}</td>
                                                                     </tr>
                                                                 );
                                                             })}
@@ -692,32 +707,32 @@ export default function SalesHistoryPage() {
                                                 </div>
 
                                                 {/* Resumen de totales */}
-                                                <div className="flex flex-wrap gap-3 text-xs font-mono text-gray-400">
-                                                    <span>Productos: <span className="text-white">{formatMoney(itemsSubtotal)}</span></span>
+                                                <div className="flex flex-wrap gap-3 font-mono text-[11px] text-capsula-ink-muted">
+                                                    <span>Productos: <span className="font-semibold text-capsula-ink">{formatMoney(itemsSubtotal)}</span></span>
                                                     {sale.orderType === 'RESTAURANT' && sale.serviceFeeIncluded && servicioAmount > 0 && (
-                                                        <span>10% Servicio: <span className="text-emerald-400">+{formatMoney(servicioAmount)}</span></span>
+                                                        <span>10% Servicio: <span className="font-semibold text-[#2F6B4E]">+{formatMoney(servicioAmount)}</span></span>
                                                     )}
                                                     {(sale.discount || 0) > 0 && (
-                                                        <span>Descuento: <span className="text-red-400">-{formatMoney(sale.discount)}</span></span>
+                                                        <span>Descuento: <span className="font-semibold text-capsula-coral">-{formatMoney(sale.discount)}</span></span>
                                                     )}
-                                                    <span>Total factura: <span className="text-white">{formatMoney(totalFactura)}</span></span>
-                                                    <span>Cobrado: <span className="text-white font-bold">{formatMoney(totalCobrado)}</span></span>
+                                                    <span>Total factura: <span className="font-semibold text-capsula-ink">{formatMoney(totalFactura)}</span></span>
+                                                    <span>Cobrado: <span className="font-semibold text-capsula-navy-deep">{formatMoney(totalCobrado)}</span></span>
                                                     {propina > 0.01 && (
-                                                        <span>Propina/excedente: <span className="text-amber-400">+{formatMoney(propina)}</span></span>
+                                                        <span>Propina/excedente: <span className="font-semibold text-[#946A1C]">+{formatMoney(propina)}</span></span>
                                                     )}
                                                 </div>
 
                                                 {/* Desglose de pagos */}
                                                 {(sale.paymentBreakdown || []).length > 0 && (
-                                                    <div className="mt-2 text-xs text-gray-500">
-                                                        <span className="font-bold uppercase text-gray-600">Desglose de pagos: </span>
+                                                    <div className="mt-2 text-[11px]">
+                                                        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Desglose de pagos: </span>
                                                         {(sale.paymentBreakdown || []).map((p: { method: string; amount: number; amountBS?: number; exchangeRate?: number; label?: string }, i: number) => (
                                                             <span key={i} className="mr-3 inline-flex items-center gap-1">
                                                                 {getPaymentBadge(p.method)}
-                                                                {p.label && <span className="ml-1 text-gray-500">{p.label}</span>}
-                                                                <span className="text-white font-bold font-mono">{formatMoney(p.amount)}</span>
+                                                                {p.label && <span className="ml-1 text-capsula-ink-muted">{p.label}</span>}
+                                                                <span className="font-mono font-semibold text-capsula-ink">{formatMoney(p.amount)}</span>
                                                                 {p.amountBS != null && p.amountBS > 0 && (
-                                                                    <span className="text-yellow-400 font-mono text-[10px]">
+                                                                    <span className="font-mono text-[10px] text-[#946A1C]">
                                                                         · Bs{p.amountBS.toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                                                                         {p.exchangeRate ? ` @${p.exchangeRate.toFixed(0)}` : ''}
                                                                     </span>
@@ -729,24 +744,26 @@ export default function SalesHistoryPage() {
 
                                                 {/* Detalle de anulación */}
                                                 {isVoided && (sale.voidReason || sale.voidedBy || sale.voidedAt) && (
-                                                    <div className="mt-3 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2 text-xs space-y-1">
-                                                        <div className="font-bold text-red-400 uppercase tracking-wider text-[10px]">Detalle de Anulación</div>
+                                                    <div className="mt-3 space-y-1 rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/50 px-3 py-2 text-[11px]">
+                                                        <div className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-coral">
+                                                            <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> Detalle de anulación
+                                                        </div>
                                                         {sale.voidedBy && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500">Anulado por:</span>
-                                                                <span className="font-bold text-red-300">{sale.voidedBy.firstName} {sale.voidedBy.lastName}</span>
+                                                            <div className="flex gap-2 text-capsula-ink-soft">
+                                                                <span className="text-capsula-ink-muted">Anulado por:</span>
+                                                                <span className="font-semibold text-capsula-coral">{sale.voidedBy.firstName} {sale.voidedBy.lastName}</span>
                                                             </div>
                                                         )}
                                                         {sale.voidedAt && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500">Fecha anulación:</span>
-                                                                <span>{new Date(sale.voidedAt).toLocaleString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <div className="flex gap-2 text-capsula-ink-soft">
+                                                                <span className="text-capsula-ink-muted">Fecha anulación:</span>
+                                                                <span className="font-mono">{new Date(sale.voidedAt).toLocaleString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                             </div>
                                                         )}
                                                         {sale.voidReason && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500 shrink-0">Motivo:</span>
-                                                                <span className="text-red-200">{sale.voidReason}</span>
+                                                            <div className="flex gap-2 text-capsula-ink-soft">
+                                                                <span className="shrink-0 text-capsula-ink-muted">Motivo:</span>
+                                                                <span className="text-capsula-coral/90">{sale.voidReason}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -754,7 +771,7 @@ export default function SalesHistoryPage() {
                                             </td>
                                         </tr>
                                     )}
-                                </>
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
