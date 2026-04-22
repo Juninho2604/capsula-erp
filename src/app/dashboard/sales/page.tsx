@@ -5,6 +5,15 @@ import { getSalesHistoryAction, getDailyZReportAction, getEndOfDaySummaryAction,
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';
+import { cn } from '@/lib/utils';
+import {
+    Calendar, FileDown, Printer, BarChart3, Search, CreditCard, Package,
+    X, Loader2, Receipt, Coins, AlertTriangle, Check, ChevronDown, ChevronRight,
+    UtensilsCrossed, Bike, Pizza, Banknote, Euro, Zap, Smartphone, Landmark,
+    Gift, Split, Shuffle, Eye, Trash2, Info,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -276,174 +285,177 @@ export default function SalesHistoryPage() {
         ? new Date(filterDate + 'T12:00:00').toLocaleDateString('es-VE', { day: '2-digit', month: 'numeric', year: 'numeric' })
         : '';
 
-    if (isLoading) return <div className="p-8 text-center text-white">Cargando historial...</div>;
+    if (isLoading) return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                <p className="mt-3 text-[13px] text-capsula-ink-muted">Cargando historial…</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="p-6 max-w-7xl mx-auto text-white">
+        <div className="mx-auto max-w-7xl animate-in p-6 text-capsula-ink">
             {/* HEADER */}
-            <div className="flex flex-wrap justify-between items-start mb-5 gap-4">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-capsula-line pb-6">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-                        Historial de Ventas
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas</div>
+                    <h1 className="font-heading text-[32px] leading-tight tracking-[-0.02em] text-capsula-navy-deep">
+                        Historial de ventas
                     </h1>
-                    <p className="text-gray-400 text-sm mt-0.5">
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">
                         Registro de transacciones y cierres
                         {' · '}
-                        <span className="text-gray-300 font-medium">{shownCount} de {totalCount} órdenes</span>
+                        <span className="font-medium text-capsula-ink">{shownCount} de {totalCount} órdenes</span>
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* Date filter - dark pill style */}
-                    <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
-                        <span className="text-gray-400 text-sm">📅</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-2">
+                        <Calendar className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />
                         <input
                             type="date"
                             value={filterDate}
                             onChange={e => setFilterDate(e.target.value)}
-                            className="bg-transparent text-white text-sm focus:outline-none cursor-pointer w-32"
+                            className="w-32 cursor-pointer bg-transparent font-mono text-[12.5px] text-capsula-ink outline-none"
                         />
                     </div>
-                    <button
-                        onClick={handleExportArqueo}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
-                    >
-                        📥 EXPORTAR EXCEL
-                    </button>
-                    <button
-                        onClick={handleGenerateZReport}
-                        title={`Generar reporte Z para ${displayDate || 'hoy'}`}
-                        className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
-                    >
-                        🖨️ REPORTE &quot;Z&quot; {displayDate ? `· ${displayDate}` : '(HOY)'}
-                    </button>
-                    <button
-                        onClick={handleDaySummary}
-                        title={`Resumen de cierre del día para ${displayDate || 'hoy'}`}
-                        className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"
-                    >
-                        📊 CIERRE DEL DÍA {displayDate ? `· ${displayDate}` : '(HOY)'}
-                    </button>
+                    <Button variant="ghost" size="sm" onClick={handleExportArqueo}>
+                        <FileDown className="h-4 w-4" strokeWidth={1.5} /> Exportar Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleGenerateZReport} title={`Generar reporte Z para ${displayDate || 'hoy'}`}>
+                        <Printer className="h-4 w-4" strokeWidth={1.5} /> Reporte "Z" {displayDate ? `· ${displayDate}` : '(hoy)'}
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={handleDaySummary} title={`Resumen de cierre del día para ${displayDate || 'hoy'}`}>
+                        <BarChart3 className="h-4 w-4" strokeWidth={1.5} /> Cierre del día {displayDate ? `· ${displayDate}` : '(hoy)'}
+                    </Button>
                 </div>
             </div>
 
             {/* ── BARRA DE FILTROS AVANZADOS ─────────────────────────────────── */}
-            <div className="bg-gray-800/80 rounded-2xl border border-gray-700 p-4 mb-4 flex flex-wrap gap-3 items-end">
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4">
                 {/* Búsqueda libre */}
-                <div className="flex-1 min-w-[200px]">
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">🔍 Buscar</label>
-                    <input
-                        type="text"
-                        value={filterSearch}
-                        onChange={e => setFilterSearch(e.target.value)}
-                        placeholder="Orden #, cliente, teléfono..."
-                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none placeholder:text-gray-600"
-                    />
+                <div className="min-w-[200px] flex-1">
+                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Buscar</label>
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                        <input
+                            type="text"
+                            value={filterSearch}
+                            onChange={e => setFilterSearch(e.target.value)}
+                            placeholder="Orden #, cliente, teléfono…"
+                            className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory py-2 pl-9 pr-3 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                        />
+                    </div>
                 </div>
                 {/* Método de pago */}
                 <div>
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">💳 Método</label>
+                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Método</label>
                     <select
                         value={filterPaymentMethod}
                         onChange={e => setFilterPaymentMethod(e.target.value)}
-                        className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
+                        className="cursor-pointer rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                     >
                         <option value="ALL">Todos</option>
-                        <option value="CASH_USD">💵 Cash $</option>
-                        <option value="CASH_EUR">€ Cash €</option>
-                        <option value="ZELLE">⚡ Zelle</option>
-                        <option value="PDV_SHANKLISH">💳 PDV Shanklish</option>
-                        <option value="PDV_SUPERFERRO">💳 PDV Superferro</option>
-                        <option value="MOBILE_PAY">📱 Pago Móvil</option>
-                        <option value="MOVIL_NG">📱 Móvil NG</option>
-                        <option value="TRANSFER">🏦 Transferencia</option>
-                        <option value="CASH_BS">🇻🇪 Efectivo Bs</option>
-                        <option value="CORTESIA">🎁 Cortesía</option>
-                        <option value="MIXED">🔀 Pago Mixto</option>
+                        <option value="CASH_USD">Cash $</option>
+                        <option value="CASH_EUR">Cash €</option>
+                        <option value="ZELLE">Zelle</option>
+                        <option value="PDV_SHANKLISH">PDV Shanklish</option>
+                        <option value="PDV_SUPERFERRO">PDV Superferro</option>
+                        <option value="MOBILE_PAY">Pago Móvil</option>
+                        <option value="MOVIL_NG">Móvil NG</option>
+                        <option value="TRANSFER">Transferencia</option>
+                        <option value="CASH_BS">Efectivo Bs</option>
+                        <option value="CORTESIA">Cortesía</option>
+                        <option value="MIXED">Pago Mixto</option>
                     </select>
                 </div>
                 {/* Tipo de orden */}
                 <div>
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">📦 Tipo</label>
+                    <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Tipo</label>
                     <select
                         value={filterOrderType}
                         onChange={e => setFilterOrderType(e.target.value)}
-                        className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
+                        className="cursor-pointer rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                     >
                         <option value="ALL">Todos</option>
-                        <option value="DELIVERY">🛵 Delivery</option>
-                        <option value="RESTAURANT">🍽️ Mesa / Pickup</option>
-                        <option value="PEDIDOSYA">🟡 PedidosYA</option>
-                        <option value="PROPINAS">🪙 Propinas</option>
+                        <option value="DELIVERY">Delivery</option>
+                        <option value="RESTAURANT">Mesa / Pickup</option>
+                        <option value="PEDIDOSYA">PedidosYA</option>
+                        <option value="PROPINAS">Propinas</option>
                     </select>
                 </div>
                 {/* Con descuento */}
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 hover:border-blue-500 transition-colors">
+                <label className="flex cursor-pointer select-none items-center gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[13px] text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:text-capsula-ink">
                     <input
                         type="checkbox"
                         checked={filterHasDiscount}
                         onChange={e => setFilterHasDiscount(e.target.checked)}
-                        className="rounded accent-blue-500"
+                        className="rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
                     />
                     <span className="font-medium">Con descuento</span>
                 </label>
                 {/* Estado / Anuladas */}
-                <div className="flex rounded-lg border border-gray-700 overflow-hidden text-sm font-medium">
+                <div className="flex overflow-hidden rounded-full border border-capsula-line text-[12px] font-medium">
                     {([
                         { value: 'active', label: 'Activas' },
                         { value: 'all',    label: 'Todas' },
-                        { value: 'only',   label: '✕ Anuladas' },
-                    ] as const).map(opt => (
-                        <button
-                            key={opt.value}
-                            onClick={() => setCancelledFilter(opt.value)}
-                            className={`px-3 py-2 transition-colors ${
-                                cancelledFilter === opt.value
-                                    ? opt.value === 'only'
-                                        ? 'bg-red-700 text-white'
-                                        : 'bg-blue-700 text-white'
-                                    : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
-                            }`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
+                        { value: 'only',   label: 'Anuladas' },
+                    ] as const).map(opt => {
+                        const active = cancelledFilter === opt.value;
+                        return (
+                            <button
+                                key={opt.value}
+                                onClick={() => setCancelledFilter(opt.value)}
+                                className={cn(
+                                    "px-3 py-2 transition-colors",
+                                    active
+                                        ? opt.value === 'only'
+                                            ? "bg-capsula-coral text-white"
+                                            : "bg-capsula-navy-deep text-capsula-ivory"
+                                        : "bg-capsula-ivory text-capsula-ink-muted hover:bg-capsula-ivory-alt",
+                                )}
+                            >
+                                {opt.label}
+                            </button>
+                        );
+                    })}
                 </div>
                 {/* Clear all */}
                 {hasActiveFilters && (
-                    <button
-                        onClick={clearAllFilters}
-                        className="bg-gray-700 hover:bg-red-900/60 hover:border-red-500 border border-gray-600 text-gray-300 hover:text-red-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors"
-                    >
-                        ✕ Limpiar filtros
-                    </button>
+                    <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                        <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Limpiar filtros
+                    </Button>
                 )}
             </div>
 
             {/* ── RESUMEN DE RESULTADOS FILTRADOS ───────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Órdenes</p>
-                    <p className="text-2xl font-black text-white">{shownCount}</p>
-                    {shownCount !== totalCount && <p className="text-xs text-gray-500">de {totalCount} total</p>}
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft">
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Órdenes</p>
+                    <p className="font-mono text-[22px] font-semibold text-capsula-ink">{shownCount}</p>
+                    {shownCount !== totalCount && <p className="text-[11px] text-capsula-ink-muted">de {totalCount} total</p>}
                 </div>
-                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Facturado</p>
-                    <p className="text-2xl font-black text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft">
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Facturado</p>
+                    <p className="font-mono text-[22px] font-semibold text-capsula-navy-deep">{formatMoney(filteredTotals.invoiced)}</p>
                 </div>
-                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Cobrado</p>
-                    <p className="text-2xl font-black text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft">
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Cobrado</p>
+                    <p className="font-mono text-[22px] font-semibold text-[#2F6B4E]">{formatMoney(filteredTotals.collected)}</p>
                 </div>
-                <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Descuentos</p>
-                    <p className={`text-2xl font-black ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft">
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Descuentos</p>
+                    <p className={cn("font-mono text-[22px] font-semibold", filteredTotals.discounts > 0 ? "text-capsula-coral" : "text-capsula-ink-faint")}>
                         {filteredTotals.discounts > 0 ? `-${formatMoney(filteredTotals.discounts)}` : '$0.00'}
                     </p>
                 </div>
-                <div className={`rounded-xl px-4 py-3 border ${voidCount > 0 ? 'bg-red-900/20 border-red-800/50' : 'bg-gray-800 border-gray-700'}`}>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Anuladas hoy</p>
-                    <p className={`text-2xl font-black ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
-                    {voidAmount > 0 && <p className="text-xs text-red-500/80 font-bold">{formatMoney(voidAmount)}</p>}
+                <div className={cn(
+                    "rounded-[var(--radius)] border px-4 py-3 shadow-cap-soft",
+                    voidCount > 0 ? "border-capsula-coral/30 bg-capsula-coral-subtle/40" : "border-capsula-line bg-capsula-ivory-surface",
+                )}>
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Anuladas hoy</p>
+                    <p className={cn("font-mono text-[22px] font-semibold", voidCount > 0 ? "text-capsula-coral" : "text-capsula-ink-faint")}>{voidCount}</p>
+                    {voidAmount > 0 && <p className="font-mono text-[11px] font-medium text-capsula-coral/80">{formatMoney(voidAmount)}</p>}
                 </div>
             </div>
 
