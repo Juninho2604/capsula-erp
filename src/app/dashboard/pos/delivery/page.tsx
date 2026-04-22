@@ -18,7 +18,7 @@ import {
     Plus, Minus, Loader2, Check, ShoppingBag, Sandwich, Pizza, Soup,
     Utensils, UtensilsCrossed, Beef, Wheat, Cookie, GlassWater, Salad,
     Banknote, Euro, Zap, CreditCard, Smartphone, Gift, Split,
-    MessageSquare, Trash2,
+    MessageSquare, Trash2, Delete,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -904,21 +904,23 @@ export default function POSDeliveryPage() {
             </div>
 
             {/* WhatsApp Parser Modal */}
+            {/* ── MODAL: WhatsApp ───────────────────────── */}
             {showWhatsAppParser && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-card glass-panel w-full max-w-2xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl border-primary/20">
-                        <div className="p-5 border-b border-border flex justify-between items-center flex-shrink-0">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <span className="text-2xl">💬</span> Pegar Chat de WhatsApp
+                <div className="fixed inset-0 z-[60] flex animate-in fade-in items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm duration-200">
+                    <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <div className="flex shrink-0 items-center justify-between border-b border-capsula-line p-5">
+                            <h3 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                <MessageCircle className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
+                                Pegar chat de WhatsApp
                             </h3>
                             <button
                                 onClick={() => setShowWhatsAppParser(false)}
-                                className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors text-2xl flex items-center justify-center"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
                             >
-                                &times;
+                                <X className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-5 no-scrollbar">
+                        <div className="no-scrollbar flex-1 overflow-y-auto p-5">
                             <WhatsAppOrderParser
                                 onOrderReady={(items, name, phone, address) => {
                                     setCart(items);
@@ -933,228 +935,427 @@ export default function POSDeliveryPage() {
                 </div>
             )}
 
+            {/* ── MODAL: Modificadores ───────────────────────── */}
             {showModifierModal && selectedItemForModifier && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border-primary/20">
-                        <div className="p-6 border-b border-border flex justify-between items-center">
+                <div className="fixed inset-0 z-[60] flex animate-in fade-in zoom-in items-end justify-center bg-capsula-navy-deep/40 p-0 backdrop-blur-sm duration-200 sm:items-center sm:p-4">
+                    <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:max-h-[90vh] sm:rounded-[var(--radius)]">
+                        <div className="flex items-start justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="text-2xl font-black uppercase tracking-tight">{selectedItemForModifier.name}</h3>
-                                <div className="text-primary font-black text-2xl italic mt-1">
+                                <h3 className="font-heading text-[22px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                    {selectedItemForModifier.name}
+                                </h3>
+                                <div className="mt-1 font-mono text-[20px] font-semibold text-capsula-navy-deep">
                                     <PriceDisplay usd={selectedItemForModifier.price} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
-                            <button onClick={() => setShowModifierModal(false)} className="h-12 w-12 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors text-3xl flex items-center justify-center">&times;</button>
+                            <button
+                                onClick={() => setShowModifierModal(false)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                            >
+                                <X className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+
+                        <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto p-5">
                             {selectedItemForModifier.modifierGroups?.map((groupRel) => {
                                 const group = groupRel.modifierGroup;
                                 const totalSelector = currentModifiers.filter(m => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                                 const isValid = !group.isRequired || totalSelector >= group.minSelections;
                                 return (
-                                    <div key={group.id} className={`p-5 rounded-3xl border-2 transition-colors ${isValid ? 'border-border bg-secondary/20' : 'border-red-500 bg-red-500/5'}`}>
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h4 className="font-black text-sm uppercase tracking-widest text-foreground/70">{group.name}</h4>
-                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isValid ? 'bg-primary/20 text-primary' : 'bg-red-500 text-white animate-bounce'}`}>
-                                                {totalSelector}/{group.maxSelections} {group.isRequired ? '• Requerido' : ''}
+                                    <div
+                                        key={group.id}
+                                        className={cn(
+                                            'rounded-[var(--radius)] border p-4',
+                                            isValid
+                                                ? 'border-capsula-line bg-capsula-ivory-surface'
+                                                : 'border-capsula-coral/40 bg-capsula-coral-subtle/30',
+                                        )}
+                                    >
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <h4 className="text-[12px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
+                                                {group.name}
+                                            </h4>
+                                            <span
+                                                className={cn(
+                                                    'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                                                    isValid
+                                                        ? 'bg-capsula-navy-soft text-capsula-navy-deep'
+                                                        : 'bg-capsula-coral text-white',
+                                                )}
+                                            >
+                                                {totalSelector}/{group.maxSelections}{group.isRequired ? ' · Requerido' : ''}
                                             </span>
                                         </div>
-                                        <div className="grid gap-3">
+                                        <div className="grid gap-2">
                                             {group.modifiers.map(mod => {
                                                 const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
                                                 const qty = existing ? existing.quantity : 0;
                                                 const isMax = group.maxSelections > 1 && totalSelector >= group.maxSelections;
                                                 const isRadio = group.maxSelections === 1;
+                                                const selected = qty > 0;
                                                 return (
-                                                    <div key={mod.id} className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all ${qty > 0 ? 'bg-primary/10 border-primary' : 'bg-background border-border hover:border-primary/30'}`}>
-                                                        <div className="font-bold text-sm">{mod.name}</div>
+                                                    <div
+                                                        key={mod.id}
+                                                        className={cn(
+                                                            'flex items-center justify-between rounded-[var(--radius)] border px-4 py-3 transition-colors',
+                                                            selected
+                                                                ? 'border-capsula-navy-deep/40 bg-capsula-navy-soft'
+                                                                : 'border-capsula-line bg-capsula-ivory',
+                                                        )}
+                                                    >
+                                                        <div className="text-[13px] font-medium text-capsula-ink">{mod.name}</div>
                                                         {isRadio ? (
-                                                            <button 
-                                                                onClick={() => updateModifierQuantity(group, mod, 1)} 
-                                                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? 'bg-primary border-primary text-white scale-110 shadow-lg shadow-primary/30' : 'border-border hover:border-primary'}`}
+                                                            <button
+                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                className={cn(
+                                                                    'inline-flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors',
+                                                                    selected
+                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                                        : 'border-capsula-line text-transparent',
+                                                                )}
                                                             >
-                                                                {qty > 0 && '✓'}
+                                                                <Check className="h-3 w-3" strokeWidth={2} />
                                                             </button>
                                                         ) : (
-                                                            <div className="flex items-center gap-3 bg-card p-1 rounded-2xl border border-border shadow-inner">
-                                                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-8 w-8 rounded-xl font-black transition-all ${qty === 0 ? 'text-muted-foreground opacity-20' : 'bg-secondary text-foreground hover:bg-red-500 hover:text-white hover:scale-105'}`}>-</button>
-                                                                <span className="font-black text-lg w-6 text-center text-primary">{qty}</span>
-                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-8 w-8 rounded-xl font-black transition-all ${isMax ? 'text-muted-foreground opacity-20' : 'bg-primary text-white hover:scale-105 shadow-lg shadow-primary/20'}`}>+</button>
+                                                            <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
+                                                                    disabled={qty === 0}
+                                                                    className={cn(
+                                                                        'inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+                                                                        qty === 0
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-ink hover:bg-capsula-ivory-alt',
+                                                                    )}
+                                                                >
+                                                                    <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                                                                </button>
+                                                                <span className="inline-flex w-6 items-center justify-center font-mono text-[13px] font-semibold text-capsula-navy-deep">
+                                                                    {qty}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                    disabled={isMax}
+                                                                    className={cn(
+                                                                        'inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+                                                                        isMax
+                                                                            ? 'text-capsula-ink-faint'
+                                                                            : 'text-capsula-navy-deep hover:bg-capsula-navy-soft',
+                                                                    )}
+                                                                >
+                                                                    <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
-                                                )
+                                                );
                                             })}
                                         </div>
                                     </div>
-                                )
+                                );
                             })}
-                            
-                            <div className="bg-secondary/20 p-6 rounded-3xl border border-border">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Instrucciones Especiales (Opcional)</label>
-                                <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="w-full bg-background rounded-2xl p-4 h-24 text-sm font-bold border border-border focus:border-primary focus:ring-0 transition-all resize-none" placeholder="Escribe aquí si el cliente tiene alguna petición..." />
+
+                            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Instrucciones especiales (opcional)
+                                </label>
+                                <textarea
+                                    value={itemNotes}
+                                    onChange={e => setItemNotes(e.target.value)}
+                                    placeholder="Escribe aquí si el cliente tiene alguna petición…"
+                                    className="h-20 w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                />
                             </div>
 
-                            <div className="flex items-center justify-between glass-panel p-6 rounded-3xl border-primary/5">
-                                <span className="font-black uppercase tracking-tighter text-lg">Cantidad</span>
-                                <div className="flex items-center gap-2 bg-background p-1.5 rounded-2xl border border-border shadow-inner">
-                                    <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-14 w-14 rounded-xl font-black text-2xl hover:bg-secondary transition-all active:scale-90">-</button>
-                                    <span className="w-16 text-center font-black text-3xl italic text-primary">{itemQuantity}</span>
-                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-14 w-14 rounded-xl bg-primary text-white font-black text-2xl shadow-xl shadow-primary/30 hover:scale-105 active:scale-95">+</button>
+                            <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                                <span className="text-[13px] font-medium uppercase tracking-[0.08em] text-capsula-ink">Cantidad</span>
+                                <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                                    <button
+                                        onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                    >
+                                        <Minus className="h-4 w-4" strokeWidth={2} />
+                                    </button>
+                                    <span className="inline-flex w-12 items-center justify-center font-mono text-[20px] font-semibold text-capsula-navy-deep">
+                                        {itemQuantity}
+                                    </span>
+                                    <button
+                                        onClick={() => setItemQuantity(itemQuantity + 1)}
+                                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory transition-colors hover:bg-capsula-navy"
+                                    >
+                                        <Plus className="h-4 w-4" strokeWidth={2} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6 border-t border-border flex gap-4">
-                            <button onClick={() => setShowModifierModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-5 text-sm">CANCELAR</button>
-                            <button onClick={confirmAddToCart} disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))} className="capsula-btn capsula-btn-primary flex-[2] py-5 text-sm shadow-xl shadow-primary/30">AGREGAR AL CARRITO</button>
+
+                        <div className="flex gap-2 border-t border-capsula-line p-4">
+                            <Button variant="ghost" onClick={() => setShowModifierModal(false)} className="flex-1">
+                                CANCELAR
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={confirmAddToCart}
+                                disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
+                                className="flex-[2]"
+                            >
+                                AGREGAR AL CARRITO
+                            </Button>
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* ── MODAL: PIN de gerencia (cortesía) ───────────────────────── */}
             {showPinModal && (
-                <div className="fixed inset-0 bg-background/90 backdrop-blur-xl flex items-end sm:items-center justify-center z-[60] animate-in fade-in duration-500 p-0 sm:p-4">
-                    <div className="bg-card glass-panel p-6 md:p-8 rounded-t-[2rem] sm:rounded-[2.5rem] w-full max-w-md shadow-2xl border-purple-500/20">
-                        <div className="text-center mb-6">
-                            <div className="h-16 w-16 bg-purple-500/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">🎁</div>
-                            <h3 className="font-black text-2xl uppercase tracking-tighter text-purple-600 dark:text-purple-400 italic">Autorizar Cortesía</h3>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">Este descuento requiere validación de gerencia</p>
+                <div className="fixed inset-0 z-[60] flex animate-in fade-in items-end justify-center bg-capsula-navy-deep/40 p-0 backdrop-blur-sm duration-200 sm:items-center sm:p-4">
+                    <div className="w-full max-w-md rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:rounded-[var(--radius)] md:p-8">
+                        <div className="mb-6 text-center">
+                            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle">
+                                <Gift className="h-6 w-6 text-capsula-coral" strokeWidth={1.5} />
+                            </div>
+                            <h3 className="font-heading text-[22px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                Autorizar cortesía
+                            </h3>
+                            <p className="mt-1 text-[12px] text-capsula-ink-muted">
+                                Este descuento requiere validación de gerencia
+                            </p>
                         </div>
-                        
-                        <div className="space-y-6">
+
+                        <div className="space-y-5">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center mb-3">Selecciona el % de descuento</label>
+                                <label className="mb-2 block text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Selecciona el % de descuento
+                                </label>
                                 <div className="grid grid-cols-4 gap-2">
-                                    {['25','50','75','100'].map(v => (
-                                        <button key={v} onClick={() => setCortesiaPercent(v)}
-                                            className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${cortesiaPercent === v ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-secondary text-muted-foreground hover:bg-purple-500/10 hover:text-purple-600'}`}>
-                                            {v}%
+                                    {['25', '50', '75', '100'].map(v => {
+                                        const active = cortesiaPercent === v;
+                                        return (
+                                            <button
+                                                key={v}
+                                                onClick={() => setCortesiaPercent(v)}
+                                                className={cn(
+                                                    'rounded-[var(--radius)] py-2.5 text-[13px] font-medium transition-colors',
+                                                    active
+                                                        ? 'bg-capsula-coral text-white'
+                                                        : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral/40 hover:text-capsula-coral',
+                                                )}
+                                            >
+                                                {v}%
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="relative mt-2">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={cortesiaPercent}
+                                        onChange={e => setCortesiaPercent(e.target.value)}
+                                        className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory py-3 pr-10 text-center font-mono text-[18px] font-semibold text-capsula-ink outline-none focus:border-capsula-coral"
+                                        placeholder="Valor %"
+                                    />
+                                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-mono font-semibold text-capsula-coral">%</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-2 block text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Introduce tu PIN de seguridad
+                                </label>
+                                <div className="mb-3 flex h-20 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory text-[28px] font-semibold tracking-[1em] text-capsula-navy-deep">
+                                    {pinInput.length > 0
+                                        ? pinInput.replace(/./g, '•')
+                                        : <span className="text-[12px] font-medium uppercase tracking-[0.12em] text-capsula-ink-faint">MODO PIN…</span>}
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => handlePinKey(n.toString())}
+                                            className="h-14 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface font-mono text-[20px] font-semibold text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                        >
+                                            {n}
                                         </button>
                                     ))}
-                                </div>
-                                <div className="mt-3 relative">
-                                    <input type="number" min="1" max="100" value={cortesiaPercent}
-                                        onChange={e => setCortesiaPercent(e.target.value)}
-                                        className="w-full bg-secondary/50 border border-border rounded-2xl py-4 text-center font-black text-xl focus:border-purple-500 focus:outline-none transition-all placeholder:text-muted-foreground/30"
-                                        placeholder="Valor %" />
-                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-purple-600">%</span>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center mb-3">Introduce tu PIN de Seguridad</label>
-                                <div className="bg-secondary/40 border border-border rounded-3xl p-6 text-4xl tracking-[1.5em] mb-4 font-black flex justify-center items-center h-24 text-purple-600 shadow-inner">
-                                    {pinInput.length > 0 ? pinInput.replace(/./g, '•') : <span className="text-muted-foreground/10 tracking-normal text-xl font-medium">MODO PIN...</span>}
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                        <button key={n} onClick={() => handlePinKey(n.toString())} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">{n}</button>
-                                    ))}
-                                    <button onClick={() => handlePinKey('clear')} className="h-16 rounded-2xl bg-red-500/10 text-red-500 font-black text-lg hover:bg-red-500 hover:text-white transition-all active:scale-90 border border-red-500/20 shadow-sm">CLR</button>
-                                    <button key={0} onClick={() => handlePinKey('0')} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">0</button>
-                                    <button onClick={() => handlePinKey('back')} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">⌫</button>
+                                    <button
+                                        onClick={() => handlePinKey('clear')}
+                                        className="h-14 rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle text-[13px] font-semibold uppercase tracking-[0.08em] text-capsula-coral transition-colors hover:bg-capsula-coral hover:text-white"
+                                    >
+                                        CLR
+                                    </button>
+                                    <button
+                                        onClick={() => handlePinKey('0')}
+                                        className="h-14 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface font-mono text-[20px] font-semibold text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                    >
+                                        0
+                                    </button>
+                                    <button
+                                        onClick={() => handlePinKey('back')}
+                                        className="inline-flex h-14 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                                        aria-label="Borrar"
+                                    >
+                                        <Delete className="h-5 w-5" strokeWidth={1.5} />
+                                    </button>
                                 </div>
                             </div>
 
-                            {pinError && <div className="bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-black text-center py-3 rounded-2xl animate-bounce">{pinError}</div>}
+                            {pinError && (
+                                <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle px-3 py-2 text-center text-[12px] font-medium text-capsula-coral">
+                                    {pinError}
+                                </div>
+                            )}
 
-                            <div className="grid grid-cols-2 gap-4 pt-2">
-                                <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="capsula-btn capsula-btn-secondary py-4 font-black uppercase tracking-widest">Cerrar</button>
-                                <button onClick={handlePinSubmit} disabled={!pinInput} className="capsula-btn capsula-btn-primary bg-purple-600 border-purple-700 shadow-lg shadow-purple-500/20 py-4 font-black uppercase tracking-widest">Validar</button>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => { setShowPinModal(false); setPinInput(''); }}
+                                >
+                                    Cerrar
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handlePinSubmit}
+                                    disabled={!pinInput}
+                                >
+                                    Validar
+                                </Button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
-            {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
+
+            {/* ── MODAL: Propina colectiva ───────────────────────── */}
             {showTipModal && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
-                            <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
+                <div className="fixed inset-0 z-[60] flex animate-in fade-in items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm duration-200">
+                    <div className="w-full max-w-sm space-y-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <div className="flex items-center justify-between">
+                            <h3 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                <Coins className="h-5 w-5 text-capsula-coral" strokeWidth={1.5} />
+                                Propina colectiva
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowTipModal(false)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                            >
+                                <X className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Propina recibida después del cobro. Indica el cliente para trazabilidad.</p>
-                        {/* Cliente / referencia */}
+
+                        <p className="text-[12px] text-capsula-ink-muted">
+                            Propina recibida después del cobro. Indica el cliente para trazabilidad.
+                        </p>
+
                         <input
                             type="text"
                             value={tipClientRef}
                             onChange={e => setTipClientRef(e.target.value)}
                             placeholder="Nombre del cliente (opcional)"
-                            className="w-full bg-background border border-border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/40"
+                            className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[13px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
                         />
-                        <div className="grid grid-cols-3 gap-2">
-                            {[
-                                { id: 'CASH_USD',       label: '💵 Cash $' },
-                                { id: 'CASH_EUR',       label: '€ Cash €' },
-                                { id: 'ZELLE',          label: '⚡ Zelle' },
-                                { id: 'PDV_SHANKLISH',  label: '💳 PDV Shan.' },
-                                { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-                                { id: 'MOVIL_NG',       label: '📱 Móvil NG' },
-                                { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-                            ].map(m => (
-                                <button key={m.id} type="button" onClick={() => setTipMethod(m.id)}
-                                    className={`py-2 rounded-xl text-xs font-black uppercase transition-all ${tipMethod === m.id ? 'bg-amber-500 text-white' : 'bg-background border border-border text-muted-foreground hover:border-amber-500/50'}`}>
-                                    {m.label}
-                                </button>
-                            ))}
+
+                        <div className="grid grid-cols-3 gap-1.5">
+                            {([
+                                { id: 'CASH_USD',       label: 'Cash $',      icon: Banknote },
+                                { id: 'CASH_EUR',       label: 'Cash €',      icon: Euro },
+                                { id: 'ZELLE',          label: 'Zelle',       icon: Zap },
+                                { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',   icon: CreditCard },
+                                { id: 'PDV_SUPERFERRO', label: 'PDV Super.',  icon: CreditCard },
+                                { id: 'MOVIL_NG',       label: 'Móvil NG',    icon: Smartphone },
+                                { id: 'CASH_BS',        label: 'Efectivo Bs', icon: Banknote },
+                            ] as const).map(m => {
+                                const MIcon = m.icon;
+                                const active = tipMethod === m.id;
+                                return (
+                                    <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => setTipMethod(m.id)}
+                                        className={cn(
+                                            'inline-flex items-center justify-center gap-1 rounded-[var(--radius)] py-2 text-[11px] font-medium transition-colors',
+                                            active
+                                                ? 'bg-capsula-coral text-white'
+                                                : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral/40 hover:text-capsula-coral',
+                                        )}
+                                    >
+                                        <MIcon className="h-3 w-3" strokeWidth={1.5} /> {m.label}
+                                    </button>
+                                );
+                            })}
                         </div>
-                        <div className="flex items-center bg-background border border-border rounded-2xl p-1">
-                            <span className="pl-4 text-muted-foreground text-sm font-black">
-                                {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) ? 'Bs' : '$'}
+
+                        <div className="flex items-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1">
+                            <span className="pl-3 font-mono text-[13px] font-semibold text-capsula-ink-muted">
+                                {['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG'].includes(tipMethod) ? 'Bs' : '$'}
                             </span>
                             <input
-                                type="number" min="0" step="0.01"
+                                type="number"
+                                min="0"
+                                step="0.01"
                                 value={tipAmount}
                                 onChange={e => setTipAmount(e.target.value)}
                                 placeholder="0.00"
-                                className="flex-1 bg-transparent border-none px-3 py-3 text-2xl font-black focus:outline-none placeholder:text-muted-foreground/30"
+                                className="flex-1 border-none bg-transparent px-3 py-2 font-mono text-[20px] font-semibold text-capsula-ink outline-none placeholder:text-capsula-ink-faint"
                                 autoFocus
                             />
                         </div>
-                        {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
-                            <div className="flex justify-between text-xs px-1">
-                                <span className="text-muted-foreground">Equivalente USD</span>
-                                <span className="font-bold text-emerald-400">${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}</span>
+
+                        {['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG'].includes(tipMethod) && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
+                            <div className="flex justify-between px-1 text-[11px]">
+                                <span className="text-capsula-ink-muted">Equivalente USD</span>
+                                <span className="font-mono font-semibold text-[#2F6B4E]">
+                                    ${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}
+                                </span>
                             </div>
                         )}
-                        <button
-                            type="button"
+
+                        <Button
+                            variant="primary"
+                            size="lg"
                             onClick={handleRecordTip}
                             disabled={isTipProcessing || !(parseFloat(tipAmount) > 0)}
-                            className="w-full py-4 rounded-2xl bg-amber-500 text-white font-black uppercase text-lg shadow-lg shadow-amber-500/30 disabled:opacity-40 active:scale-95 transition-all"
+                            isLoading={isTipProcessing}
+                            className="w-full"
                         >
-                            {isTipProcessing ? 'Registrando...' : 'Registrar Propina'}
-                        </button>
+                            {isTipProcessing ? 'Registrando…' : 'Registrar propina'}
+                        </Button>
                     </div>
                 </div>
             )}
 
             {/* Navegación móvil delivery */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
-                <button
-                onClick={() => setMobileView("menu")}
-                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
-                    ${mobileView === "menu" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
-                >
-                {mobileView === "menu" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
-                <span className="text-xl">🍽️</span>
-                MENÚ
-                </button>
-                <button
-                onClick={() => setMobileView("order")}
-                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
-                    ${mobileView === "order" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
-                >
-                {mobileView === "order" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
-                <span className="text-xl">📦</span>
-                ORDEN
-                {cart.length > 0 && (
-                    <span className="absolute top-1 right-8 bg-blue-500 text-white text-[9px] rounded-full min-w-[16px] h-4 flex items-center
-            justify-center font-black px-1">
-                    {cart.length}
-                    </span>
-                )}
-                </button>
+            <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-capsula-line bg-capsula-ivory-surface lg:hidden">
+                {[
+                    { id: 'menu' as const, label: 'Menú', icon: UtensilsCrossed },
+                    { id: 'order' as const, label: 'Orden', icon: ShoppingBag, badge: cart.length },
+                ].map(tab => {
+                    const TabIcon = tab.icon;
+                    const active = mobileView === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setMobileView(tab.id)}
+                            className={cn(
+                                'relative flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors',
+                                active
+                                    ? 'bg-capsula-navy-soft text-capsula-navy-deep'
+                                    : 'text-capsula-ink-muted',
+                            )}
+                        >
+                            {active && <div className="absolute left-0 right-0 top-0 h-0.5 bg-capsula-navy-deep" />}
+                            <TabIcon className="h-5 w-5" strokeWidth={1.5} />
+                            {tab.label}
+                            {tab.badge !== undefined && tab.badge > 0 && (
+                                <span className="absolute right-6 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-capsula-coral px-1 font-mono text-[9px] font-semibold text-white">
+                                    {tab.badge}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
             </nav>
         </div>
     );
