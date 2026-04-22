@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Bike, MessageCircle, Plus as PlusIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -386,39 +387,54 @@ export default function POSDeliveryPage() {
     };
     const handlePinKey = (k: string) => { if (k === 'clear') setPinInput(''); else if (k === 'back') setPinInput(p => p.slice(0, -1)); else setPinInput(p => p + k); };
 
-    if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-center"><div className="text-4xl mb-4">🛵</div><div className="text-xl font-black text-foreground">Cargando Delivery...</div></div></div>;
+    if (isLoading) return (
+        <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
+            <div className="flex flex-col items-center gap-3 text-center">
+                <Bike className="h-10 w-10 text-capsula-ink-muted" />
+                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">
+                    Cargando Delivery…
+                </div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} bg-background text-foreground flex flex-col font-sans animate-in fade-in duration-700 pb-16 lg:pb-0`}>
-            <div className={`glass-panel px-3 md:px-6 py-3 md:py-4 ${posFullscreen ? 'fixed top-0 w-full z-30' : 'relative w-full z-[31]'} shadow-2xl flex justify-between items-center h-16 md:h-24 border-b-primary/10`}>
+        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} flex flex-col bg-capsula-ivory text-capsula-ink pb-16 lg:pb-0 animate-in fade-in duration-700`}>
+            <div className={`${posFullscreen ? 'fixed top-0 z-30 w-full' : 'relative z-[31] w-full'} flex h-16 shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 shadow-cap-soft md:h-24 md:px-6 md:py-4`}>
                 <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 md:h-14 md:w-14 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center text-2xl md:text-4xl shadow-lg shadow-blue-500/20">🛵</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-ink md:h-14 md:w-14">
+                        <Bike className="h-5 w-5 md:h-7 md:w-7" />
+                    </div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black tracking-tighter uppercase italic text-blue-600 dark:text-blue-400">Shanklish <span className="text-foreground">Delivery</span></h1>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            Sistema de Despacho Táctil CAPSULA
+                        <h1 className="font-heading text-xl tracking-[-0.02em] text-capsula-ink md:text-3xl">
+                            Shanklish <span className="text-capsula-coral">Delivery</span>
+                        </h1>
+                        <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
+                            Sistema de despacho táctil CAPSULA
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="glass-panel p-2 rounded-2xl border-primary/5">
+                <div className="flex items-center gap-3">
+                    <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-1">
                         <CurrencyCalculator totalUsd={finalTotal} hasServiceFee={false} onRateUpdated={setExchangeRate} />
                     </div>
                     <button
                         onClick={() => setShowWhatsAppParser(!showWhatsAppParser)}
-                        className={`capsula-btn min-h-0 py-3 px-6 text-sm ${showWhatsAppParser ? 'capsula-btn-primary bg-emerald-600 border-emerald-700' : 'capsula-btn-secondary'}`}
+                        className={`pos-btn !min-h-0 px-5 py-3 text-sm ${showWhatsAppParser ? '' : 'pos-btn-secondary'}`}
                     >
-                        💬 WhatsApp
+                        <MessageCircle className="h-4 w-4" />
+                        WhatsApp
                     </button>
                     <button
                         type="button"
                         onClick={() => setShowTipModal(true)}
-                        className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase hover:bg-amber-500/20 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-xl border border-[#E8D9B8] bg-[#F3EAD6]/60 px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-[#946A1C] transition-colors hover:bg-[#F3EAD6]"
                     >
-                        + Propina
+                        <PlusIcon className="h-3.5 w-3.5" />
+                        Propina
                     </button>
-                    <div className="px-4 py-2 bg-secondary/30 rounded-xl border border-border font-black text-sm tabular-nums text-foreground/70">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft">
                         {new Date().toLocaleDateString('es-VE')}
                     </div>
                 </div>
