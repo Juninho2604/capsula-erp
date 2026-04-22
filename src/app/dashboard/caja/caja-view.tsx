@@ -10,6 +10,14 @@ import {
 import { getEndOfDaySummaryAction } from '@/app/actions/sales.actions';
 import { BillDenominationInput } from '@/components/pos/BillDenominationInput';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { cn } from '@/lib/utils';
+import {
+  Wallet, Plus, Eye, ChevronLeft, ChevronRight, X, Loader2, Coins,
+  UserPlus, RefreshCw, Lock, Unlock, TrendingUp, TrendingDown,
+  AlertTriangle, Check, Users,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 const SHIFT_TYPES = [
   { value: 'MORNING', label: 'Mañana' },
@@ -33,21 +41,22 @@ function DenomBreakdown({ json, label }: { json: string | null; label: string })
   const data = parseDenominations(json);
   if (!data) return null;
   return (
-    <div className="mt-2 text-xs">
-      <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">{label}</p>
+    <div className="mt-2 text-[12px]">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">{label}</p>
       {BILL_DENOMS.map(d => {
         const count = data[String(d)] ?? 0;
         if (!count) return null;
         return (
-          <div key={d} className="flex justify-between text-foreground/80">
-            <span>${d} × {count}</span>
-            <span>${fmt(d * count)}</span>
+          <div key={d} className="flex justify-between text-capsula-ink-soft">
+            <span className="font-mono">${d} × {count}</span>
+            <span className="font-mono">${fmt(d * count)}</span>
           </div>
         );
       })}
       {data.total != null && (
-        <div className="flex justify-between font-bold text-foreground border-t border-border mt-1 pt-1">
-          <span>Total</span><span>${fmt(data.total)}</span>
+        <div className="mt-1 flex justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
+          <span>Total</span>
+          <span className="font-mono font-semibold">${fmt(data.total)}</span>
         </div>
       )}
     </div>
@@ -209,61 +218,72 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
     }));
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1400px] space-y-6 animate-in">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">🏧 Control de Caja</h1>
-          <p className="text-sm text-muted-foreground">Apertura y cierre de caja diaria</p>
+          <h1 className="inline-flex items-center gap-2 font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+            <Wallet className="h-6 w-6 text-capsula-navy" strokeWidth={1.5} />
+            Control de caja
+          </h1>
+          <p className="mt-1 text-[13px] text-capsula-ink-muted">Apertura y cierre de caja diaria</p>
         </div>
         {canManage && (
-          <button onClick={() => setShowOpenForm(true)}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition-colors">
-            + Abrir Caja
-          </button>
+          <Button variant="primary" onClick={() => setShowOpenForm(true)}>
+            <Plus className="h-4 w-4" strokeWidth={2} /> Abrir caja
+          </Button>
         )}
       </div>
 
       {/* Cajas abiertas */}
       {openRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-emerald-500">Cajas Abiertas</h3>
+          <h3 className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-navy">
+            <Unlock className="h-3 w-3" strokeWidth={1.5} />
+            Cajas abiertas
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {openRegisters.map(r => (
-              <div key={r.id} className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-                <div className="flex items-start justify-between mb-3">
+              <div key={r.id} className="rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft/40 p-5 shadow-cap-soft">
+                <div className="mb-3 flex items-start justify-between">
                   <div>
-                    <p className="font-bold text-foreground">{r.registerName}</p>
-                    <p className="text-xs text-muted-foreground">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label} · {new Date(r.shiftDate).toLocaleDateString('es-VE')}</p>
+                    <p className="font-medium text-capsula-navy-deep">{r.registerName}</p>
+                    <p className="text-[11px] text-capsula-ink-muted">
+                      {SHIFT_TYPES.find(s => s.value === r.shiftType)?.label} · {new Date(r.shiftDate).toLocaleDateString('es-VE')}
+                    </p>
                   </div>
-                  <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-bold px-2 py-0.5">ABIERTA</span>
+                  <Badge variant="ok">Abierta</Badge>
                 </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between text-muted-foreground">
+                <div className="space-y-1 text-[13px]">
+                  <div className="flex justify-between text-capsula-ink-muted">
                     <span>Fondo inicial</span>
                     <div className="flex items-center gap-1">
-                      <span className="font-semibold text-foreground">${fmt(r.openingCashUsd)}</span>
+                      <span className="font-mono font-semibold text-capsula-ink">${fmt(r.openingCashUsd)}</span>
                       {r.openingDenominationsJson && (
-                        <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
-                          className="text-emerald-400 hover:text-emerald-300 text-xs">📋</button>
+                        <button
+                          onClick={() => setDenomModal(r)}
+                          title="Ver desglose de billetes"
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-capsula-navy transition-colors hover:bg-capsula-navy-soft hover:text-capsula-navy-deep"
+                        >
+                          <Eye className="h-3 w-3" strokeWidth={1.5} />
+                        </button>
                       )}
                     </div>
                   </div>
-                  <div className="flex justify-between text-muted-foreground">
+                  <div className="flex justify-between text-capsula-ink-muted">
                     <span>Hora apertura</span>
-                    <span className="text-foreground">{new Date(r.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="font-mono text-capsula-ink">{new Date(r.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  {/* Cajeras activas en el turno */}
-                  <div className="pt-2 border-t border-emerald-500/20 mt-2">
-                    <p className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-1.5">Responsables del turno</p>
+                  <div className="mt-2 border-t border-capsula-navy/15 pt-2">
+                    <p className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy">
+                      <Users className="h-3 w-3" strokeWidth={1.5} /> Responsables del turno
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {parseOperators(r.operatorsJson).map((op, i) => (
-                        <span key={i} className="bg-emerald-500/15 text-emerald-300 text-xs font-semibold px-2 py-0.5 rounded-full">
-                          {op}
-                        </span>
+                        <Badge key={i} variant="navy">{op}</Badge>
                       ))}
                       {parseOperators(r.operatorsJson).length === 0 && (
-                        <span className="text-muted-foreground text-xs">{r.openedByName}</span>
+                        <span className="text-[11px] text-capsula-ink-muted">{r.openedByName}</span>
                       )}
                     </div>
                   </div>
@@ -271,21 +291,29 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                 {canManage && (
                   <div className="mt-4 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => { setOperatorModal(r); setOperatorInput(''); setOperatorMode('add'); }}
-                        className="rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold py-2 hover:bg-blue-500/20 transition-colors">
-                        + Cajera
-                      </button>
-                      <button
+                      >
+                        <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} /> Cajera
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => { setOperatorModal(r); setOperatorInput(''); setOperatorMode('replace'); }}
-                        className="rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold py-2 hover:bg-amber-500/20 transition-colors">
-                        Cambio Turno
-                      </button>
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} /> Cambio turno
+                      </Button>
                     </div>
-                    <button onClick={() => { setCloseTarget(r); setCloseForm({ closingCashUsd: '', closingCashBs: '', notes: '' }); }}
-                      className="w-full rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-sm font-bold py-2 hover:bg-red-500/20 transition-colors">
-                      Cerrar Caja
-                    </button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => { setCloseTarget(r); setCloseForm({ closingCashUsd: '', closingCashBs: '', notes: '' }); }}
+                      className="w-full"
+                    >
+                      <Lock className="h-3.5 w-3.5" strokeWidth={1.5} /> Cerrar caja
+                    </Button>
                   </div>
                 )}
               </div>
@@ -297,53 +325,73 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Monthly Summary */}
       {closedRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Mes</h3>
+          <h3 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Resumen del mes</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>
-              <p className="text-2xl font-black text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.shiftsCount} turnos cerrados</p>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas del mes</p>
+              <p className="mt-1 font-mono text-[24px] font-semibold text-[#2F6B4E]">${fmt(monthlyStats.totalSales)}</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{monthlyStats.shiftsCount} turnos cerrados</p>
             </div>
-            <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gastos del Mes</p>
-              <p className="text-2xl font-black text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Descontados de caja</p>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Gastos del mes</p>
+              <p className="mt-1 font-mono text-[24px] font-semibold text-capsula-coral">${fmt(monthlyStats.totalExpenses)}</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Descontados de caja</p>
             </div>
-            <div className={`glass-panel rounded-2xl border p-4 ${
-              Math.abs(monthlyStats.totalDifference) < 5 ? 'border-emerald-500/30 bg-emerald-500/5' :
-              monthlyStats.totalDifference < 0 ? 'border-red-500/30 bg-red-500/5' : 'border-blue-500/30 bg-blue-500/5'
-            }`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Diferencia Acumulada</p>
-              <p className={`text-2xl font-black mt-1 ${
-                Math.abs(monthlyStats.totalDifference) < 5 ? 'text-emerald-500' :
-                monthlyStats.totalDifference < 0 ? 'text-red-500' : 'text-blue-500'
-              }`}>
+            <div className={cn(
+              "rounded-[var(--radius)] border p-4 shadow-cap-soft",
+              Math.abs(monthlyStats.totalDifference) < 5 ? "border-capsula-line bg-capsula-ivory-surface" :
+              monthlyStats.totalDifference < 0 ? "border-capsula-coral/30 bg-capsula-coral-subtle/40" :
+              "border-capsula-navy/20 bg-capsula-navy-soft/40",
+            )}>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Diferencia acumulada</p>
+              <p className={cn(
+                "mt-1 font-mono text-[24px] font-semibold",
+                Math.abs(monthlyStats.totalDifference) < 5 ? "text-[#2F6B4E]" :
+                monthlyStats.totalDifference < 0 ? "text-capsula-coral" :
+                "text-capsula-navy-deep",
+              )}>
                 {monthlyStats.totalDifference >= 0 ? '+' : ''}{fmt(monthlyStats.totalDifference)}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Promedio: {fmt(monthlyStats.avgDifference)} por turno</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Promedio: {fmt(monthlyStats.avgDifference)} por turno</p>
             </div>
-            <div className="glass-panel rounded-2xl border border-border p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Precisión de Cuadre</p>
-              <p className={`text-2xl font-black mt-1 ${
-                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.8 ? 'text-emerald-500' :
-                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.5 ? 'text-amber-500' : 'text-red-500'
-              }`}>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Precisión de cuadre</p>
+              <p className={cn(
+                "mt-1 font-mono text-[24px] font-semibold",
+                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.8 ? "text-[#2F6B4E]" :
+                monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.5 ? "text-[#946A1C]" :
+                "text-capsula-coral",
+              )}>
                 {monthlyStats.shiftsCount > 0 ? Math.round((monthlyStats.perfectShifts / monthlyStats.shiftsCount) * 100) : 0}%
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.perfectShifts}/{monthlyStats.shiftsCount} turnos sin diferencia</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{monthlyStats.perfectShifts}/{monthlyStats.shiftsCount} turnos sin diferencia</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Navegador de período */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => handleMonthChange(-1)} className="rounded-lg border border-border p-2 hover:bg-accent transition-colors text-foreground">‹</button>
-        <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleMonthChange(-1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <span className="min-w-[160px] text-center font-heading text-[18px] tracking-[-0.01em] text-capsula-navy-deep">
           {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
         </span>
-        <button onClick={() => handleMonthChange(1)} className="rounded-lg border border-border p-2 hover:bg-accent transition-colors text-foreground">›</button>
-        {isPending && <span className="text-xs text-muted-foreground animate-pulse">Cargando...</span>}
+        <button
+          onClick={() => handleMonthChange(1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        {isPending && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-capsula-ink-muted">
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} /> Cargando…
+          </span>
+        )}
       </div>
 
       {/* Historial de cierres */}
