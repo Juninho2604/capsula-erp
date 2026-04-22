@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { Search, X as XIcon, ShoppingBag, Bike, Printer } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
 import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
 import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
@@ -210,60 +210,76 @@ export default function POSPedidosYAPage() {
     };
 
     if (isLoading) return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-            <div className="text-center">
-                <div className="text-4xl mb-4">🍔</div>
-                <div className="text-xl font-black text-foreground">Cargando PedidosYA...</div>
+        <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
+            <div className="flex flex-col items-center gap-3 text-center">
+                <Bike className="h-10 w-10 text-capsula-coral" />
+                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-navy-deep">
+                    Cargando PedidosYA…
+                </div>
             </div>
         </div>
     );
 
     return (
-        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} bg-background text-foreground flex flex-col font-sans`}>
+        <div className={`${posFullscreen ? 'min-h-screen' : 'flex-1 -m-4 md:-m-6 h-[calc(100vh-4rem)]'} flex flex-col bg-capsula-ivory text-capsula-ink`}>
             {/* Header */}
-            <div className={`glass-panel px-3 md:px-6 py-3 md:py-4 ${posFullscreen ? 'fixed top-0 w-full z-30' : 'relative w-full z-[31]'} shadow-2xl flex justify-between items-center h-16 md:h-20 border-b border-border`}>
+            <div className={`${posFullscreen ? 'fixed top-0 z-30 w-full' : 'relative z-[31] w-full'} flex h-16 shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 shadow-cap-soft md:h-20 md:px-6 md:py-4`}>
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">🍔</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-capsula-coral-subtle text-capsula-coral md:h-12 md:w-12">
+                        <Bike className="h-5 w-5 md:h-6 md:w-6" />
+                    </div>
                     <div>
-                        <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">POS <span className="text-orange-500 italic">PedidosYA</span></h1>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-                            Registro de Pedidos Externos
+                        <h1 className="font-heading text-lg tracking-[-0.02em] text-capsula-navy-deep md:text-2xl">
+                            POS <span className="text-capsula-coral">PedidosYA</span>
+                        </h1>
+                        <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
+                            Registro de pedidos externos
                         </p>
                     </div>
                 </div>
-                <div className="px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft">
                     {new Date().toLocaleDateString('es-VE')}
                 </div>
             </div>
 
-            <div className={`flex ${posFullscreen ? 'h-screen pt-16 md:pt-20' : 'flex-1 min-h-0'} overflow-hidden`}>
+            <div className={`flex ${posFullscreen ? 'h-screen pt-16 md:pt-20' : 'min-h-0 flex-1'} overflow-hidden`}>
                 {/* Menú izquierda */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                <div className="flex flex-1 flex-col overflow-hidden bg-capsula-ivory">
                     {/* Búsqueda */}
-                    <div className="px-4 py-3 bg-background border-b border-border">
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
+                    <div className="border-b border-capsula-line bg-capsula-ivory px-4 py-3">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
                             <input
                                 type="text"
                                 value={productSearch}
                                 onChange={e => setProductSearch(e.target.value)}
-                                placeholder="Buscar producto por nombre o SKU..."
-                                className="w-full bg-secondary/50 border border-border rounded-2xl py-3 pl-12 pr-12 text-sm font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                                placeholder="Buscar producto por nombre o SKU…"
+                                className="w-full rounded-2xl border border-capsula-line bg-capsula-ivory-surface py-3 pl-12 pr-12 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                             />
                             {productSearch && (
-                                <button onClick={() => setProductSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">✕</button>
+                                <button
+                                    onClick={() => setProductSearch('')}
+                                    className="absolute right-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                    aria-label="Limpiar búsqueda"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </button>
                             )}
                         </div>
                     </div>
                     {/* Categorías */}
                     {!productSearch && (
-                        <div className="flex gap-3 px-4 py-3 bg-background border-b border-border overflow-x-auto no-scrollbar">
+                        <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-capsula-line bg-capsula-ivory px-4 py-3">
                             {categories.map((cat: any) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`shrink-0 px-5 py-2.5 rounded-2xl font-black text-sm transition-all active:scale-95 border-2 ${selectedCategory === cat.id ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-card border-border text-foreground/50 hover:border-orange-400/40'}`}
+                                    className={`shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition-colors active:scale-95 ${
+                                        selectedCategory === cat.id
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
+                                    }`}
                                 >
                                     {cat.name}
                                 </button>
@@ -271,18 +287,24 @@ export default function POSPedidosYAPage() {
                         </div>
                     )}
                     {/* Productos */}
-                    <div className="flex-1 p-4 overflow-y-auto pb-24">
-                        <div className="grid grid-cols-2 md:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3">
+                    <div className="flex-1 overflow-y-auto p-4 pb-24">
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4">
                             {filteredMenuItems.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleAddToCart(item)}
-                                    className="capsula-card group p-4 text-left h-32 flex flex-col justify-between border-primary/5 hover:border-orange-400/40 active:scale-[0.98] transition-transform"
+                                    className="pos-tile group flex h-32 flex-col justify-between !p-4 text-left"
                                 >
-                                    <div className="font-black text-sm uppercase leading-tight tracking-tight group-hover:text-orange-500 transition-colors">{item.name}</div>
+                                    <div className="text-sm font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                                        {item.name}
+                                    </div>
                                     <div>
-                                        <div className="text-2xl font-black text-orange-500 italic">${getPYAPrice(item).toFixed(2)}</div>
-                                        <div className="text-xs text-muted-foreground line-through">${item.price.toFixed(2)}</div>
+                                        <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-coral">
+                                            ${getPYAPrice(item).toFixed(2)}
+                                        </div>
+                                        <div className="text-xs tabular-nums text-capsula-ink-muted line-through">
+                                            ${item.price.toFixed(2)}
+                                        </div>
                                     </div>
                                 </button>
                             ))}
