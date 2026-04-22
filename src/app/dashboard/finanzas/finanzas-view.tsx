@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import {
+  ChevronLeft, ChevronRight, Download, TrendingUp, TrendingDown,
+  Ticket, Wallet, AlertOctagon, AlertTriangle,
+  Receipt, ArrowRight,
+} from 'lucide-react';
 import { getFinancialSummaryAction, type FinancialSummary } from '@/app/actions/finance.actions';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ExcelJS from 'exceljs';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -35,7 +42,12 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CORTESIA: 'Cortesía',
 };
 
-const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+// Minimal Navy-aligned palette (navy spectrum + accent)
+const PIE_COLORS = ['#1B2A3A', '#253D5C', '#F25C3B', '#946A1C', '#2F6B4E', '#6B7584', '#B04A2E', '#3A4656'];
+
+const CARD_BASE = 'rounded-2xl border bg-capsula-ivory-surface p-5 shadow-cap-soft';
+const SECTION_TITLE = 'mb-5 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted';
+const KICKER = 'text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted';
 
 interface TrendItem { label: string; sales: number; cogs: number; expenses: number; profit: number }
 
@@ -72,13 +84,11 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Estado de Resultados');
 
-    // Title
     ws.mergeCells('A1:C1');
     ws.getCell('A1').value = `Estado de Resultados — ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
     ws.getCell('A1').font = { bold: true, size: 14 };
     ws.getCell('A1').alignment = { horizontal: 'center' };
 
-    // Headers
     ws.getRow(3).values = ['Concepto', 'Monto (USD)', '% sobre Ventas'];
     ws.getRow(3).font = { bold: true };
     ws.getColumn(1).width = 35;
@@ -106,7 +116,6 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
     addRow('= Utilidad Operativa', s.profitLoss.operatingProfit, s.profitLoss.operatingMarginPct, true);
     row += 2;
 
-    // Cash Flow section
     ws.getCell(`A${row}`).value = 'Flujo de Caja';
     ws.getCell(`A${row}`).font = { bold: true, size: 12 };
     row++;
@@ -114,7 +123,6 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
     addRow('Egresos (Salidas)', s.cashFlow?.outflows ?? 0);
     addRow('Flujo Neto', s.cashFlow?.net ?? 0, undefined, true);
 
-    // Generate and download
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
@@ -126,362 +134,503 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">📊 Dashboard Financiero</h1>
-          <p className="text-sm text-muted-foreground">Estado de resultados y flujo de caja</p>
-        </div>
-        {s && (
+    <div>
+      <PageHeader
+        kicker="Finanzas"
+        title="Dashboard financiero"
+        description="Estado de resultados y flujo de caja"
+        actions={
+          s ? (
+            <Button variant="outline" size="sm" onClick={exportPnLExcel}>
+              <Download className="h-4 w-4" />
+              Exportar Excel
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div className="space-y-6">
+        {/* Navegador período */}
+        <div className="flex items-center gap-3">
           <button
-            onClick={exportPnLExcel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+            onClick={() => handleMonthChange(-1)}
+            className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+            aria-label="Mes anterior"
           >
-            📥 Exportar Excel
+            <ChevronLeft className="h-4 w-4" />
           </button>
-        )}
-      </div>
-
-      {/* Navegador período */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => handleMonthChange(-1)} className="rounded-lg border border-border p-2 hover:bg-accent text-foreground">‹</button>
-        <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
-          {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
-        </span>
-        <button onClick={() => handleMonthChange(1)} className="rounded-lg border border-border p-2 hover:bg-accent text-foreground">›</button>
-        {isPending && <span className="text-xs text-muted-foreground animate-pulse">Calculando...</span>}
-      </div>
-
-      {!s ? (
-        <div className="text-center py-20 text-muted-foreground">
-          {isPending ? 'Cargando...' : 'Sin datos para este período'}
+          <span className="min-w-[160px] text-center font-heading text-lg tracking-[-0.01em] text-capsula-navy-deep">
+            {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+          </span>
+          <button
+            onClick={() => handleMonthChange(1)}
+            className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+            aria-label="Mes siguiente"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          {isPending && <span className="animate-pulse text-xs text-capsula-ink-muted">Calculando…</span>}
         </div>
-      ) : (
-        <>
-          {/* P&L Summary */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <PnLCard label="Ventas Totales" value={`$${fmt(s.income.totalSalesUsd)}`} sub={`${s.income.ordersCount} órdenes`} color="border-emerald-500/30 bg-emerald-500/5" icon="💰" positive change={s.mom?.salesChange ?? null} />
-            <PnLCard label="Ticket Promedio" value={`$${fmt(s.income.avgTicket ?? 0)}`} sub="Por orden" color="border-amber-500/30 bg-amber-500/5" icon="🎫" />
-            <PnLCard label="Gastos Operativos" value={`$${fmt(s.expenses.totalExpensesUsd)}`} sub={`${s.expenses.count} gastos`} color="border-red-500/30 bg-red-500/5" icon="💸" change={s.mom?.expensesChange ?? null} invertChange />
-            <PnLCard
-              label="Utilidad Operativa"
-              value={`$${fmt(s.profitLoss.operatingProfit)}`}
-              sub={`Margen: ${s.profitLoss.operatingMarginPct}%`}
-              color={s.profitLoss.operatingProfit >= 0 ? "border-blue-500/30 bg-blue-500/5" : "border-red-500/30 bg-red-500/10"}
-              icon={s.profitLoss.operatingProfit >= 0 ? "📈" : "📉"}
-              positive={s.profitLoss.operatingProfit >= 0}
-              change={s.mom?.profitChange ?? null}
-            />
+
+        {!s ? (
+          <div className="py-20 text-center text-capsula-ink-muted">
+            {isPending ? 'Cargando…' : 'Sin datos para este período'}
           </div>
+        ) : (
+          <>
+            {/* P&L Summary */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <PnLCard
+                label="Ventas totales"
+                value={`$${fmt(s.income.totalSalesUsd)}`}
+                sub={`${s.income.ordersCount} órdenes`}
+                Icon={Wallet}
+                tone="ok"
+                change={s.mom?.salesChange ?? null}
+              />
+              <PnLCard
+                label="Ticket promedio"
+                value={`$${fmt(s.income.avgTicket ?? 0)}`}
+                sub="Por orden"
+                Icon={Ticket}
+                tone="warn"
+              />
+              <PnLCard
+                label="Gastos operativos"
+                value={`$${fmt(s.expenses.totalExpensesUsd)}`}
+                sub={`${s.expenses.count} gastos`}
+                Icon={Receipt}
+                tone="danger"
+                change={s.mom?.expensesChange ?? null}
+                invertChange
+              />
+              <PnLCard
+                label="Utilidad operativa"
+                value={`$${fmt(s.profitLoss.operatingProfit)}`}
+                sub={`Margen: ${s.profitLoss.operatingMarginPct}%`}
+                Icon={s.profitLoss.operatingProfit >= 0 ? TrendingUp : TrendingDown}
+                tone={s.profitLoss.operatingProfit >= 0 ? 'info' : 'danger'}
+                negative={s.profitLoss.operatingProfit < 0}
+                change={s.mom?.profitChange ?? null}
+              />
+            </div>
 
-          {/* Cash Flow Summary */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ingresos (Entradas)</p>
-              <p className="text-2xl font-black text-emerald-500 mt-1">+${fmt(s.cashFlow?.inflows ?? 0)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ventas cobradas</p>
-            </div>
-            <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Egresos (Salidas)</p>
-              <p className="text-2xl font-black text-red-500 mt-1">-${fmt(s.cashFlow?.outflows ?? 0)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Gastos + pagos a proveedores</p>
-            </div>
-            <div className={`glass-panel rounded-2xl border p-5 ${(s.cashFlow?.net ?? 0) >= 0 ? 'border-blue-500/30 bg-blue-500/5' : 'border-red-500/30 bg-red-500/10'}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Flujo Neto</p>
-              <p className={`text-2xl font-black mt-1 ${(s.cashFlow?.net ?? 0) >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                {(s.cashFlow?.net ?? 0) >= 0 ? '+' : '-'}${fmt(Math.abs(s.cashFlow?.net ?? 0))}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Balance del período</p>
-            </div>
-          </div>
-
-          {/* Estado de Resultados */}
-          <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Estado de Resultados</h3>
-            <div className="space-y-3">
-              <PnLRow label="(+) Ventas" amount={s.income.totalSalesUsd} positive />
-              <div className="pl-4 space-y-1">
-                {s.income.byType.map(t => (
-                  <PnLRow key={t.type} label={`↳ ${ORDER_TYPE_LABELS[t.type] ?? t.type}`} amount={t.total} indent positive />
-                ))}
+            {/* Cash Flow Summary */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className={`${CARD_BASE} border-[#D3E2D8] bg-[#E5EDE7]/40`}>
+                <p className={KICKER}>Ingresos (entradas)</p>
+                <p className="mt-1 font-heading text-2xl tracking-[-0.02em] text-[#2F6B4E]">
+                  +${fmt(s.cashFlow?.inflows ?? 0)}
+                </p>
+                <p className="mt-0.5 text-xs text-capsula-ink-soft">Ventas cobradas</p>
               </div>
-              <div className="border-t border-border pt-2">
-                <PnLRow label="(−) Costo de Ventas (COGS)" amount={-s.cogs.totalCogsUsd} />
+              <div className={`${CARD_BASE} border-[#EFD2C8] bg-[#F7E3DB]/40`}>
+                <p className={KICKER}>Egresos (salidas)</p>
+                <p className="mt-1 font-heading text-2xl tracking-[-0.02em] text-[#B04A2E]">
+                  -${fmt(s.cashFlow?.outflows ?? 0)}
+                </p>
+                <p className="mt-0.5 text-xs text-capsula-ink-soft">Gastos + pagos a proveedores</p>
               </div>
-              <div className="border-t border-dashed border-border pt-2 bg-muted/10 rounded-lg px-3 py-2">
-                <PnLRow label="= Utilidad Bruta" amount={s.profitLoss.grossProfit} bold positive={s.profitLoss.grossProfit >= 0} />
-                <p className="text-xs text-muted-foreground mt-0.5">Margen bruto: {s.profitLoss.grossMarginPct}%</p>
-              </div>
-              <div className="border-t border-border pt-2">
-                <PnLRow label="(−) Gastos Operativos" amount={-s.expenses.totalExpensesUsd} />
-              </div>
-              <div className="pl-4 space-y-1">
-                {s.expenses.byCategory.map(c => (
-                  <PnLRow key={c.name} label={`↳ ${c.name}`} amount={-c.total} indent />
-                ))}
-              </div>
-              <div className="border-t-2 border-border pt-2 bg-muted/10 rounded-lg px-3 py-2">
-                <PnLRow label="= Utilidad Operativa" amount={s.profitLoss.operatingProfit} bold positive={s.profitLoss.operatingProfit >= 0} />
-                <p className="text-xs text-muted-foreground mt-0.5">Margen operativo: {s.profitLoss.operatingMarginPct}%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Row */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Daily Sales Line Chart */}
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Ventas Diarias del Mes</h3>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={s.income.dailySales ?? []} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={50} />
-                    <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
-                    <Line type="monotone" dataKey="total" name="Ventas" stroke="#10b981" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className={`${CARD_BASE} ${(s.cashFlow?.net ?? 0) >= 0 ? 'border-capsula-line' : 'border-[#EFD2C8] bg-[#F7E3DB]/40'}`}>
+                <p className={KICKER}>Flujo neto</p>
+                <p
+                  className={`mt-1 font-heading text-2xl tracking-[-0.02em] ${
+                    (s.cashFlow?.net ?? 0) >= 0 ? 'text-capsula-navy-deep' : 'text-[#B04A2E]'
+                  }`}
+                >
+                  {(s.cashFlow?.net ?? 0) >= 0 ? '+' : '-'}${fmt(Math.abs(s.cashFlow?.net ?? 0))}
+                </p>
+                <p className="mt-0.5 text-xs text-capsula-ink-soft">Balance del período</p>
               </div>
             </div>
 
-            {/* Expense Donut Chart */}
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Gastos por Categoría</h3>
-              {(s.expenses.byCategory?.length ?? 0) > 0 ? (
-                <div className="flex items-center gap-4">
-                  <div className="h-56 w-56 flex-shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={s.expenses.byCategory} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
-                          {s.expenses.byCategory.map((entry, index) => (
-                            <Cell key={entry.name} fill={entry.color || PIE_COLORS[index % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex-1 space-y-1.5 overflow-hidden">
-                    {s.expenses.byCategory.slice(0, 6).map((cat, i) => (
-                      <div key={cat.name} className="flex items-center gap-2 text-xs">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color || PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-foreground truncate flex-1">{cat.name}</span>
-                        <span className="text-muted-foreground font-semibold">{cat.pct.toFixed(0)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-12">Sin gastos registrados</p>
-              )}
-            </div>
-          </div>
-
-          {/* Gráfica de tendencia */}
-          {trend.length > 0 && (
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Tendencia 6 Meses</h3>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={55} />
-                    <Tooltip
-                      formatter={(value: number) => [`$${fmt(value)}`, undefined]}
-                      contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }} />
-                    <Bar dataKey="sales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cogs" name="COGS" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="profit" name="Utilidad" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* Top Gastos + Métodos de Pago */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Top 5 Expenses */}
-            {(s.expenses.topExpenses?.length ?? 0) > 0 && (
-              <div className="glass-panel rounded-2xl border border-border p-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Top 5 Gastos del Período</h3>
-                <div className="space-y-3">
-                  {s.expenses.topExpenses.map((exp, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-lg font-black text-muted-foreground w-6">{i + 1}</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{exp.description}</p>
-                          <p className="text-xs text-muted-foreground">{exp.categoryName} · {new Date(exp.paidAt).toLocaleDateString('es-VE')}</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-black text-red-500 ml-3">${fmt(exp.amount)}</span>
-                    </div>
+            {/* Estado de Resultados */}
+            <div className={`${CARD_BASE} border-capsula-line p-6`}>
+              <h3 className={SECTION_TITLE}>Estado de resultados</h3>
+              <div className="space-y-3">
+                <PnLRow label="(+) Ventas" amount={s.income.totalSalesUsd} positive />
+                <div className="space-y-1 pl-4">
+                  {s.income.byType.map(t => (
+                    <PnLRow key={t.type} label={`↳ ${ORDER_TYPE_LABELS[t.type] ?? t.type}`} amount={t.total} indent positive />
                   ))}
+                </div>
+                <div className="border-t border-capsula-line pt-2">
+                  <PnLRow label="(−) Costo de ventas (COGS)" amount={-s.cogs.totalCogsUsd} />
+                </div>
+                <div className="rounded-lg border-t border-dashed border-capsula-line bg-capsula-ivory-alt/60 px-3 py-2">
+                  <PnLRow label="= Utilidad bruta" amount={s.profitLoss.grossProfit} bold positive={s.profitLoss.grossProfit >= 0} />
+                  <p className="mt-0.5 text-xs text-capsula-ink-muted">Margen bruto: {s.profitLoss.grossMarginPct}%</p>
+                </div>
+                <div className="border-t border-capsula-line pt-2">
+                  <PnLRow label="(−) Gastos operativos" amount={-s.expenses.totalExpensesUsd} />
+                </div>
+                <div className="space-y-1 pl-4">
+                  {s.expenses.byCategory.map(c => (
+                    <PnLRow key={c.name} label={`↳ ${c.name}`} amount={-c.total} indent />
+                  ))}
+                </div>
+                <div className="rounded-lg border-t-2 border-capsula-line-strong bg-capsula-ivory-alt/60 px-3 py-2">
+                  <PnLRow label="= Utilidad operativa" amount={s.profitLoss.operatingProfit} bold positive={s.profitLoss.operatingProfit >= 0} />
+                  <p className="mt-0.5 text-xs text-capsula-ink-muted">Margen operativo: {s.profitLoss.operatingMarginPct}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                <h3 className={SECTION_TITLE}>Ventas diarias del mes</h3>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={s.income.dailySales ?? []} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} width={50} />
+                      <Tooltip
+                        formatter={(value: number) => [`$${fmt(value)}`, undefined]}
+                        contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '12px', fontSize: 12 }}
+                      />
+                      <Line type="monotone" dataKey="total" name="Ventas" stroke="#1B2A3A" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                <h3 className={SECTION_TITLE}>Gastos por categoría</h3>
+                {(s.expenses.byCategory?.length ?? 0) > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <div className="h-56 w-56 flex-shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={s.expenses.byCategory} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
+                            {s.expenses.byCategory.map((entry, index) => (
+                              <Cell key={entry.name} fill={entry.color || PIE_COLORS[index % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number) => [`$${fmt(value)}`, undefined]}
+                            contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '12px', fontSize: 12 }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-1.5 overflow-hidden">
+                      {s.expenses.byCategory.slice(0, 6).map((cat, i) => (
+                        <div key={cat.name} className="flex items-center gap-2 text-xs">
+                          <div
+                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: cat.color || PIE_COLORS[i % PIE_COLORS.length] }}
+                          />
+                          <span className="flex-1 truncate text-capsula-ink">{cat.name}</span>
+                          <span className="font-medium text-capsula-ink-soft">{cat.pct.toFixed(0)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="py-12 text-center text-capsula-ink-muted">Sin gastos registrados</p>
+                )}
+              </div>
+            </div>
+
+            {/* Tendencia 6 meses */}
+            {trend.length > 0 && (
+              <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                <h3 className={SECTION_TITLE}>Tendencia 6 meses</h3>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: '#6B7584' }} axisLine={false} tickLine={false} width={55} />
+                      <Tooltip
+                        formatter={(value: number) => [`$${fmt(value)}`, undefined]}
+                        contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '12px', fontSize: 12 }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#6B7584' }} />
+                      <Bar dataKey="sales" name="Ventas" fill="#1B2A3A" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="cogs" name="COGS" fill="#946A1C" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expenses" name="Gastos" fill="#F25C3B" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="profit" name="Utilidad" fill="#253D5C" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}
 
-            {/* Payment Methods */}
-            {(s.income.byPaymentMethod?.length ?? 0) > 0 && (
-              <div className="glass-panel rounded-2xl border border-border p-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Ventas por Método de Pago</h3>
-                <div className="space-y-2.5">
-                  {s.income.byPaymentMethod.map(pm => {
-                    const pct = s.income.totalSalesUsd > 0 ? (pm.total / s.income.totalSalesUsd) * 100 : 0;
+            {/* Top Gastos + Métodos de Pago */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              {(s.expenses.topExpenses?.length ?? 0) > 0 && (
+                <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                  <h3 className={SECTION_TITLE}>Top 5 gastos del período</h3>
+                  <div className="space-y-3">
+                    {s.expenses.topExpenses.map((exp, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span className="w-6 font-heading text-lg text-capsula-ink-muted">{i + 1}</span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-capsula-ink">{exp.description}</p>
+                            <p className="text-xs text-capsula-ink-muted">
+                              {exp.categoryName} · {new Date(exp.paidAt).toLocaleDateString('es-VE')}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="ml-3 text-sm font-medium text-[#B04A2E]">${fmt(exp.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(s.income.byPaymentMethod?.length ?? 0) > 0 && (
+                <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                  <h3 className={SECTION_TITLE}>Ventas por método de pago</h3>
+                  <div className="space-y-2.5">
+                    {s.income.byPaymentMethod.map(pm => {
+                      const pct = s.income.totalSalesUsd > 0 ? (pm.total / s.income.totalSalesUsd) * 100 : 0;
+                      return (
+                        <div key={pm.method} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-capsula-ink">
+                              {PAYMENT_METHOD_LABELS[pm.method] ?? pm.method}
+                            </span>
+                            <span className="font-medium text-capsula-ink">
+                              ${fmt(pm.total)}{' '}
+                              <span className="text-xs font-normal text-capsula-ink-muted">({pm.count})</span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-capsula-ivory-alt">
+                            <div
+                              className="h-full rounded-full bg-capsula-navy-deep transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Alertas financieras */}
+            {(() => {
+              type Severity = 'critical' | 'warning';
+              const alerts: { text: string; href?: string; severity: Severity }[] = [];
+              if (s.accountsPayable.overdueUsd > 0) {
+                alerts.push({ text: `Tienes $${fmt(s.accountsPayable.overdueUsd)} en cuentas por pagar vencidas`, href: '/dashboard/cuentas-pagar', severity: 'critical' });
+              }
+              if (s.profitLoss.operatingProfit < 0) {
+                alerts.push({ text: `El negocio operó con pérdida de $${fmt(Math.abs(s.profitLoss.operatingProfit))} este período`, severity: 'critical' });
+              }
+              if (s.profitLoss.grossMarginPct < 30 && s.income.totalSalesUsd > 0) {
+                alerts.push({ text: `Margen bruto bajo: ${s.profitLoss.grossMarginPct}% (se recomienda >30%)`, href: '/dashboard/costos/margen', severity: 'warning' });
+              }
+              if (s.expenses.totalExpensesUsd > 0 && s.income.totalSalesUsd > 0 && (s.expenses.totalExpensesUsd / s.income.totalSalesUsd) > 0.40) {
+                alerts.push({ text: `Gastos operativos representan ${((s.expenses.totalExpensesUsd / s.income.totalSalesUsd) * 100).toFixed(1)}% de las ventas (se recomienda <40%)`, href: '/dashboard/gastos', severity: 'warning' });
+              }
+              if (s.mom?.salesChange != null && s.mom.salesChange < -15) {
+                alerts.push({ text: `Ventas cayeron ${Math.abs(s.mom.salesChange).toFixed(1)}% vs mes anterior`, severity: 'warning' });
+              }
+              if ((s.cashFlow?.net ?? 0) < 0) {
+                alerts.push({ text: `Flujo de caja negativo: -$${fmt(Math.abs(s.cashFlow?.net ?? 0))}. Los egresos superan los ingresos`, severity: 'warning' });
+              }
+              if (alerts.length === 0) return null;
+              const hasCritical = alerts.some(a => a.severity === 'critical');
+              return (
+                <div
+                  className={`rounded-2xl border p-5 shadow-cap-soft ${
+                    hasCritical ? 'border-[#EFD2C8] bg-[#F7E3DB]/40' : 'border-[#E8D9B8] bg-[#F3EAD6]/40'
+                  }`}
+                >
+                  <h3
+                    className={`mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] ${
+                      hasCritical ? 'text-[#B04A2E]' : 'text-[#946A1C]'
+                    }`}
+                  >
+                    {hasCritical ? <AlertOctagon className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    {hasCritical ? 'Alertas financieras' : 'Atención'}
+                  </h3>
+                  <div className="space-y-2">
+                    {alerts.map((alert, i) => (
+                      <AlertItem key={i} text={alert.text} href={alert.href} severity={alert.severity} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Cuentas por pagar pendientes */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className={`${CARD_BASE} border-[#E8D9B8] bg-[#F3EAD6]/40`}>
+                <p className={KICKER}>Deudas pendientes</p>
+                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep">
+                  ${fmt(s.accountsPayable.totalPendingUsd)}
+                </p>
+                <p className="mt-1 text-xs text-capsula-ink-muted">
+                  {s.accountsPayable.count} facturas activas
+                </p>
+              </div>
+              <div
+                className={`${CARD_BASE} ${
+                  s.accountsPayable.overdueUsd > 0 ? 'border-[#EFD2C8] bg-[#F7E3DB]/40' : 'border-capsula-line'
+                }`}
+              >
+                <p className={KICKER}>Vencido</p>
+                <p
+                  className={`mt-1 font-heading text-3xl tracking-[-0.02em] ${
+                    s.accountsPayable.overdueUsd > 0 ? 'text-[#B04A2E]' : 'text-capsula-navy-deep'
+                  }`}
+                >
+                  ${fmt(s.accountsPayable.overdueUsd)}
+                </p>
+                <p className="mt-1 text-xs text-capsula-ink-muted">Pendiente de pago urgente</p>
+              </div>
+              <div className={`${CARD_BASE} border-capsula-line`}>
+                <p className={KICKER}>Compras del período</p>
+                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep">
+                  ${fmt(s.purchases.totalPurchasesUsd)}
+                </p>
+                <p className="mt-1 text-xs text-capsula-ink-muted">
+                  {s.purchases.ordersCount} órdenes recibidas
+                </p>
+              </div>
+            </div>
+
+            {/* Aging Report */}
+            {(s.accountsPayable.aging ?? []).some((a: { range: string; amount: number; count: number }) => a.amount > 0) && (
+              <div className={`${CARD_BASE} border-capsula-line p-6`}>
+                <h3 className={SECTION_TITLE + ' mb-4'}>Envejecimiento de deudas</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {s.accountsPayable.aging.map((bucket: { range: string; amount: number; count: number }) => {
+                    const agingStyles = bucketStyles(bucket.range);
                     return (
-                      <div key={pm.method} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-foreground font-medium">{PAYMENT_METHOD_LABELS[pm.method] ?? pm.method}</span>
-                          <span className="text-foreground font-bold">${fmt(pm.total)} <span className="text-muted-foreground font-normal text-xs">({pm.count})</span></span>
-                        </div>
-                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-                        </div>
+                      <div
+                        key={bucket.range}
+                        className={`rounded-xl border p-4 text-center ${agingStyles.bg}`}
+                      >
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                          {bucket.range} días
+                        </p>
+                        <p className={`mt-1 font-heading text-lg tracking-[-0.02em] ${agingStyles.text}`}>
+                          ${fmt(bucket.amount)}
+                        </p>
+                        <p className="text-[11px] text-capsula-ink-muted">{bucket.count} facturas</p>
                       </div>
                     );
                   })}
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Alertas financieras */}
-          {(() => {
-            const alerts: { icon: string; text: string; href?: string; severity: 'critical' | 'warning' | 'info' }[] = [];
-            if (s.accountsPayable.overdueUsd > 0) {
-              alerts.push({ icon: '🚨', text: `Tienes $${fmt(s.accountsPayable.overdueUsd)} en cuentas por pagar vencidas`, href: '/dashboard/cuentas-pagar', severity: 'critical' });
-            }
-            if (s.profitLoss.operatingProfit < 0) {
-              alerts.push({ icon: '📉', text: `El negocio operó con pérdida de $${fmt(Math.abs(s.profitLoss.operatingProfit))} este período`, severity: 'critical' });
-            }
-            if (s.profitLoss.grossMarginPct < 30 && s.income.totalSalesUsd > 0) {
-              alerts.push({ icon: '⚠️', text: `Margen bruto bajo: ${s.profitLoss.grossMarginPct}% (se recomienda >30%)`, href: '/dashboard/costos/margen', severity: 'warning' });
-            }
-            if (s.expenses.totalExpensesUsd > 0 && s.income.totalSalesUsd > 0 && (s.expenses.totalExpensesUsd / s.income.totalSalesUsd) > 0.40) {
-              alerts.push({ icon: '💸', text: `Gastos operativos representan ${((s.expenses.totalExpensesUsd / s.income.totalSalesUsd) * 100).toFixed(1)}% de las ventas (se recomienda <40%)`, href: '/dashboard/gastos', severity: 'warning' });
-            }
-            if (s.mom?.salesChange != null && s.mom.salesChange < -15) {
-              alerts.push({ icon: '📊', text: `Ventas cayeron ${Math.abs(s.mom.salesChange).toFixed(1)}% vs mes anterior`, severity: 'warning' });
-            }
-            if ((s.cashFlow?.net ?? 0) < 0) {
-              alerts.push({ icon: '🏦', text: `Flujo de caja negativo: -$${fmt(Math.abs(s.cashFlow?.net ?? 0))}. Los egresos superan los ingresos`, severity: 'warning' });
-            }
-            if (alerts.length === 0) return null;
-            const hasCritical = alerts.some(a => a.severity === 'critical');
-            return (
-              <div className={`glass-panel rounded-2xl border p-5 ${hasCritical ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-                <h3 className={`text-sm font-black uppercase tracking-widest mb-3 ${hasCritical ? 'text-red-500' : 'text-amber-500'}`}>
-                  {hasCritical ? '🚨 Alertas Financieras' : '⚠️ Atención'}
-                </h3>
-                <div className="space-y-2">
-                  {alerts.map((alert, i) => (
-                    <AlertItem key={i} icon={alert.icon} text={alert.text} href={alert.href} />
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Cuentas por pagar pendientes */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Deudas Pendientes</p>
-              <p className="text-3xl font-black text-foreground mt-1">${fmt(s.accountsPayable.totalPendingUsd)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.accountsPayable.count} facturas activas</p>
-            </div>
-            <div className={`glass-panel rounded-2xl border p-5 ${s.accountsPayable.overdueUsd > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-border'}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Vencido</p>
-              <p className={`text-3xl font-black mt-1 ${s.accountsPayable.overdueUsd > 0 ? 'text-red-500' : 'text-foreground'}`}>
-                ${fmt(s.accountsPayable.overdueUsd)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Pendiente de pago urgente</p>
-            </div>
-            <div className="glass-panel rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Compras del Período</p>
-              <p className="text-3xl font-black text-foreground mt-1">${fmt(s.purchases.totalPurchasesUsd)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.purchases.ordersCount} órdenes recibidas</p>
-            </div>
-          </div>
-
-          {/* Aging Report */}
-          {(s.accountsPayable.aging ?? []).some((a: { range: string; amount: number; count: number }) => a.amount > 0) && (
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
-              <div className="grid grid-cols-4 gap-3">
-                {s.accountsPayable.aging.map((bucket: { range: string; amount: number; count: number }) => (
-                  <div key={bucket.range} className={`rounded-xl p-4 text-center ${
-                    bucket.range === '90+' ? 'bg-red-500/10 border border-red-500/20' :
-                    bucket.range === '61-90' ? 'bg-orange-500/10 border border-orange-500/20' :
-                    bucket.range === '31-60' ? 'bg-amber-500/10 border border-amber-500/20' :
-                    'bg-blue-500/10 border border-blue-500/20'
-                  }`}>
-                    <p className="text-xs font-bold text-muted-foreground">{bucket.range} días</p>
-                    <p className={`text-lg font-black mt-1 ${
-                      bucket.range === '90+' ? 'text-red-500' :
-                      bucket.range === '61-90' ? 'text-orange-500' :
-                      bucket.range === '31-60' ? 'text-amber-500' : 'text-blue-500'
-                    }`}>${fmt(bucket.amount)}</p>
-                    <p className="text-[10px] text-muted-foreground">{bucket.count} facturas</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-function PnLCard({ label, value, sub, color, icon, positive, change, invertChange }: {
-  label: string; value: string; sub?: string; color: string; icon: string; positive?: boolean;
-  change?: number | null; invertChange?: boolean;
+const TONE_CLASS: Record<'ok' | 'warn' | 'danger' | 'info', string> = {
+  ok:     'border-[#D3E2D8] bg-[#E5EDE7]/40',
+  warn:   'border-[#E8D9B8] bg-[#F3EAD6]/40',
+  danger: 'border-[#EFD2C8] bg-[#F7E3DB]/40',
+  info:   'border-capsula-line',
+};
+
+function bucketStyles(range: string): { bg: string; text: string } {
+  if (range === '90+')    return { bg: 'border-[#EFD2C8] bg-[#F7E3DB]/40',  text: 'text-[#B04A2E]' };
+  if (range === '61-90')  return { bg: 'border-[#E8D9B8] bg-[#F3EAD6]/60',  text: 'text-[#946A1C]' };
+  if (range === '31-60')  return { bg: 'border-[#E8D9B8] bg-[#F3EAD6]/40',  text: 'text-[#946A1C]' };
+  return                         { bg: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-navy-deep' };
+}
+
+function PnLCard({
+  label, value, sub, Icon, tone, negative, change, invertChange,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  tone: 'ok' | 'warn' | 'danger' | 'info';
+  negative?: boolean;
+  change?: number | null;
+  invertChange?: boolean;
 }) {
+  const changeOk = change != null && (invertChange ? change <= 0 : change >= 0);
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-        <span className="text-lg">{icon}</span>
+    <div className={`${CARD_BASE} ${TONE_CLASS[tone]}`}>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
+        <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
-      <p className={`text-2xl font-black ${positive === false ? 'text-red-500' : 'text-foreground'}`}>{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p
+        className={`font-heading text-2xl tracking-[-0.02em] ${
+          negative ? 'text-[#B04A2E]' : 'text-capsula-navy-deep'
+        }`}
+      >
+        {value}
+      </p>
+      {sub && <p className="mt-0.5 text-xs text-capsula-ink-soft">{sub}</p>}
       {change != null && (
-        <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${
-          (invertChange ? change <= 0 : change >= 0) ? 'text-emerald-500' : 'text-red-500'
-        }`}>
-          {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}% vs mes ant.
+        <span
+          className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${
+            changeOk ? 'text-[#2F6B4E]' : 'text-[#B04A2E]'
+          }`}
+        >
+          {change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {Math.abs(change).toFixed(1)}% vs mes ant.
         </span>
       )}
     </div>
   );
 }
 
-function PnLRow({ label, amount, bold, indent, positive }: {
-  label: string; amount: number; bold?: boolean; indent?: boolean; positive?: boolean;
+function PnLRow({
+  label, amount, bold, indent, positive,
+}: {
+  label: string;
+  amount: number;
+  bold?: boolean;
+  indent?: boolean;
+  positive?: boolean;
 }) {
   const isPositive = positive !== undefined ? positive : amount >= 0;
   return (
-    <div className={`flex items-center justify-between ${indent ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
-      <span className={bold ? 'font-bold text-foreground' : ''}>{label}</span>
-      <span className={`${bold ? 'font-black text-base' : 'font-semibold'} ${amount < 0 ? 'text-red-500' : amount > 0 && isPositive ? 'text-emerald-500' : 'text-foreground'}`}>
+    <div className={`flex items-center justify-between ${indent ? 'text-xs text-capsula-ink-muted' : 'text-sm text-capsula-ink'}`}>
+      <span className={bold ? 'font-medium text-capsula-ink' : ''}>{label}</span>
+      <span
+        className={`${bold ? 'font-heading text-base tracking-[-0.01em]' : 'font-medium'} ${
+          amount < 0 ? 'text-[#B04A2E]' : amount > 0 && isPositive ? 'text-[#2F6B4E]' : 'text-capsula-ink'
+        }`}
+      >
         {amount >= 0 ? `+$${fmt(amount)}` : `-$${fmt(Math.abs(amount))}`}
       </span>
     </div>
   );
 }
 
-function AlertItem({ icon, text, href }: { icon: string; text: string; href?: string }) {
+function AlertItem({
+  text, href, severity,
+}: {
+  text: string;
+  href?: string;
+  severity: 'critical' | 'warning';
+}) {
+  const Icon = severity === 'critical' ? AlertOctagon : AlertTriangle;
+  const iconColor = severity === 'critical' ? 'text-[#B04A2E]' : 'text-[#946A1C]';
   return (
-    <div className="flex items-start gap-2 text-sm text-foreground">
-      <span>{icon}</span>
-      <span>{text}</span>
-      {href && <a href={href} className="ml-auto text-xs text-blue-500 hover:underline whitespace-nowrap">Ver →</a>}
+    <div className="flex items-start gap-2 text-sm text-capsula-ink">
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${iconColor}`} />
+      <span className="flex-1">{text}</span>
+      {href && (
+        <a
+          href={href}
+          className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-capsula-navy hover:text-capsula-navy-deep"
+        >
+          Ver
+          <ArrowRight className="h-3 w-3" />
+        </a>
+      )}
     </div>
   );
 }
