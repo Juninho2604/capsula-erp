@@ -27,6 +27,19 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import {
+    Martini, ChefHat, RefreshCw, Lock, Beer, Leaf, AlertTriangle, Phone,
+    Search, X, Plus, Minus, Loader2, Check, ShoppingBag, Clock,
+    ArrowLeft, ArrowRight, User, Users, Utensils, UtensilsCrossed, Trash2,
+    Receipt, ChevronRight, CheckCircle2, ArrowRightLeft, FileText,
+    Package, MessageSquare, Coins, Banknote, Euro, Zap, CreditCard,
+    Smartphone, Gift, Split, Delete, Printer, MapPin, Info, ShoppingCart,
+    PencilLine,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/Badge";
 
 // ============================================================================
 // TIPOS
@@ -1229,17 +1242,17 @@ export default function POSSportBarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
         <div className="text-center">
-          <div className="text-4xl mb-4">🍸</div>
-          <div className="text-xl font-bold text-foreground">Cargando Restaurante...</div>
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+          <div className="text-[14px] font-medium text-capsula-ink">Cargando Restaurante…</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col pb-16 lg:pb-0">
+    <div className="flex min-h-screen flex-col bg-capsula-ivory pb-16 text-capsula-ink lg:pb-0">
       <CashierShiftModal
         forceOpen={showChangeCashierModal}
         onShiftOpen={(name) => {
@@ -1250,83 +1263,121 @@ export default function POSSportBarPage() {
 
       {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
       {showTipModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
-              <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
+        <div className="fixed inset-0 z-[60] flex animate-in fade-in items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm duration-200">
+          <div className="w-full max-w-sm space-y-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+            <div className="flex items-center justify-between">
+              <h3 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                <Coins className="h-5 w-5 text-capsula-coral" strokeWidth={1.5} />
+                Propina colectiva
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTipModal(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
             </div>
-            <p className="text-xs text-muted-foreground">Propina recibida después del cobro. Indica la mesa o cliente para trazabilidad.</p>
-            {/* Mesa / referencia */}
+
+            <p className="text-[12px] text-capsula-ink-muted">
+              Propina recibida después del cobro. Indica la mesa o cliente para trazabilidad.
+            </p>
+
             <input
               type="text"
               value={tipTableRef}
               onChange={e => setTipTableRef(e.target.value)}
               placeholder="Mesa o cliente (ej: Mesa 5, Juan Pérez)"
-              className="w-full bg-background border border-border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/40"
+              className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[13px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
             />
-            {/* Method */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'CASH_USD',       label: '💵 Cash $' },
-                { id: 'CASH_EUR',       label: '€ Cash €' },
-                { id: 'ZELLE',          label: '⚡ Zelle' },
-                { id: 'PDV_SHANKLISH',  label: '💳 PDV Shan.' },
-                { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-                { id: 'MOVIL_NG',       label: '📱 Móvil NG' },
-                { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-              ].map(m => (
-                <button key={m.id} type="button" onClick={() => setTipMethod(m.id)}
-                  className={`py-2 rounded-xl text-xs font-black uppercase transition-all ${tipMethod === m.id ? 'bg-amber-500 text-white' : 'bg-background border border-border text-muted-foreground hover:border-amber-500/50'}`}>
-                  {m.label}
-                </button>
-              ))}
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { id: 'CASH_USD',       label: 'Cash $',      icon: Banknote },
+                { id: 'CASH_EUR',       label: 'Cash €',      icon: Euro },
+                { id: 'ZELLE',          label: 'Zelle',       icon: Zap },
+                { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',   icon: CreditCard },
+                { id: 'PDV_SUPERFERRO', label: 'PDV Super.',  icon: CreditCard },
+                { id: 'MOVIL_NG',       label: 'Móvil NG',    icon: Smartphone },
+                { id: 'CASH_BS',        label: 'Efectivo Bs', icon: Banknote },
+              ] as const).map(m => {
+                const MIcon = m.icon;
+                const active = tipMethod === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setTipMethod(m.id)}
+                    className={cn(
+                      'inline-flex items-center justify-center gap-1 rounded-[var(--radius)] py-2 text-[11px] font-medium transition-colors',
+                      active
+                        ? 'bg-capsula-coral text-white'
+                        : 'border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral/40 hover:text-capsula-coral',
+                    )}
+                  >
+                    <MIcon className="h-3 w-3" strokeWidth={1.5} /> {m.label}
+                  </button>
+                );
+              })}
             </div>
-            {/* Amount */}
-            <div className="flex items-center bg-background border border-border rounded-2xl p-1">
-              <span className="pl-4 text-muted-foreground text-sm font-black">
-                {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) ? 'Bs' : '$'}
+
+            <div className="flex items-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1">
+              <span className="pl-3 font-mono text-[13px] font-semibold text-capsula-ink-muted">
+                {['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG'].includes(tipMethod) ? 'Bs' : '$'}
               </span>
               <input
-                type="number" min="0" step="0.01"
+                type="number"
+                min="0"
+                step="0.01"
                 value={tipAmount}
                 onChange={e => setTipAmount(e.target.value)}
                 placeholder="0.00"
-                className="flex-1 bg-transparent border-none px-3 py-3 text-2xl font-black focus:outline-none placeholder:text-muted-foreground/30"
+                className="flex-1 border-none bg-transparent px-3 py-2 font-mono text-[20px] font-semibold text-capsula-ink outline-none placeholder:text-capsula-ink-faint"
               />
             </div>
-            {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
-              <div className="flex justify-between text-xs px-1">
-                <span className="text-muted-foreground">Equivalente USD</span>
-                <span className="font-bold text-emerald-400">${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}</span>
+
+            {['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG'].includes(tipMethod) && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
+              <div className="flex justify-between px-1 text-[11px]">
+                <span className="text-capsula-ink-muted">Equivalente USD</span>
+                <span className="font-mono font-semibold text-[#2F6B4E]">
+                  ${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}
+                </span>
               </div>
             )}
-            <button
+
+            <Button
               type="button"
+              variant="primary"
+              size="lg"
               onClick={handleRecordTip}
               disabled={isTipProcessing || !(parseFloat(tipAmount) > 0)}
-              className="w-full py-4 rounded-2xl bg-amber-500 text-white font-black uppercase text-lg shadow-lg shadow-amber-500/30 disabled:opacity-40 active:scale-95 transition-all"
+              isLoading={isTipProcessing}
+              className="w-full"
             >
-              {isTipProcessing ? 'Registrando...' : 'Registrar Propina'}
-            </button>
+              {isTipProcessing ? 'Registrando…' : 'Registrar propina'}
+            </Button>
           </div>
         </div>
       )}
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div className="glass-panel px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 shadow-lg border-b-primary/10">
+      <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 md:px-6 md:py-4">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-3xl shadow-inner">🍸</div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft">
+            <Martini className="h-6 w-6 text-capsula-navy" strokeWidth={1.5} />
+          </div>
           <div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tight text-gray-950 dark:text-foreground">POS <span className="text-primary italic">RESTAURANTE</span></h1>
-            <p className="text-[10px] font-bold text-gray-700 dark:text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              Gestión Táctil CAPSULA · Operaciones en Vivo
+            <h1 className="font-heading text-[18px] leading-none tracking-[-0.01em] text-capsula-navy-deep md:text-[24px]">
+              POS <span className="text-capsula-coral">RESTAURANTE</span>
+            </h1>
+            <p className="mt-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+              Gestión táctil CÁPSULA · Operaciones en vivo
               {cashierName ? (
-                <span className="flex items-center gap-2 bg-secondary/50 px-2 py-0.5 rounded-full border border-border">
-                  👤 {cashierName}
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-capsula-line bg-capsula-ivory px-2 py-0.5">
+                  <User className="h-3 w-3" strokeWidth={1.5} /> {cashierName}
                   <button
                     onClick={() => setShowChangeCashierModal(true)}
-                    className="text-primary hover:text-accent font-black underline"
+                    className="font-medium text-capsula-coral underline-offset-2 hover:underline"
                   >
                     Cambiar
                   </button>
@@ -1335,20 +1386,21 @@ export default function POSSportBarPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-3">
           {activeTab && (
-            <div className="hidden md:block">
-               <CurrencyCalculator totalUsd={Number(activeTab.balanceDue.toFixed(2))} onRateUpdated={setExchangeRate} />
+            <div className="hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1.5 md:block">
+              <CurrencyCalculator totalUsd={Number(activeTab.balanceDue.toFixed(2))} onRateUpdated={setExchangeRate} />
             </div>
           )}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setShowTipModal(true)}
-            className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase hover:bg-amber-500/20 transition-colors"
           >
-            + Propina
-          </button>
-          <div className="px-4 py-2 bg-secondary/30 rounded-xl border border-border font-black text-sm tabular-nums text-foreground/70">
+            <Coins className="h-4 w-4" strokeWidth={1.5} /> Propina
+          </Button>
+          <div className="rounded-full border border-capsula-line bg-capsula-ivory px-3 py-1.5 font-mono text-[11px] tabular-nums text-capsula-ink-soft">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
