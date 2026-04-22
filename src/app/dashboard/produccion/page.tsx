@@ -720,62 +720,62 @@ export default function ProduccionPage() {
                 TAB: HISTORIAL
                ═══════════════════════════════════════════════════════════════════ */}
             {activeTab === 'historial' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Orden</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Producto</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Cantidad</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Responsable</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Notas</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
+                        <table className="w-full text-[13px]">
+                            <thead className="bg-capsula-ivory-alt text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                <tr>
+                                    <th className="px-6 py-3 text-left">Orden</th>
+                                    <th className="px-6 py-3 text-left">Producto</th>
+                                    <th className="px-6 py-3 text-right">Cantidad</th>
+                                    <th className="px-6 py-3 text-center">Estado</th>
+                                    <th className="px-6 py-3 text-left">Responsable</th>
+                                    <th className="px-6 py-3 text-left">Notas</th>
+                                    <th className="px-6 py-3 text-center">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-capsula-line">
                                 {productionHistory.map((order) => (
-                                    <tr key={order.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <tr key={order.id} className="transition-colors hover:bg-capsula-ivory-alt/50">
                                         <td className="px-6 py-4">
-                                            <span className="font-mono text-sm font-medium text-emerald-600">{order.orderNumber}</span>
-                                            <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString()}</p>
+                                            <span className="font-mono text-[13px] font-medium text-capsula-navy-deep">{order.orderNumber}</span>
+                                            <p className="font-mono text-[11px] text-capsula-ink-muted">{new Date(order.createdAt).toLocaleString()}</p>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="font-medium text-gray-900 dark:text-white">{order.recipeName}</span>
-                                        </td>
+                                        <td className="px-6 py-4 font-medium text-capsula-ink">{order.recipeName}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <span className="font-mono text-gray-900 dark:text-white">
+                                            <span className="font-mono text-capsula-ink">
                                                 {formatNumber(order.actualQuantity || order.plannedQuantity)} {order.unit}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
-                                        <td className="px-6 py-4 text-gray-500 text-sm">{order.createdBy}</td>
-                                        <td className="px-6 py-4 max-w-[200px]">
+                                        <td className="px-6 py-4 text-[12px] text-capsula-ink-soft">{order.createdBy}</td>
+                                        <td className="max-w-[200px] px-6 py-4">
                                             {editingOrderId === order.id ? (
                                                 <div className="flex items-center gap-2">
                                                     <input
                                                         type="text"
                                                         value={editNotes}
                                                         onChange={(e) => setEditNotes(e.target.value)}
-                                                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                        className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                                         autoFocus
                                                     />
                                                     <button
                                                         onClick={() => handleEditOrder(order.id)}
-                                                        className="rounded bg-emerald-500 p-1 text-white hover:bg-emerald-600"
+                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory-surface transition-colors hover:bg-capsula-navy-ink"
+                                                        title="Guardar"
                                                     >
-                                                        <CheckCircle className="h-4 w-4" />
+                                                        <Check className="h-3.5 w-3.5" strokeWidth={2} />
                                                     </button>
                                                     <button
                                                         onClick={() => setEditingOrderId(null)}
-                                                        className="rounded bg-gray-300 p-1 text-gray-700 hover:bg-gray-400"
+                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                                        title="Cancelar"
                                                     >
-                                                        <X className="h-4 w-4" />
+                                                        <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <p className="truncate text-sm text-gray-500" title={order.notes || ''}>
+                                                <p className="truncate text-[12px] text-capsula-ink-soft" title={order.notes || ''}>
                                                     {order.notes || '—'}
                                                 </p>
                                             )}
@@ -788,17 +788,17 @@ export default function ProduccionPage() {
                                                             setEditingOrderId(order.id);
                                                             setEditNotes(order.notes || '');
                                                         }}
-                                                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-900/20"
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-navy-deep"
                                                         title="Editar notas"
                                                     >
-                                                        <Edit3 className="h-4 w-4" />
+                                                        <Edit3 className="h-4 w-4" strokeWidth={1.5} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleCancelOrder(order.id)}
-                                                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
                                                         title="Cancelar orden"
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                                     </button>
                                                 </div>
                                             )}
@@ -807,8 +807,9 @@ export default function ProduccionPage() {
                                 ))}
                                 {productionHistory.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                            No hay producciones registradas
+                                        <td colSpan={7} className="px-6 py-16 text-center">
+                                            <Factory className="mx-auto h-10 w-10 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                                            <p className="mt-3 text-[13px] text-capsula-ink-soft">No hay producciones registradas</p>
                                         </td>
                                     </tr>
                                 )}
@@ -821,33 +822,39 @@ export default function ProduccionPage() {
     );
 }
 
-// ── Component: Result Card ──
 function ResultCard({ result }: { result: ProductionActionResult }) {
+    const Icon = result.success ? CheckCircle : AlertTriangle;
     return (
         <div className={cn(
-            'rounded-xl p-6',
+            'rounded-[var(--radius)] border p-6',
             result.success
-                ? 'border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20'
-                : 'border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                ? 'border-[#D3E2D8] bg-[#E5EDE7]/60'
+                : 'border-capsula-coral/30 bg-capsula-coral/5',
         )}>
             <div className="flex items-start gap-3">
-                <span className="text-2xl">{result.success ? '✅' : '❌'}</span>
+                <Icon
+                    className={cn('h-5 w-5 shrink-0', result.success ? 'text-[#2F6B4E]' : 'text-capsula-coral')}
+                    strokeWidth={1.5}
+                />
                 <div>
                     <p className={cn(
-                        'font-semibold',
-                        result.success ? 'text-emerald-800 dark:text-emerald-400' : 'text-red-800 dark:text-red-400'
+                        'font-heading text-[15px]',
+                        result.success ? 'text-[#2F6B4E]' : 'text-capsula-coral',
                     )}>
                         {result.message}
                     </p>
                     {result.success && result.data && (
-                        <div className="mt-3 space-y-2 text-sm text-emerald-700 dark:text-emerald-300">
-                            <p>📦 Producido: {result.data.productAdded?.quantity} {result.data.productAdded?.unit} de {result.data.productAdded?.name}</p>
+                        <div className="mt-3 space-y-2 text-[13px] text-capsula-ink">
+                            <p className="flex items-center gap-1.5">
+                                <Package className="h-3.5 w-3.5 text-[#2F6B4E]" strokeWidth={1.5} />
+                                Producido: <span className="font-mono">{result.data.productAdded?.quantity} {result.data.productAdded?.unit}</span> de <strong className="text-capsula-navy-deep">{result.data.productAdded?.name}</strong>
+                            </p>
                             {result.data.ingredientsConsumed && result.data.ingredientsConsumed.length > 0 && (
                                 <div className="mt-2">
-                                    <p className="font-medium">Ingredientes consumidos:</p>
-                                    <ul className="ml-4 list-disc">
+                                    <p className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">Ingredientes consumidos</p>
+                                    <ul className="ml-4 mt-1 list-disc text-[12px] text-capsula-ink-soft">
                                         {result.data.ingredientsConsumed.map((ing, idx) => (
-                                            <li key={idx}>{ing.name}: {formatNumber(ing.quantity, 3)} {ing.unit}</li>
+                                            <li key={idx}>{ing.name}: <span className="font-mono">{formatNumber(ing.quantity, 3)} {ing.unit}</span></li>
                                         ))}
                                     </ul>
                                 </div>
