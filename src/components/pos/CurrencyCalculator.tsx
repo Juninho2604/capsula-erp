@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ArrowLeftRight, ChevronDown, X as XIcon } from 'lucide-react';
 import { getExchangeRateValue, setExchangeRateAction } from '@/app/actions/exchange.actions';
 import { usdToBs } from '@/lib/currency';
 
@@ -74,8 +75,8 @@ export function CurrencyCalculator({
     const panel = (
         <div className="space-y-3">
             {/* Tasa del día */}
-            <div className="rounded-xl border border-slate-600 bg-slate-800/70 p-3">
-                <label className="block text-xs text-slate-400 mb-1">Tasa del día (1 USD = Bs)</label>
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-3">
+                <label className="pos-label">Tasa del día (1 USD = Bs)</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
@@ -84,34 +85,36 @@ export function CurrencyCalculator({
                         onChange={(e) => setEditableRate(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleUpdateRate()}
                         placeholder="0.00"
-                        className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                        className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 tabular-nums text-capsula-ink outline-none focus:border-capsula-navy-deep"
                     />
                     <button
                         type="button"
                         onClick={handleUpdateRate}
                         disabled={isSavingRate}
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 shrink-0"
+                        className="shrink-0 rounded-lg border border-capsula-navy-deep bg-capsula-navy-deep px-3 py-2 text-xs font-medium text-capsula-ivory transition-colors hover:bg-capsula-navy disabled:opacity-50"
                     >
-                        {isSavingRate ? '...' : 'Actualizar'}
+                        {isSavingRate ? '…' : 'Actualizar'}
                     </button>
                 </div>
             </div>
 
             {/* Calculadora libre */}
             <div>
-                <label className="block text-xs text-slate-400 mb-1">Monto en USD</label>
+                <label className="pos-label">Monto en USD</label>
                 <input
                     type="text"
                     inputMode="decimal"
                     value={usdInput}
                     onChange={(e) => setUsdInput(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-xl font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 text-xl font-medium tabular-nums text-capsula-navy-deep outline-none focus:border-capsula-navy-deep"
                 />
             </div>
-            <div className="rounded-xl bg-emerald-900/30 border border-emerald-500/30 px-4 py-3">
-                <p className="text-xs text-emerald-300/80 mb-1">Equivalente en Bolívares</p>
-                <p className="text-2xl font-black text-emerald-300">
+            <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#2F6B4E]/80">
+                    Equivalente en bolívares
+                </p>
+                <p className="mt-1 font-heading text-2xl tabular-nums tracking-[-0.02em] text-[#2F6B4E]">
                     {bs > 0
                         ? bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : '0,00'} Bs
@@ -120,21 +123,21 @@ export function CurrencyCalculator({
 
             {/* Total de la venta */}
             {typeof totalUsd === 'number' && totalUsd > 0 && effectiveRate > 0 && (
-                <div className="rounded-xl bg-blue-900/30 border border-blue-500/30 px-4 py-3">
-                    <p className="text-xs text-blue-200/80 mb-1">
+                <div className="rounded-xl border border-capsula-navy/10 bg-capsula-navy-soft px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-navy/80">
                         Total de la venta ({totalUsd.toFixed(2)} USD)
                     </p>
                     {hasServiceFee && (
-                        <p className="text-xs text-amber-200/80 mt-1">
+                        <p className="mt-1 text-[11px] text-[#946A1C]">
                             + 10% Servicio ({(totalUsd * 0.1).toFixed(2)} USD)
                         </p>
                     )}
                     {deliveryFee && (
-                        <p className="text-xs text-amber-200/80 mt-1">
+                        <p className="mt-1 text-[11px] text-[#946A1C]">
                             + Delivery ({deliveryFee.toFixed(2)} USD)
                         </p>
                     )}
-                    <p className="text-2xl font-black text-blue-300 mt-2">
+                    <p className="mt-2 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                         {usdToBs(
                             totalUsd + (hasServiceFee ? totalUsd * 0.1 : 0) + (deliveryFee || 0),
                             effectiveRate
@@ -147,7 +150,6 @@ export function CurrencyCalculator({
 
     // ── Modo inline con soporte para colapso ─────────────────────────────────
     if (inline) {
-        // Calcular el total en Bs para la línea compacta
         const totalBs = effectiveRate > 0 && typeof totalUsd === 'number' && totalUsd > 0
             ? usdToBs(
                 totalUsd + (hasServiceFee ? totalUsd * 0.1 : 0) + (deliveryFee || 0),
@@ -156,36 +158,34 @@ export function CurrencyCalculator({
             : null;
 
         return (
-            <div className={`rounded-2xl border border-slate-600 bg-slate-900 overflow-hidden ${className ?? ''}`}>
-                {/* Cabecera — siempre visible, con toggle si startCollapsed */}
+            <div className={`overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface ${className ?? ''}`}>
                 <button
                     type="button"
                     onClick={() => setIsExpanded((v) => !v)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-800/50 transition-colors"
+                    className="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-capsula-ivory-alt/60"
                 >
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-bold text-slate-400 shrink-0">💱</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <ArrowLeftRight className="h-4 w-4 shrink-0 text-capsula-ink-muted" />
                         {effectiveRate > 0 ? (
-                            <span className="text-sm font-black text-emerald-400 tabular-nums">
+                            <span className="text-sm font-medium tabular-nums text-capsula-navy-deep">
                                 1 USD = {effectiveRate.toLocaleString('es-VE')} Bs
                             </span>
                         ) : (
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                                Tasa no configurada
-                            </span>
+                            <span className="pos-kicker">Tasa no configurada</span>
                         )}
                         {totalBs !== null && (
-                            <span className="text-xs text-blue-300 font-bold truncate ml-1">
+                            <span className="ml-1 truncate text-xs font-medium tabular-nums text-capsula-ink-soft">
                                 · ${(totalUsd! + (hasServiceFee ? totalUsd! * 0.1 : 0) + (deliveryFee || 0)).toFixed(2)} = {totalBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
                             </span>
                         )}
                     </div>
-                    <span className={`text-slate-400 text-xs ml-2 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                    <ChevronDown
+                        className={`ml-2 h-4 w-4 shrink-0 text-capsula-ink-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    />
                 </button>
 
-                {/* Contenido expandible */}
                 {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 border-t border-slate-700">
+                    <div className="border-t border-capsula-line px-4 pb-4 pt-3">
                         {panel}
                     </div>
                 )}
@@ -193,35 +193,38 @@ export function CurrencyCalculator({
         );
     }
 
-    // ── Modo modal (botón + overlay) — comportamiento original ───────────────
+    // ── Modo modal (botón + overlay) ─────────────────────────────────────────
     return (
         <>
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className={`flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700 transition ${className ?? ''}`}
+                className={`inline-flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-2 text-sm font-medium text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt ${className ?? ''}`}
                 title="Calculadora USD → Bs"
             >
-                <span>💱</span>
+                <ArrowLeftRight className="h-4 w-4" />
                 <span>USD → Bs</span>
             </button>
 
             {isOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm"
                     onClick={() => setIsOpen(false)}
                 >
                     <div
-                        className="rounded-2xl border border-slate-600 bg-slate-900 p-6 w-full max-w-sm shadow-2xl"
+                        className="w-full max-w-sm overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-deep"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-white">Calculadora USD → Bs</h3>
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-navy-deep">
+                                Calculadora USD → Bs
+                            </h3>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="text-slate-400 hover:text-white text-2xl leading-none"
+                                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                aria-label="Cerrar"
                             >
-                                ×
+                                <XIcon className="h-4 w-4" />
                             </button>
                         </div>
                         {panel}
