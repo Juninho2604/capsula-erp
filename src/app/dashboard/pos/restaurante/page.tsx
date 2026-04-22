@@ -1802,16 +1802,22 @@ export default function POSSportBarPage() {
         </main>
 
         {/* ══ RIGHT: ACCOUNT PANEL ════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-[380px] tablet-land:w-[380px] xl:w-[440px] shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={cn(
+          "absolute inset-0 z-10 w-full shrink-0 flex-col overflow-hidden bg-capsula-ivory-surface lg:relative lg:z-auto lg:flex lg:w-[380px] tablet-land:w-[380px] xl:w-[440px]",
+          mobileTab === "account" ? "flex" : "hidden",
+        )}>
           {isPickupMode ? (
-            <div className="flex-1 flex flex-col overflow-hidden bg-secondary/80">
-              <div className="p-4 border-b border-indigo-900/50 bg-indigo-900/20 space-y-2 shrink-0">
+            <div className="flex flex-1 flex-col overflow-hidden bg-capsula-ivory">
+              <div className="shrink-0 space-y-2 border-b border-capsula-coral/20 bg-capsula-coral-subtle/30 p-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-black text-lg text-indigo-300 flex items-center gap-2">
-                    🛍️ {activePickupTab?.pickupNumber || "Pickup"}
+                  <h2 className="inline-flex items-center gap-2 font-heading text-[18px] leading-tight tracking-[-0.01em] text-capsula-coral">
+                    <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
+                    {activePickupTab?.pickupNumber || "Pickup"}
                   </h2>
                   {activePickupTab?.customerPhone && (
-                    <span className="text-xs text-muted-foreground">📞 {activePickupTab.customerPhone}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-capsula-ink-muted">
+                      <Phone className="h-3 w-3" strokeWidth={1.5} /> {activePickupTab.customerPhone}
+                    </span>
                   )}
                 </div>
                 <input
@@ -1827,44 +1833,49 @@ export default function POSSportBarPage() {
                       );
                     }
                   }}
-                  placeholder="Nombre del Cliente..."
-                  className="w-full bg-background/50 border border-indigo-500/30 rounded py-2 px-3 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  placeholder="Nombre del cliente…"
+                  className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-coral"
                 />
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
+              <div className="relative flex-1 space-y-2 overflow-y-auto p-4">
                 {cart.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-[13px] text-capsula-ink-muted">
+                    <ShoppingBag className="mb-3 h-8 w-8 text-capsula-ink-faint" strokeWidth={1.5} />
                     Carrito vacío
                   </div>
                 )}
                 {cart.map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-card p-4 rounded-2xl border border-border flex justify-between shadow-sm"
+                    className="flex items-start justify-between gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3"
                   >
-                    <div>
-                      <div className="font-bold text-sm flex items-center gap-1.5 flex-wrap">
-                        <span className="text-indigo-400">x{item.quantity}</span>
-                        {item.name}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-1.5 text-[13px] font-medium text-capsula-ink">
+                        <span className="font-mono font-semibold text-capsula-coral">×{item.quantity}</span>
+                        <span className="truncate">{item.name}</span>
                         {item.takeaway && (
-                          <span className="inline-flex items-center rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-black text-amber-400 uppercase tracking-wide">
-                            🥡 Llevar
-                          </span>
+                          <Badge variant="coral">
+                            <Package className="h-3 w-3" strokeWidth={1.5} /> Llevar
+                          </Badge>
                         )}
                       </div>
                       {item.modifiers.length > 0 && (
-                        <div className="text-xs text-muted-foreground pl-4">
+                        <div className="pl-5 text-[10.5px] text-capsula-ink-muted">
                           {item.modifiers.map((m) => m.name).join(", ")}
                         </div>
                       )}
-                      {item.notes && <div className="text-xs text-amber-300 pl-4 italic">&quot;{item.notes}&quot;</div>}
+                      {item.notes && (
+                        <div className="flex items-center gap-1 pl-5 text-[10.5px] italic text-capsula-navy">
+                          <MessageSquare className="h-3 w-3" strokeWidth={1.5} /> {item.notes}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right flex flex-col justify-between items-end">
-                      <div className="font-bold text-sm leading-none">${item.lineTotal.toFixed(2)}</div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <div className="font-mono text-[13px] font-semibold text-capsula-ink">${item.lineTotal.toFixed(2)}</div>
                       <button
                         onClick={() => setCart((p) => p.filter((_, i) => i !== idx))}
-                        className="text-red-400/80 text-xs hover:text-red-300 leading-none"
+                        className="text-[11px] text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                       >
                         Borrar
                       </button>
@@ -1873,12 +1884,17 @@ export default function POSSportBarPage() {
                 ))}
               </div>
 
-              <div className="overflow-y-auto p-4 bg-card border-t border-border space-y-3 shrink-0 max-h-[calc(100vh-200px)]">
-                {/* Descuento */}
+              <div className="max-h-[calc(100vh-200px)] shrink-0 space-y-3 overflow-y-auto border-t border-capsula-line bg-capsula-ivory-alt p-4">
+                {/* Descuentos */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={clearDiscount}
-                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-secondary hover:bg-muted"}`}
+                    className={cn(
+                      "rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                      discountType === "NONE"
+                        ? "border border-capsula-navy-deep bg-capsula-navy-soft text-capsula-navy-deep"
+                        : "border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink",
+                    )}
                   >
                     Normal
                   </button>
@@ -1886,19 +1902,31 @@ export default function POSSportBarPage() {
                     onClick={() => isPagoDivisasPickup ? setDiscountType("DIVISAS_33") : undefined}
                     disabled={!isPagoDivisasPickup}
                     title={!isPagoDivisasPickup ? "Solo con Efectivo o Zelle" : ""}
-                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-indigo-600 text-white" : isPagoDivisasPickup ? "bg-secondary text-foreground/70 hover:bg-muted" : "bg-secondary text-foreground/50 cursor-not-allowed opacity-50"}`}
+                    className={cn(
+                      "rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      discountType === "DIVISAS_33"
+                        ? "bg-capsula-navy-deep text-capsula-ivory"
+                        : "border border-capsula-line bg-capsula-ivory-surface text-capsula-navy hover:bg-capsula-navy-soft",
+                    )}
                   >
-                    Divisas -33%
+                    Divisas −33%
                   </button>
                   <button
                     onClick={openCortesiaModal}
-                    className={`col-span-2 py-3 text-sm font-bold rounded-xl transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
+                    className={cn(
+                      "col-span-2 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                      (discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
+                        ? "bg-capsula-coral text-white"
+                        : "border border-capsula-line bg-capsula-ivory-surface text-capsula-coral hover:bg-capsula-coral-subtle",
+                    )}
                   >
+                    <Gift className="h-3 w-3" strokeWidth={1.5} />
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
-                      ? `🎁 Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"}`
-                      : "🎁 Cortesía (PIN)"}
+                      ? `Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"}`
+                      : "Cortesía (PIN)"}
                   </button>
                 </div>
+
                 {/* Modo de pago + total calculado */}
                 {(() => {
                   const baseDiscount = discountType === "DIVISAS_33"
@@ -1915,48 +1943,77 @@ export default function POSSportBarPage() {
                     <div className="space-y-3 pt-2">
                       {/* Toggle Pago Único / Pago Mixto */}
                       <div className="grid grid-cols-2 gap-2">
-                        <button type="button"
+                        <button
+                          type="button"
                           onClick={() => { setIsPickupMixedMode(false); setMixedPaymentsPickup([]); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
-                        >Pago Único</button>
-                        <button type="button"
+                          className={cn(
+                            "rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                            !isPickupMixedMode
+                              ? "bg-capsula-navy-deep text-capsula-ivory"
+                              : "border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink",
+                          )}
+                        >
+                          Pago único
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => { setIsPickupMixedMode(true); setAmountReceived(""); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
-                        >💳 Pago Mixto</button>
+                          className={cn(
+                            "inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                            isPickupMixedMode
+                              ? "bg-capsula-navy-deep text-capsula-ivory"
+                              : "border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink",
+                          )}
+                        >
+                          <Split className="h-3 w-3" strokeWidth={1.5} /> Pago mixto
+                        </button>
                       </div>
 
                       {!isPickupMixedMode ? (
                         /* ── Pago Único ── */
                         <div className="space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            {SINGLE_PAY_METHODS.map((m) => (
-                              <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
-                                {PAYMENT_LABELS[m]}
-                              </button>
-                            ))}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {SINGLE_PAY_METHODS.map((m) => {
+                              const active = paymentMethod === m;
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => setPaymentMethod(m)}
+                                  className={cn(
+                                    "rounded-[var(--radius)] py-2 text-[11px] font-medium transition-colors",
+                                    active
+                                      ? "bg-capsula-navy-deep text-capsula-ivory"
+                                      : "border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:text-capsula-ink",
+                                  )}
+                                >
+                                  {PAYMENT_LABELS[m]}
+                                </button>
+                              );
+                            })}
                           </div>
-                          <div className="flex items-center gap-2 bg-background border border-border p-1 rounded-2xl">
-                            <input type="number" value={amountReceived}
+                          <div className="flex items-center gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-1">
+                            <input
+                              type="number"
+                              value={amountReceived}
                               onChange={(e) => { setAmountReceived(e.target.value); setCheckoutTip(''); }}
-                              placeholder="Recibido..."
-                              className="flex-1 bg-transparent border-none rounded-xl px-4 py-3 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30 text-foreground" />
-                            <div className="pr-4 text-xs font-black text-muted-foreground uppercase">
+                              placeholder="Recibido…"
+                              className="flex-1 rounded border-none bg-transparent px-3 py-2 font-mono text-[16px] font-semibold text-capsula-ink outline-none placeholder:text-capsula-ink-faint"
+                            />
+                            <div className="pr-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                               {isBsPayMethod ? 'Bs' : 'USD'}
                             </div>
                           </div>
-                          {/* Equivalente USD para métodos Bs */}
                           {isBsPayMethod && exchangeRate && rawAmount > 0 && (
-                            <div className="flex justify-between text-xs px-1">
-                              <span className="text-muted-foreground">Equivalente USD</span>
-                              <span className="font-bold text-emerald-400">${(rawAmount / exchangeRate).toFixed(2)}</span>
+                            <div className="flex justify-between px-1 text-[11px]">
+                              <span className="text-capsula-ink-muted">Equivalente USD</span>
+                              <span className="font-mono font-medium text-[#2F6B4E]">${(rawAmount / exchangeRate).toFixed(2)}</span>
                             </div>
                           )}
-                          {/* Vuelto para efectivo USD */}
                           {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0)) && (
-                            <div className="flex justify-between text-sm font-black px-1">
-                              <span className="text-amber-400">Vuelto</span>
-                              <span className="text-amber-400">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
+                            <div className="flex justify-between px-1 text-[13px]">
+                              <span className="font-medium text-[#946A1C]">Vuelto</span>
+                              <span className="font-mono font-semibold text-[#946A1C]">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
                             </div>
                           )}
                         </div>
@@ -1971,14 +2028,14 @@ export default function POSSportBarPage() {
                             disabled={isProcessing}
                           />
                           {discountType === "DIVISAS_33" && (divisasUsdAmountPickup ?? 0) > 0 && (
-                            <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 text-xs text-indigo-300 space-y-0.5">
+                            <div className="space-y-0.5 rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft px-3 py-2 text-[12px] text-capsula-navy-deep">
                               <div className="flex justify-between">
                                 <span>Divisas sobre ${(divisasUsdAmountPickup ?? 0).toFixed(2)} USD</span>
-                                <span className="font-black">-${((divisasUsdAmountPickup ?? 0) / 3).toFixed(2)}</span>
+                                <span className="font-mono font-semibold">-${((divisasUsdAmountPickup ?? 0) / 3).toFixed(2)}</span>
                               </div>
-                              <div className="flex justify-between font-black text-white">
+                              <div className="flex justify-between font-semibold">
                                 <span>Total a cobrar</span>
-                                <span>${pickupTotal.toFixed(2)}</span>
+                                <span className="font-mono">${pickupTotal.toFixed(2)}</span>
                               </div>
                             </div>
                           )}
@@ -1990,36 +2047,38 @@ export default function POSSportBarPage() {
                         const tipVal = Math.min(parseFloat(checkoutTip) || 0, pickupChange);
                         const changeBack = pickupChange - tipVal;
                         return (
-                          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
-                            {/* Fila principal: vuelto a devolver (lo más importante) */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-black text-amber-400">💵 Vuelto a devolver:</span>
-                              <span className="text-lg font-black text-amber-400">${Math.max(0, changeBack).toFixed(2)}</span>
+                          <div className="space-y-2 rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6] p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#946A1C]">
+                                <Banknote className="h-3.5 w-3.5" strokeWidth={1.5} /> Vuelto a devolver:
+                              </span>
+                              <span className="font-mono text-[16px] font-semibold text-[#946A1C]">${Math.max(0, changeBack).toFixed(2)}</span>
                             </div>
-                            {/* Separador antes de la propina opcional */}
-                            <div className="border-t border-amber-500/20 pt-2">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                            <div className="border-t border-[#E8D9B8] pt-2">
+                              <div className="mb-1.5 text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">
                                 Propina voluntaria (opcional — solo si el cliente la deja)
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="flex-1 flex items-center bg-background border border-border rounded-lg px-2">
-                                  <span className="text-xs text-muted-foreground mr-1">$</span>
+                                <div className="flex flex-1 items-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2">
+                                  <span className="mr-1 font-mono text-[12px] text-capsula-ink-muted">$</span>
                                   <input
                                     type="number" min="0" step="0.01"
                                     max={pickupChange}
                                     value={checkoutTip}
                                     onChange={e => setCheckoutTip(e.target.value)}
                                     placeholder="0.00"
-                                    className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1.5 w-0"
+                                    className="w-0 flex-1 border-none bg-transparent py-1.5 font-mono text-[13px] text-capsula-ink outline-none"
                                   />
                                 </div>
                                 {tipVal > 0 && (
                                   <button
                                     type="button"
                                     onClick={() => setCheckoutTip("")}
-                                    className="text-muted-foreground hover:text-destructive text-lg leading-none px-1"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                                     title="Limpiar propina"
-                                  >×</button>
+                                  >
+                                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                  </button>
                                 )}
                               </div>
                             </div>
@@ -2034,17 +2093,20 @@ export default function POSSportBarPage() {
                         return (
                           <>
                             {needsAmount && (
-                              <div className="text-center text-xs text-amber-400 font-bold py-1">
-                                ⚠️ Ingresa el monto recibido
+                              <div className="inline-flex w-full items-center justify-center gap-1 py-1 text-center text-[11px] font-medium text-[#946A1C]">
+                                <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> Ingresa el monto recibido
                               </div>
                             )}
-                            <button
+                            <Button
+                              variant="primary"
+                              size="xl"
                               onClick={handleCheckoutPickup}
                               disabled={cart.length === 0 || isProcessing || needsAmount}
-                              className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-xl shadow-primary/20"
+                              isLoading={isProcessing}
+                              className="w-full"
                             >
-                              {isProcessing ? "PROCESANDO..." : `COBRAR $${pickupTotal.toFixed(2)}`}
-                            </button>
+                              {isProcessing ? "PROCESANDO…" : `COBRAR $${pickupTotal.toFixed(2)}`}
+                            </Button>
                           </>
                         );
                       })()}
@@ -2052,7 +2114,9 @@ export default function POSSportBarPage() {
                   );
                 })()}
                 {lastPickupOrder && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       printReceipt({
                         orderNumber: lastPickupOrder.orderNumber,
@@ -2071,15 +2135,15 @@ export default function POSSportBarPage() {
                         serviceFee: 0,
                       });
                     }}
-                    className="w-full py-3 bg-secondary hover:bg-muted text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm"
+                    className="w-full"
                   >
-                    🖨️ Reimprimir {lastPickupOrder.pickupNumber || lastPickupOrder.orderNumber}
-                  </button>
+                    <Printer className="h-4 w-4" strokeWidth={1.5} /> Reimprimir {lastPickupOrder.pickupNumber || lastPickupOrder.orderNumber}
+                  </Button>
                 )}
               </div>
             </div>
           ) : !activeTab ? (
-            <div className="flex-1 flex items-center justify-center p-6 text-center text-muted-foreground text-sm">
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-[13px] text-capsula-ink-muted">
               {selectedTable
                 ? "Abre una cuenta para gestionar consumos"
                 : "Selecciona una mesa o usa Venta Directa (Pickup)"}
