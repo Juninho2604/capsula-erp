@@ -2304,26 +2304,28 @@ export default function POSSportBarPage() {
                 )}
 
                 {/* Payment section */}
-                <div className="rounded-xl border border-border bg-secondary p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-bold text-muted-foreground uppercase">Cobrar cuenta</div>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Cobrar cuenta</div>
                     {activeTab.orders.length > 0 && (
-                      <button
-                        onClick={handlePrintPrecuenta}
-                        className="text-xs font-bold text-blue-300 bg-blue-900/30 hover:bg-blue-900/60 border border-blue-700/50 rounded-lg px-3 py-1.5 transition-colors"
-                      >
-                        🖨️ Pre-Cuenta
-                      </button>
+                      <Button variant="ghost" size="sm" onClick={handlePrintPrecuenta}>
+                        <Printer className="h-3.5 w-3.5" strokeWidth={1.5} /> Pre-cuenta
+                      </Button>
                     )}
                   </div>
 
                   {/* 1. Descuento */}
                   <div className="mb-3">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">1. Descuento</p>
+                    <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">1. Descuento</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={clearDiscount}
-                        className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-card text-foreground/70 hover:bg-muted"}`}
+                        className={cn(
+                          "rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                          discountType === "NONE"
+                            ? "border border-capsula-navy-deep bg-capsula-navy-soft text-capsula-navy-deep"
+                            : "border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:text-capsula-ink",
+                        )}
                       >
                         Normal
                       </button>
@@ -2331,54 +2333,91 @@ export default function POSSportBarPage() {
                         onClick={() => (isPagoDivisas || isTableMixedMode) && setDiscountType("DIVISAS_33")}
                         disabled={!isPagoDivisas && !isTableMixedMode}
                         title={(!isPagoDivisas && !isTableMixedMode) ? "Solo con Efectivo o Zelle" : "Descuento por pago en divisas"}
-                        className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-blue-600 text-white ring-1 ring-white" : (isPagoDivisas || isTableMixedMode) ? "bg-card text-foreground/70 hover:bg-muted" : "bg-card text-foreground/50 cursor-not-allowed opacity-50"}`}
+                        className={cn(
+                          "rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                          discountType === "DIVISAS_33"
+                            ? "bg-capsula-navy-deep text-capsula-ivory"
+                            : "border border-capsula-line bg-capsula-ivory text-capsula-navy hover:bg-capsula-navy-soft",
+                        )}
                       >
-                        Divisas -33%
+                        Divisas −33%
                       </button>
                       <button
                         onClick={openCortesiaModal}
-                        className={`col-span-2 py-3 text-sm font-bold rounded-xl transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white ring-1 ring-purple-400" : "bg-card text-foreground/70 hover:bg-muted"}`}
+                        className={cn(
+                          "col-span-2 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                          (discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
+                            ? "bg-capsula-coral text-white"
+                            : "border border-capsula-line bg-capsula-ivory text-capsula-coral hover:bg-capsula-coral-subtle",
+                        )}
                       >
+                        <Gift className="h-3 w-3" strokeWidth={1.5} />
                         {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
-                          ? `🎁 Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"} — ${authorizedManager?.name || ""}`
-                          : "🎁 Cortesía (PIN)"}
+                          ? `Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"} — ${authorizedManager?.name || ""}`
+                          : "Cortesía (PIN)"}
                       </button>
                     </div>
                     {discountType === "DIVISAS_33" && (
-                      <p className="text-xs text-blue-400 mt-1.5">
-                        Descuento: -${(activeTab.balanceDue / 3).toFixed(2)} → Total: $
-                        {((activeTab.balanceDue * 2) / 3).toFixed(2)}
+                      <p className="mt-1.5 text-[11px] font-medium text-capsula-navy">
+                        Descuento: <span className="font-mono">-${(activeTab.balanceDue / 3).toFixed(2)}</span> → Total: <span className="font-mono">${((activeTab.balanceDue * 2) / 3).toFixed(2)}</span>
                       </p>
                     )}
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") && (
-                      <p className="text-xs text-purple-400 mt-1.5">
-                        Descuento: -${(activeTab.balanceDue * (cortesiaPercentNum / 100)).toFixed(2)} → Total: ${(activeTab.balanceDue * (1 - cortesiaPercentNum / 100)).toFixed(2)}
+                      <p className="mt-1.5 text-[11px] font-medium text-capsula-coral">
+                        Descuento: <span className="font-mono">-${(activeTab.balanceDue * (cortesiaPercentNum / 100)).toFixed(2)}</span> → Total: <span className="font-mono">${(activeTab.balanceDue * (1 - cortesiaPercentNum / 100)).toFixed(2)}</span>
                       </p>
                     )}
                   </div>
 
                   {/* 2. Forma de pago */}
                   <div className="mb-3">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">2. Forma de pago</p>
+                    <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">2. Forma de pago</p>
                     {/* Toggle Pago Único / Pago Mixto */}
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <button type="button"
+                    <div className="mb-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
                         onClick={() => { setIsTableMixedMode(false); setMixedPaymentsTable([]); }}
-                        className={`py-3 rounded-xl text-sm font-bold transition ${!isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
-                      >Pago Único</button>
-                      <button type="button"
+                        className={cn(
+                          "rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                          !isTableMixedMode
+                            ? "bg-capsula-navy-deep text-capsula-ivory"
+                            : "border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:text-capsula-ink",
+                        )}
+                      >
+                        Pago único
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => { setIsTableMixedMode(true); setAmountReceived(""); }}
-                        className={`py-3 rounded-xl text-sm font-bold transition ${isTableMixedMode ? "bg-amber-500 text-black" : "bg-card text-foreground/50 hover:bg-muted"}`}
-                      >💳 Pago Mixto</button>
+                        className={cn(
+                          "inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors",
+                          isTableMixedMode
+                            ? "bg-capsula-navy-deep text-capsula-ivory"
+                            : "border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:text-capsula-ink",
+                        )}
+                      >
+                        <Split className="h-3 w-3" strokeWidth={1.5} /> Pago mixto
+                      </button>
                     </div>
                     {!isTableMixedMode ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {SINGLE_PAY_METHODS.map((m) => (
-                          <button key={m} onClick={() => setPaymentMethod(m)}
-                            className={`py-3 rounded-xl text-sm font-bold transition ${paymentMethod === m ? "bg-amber-500 text-black" : "bg-card text-foreground/70 hover:bg-muted"}`}>
-                            {PAYMENT_LABELS[m]}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {SINGLE_PAY_METHODS.map((m) => {
+                          const active = paymentMethod === m;
+                          return (
+                            <button
+                              key={m}
+                              onClick={() => setPaymentMethod(m)}
+                              className={cn(
+                                "rounded-[var(--radius)] py-2 text-[11px] font-medium transition-colors",
+                                active
+                                  ? "bg-capsula-navy-deep text-capsula-ivory"
+                                  : "border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:text-capsula-ink",
+                              )}
+                            >
+                              {PAYMENT_LABELS[m]}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -2389,53 +2428,51 @@ export default function POSSportBarPage() {
                           onChange={(lines, _paid, _complete) => setMixedPaymentsTable(lines)}
                           disabled={isProcessing}
                         />
-                        {discountType === "DIVISAS_33" && divisasUsdAmountTable > 0 && (() => {
-                          return (
-                            <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-2 py-1.5 text-[10px] text-indigo-300 space-y-0.5">
-                              <div className="flex justify-between"><span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span><span>-${(divisasUsdAmountTable / 3).toFixed(2)}</span></div>
-                              <div className="flex justify-between font-black text-white"><span>Total a cobrar</span><span>${paymentAmountToCharge.toFixed(2)}</span></div>
+                        {discountType === "DIVISAS_33" && divisasUsdAmountTable > 0 && (
+                          <div className="space-y-0.5 rounded-[var(--radius)] border border-capsula-navy/20 bg-capsula-navy-soft px-2 py-1.5 text-[10.5px] text-capsula-navy-deep">
+                            <div className="flex justify-between">
+                              <span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span>
+                              <span className="font-mono font-semibold">-${(divisasUsdAmountTable / 3).toFixed(2)}</span>
                             </div>
-                          );
-                        })()}
+                            <div className="flex justify-between font-semibold">
+                              <span>Total a cobrar</span>
+                              <span className="font-mono">${paymentAmountToCharge.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
                   {/* Resumen */}
-                  {(() => {
-                    return (
-                      <div className="bg-card rounded-lg px-3 py-2 mb-2 text-xs space-y-1">
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Saldo</span>
-                          <span>${activeTab.balanceDue.toFixed(2)}</span>
-                        </div>
-                        {discountType === "DIVISAS_33" && (
-                          <div className="flex justify-between text-blue-400">
-                            <span>Descuento divisas</span>
-                            <span>-${(activeTab.balanceDue / 3).toFixed(2)}</span>
-                          </div>
-                        )}
-                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={serviceFeeIncluded}
-                            onChange={(e) => setServiceFeeIncluded(e.target.checked)}
-                            className="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500"
-                          />
-                          <span className="text-foreground/70">Incluir 10% servicio</span>
-                        </label>
-                        <div className="flex justify-between font-bold text-foreground border-t border-border pt-1">
-                          <span>A cobrar</span>
-                          <span>${paymentAmountToCharge.toFixed(2)}</span>
-                        </div>
-                        {!serviceFeeIncluded && (
-                          <div className="flex justify-between text-amber-500/80 text-[10px]">
-                            <span>Sin 10% servicio</span>
-                          </div>
-                        )}
+                  <div className="mb-2 space-y-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-[12px]">
+                    <div className="flex justify-between text-capsula-ink-muted">
+                      <span>Saldo</span>
+                      <span className="font-mono">${activeTab.balanceDue.toFixed(2)}</span>
+                    </div>
+                    {discountType === "DIVISAS_33" && (
+                      <div className="flex justify-between text-capsula-navy">
+                        <span>Descuento divisas</span>
+                        <span className="font-mono">-${(activeTab.balanceDue / 3).toFixed(2)}</span>
                       </div>
-                    );
-                  })()}
+                    )}
+                    <label className="mt-2 flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={serviceFeeIncluded}
+                        onChange={(e) => setServiceFeeIncluded(e.target.checked)}
+                        className="rounded border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep focus:ring-capsula-navy-deep"
+                      />
+                      <span className="text-capsula-ink">Incluir 10% servicio</span>
+                    </label>
+                    <div className="flex items-baseline justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
+                      <span>A cobrar</span>
+                      <span className="font-mono font-semibold">${paymentAmountToCharge.toFixed(2)}</span>
+                    </div>
+                    {!serviceFeeIncluded && (
+                      <div className="text-[10px] text-[#946A1C]">Sin 10% servicio</div>
+                    )}
+                  </div>
 
                   <div className="relative mb-2">
                     <input
@@ -2445,54 +2482,52 @@ export default function POSSportBarPage() {
                       placeholder={isBsPayMethod && exchangeRate
                         ? `Bs ${(paymentAmountToCharge * exchangeRate).toFixed(2)}`
                         : `$${paymentAmountToCharge.toFixed(2)}`}
-                      className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none pr-14"
+                      className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 pr-14 font-mono text-[14px] text-capsula-ink outline-none placeholder:text-capsula-ink-faint focus:border-capsula-navy-deep"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                       {isBsPayMethod ? 'Bs' : 'USD'}
                     </span>
                   </div>
-                  {/* Equivalente USD para Bs methods */}
                   {isBsPayMethod && exchangeRate && rawAmount > 0 && (
-                    <div className="flex justify-between text-xs px-1 mb-2">
-                      <span className="text-muted-foreground">Equivalente USD</span>
-                      <span className="font-bold text-emerald-400">${(rawAmount / exchangeRate).toFixed(2)}</span>
+                    <div className="mb-2 flex justify-between px-1 text-[11px]">
+                      <span className="text-capsula-ink-muted">Equivalente USD</span>
+                      <span className="font-mono font-medium text-[#2F6B4E]">${(rawAmount / exchangeRate).toFixed(2)}</span>
                     </div>
                   )}
 
-                  {/* Vuelto + Propina inline (mesa, pago único en efectivo) */}
+                  {/* Vuelto + Propina inline */}
                   {!isTableMixedMode && !isBsPayMethod && paidAmount > paymentAmountToCharge + 0.001 && (() => {
                     const tableChange = paidAmount - paymentAmountToCharge;
                     const tipVal = Math.min(parseFloat(checkoutTip) || 0, tableChange);
                     const changeBack = tableChange - tipVal;
                     return (
-                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 mb-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Vuelto total:</span>
-                          <span className="font-black text-amber-400">${tableChange.toFixed(2)}</span>
+                      <div className="mb-2 space-y-2 rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6] p-3">
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-[#946A1C]">Vuelto total:</span>
+                          <span className="font-mono font-semibold text-[#946A1C]">${tableChange.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground shrink-0">Propina extra:</span>
-                          <div className="flex-1 flex items-center bg-background border border-border rounded-lg px-2">
-                            <span className="text-xs text-muted-foreground mr-1">$</span>
+                          <span className="shrink-0 text-[11px] text-capsula-ink-muted">Propina extra:</span>
+                          <div className="flex flex-1 items-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2">
+                            <span className="mr-1 font-mono text-[11px] text-capsula-ink-muted">$</span>
                             <input
                               type="number" min="0" step="0.01"
                               max={tableChange}
                               value={checkoutTip}
                               onChange={e => setCheckoutTip(e.target.value)}
                               placeholder="0.00"
-                              className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1 w-0"
+                              className="w-0 flex-1 border-none bg-transparent py-1 font-mono text-[13px] text-capsula-ink outline-none"
                             />
                           </div>
                         </div>
-                        <div className="flex justify-between text-xs font-black pt-1 border-t border-amber-500/20">
-                          <span>Vuelto a devolver:</span>
-                          <span className="text-emerald-400">${Math.max(0, changeBack).toFixed(2)}</span>
+                        <div className="flex items-baseline justify-between border-t border-[#E8D9B8] pt-1 text-[12px] font-medium">
+                          <span className="text-[#946A1C]">Vuelto a devolver:</span>
+                          <span className="font-mono font-semibold text-[#2F6B4E]">${Math.max(0, changeBack).toFixed(2)}</span>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* CurrencyCalculator */}
                   <CurrencyCalculator
                     totalUsd={paidAmount > 0 ? paidAmount : paymentAmountToCharge}
                     hasServiceFee={false}
@@ -2501,20 +2536,22 @@ export default function POSSportBarPage() {
                     startCollapsed
                   />
 
-                  {/* Register payment (requiere PIN) */}
-                  <button
+                  {/* Register payment */}
+                  <Button
+                    variant="primary"
+                    size="lg"
                     onClick={() => {
                       setPaymentPin("");
                       setPaymentPinError("");
                       setShowPaymentPinModal(true);
                     }}
                     disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing)}
-                    className="capsula-btn capsula-btn-primary w-full py-5 text-base shadow-xl shadow-primary/10"
+                    className="mt-2 w-full"
                   >
-                    🔐 REGISTRAR PAGO ${isTableMixedMode
+                    <Lock className="h-4 w-4" strokeWidth={1.5} /> REGISTRAR PAGO ${isTableMixedMode
                       ? (totalMixedTablePaid > 0 ? totalMixedTablePaid.toFixed(2) : "0.00")
                       : (paidAmount > 0 ? paidAmount.toFixed(2) : "0.00")}
-                  </button>
+                  </Button>
 
                   {/* Paid splits */}
                   {activeTab.paymentSplits.length > 0 && (
@@ -2525,30 +2562,35 @@ export default function POSSportBarPage() {
                         return (
                           <div
                             key={p.id}
-                            className="flex justify-between items-center text-xs text-muted-foreground bg-card rounded px-2 py-1"
+                            className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-2 py-1 text-[11px] text-capsula-ink-soft"
                           >
                             <span>
                               {label}
                               {hasService && (
-                                <span className="ml-1 text-emerald-400 font-bold">+10%</span>
+                                <span className="ml-1 font-medium text-[#2F6B4E]">+10%</span>
                               )}
                             </span>
-                            <span className="text-emerald-400 font-bold">${p.paidAmount.toFixed(2)}</span>
+                            <span className="font-mono font-semibold text-[#2F6B4E]">${p.paidAmount.toFixed(2)}</span>
                           </div>
                         );
                       })}
                     </div>
                   )}
 
-                  <p className="mt-2 text-xs text-muted-foreground text-center">La factura se imprime al registrar el pago. Reimprimir desde Historial de Ventas.</p>
-                  {/* Close tab - permitir cerrar cuando no hay consumo (saldo 0) o ya se cobró */}
-                  <button
+                  <p className="mt-2 text-center text-[10.5px] text-capsula-ink-muted">
+                    La factura se imprime al registrar el pago. Reimprimir desde Historial de Ventas.
+                  </p>
+
+                  {/* Close tab */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleCloseTab}
                     disabled={(Number(activeTab.balanceDue ?? 0) > 0.01) || isProcessing}
-                    className="mt-2 w-full py-2 border border-border rounded-lg text-xs font-bold text-foreground/70 hover:bg-muted transition disabled:opacity-30"
+                    className="mt-2 w-full"
                   >
                     Cerrar cuenta (saldo ${(Number(activeTab.balanceDue ?? 0)).toFixed(2)})
-                  </button>
+                  </Button>
                 </div>
               </div>
               )}
