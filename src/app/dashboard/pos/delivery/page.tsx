@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -575,14 +575,17 @@ export default function POSDeliveryPage() {
                 {/* ══════════════════════════════════════════════════════
                     PANEL DERECHO — Carrito + Cobro
                     ══════════════════════════════════════════════════════ */}
-                <div className={`w-full lg:w-[420px] xl:w-[480px] bg-card border-l border-border flex flex-col shadow-2xl z-20 ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
+                <div className={`z-20 flex w-full flex-col border-l border-capsula-line bg-capsula-ivory-surface shadow-cap-soft lg:w-[420px] xl:w-[480px] ${mobileView === "order" ? "flex" : "hidden"} lg:flex`}>
 
                     {/* ── Encabezado del carrito ────────────────────────── */}
-                    <div className="px-4 py-3 bg-secondary/20 border-b border-border shrink-0 flex items-center justify-between">
+                    <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-4 py-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-black uppercase tracking-tight">🛒 Pedido</span>
+                            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-capsula-ink">
+                                <ShoppingCart className="h-4 w-4 text-capsula-ink-muted" />
+                                Pedido
+                            </span>
                             {cart.length > 0 && (
-                                <span className="text-[10px] font-black bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                                <span className="rounded-full border border-capsula-navy/10 bg-capsula-navy-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-capsula-ink">
                                     {cart.length} ítem{cart.length > 1 ? 's' : ''}
                                 </span>
                             )}
@@ -590,45 +593,62 @@ export default function POSDeliveryPage() {
                         {cart.length > 0 && (
                             <button
                                 onClick={() => setCart([])}
-                                className="text-[10px] text-red-400/60 hover:text-red-400 font-bold transition-colors"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                             >
-                                Vaciar ✕
+                                Vaciar
+                                <XIcon className="h-3 w-3" />
                             </button>
                         )}
                     </div>
 
                     {/* ── Resumen cliente (readonly, visible cuando hay datos) ── */}
                     {(customerName || customerPhone || customerAddress) && (
-                        <div className="px-4 py-2 bg-blue-950/30 border-b border-blue-500/20 shrink-0">
-                            <div className="text-[10px] text-blue-300 font-bold leading-snug truncate">
+                        <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory-alt/60 px-4 py-2">
+                            <div className="truncate text-[11px] font-medium leading-snug text-capsula-ink-soft">
                                 {[customerName, customerPhone, customerAddress].filter(Boolean).join(' · ')}
                             </div>
                         </div>
                     )}
 
                     {/* ── Lista del carrito ─────────────────────────────── */}
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-card/50 no-scrollbar min-h-0">
+                    <div className="no-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto bg-capsula-ivory p-3">
                         {cart.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 py-10">
-                                <span className="text-5xl mb-2">🛒</span>
-                                <p className="text-xs font-black uppercase tracking-widest">Carrito Vacío</p>
+                            <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-capsula-ink-muted">
+                                <ShoppingCart className="h-10 w-10 opacity-40" />
+                                <p className="text-[11px] font-medium uppercase tracking-[0.12em]">Carrito vacío</p>
                             </div>
                         )}
                         {cart.map((item, i) => (
-                            <div key={i} className="bg-card border border-border/60 rounded-xl px-3 py-2.5 flex justify-between items-start gap-2 active:scale-[0.98] transition-transform">
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-black text-sm flex gap-1.5 items-baseline">
-                                        <span className="text-primary tracking-tighter shrink-0">×{item.quantity}</span>
+                            <div
+                                key={i}
+                                className="flex items-start justify-between gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 transition-transform active:scale-[0.98]"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-1.5 text-sm font-medium text-capsula-ink">
+                                        <span className="shrink-0 tabular-nums tracking-tight text-capsula-coral">×{item.quantity}</span>
                                         <span className="truncate">{item.name}</span>
                                     </div>
                                     {item.modifiers.length > 0 && (
-                                        <div className="text-[10px] text-muted-foreground mt-0.5 pl-5 truncate">{item.modifiers.map(m => m.name).join(' · ')}</div>
+                                        <div className="mt-0.5 truncate pl-5 text-[11px] text-capsula-ink-muted">
+                                            {item.modifiers.map(m => m.name).join(' · ')}
+                                        </div>
                                     )}
-                                    {item.notes && <div className="text-[10px] font-black text-blue-400 pl-5 italic mt-0.5">💬 {item.notes}</div>}
+                                    {item.notes && (
+                                        <div className="mt-0.5 inline-flex items-center gap-1 pl-5 text-[11px] italic text-capsula-coral">
+                                            <MessageSquare className="h-3 w-3" />
+                                            {item.notes}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <span className="font-black text-sm">${item.lineTotal.toFixed(2)}</span>
-                                    <button onClick={() => removeFromCart(i)} className="h-6 w-6 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all text-xs">✕</button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className="text-sm font-medium tabular-nums text-capsula-ink">${item.lineTotal.toFixed(2)}</span>
+                                    <button
+                                        onClick={() => removeFromCart(i)}
+                                        className="flex h-6 w-6 items-center justify-center rounded-lg text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                                        aria-label="Quitar ítem"
+                                    >
+                                        <XIcon className="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             </div>
                         ))}
