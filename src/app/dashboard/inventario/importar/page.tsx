@@ -8,6 +8,8 @@ import { getAreasForSelect } from '@/app/actions/entrada.actions';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
 
 export default function ImportPage() {
     const { user } = useAuthStore();
@@ -218,137 +220,138 @@ export default function ImportPage() {
         }
     };
 
+    const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+    const selectClass = 'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none';
+    const hintClass = 'mt-1 text-[11px] text-capsula-ink-muted';
+
     return (
         <div className="space-y-6 animate-in">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Importación Masiva de Planillas
-            </h1>
+            <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                    <FileSpreadsheet className="h-4 w-4" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Inventario</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Importación masiva de planillas</h1>
+                </div>
+            </div>
 
             <Card>
                 <CardContent className="pt-6">
                     <div className="mb-6 grid gap-6 md:grid-cols-3">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                1. Selecciona el Tipo de Planilla
-                            </label>
+                            <label className={labelClass}>1. Tipo de planilla</label>
                             <select
                                 value={importType}
                                 onChange={(e) => setImportType(e.target.value as any)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className={selectClass}
                             >
                                 <option value="INVENTARIO_INICIAL">Inventario Inicial (Planilla Orden de Compra)</option>
                                 <option value="ENTRADA_ALMACEN">Entrada de Almacén (Planilla Diaria)</option>
                                 <option value="MERMA">Registro de Mermas</option>
                             </select>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Formatos soportados: "ORDEN DE COMPRA NO TOCAR", "ENTRADA ALMACEN", "REGISTRO DE MERMA".
+                            <p className={hintClass}>
+                                Formatos soportados: &quot;ORDEN DE COMPRA NO TOCAR&quot;, &quot;ENTRADA ALMACEN&quot;, &quot;REGISTRO DE MERMA&quot;.
                             </p>
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                2. Área Destino
-                            </label>
+                            <label className={labelClass}>2. Área destino</label>
                             <select
                                 value={selectedAreaId}
                                 onChange={(e) => setSelectedAreaId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className={selectClass}
                             >
-                                <option value="">Seleccionar área...</option>
+                                <option value="">Seleccionar área…</option>
                                 {areas.map(area => (
                                     <option key={area.id} value={area.id}>{area.name}</option>
                                 ))}
                             </select>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Donde se registrará el inventario importado
-                            </p>
+                            <p className={hintClass}>Donde se registrará el inventario importado.</p>
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                3. Sube tu archivo
-                            </label>
+                            <label className={labelClass}>3. Sube tu archivo</label>
                             <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept=".xlsx, .xls"
                                 onChange={handleFileChange}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-amber-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/30 dark:file:text-amber-400"
+                                className="block w-full text-[13px] text-capsula-ink-soft file:mr-4 file:rounded-full file:border-0 file:bg-capsula-navy-deep file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-capsula-ivory-surface hover:file:bg-capsula-navy-ink"
                             />
                         </div>
                     </div>
 
                     {file && !preview && (
-                        <Button
-                            onClick={handleAnalyze}
-                            isLoading={isProcessing}
-                        >
-                            {isProcessing ? 'Analizando...' : 'Analizar Archivo'}
+                        <Button variant="primary" onClick={handleAnalyze} isLoading={isProcessing}>
+                            <Upload className="h-4 w-4" strokeWidth={1.5} />
+                            {isProcessing ? 'Analizando…' : 'Analizar archivo'}
                         </Button>
                     )}
                 </CardContent>
             </Card>
 
-            {/* Preview Section */}
             {preview && preview.items && (
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 py-4">
-                        <div className="flex items-center justify-between w-full">
-                            <CardTitle className="text-lg">
-                                Vista Previa ({preview.items.length} filas detectadas)
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-capsula-line py-4">
+                        <div className="flex w-full items-center justify-between">
+                            <CardTitle className="font-heading text-[18px] text-capsula-navy-deep">
+                                Vista previa ({preview.items.length} filas detectadas)
                             </CardTitle>
-                            <div className="text-sm font-normal">
-                                <span className="mr-4 text-green-600">
-                                    {preview.items.filter(i => i.status === 'MATCHED').length} Validados
+                            <div className="flex items-center gap-3 text-[12px]">
+                                <span className="inline-flex items-center gap-1 font-mono text-[#2F6B4E]">
+                                    <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                    {preview.items.filter(i => i.status === 'MATCHED').length} validados
                                 </span>
-                                <span className="text-red-500">
-                                    {preview.items.filter(i => i.status !== 'MATCHED').length} Errores
+                                <span className="inline-flex items-center gap-1 font-mono text-capsula-coral">
+                                    <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                    {preview.items.filter(i => i.status !== 'MATCHED').length} errores
                                 </span>
                             </div>
                         </div>
                     </CardHeader>
 
                     <div className="max-h-96 overflow-y-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
+                        <table className="w-full text-left text-[13px]">
+                            <thead className="bg-capsula-ivory-alt text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                                 <tr>
                                     <th className="px-6 py-3">Fila</th>
-                                    <th className="px-6 py-3">Item (Excel)</th>
-                                    <th className="px-6 py-3">Link Sistema</th>
+                                    <th className="px-6 py-3">Ítem (Excel)</th>
+                                    <th className="px-6 py-3">Link sistema</th>
                                     <th className="px-6 py-3">Cantidad</th>
                                     <th className="px-6 py-3">Unidad</th>
                                     <th className="px-6 py-3">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-capsula-line">
                                 {preview.items.map((item, idx) => (
-                                    <tr key={idx} className={item.status !== 'MATCHED' ? 'bg-red-50 dark:bg-red-900/10' : ''}>
-                                        <td className="px-6 py-3 text-gray-500">{item.row}</td>
-                                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">
+                                    <tr key={idx} className={item.status !== 'MATCHED' ? 'bg-capsula-coral/5' : ''}>
+                                        <td className="px-6 py-3 font-mono text-capsula-ink-muted">{item.row}</td>
+                                        <td className="px-6 py-3 font-medium text-capsula-ink">
                                             {item.itemName}
                                         </td>
                                         <td className="px-6 py-3">
                                             <div className="flex flex-col gap-1">
                                                 <select
-                                                    className="w-48 rounded border border-gray-300 px-2 py-1 text-xs dark:bg-gray-700"
+                                                    className="w-48 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-[12px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                                     value={item.matchedItemId || ''}
                                                     onChange={(e) => handleMatchChange(idx, e.target.value)}
                                                 >
-                                                    <option value="">-- Seleccionar --</option>
+                                                    <option value="">— Seleccionar —</option>
                                                     {preview.allItems?.map(opt => (
                                                         <option key={opt.id} value={opt.id}>{opt.name}</option>
                                                     ))}
                                                 </select>
 
                                                 {item.matchedItemId && (
-                                                    <label className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <label className="flex cursor-pointer items-center gap-2 text-[11px] text-capsula-ink-muted">
                                                         <input
                                                             type="checkbox"
                                                             checked={!!item.shouldRename}
                                                             onChange={() => handleRenameToggle(idx)}
-                                                            className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                                            className="rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
                                                         />
-                                                        Renombrar en Sistema
+                                                        Renombrar en sistema
                                                     </label>
                                                 )}
                                             </div>
@@ -359,14 +362,14 @@ export default function ImportPage() {
                                                 step="any"
                                                 value={item.quantity}
                                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                                                className="w-24 rounded border border-gray-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="w-24 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 font-mono text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                             />
                                         </td>
                                         <td className="px-6 py-3">
                                             <select
                                                 value={item.unit || 'KG'}
                                                 onChange={(e) => handleUnitChange(idx, e.target.value)}
-                                                className="rounded border border-gray-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                             >
                                                 <option value="KG">KG</option>
                                                 <option value="UNI">UND</option>
@@ -378,28 +381,20 @@ export default function ImportPage() {
                                         <td className="px-6 py-3">
                                             {item.status === 'MATCHED' ? (
                                                 item.isFuzzyMatch ? (
-                                                    <span className="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                                                        Coincidencia 80%
-                                                    </span>
+                                                    <Badge variant="warn">Coincidencia 80%</Badge>
                                                 ) : (
-                                                    <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                        Exacta
-                                                    </span>
+                                                    <Badge variant="ok">Exacta</Badge>
                                                 )
                                             ) : item.status === 'NOT_FOUND' ? (
                                                 importType === 'INVENTARIO_INICIAL' ? (
-                                                    <span className="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                                        ✨ SE CREARÁ
-                                                    </span>
+                                                    <Badge variant="info">
+                                                        <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Se creará
+                                                    </Badge>
                                                 ) : (
-                                                    <span className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                                        No encontrado
-                                                    </span>
+                                                    <Badge variant="danger">No encontrado</Badge>
                                                 )
                                             ) : (
-                                                <span className="inline-flex rounded-full bg-yellow-100 px-2 text-xs font-semibold leading-5 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                    Cant. Inválida
-                                                </span>
+                                                <Badge variant="warn">Cant. inválida</Badge>
                                             )}
                                         </td>
                                     </tr>
@@ -408,46 +403,47 @@ export default function ImportPage() {
                         </table>
                     </div>
 
-                    <div className="flex items-center justify-between bg-gray-50 px-6 py-4 dark:bg-gray-800/50 rounded-b-xl">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-[var(--radius)] border-t border-capsula-line bg-capsula-ivory-alt px-6 py-4">
+                        <label className="flex cursor-pointer items-center gap-2">
                             <input
                                 type="checkbox"
                                 checked={isDraft}
                                 onChange={(e) => setIsDraft(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                className="h-4 w-4 rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
                             />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Cargar como Borrador (Auditoría)
+                            <span className="text-[13px] font-medium text-capsula-ink">
+                                Cargar como borrador (auditoría)
                             </span>
                         </label>
 
                         {isDraft && (
-                            <div className="flex items-center gap-2 ml-4">
-                                <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Fecha efectiva:</label>
+                            <div className="ml-4 flex items-center gap-2">
+                                <label className="whitespace-nowrap text-[13px] text-capsula-ink-soft">Fecha efectiva:</label>
                                 <input
                                     type="date"
                                     value={effectiveDate}
                                     onChange={e => setEffectiveDate(e.target.value)}
-                                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 />
-                                <span className="text-xs text-gray-400">(dejar vacío = hoy)</span>
+                                <span className="text-[11px] text-capsula-ink-muted">(vacío = hoy)</span>
                             </div>
                         )}
 
                         <div className="flex items-center gap-3">
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => { setFile(null); setPreview(null); }}
                             >
                                 Cancelar
                             </Button>
                             <Button
+                                variant="primary"
                                 onClick={handleImport}
                                 disabled={isProcessing || preview.items.filter(i => i.status === 'MATCHED').length === 0}
-                                className="bg-green-600 hover:bg-green-700 text-white"
                                 isLoading={isProcessing}
                             >
-                                {isProcessing ? 'Importando...' : 'Confirmar Importación'}
+                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />
+                                {isProcessing ? 'Importando…' : 'Confirmar importación'}
                             </Button>
                         </div>
                     </div>
