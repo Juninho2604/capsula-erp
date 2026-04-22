@@ -947,50 +947,58 @@ export default function POSMeseroPage() {
         </main>
 
         {/* ══ RIGHT: PEDIDO PANEL (sin cobro) ═════════════════════════════ */}
-        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
-
+        <aside className={cn(
+          "absolute inset-0 z-10 w-full shrink-0 flex-col overflow-hidden bg-capsula-ivory-surface lg:relative lg:z-auto lg:flex lg:w-80 xl:w-96",
+          mobileTab === "account" ? "flex" : "hidden",
+        )}>
           {/* Carrito pendiente */}
           {cart.length > 0 && (
-            <div className="border-b border-emerald-900/50 bg-emerald-950/30 p-4 shrink-0">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-black text-sm text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                  🛒 Nuevo pedido
-                  <span className="bg-emerald-500 text-black text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">
+            <div className="shrink-0 border-b border-capsula-navy/10 bg-capsula-navy-soft/40 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="inline-flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.12em] text-capsula-navy-deep">
+                  <ShoppingBag className="h-4 w-4" strokeWidth={1.5} />
+                  Nuevo pedido
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-capsula-navy-deep font-mono text-[10px] font-semibold text-capsula-ivory">
                     {cart.length}
                   </span>
                 </h2>
                 <button
                   onClick={() => setCart([])}
-                  className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                 >
-                  Limpiar
+                  <Trash2 className="h-3 w-3" strokeWidth={1.5} /> Limpiar
                 </button>
               </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              <div className="max-h-40 space-y-1.5 overflow-y-auto">
                 {cart.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-xs bg-emerald-900/20 rounded-lg px-3 py-2">
-                    <span className="font-bold text-foreground/80 truncate flex-1">
-                      <span className="text-emerald-400 font-black">x{item.quantity}</span> {item.name}
+                  <div key={i} className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[12px]">
+                    <span className="flex-1 truncate">
+                      <span className="font-mono font-semibold text-capsula-navy-deep">×{item.quantity}</span>{' '}
+                      <span className="text-capsula-ink">{item.name}</span>
                     </span>
-                    <span className="text-emerald-400 font-black ml-2">${item.lineTotal.toFixed(2)}</span>
+                    <span className="ml-2 font-mono font-semibold text-capsula-ink">${item.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex justify-between items-center border-t border-emerald-900/50 pt-2">
-                <span className="text-xs font-black text-muted-foreground uppercase">Subtotal</span>
-                <span className="text-sm font-black text-emerald-400">${cartTotal.toFixed(2)}</span>
+              <div className="mt-3 flex items-center justify-between border-t border-capsula-navy/10 pt-2">
+                <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Subtotal</span>
+                <span className="font-mono text-[14px] font-semibold text-capsula-navy-deep">${cartTotal.toFixed(2)}</span>
               </div>
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 onClick={() => { handleSendToTab(); if (window.innerWidth < 1024) setMobileTab("tables"); }}
                 disabled={!activeTab || isProcessing}
-                className={`w-full mt-3 py-4 rounded-xl font-black text-sm transition-all active:scale-95 ${
-                  sendSuccess
-                    ? "bg-emerald-500 text-black"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                }`}
-              >
-                {sendSuccess ? "✓ ¡Enviado a cocina!" : isProcessing ? "Enviando..." : `🍳 Enviar a cocina · $${cartTotal.toFixed(2)}`}
-              </button>
+                isLoading={isProcessing}
+                className={cn("mt-3 w-full", sendSuccess && "bg-[#2F6B4E] hover:bg-[#245239]")}
+            >
+                {sendSuccess
+                    ? <><Check className="h-4 w-4" strokeWidth={2} /> ¡Enviado a cocina!</>
+                    : isProcessing
+                        ? 'Enviando…'
+                        : <><Utensils className="h-4 w-4" strokeWidth={1.5} /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
+                }
+              </Button>
             </div>
           )}
 
@@ -1003,129 +1011,144 @@ export default function POSMeseroPage() {
               onTabUpdated={() => loadData(false)}
             />
           ) : (
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {!activeTab ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">🪑</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
-                  Selecciona una mesa<br />para ver la cuenta
-                </p>
-              </div>
-            ) : activeTab.orders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">📋</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
-                  Cuenta abierta<br />Agrega productos del menú
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                  Pedidos enviados
-                </p>
-                {activeTab.orders.map((order) => (
-                  <div key={order.id} className="glass-panel rounded-2xl overflow-hidden border-emerald-900/20">
-                    <div className="flex items-center justify-between px-3 py-2 bg-emerald-900/20 border-b border-emerald-900/30">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase">#{order.orderNumber}</span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                        order.kitchenStatus === "SENT" ? "bg-amber-500/20 text-amber-400" :
-                        order.kitchenStatus === "READY" ? "bg-emerald-500/20 text-emerald-400" :
-                        "bg-secondary text-muted-foreground"
-                      }`}>
-                        {order.kitchenStatus === "SENT" ? "🔥 En cocina" : order.kitchenStatus === "READY" ? "✅ Listo" : order.kitchenStatus}
-                      </span>
-                    </div>
-                    <div className="p-3 space-y-1.5">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center text-xs group">
-                          <div className="flex-1 min-w-0">
-                            <span className="font-bold text-foreground/80">
-                              <span className="text-primary font-black">x{item.quantity}</span> {item.itemName}
-                            </span>
-                            {item.modifiers && item.modifiers.length > 0 && (
-                              <div className="text-[9px] text-muted-foreground truncate pl-4">
-                                {item.modifiers.map((m) => m.name).join(" · ")}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 ml-2 shrink-0">
-                            <span className="text-foreground/60">${item.lineTotal.toFixed(2)}</span>
-                            <button
-                              onClick={() => openRemoveModal(order.id, item)}
-                              className="h-5 w-5 rounded-md bg-red-500/0 hover:bg-red-500/20 text-red-500/40 hover:text-red-400 flex items-center justify-center text-[10px] transition-all opacity-0 group-hover:opacity-100"
-                              title="Anular (requiere PIN supervisor)"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="px-3 pb-3 flex justify-between items-center border-t border-border/50 pt-2">
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase">Orden</span>
-                      <span className="text-sm font-black text-foreground">${order.total.toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Total cuenta — solo informativo, sin botón de cobro */}
-                <div className="capsula-card p-4 border-emerald-900/30 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total cuenta</span>
-                    <span className="text-xl font-black text-emerald-400">${activeTab.balanceDue.toFixed(2)}</span>
-                  </div>
-                  <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
-                    El cobro lo gestiona el cajero
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {!activeTab ? (
+                <div className="flex h-full flex-col items-center justify-center py-10 text-capsula-ink-muted">
+                  <Users className="mb-3 h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                  <p className="text-center text-[12px] font-medium uppercase tracking-[0.12em]">
+                    Selecciona una mesa<br />para ver la cuenta
                   </p>
-                  {/* Mostrar cuenta al cliente */}
-                  <button
-                    onClick={() => setShowBillModal(true)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
-                  >
-                    🧾 Mostrar cuenta al cliente
-                  </button>
-                  {canUseCaptainFeatures && (
-                    <>
-                      <button
-                        onClick={() => setSubAccountMode(true)}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
-                      >
-                        ÷ Dividir cuenta (subcuentas)
-                      </button>
-                      <button
-                        onClick={openTransferModal}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-sky-500/20 hover:text-sky-400 text-foreground/70 transition"
-                      >
-                        ↔ Transferir mesa
-                      </button>
-                    </>
-                  )}
                 </div>
-              </>
-            )}
-          </div>
+              ) : activeTab.orders.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center py-10 text-capsula-ink-muted">
+                  <FileText className="mb-3 h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                  <p className="text-center text-[12px] font-medium uppercase tracking-[0.12em]">
+                    Cuenta abierta<br />Agrega productos del menú
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                    Pedidos enviados
+                  </p>
+                  {activeTab.orders.map((order) => {
+                    const statusBadgeVariant: 'warn' | 'ok' | 'neutral' =
+                      order.kitchenStatus === 'SENT' ? 'warn' :
+                      order.kitchenStatus === 'READY' ? 'ok' : 'neutral';
+                    const StatusIcon = order.kitchenStatus === 'SENT' ? Clock : order.kitchenStatus === 'READY' ? CheckCircle2 : Package;
+                    return (
+                      <div key={order.id} className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
+                        <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory px-3 py-2">
+                          <span className="font-mono text-[11px] font-semibold text-capsula-navy">#{order.orderNumber}</span>
+                          <Badge variant={statusBadgeVariant}>
+                            <StatusIcon className="h-3 w-3" strokeWidth={1.5} />
+                            {order.kitchenStatus === 'SENT' ? 'En cocina' : order.kitchenStatus === 'READY' ? 'Listo' : order.kitchenStatus}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1.5 p-3">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="group flex items-center justify-between text-[12px]">
+                              <div className="min-w-0 flex-1">
+                                <span>
+                                  <span className="font-mono font-semibold text-capsula-navy-deep">×{item.quantity}</span>{' '}
+                                  <span className="text-capsula-ink">{item.itemName}</span>
+                                </span>
+                                {item.modifiers && item.modifiers.length > 0 && (
+                                  <div className="truncate pl-5 text-[10.5px] text-capsula-ink-muted">
+                                    {item.modifiers.map((m) => m.name).join(' · ')}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2 flex shrink-0 items-center gap-2">
+                                <span className="font-mono text-capsula-ink-soft">${item.lineTotal.toFixed(2)}</span>
+                                <button
+                                  onClick={() => openRemoveModal(order.id, item)}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-capsula-ink-faint opacity-0 transition-all hover:bg-capsula-coral-subtle hover:text-capsula-coral group-hover:opacity-100"
+                                  title="Anular (requiere PIN supervisor)"
+                                >
+                                  <X className="h-3 w-3" strokeWidth={1.5} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between border-t border-capsula-line px-3 pb-3 pt-2">
+                          <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Orden</span>
+                          <span className="font-mono text-[13px] font-semibold text-capsula-ink">${order.total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Total cuenta — solo informativo, sin botón de cobro */}
+                  <div className="mt-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Total cuenta</span>
+                      <span className="font-mono text-[22px] font-semibold text-capsula-navy-deep">${activeTab.balanceDue.toFixed(2)}</span>
+                    </div>
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-capsula-ink-muted">
+                      El cobro lo gestiona el cajero
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBillModal(true)}
+                      className="mt-3 w-full"
+                    >
+                      <Receipt className="h-3.5 w-3.5" strokeWidth={1.5} /> Mostrar cuenta al cliente
+                    </Button>
+                    {canUseCaptainFeatures && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSubAccountMode(true)}
+                          className="mt-2 w-full"
+                        >
+                          <Users className="h-3.5 w-3.5" strokeWidth={1.5} /> Dividir cuenta (subcuentas)
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={openTransferModal}
+                          className="mt-2 w-full"
+                        >
+                          <ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} /> Transferir mesa
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </aside>
       </div>
 
       {/* ── NAVEGACIÓN MÓVIL ─────────────────────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
-        {(["tables", "menu", "account"] as const).map((tab) => {
-          const icons = { tables: "🪑", menu: "🍽️", account: "📋" };
-          const labels = { tables: "MESAS", menu: "MENÚ", account: "PEDIDO" };
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-capsula-line bg-capsula-ivory-surface lg:hidden">
+        {([
+          { id: 'tables' as const, label: 'Mesas', icon: Users },
+          { id: 'menu' as const, label: 'Menú', icon: UtensilsCrossed },
+          { id: 'account' as const, label: 'Pedido', icon: FileText, badge: cartBadgeCount },
+        ]).map((tab) => {
+          const TabIcon = tab.icon;
+          const active = mobileTab === tab.id;
           return (
             <button
-              key={tab}
-              onClick={() => setMobileTab(tab)}
-              className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors
-                ${mobileTab === tab ? "text-emerald-400 bg-emerald-400/5" : "text-muted-foreground"}`}
+              key={tab.id}
+              onClick={() => setMobileTab(tab.id)}
+              className={cn(
+                "relative flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors",
+                active ? "bg-capsula-navy-soft text-capsula-navy-deep" : "text-capsula-ink-muted",
+              )}
             >
-              {mobileTab === tab && <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-b" />}
-              <span className="text-xl">{icons[tab]}</span>
-              {labels[tab]}
-              {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-emerald-500 text-black text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-black px-1">
-                  {cartBadgeCount}
+              {active && <div className="absolute left-0 right-0 top-0 h-0.5 bg-capsula-navy-deep" />}
+              <TabIcon className="h-5 w-5" strokeWidth={1.5} />
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="absolute right-6 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-capsula-coral px-1 font-mono text-[9px] font-semibold text-white">
+                  {tab.badge}
                 </span>
               )}
             </button>
