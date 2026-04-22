@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import {
+  DollarSign, Euro, Zap, Banknote, CreditCard, Smartphone, Gift, X as XIcon, CheckCircle2,
+} from 'lucide-react';
 
 export interface PaymentLine {
   id: string;
@@ -20,16 +23,22 @@ interface Props {
   allowCortesia?: boolean;
 }
 
-const METHODS = [
-  { id: 'CASH_USD',       label: '💵 Cash $' },
-  { id: 'CASH_EUR',       label: '€ Cash €' },
-  { id: 'ZELLE',          label: '⚡ Zelle' },
-  { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-  { id: 'PDV_SHANKLISH',  label: '💳 PDV Shanklish' },
-  { id: 'PDV_SUPERFERRO', label: '💳 PDV Superferro' },
-  { id: 'MOVIL_NG',       label: '📱 Pago Móvil NG' },
-  { id: 'CORTESIA',       label: '🎁 Cortesía' },
-] as const;
+type MethodDef = {
+  id: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+const METHODS: readonly MethodDef[] = [
+  { id: 'CASH_USD',       label: 'Cash $',        Icon: DollarSign },
+  { id: 'CASH_EUR',       label: 'Cash €',        Icon: Euro },
+  { id: 'ZELLE',          label: 'Zelle',         Icon: Zap },
+  { id: 'CASH_BS',        label: 'Efectivo Bs',   Icon: Banknote },
+  { id: 'PDV_SHANKLISH',  label: 'PDV Shanklish', Icon: CreditCard },
+  { id: 'PDV_SUPERFERRO', label: 'PDV Superferro',Icon: CreditCard },
+  { id: 'MOVIL_NG',       label: 'Pago Móvil NG', Icon: Smartphone },
+  { id: 'CORTESIA',       label: 'Cortesía',      Icon: Gift },
+];
 
 /** These methods are paid in Bs — show conversion when exchangeRate available */
 const BS_METHODS = new Set(['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'MOBILE_PAY', 'CARD', 'TRANSFER']);
@@ -52,7 +61,6 @@ export default function MixedPaymentSelector({
   const overpay   = Math.max(0, totalPaid - totalAmount);
   const isComplete = totalPaid >= totalAmount - 0.001;
 
-  // Notify parent whenever lines change
   const notify = useCallback(
     (nextLines: PaymentLine[]) => {
       const paid = nextLines.reduce((s, l) => s + l.amountUSD, 0);
@@ -104,8 +112,6 @@ export default function MixedPaymentSelector({
     notify(next);
   };
 
-  // No auto-reset on totalAmount change — parent controls reset via key prop
-
   const visibleMethods = allowCortesia
     ? METHODS
     : METHODS.filter((m) => m.id !== 'CORTESIA');
@@ -120,9 +126,10 @@ export default function MixedPaymentSelector({
             type="button"
             onClick={() => addLine(m.id)}
             disabled={disabled}
-            className="py-2.5 px-1 rounded-xl text-[10px] font-black uppercase tracking-tight bg-card border border-border text-foreground/60 hover:border-primary/50 hover:text-foreground active:scale-95 transition-all disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-1 py-2.5 text-[11px] font-medium uppercase tracking-[0.04em] text-capsula-ink-soft transition-all hover:border-capsula-navy-deep hover:text-capsula-ink active:scale-95 disabled:opacity-40"
           >
-            {m.label}
+            <m.Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{m.label}</span>
           </button>
         ))}
       </div>
@@ -133,15 +140,15 @@ export default function MixedPaymentSelector({
           {lines.map((line) => (
             <div
               key={line.id}
-              className="flex items-center gap-2 bg-card border border-border rounded-xl p-2 text-sm"
+              className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-sm"
             >
-              <span className="w-20 shrink-0 text-[10px] font-black text-foreground/70 uppercase leading-tight">
+              <span className="w-20 shrink-0 text-[11px] font-medium uppercase leading-tight tracking-[0.04em] text-capsula-ink-soft">
                 {methodLabel(line.method)}
               </span>
 
               {/* USD amount */}
-              <div className="flex items-center flex-1 bg-background rounded-lg border border-border px-2">
-                <span className="text-xs text-muted-foreground mr-1">$</span>
+              <div className="flex flex-1 items-center rounded-lg border border-capsula-line bg-capsula-ivory px-2">
+                <span className="mr-1 text-xs text-capsula-ink-muted">$</span>
                 <input
                   type="number"
                   min="0"
@@ -150,13 +157,13 @@ export default function MixedPaymentSelector({
                   onChange={(e) => updateLine(line.id, 'amountUSD', e.target.value)}
                   disabled={disabled}
                   placeholder="0.00"
-                  className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1.5 w-0"
+                  className="w-0 flex-1 bg-transparent py-1.5 text-sm font-medium tabular-nums text-capsula-ink focus:outline-none"
                 />
               </div>
 
               {/* Bs conversion for Bs methods */}
               {BS_METHODS.has(line.method) && exchangeRate && line.amountUSD > 0 && (
-                <span className="text-[10px] text-emerald-400 shrink-0 font-bold">
+                <span className="shrink-0 text-[11px] font-medium tabular-nums text-capsula-navy">
                   Bs&nbsp;{(line.amountUSD * exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                 </span>
               )}
@@ -166,9 +173,10 @@ export default function MixedPaymentSelector({
                 type="button"
                 onClick={() => removeLine(line.id)}
                 disabled={disabled}
-                className="text-muted-foreground hover:text-destructive transition-colors text-xl leading-none px-0.5"
+                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                aria-label="Quitar línea"
               >
-                ×
+                <XIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -178,28 +186,30 @@ export default function MixedPaymentSelector({
       {/* Balance footer */}
       {lines.length > 0 && (
         <div
-          className={`flex justify-between items-center text-sm px-3 py-2 rounded-xl font-bold ${
+          className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium ${
             isComplete
               ? overpay > 0.001
-                ? 'bg-amber-500/10 text-amber-400'
-                : 'bg-emerald-500/10 text-emerald-400'
-              : 'bg-secondary text-muted-foreground'
+                ? 'border-[#E8D9B8] bg-[#F3EAD6]/60 text-[#946A1C]'
+                : 'border-[#D3E2D8] bg-[#E5EDE7]/60 text-[#2F6B4E]'
+              : 'border-capsula-line bg-capsula-ivory-alt text-capsula-ink-soft'
           }`}
         >
           {overpay > 0.001 ? (
             <>
               <span>Vuelto</span>
-              <span className="font-black">${overpay.toFixed(2)}</span>
+              <span className="font-heading text-base tabular-nums tracking-[-0.01em]">${overpay.toFixed(2)}</span>
             </>
           ) : isComplete ? (
             <>
               <span>Completado</span>
-              <span>✓</span>
+              <CheckCircle2 className="h-4 w-4" />
             </>
           ) : (
             <>
               <span>Pendiente</span>
-              <span className="font-black text-amber-400">${remaining.toFixed(2)}</span>
+              <span className="font-heading text-base tabular-nums tracking-[-0.01em] text-[#946A1C]">
+                ${remaining.toFixed(2)}
+              </span>
             </>
           )}
         </div>
