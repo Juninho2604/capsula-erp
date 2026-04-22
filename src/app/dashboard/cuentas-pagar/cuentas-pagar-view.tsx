@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText } from 'lucide-react';
+import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText, Clock } from 'lucide-react';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
   type AccountPayableData,
@@ -33,6 +33,15 @@ const STATUS_CONFIG: Record<string, { label: string; variant: StatusVariant }> =
 
 const FIELD_LABEL = 'mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted';
 const FIELD_INPUT = 'w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none';
+
+function agingBucketStyles(range: string): { wrap: string; text: string } {
+  if (range === 'Vigente') return { wrap: 'border-[#D3E2D8] bg-[#E5EDE7]/40', text: 'text-[#2F6B4E]' };
+  if (range === '0-30')    return { wrap: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-navy-deep' };
+  if (range === '31-60')   return { wrap: 'border-[#E8D9B8] bg-[#F3EAD6]/40', text: 'text-[#946A1C]' };
+  if (range === '61-90')   return { wrap: 'border-[#E8D9B8] bg-[#F3EAD6]/60', text: 'text-[#946A1C]' };
+  if (range === '90+')     return { wrap: 'border-[#EFD2C8] bg-[#F7E3DB]/40', text: 'text-[#B04A2E]' };
+  return                          { wrap: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-ink' };
+}
 
 function fmt(n: number) {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -226,24 +235,22 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Aging Report */}
       {hasAging && (
-        <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
+        <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+            Envejecimiento de deudas
+          </h3>
           <div className="grid grid-cols-5 gap-2">
             {agingData.map(bucket => {
-              const colorMap: Record<string, string> = {
-                'Vigente': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500',
-                '0-30': 'bg-blue-500/10 border-blue-500/20 text-blue-500',
-                '31-60': 'bg-amber-500/10 border-amber-500/20 text-amber-500',
-                '61-90': 'bg-orange-500/10 border-orange-500/20 text-orange-500',
-                '90+': 'bg-red-500/10 border-red-500/20 text-red-500',
-              };
-              const colors = colorMap[bucket.range] || 'bg-muted border-border text-foreground';
-              const [bgColor, borderColor, textColor] = colors.split(' ');
+              const styles = agingBucketStyles(bucket.range);
               return (
-                <div key={bucket.range} className={`rounded-xl p-3 text-center border ${bgColor} ${borderColor}`}>
-                  <p className="text-[10px] font-bold text-muted-foreground">{bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}</p>
-                  <p className={`text-lg font-black mt-1 ${textColor}`}>${fmt(bucket.amount)}</p>
-                  <p className="text-[10px] text-muted-foreground">{bucket.count} cuentas</p>
+                <div key={bucket.range} className={`rounded-xl border p-3 text-center ${styles.wrap}`}>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                    {bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}
+                  </p>
+                  <p className={`mt-1 font-heading text-lg tracking-[-0.02em] ${styles.text}`}>
+                    ${fmt(bucket.amount)}
+                  </p>
+                  <p className="text-[11px] text-capsula-ink-muted">{bucket.count} cuentas</p>
                 </div>
               );
             })}
@@ -253,19 +260,24 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Top Acreedores */}
       {supplierSummary.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Principales Acreedores</h3>
+        <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+            Principales acreedores
+          </h3>
           <div className="space-y-2">
             {supplierSummary.map((s, i) => {
               const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;
               return (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-sm font-black text-muted-foreground w-5">{i + 1}</span>
-                  <span className="text-sm text-foreground flex-1 truncate">{s.name}</span>
-                  <span className="text-xs text-muted-foreground">{s.count} cuentas</span>
-                  <span className="text-sm font-bold text-foreground w-24 text-right">${fmt(s.total)}</span>
-                  <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
+                  <span className="w-5 font-heading text-base text-capsula-ink-muted">{i + 1}</span>
+                  <span className="flex-1 truncate text-sm text-capsula-ink">{s.name}</span>
+                  <span className="text-xs text-capsula-ink-muted">{s.count} cuentas</span>
+                  <span className="w-24 text-right text-sm font-medium text-capsula-ink">${fmt(s.total)}</span>
+                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-capsula-ivory-alt">
+                    <div
+                      className="h-full rounded-full bg-capsula-navy-deep transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               );
@@ -276,23 +288,25 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Próximos Vencimientos */}
       {upcomingDue.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-amber-500 mb-4">⏰ Próximos Vencimientos (14 días)</h3>
+        <div className="rounded-2xl border border-[#E8D9B8] bg-[#F3EAD6]/40 p-6 shadow-cap-soft">
+          <h3 className="mb-4 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[#946A1C]">
+            <Clock className="h-4 w-4" />
+            Próximos vencimientos (14 días)
+          </h3>
           <div className="space-y-2">
             {upcomingDue.map(a => {
               const daysUntil = Math.floor((new Date(a.dueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const dueVariant: StatusVariant = daysUntil <= 3 ? 'danger' : daysUntil <= 7 ? 'warn' : 'info';
               return (
                 <div key={a.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      daysUntil <= 3 ? 'bg-red-500/20 text-red-500' : daysUntil <= 7 ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
-                    }`}>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Badge variant={dueVariant}>
                       {daysUntil === 0 ? 'HOY' : daysUntil === 1 ? 'MAÑANA' : `${daysUntil}d`}
-                    </span>
-                    <span className="text-foreground truncate">{a.description}</span>
-                    <span className="text-muted-foreground text-xs">— {a.supplierName || a.creditorName}</span>
+                    </Badge>
+                    <span className="truncate text-capsula-ink">{a.description}</span>
+                    <span className="text-xs text-capsula-ink-muted">— {a.supplierName || a.creditorName}</span>
                   </div>
-                  <span className="font-bold text-foreground ml-2">${fmt(a.remainingUsd)}</span>
+                  <span className="ml-2 font-medium text-capsula-ink">${fmt(a.remainingUsd)}</span>
                 </div>
               );
             })}
@@ -301,18 +315,27 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       )}
 
       {/* Filtros */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {[
           { key: 'ACTIVE', label: 'Activas' },
           { key: 'ALL', label: 'Todas' },
           { key: 'PAID', label: 'Pagadas' },
         ].map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${filter === f.key ? 'bg-blue-600 text-white' : 'border border-border text-foreground hover:bg-accent'}`}>
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+              filter === f.key
+                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
+            }`}
+          >
             {f.label}
           </button>
         ))}
-        {isPending && <span className="text-xs text-muted-foreground self-center animate-pulse">Cargando...</span>}
+        {isPending && (
+          <span className="animate-pulse text-xs text-capsula-ink-muted">Cargando…</span>
+        )}
       </div>
 
       {/* Tabla */}
