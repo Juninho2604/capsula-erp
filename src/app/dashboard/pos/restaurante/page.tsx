@@ -2843,42 +2843,45 @@ export default function POSSportBarPage() {
       {/* MODAL: PIN CAJERA — REGISTRAR PAGO                               */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showPaymentPinModal && activeTab && (
-        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black">🔐 Autorizar cobro</h3>
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm sm:items-center">
+          <div className="mx-auto w-full max-w-sm rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:rounded-[var(--radius)]">
+            <div className="flex items-center justify-between border-b border-capsula-line p-5">
+              <h3 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                <Lock className="h-5 w-5 text-capsula-navy" strokeWidth={1.5} />
+                Autorizar cobro
+              </h3>
               <button
                 onClick={() => setShowPaymentPinModal(false)}
-                className="text-muted-foreground hover:text-destructive text-2xl"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
               >
-                ×
+                <X className="h-4 w-4" strokeWidth={1.5} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="bg-secondary rounded-xl p-3 text-sm space-y-1">
+            <div className="space-y-4 p-5">
+              <div className="space-y-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-3 text-[13px]">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Método:</span>
-                  <span className="font-bold">{PAYMENT_LABELS[paymentMethod]}</span>
+                  <span className="text-capsula-ink-muted">Método:</span>
+                  <span className="font-medium text-capsula-ink">{PAYMENT_LABELS[paymentMethod]}</span>
                 </div>
                 {discountType === "DIVISAS_33" && activeTab && (
-                  <div className="flex justify-between text-blue-400 text-xs">
-                    <span>Descuento -33.33%:</span>
-                    <span>-${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                  <div className="flex justify-between text-[12px] text-capsula-navy">
+                    <span>Descuento −33.33%:</span>
+                    <span className="font-mono">-${(activeTab.balanceDue / 3).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monto:</span>
-                  <span className="font-black text-emerald-400 text-base">${paidAmount.toFixed(2)}</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-capsula-ink-muted">Monto:</span>
+                  <span className="font-mono text-[16px] font-semibold text-capsula-navy-deep">${paidAmount.toFixed(2)}</span>
                 </div>
                 {exchangeRate && (
-                  <div className="flex justify-between text-muted-foreground text-xs">
+                  <div className="flex justify-between text-[11px] text-capsula-ink-muted">
                     <span>Equivalente Bs:</span>
-                    <span>Bs. {(paidAmount * exchangeRate).toFixed(2)}</span>
+                    <span className="font-mono">Bs. {(paidAmount * exchangeRate).toFixed(2)}</span>
                   </div>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">PIN de cajera / gerente</label>
+                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">PIN de cajera / gerente</label>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -2889,25 +2892,28 @@ export default function POSSportBarPage() {
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handlePaymentPinConfirm()}
                   placeholder="••••••"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-3 text-foreground text-center text-xl tracking-widest focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-3 text-center font-mono text-[20px] tracking-[0.3em] text-capsula-navy-deep outline-none focus:border-capsula-navy-deep"
                 />
-                {paymentPinError && <p className="text-red-400 text-xs mt-1">{paymentPinError}</p>}
+                {paymentPinError && (
+                  <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral">
+                    <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> {paymentPinError}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
-              <button
-                onClick={() => setShowPaymentPinModal(false)}
-                className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm"
-              >
+            <div className="flex gap-2 border-t border-capsula-line p-4">
+              <Button variant="ghost" onClick={() => setShowPaymentPinModal(false)} className="flex-1">
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handlePaymentPinConfirm}
                 disabled={!paymentPin || isProcessing}
-                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition disabled:opacity-50"
+                isLoading={isProcessing}
+                className="flex-[2]"
               >
-                {isProcessing ? "Procesando..." : "✓ Confirmar pago"}
-              </button>
+                {isProcessing ? "Procesando…" : (<><Check className="h-4 w-4" strokeWidth={2} /> Confirmar pago</>)}
+              </Button>
             </div>
           </div>
         </div>
@@ -2917,52 +2923,105 @@ export default function POSSportBarPage() {
       {/* MODAL: CORTESÍA (PIN + PORCENTAJE)                               */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showCortesiaModal && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-purple-800/60 w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black text-purple-300">🎁 Cortesía</h3>
-              <button onClick={() => setShowCortesiaModal(false)} className="text-muted-foreground hover:text-destructive text-2xl">×</button>
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm sm:items-center">
+          <div className="mx-auto w-full max-w-sm rounded-t-[var(--radius)] border border-capsula-coral/30 bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:rounded-[var(--radius)]">
+            <div className="flex items-center justify-between border-b border-capsula-line p-5">
+              <h3 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-coral">
+                <Gift className="h-5 w-5" strokeWidth={1.5} />
+                Cortesía
+              </h3>
+              <button
+                onClick={() => setShowCortesiaModal(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-5">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">% de Cortesía</label>
-                <div className="flex gap-2 mb-2">
-                  {["25", "50", "75", "100"].map(v => (
-                    <button key={v} onClick={() => setCortesiaPercent(v)}
-                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition ${cortesiaPercent === v ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}>
-                      {v}%
-                    </button>
-                  ))}
+                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">% de cortesía</label>
+                <div className="mb-2 flex gap-2">
+                  {["25", "50", "75", "100"].map(v => {
+                    const active = cortesiaPercent === v;
+                    return (
+                      <button
+                        key={v}
+                        onClick={() => setCortesiaPercent(v)}
+                        className={cn(
+                          "flex-1 rounded-[var(--radius)] py-2 text-[13px] font-medium transition-colors",
+                          active
+                            ? "bg-capsula-coral text-white"
+                            : "border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral/40 hover:text-capsula-coral",
+                        )}
+                      >
+                        {v}%
+                      </button>
+                    );
+                  })}
                 </div>
                 <input
                   type="number" min="1" max="100"
                   value={cortesiaPercent}
                   onChange={e => setCortesiaPercent(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-foreground text-center text-lg font-bold focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-2 text-center font-mono text-[18px] font-semibold text-capsula-ink outline-none focus:border-capsula-coral"
                   placeholder="% personalizado"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">PIN de Gerente / Dueño</label>
-                <div className="bg-secondary p-3 rounded-xl text-2xl tracking-widest text-center font-mono mb-3 min-h-[3rem]">
-                  {cortesiaPin.replace(/./g, "•")}
+                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">PIN de gerente / dueño</label>
+                <div className="mb-3 flex min-h-[3rem] items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory font-mono text-[24px] tracking-[0.4em] text-capsula-navy-deep">
+                  {cortesiaPin.length > 0
+                    ? cortesiaPin.replace(/./g, "•")
+                    : <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-faint">MODO PIN…</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {[1,2,3,4,5,6,7,8,9,0].map(n => (
-                    <button key={n} onClick={() => handleCortesiaPinKey(n.toString())}
-                      className="bg-muted hover:bg-secondary/80 rounded-lg py-3 font-bold text-xl">{n}</button>
+                  {[1,2,3,4,5,6,7,8,9].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => handleCortesiaPinKey(n.toString())}
+                      className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-3 font-mono text-[20px] font-semibold text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                    >
+                      {n}
+                    </button>
                   ))}
-                  <button onClick={() => handleCortesiaPinKey("clear")} className="bg-red-900 hover:bg-red-800 rounded-lg py-3 font-bold text-red-200 text-sm">C</button>
-                  <button onClick={() => handleCortesiaPinKey("back")} className="bg-secondary hover:bg-muted-foreground/60 rounded-lg py-3 font-bold">⌫</button>
+                  <button
+                    onClick={() => handleCortesiaPinKey("clear")}
+                    className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle py-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-capsula-coral transition-colors hover:bg-capsula-coral hover:text-white"
+                  >
+                    CLR
+                  </button>
+                  <button
+                    onClick={() => handleCortesiaPinKey("0")}
+                    className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-3 font-mono text-[20px] font-semibold text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={() => handleCortesiaPinKey("back")}
+                    className="inline-flex items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-3 text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                  >
+                    <Delete className="h-5 w-5" strokeWidth={1.5} />
+                  </button>
                 </div>
-                {cortesiaPinError && <p className="text-red-400 text-xs mt-2 text-center">{cortesiaPinError}</p>}
+                {cortesiaPinError && (
+                  <p className="mt-2 inline-flex w-full items-center justify-center gap-1 text-[11px] font-medium text-capsula-coral">
+                    <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> {cortesiaPinError}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
-              <button onClick={() => setShowCortesiaModal(false)} className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm">Cancelar</button>
-              <button onClick={handleCortesiaPinConfirm} disabled={!cortesiaPin} className="flex-[2] py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-xl font-black text-sm transition">
-                Aplicar Cortesía
-              </button>
+            <div className="flex gap-2 border-t border-capsula-line p-4">
+              <Button variant="ghost" onClick={() => setShowCortesiaModal(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleCortesiaPinConfirm}
+                disabled={!cortesiaPin}
+                className="flex-[2] bg-capsula-coral hover:shadow-cap-deep"
+              >
+                <Gift className="h-4 w-4" strokeWidth={1.5} /> Aplicar cortesía
+              </Button>
             </div>
           </div>
         </div>
