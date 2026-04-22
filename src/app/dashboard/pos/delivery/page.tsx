@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -655,27 +655,30 @@ export default function POSDeliveryPage() {
                     </div>
 
                     {/* ── Sección de cobro (siempre visible, scroll interno) ── */}
-                    <div className="overflow-y-auto p-4 bg-secondary/30 border-t border-border space-y-3 shrink-0" style={{ maxHeight: '62%' }}>
+                    <div className="shrink-0 space-y-3 overflow-y-auto border-t border-capsula-line bg-capsula-ivory-alt p-4" style={{ maxHeight: '62%' }}>
 
                         {/* Totales compactos */}
-                        <div className="bg-card border border-border rounded-xl px-4 py-3 space-y-1.5">
-                            <div className="flex justify-between text-xs font-black text-muted-foreground">
+                        <div className="space-y-1.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3">
+                            <div className="flex justify-between text-xs font-medium text-capsula-ink-soft">
                                 <span>Subtotal</span>
                                 <PriceDisplay usd={cartSubtotal} rate={exchangeRate} size="sm" showBs={false} />
                             </div>
-                            <div className="flex justify-between text-xs font-black text-blue-500">
-                                <span>🛵 Delivery</span>
-                                <span>+${deliveryFee.toFixed(2)}</span>
+                            <div className="flex justify-between text-xs font-medium text-capsula-ink-soft">
+                                <span className="inline-flex items-center gap-1">
+                                    <Bike className="h-3 w-3" />
+                                    Delivery
+                                </span>
+                                <span className="tabular-nums text-capsula-ink">+${deliveryFee.toFixed(2)}</span>
                             </div>
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
-                                <div className="flex justify-between text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                                <div className="flex justify-between rounded-lg border border-[#D3E2D8] bg-[#E5EDE7]/40 px-2 py-1 text-xs font-medium text-[#2F6B4E]">
                                     <span>Dto. Divisas</span>
-                                    <span>-${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between font-black text-xl border-t border-border pt-2">
-                                <span className="uppercase tracking-tighter italic">Total</span>
-                                <div className="text-primary italic">
+                            <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
+                                <span className="text-sm font-medium uppercase tracking-[0.1em] text-capsula-ink-soft">Total</span>
+                                <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                     <PriceDisplay usd={finalTotal} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
@@ -696,23 +699,42 @@ export default function POSDeliveryPage() {
 
                             {/* Descuentos — 3 botones compactos en una fila */}
                             <div className="grid grid-cols-3 gap-1.5">
-                                <button onClick={() => handleDiscountSelect('NONE')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'NONE' ? 'bg-secondary text-foreground border-2 border-primary/50' : 'bg-background border border-border text-muted-foreground'}`}>
+                                <button
+                                    onClick={() => handleDiscountSelect('NONE')}
+                                    className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        discountType === 'NONE'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                    }`}
+                                >
                                     Normal
                                 </button>
-                                <button onClick={() => handleDiscountSelect('DIVISAS_33')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-primary'}`}>
+                                <button
+                                    onClick={() => handleDiscountSelect('DIVISAS_33')}
+                                    className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        discountType === 'DIVISAS_33'
+                                            ? 'border-[#2F6B4E] bg-[#2F6B4E] text-white'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-[#2F6B4E] hover:bg-[#E5EDE7]/60'
+                                    }`}
+                                >
                                     Divisa -33%
                                 </button>
-                                <button onClick={() => handleDiscountSelect('CORTESIA_100')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') ? 'bg-purple-600 text-white' : 'bg-background border border-border text-purple-600'}`}>
+                                <button
+                                    onClick={() => handleDiscountSelect('CORTESIA_100')}
+                                    className={`inline-flex items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        (discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
+                                            ? 'border-capsula-coral bg-capsula-coral text-white'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-coral hover:bg-capsula-coral-subtle'
+                                    }`}
+                                >
+                                    <Gift className="h-3.5 w-3.5" />
                                     {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT')
-                                        ? `🎁 ${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'}`
-                                        : '🎁 Cortesía'}
+                                        ? `${discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum + '%' : '100%'}`
+                                        : 'Cortesía'}
                                 </button>
                             </div>
                             {(discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT') && authorizedManager && (
-                                <div className="text-[10px] text-purple-400 font-bold text-center">
+                                <div className="text-center text-[11px] font-medium text-capsula-coral">
                                     Auth: {authorizedManager.name}
                                 </div>
                             )}
