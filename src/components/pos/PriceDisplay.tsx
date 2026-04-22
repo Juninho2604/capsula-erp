@@ -32,9 +32,9 @@ export function PriceDisplay({ usd, rate, size = 'md', showBsOnly, showBs = true
     }
 
     return (
-        <span className={`${sizeClass} inline-flex flex-col leading-tight`}>
-            <span>${usd.toFixed(2)}</span>
-            <span className="text-muted-foreground text-[0.6em] font-normal">{formatBs(bs)}</span>
+        <span className={`${sizeClass} inline-flex flex-col leading-tight tabular-nums`}>
+            <span className="text-capsula-ink">${usd.toFixed(2)}</span>
+            <span className="text-[0.6em] font-normal text-capsula-ink-muted">{formatBs(bs)}</span>
         </span>
     );
 }
