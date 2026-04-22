@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { createSkuItemAction, createProductFamily, getProductFamilies } from '@/app/actions/sku-studio.actions';
+import { CheckCircle2, AlertCircle, Package, ClipboardList } from 'lucide-react';
 
 // ── Chip helper ──────────────────────────────────────────────────────────────
 function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
@@ -125,10 +126,10 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
       {tab === 'nuevo' && (
         <div className="glass-panel rounded-2xl p-5 border border-border space-y-5">
           {lastCreated && (
-            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
-              <span className="text-emerald-400 text-lg">✅</span>
+            <div className="flex items-center gap-3 rounded-[var(--radius)] border border-[#D3E2D8] bg-[#E5EDE7]/60 px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 text-[#2F6B4E]" strokeWidth={1.5} />
               <div>
-                <p className="text-sm font-bold text-emerald-400">{lastCreated.name}</p>
+                <p className="text-sm font-bold text-[#2F6B4E]">{lastCreated.name}</p>
                 <p className="text-xs font-mono text-muted-foreground">SKU: {lastCreated.sku}</p>
               </div>
             </div>
@@ -234,7 +235,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
           </div>
 
           {feedback && (
-            <p className={`text-xs px-3 py-2 rounded-lg ${feedback.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+            <p className={`text-xs px-3 py-2 rounded-lg ${feedback.ok ? 'bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#D3E2D8]' : 'bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30'}`}>
               {feedback.msg}
             </p>
           )}
@@ -273,7 +274,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
               </div>
             </div>
             {famFeedback && (
-              <p className={`text-xs px-3 py-2 rounded-lg ${famFeedback.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+              <p className={`text-xs px-3 py-2 rounded-lg ${famFeedback.ok ? 'bg-[#E5EDE7]/60 text-[#2F6B4E] border border-[#D3E2D8]' : 'bg-capsula-coral/10 text-capsula-coral border border-capsula-coral/30'}`}>
                 {famFeedback.msg}
               </p>
             )}
@@ -293,7 +294,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
               <div className="divide-y divide-border">
                 {families.map(f => (
                   <div key={f.id} className="flex items-center gap-3 px-5 py-3 hover:bg-secondary/20">
-                    <span className="text-xl">{f.icon || '📦'}</span>
+                    <span className="text-xl">{f.icon || <Package className="h-5 w-5 text-capsula-ink-muted inline" strokeWidth={1.5} />}</span>
                     <div className="flex-1">
                       <p className="font-bold text-sm text-foreground">{f.name}</p>
                       <p className="text-[10px] font-mono text-muted-foreground">{f.code} · {f._count.items} ítems · {f._count.templates} plantillas</p>
@@ -314,7 +315,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
           </div>
           {templates.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground">
-              <p className="text-2xl mb-1">📋</p>
+              <ClipboardList className="mx-auto mb-2 h-8 w-8 text-capsula-ink-muted/60" strokeWidth={1.25} />
               <p className="text-sm font-bold">Sin plantillas</p>
               <p className="text-xs mt-1">Las plantillas permiten pre-rellenar chips al crear nuevos SKUs</p>
             </div>
