@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils'; // Ensure utility exists or mock it
 import { toast } from 'react-hot-toast';
 import { deleteAuditAction } from '@/app/actions/audit.actions';
+import { Badge } from '@/components/ui/Badge';
+import { Eye, Trash2 } from 'lucide-react';
 
 interface Audit {
     id: string;
@@ -34,68 +35,66 @@ export function AuditList({ initialAudits }: { initialAudits: Audit[] }) {
         }
     };
 
+    const statusVariant = (s: string) =>
+        s === 'APPROVED' ? 'ok' :
+        s === 'DRAFT' ? 'warn' :
+        s === 'REJECTED' ? 'danger' : 'neutral';
+    const statusLabel = (s: string) =>
+        s === 'DRAFT' ? 'Borrador' :
+        s === 'APPROVED' ? 'Aprobado' :
+        s === 'REJECTED' ? 'Rechazado' :
+        s === 'VOIDED' ? 'Anulado' : s;
+
     return (
         <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
                 <table className="w-full">
-                    <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                    <thead className="border-b border-capsula-line bg-capsula-ivory-alt">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Fecha</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nombre / Ref</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Creado Por</th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Items</th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
+                            {['Fecha', 'Nombre / ref', 'Estado', 'Creado por', 'Items', 'Acciones'].map((h, i) => (
+                                <th key={h} className={`px-6 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted ${i === 4 ? 'text-center' : i === 5 ? 'text-right' : 'text-left'}`}>
+                                    {h}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-capsula-line">
                         {audits.map((audit) => (
-                            <tr key={audit.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            <tr key={audit.id} className="group transition-colors hover:bg-capsula-ivory-alt/40">
+                                <td className="px-6 py-4 font-mono text-[13px] text-capsula-ink">
                                     {format(new Date(audit.createdAt), "d MMM yyyy, HH:mm", { locale: es })}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <Link href={`/dashboard/inventario/auditorias/${audit.id}`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                                    <Link href={`/dashboard/inventario/auditorias/${audit.id}`} className="font-medium text-capsula-navy-deep hover:text-capsula-coral">
                                         {audit.name || 'Sin nombre'}
                                     </Link>
-                                    <p className="text-xs text-gray-500 font-mono">{audit.id.substring(0, 8)}...</p>
+                                    <p className="font-mono text-[11px] text-capsula-ink-muted">{audit.id.substring(0, 8)}…</p>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={cn(
-                                        "inline-flex rounded-full px-2 py-1 text-xs font-semibold",
-                                        audit.status === 'DRAFT' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-                                        audit.status === 'APPROVED' && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-                                        audit.status === 'REJECTED' && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-                                        audit.status === 'VOIDED' && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                                    )}>
-                                        {audit.status === 'DRAFT' && '📝 Borrador'}
-                                        {audit.status === 'APPROVED' && '✅ Aprobado'}
-                                        {audit.status === 'REJECTED' && '❌ Rechazado'}
-                                        {audit.status === 'VOIDED' && '🚫 Anulado'}
-                                    </span>
+                                    <Badge variant={statusVariant(audit.status)}>{statusLabel(audit.status)}</Badge>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                <td className="px-6 py-4 text-[13px] text-capsula-ink-soft">
                                     {audit.createdBy.firstName} {audit.createdBy.lastName}
                                 </td>
-                                <td className="px-6 py-4 text-center text-sm font-medium">
+                                <td className="px-6 py-4 text-center font-mono text-[13px] text-capsula-ink">
                                     {audit._count.items}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Link
                                             href={`/dashboard/inventario/auditorias/${audit.id}`}
-                                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
-                                            title="Ver Detalles"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-navy-deep"
+                                            title="Ver detalles"
                                         >
-                                            👁️
+                                            <Eye className="h-4 w-4" strokeWidth={1.5} />
                                         </Link>
                                         {audit.status === 'DRAFT' && (
                                             <button
                                                 onClick={() => handleDelete(audit.id)}
-                                                className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
                                                 title="Eliminar"
                                             >
-                                                🗑️
+                                                <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                             </button>
                                         )}
                                     </div>
@@ -105,7 +104,7 @@ export function AuditList({ initialAudits }: { initialAudits: Audit[] }) {
                     </tbody>
                 </table>
                 {audits.length === 0 && (
-                    <div className="p-12 text-center text-gray-500">
+                    <div className="p-12 text-center text-[13px] text-capsula-ink-soft">
                         No hay auditorías registradas.
                     </div>
                 )}

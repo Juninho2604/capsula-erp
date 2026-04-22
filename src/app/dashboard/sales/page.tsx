@@ -786,7 +786,7 @@ export default function SalesHistoryPage() {
                     <div className="relative w-full max-w-sm rounded-[var(--radius)] bg-white p-8 font-mono text-black shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
                         <button
                             onClick={() => setShowZReport(false)}
-                            className="no-print absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-capsula-coral"
+                            className="no-print absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-coral"
                         >
                             <X className="h-4 w-4" strokeWidth={1.5} />
                         </button>
@@ -800,23 +800,23 @@ export default function SalesHistoryPage() {
                         <div className="mb-4 space-y-1 border-b-2 border-dashed border-black pb-4">
                             <div className="flex justify-between"><span>VENTAS BRUTAS</span><span>{formatMoney(zReport.grossTotal)}</span></div>
                             {zReport.totalDiscounts > 0 && (<>
-                                <div className="flex justify-between text-red-700"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
+                                <div className="flex justify-between text-capsula-coral"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
                                 {zReport.discountBreakdown.divisas > 0 && (
-                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-capsula-ink-soft"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.cortesias > 0 && (
-                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-capsula-ink-soft"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.other > 0 && (
-                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-capsula-ink-soft"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
                                 )}
                             </>)}
-                            <div className="mt-1 flex justify-between border-t border-gray-300 pt-1 font-bold text-[13px]"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
+                            <div className="mt-1 flex justify-between border-t border-capsula-line pt-1 font-bold text-[13px]"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
                             {zReport.totalServiceFee > 0 && (
-                                <div className="flex justify-between text-blue-800"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
+                                <div className="flex justify-between text-capsula-navy"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
                             )}
                             {zReport.totalTips > 0 && (
-                                <div className="flex justify-between text-green-800"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
+                                <div className="flex justify-between text-[#2F6B4E]"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="mt-2 flex justify-between border-t-2 border-black pt-2 text-[18px] font-bold"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
@@ -831,7 +831,7 @@ export default function SalesHistoryPage() {
                                 {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
                                 {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
                                 {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
-                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-600"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-soft"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                             </div>
                         </div>
 
@@ -849,7 +849,7 @@ export default function SalesHistoryPage() {
                             </div>
                         </div>
 
-                        <div className="pt-2 text-center text-[11px] text-gray-600">
+                        <div className="pt-2 text-center text-[11px] text-capsula-ink-soft">
                             <p className="font-bold">Total transacciones: {zReport.totalOrders}</p>
                         </div>
                         <div className="no-print mt-6 flex gap-2">

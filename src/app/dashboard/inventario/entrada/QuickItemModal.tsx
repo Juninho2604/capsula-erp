@@ -65,7 +65,7 @@ export default function QuickItemModal({ isOpen, onClose, onSuccess }: Props) {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="col-span-3 h-9 rounded-md border border-gray-300 px-3 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800"
+                            className="col-span-3 h-9 rounded-md border border-capsula-line bg-capsula-ivory-surface px-3 text-sm focus:border-capsula-navy-deep focus:outline-none"
                             placeholder="Ej: Tomates"
                         />
                     </div>
@@ -77,7 +77,7 @@ export default function QuickItemModal({ isOpen, onClose, onSuccess }: Props) {
                             id="unit"
                             value={unit}
                             onChange={(e) => setUnit(e.target.value)}
-                            className="col-span-3 h-9 rounded-md border border-gray-300 px-3 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800"
+                            className="col-span-3 h-9 rounded-md border border-capsula-line bg-capsula-ivory-surface px-3 text-sm focus:border-capsula-navy-deep focus:outline-none"
                         >
                             <option value="KG">Kilogramos</option>
                             <option value="L">Litros</option>
@@ -95,7 +95,7 @@ export default function QuickItemModal({ isOpen, onClose, onSuccess }: Props) {
                             id="type"
                             value={type}
                             onChange={(e) => setType(e.target.value)}
-                            className="col-span-3 h-9 rounded-md border border-gray-300 px-3 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800"
+                            className="col-span-3 h-9 rounded-md border border-capsula-line bg-capsula-ivory-surface px-3 text-sm focus:border-capsula-navy-deep focus:outline-none"
                         >
                             <option value="RAW_MATERIAL">Materia Prima</option>
                             <option value="SUB_RECIPE">Sub-receta / Producción</option>
@@ -112,7 +112,7 @@ export default function QuickItemModal({ isOpen, onClose, onSuccess }: Props) {
                             step="0.01"
                             value={cost}
                             onChange={(e) => setCost(e.target.value)}
-                            className="col-span-3 h-9 rounded-md border border-gray-300 px-3 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800"
+                            className="col-span-3 h-9 rounded-md border border-capsula-line bg-capsula-ivory-surface px-3 text-sm focus:border-capsula-navy-deep focus:outline-none"
                             placeholder="0.00 (Opcional)"
                         />
                     </div>
@@ -121,7 +121,7 @@ export default function QuickItemModal({ isOpen, onClose, onSuccess }: Props) {
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || !name}
-                        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                        className="rounded-[var(--radius)] bg-capsula-navy-deep px-4 py-2 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink disabled:opacity-50"
                     >
                         {isSubmitting ? 'Guardando...' : 'Guardar Item'}
                     </button>
