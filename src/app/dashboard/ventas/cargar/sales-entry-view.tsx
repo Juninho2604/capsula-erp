@@ -12,6 +12,15 @@ import {
     voidSalesOrderAction
 } from '@/app/actions/sales-entry.actions';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
+import {
+    Coins, Plus, ClipboardList, MessageCircle, BarChart3, Loader2,
+    UtensilsCrossed, Bike, Pizza, Search, X, ShoppingBag, Trash2,
+    Upload, FileText, AlertTriangle, Check, Receipt, ArrowLeft,
+    ChevronDown, CreditCard, Banknote, Zap, Smartphone, Phone, MapPin, Gift,
+    Minus,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 interface CartItem {
     menuItemId: string;
@@ -198,88 +207,90 @@ export default function SalesEntryView() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex min-h-[60vh] items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Cargando...</p>
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                    <p className="mt-3 text-[13px] text-capsula-ink-muted">Cargando…</p>
                 </div>
             </div>
         );
     }
 
+    const viewTabs: { id: 'entry' | 'history' | 'whatsapp'; label: string; icon: typeof Plus; count?: number }[] = [
+        { id: 'entry', label: 'Nueva venta', icon: Plus },
+        { id: 'history', label: `Ventas hoy`, icon: ClipboardList, count: todaySales.summary.totalSales },
+        { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+    ];
+
     return (
-        <div className="space-y-6 animate-in">
+        <div className="mx-auto max-w-[1400px] animate-in">
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-4 border-b border-capsula-line pb-6 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        💰 Cargar Ventas
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas</div>
+                    <h1 className="inline-flex items-center gap-2 font-heading text-[32px] leading-tight tracking-[-0.02em] text-capsula-navy-deep">
+                        <Coins className="h-7 w-7 text-capsula-coral" strokeWidth={1.5} />
+                        Cargar ventas
                     </h1>
-                    <p className="text-gray-500">
-                        Registra las comandas de WhatsApp
-                    </p>
+                    <p className="mt-1 text-[14px] text-capsula-ink-soft">Registra las comandas de WhatsApp.</p>
                 </div>
 
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setViewMode('entry')}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'entry'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        ➕ Nueva Venta
-                    </button>
-                    <button
-                        onClick={() => setViewMode('history')}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'history'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        📋 Ventas Hoy ({todaySales.summary.totalSales})
-                    </button>
-                    <button
-                        onClick={() => setViewMode('whatsapp')}
-                        className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            viewMode === 'whatsapp'
-                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}
-                    >
-                        💬 WhatsApp
-                    </button>
-                    <Link
-                        href="/dashboard/ventas"
-                        className="px-4 py-2.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                    >
-                        📊 Reportes
-                    </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                        {viewTabs.map(tab => {
+                            const Icon = tab.icon;
+                            const active = viewMode === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setViewMode(tab.id)}
+                                    className={cn(
+                                        'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-medium transition-colors',
+                                        active
+                                            ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'text-capsula-ink-muted hover:text-capsula-ink',
+                                    )}
+                                >
+                                    <Icon className="h-3.5 w-3.5" strokeWidth={1.5} /> {tab.label}
+                                    {tab.count !== undefined && tab.count > 0 && (
+                                        <span className={cn(
+                                            'ml-1 inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold',
+                                            active ? 'bg-capsula-ivory/20 text-capsula-ivory' : 'bg-capsula-coral-subtle text-capsula-coral',
+                                        )}>{tab.count}</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href="/dashboard/ventas">
+                            <BarChart3 className="h-4 w-4" strokeWidth={1.5} /> Reportes
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
             {/* Resumen rápido */}
-            <div className="grid gap-4 sm:grid-cols-4">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">Ventas Hoy</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.totalSales}</p>
+            <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas hoy</p>
+                    <p className="mt-1 font-mono text-[24px] font-semibold text-capsula-ink">{todaySales.summary.totalSales}</p>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">Ingresos Hoy</p>
-                    <p className="text-2xl font-bold text-emerald-600">{formatCurrency(todaySales.summary.totalRevenue)}</p>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ingresos hoy</p>
+                    <p className="mt-1 font-mono text-[24px] font-semibold text-[#2F6B4E]">{formatCurrency(todaySales.summary.totalRevenue)}</p>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">🍽️ Restaurante</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.byType?.RESTAURANT || 0}</p>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+                    <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                        <UtensilsCrossed className="h-3 w-3" strokeWidth={1.5} /> Restaurante
+                    </p>
+                    <p className="mt-1 font-mono text-[24px] font-semibold text-capsula-ink">{todaySales.summary.byType?.RESTAURANT || 0}</p>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">🛵 Delivery</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.byType?.DELIVERY || 0}</p>
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-4 shadow-cap-soft">
+                    <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                        <Bike className="h-3 w-3" strokeWidth={1.5} /> Delivery
+                    </p>
+                    <p className="mt-1 font-mono text-[24px] font-semibold text-capsula-ink">{todaySales.summary.byType?.DELIVERY || 0}</p>
                 </div>
             </div>
 
