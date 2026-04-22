@@ -8,8 +8,10 @@ import { createLoanAction } from '@/app/actions/loan.actions';
 import { toast } from 'react-hot-toast';
 import { UNIT_INFO } from '@/lib/constants/units';
 import { UnitOfMeasure } from '@/types';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
+import { ArrowLeft, Package, Coins } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ItemOption {
     id: string;
@@ -25,12 +27,15 @@ interface NewLoanFormProps {
     areas: { id: string; name: string }[];
 }
 
+const inputClass =
+    'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
+const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+
 export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
     const router = useRouter();
     const { user } = useAuthStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form State
     const [loaneeName, setLoaneeName] = useState('');
     const [selectedItemId, setSelectedItemId] = useState('');
     const [fromAreaId, setFromAreaId] = useState('');
@@ -42,13 +47,12 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
 
     const selectedItem = items.find(i => i.id === selectedItemId);
 
-    // Initial Unit defaulting
     const handleItemChange = (itemId: string) => {
         const item = items.find(i => i.id === itemId);
         setSelectedItemId(itemId);
         if (item) {
             setUnit(item.unit as UnitOfMeasure || 'KG');
-            setAgreedPrice(item.estimatedCost); // Default price suggestion
+            setAgreedPrice(item.estimatedCost);
         }
     };
 
@@ -66,7 +70,7 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                 agreedPrice: type === 'PAYMENT' ? agreedPrice : undefined,
                 notes,
                 userId: user.id,
-                areaId: fromAreaId
+                areaId: fromAreaId,
             });
 
             if (result.success) {
@@ -84,52 +88,45 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
     };
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6">
+        <div className="mx-auto max-w-2xl animate-in space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 border-b border-capsula-line pb-6">
                 <Link
                     href="/dashboard/prestamos"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
                 >
-                    ←
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Registrar Préstamo
-                    </h1>
-                    <p className="text-gray-500">
-                        Salida de insumos a terceros
-                    </p>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Préstamos</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Registrar préstamo</h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Salida de insumos a terceros.</p>
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="grid gap-6">
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                <div className="grid gap-5">
                     {/* Prestado A */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Prestado a (Restaurante/Persona) *
-                        </label>
+                        <label className={labelClass}>Prestado a (restaurante / persona) *</label>
                         <input
                             type="text"
                             value={loaneeName}
                             onChange={(e) => setLoaneeName(e.target.value)}
                             placeholder="Ej: Restaurant Vecino A"
-                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            className={inputClass}
                         />
                     </div>
 
                     {/* Origen */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Sale de (Almacén) *
-                        </label>
+                        <label className={labelClass}>Sale de (almacén) *</label>
                         <select
                             value={fromAreaId}
                             onChange={(e) => setFromAreaId(e.target.value)}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            className={inputClass}
                         >
-                            <option value="">Seleccionar Almacén...</option>
+                            <option value="">Seleccionar almacén…</option>
                             {areas.map(area => (
                                 <option key={area.id} value={area.id}>{area.name}</option>
                             ))}
@@ -138,18 +135,16 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
 
                     {/* Item Selection */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Insumo / Producto *
-                        </label>
+                        <label className={labelClass}>Insumo / producto *</label>
                         <Combobox
                             items={items.map(item => ({
                                 value: item.id,
-                                label: `${item.name} (${item.unit})`
+                                label: `${item.name} (${item.unit})`,
                             }))}
                             value={selectedItemId || ''}
                             onChange={(val) => handleItemChange(val)}
-                            placeholder="Seleccionar producto..."
-                            searchPlaceholder="Buscar producto..."
+                            placeholder="Seleccionar producto…"
+                            searchPlaceholder="Buscar producto…"
                             emptyMessage="No se encontró el producto."
                         />
                     </div>
@@ -157,9 +152,7 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                     <div className="grid gap-4 sm:grid-cols-2">
                         {/* Cantidad */}
                         <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Cantidad *
-                            </label>
+                            <label className={labelClass}>Cantidad *</label>
                             <div className="flex gap-2">
                                 <input
                                     type="number"
@@ -167,12 +160,12 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                                     onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
                                     min="0"
                                     step="0.01"
-                                    className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-24 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 font-mono text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                 />
                                 <select
                                     value={unit}
                                     onChange={(e) => setUnit(e.target.value as UnitOfMeasure)}
-                                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                 >
                                     {Object.entries(UNIT_INFO).map(([key, info]) => (
                                         <option key={key} value={key}>
@@ -185,16 +178,14 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
 
                         {/* Modalidad */}
                         <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Modalidad *
-                            </label>
+                            <label className={labelClass}>Modalidad *</label>
                             <select
                                 value={type}
                                 onChange={(e) => setType(e.target.value as any)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className={inputClass}
                             >
-                                <option value="REPLACEMENT">📦 Reposición (Devuelven producto)</option>
-                                <option value="PAYMENT">💰 Pago (Compran producto)</option>
+                                <option value="REPLACEMENT">Reposición (devuelven producto)</option>
+                                <option value="PAYMENT">Pago (compran producto)</option>
                             </select>
                         </div>
                     </div>
@@ -202,47 +193,47 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                     {/* Price if Payment */}
                     {type === 'PAYMENT' && (
                         <div className="animate-in fade-in slide-in-from-top-2">
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Precio Acordado (por unidad)
-                            </label>
+                            <label className={labelClass}>Precio acordado (por unidad)</label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</div>
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 font-mono text-capsula-ink-muted">$</div>
                                 <input
                                     type="number"
                                     value={agreedPrice}
                                     onChange={(e) => setAgreedPrice(parseFloat(e.target.value) || 0)}
                                     min="0"
                                     step="0.01"
-                                    className="w-full rounded-lg border border-gray-200 bg-white pl-8 pr-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2.5 pl-8 pr-4 font-mono text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
                                 />
                             </div>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Costo actual estimado: {formatCurrency(selectedItem?.estimatedCost || 0)}
+                            <p className="mt-1 text-[11px] text-capsula-ink-muted">
+                                Costo actual estimado: <span className="font-mono text-capsula-ink-soft">{formatCurrency(selectedItem?.estimatedCost || 0)}</span>
                             </p>
                         </div>
                     )}
 
                     {/* Notes */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Notas (Opcional)
-                        </label>
+                        <label className={labelClass}>Notas (opcional)</label>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={3}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            className={inputClass}
                         />
                     </div>
 
-                    <div className="pt-4">
-                        <button
+                    <div className="pt-2">
+                        <Button
+                            variant="primary"
+                            size="lg"
                             onClick={handleSubmit}
                             disabled={isSubmitting || !loaneeName || !selectedItemId || !fromAreaId || quantity <= 0}
-                            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                            isLoading={isSubmitting}
+                            className="w-full"
                         >
-                            {isSubmitting ? 'Registrando...' : 'Registrar Préstamo'}
-                        </button>
+                            {type === 'PAYMENT' ? <Coins className="h-4 w-4" strokeWidth={1.5} /> : <Package className="h-4 w-4" strokeWidth={1.5} />}
+                            {isSubmitting ? 'Registrando…' : 'Registrar préstamo'}
+                        </Button>
                     </div>
                 </div>
             </div>
