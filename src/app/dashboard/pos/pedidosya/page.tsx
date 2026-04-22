@@ -313,64 +313,120 @@ export default function POSPedidosYAPage() {
                 </div>
 
                 {/* Panel derecho */}
-                <div className="w-80 tablet-land:w-96 xl:w-96 bg-card border-l border-border flex flex-col shadow-2xl z-20">
+                <div className="z-20 flex w-80 flex-col border-l border-capsula-line bg-capsula-ivory-surface shadow-cap-soft tablet-land:w-96 xl:w-96">
                     {/* Datos del pedido */}
-                    <div className="p-4 bg-card border-b border-border space-y-2">
-                        <h2 className="font-black text-base flex items-center gap-2 text-foreground">📦 Datos del Pedido</h2>
+                    <div className="space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-4">
+                        <h2 className="inline-flex items-center gap-2 font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">
+                            <ShoppingBag className="h-4 w-4 text-capsula-ink-muted" />
+                            Datos del pedido
+                        </h2>
                         <div className="grid grid-cols-2 gap-2">
-                            <input type="text" value={externalOrderId} onChange={e => setExternalOrderId(e.target.value)} placeholder="# PedidosYA" className="col-span-2 bg-orange-500/10 border border-orange-500/40 rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-orange-500/40 font-mono" />
-                            <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre cliente" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                            <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <input
+                                type="text"
+                                value={externalOrderId}
+                                onChange={e => setExternalOrderId(e.target.value)}
+                                placeholder="# PedidosYA"
+                                className="col-span-2 rounded-xl border border-capsula-coral/40 bg-capsula-coral-subtle p-2 font-mono text-sm text-capsula-coral placeholder:text-capsula-coral/50 focus:border-capsula-coral focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                value={customerName}
+                                onChange={e => setCustomerName(e.target.value)}
+                                placeholder="Nombre cliente"
+                                className="rounded-xl border border-capsula-line bg-capsula-ivory p-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                value={customerPhone}
+                                onChange={e => setCustomerPhone(e.target.value)}
+                                placeholder="Teléfono"
+                                className="rounded-xl border border-capsula-line bg-capsula-ivory p-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                            />
                         </div>
-                        <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Dirección..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 h-16 resize-none" />
-                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas adicionales..." className="w-full bg-secondary/50 border border-border rounded-xl p-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        <textarea
+                            value={customerAddress}
+                            onChange={e => setCustomerAddress(e.target.value)}
+                            placeholder="Dirección…"
+                            className="h-16 w-full resize-none rounded-xl border border-capsula-line bg-capsula-ivory p-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                        />
+                        <input
+                            type="text"
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                            placeholder="Notas adicionales…"
+                            className="w-full rounded-xl border border-capsula-line bg-capsula-ivory p-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                        />
                     </div>
 
                     {/* Carrito */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div className="flex-1 space-y-2 overflow-y-auto p-4">
                         {cart.length === 0 && (
-                            <div className="text-center text-muted-foreground py-8 text-sm">
-                                <p className="text-3xl mb-2">🍔</p>
+                            <div className="py-8 text-center text-sm text-capsula-ink-muted">
+                                <ShoppingBag className="mx-auto mb-2 h-8 w-8 text-capsula-ink-faint" />
                                 <p>Agrega productos del menú</p>
                             </div>
                         )}
                         {cart.map((item, i) => (
-                            <div key={i} className="bg-card/50 p-4 rounded-2xl border border-border flex justify-between group">
+                            <div
+                                key={i}
+                                className="group flex justify-between rounded-2xl border border-capsula-line bg-capsula-ivory-alt/60 p-4"
+                            >
                                 <div>
-                                    <div className="font-black text-sm flex gap-2"><span className="text-orange-500">x{item.quantity}</span> {item.name}</div>
-                                    {item.modifiers.length > 0 && <div className="text-xs text-muted-foreground pl-6">{item.modifiers.map(m => m.name).join(', ')}</div>}
-                                    {item.notes && <div className="text-xs text-orange-400 pl-6 italic">"{item.notes}"</div>}
+                                    <div className="flex gap-2 text-sm font-medium text-capsula-ink">
+                                        <span className="tabular-nums text-capsula-coral">×{item.quantity}</span>
+                                        {item.name}
+                                    </div>
+                                    {item.modifiers.length > 0 && (
+                                        <div className="pl-6 text-xs text-capsula-ink-muted">
+                                            {item.modifiers.map(m => m.name).join(', ')}
+                                        </div>
+                                    )}
+                                    {item.notes && (
+                                        <div className="pl-6 text-xs italic text-capsula-coral">
+                                            &ldquo;{item.notes}&rdquo;
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-black text-sm">${item.lineTotal.toFixed(2)}</div>
-                                    <button onClick={() => removeFromCart(i)} className="text-destructive text-xs hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Borrar</button>
+                                    <div className="font-medium tabular-nums text-capsula-navy-deep">
+                                        ${item.lineTotal.toFixed(2)}
+                                    </div>
+                                    <button
+                                        onClick={() => removeFromCart(i)}
+                                        className="text-xs text-capsula-coral opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+                                    >
+                                        Borrar
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* Footer: total + botones */}
-                    <div className="p-4 bg-card border-t border-border space-y-3">
-                        <div className="flex justify-between text-sm text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
+                    <div className="space-y-3 border-t border-capsula-line bg-capsula-ivory-surface p-4">
+                        <div className="flex justify-between rounded-lg border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-sm text-capsula-ink-soft">
                             <span>Total estimado</span>
-                            <span className="font-bold text-foreground">${cartSubtotal.toFixed(2)}</span>
+                            <span className="font-heading tabular-nums tracking-[-0.01em] text-capsula-navy-deep">
+                                ${cartSubtotal.toFixed(2)}
+                            </span>
                         </div>
-                        <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-xs text-orange-500">
-                            ℹ️ <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
+                        <div className="rounded-xl border border-capsula-coral/30 bg-capsula-coral-subtle px-3 py-2 text-xs text-capsula-coral">
+                            <strong>PedidosYA gestiona el cobro.</strong> Este registro es solo para inventario y cocina. No se genera cobranza interna.
                         </div>
                         <button
                             onClick={handleSubmit}
                             disabled={cart.length === 0 || isProcessing}
-                            className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-2xl font-black text-lg shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                            className="pos-btn w-full !min-h-[56px] text-base tracking-[0.04em] disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isProcessing ? '⏳ REGISTRANDO...' : 'REGISTRAR PEDIDO'}
+                            {isProcessing ? 'Registrando…' : 'Registrar pedido'}
                         </button>
                         {lastOrder && (
                             <button
                                 onClick={handleReprintComanda}
-                                className="w-full py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm transition-all"
+                                className="pos-btn pos-btn-secondary w-full !min-h-0 py-3 text-sm"
                             >
-                                🖨️ Reimprimir comanda {lastOrder.orderNumber}
+                                <Printer className="h-4 w-4" />
+                                Reimprimir comanda {lastOrder.orderNumber}
                             </button>
                         )}
                     </div>
