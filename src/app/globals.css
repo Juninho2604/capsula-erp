@@ -90,6 +90,27 @@
     --tactile-inner:         inset 0 1px 2px rgba(11,23,39,0.04);
     --glass-background:      rgba(253, 251, 247, 0.78);
     --glass-border:          rgba(231, 226, 215, 0.6);
+
+    /* RGB triplets — consumibles por Tailwind con rgb(var(--X) / <alpha-value>) */
+    --capsula-coral-rgb:          242 92 59;
+    --capsula-coral-hover-rgb:    216 74 42;
+    --capsula-coral-light-rgb:    244 124 98;
+    --capsula-coral-subtle-rgb:   245 228 221;
+    --capsula-navy-rgb:           27 42 58;
+    --capsula-navy-deep-rgb:      11 23 39;
+    --capsula-navy-light-rgb:     37 61 92;
+    --capsula-navy-soft-rgb:      230 234 239;
+    --capsula-ivory-rgb:          247 245 240;
+    --capsula-ivory-surface-rgb:  253 251 247;
+    --capsula-ivory-alt-rgb:      239 236 229;
+    --capsula-line-rgb:           231 226 215;
+    --capsula-line-strong-rgb:    216 210 195;
+    --capsula-ink-rgb:            15 26 42;
+    --capsula-ink-soft-rgb:       58 70 86;
+    --capsula-ink-muted-rgb:      107 117 132;
+    --capsula-ink-faint-rgb:      148 160 176;
+    --capsula-gold-rgb:           255 217 61;
+    --capsula-gold-subtle-rgb:    255 251 235;
   }
 
   .dark {
@@ -112,6 +133,27 @@
     --border: 214 30% 22%;
     --input: 214 30% 22%;
     --ring: 42 27% 95%;
+
+    /* RGB triplets — Dark */
+    --capsula-coral-rgb:          242 92 59;
+    --capsula-coral-hover-rgb:    216 74 42;
+    --capsula-coral-light-rgb:    244 124 98;
+    --capsula-coral-subtle-rgb:   85 40 28;      /* coral muy oscuro */
+    --capsula-navy-rgb:           37 61 92;      /* brightens a bit in dark */
+    --capsula-navy-deep-rgb:      11 23 39;
+    --capsula-navy-light-rgb:     58 85 128;
+    --capsula-navy-soft-rgb:      46 62 84;      /* pill activo en dark */
+    --capsula-ivory-rgb:          15 26 42;      /* base bg en dark */
+    --capsula-ivory-surface-rgb:  21 33 52;      /* cards en dark */
+    --capsula-ivory-alt-rgb:      11 23 39;      /* secciones en dark */
+    --capsula-line-rgb:           37 61 92;
+    --capsula-line-strong-rgb:    53 80 111;
+    --capsula-ink-rgb:            247 245 240;   /* texto principal claro */
+    --capsula-ink-soft-rgb:       205 213 222;
+    --capsula-ink-muted-rgb:      148 160 176;
+    --capsula-ink-faint-rgb:      107 117 132;
+    --capsula-gold-rgb:           255 217 61;
+    --capsula-gold-subtle-rgb:    66 52 11;
 
     --capsula-ivory:         #0F1A2A;
     --capsula-ivory-surface: #152134;
