@@ -1407,7 +1407,7 @@ export default function POSSportBarPage() {
                       setSelectedZoneId(z.id);
                       setSelectedTableId("");
                     }}
-                    className={`flex-1 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id && !isPickupMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-gray-900 dark:text-foreground/60 hover:border-primary/50"}`}
+                    className={`flex-1 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id && !isPickupMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-gray-900 dark:text-foreground/60 hover:border-primary/50"}`}
                   >
                     {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
                   </button>
@@ -1793,11 +1793,11 @@ export default function POSSportBarPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(false); setMixedPaymentsPickup([]); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
+                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
                         >Pago Único</button>
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(true); setAmountReceived(""); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
+                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
                         >💳 Pago Mixto</button>
                       </div>
 
@@ -1807,7 +1807,7 @@ export default function POSSportBarPage() {
                           <div className="grid grid-cols-2 gap-2">
                             {SINGLE_PAY_METHODS.map((m) => (
                               <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
+                                className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
                                 {PAYMENT_LABELS[m]}
                               </button>
                             ))}
@@ -3038,7 +3038,7 @@ export default function POSSportBarPage() {
               <span className="text-xl">{icons[tab]}</span>
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-primary text-white text-[9px] rounded-full min-w-[16px] h-4 flex items-center
+                <span className="absolute top-1 right-6 bg-primary text-primary-foreground text-[9px] rounded-full min-w-[16px] h-4 flex items-center
       justify-center font-black px-1">
                   {cartBadgeCount}
                 </span>

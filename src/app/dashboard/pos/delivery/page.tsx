@@ -497,7 +497,7 @@ export default function POSDeliveryPage() {
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
+                                    className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
                                 >
                                     <span className="text-xl group-hover:rotate-12 transition-transform">{getCategoryIcon(cat.name)}</span> {cat.name}
                                 </button>
@@ -647,7 +647,7 @@ export default function POSDeliveryPage() {
                                     Normal
                                 </button>
                                 <button onClick={() => handleDiscountSelect('DIVISAS_33')}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-primary'}`}>
+                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${discountType === 'DIVISAS_33' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-primary'}`}>
                                     Divisa -33%
                                 </button>
                                 <button onClick={() => handleDiscountSelect('CORTESIA_100')}
@@ -666,11 +666,11 @@ export default function POSDeliveryPage() {
                             {/* Modo de pago */}
                             <div className="grid grid-cols-2 gap-1.5">
                                 <button type="button" onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${!isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
+                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${!isMixedMode ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
                                     Pago Único
                                 </button>
                                 <button type="button" onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${isMixedMode ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
+                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${isMixedMode ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
                                     💳 Pago Mixto
                                 </button>
                             </div>
@@ -689,7 +689,7 @@ export default function POSDeliveryPage() {
                                             { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
                                         ] as const).map(m => (
                                             <button key={m.id} type="button" onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
-                                                className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${paymentMethod === m.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
+                                                className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${paymentMethod === m.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
                                                 {m.label}
                                             </button>
                                         ))}
@@ -818,7 +818,7 @@ export default function POSDeliveryPage() {
                                                         {isRadio ? (
                                                             <button 
                                                                 onClick={() => updateModifierQuantity(group, mod, 1)} 
-                                                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? 'bg-primary border-primary text-white scale-110 shadow-lg shadow-primary/30' : 'border-border hover:border-primary'}`}
+                                                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30' : 'border-border hover:border-primary'}`}
                                                             >
                                                                 {qty > 0 && '✓'}
                                                             </button>
@@ -826,7 +826,7 @@ export default function POSDeliveryPage() {
                                                             <div className="flex items-center gap-3 bg-card p-1 rounded-2xl border border-border shadow-inner">
                                                                 <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-8 w-8 rounded-xl font-black transition-all ${qty === 0 ? 'text-muted-foreground opacity-20' : 'bg-secondary text-foreground hover:bg-red-500 hover:text-white hover:scale-105'}`}>-</button>
                                                                 <span className="font-black text-lg w-6 text-center text-primary">{qty}</span>
-                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-8 w-8 rounded-xl font-black transition-all ${isMax ? 'text-muted-foreground opacity-20' : 'bg-primary text-white hover:scale-105 shadow-lg shadow-primary/20'}`}>+</button>
+                                                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-8 w-8 rounded-xl font-black transition-all ${isMax ? 'text-muted-foreground opacity-20' : 'bg-primary text-primary-foreground hover:scale-105 shadow-lg shadow-primary/20'}`}>+</button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -847,7 +847,7 @@ export default function POSDeliveryPage() {
                                 <div className="flex items-center gap-2 bg-background p-1.5 rounded-2xl border border-border shadow-inner">
                                     <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-14 w-14 rounded-xl font-black text-2xl hover:bg-secondary transition-all active:scale-90">-</button>
                                     <span className="w-16 text-center font-black text-3xl italic text-primary">{itemQuantity}</span>
-                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-14 w-14 rounded-xl bg-primary text-white font-black text-2xl shadow-xl shadow-primary/30 hover:scale-105 active:scale-95">+</button>
+                                    <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-14 w-14 rounded-xl bg-primary text-primary-foreground font-black text-2xl shadow-xl shadow-primary/30 hover:scale-105 active:scale-95">+</button>
                                 </div>
                             </div>
                         </div>
