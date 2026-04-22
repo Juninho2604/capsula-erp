@@ -73,7 +73,7 @@ export default function DashboardLoading() {
 
       {/* Low stock table */}
       <div className="capsula-card border-primary/20 p-0 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-8 py-6 animate-pulse">
+        <div className="flex items-center justify-between border-b border-capsula-line px-8 py-6 animate-pulse">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 bg-muted rounded-2xl" />
             <div>
@@ -83,7 +83,7 @@ export default function DashboardLoading() {
           </div>
           <div className="h-8 w-28 bg-muted rounded-xl" />
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="divide-y divide-capsula-line">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="px-8 py-5 flex items-center gap-4 animate-pulse">
               <div className="h-12 w-12 bg-muted rounded-2xl flex-shrink-0" />

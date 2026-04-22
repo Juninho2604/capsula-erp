@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                             ${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         {salesKPIs.revenueChange !== null ? (
-                            <p className={`mt-1 text-xs font-medium ${salesKPIs.revenueChange >= 0 ? 'text-emerald-600' : 'text-capsula-coral'}`}>
+                            <p className={`mt-1 text-xs font-medium ${salesKPIs.revenueChange >= 0 ? 'text-[#2F6B4E]' : 'text-capsula-coral'}`}>
                                 {salesKPIs.revenueChange >= 0 ? '▲' : '▼'} {Math.abs(salesKPIs.revenueChange).toFixed(1)}% vs ayer
                             </p>
                         ) : (
@@ -126,11 +126,11 @@ export default async function DashboardPage() {
                     {/* Cuentas Abiertas */}
                     <div className={`capsula-card p-5 ${salesKPIs.openTabs > 0 ? 'border-amber-500/40' : ''}`}>
                         <p className="capsula-stat-label mb-1">Cuentas Abiertas</p>
-                        <p className={`capsula-stat-value ${salesKPIs.openTabs > 0 ? 'text-amber-600' : ''}`}>
+                        <p className={`capsula-stat-value ${salesKPIs.openTabs > 0 ? 'text-[#946A1C]' : ''}`}>
                             {salesKPIs.openTabs}
                         </p>
                         {salesKPIs.openTabs > 0 ? (
-                            <p className="mt-1 text-xs font-medium text-amber-600">${salesKPIs.openTabsExposed.toFixed(2)} expuestos</p>
+                            <p className="mt-1 text-xs font-medium text-[#946A1C]">${salesKPIs.openTabsExposed.toFixed(2)} expuestos</p>
                         ) : (
                             <p className="mt-1 text-xs text-capsula-ink-muted">Todo cobrado</p>
                         )}
@@ -215,12 +215,12 @@ export default async function DashboardPage() {
                                 {stats.subRecipes}
                             </p>
                         </div>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E5EDE7]/60 text-[#2F6B4E]">
                             <Layers className="h-7 w-7" strokeWidth={1.5} />
                         </div>
                     </div>
-                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-emerald-500/10">
-                        <div className="h-full w-1/2 rounded-full bg-emerald-500 shimmer" />
+                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-[#E5EDE7]/60">
+                        <div className="h-full w-1/2 rounded-full bg-[#2F6B4E] shimmer" />
                     </div>
                 </div>
 
@@ -233,12 +233,12 @@ export default async function DashboardPage() {
                                 {stats.finishedGoods}
                             </p>
                         </div>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EAD6]/60 text-[#946A1C]">
                             <UtensilsCrossed className="h-7 w-7" strokeWidth={1.5} />
                         </div>
                     </div>
-                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-amber-500/10">
-                        <div className="h-full w-3/4 rounded-full bg-amber-500 shimmer" />
+                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-[#F3EAD6]/60">
+                        <div className="h-full w-3/4 rounded-full bg-[#946A1C] shimmer" />
                     </div>
                 </div>
             </div>
@@ -324,8 +324,8 @@ export default async function DashboardPage() {
                                                 item.status.status === 'critical'
                                                     ? 'bg-capsula-coral-subtle text-capsula-coral'
                                                     : item.status.status === 'warning'
-                                                    ? 'bg-amber-500/10 text-amber-600'
-                                                    : 'bg-emerald-500/10 text-emerald-600'
+                                                    ? 'bg-[#F3EAD6]/60 text-[#946A1C]'
+                                                    : 'bg-[#E5EDE7]/60 text-[#2F6B4E]'
                                             }`}>
                                                 {item.status.status === 'critical' && (
                                                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
@@ -347,7 +347,7 @@ export default async function DashboardPage() {
 
                 {lowStockItems.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-16 text-center animate-in zoom-in duration-500">
-                        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#E5EDE7]/60 text-[#2F6B4E]">
                             <Gem className="h-9 w-9" strokeWidth={1.5} />
                         </div>
                         <p className="font-heading text-xl text-capsula-navy-deep">
@@ -382,9 +382,9 @@ export default async function DashboardPage() {
 const COLOR_MAP: Record<string, { icon: string; hover: string; arrow: string }> = {
     coral:   { icon: 'bg-capsula-coral-subtle text-capsula-coral', hover: 'hover:border-capsula-coral/40 hover:bg-capsula-coral-subtle/30', arrow: 'text-capsula-coral' },
     navy:    { icon: 'bg-capsula-navy-soft text-capsula-navy-deep', hover: 'hover:border-capsula-navy/30 hover:bg-capsula-navy-soft/30', arrow: 'text-capsula-navy-deep' },
-    emerald: { icon: 'bg-emerald-500/10 text-emerald-600', hover: 'hover:border-emerald-500/30 hover:bg-emerald-500/5', arrow: 'text-emerald-600' },
-    amber:   { icon: 'bg-amber-500/10 text-amber-600', hover: 'hover:border-amber-500/30 hover:bg-amber-500/5', arrow: 'text-amber-600' },
-    rose:    { icon: 'bg-rose-500/10 text-rose-600', hover: 'hover:border-rose-500/30 hover:bg-rose-500/5', arrow: 'text-rose-600' },
+    emerald: { icon: 'bg-[#E5EDE7]/60 text-[#2F6B4E]', hover: 'hover:border-[#2F6B4E]/30 hover:bg-[#E5EDE7]/30', arrow: 'text-[#2F6B4E]' },
+    amber:   { icon: 'bg-[#F3EAD6]/60 text-[#946A1C]', hover: 'hover:border-[#946A1C]/30 hover:bg-[#F3EAD6]/30', arrow: 'text-[#946A1C]' },
+    rose:    { icon: 'bg-capsula-coral/10 text-capsula-coral', hover: 'hover:border-capsula-coral/30 hover:bg-capsula-coral/5', arrow: 'text-capsula-coral' },
 };
 
 function QuickAction({ href, label, sub, Icon, color }: { href: string; label: string; sub: string; Icon: typeof Plus; color: string }) {
