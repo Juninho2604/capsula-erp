@@ -141,14 +141,14 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">🧑‍🍽️ Mesoneros</h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h1 className="text-2xl font-bold text-capsula-navy-deep">🧑‍🍽️ Mesoneros</h1>
+                    <p className="text-sm text-capsula-ink-soft mt-1">
                         {active.length} activo{active.length !== 1 ? 's' : ''} · {inactive.length} inactivo{inactive.length !== 1 ? 's' : ''}
                     </p>
                 </div>
                 <button
                     onClick={openCreate}
-                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition active:scale-95"
+                    className="inline-flex items-center gap-2 rounded-xl bg-capsula-navy-deep hover:bg-capsula-navy-ink px-4 py-2.5 text-sm font-medium text-capsula-ivory-surface shadow-cap-soft transition active:scale-95"
                 >
                     + Agregar mesonero
                 </button>
@@ -156,13 +156,13 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
 
             {/* Waiter list */}
             {isLoading ? (
-                <div className="text-center py-12 text-gray-400">Cargando…</div>
+                <div className="text-center py-12 text-capsula-ink-muted">Cargando…</div>
             ) : waiters.length === 0 ? (
-                <div className="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                <div className="text-center py-16 rounded-2xl border-2 border-dashed border-capsula-line">
                     <div className="text-5xl mb-3">🧑‍🍽️</div>
-                    <p className="text-gray-500 font-medium">No hay mesoneros registrados</p>
-                    <p className="text-gray-400 text-sm mt-1">Agrega los mesoneros de tu restaurante</p>
-                    <button onClick={openCreate} className="mt-4 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 transition">
+                    <p className="text-capsula-ink-soft font-medium">No hay mesoneros registrados</p>
+                    <p className="text-capsula-ink-muted text-sm mt-1">Agrega los mesoneros de tu restaurante</p>
+                    <button onClick={openCreate} className="mt-4 rounded-xl bg-capsula-navy-deep px-5 py-2.5 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink transition">
                         + Agregar primer mesonero
                     </button>
                 </div>
@@ -170,27 +170,27 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                 <div className="space-y-2">
                     {/* Active */}
                     {active.map(w => (
-                        <div key={w.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xl dark:bg-amber-900/30">
+                        <div key={w.id} className="flex items-center gap-4 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F3EAD6]/60 text-xl">
                                 🧑‍🍽️
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 dark:text-white">{w.firstName} {w.lastName}</p>
+                                <p className="font-semibold text-capsula-navy-deep">{w.firstName} {w.lastName}</p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                    <span className="inline-flex items-center rounded-full bg-[#E5EDE7]/60 px-2 py-0.5 text-xs font-medium text-[#2F6B4E] border border-[#2F6B4E]/20">
                                         Activo
                                     </span>
                                     {w.hasPin ? (
-                                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                        <span className="inline-flex items-center rounded-full bg-[#F3EAD6]/60 px-2 py-0.5 text-xs font-medium text-[#946A1C] border border-[#946A1C]/20">
                                             🔒 PIN
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                        <span className="inline-flex items-center rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-soft border border-capsula-line">
                                             Sin PIN
                                         </span>
                                     )}
                                     {w.isCaptain && (
-                                        <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-900/30 dark:text-sky-400">
+                                        <span className="inline-flex items-center rounded-full bg-capsula-navy/10 px-2 py-0.5 text-xs font-medium text-capsula-navy border border-capsula-navy/20">
                                             ⭐ Capitán
                                         </span>
                                     )}
@@ -199,19 +199,19 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => openEdit(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[#946A1C] hover:bg-[#F3EAD6]/40 transition"
                                 >
                                     Editar
                                 </button>
                                 <button
                                     onClick={() => handleToggle(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-alt transition"
                                 >
                                     Desactivar
                                 </button>
                                 <button
                                     onClick={() => handleDelete(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-capsula-coral hover:bg-capsula-coral/10 transition"
                                 >
                                     Eliminar
                                 </button>
@@ -222,28 +222,28 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                     {/* Inactive section */}
                     {inactive.length > 0 && (
                         <div className="mt-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Inactivos</p>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-capsula-ink-muted">Inactivos</p>
                             {inactive.map(w => (
-                                <div key={w.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-800/50">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xl dark:bg-gray-700">
+                                <div key={w.id} className="flex items-center gap-4 rounded-xl border border-capsula-line bg-capsula-ivory-alt/40 px-4 py-3 opacity-60">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-ivory-alt text-xl">
                                         🧑‍🍽️
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-gray-600 dark:text-gray-400">{w.firstName} {w.lastName}</p>
-                                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                        <p className="font-semibold text-capsula-ink-soft">{w.firstName} {w.lastName}</p>
+                                        <span className="inline-flex items-center rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-soft border border-capsula-line">
                                             Inactivo
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <button
                                             onClick={() => handleToggle(w)}
-                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
+                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[#2F6B4E] hover:bg-[#E5EDE7]/40 transition"
                                         >
                                             Activar
                                         </button>
                                         <button
                                             onClick={() => handleDelete(w)}
-                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-capsula-coral hover:bg-capsula-coral/10 transition"
                                         >
                                             Eliminar
                                         </button>
@@ -258,40 +258,40 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
             {/* Form Modal */}
             {showForm && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
-                        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
-                            <h3 className="font-bold text-gray-900 dark:text-white">
+                    <div className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl bg-capsula-ivory-surface shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-capsula-line px-5 py-4 ">
+                            <h3 className="font-bold text-capsula-navy-deep">
                                 {editingId ? 'Editar mesonero' : 'Nuevo mesonero'}
                             </h3>
-                            <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                            <button onClick={() => setShowForm(false)} className="text-capsula-ink-muted hover:text-capsula-ink-soft text-xl">×</button>
                         </div>
                         <div className="p-5 space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Nombre <span className="text-red-400">*</span></label>
+                                <label className="block text-xs font-bold text-capsula-ink-soft mb-1">Nombre <span className="text-capsula-coral">*</span></label>
                                 <input
                                     type="text"
                                     value={firstName}
                                     onChange={e => setFirstName(e.target.value)}
                                     placeholder="Ej: Carlos"
                                     autoFocus
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-capsula-ink text-sm focus:border-capsula-navy-deep focus:outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Apellido <span className="text-red-400">*</span></label>
+                                <label className="block text-xs font-bold text-capsula-ink-soft mb-1">Apellido <span className="text-capsula-coral">*</span></label>
                                 <input
                                     type="text"
                                     value={lastName}
                                     onChange={e => setLastName(e.target.value)}
                                     placeholder="Ej: López"
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-capsula-ink text-sm focus:border-capsula-navy-deep focus:outline-none"
                                 />
                             </div>
                             {/* Toggle Capitán — siempre visible para roles con acceso */}
-                            <label className="flex items-center justify-between rounded-xl border border-gray-300 px-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800/50">
+                            <label className="flex items-center justify-between rounded-xl border border-capsula-line px-3 py-2.5 cursor-pointer hover:bg-capsula-ivory-alt/40">
                                 <div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">⭐ Capitán</span>
-                                    <p className="text-[11px] text-gray-400">Puede dividir cuentas y transferir mesas</p>
+                                    <span className="text-xs font-bold text-capsula-ink">⭐ Capitán</span>
+                                    <p className="text-[11px] text-capsula-ink-muted">Puede dividir cuentas y transferir mesas</p>
                                 </div>
                                 <input
                                     type="checkbox"
@@ -303,12 +303,12 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
 
                             {canManagePin && (
                             <div>
-                                <label className="flex items-center justify-between text-xs font-bold text-gray-500 mb-1">
+                                <label className="flex items-center justify-between text-xs font-bold text-capsula-ink-soft mb-1">
                                     <span>
-                                        PIN <span className="text-gray-400 font-normal">(4-6 dígitos · opcional)</span>
+                                        PIN <span className="text-capsula-ink-muted font-normal">(4-6 dígitos · opcional)</span>
                                     </span>
                                     {editingId && (
-                                        <label className="flex items-center gap-1 text-[11px] font-medium text-red-500 cursor-pointer">
+                                        <label className="flex items-center gap-1 text-[11px] font-medium text-capsula-coral cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={clearPin}
@@ -333,25 +333,25 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                                     disabled={clearPin}
                                     placeholder={editingId ? '(dejar vacío para no cambiar)' : 'Ej: 1234'}
                                     onKeyDown={e => e.key === 'Enter' && handleSave()}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm tracking-[0.4em] focus:border-amber-500 focus:outline-none disabled:opacity-50 disabled:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-900"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-capsula-ink text-sm tracking-[0.4em] focus:border-capsula-navy-deep focus:outline-none disabled:opacity-50 disabled:bg-capsula-ivory-alt"
                                 />
-                                <p className="mt-1 text-[11px] text-gray-400">
+                                <p className="mt-1 text-[11px] text-capsula-ink-muted">
                                     El PIN permite al mesonero identificarse en el POS Mesero.
                                 </p>
                             </div>
                             )}
                         </div>
-                        <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
+                        <div className="flex gap-3 border-t border-capsula-line px-5 py-4 ">
                             <button
                                 onClick={() => setShowForm(false)}
-                                className="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                className="flex-1 rounded-xl border border-capsula-line py-2.5 text-sm font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-alt"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving || !firstName.trim() || !lastName.trim()}
-                                className="flex-[2] rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50 transition active:scale-95"
+                                className="flex-[2] rounded-xl bg-capsula-navy-deep py-2.5 text-sm font-medium text-capsula-ivory-surface hover:bg-capsula-navy-ink disabled:opacity-50 transition active:scale-95"
                             >
                                 {isSaving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear mesonero'}
                             </button>
