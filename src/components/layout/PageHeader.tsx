@@ -34,7 +34,7 @@ export function PageHeader({ kicker, title, description, actions, className }: P
                         {kicker}
                     </div>
                 )}
-                <h1 className="font-heading text-balance text-[clamp(32px,4vw,44px)] leading-[1.02] tracking-[-0.02em] text-capsula-navy-deep">
+                <h1 className="font-heading text-balance text-[clamp(32px,4vw,44px)] leading-[1.02] tracking-[-0.02em] text-capsula-ink">
                     {title}
                 </h1>
                 {description && (

@@ -59,12 +59,12 @@ export default async function DashboardPage() {
             {/* Header */}
             <div className="glass-panel flex flex-col items-start justify-between gap-4 rounded-3xl border-capsula-line/50 p-6 shadow-cap-raised sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                         Bienvenido,{' '}
                         <span className="text-capsula-coral">{session?.firstName || 'Usuario'}</span>
                     </h1>
                     <p className="mt-1 text-sm font-medium text-capsula-ink-muted">
-                        Resumen de operaciones · <span className="text-capsula-navy">Gerencia Operativa CÁPSULA</span>
+                        Resumen de operaciones · <span className="text-capsula-ink">Gerencia Operativa CÁPSULA</span>
                     </p>
                 </div>
                 <Link
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
               <div className="capsula-card p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-navy-deep">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-ink">
                       <BarChart2 className="h-5 w-5" strokeWidth={1.75} />
                     </div>
                     <div>
@@ -153,7 +153,7 @@ export default async function DashboardPage() {
                   </div>
                   <Link
                     href="/dashboard/finanzas"
-                    className="text-xs font-medium text-capsula-navy transition-colors hover:text-capsula-navy-deep"
+                    className="text-xs font-medium text-capsula-ink transition-colors hover:text-capsula-ink"
                   >
                     Ver detalle →
                   </Link>
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
                                 {stats.totalItems}
                             </p>
                         </div>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-navy-deep">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-ink">
                             <Package className="h-7 w-7" strokeWidth={1.5} />
                         </div>
                     </div>
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
                             <AlertOctagon className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div>
-                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-navy-deep">
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                 Alertas Críticas de Stock
                             </h2>
                             <p className="text-sm font-medium text-capsula-ink-muted">
@@ -301,7 +301,7 @@ export default async function DashboardPage() {
                                                     <RowIcon className="h-6 w-6" strokeWidth={1.5} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                                                    <p className="font-medium text-capsula-ink transition-colors group-hover:text-capsula-ink">
                                                         {item.name}
                                                     </p>
                                                     <p className="text-[10px] font-semibold uppercase tracking-wide text-capsula-ink-muted">{item.sku}</p>
@@ -350,7 +350,7 @@ export default async function DashboardPage() {
                         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                             <Gem className="h-9 w-9" strokeWidth={1.5} />
                         </div>
-                        <p className="font-heading text-xl text-capsula-navy-deep">
+                        <p className="font-heading text-xl text-capsula-ink">
                             ¡Inventario Perfecto!
                         </p>
                         <p className="mx-auto mt-2 max-w-xs text-sm font-medium text-capsula-ink-muted">
@@ -381,7 +381,7 @@ export default async function DashboardPage() {
 
 const COLOR_MAP: Record<string, { icon: string; hover: string; arrow: string }> = {
     coral:   { icon: 'bg-capsula-coral-subtle text-capsula-coral', hover: 'hover:border-capsula-coral/40 hover:bg-capsula-coral-subtle/30', arrow: 'text-capsula-coral' },
-    navy:    { icon: 'bg-capsula-navy-soft text-capsula-navy-deep', hover: 'hover:border-capsula-navy/30 hover:bg-capsula-navy-soft/30', arrow: 'text-capsula-navy-deep' },
+    navy:    { icon: 'bg-capsula-navy-soft text-capsula-ink', hover: 'hover:border-capsula-navy/30 hover:bg-capsula-navy-soft/30', arrow: 'text-capsula-ink' },
     emerald: { icon: 'bg-emerald-500/10 text-emerald-600', hover: 'hover:border-emerald-500/30 hover:bg-emerald-500/5', arrow: 'text-emerald-600' },
     amber:   { icon: 'bg-amber-500/10 text-amber-600', hover: 'hover:border-amber-500/30 hover:bg-amber-500/5', arrow: 'text-amber-600' },
     rose:    { icon: 'bg-rose-500/10 text-rose-600', hover: 'hover:border-rose-500/30 hover:bg-rose-500/5', arrow: 'text-rose-600' },

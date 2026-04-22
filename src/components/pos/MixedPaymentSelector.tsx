@@ -163,7 +163,7 @@ export default function MixedPaymentSelector({
 
               {/* Bs conversion for Bs methods */}
               {BS_METHODS.has(line.method) && exchangeRate && line.amountUSD > 0 && (
-                <span className="shrink-0 text-[11px] font-medium tabular-nums text-capsula-navy">
+                <span className="shrink-0 text-[11px] font-medium tabular-nums text-capsula-ink">
                   Bs&nbsp;{(line.amountUSD * exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                 </span>
               )}

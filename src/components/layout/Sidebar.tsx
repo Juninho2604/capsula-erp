@@ -128,7 +128,7 @@ const ORPHAN_SECTION_ID = 'otros';
 const BASE_SCHEME = {
     sectionText:  'text-capsula-ink-muted',
     sectionHover: 'hover:bg-capsula-ivory-alt',
-    activeLink:   'bg-capsula-navy-soft text-capsula-navy-deep font-medium',
+    activeLink:   'bg-capsula-navy-soft text-capsula-ink font-medium',
     dot:          'bg-capsula-coral',
     sgHover:      'hover:bg-capsula-ivory-alt',
     linkHover:    'hover:bg-capsula-ivory-alt hover:text-capsula-ink',

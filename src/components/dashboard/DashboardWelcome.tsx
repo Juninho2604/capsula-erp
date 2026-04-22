@@ -51,8 +51,8 @@ export default function DashboardWelcome({ userName = 'equipo' }: Props) {
                 <div className="mb-3 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.1em] text-capsula-ink-muted">
                     <Sparkles className="h-3 w-3" /> Resumen del día
                 </div>
-                <h1 className="font-heading text-balance text-[clamp(36px,5vw,56px)] leading-[0.98] tracking-[-0.02em] text-capsula-navy-deep">
-                    {greeting}, <span className="italic text-capsula-navy">{userName}.</span>
+                <h1 className="font-heading text-balance text-[clamp(36px,5vw,56px)] leading-[0.98] tracking-[-0.02em] text-capsula-ink">
+                    {greeting}, <span className="italic text-capsula-ink">{userName}.</span>
                 </h1>
                 <p className="mt-3 max-w-[520px] text-[15px] leading-[1.55] text-capsula-ink-soft">
                     Todo funciona con normalidad. Tres avisos por revisar y un cierre de turno pendiente.
@@ -70,7 +70,7 @@ export default function DashboardWelcome({ userName = 'equipo' }: Props) {
             {/* ── KPIs ─────────────────────────────────────────── */}
             <section>
                 <div className="mb-4 flex items-baseline justify-between">
-                    <h2 className="font-heading text-2xl tracking-[-0.015em] text-capsula-navy-deep">
+                    <h2 className="font-heading text-2xl tracking-[-0.015em] text-capsula-ink">
                         Indicadores
                     </h2>
                     <span className="text-[11px] uppercase tracking-[0.1em] text-capsula-ink-muted">
@@ -105,10 +105,10 @@ export default function DashboardWelcome({ userName = 'equipo' }: Props) {
             {/* ── MÓDULOS ──────────────────────────────────────── */}
             <section>
                 <div className="mb-4 flex items-baseline justify-between">
-                    <h2 className="font-heading text-2xl tracking-[-0.015em] text-capsula-navy-deep">
+                    <h2 className="font-heading text-2xl tracking-[-0.015em] text-capsula-ink">
                         Módulos
                     </h2>
-                    <Link href="/dashboard/config/modules" className="text-[13px] text-capsula-ink-soft hover:text-capsula-navy-deep">
+                    <Link href="/dashboard/config/modules" className="text-[13px] text-capsula-ink-soft hover:text-capsula-ink">
                         Configurar →
                     </Link>
                 </div>

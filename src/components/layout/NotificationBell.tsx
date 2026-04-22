@@ -39,7 +39,7 @@ type TypeStyle = {
 const TYPE_STYLES: Record<string, TypeStyle> = {
   ALERT:   { bg: 'bg-capsula-coral-subtle',   border: 'border-capsula-coral/30',   text: 'text-capsula-coral',   Icon: AlertOctagon },
   WARNING: { bg: 'bg-amber-500/10',           border: 'border-amber-500/30',       text: 'text-amber-600',       Icon: AlertTriangle },
-  INFO:    { bg: 'bg-capsula-navy-soft',      border: 'border-capsula-navy/20',    text: 'text-capsula-navy',    Icon: Info },
+  INFO:    { bg: 'bg-capsula-navy-soft',      border: 'border-capsula-navy/20',    text: 'text-capsula-ink',    Icon: Info },
   SUCCESS: { bg: 'bg-emerald-500/10',         border: 'border-emerald-500/30',     text: 'text-emerald-600',     Icon: CheckCircle2 },
 };
 
@@ -207,11 +207,11 @@ export function NotificationBell() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-navy-deep">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-ink">
                   <Bell className="h-5 w-5" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">Notificaciones</h2>
+                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">Notificaciones</h2>
                   <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-capsula-ink-muted">
                     {unreadCount > 0 ? `${unreadCount} sin atender` : 'Todo en orden'}
                   </p>
@@ -260,7 +260,7 @@ export function NotificationBell() {
                 onClick={() => setActiveTab('system')}
                 className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
                   activeTab === 'system'
-                    ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-navy-deep'
+                    ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-ink'
                     : 'text-capsula-ink-muted hover:text-capsula-ink'
                 }`}
               >
@@ -287,7 +287,7 @@ export function NotificationBell() {
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                         <Gem className="h-7 w-7" strokeWidth={1.75} />
                       </div>
-                      <p className="font-heading text-capsula-navy-deep">¡Inventario OK!</p>
+                      <p className="font-heading text-capsula-ink">¡Inventario OK!</p>
                       <p className="max-w-[200px] text-xs text-capsula-ink-muted">
                         No hay insumos por debajo del stock mínimo en este momento.
                       </p>
@@ -362,10 +362,10 @@ export function NotificationBell() {
                 <div className="space-y-3 p-4">
                   {systemMessages.length === 0 && (
                     <div className="flex flex-col items-center gap-3 py-12 text-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy-deep">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                         <Inbox className="h-7 w-7" strokeWidth={1.75} />
                       </div>
-                      <p className="font-heading text-capsula-navy-deep">Sin mensajes</p>
+                      <p className="font-heading text-capsula-ink">Sin mensajes</p>
                       <p className="max-w-[200px] text-xs text-capsula-ink-muted">
                         No hay anuncios activos del sistema en este momento.
                       </p>
@@ -413,7 +413,7 @@ export function NotificationBell() {
                 {!showForm ? (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-capsula-line py-2 text-xs font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted transition-colors hover:border-capsula-navy hover:text-capsula-navy-deep"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-capsula-line py-2 text-xs font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted transition-colors hover:border-capsula-navy hover:text-capsula-ink"
                   >
                     <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
                     Crear anuncio al equipo

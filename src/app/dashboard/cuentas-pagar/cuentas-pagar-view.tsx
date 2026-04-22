@@ -36,7 +36,7 @@ const FIELD_INPUT = 'w-full rounded-xl border border-capsula-line bg-capsula-ivo
 
 function agingBucketStyles(range: string): { wrap: string; text: string } {
   if (range === 'Vigente') return { wrap: 'border-[#D3E2D8] bg-[#E5EDE7]/40', text: 'text-[#2F6B4E]' };
-  if (range === '0-30')    return { wrap: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-navy-deep' };
+  if (range === '0-30')    return { wrap: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-ink' };
   if (range === '31-60')   return { wrap: 'border-[#E8D9B8] bg-[#F3EAD6]/40', text: 'text-[#946A1C]' };
   if (range === '61-90')   return { wrap: 'border-[#E8D9B8] bg-[#F3EAD6]/60', text: 'text-[#946A1C]' };
   if (range === '90+')     return { wrap: 'border-[#EFD2C8] bg-[#F7E3DB]/40', text: 'text-[#B04A2E]' };
@@ -567,7 +567,7 @@ function KpiCard({
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
         <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
-      <p className="truncate font-heading text-2xl tracking-[-0.02em] text-capsula-navy-deep">{value}</p>
+      <p className="truncate font-heading text-2xl tracking-[-0.02em] text-capsula-ink">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-capsula-ink-soft">{sub}</p>}
     </div>
   );
@@ -578,7 +578,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
         <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
-          <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">{title}</h2>
+          <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">{title}</h2>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"

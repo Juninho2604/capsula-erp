@@ -159,7 +159,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="min-w-[160px] text-center font-heading text-lg tracking-[-0.01em] text-capsula-navy-deep">
+          <span className="min-w-[160px] text-center font-heading text-lg tracking-[-0.01em] text-capsula-ink">
             {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
           </span>
           <button
@@ -235,7 +235,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                 <p className={KICKER}>Flujo neto</p>
                 <p
                   className={`mt-1 font-heading text-2xl tracking-[-0.02em] ${
-                    (s.cashFlow?.net ?? 0) >= 0 ? 'text-capsula-navy-deep' : 'text-[#B04A2E]'
+                    (s.cashFlow?.net ?? 0) >= 0 ? 'text-capsula-ink' : 'text-[#B04A2E]'
                   }`}
                 >
                   {(s.cashFlow?.net ?? 0) >= 0 ? '+' : '-'}${fmt(Math.abs(s.cashFlow?.net ?? 0))}
@@ -463,7 +463,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
             <div className="grid gap-4 sm:grid-cols-3">
               <div className={`${CARD_BASE} border-[#E8D9B8] bg-[#F3EAD6]/40`}>
                 <p className={KICKER}>Deudas pendientes</p>
-                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep">
+                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                   ${fmt(s.accountsPayable.totalPendingUsd)}
                 </p>
                 <p className="mt-1 text-xs text-capsula-ink-muted">
@@ -478,7 +478,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                 <p className={KICKER}>Vencido</p>
                 <p
                   className={`mt-1 font-heading text-3xl tracking-[-0.02em] ${
-                    s.accountsPayable.overdueUsd > 0 ? 'text-[#B04A2E]' : 'text-capsula-navy-deep'
+                    s.accountsPayable.overdueUsd > 0 ? 'text-[#B04A2E]' : 'text-capsula-ink'
                   }`}
                 >
                   ${fmt(s.accountsPayable.overdueUsd)}
@@ -487,7 +487,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               </div>
               <div className={`${CARD_BASE} border-capsula-line`}>
                 <p className={KICKER}>Compras del período</p>
-                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep">
+                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                   ${fmt(s.purchases.totalPurchasesUsd)}
                 </p>
                 <p className="mt-1 text-xs text-capsula-ink-muted">
@@ -541,7 +541,7 @@ function bucketStyles(range: string): { bg: string; text: string } {
   if (range === '90+')    return { bg: 'border-[#EFD2C8] bg-[#F7E3DB]/40',  text: 'text-[#B04A2E]' };
   if (range === '61-90')  return { bg: 'border-[#E8D9B8] bg-[#F3EAD6]/60',  text: 'text-[#946A1C]' };
   if (range === '31-60')  return { bg: 'border-[#E8D9B8] bg-[#F3EAD6]/40',  text: 'text-[#946A1C]' };
-  return                         { bg: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-navy-deep' };
+  return                         { bg: 'border-capsula-line bg-capsula-ivory-alt/60', text: 'text-capsula-ink' };
 }
 
 function PnLCard({
@@ -565,7 +565,7 @@ function PnLCard({
       </div>
       <p
         className={`font-heading text-2xl tracking-[-0.02em] ${
-          negative ? 'text-[#B04A2E]' : 'text-capsula-navy-deep'
+          negative ? 'text-[#B04A2E]' : 'text-capsula-ink'
         }`}
       >
         {value}
@@ -625,7 +625,7 @@ function AlertItem({
       {href && (
         <a
           href={href}
-          className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-capsula-navy hover:text-capsula-navy-deep"
+          className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-capsula-ink hover:text-capsula-ink"
         >
           Ver
           <ArrowRight className="h-3 w-3" />

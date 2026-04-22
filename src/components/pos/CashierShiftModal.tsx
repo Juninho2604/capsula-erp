@@ -64,10 +64,10 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
             <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-deep">
                 <div className="mb-6 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                         <UserCircle2 className="h-6 w-6" />
                     </div>
-                    <h2 className="font-heading text-xl tracking-[-0.02em] text-capsula-navy-deep">Apertura de caja</h2>
+                    <h2 className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">Apertura de caja</h2>
                     <p className="mt-1 text-sm text-capsula-ink-soft">
                         {forceOpen ? 'Cambio de cajera' : 'Ingresa tu nombre para iniciar el turno (una vez al día)'}
                     </p>

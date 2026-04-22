@@ -37,13 +37,13 @@ export default function HomePage() {
                 <div className="mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-10 py-4">
                     <CapsulaLogo variant="full" size={22} />
                     <div className="hidden gap-7 text-sm text-capsula-ink-soft md:flex">
-                        <Link href="#producto"  className="transition-colors hover:text-capsula-navy-deep">Producto</Link>
-                        <Link href="#soluciones" className="transition-colors hover:text-capsula-navy-deep">Soluciones</Link>
-                        <Link href="#precios"   className="transition-colors hover:text-capsula-navy-deep">Precios</Link>
-                        <Link href="#clientes"  className="transition-colors hover:text-capsula-navy-deep">Clientes</Link>
+                        <Link href="#producto"  className="transition-colors hover:text-capsula-ink">Producto</Link>
+                        <Link href="#soluciones" className="transition-colors hover:text-capsula-ink">Soluciones</Link>
+                        <Link href="#precios"   className="transition-colors hover:text-capsula-ink">Precios</Link>
+                        <Link href="#clientes"  className="transition-colors hover:text-capsula-ink">Clientes</Link>
                     </div>
                     <div className="flex items-center justify-end gap-4">
-                        <Link href="/login" className="text-sm text-capsula-ink-soft transition-colors hover:text-capsula-navy-deep">
+                        <Link href="/login" className="text-sm text-capsula-ink-soft transition-colors hover:text-capsula-ink">
                             Iniciar sesión
                         </Link>
                         <Link
@@ -69,10 +69,10 @@ export default function HomePage() {
                     </span>
                 </div>
 
-                <h1 className="font-heading mx-auto mb-7 text-balance text-[clamp(56px,8vw,104px)] leading-[0.95] tracking-[-0.025em] text-capsula-navy-deep">
+                <h1 className="font-heading mx-auto mb-7 text-balance text-[clamp(56px,8vw,104px)] leading-[0.95] tracking-[-0.025em] text-capsula-ink">
                     Tu negocio,
                     <br />
-                    <span className="italic text-capsula-navy">una cápsula.</span>
+                    <span className="italic text-capsula-ink">una cápsula.</span>
                 </h1>
 
                 <p className="mx-auto mb-9 max-w-[560px] text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
@@ -120,7 +120,7 @@ export default function HomePage() {
                     <div className="mb-5 inline-block rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy-light">
                         Plataforma
                     </div>
-                    <h2 className="font-heading mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-navy-deep">
+                    <h2 className="font-heading mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
                         Un sistema operativo para tu cocina.
                     </h2>
                     <p className="text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
@@ -135,7 +135,7 @@ export default function HomePage() {
                             key={f.title}
                             className="bg-capsula-ivory-surface p-8 transition-colors hover:bg-capsula-ivory"
                         >
-                            <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-line-strong text-capsula-navy-deep">
+                            <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-line-strong text-capsula-ink">
                                 <f.icon className="h-[22px] w-[22px]" strokeWidth={1.5} />
                             </div>
                             <h3 className="mb-2 text-base font-medium tracking-[-0.01em] text-capsula-ink">
@@ -189,7 +189,7 @@ export default function HomePage() {
             {/* ── QUOTE ─────────────────────────────────────────── */}
             <section className="mx-auto max-w-[900px] px-10 py-28 text-center">
                 <div className="font-heading mb-5 h-10 text-[120px] leading-[0.5] text-capsula-coral">"</div>
-                <blockquote className="font-heading mb-10 text-balance text-[clamp(28px,3.5vw,40px)] leading-[1.25] tracking-[-0.015em] text-capsula-navy-deep">
+                <blockquote className="font-heading mb-10 text-balance text-[clamp(28px,3.5vw,40px)] leading-[1.25] tracking-[-0.015em] text-capsula-ink">
                     Migramos de tres sistemas distintos a CÁPSULA en dos semanas. Por primera vez
                     sabemos el costo real de cada plato el mismo día que se vende.
                 </blockquote>
@@ -205,7 +205,7 @@ export default function HomePage() {
             {/* ── CTA ──────────────────────────────────────────── */}
             <section className="mx-auto max-w-[1280px] px-10 pb-28">
                 <div className="rounded-[20px] border border-capsula-line bg-capsula-ivory-alt px-10 py-20 text-center">
-                    <h2 className="font-heading mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-navy-deep">
+                    <h2 className="font-heading mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
                         ¿Listo para operar con claridad?
                     </h2>
                     <p className="mx-auto mb-8 max-w-[560px] text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
@@ -239,11 +239,11 @@ export default function HomePage() {
                             { h: 'Recursos', items: ['Centro de ayuda', 'Estado del sistema', 'API'] },
                         ].map((col) => (
                             <div key={col.h}>
-                                <div className="mb-4 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-navy-deep">
+                                <div className="mb-4 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink">
                                     {col.h}
                                 </div>
                                 {col.items.map((i) => (
-                                    <Link key={i} href="#" className="block py-1.5 text-[14px] text-capsula-ink-soft transition-colors hover:text-capsula-navy-deep">
+                                    <Link key={i} href="#" className="block py-1.5 text-[14px] text-capsula-ink-soft transition-colors hover:text-capsula-ink">
                                         {i}
                                     </Link>
                                 ))}

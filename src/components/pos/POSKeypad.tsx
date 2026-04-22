@@ -30,7 +30,7 @@ export function POSKeypad({ value, onChange, onEnter, className }: Props) {
         <div className={cn('space-y-3', className)}>
             <div className="rounded-xl border border-capsula-line-strong bg-capsula-ivory px-4 py-3 text-right">
                 <div className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">Monto</div>
-                <div className="font-mono text-3xl font-medium tabular-nums text-capsula-navy-deep">
+                <div className="font-mono text-3xl font-medium tabular-nums text-capsula-ink">
                     {value || '0'}
                 </div>
             </div>
