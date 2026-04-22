@@ -536,70 +536,68 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* ── Modal: Nuevo Gasto ── */}
       {showForm && (
-        <Modal title="Registrar Gasto" onClose={() => setShowForm(false)}>
+        <Modal title="Registrar gasto" onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Descripción *</label>
+              <label className={labelCls}>Descripción *</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="input-field w-full" placeholder="Ej: Pago alquiler local enero" required />
+                className={inputCls} placeholder="Ej: Pago alquiler local enero" required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Categoría *</label>
+                <label className={labelCls}>Categoría *</label>
                 <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))}
-                  className="input-field w-full" required>
-                  <option value="">Seleccionar...</option>
+                  className={inputCls} required>
+                  <option value="">Seleccionar…</option>
                   {categories.filter(c => c.isActive).map(c => (
-                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha *</label>
+                <label className={labelCls}>Fecha *</label>
                 <input type="date" value={form.paidAt} onChange={e => setForm(f => ({ ...f, paidAt: e.target.value }))}
-                  className="input-field w-full" required />
+                  className={inputCls} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto USD *</label>
+                <label className={labelCls}>Monto USD *</label>
                 <input type="number" step="0.01" min="0.01" value={form.amountUsd}
                   onChange={e => setForm(f => ({ ...f, amountUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className={`${inputCls} font-mono`} placeholder="0.00" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto Bs (opcional)</label>
+                <label className={labelCls}>Monto Bs (opcional)</label>
                 <input type="number" step="0.01" min="0" value={form.amountBs}
                   onChange={e => setForm(f => ({ ...f, amountBs: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" />
+                  className={`${inputCls} font-mono`} placeholder="0.00" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Método de Pago *</label>
+                <label className={labelCls}>Método de pago *</label>
                 <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                  className="input-field w-full">
+                  className={inputCls}>
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Referencia (opcional)</label>
+                <label className={labelCls}>Referencia (opcional)</label>
                 <input value={form.paymentRef} onChange={e => setForm(f => ({ ...f, paymentRef: e.target.value }))}
-                  className="input-field w-full" placeholder="Nº transferencia, cheque..." />
+                  className={inputCls} placeholder="Nº transferencia, cheque…" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Notas (opcional)</label>
+              <label className={labelCls}>Notas (opcional)</label>
               <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field w-full" rows={2} placeholder="Información adicional..." />
+                className={inputCls} rows={2} placeholder="Información adicional…" />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setShowForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
-                {isPending ? 'Guardando...' : 'Registrar Gasto'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button type="submit" variant="primary" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Guardando…' : (<><Check className="h-4 w-4" strokeWidth={2} /> Registrar gasto</>)}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -607,37 +605,35 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* ── Modal: Nueva Categoría ── */}
       {showCatForm && (
-        <Modal title="Nueva Categoría" onClose={() => setShowCatForm(false)}>
+        <Modal title="Nueva categoría" onClose={() => setShowCatForm(false)}>
           <form onSubmit={handleCreateCat} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Icono</label>
+                <label className={labelCls}>Icono</label>
                 <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))}
-                  className="input-field w-full" placeholder="💸" />
+                  className={inputCls} placeholder="📁" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Color</label>
+                <label className={labelCls}>Color</label>
                 <input type="color" value={catForm.color} onChange={e => setCatForm(f => ({ ...f, color: e.target.value }))}
-                  className="h-10 w-full rounded-lg border border-border cursor-pointer" />
+                  className="h-10 w-full cursor-pointer rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Nombre *</label>
+              <label className={labelCls}>Nombre *</label>
               <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
-                className="input-field w-full" placeholder="Ej: Alquiler, Servicios Públicos..." required />
+                className={inputCls} placeholder="Ej: Alquiler, servicios públicos…" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Descripción</label>
+              <label className={labelCls}>Descripción</label>
               <input value={catForm.description} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))}
-                className="input-field w-full" placeholder="Descripción breve..." />
+                className={inputCls} placeholder="Descripción breve…" />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setShowCatForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
-                {isPending ? 'Creando...' : 'Crear Categoría'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowCatForm(false)}>Cancelar</Button>
+              <Button type="submit" variant="primary" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Creando…' : 'Crear categoría'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -645,24 +641,25 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* ── Modal: Anular Gasto ── */}
       {voidTarget && (
-        <Modal title="Anular Gasto" onClose={() => { setVoidTarget(null); setVoidReason(''); }}>
+        <Modal title="Anular gasto" onClose={() => { setVoidTarget(null); setVoidReason(''); }}>
           <div className="space-y-4">
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-              <p className="text-sm font-semibold text-foreground">{voidTarget.description}</p>
-              <p className="text-sm text-muted-foreground">${fmt(voidTarget.amountUsd)} — {new Date(voidTarget.paidAt).toLocaleDateString('es-VE')}</p>
+            <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/40 p-4">
+              <p className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                <AlertTriangle className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                {voidTarget.description}
+              </p>
+              <p className="mt-1 font-mono text-[13px] text-capsula-ink-muted">${fmt(voidTarget.amountUsd)} — {new Date(voidTarget.paidAt).toLocaleDateString('es-VE')}</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Motivo de anulación *</label>
+              <label className={labelCls}>Motivo de anulación *</label>
               <textarea value={voidReason} onChange={e => setVoidReason(e.target.value)}
-                className="input-field w-full" rows={3} placeholder="Describe el motivo..." />
+                className={inputCls} rows={3} placeholder="Describe el motivo…" />
             </div>
-            <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => { setVoidTarget(null); setVoidReason(''); }}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button onClick={handleVoid} disabled={isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">
-                {isPending ? 'Anulando...' : 'Confirmar Anulación'}
-              </button>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => { setVoidTarget(null); setVoidReason(''); }}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleVoid} disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Anulando…' : 'Confirmar anulación'}
+              </Button>
             </div>
           </div>
         </Modal>
@@ -673,23 +670,46 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
 // ─── COMPONENTES AUXILIARES ──────────────────────────────────────────────────
 
-function KpiCard({ label, value, icon, color, sub, change, invertChange }: {
-  label: string; value: string; icon: string; color: string; sub?: string;
-  change?: number | null; invertChange?: boolean;
+const inputCls =
+  'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
+const labelCls = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+
+type KpiAccent = 'coral' | 'navy' | 'warn' | 'neutral';
+
+function KpiCard({ label, value, Icon, accent, sub, change, invertChange }: {
+  label: string;
+  value: string;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  accent: KpiAccent;
+  sub?: string;
+  change?: number | null;
+  invertChange?: boolean;
 }) {
+  const accentClass: Record<KpiAccent, string> = {
+    coral: 'border-capsula-coral/30 bg-capsula-coral-subtle/30',
+    navy: 'border-capsula-line bg-capsula-ivory-surface',
+    warn: 'border-[#E8D9B8] bg-[#F3EAD6]/40',
+    neutral: 'border-capsula-line bg-capsula-ivory-surface',
+  };
+  const iconClass: Record<KpiAccent, string> = {
+    coral: 'text-capsula-coral',
+    navy: 'text-capsula-navy',
+    warn: 'text-[#946A1C]',
+    neutral: 'text-capsula-ink-muted',
+  };
+  const positive = invertChange ? (change != null && change <= 0) : (change != null && change >= 0);
+  const ChangeIcon = change != null && change >= 0 ? TrendingUp : TrendingDown;
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-        <span className="text-lg">{icon}</span>
+    <div className={cn("rounded-[var(--radius)] border p-5 shadow-cap-soft", accentClass[accent])}>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
+        <Icon className={cn("h-4 w-4", iconClass[accent])} strokeWidth={1.5} />
       </div>
-      <p className="text-2xl font-black text-foreground truncate">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="truncate font-mono text-[22px] font-semibold text-capsula-ink">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{sub}</p>}
       {change != null && (
-        <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${
-          (invertChange ? change <= 0 : change >= 0) ? 'text-emerald-500' : 'text-red-500'
-        }`}>
-          {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}% vs mes ant.
+        <span className={cn("mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium", positive ? 'text-[#2F6B4E]' : 'text-capsula-coral')}>
+          <ChangeIcon className="h-3 w-3" strokeWidth={1.5} /> {Math.abs(change).toFixed(1)}% vs mes ant.
         </span>
       )}
     </div>
@@ -698,11 +718,16 @@ function KpiCard({ label, value, icon, color, sub, change, invertChange }: {
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border border-border shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
+          <h2 className="font-heading text-[18px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">{title}</h2>
+          <button
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
