@@ -1,33 +1,38 @@
 import { getAuditsAction } from '@/app/actions/audit.actions';
 import { AuditList } from './AuditList';
 import Link from 'next/link';
+import { ArrowLeft, Plus, ShieldCheck } from 'lucide-react';
 
 export default async function AuditsPage() {
     const audits = await getAuditsAction();
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Auditorías de Inventario
-                    </h1>
-                    <p className="text-gray-500">
-                        Historial de revisiones y conteos físicos
-                    </p>
+        <div className="space-y-6 animate-in">
+            <div className="flex flex-col gap-4 border-b border-capsula-line pb-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                        <ShieldCheck className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Inventario</div>
+                        <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Auditorías de inventario</h1>
+                        <p className="mt-1 text-[13px] text-capsula-ink-soft">Historial de revisiones y conteos físicos.</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <Link
                         href="/dashboard/inventario"
-                        className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-2 text-[13px] font-medium text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
                     >
-                        ← Volver al Inventario
+                        <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+                        Volver
                     </Link>
                     <Link
                         href="/dashboard/inventario/importar"
-                        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 shadow-sm"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius)] bg-capsula-navy-deep px-4 py-2 text-[13px] font-medium text-capsula-ivory-surface shadow-cap-soft transition-colors hover:bg-capsula-navy-ink"
                     >
-                        + Nueva Revisión (Importar)
+                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                        Nueva revisión
                     </Link>
                 </div>
             </div>

@@ -1,7 +1,7 @@
-
 import Link from 'next/link';
 import { getRecipesAction } from '@/app/actions/recipe.actions';
 import { getMenuItemsWithoutRecipeAction } from '@/app/actions/menu.actions';
+import { AlertTriangle, BookOpen, Plus } from 'lucide-react';
 import RecipeList from './RecipeList';
 import MissingRecipesPanel from './MissingRecipesPanel';
 
@@ -17,52 +17,51 @@ export default async function RecetasPage() {
 
     return (
         <div className="space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Recetas
-                    </h1>
-                    <p className="text-gray-500">
-                        {allRecipes.length} recetas disponibles
-                        {missingItems.length > 0 && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                                ⚠️ {missingItems.length} platos sin receta
-                            </span>
-                        )}
-                    </p>
+            <div className="flex flex-col gap-4 border-b border-capsula-line pb-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                        <BookOpen className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Catálogo</div>
+                        <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Recetas</h1>
+                        <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-capsula-ink-soft">
+                            <span>{allRecipes.length} recetas disponibles</span>
+                            {missingItems.length > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-capsula-coral/40 bg-capsula-coral/10 px-2 py-0.5 text-[11px] font-medium text-capsula-coral">
+                                    <AlertTriangle className="h-3 w-3" strokeWidth={1.5} />
+                                    {missingItems.length} platos sin receta
+                                </span>
+                            )}
+                        </p>
+                    </div>
                 </div>
                 <Link
                     href="/dashboard/recetas/nueva"
-                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl"
+                    className="inline-flex items-center gap-2 rounded-[var(--radius)] bg-capsula-navy-deep px-4 py-2.5 text-[13px] font-medium text-capsula-ivory-surface shadow-cap-soft transition-colors hover:bg-capsula-navy-ink"
                 >
-                    ➕ Nueva Receta
+                    <Plus className="h-4 w-4" strokeWidth={1.5} />
+                    Nueva receta
                 </Link>
             </div>
 
-            {/* Platos del Menú sin Receta */}
             {missingItems.length > 0 && (
                 <MissingRecipesPanel items={missingItems} />
             )}
 
-            {/* Recipe List Component */}
             {allRecipes.length > 0 ? (
                 <RecipeList recipes={allRecipes} />
             ) : (
-                /* Empty State */
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-16 text-center dark:border-gray-600">
-                    <span className="text-5xl">📋</span>
-                    <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-                        No hay recetas
-                    </h3>
-                    <p className="mt-1 text-gray-500">
-                        Comienza creando tu primera receta para calcular sus costos
-                    </p>
+                <div className="flex flex-col items-center justify-center rounded-[var(--radius)] border border-dashed border-capsula-line py-16 text-center">
+                    <BookOpen className="h-12 w-12 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                    <h3 className="mt-4 font-heading text-[18px] text-capsula-navy-deep">No hay recetas</h3>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Comienza creando tu primera receta para calcular sus costos.</p>
                     <Link
                         href="/dashboard/recetas/nueva"
-                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white"
+                        className="mt-4 inline-flex items-center gap-2 rounded-[var(--radius)] bg-capsula-navy-deep px-4 py-2 text-[13px] font-medium text-capsula-ivory-surface transition-colors hover:bg-capsula-navy-ink"
                     >
-                        ➕ Crear Receta
+                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                        Crear receta
                     </Link>
                 </div>
             )}

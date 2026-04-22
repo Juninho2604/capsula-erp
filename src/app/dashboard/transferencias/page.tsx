@@ -1,5 +1,6 @@
 import { getInventoryItemsForSelect, getAreasForSelect } from '@/app/actions/entrada.actions';
 import { getRequisitions } from '@/app/actions/requisition.actions';
+import { ArrowLeftRight } from 'lucide-react';
 import TransferenciasView from './transferencias-view';
 import BulkTransferPanel from './BulkTransferPanel';
 
@@ -20,19 +21,18 @@ export default async function TransferenciasPage() {
     // Si falla, convertiremos a string. Por ahora lo paso directo.
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 animate-in">
+            <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                    <ArrowLeftRight className="h-4 w-4" strokeWidth={1.5} />
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Transferencias de Inventario
-                    </h1>
-                    <p className="text-gray-500">
-                        Solicitud y Despacho de insumos entre áreas (Almacén Central → Cocina, Barra, etc.)
-                    </p>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Operación</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Transferencias de inventario</h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Solicitud y despacho de insumos entre áreas (Almacén Central → Cocina, Barra, etc.).</p>
                 </div>
             </div>
 
-            {/* Panel de Transferencia Rápida por Categoría */}
             <BulkTransferPanel areasList={areas} />
 
             <TransferenciasView
