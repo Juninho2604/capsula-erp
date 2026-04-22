@@ -2,10 +2,15 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'react-hot-toast';
+import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText } from 'lucide-react';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
   type AccountPayableData,
 } from '@/app/actions/account-payable.actions';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
+import type { BadgeProps } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 
 const PAYMENT_METHODS = [
   { value: 'CASH_USD', label: 'Efectivo USD' },
@@ -16,14 +21,18 @@ const PAYMENT_METHODS = [
   { value: 'CHECK', label: 'Cheque' },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  PENDING:  { label: 'Pendiente',  color: 'bg-amber-500/20 text-amber-500' },
-  PARTIAL:  { label: 'Parcial',    color: 'bg-blue-500/20 text-blue-500' },
-  PAID:     { label: 'Pagado',     color: 'bg-emerald-500/20 text-emerald-500' },
-  OVERDUE:  { label: 'Vencido',    color: 'bg-red-500/20 text-red-500' },
-  DISPUTED: { label: 'Disputado',  color: 'bg-purple-500/20 text-purple-500' },
-  VOID:     { label: 'Anulado',    color: 'bg-muted text-muted-foreground' },
+type StatusVariant = NonNullable<BadgeProps['variant']>;
+const STATUS_CONFIG: Record<string, { label: string; variant: StatusVariant }> = {
+  PENDING:  { label: 'Pendiente',  variant: 'warn' },
+  PARTIAL:  { label: 'Parcial',    variant: 'info' },
+  PAID:     { label: 'Pagado',     variant: 'ok' },
+  OVERDUE:  { label: 'Vencido',    variant: 'danger' },
+  DISPUTED: { label: 'Disputado',  variant: 'coral' },
+  VOID:     { label: 'Anulado',    variant: 'neutral' },
 };
+
+const FIELD_LABEL = 'mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted';
+const FIELD_INPUT = 'w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none';
 
 function fmt(n: number) {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -170,28 +179,50 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
     .slice(0, 5);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">📄 Cuentas por Pagar</h1>
-          <p className="text-sm text-muted-foreground">Control de deudas y facturas pendientes</p>
-        </div>
-        {canManage && (
-          <button onClick={() => setShowForm(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
-            + Nueva Cuenta
-          </button>
-        )}
-      </div>
+    <div>
+      <PageHeader
+        kicker="Finanzas"
+        title="Cuentas por pagar"
+        description="Control de deudas y facturas pendientes"
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4" />
+              Nueva cuenta
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Pendiente" value={`$${fmt(totalPending)}`} color="border-amber-500/30 bg-amber-500/5" icon="⏳" />
-        <KpiCard label="Vencido" value={`$${fmt(overdueAmount)}`} sub={`${overdueCount} facturas`} color={overdueCount > 0 ? "border-red-500/30 bg-red-500/5" : "border-border"} icon="🚨" />
-        <KpiCard label="Total Pagado" value={`$${fmt(totalPaid)}`} color="border-emerald-500/30 bg-emerald-500/5" icon="✅" />
-        <KpiCard label="Acreedores" value={`${new Set(accounts.filter(a=>!['PAID','VOID'].includes(a.status)).map(a=>a.supplierId||a.creditorName)).size}`} color="border-blue-500/30 bg-blue-500/5" icon="🏢" />
-      </div>
+      <div className="space-y-6">
+        {/* KPIs */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Total pendiente"
+            value={`$${fmt(totalPending)}`}
+            Icon={Hourglass}
+            tone="warn"
+          />
+          <KpiCard
+            label="Vencido"
+            value={`$${fmt(overdueAmount)}`}
+            sub={`${overdueCount} facturas`}
+            Icon={AlertOctagon}
+            tone={overdueCount > 0 ? 'danger' : 'neutral'}
+          />
+          <KpiCard
+            label="Total pagado"
+            value={`$${fmt(totalPaid)}`}
+            Icon={CheckCircle2}
+            tone="ok"
+          />
+          <KpiCard
+            label="Acreedores"
+            value={`${new Set(accounts.filter(a=>!['PAID','VOID'].includes(a.status)).map(a=>a.supplierId||a.creditorName)).size}`}
+            Icon={Building2}
+            tone="info"
+          />
+        </div>
 
       {/* Aging Report */}
       {hasAging && (
@@ -306,7 +337,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map(a => {
-                  const statusCfg = STATUS_CONFIG[a.status] ?? { label: a.status, color: 'bg-muted text-muted-foreground' };
+                  const statusCfg = STATUS_CONFIG[a.status] ?? { label: a.status, variant: 'neutral' as StatusVariant };
                   const isExpanded = expandedId === a.id;
                   const isOverdue = a.status === 'OVERDUE';
                   return (
@@ -322,7 +353,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                           </div>
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusCfg.color}`}>{statusCfg.label}</span>
+                          <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                         </td>
                         <td className="px-5 py-3 text-right text-foreground font-medium">${fmt(a.totalAmountUsd)}</td>
                         <td className={`px-5 py-3 text-right font-bold ${a.remainingUsd > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
@@ -484,30 +515,54 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
           </form>
         </Modal>
       )}
+      </div>
     </div>
   );
 }
 
-function KpiCard({ label, value, icon, color, sub }: { label: string; value: string; icon: string; color: string; sub?: string }) {
+type KpiTone = 'ok' | 'warn' | 'danger' | 'info' | 'neutral';
+const KPI_TONE: Record<KpiTone, string> = {
+  ok:      'border-[#D3E2D8] bg-[#E5EDE7]/40',
+  warn:    'border-[#E8D9B8] bg-[#F3EAD6]/40',
+  danger:  'border-[#EFD2C8] bg-[#F7E3DB]/40',
+  info:    'border-capsula-line bg-capsula-ivory-surface',
+  neutral: 'border-capsula-line bg-capsula-ivory-surface',
+};
+
+function KpiCard({
+  label, value, Icon, tone, sub,
+}: {
+  label: string;
+  value: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  tone: KpiTone;
+  sub?: string;
+}) {
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-        <span className="text-lg">{icon}</span>
+    <div className={`rounded-2xl border p-5 shadow-cap-soft ${KPI_TONE[tone]}`}>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
+        <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
-      <p className="text-2xl font-black text-foreground truncate">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="truncate font-heading text-2xl tracking-[-0.02em] text-capsula-navy-deep">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-capsula-ink-soft">{sub}</p>}
     </div>
   );
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border border-border shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
+        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
+          <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">{title}</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
