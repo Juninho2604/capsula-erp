@@ -16,8 +16,10 @@ import {
     IngredientRequirement,
     ProductionActionResult,
 } from '@/app/actions/production.actions';
-import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench } from 'lucide-react';
+import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench, Check, Lightbulb, Loader2, FileText, Send } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
 
 interface RecipeOption {
@@ -260,15 +262,18 @@ export default function ProduccionPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'COMPLETED':
-                return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"><CheckCircle className="h-3 w-3" /> Completado</span>;
+                return <Badge variant="ok"><CheckCircle className="h-3 w-3" strokeWidth={1.5} /> Completado</Badge>;
             case 'IN_PROGRESS':
-                return <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"><Clock className="h-3 w-3" /> En Proceso</span>;
+                return <Badge variant="info"><Clock className="h-3 w-3" strokeWidth={1.5} /> En proceso</Badge>;
             case 'CANCELLED':
-                return <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"><AlertTriangle className="h-3 w-3" /> Cancelado</span>;
+                return <Badge variant="danger"><AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> Cancelado</Badge>;
             default:
-                return <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">{status}</span>;
+                return <Badge variant="neutral">{status}</Badge>;
         }
     };
+
+    const inputClass = 'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none';
+    const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
 
     // Helper: get item name by id
     const getItemName = (itemId: string) => allItems.find(i => i.id === itemId)?.name || itemId;
@@ -276,57 +281,54 @@ export default function ProduccionPage() {
 
     return (
         <div className="space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                    <Factory className="h-4 w-4" strokeWidth={1.5} />
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <Factory className="h-7 w-7 text-emerald-600" />
-                        Producción
-                    </h1>
-                    <p className="text-gray-500">
-                        Registrar producciones y consumo de ingredientes
-                    </p>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Operación</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Producción</h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Registrar producciones y consumo de ingredientes.</p>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700">
+            <div className="border-b border-capsula-line">
                 <nav className="-mb-px flex gap-6">
                     <button
                         onClick={() => { setActiveTab('receta'); setResult(null); }}
                         className={cn(
-                            'flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
+                            'flex items-center gap-2 border-b-2 pb-3 text-[13px] font-medium transition-colors',
                             activeTab === 'receta'
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                ? 'border-capsula-navy-deep text-capsula-navy-deep'
+                                : 'border-transparent text-capsula-ink-muted hover:text-capsula-ink'
                         )}
                     >
-                        <ChefHat className="h-4 w-4" />
-                        Desde Receta
+                        <ChefHat className="h-4 w-4" strokeWidth={1.5} />
+                        Desde receta
                     </button>
                     <button
                         onClick={() => { setActiveTab('manual'); setResult(null); }}
                         className={cn(
-                            'flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
+                            'flex items-center gap-2 border-b-2 pb-3 text-[13px] font-medium transition-colors',
                             activeTab === 'manual'
-                                ? 'border-amber-500 text-amber-600'
-                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                ? 'border-capsula-coral text-capsula-coral'
+                                : 'border-transparent text-capsula-ink-muted hover:text-capsula-ink'
                         )}
                     >
-                        <Wrench className="h-4 w-4" />
-                        Producción Manual
+                        <Wrench className="h-4 w-4" strokeWidth={1.5} />
+                        Producción manual
                     </button>
                     <button
                         onClick={() => setActiveTab('historial')}
                         className={cn(
-                            'flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
+                            'flex items-center gap-2 border-b-2 pb-3 text-[13px] font-medium transition-colors',
                             activeTab === 'historial'
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                ? 'border-capsula-navy-deep text-capsula-navy-deep'
+                                : 'border-transparent text-capsula-ink-muted hover:text-capsula-ink'
                         )}
                     >
-                        <Clock className="h-4 w-4" />
-                        Historial ({productionHistory.length})
+                        <Clock className="h-4 w-4" strokeWidth={1.5} />
+                        Historial <span className="font-mono text-[11px]">({productionHistory.length})</span>
                     </button>
                 </nav>
             </div>
@@ -336,28 +338,21 @@ export default function ProduccionPage() {
                ═══════════════════════════════════════════════════════════════════ */}
             {activeTab === 'receta' && (
                 <div className="grid gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <div className="mb-6 flex items-center gap-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 text-white shadow-lg">
-                                    <ChefHat className="h-6 w-6" />
+                    <div className="space-y-6 lg:col-span-2">
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                            <div className="mb-6 flex items-center gap-3 border-b border-capsula-line pb-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-alt text-capsula-navy-deep">
+                                    <ChefHat className="h-5 w-5" strokeWidth={1.5} />
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold text-gray-900 dark:text-white">
-                                        Producción desde Receta
-                                    </h2>
-                                    <p className="text-sm text-gray-500">
-                                        Chef: {user?.firstName} {user?.lastName}
-                                    </p>
+                                    <h2 className="font-heading text-[16px] text-capsula-navy-deep">Producción desde receta</h2>
+                                    <p className="text-[12px] text-capsula-ink-soft">Chef: {user?.firstName} {user?.lastName}</p>
                                 </div>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                {/* Receta */}
                                 <div className="sm:col-span-2">
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        ¿Qué acabas de producir? *
-                                    </label>
+                                    <label className={labelClass}>¿Qué acabas de producir? *</label>
                                     <Combobox
                                         items={recipes.map(r => ({
                                             value: r.id,
@@ -369,17 +364,14 @@ export default function ProduccionPage() {
                                             const recipe = recipes.find(r => r.id === val);
                                             if (recipe) setQuantity(recipe.outputQuantity);
                                         }}
-                                        placeholder="Seleccionar producto..."
-                                        searchPlaceholder="Buscar receta..."
+                                        placeholder="Seleccionar producto…"
+                                        searchPlaceholder="Buscar receta…"
                                         emptyMessage="No hay recetas disponibles"
                                     />
                                 </div>
 
-                                {/* Cantidad producida */}
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Cantidad Producida *
-                                    </label>
+                                    <label className={labelClass}>Cantidad producida *</label>
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="number"
@@ -388,89 +380,76 @@ export default function ProduccionPage() {
                                             min="0"
                                             step="0.1"
                                             placeholder="20"
-                                            className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            className="w-24 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 font-mono text-[14px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                         />
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-mono text-[13px] text-capsula-ink-soft">
                                             {selectedRecipeData?.outputUnit || 'unidades'}
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Área */}
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Área de Producción *
-                                    </label>
+                                    <label className={labelClass}>Área de producción *</label>
                                     <select
                                         value={areaId}
                                         onChange={(e) => setAreaId(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={inputClass}
                                     >
                                         {areas.map(area => (
-                                            <option key={area.id} value={area.id}>
-                                                {area.name}
-                                            </option>
+                                            <option key={area.id} value={area.id}>{area.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Notas */}
                                 <div className="sm:col-span-2">
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Notas (opcional)
-                                    </label>
+                                    <label className={labelClass}>Notas (opcional)</label>
                                     <textarea
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
-                                        placeholder="Ej: Lote #45, Temperatura perfecta"
+                                        placeholder="Ej: Lote #45, temperatura perfecta"
                                         rows={2}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={inputClass}
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Tabla de ingredientes a consumir */}
                         {requirements.length > 0 && (
-                            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                                    <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
-                                        <Package className="h-5 w-5 text-gray-400" />
+                            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                                <div className="border-b border-capsula-line px-6 py-4">
+                                    <h3 className="flex items-center gap-2 font-heading text-[15px] text-capsula-navy-deep">
+                                        <Package className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />
                                         Ingredientes que se consumirán
                                     </h3>
-                                    <p className="text-sm text-gray-500">
-                                        Estos insumos se descontarán automáticamente del área seleccionada
+                                    <p className="mt-0.5 text-[12px] text-capsula-ink-soft">
+                                        Estos insumos se descontarán automáticamente del área seleccionada.
                                     </p>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-                                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Ingrediente</th>
-                                                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Necesario</th>
-                                                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Disponible</th>
-                                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
+                                    <table className="w-full text-[13px]">
+                                        <thead className="bg-capsula-ivory-alt text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left">Ingrediente</th>
+                                                <th className="px-6 py-3 text-right">Necesario</th>
+                                                <th className="px-6 py-3 text-right">Disponible</th>
+                                                <th className="px-6 py-3 text-center">Estado</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                        <tbody className="divide-y divide-capsula-line">
                                             {requirements.map((req) => (
-                                                <tr key={req.itemId} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                                    <td className="px-6 py-4">
-                                                        <span className="font-medium text-gray-900 dark:text-white">{req.itemName}</span>
-                                                    </td>
+                                                <tr key={req.itemId} className="transition-colors hover:bg-capsula-ivory-alt/50">
+                                                    <td className="px-6 py-4 font-medium text-capsula-ink">{req.itemName}</td>
+                                                    <td className="px-6 py-4 text-right font-mono text-capsula-ink">{formatNumber(req.gross, 3)} {req.unit}</td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <span className="font-mono text-gray-900 dark:text-white">{formatNumber(req.gross, 3)} {req.unit}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className={cn('font-mono', req.sufficient ? 'text-gray-500' : 'text-red-600')}>
+                                                        <span className={cn('font-mono', req.sufficient ? 'text-capsula-ink-muted' : 'text-capsula-coral')}>
                                                             {formatNumber(req.available, 3)} {req.unit}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         {req.sufficient ? (
-                                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">✓ OK</span>
+                                                            <Badge variant="ok"><Check className="h-3 w-3" strokeWidth={2} /> OK</Badge>
                                                         ) : (
-                                                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">✗ Falta {formatNumber(req.gross - req.available, 3)}</span>
+                                                            <Badge variant="danger"><X className="h-3 w-3" strokeWidth={2} /> Falta {formatNumber(req.gross - req.available, 3)}</Badge>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -481,48 +460,43 @@ export default function ProduccionPage() {
                             </div>
                         )}
 
-                        {/* Resultado */}
-                        {result && (
-                            <ResultCard result={result} />
-                        )}
+                        {result && (<ResultCard result={result} />)}
                     </div>
 
-                    {/* Panel lateral */}
                     <div className="space-y-4">
-                        <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 p-6 dark:border-emerald-800 dark:from-emerald-900/20 dark:to-green-900/20">
-                            <button
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-[#E5EDE7]/40 p-6 shadow-cap-soft">
+                            <Button
+                                variant="primary"
+                                size="lg"
                                 onClick={handleRecipeProduction}
                                 disabled={isSubmitting || !selectedRecipe || quantity <= 0 || !allIngredientsAvailable || !areaId}
-                                className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 py-4 text-lg font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                                isLoading={isSubmitting}
+                                className="w-full"
                             >
-                                {isSubmitting ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <span className="animate-spin">⏳</span> Procesando...
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <CheckCircle className="h-5 w-5" /> Registrar Producción
-                                    </span>
-                                )}
-                            </button>
+                                <CheckCircle className="h-4 w-4" strokeWidth={1.5} />
+                                {isSubmitting ? 'Procesando…' : 'Registrar producción'}
+                            </Button>
 
                             {requirements.length > 0 && !allIngredientsAvailable && (
-                                <p className="mt-3 text-center text-sm text-red-600 dark:text-red-400">
-                                    ⚠️ Stock insuficiente de algunos ingredientes
+                                <p className="mt-3 flex items-center justify-center gap-1 text-center text-[12px] text-capsula-coral">
+                                    <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                    Stock insuficiente de algunos ingredientes
                                 </p>
                             )}
                             {selectedRecipe && quantity > 0 && allIngredientsAvailable && (
-                                <p className="mt-3 text-center text-sm text-emerald-600 dark:text-emerald-400">
-                                    ✓ Todo listo para producir
+                                <p className="mt-3 flex items-center justify-center gap-1 text-center text-[12px] text-[#2F6B4E]">
+                                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                                    Todo listo para producir
                                 </p>
                             )}
                         </div>
 
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-                            <h4 className="mb-2 flex items-center gap-2 font-medium text-amber-800 dark:text-amber-400">
-                                💡 Recuerda
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-[#F3EAD6]/40 p-4">
+                            <h4 className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#946A1C]">
+                                <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                Recuerda
                             </h4>
-                            <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-300">
+                            <ul className="space-y-1 text-[12px] text-capsula-ink-soft">
                                 <li>• Los ingredientes se descuentan del área seleccionada</li>
                                 <li>• El producto terminado se suma a la misma área</li>
                                 <li>• Luego puedes transferir al Restaurante</li>
