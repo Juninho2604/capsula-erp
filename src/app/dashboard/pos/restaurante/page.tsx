@@ -3035,37 +3035,54 @@ export default function POSSportBarPage() {
           m.id !== removeTarget.itemId &&
           (!removeReplaceSearch.trim() || m.name.toLowerCase().includes(removeReplaceSearch.toLowerCase()))
         ).slice(0, 30);
+        const modTypes: { id: 'VOID' | 'ADJUST_QTY' | 'REPLACE'; label: string; icon: LucideIcon }[] = [
+          { id: 'VOID',       label: 'Cancelar',  icon: X },
+          { id: 'ADJUST_QTY', label: 'Ajustar',   icon: Minus },
+          { id: 'REPLACE',    label: 'Cambiar',   icon: RefreshCw },
+        ];
         return (
-          <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-card border border-red-900/50 w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-navy-deep/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+            <div className="mx-auto max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:rounded-[var(--radius)]">
               {/* Header */}
-              <div className="border-b border-border p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-black text-red-400">✏️ Modificar ítem</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    <span className="font-bold text-foreground">{removeTarget.quantity}×</span> {removeTarget.itemName}
-                    <span className="ml-2 text-red-400 font-bold">−${removeTarget.lineTotal.toFixed(2)}</span>
-                  </p>
+              <div className="flex items-center justify-between border-b border-capsula-line p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle">
+                    <PencilLine className="h-5 w-5 text-capsula-coral" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-heading text-[16px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Modificar ítem</h3>
+                    <p className="truncate text-[11px] text-capsula-ink-muted">
+                      <span className="font-mono font-semibold text-capsula-ink">{removeTarget.quantity}×</span> {removeTarget.itemName}
+                      <span className="ml-2 font-mono font-semibold text-capsula-coral">−${removeTarget.lineTotal.toFixed(2)}</span>
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setShowRemoveModal(false)} className="text-muted-foreground hover:text-destructive text-2xl ml-4">×</button>
+                <button
+                  onClick={() => setShowRemoveModal(false)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.5} />
+                </button>
               </div>
 
-              <div className="p-5 space-y-4">
+              <div className="space-y-4 p-5">
                 {/* Opciones */}
                 <div className="grid grid-cols-3 gap-2">
-                  {(["VOID", "ADJUST_QTY", "REPLACE"] as const).map((t) => {
-                    const labels = { VOID: "❌ Cancelar", ADJUST_QTY: "✏️ Ajustar", REPLACE: "🔄 Cambiar" };
+                  {modTypes.map((t) => {
+                    const MIcon = t.icon;
+                    const active = removeModType === t.id;
                     return (
                       <button
-                        key={t}
-                        onClick={() => setRemoveModType(t)}
-                        className={`py-2.5 rounded-xl text-xs font-black border transition ${
-                          removeModType === t
-                            ? "bg-red-700 border-red-600 text-white"
-                            : "bg-secondary border-border hover:border-red-500/40 hover:text-red-400"
-                        }`}
+                        key={t.id}
+                        onClick={() => setRemoveModType(t.id)}
+                        className={cn(
+                          'inline-flex items-center justify-center gap-1 rounded-[var(--radius)] border py-2.5 text-[12px] font-medium transition-colors',
+                          active
+                            ? 'border-capsula-coral bg-capsula-coral text-white'
+                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral/40 hover:text-capsula-coral',
+                        )}
                       >
-                        {labels[t]}
+                        <MIcon className="h-3.5 w-3.5" strokeWidth={1.5} /> {t.label}
                       </button>
                     );
                   })}
@@ -3074,21 +3091,25 @@ export default function POSSportBarPage() {
                 {/* Ajustar cantidad */}
                 {removeModType === "ADJUST_QTY" && (
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground mb-2">
+                    <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                       Nueva cantidad (actual: {removeTarget.quantity})
                     </label>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setRemoveNewQty((q) => Math.max(1, q - 1))}
-                        className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-red-500/40"
-                      >−</button>
-                      <span className="flex-1 text-center text-2xl font-black">{removeNewQty}</span>
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory text-capsula-ink transition-colors hover:border-capsula-coral/40"
+                      >
+                        <Minus className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                      <span className="flex-1 text-center font-mono text-[24px] font-semibold text-capsula-navy-deep">{removeNewQty}</span>
                       <button
                         onClick={() => setRemoveNewQty((q) => Math.min(removeTarget.quantity - 1, q + 1))}
-                        className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-sky-500/40"
-                      >+</button>
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory text-capsula-ink transition-colors hover:border-capsula-navy-deep/40"
+                      >
+                        <Plus className="h-4 w-4" strokeWidth={2} />
+                      </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                    <p className="mt-1.5 text-center text-[10.5px] text-capsula-ink-muted">
                       Se anularán {removeTarget.quantity - removeNewQty} unidad(es)
                     </p>
                   </div>
@@ -3097,30 +3118,39 @@ export default function POSSportBarPage() {
                 {/* Cambiar por otro ítem */}
                 {removeModType === "REPLACE" && (
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-muted-foreground">Producto de reemplazo</label>
-                    <input
-                      value={removeReplaceSearch}
-                      onChange={(e) => setRemoveReplaceSearch(e.target.value)}
-                      placeholder="Buscar producto..."
-                      className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm font-bold focus:border-sky-500 focus:outline-none"
-                    />
-                    <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                      {replaceItems.map((m: MenuItem) => (
-                        <button
-                          key={m.id}
-                          onClick={() => setRemoveReplaceItemId(m.id)}
-                          className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-bold transition border ${
-                            removeReplaceItemId === m.id
-                              ? "bg-sky-700 border-sky-600 text-white"
-                              : "bg-secondary border-border hover:border-sky-500/40"
-                          }`}
-                        >
-                          <span className="truncate">{m.name}</span>
-                          <span className="ml-2 shrink-0 opacity-70">${m.price?.toFixed(2)}</span>
-                        </button>
-                      ))}
+                    <label className="block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Producto de reemplazo</label>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                      <input
+                        value={removeReplaceSearch}
+                        onChange={(e) => setRemoveReplaceSearch(e.target.value)}
+                        placeholder="Buscar producto…"
+                        className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2 pl-9 pr-3 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                      />
+                    </div>
+                    <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
+                      {replaceItems.map((m: MenuItem) => {
+                        const active = removeReplaceItemId === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => setRemoveReplaceItemId(m.id)}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-[var(--radius)] border px-3 py-2 text-[12px] transition-colors',
+                              active
+                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink hover:border-capsula-navy-deep/40',
+                            )}
+                          >
+                            <span className="truncate font-medium">{m.name}</span>
+                            <span className={cn('ml-2 shrink-0 font-mono', active ? 'text-capsula-ivory/80' : 'text-capsula-ink-muted')}>
+                              ${m.price?.toFixed(2)}
+                            </span>
+                          </button>
+                        );
+                      })}
                       {replaceItems.length === 0 && (
-                        <p className="text-xs text-muted-foreground px-2 py-1">Sin resultados</p>
+                        <p className="px-2 py-1 text-[12px] text-capsula-ink-muted">Sin resultados</p>
                       )}
                     </div>
                   </div>
@@ -3128,22 +3158,22 @@ export default function POSSportBarPage() {
 
                 {/* Motivo */}
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">
-                    Motivo <span className="text-red-400">*</span>
+                  <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                    Motivo <span className="text-capsula-coral">*</span>
                   </label>
                   <textarea
                     value={removeJustification}
                     onChange={(e) => { setRemoveJustification(e.target.value); setRemoveError(""); }}
-                    placeholder="Ej: Error de pedido, cliente cambió de opinión..."
+                    placeholder="Ej: Error de pedido, cliente cambió de opinión…"
                     rows={2}
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm resize-none focus:border-amber-500 focus:outline-none"
+                    className="w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink outline-none focus:border-capsula-coral"
                   />
                 </div>
 
                 {/* PIN */}
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">
-                    PIN de capitán / gerente <span className="text-red-400">*</span>
+                  <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                    PIN de capitán / gerente <span className="text-capsula-coral">*</span>
                   </label>
                   <input
                     type="password"
@@ -3152,27 +3182,35 @@ export default function POSSportBarPage() {
                     onChange={(e) => { setRemovePin(e.target.value); setRemoveError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleRemoveItem()}
                     placeholder="••••••"
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-3 text-center text-xl tracking-widest focus:border-red-500 focus:outline-none"
+                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-3 text-center font-mono text-[20px] tracking-[0.3em] text-capsula-navy-deep outline-none focus:border-capsula-coral"
                   />
-                  {removeError && <p className="text-red-400 text-xs mt-1">{removeError}</p>}
+                  {removeError && (
+                    <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral">
+                      <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> {removeError}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="border-t border-border p-4 flex gap-3">
-                <button onClick={() => setShowRemoveModal(false)} className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm">
+              <div className="flex gap-2 border-t border-capsula-line p-4">
+                <Button variant="ghost" onClick={() => setShowRemoveModal(false)} className="flex-1">
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
                   onClick={handleRemoveItem}
                   disabled={!removePin.trim() || !removeJustification.trim() || isProcessing}
-                  className="flex-[2] py-3 bg-red-700 hover:bg-red-600 rounded-xl font-black text-sm transition disabled:opacity-50"
+                  isLoading={isProcessing}
+                  className="flex-[2]"
                 >
-                  {isProcessing ? "Procesando..." : (
-                    removeModType === "VOID"       ? "❌ Anular ítem" :
-                    removeModType === "ADJUST_QTY" ? "✏️ Ajustar cantidad" :
-                                                     "🔄 Confirmar cambio"
-                  )}
-                </button>
+                  {isProcessing
+                    ? "Procesando…"
+                    : removeModType === "VOID"
+                      ? (<><X className="h-4 w-4" strokeWidth={1.5} /> Anular ítem</>)
+                      : removeModType === "ADJUST_QTY"
+                        ? (<><Minus className="h-4 w-4" strokeWidth={1.5} /> Ajustar cantidad</>)
+                        : (<><RefreshCw className="h-4 w-4" strokeWidth={1.5} /> Confirmar cambio</>)}
+                </Button>
               </div>
             </div>
           </div>
@@ -3183,32 +3221,49 @@ export default function POSSportBarPage() {
       {/* MODAL: MODIFICADORES                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/90 p-4 text-foreground">
-          <div className="max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg mx-auto overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-border bg-card shadow-2xl">
-            <div className="border-b border-border p-5 flex items-start justify-between">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-navy-deep/40 p-4 text-capsula-ink backdrop-blur-sm sm:items-center">
+          <div className="mx-auto max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:max-h-[90vh] sm:rounded-[var(--radius)]">
+            <div className="flex items-start justify-between border-b border-capsula-line p-5">
               <div>
-                <h3 className="text-xl font-black text-foreground">{selectedItemForModifier.name}</h3>
-                <p className="mt-1 text-lg font-bold text-amber-400">${selectedItemForModifier.price.toFixed(2)}</p>
+                <h3 className="font-heading text-[22px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">{selectedItemForModifier.name}</h3>
+                <p className="mt-1 font-mono text-[18px] font-semibold text-capsula-navy-deep">
+                  ${selectedItemForModifier.price.toFixed(2)}
+                </p>
               </div>
-              <button onClick={() => setShowModifierModal(false)} className="text-muted-foreground hover:text-destructive text-2xl">
-                ×
+              <button
+                onClick={() => setShowModifierModal(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
               </button>
             </div>
 
-            <div className="space-y-5 p-5">
+            <div className="space-y-4 p-5">
               {selectedItemForModifier.modifierGroups.map((gr) => {
                 const group = gr.modifierGroup;
                 const totalSel = currentModifiers
                   .filter((m) => m.groupId === group.id)
                   .reduce((s, m) => s + m.quantity, 0);
+                const isValid = !group.isRequired || totalSel >= group.minSelections;
                 return (
-                  <div key={group.id} className="rounded-xl border border-border bg-secondary p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-bold text-foreground">
+                  <div
+                    key={group.id}
+                    className={cn(
+                      'rounded-[var(--radius)] border p-4',
+                      isValid
+                        ? 'border-capsula-line bg-capsula-ivory-surface'
+                        : 'border-capsula-coral/40 bg-capsula-coral-subtle/30',
+                    )}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-[12px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
                         {group.name}
-                        {group.isRequired && <span className="text-red-400 ml-1 text-xs">*</span>}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
+                        {group.isRequired && <span className="ml-1 text-capsula-coral">*</span>}
+                      </h4>
+                      <span className={cn(
+                        'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                        isValid ? 'bg-capsula-navy-soft text-capsula-navy-deep' : 'bg-capsula-coral text-white',
+                      )}>
                         {totalSel}/{group.maxSelections}
                       </span>
                     </div>
@@ -3218,43 +3273,63 @@ export default function POSSportBarPage() {
                         .map((modifier) => {
                           const sel = currentModifiers.find((m) => m.id === modifier.id && m.groupId === group.id);
                           const qty = sel?.quantity || 0;
+                          const isMax = group.maxSelections > 1 && totalSel >= group.maxSelections;
                           const isRadio = group.maxSelections === 1;
+                          const selected = qty > 0;
                           return (
                             <div
                               key={modifier.id}
-                              className="flex items-center justify-between rounded-lg bg-card px-3 py-2"
+                              className={cn(
+                                'flex items-center justify-between rounded-[var(--radius)] border px-3 py-2.5 transition-colors',
+                                selected
+                                  ? 'border-capsula-navy-deep/40 bg-capsula-navy-soft'
+                                  : 'border-capsula-line bg-capsula-ivory',
+                              )}
                             >
                               <div>
-                                <div className="text-sm font-medium text-foreground">{modifier.name}</div>
+                                <div className="text-[13px] font-medium text-capsula-ink">{modifier.name}</div>
                                 {modifier.priceAdjustment !== 0 && (
-                                  <div className="text-xs text-muted-foreground">+${modifier.priceAdjustment.toFixed(2)}</div>
+                                  <div className="font-mono text-[11px] text-capsula-coral">+${modifier.priceAdjustment.toFixed(2)}</div>
                                 )}
                               </div>
                               {isRadio ? (
                                 <button
                                   onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                  className={`h-7 w-7 rounded-full border text-sm ${qty > 0 ? "border-amber-500 bg-amber-500 text-black" : "border-muted-foreground/50"}`}
+                                  className={cn(
+                                    'inline-flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors',
+                                    selected
+                                      ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                      : 'border-capsula-line text-transparent',
+                                  )}
                                 >
-                                  {qty > 0 ? "✓" : ""}
+                                  <Check className="h-3 w-3" strokeWidth={2} />
                                 </button>
                               ) : (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => updateModifierQuantity(group, modifier, -1)}
-                                      className="h-8 w-8 rounded-lg bg-muted font-bold text-foreground"
-                                    >
-                                      −
-                                    </button>
-                                    <span className="w-5 text-center font-black text-amber-400">{qty}</span>
-                                    <button
-                                      onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                      className="h-8 w-8 rounded-lg bg-amber-600 font-bold text-white"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                                <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                                  <button
+                                    onClick={() => updateModifierQuantity(group, modifier, -1)}
+                                    disabled={qty === 0}
+                                    className={cn(
+                                      'inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+                                      qty === 0 ? 'text-capsula-ink-faint' : 'text-capsula-ink hover:bg-capsula-ivory-alt',
+                                    )}
+                                  >
+                                    <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                                  </button>
+                                  <span className="inline-flex w-6 items-center justify-center font-mono text-[13px] font-semibold text-capsula-navy-deep">{qty}</span>
+                                  <button
+                                    onClick={() => updateModifierQuantity(group, modifier, 1)}
+                                    disabled={isMax}
+                                    className={cn(
+                                      'inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+                                      isMax ? 'text-capsula-ink-faint' : 'text-capsula-navy-deep hover:bg-capsula-navy-soft',
+                                    )}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                     </div>
@@ -3262,31 +3337,31 @@ export default function POSSportBarPage() {
                 );
               })}
 
-              <div className="rounded-xl border border-border bg-secondary p-4">
-                <label className="block text-xs font-bold text-muted-foreground mb-2">Notas</label>
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Notas</label>
                 <textarea
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="h-16 w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-amber-500 focus:outline-none"
-                  placeholder="Sin hielo, extra limón..."
+                  className="h-16 w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                  placeholder="Sin hielo, extra limón…"
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary p-4">
-                <span className="font-bold text-foreground">Cantidad</span>
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                <span className="text-[13px] font-medium uppercase tracking-[0.08em] text-capsula-ink">Cantidad</span>
+                <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
                   <button
                     onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                    className="h-10 w-10 rounded-full bg-muted font-bold text-xl text-foreground"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
                   >
-                    −
+                    <Minus className="h-4 w-4" strokeWidth={2} />
                   </button>
-                  <span className="w-8 text-center text-xl font-black text-foreground">{itemQuantity}</span>
+                  <span className="inline-flex w-12 items-center justify-center font-mono text-[20px] font-semibold text-capsula-navy-deep">{itemQuantity}</span>
                   <button
                     onClick={() => setItemQuantity(itemQuantity + 1)}
-                    className="h-10 w-10 rounded-full bg-amber-600 font-bold text-xl text-white"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory transition-colors hover:bg-capsula-navy"
                   >
-                    +
+                    <Plus className="h-4 w-4" strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -3296,57 +3371,68 @@ export default function POSSportBarPage() {
                 <button
                   type="button"
                   onClick={() => setItemTakeaway(!itemTakeaway)}
-                  className={`w-full rounded-xl border p-4 flex items-center justify-between transition-all ${
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-[var(--radius)] border p-4 transition-colors',
                     itemTakeaway
-                      ? "border-amber-500 bg-amber-500/10 text-amber-400"
-                      : "border-border bg-secondary text-muted-foreground"
-                  }`}
+                      ? 'border-capsula-coral/40 bg-capsula-coral-subtle text-capsula-coral'
+                      : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:text-capsula-ink',
+                  )}
                 >
-                  <span className="font-bold">🥡 Para llevar</span>
-                  <span className={`text-xs font-black uppercase ${itemTakeaway ? "text-amber-400" : "text-muted-foreground"}`}>
-                    {itemTakeaway ? "SÍ — aparecerá en comanda" : "No"}
+                  <span className="inline-flex items-center gap-2 text-[13px] font-medium">
+                    <Package className="h-4 w-4" strokeWidth={1.5} />
+                    Para llevar
+                  </span>
+                  <span className={cn(
+                    'text-[11px] font-medium uppercase tracking-[0.08em]',
+                    itemTakeaway ? 'text-capsula-coral' : 'text-capsula-ink-muted',
+                  )}>
+                    {itemTakeaway ? 'Sí — aparecerá en comanda' : 'No'}
                   </span>
                 </button>
               )}
             </div>
 
-            <div className="flex gap-3 border-t border-border p-5">
-              <button
-                onClick={() => setShowModifierModal(false)}
-                className="flex-1 rounded-xl bg-muted py-3 font-bold text-foreground"
-              >
+            <div className="flex gap-2 border-t border-capsula-line p-5">
+              <Button variant="ghost" onClick={() => setShowModifierModal(false)} className="flex-1">
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={confirmAddToCart}
                 disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
-                className="flex-[2] rounded-xl bg-amber-600 hover:bg-amber-500 py-3 font-black transition disabled:opacity-50 text-white"
+                className="flex-[2]"
               >
                 Agregar al carrito
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
+
       {/* Navegación móvil — solo visible en móvil/tablet */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl safe-area-inset-bottom">
-        {(["tables", "menu", "account"] as const).map((tab) => {
-          const icons = { tables: "🪑", menu: "🍽️", account: "🧾" };
-          const labels = { tables: "MESAS", menu: "MENÚ", account: "CUENTA" };
+      <nav className="safe-area-inset-bottom fixed bottom-0 left-0 right-0 z-50 flex border-t border-capsula-line bg-capsula-ivory-surface lg:hidden">
+        {([
+          { id: 'tables' as const, label: 'Mesas', icon: Users },
+          { id: 'menu' as const, label: 'Menú', icon: UtensilsCrossed },
+          { id: 'account' as const, label: 'Cuenta', icon: Receipt, badge: cartBadgeCount },
+        ]).map((tab) => {
+          const TabIcon = tab.icon;
+          const active = mobileTab === tab.id;
           return (
             <button
-              key={tab}
-              onClick={() => setMobileTab(tab)}
-              className={`flex-1 min-h-[56px] py-2 flex flex-col items-center justify-center gap-1 text-[10px] font-black uppercase tracking-widest relative transition-colors
-                ${mobileTab === tab ? "text-primary bg-primary/5" : "text-muted-foreground"}`}
+              key={tab.id}
+              onClick={() => setMobileTab(tab.id)}
+              className={cn(
+                'relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors',
+                active ? 'bg-capsula-navy-soft text-capsula-navy-deep' : 'text-capsula-ink-muted',
+              )}
             >
-              {mobileTab === tab && <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary rounded-b" />}
-              <span className="text-xl">{icons[tab]}</span>
-              {labels[tab]}
-              {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-primary text-white text-[9px] rounded-full min-w-[16px] h-4 flex items-center
-      justify-center font-black px-1">
-                  {cartBadgeCount}
+              {active && <div className="absolute left-0 right-0 top-0 h-0.5 bg-capsula-navy-deep" />}
+              <TabIcon className="h-5 w-5" strokeWidth={1.5} />
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="absolute right-6 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-capsula-coral px-1 font-mono text-[9px] font-semibold text-white">
+                  {tab.badge}
                 </span>
               )}
             </button>
