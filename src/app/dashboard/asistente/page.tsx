@@ -276,15 +276,15 @@ export default function AsistentePage() {
             <div className="flex gap-2 items-center mb-4">
               <div className="flex-1 h-4 bg-secondary rounded-full overflow-hidden flex">
                 <div
-                  className="h-full bg-emerald-500 transition-all duration-700"
+                  className="h-full bg-[#2F6B4E] transition-all duration-700"
                   style={{ width: `${pct(recipeSummary.complete, recipeSummary.total)}%` }}
                 />
                 <div
-                  className="h-full bg-amber-400 transition-all duration-700"
+                  className="h-full bg-[#946A1C] transition-all duration-700"
                   style={{ width: `${pct(recipeSummary.stub, recipeSummary.total)}%` }}
                 />
                 <div
-                  className="h-full bg-red-500/50 transition-all duration-700"
+                  className="h-full bg-capsula-coral/50 transition-all duration-700"
                   style={{ width: `${pct(recipeSummary.none, recipeSummary.total)}%` }}
                 />
               </div>
@@ -293,19 +293,19 @@ export default function AsistentePage() {
 
             {/* Leyenda */}
             <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20">
-                <div className="text-2xl font-black text-emerald-400">{recipeSummary.complete}</div>
-                <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1">✅ Receta completa</div>
+              <div className="bg-[#2F6B4E]/10 rounded-xl p-3 text-center border border-[#2F6B4E]/30">
+                <div className="text-2xl font-black text-[#2F6B4E]">{recipeSummary.complete}</div>
+                <div className="text-[10px] font-black text-[#2F6B4E] uppercase tracking-widest mt-1">✅ Receta completa</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Descuenta inventario</div>
               </div>
-              <div className="bg-amber-400/10 rounded-xl p-3 text-center border border-amber-400/20">
-                <div className="text-2xl font-black text-amber-400">{recipeSummary.stub}</div>
-                <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">🟡 Receta vacía</div>
+              <div className="bg-[#946A1C]/10 rounded-xl p-3 text-center border border-[#946A1C]/30">
+                <div className="text-2xl font-black text-[#946A1C]">{recipeSummary.stub}</div>
+                <div className="text-[10px] font-black text-[#946A1C] uppercase tracking-widest mt-1">🟡 Receta vacía</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Sin ingredientes aún</div>
               </div>
-              <div className="bg-red-500/10 rounded-xl p-3 text-center border border-red-500/20">
-                <div className="text-2xl font-black text-red-400">{recipeSummary.none}</div>
-                <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-1">❌ Sin receta</div>
+              <div className="bg-capsula-coral/10 rounded-xl p-3 text-center border border-capsula-coral/30">
+                <div className="text-2xl font-black text-capsula-coral">{recipeSummary.none}</div>
+                <div className="text-[10px] font-black text-capsula-coral uppercase tracking-widest mt-1">❌ Sin receta</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">No descuenta</div>
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function AsistentePage() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           {item.recipeStatus === 'STUB' && (
-                            <span className="text-[9px] text-amber-400 font-bold">0 ingredientes</span>
+                            <span className="text-[9px] text-[#946A1C] font-bold">0 ingredientes</span>
                           )}
                           {item.recipeId ? (
                             <Link
@@ -340,7 +340,7 @@ export default function AsistentePage() {
                           ) : (
                             <Link
                               href="/dashboard/menu"
-                              className="text-[9px] font-black text-red-400 hover:underline uppercase tracking-widest"
+                              className="text-[9px] font-black text-capsula-coral hover:underline uppercase tracking-widest"
                             >
                               Crear receta →
                             </Link>
@@ -355,7 +355,7 @@ export default function AsistentePage() {
             {recipeSummary.complete === recipeSummary.total && recipeSummary.total > 0 && (
               <div className="text-center py-4">
                 <div className="text-3xl mb-2">🎉</div>
-                <p className="font-black text-emerald-400">¡Todos los platos tienen receta completa!</p>
+                <p className="font-black text-[#2F6B4E]">¡Todos los platos tienen receta completa!</p>
                 <p className="text-xs text-muted-foreground mt-1">El inventario se descuenta automáticamente en cada venta</p>
               </div>
             )}
@@ -382,7 +382,7 @@ export default function AsistentePage() {
             <div key={s} className="flex items-center gap-2">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-black transition-all ${
                 step === s ? 'bg-primary text-white shadow-lg shadow-primary/20' :
-                step > s ? 'bg-emerald-500 text-white' : 'bg-secondary text-muted-foreground'
+                step > s ? 'bg-[#2F6B4E] text-white' : 'bg-secondary text-muted-foreground'
               }`}>
                 {step > s ? '✓' : s}
               </div>
@@ -417,7 +417,7 @@ export default function AsistentePage() {
                     {cat.label}
                   </span>
                   {cat.type === 'SUB_RECIPE' && (
-                    <span className="text-[8px] font-black bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full">SUB-RECETA</span>
+                    <span className="text-[8px] font-black bg-capsula-navy/10 text-capsula-navy px-1.5 py-0.5 rounded-full">SUB-RECETA</span>
                   )}
                 </button>
               ))}
@@ -572,17 +572,17 @@ export default function AsistentePage() {
 
             {/* Bebidas alcohólicas: campos adicionales */}
             {form.isBeverage && (
-              <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/20 flex items-center gap-3">
+              <div className="p-4 bg-capsula-navy/5 rounded-2xl border border-capsula-navy/30 flex items-center gap-3">
                 <span className="text-2xl">🍾</span>
                 <div>
-                  <p className="text-xs font-black text-blue-400">Marcado como bebida alcohólica</p>
+                  <p className="text-xs font-black text-capsula-navy">Marcado como bebida alcohólica</p>
                   <p className="text-[10px] text-muted-foreground">Las recetas de cócteles usarán ML como unidad en sus ingredientes</p>
                 </div>
               </div>
             )}
 
             {submitResult && !submitResult.success && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm font-bold text-red-400">
+              <div className="bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl p-3 text-sm font-bold text-capsula-coral">
                 ⚠️ {submitResult.message}
               </div>
             )}
@@ -607,7 +607,7 @@ export default function AsistentePage() {
           <div className="space-y-6">
             <div className="text-center py-6">
               <div className="text-5xl mb-4">✅</div>
-              <h3 className="text-xl font-black text-emerald-400">{submitResult.message}</h3>
+              <h3 className="text-xl font-black text-[#2F6B4E]">{submitResult.message}</h3>
               <p className="text-sm text-muted-foreground mt-2">
                 El insumo está listo para usarse en recetas
               </p>
@@ -651,7 +651,7 @@ export default function AsistentePage() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Creados en esta sesión</p>
                 <div className="flex flex-wrap gap-1.5">
                   {createdItems.map((item) => (
-                    <span key={item.sku} className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                    <span key={item.sku} className="text-[10px] font-bold bg-[#2F6B4E]/10 text-[#2F6B4E] border border-[#2F6B4E]/30 px-2 py-1 rounded-lg">
                       {item.sku} · {item.name}
                     </span>
                   ))}
