@@ -1310,25 +1310,46 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: MODIFICADORES ══════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-border">
-            <div className="p-5 border-b border-border flex justify-between items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-capsula-navy-deep/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)] sm:max-h-[90vh] sm:rounded-[var(--radius)]">
+            <div className="flex items-start justify-between border-b border-capsula-line p-5">
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">{selectedItemForModifier.name}</h3>
-                <p className="text-emerald-400 font-black text-lg">${selectedItemForModifier.price.toFixed(2)}</p>
+                <h3 className="font-heading text-[22px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                  {selectedItemForModifier.name}
+                </h3>
+                <p className="mt-1 font-mono text-[18px] font-semibold text-capsula-navy-deep">
+                  ${selectedItemForModifier.price.toFixed(2)}
+                </p>
               </div>
-              <button onClick={() => setShowModifierModal(false)} className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center">&times;</button>
+              <button
+                onClick={() => setShowModifierModal(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
               {selectedItemForModifier.modifierGroups?.map((groupRel) => {
                 const group = groupRel.modifierGroup;
                 const totalSelected = currentModifiers.filter((m) => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                 return (
-                  <div key={group.id} className={`p-4 rounded-2xl border-2 transition-colors ${isValid ? "border-border bg-secondary/20" : "border-red-500 bg-red-500/5"}`}>
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-black text-sm uppercase tracking-widest text-foreground/70">{group.name}</h4>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500 text-white animate-bounce"}`}>
+                  <div
+                    key={group.id}
+                    className={cn(
+                      "rounded-[var(--radius)] border p-4",
+                      isValid
+                        ? "border-capsula-line bg-capsula-ivory-surface"
+                        : "border-capsula-coral/40 bg-capsula-coral-subtle/30",
+                    )}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-[12px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">{group.name}</h4>
+                      <span className={cn(
+                        "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                        isValid ? "bg-capsula-navy-soft text-capsula-navy-deep" : "bg-capsula-coral text-white",
+                      )}>
                         {totalSelected}/{group.maxSelections}{group.isRequired ? " · Req." : ""}
                       </span>
                     </div>
@@ -1338,21 +1359,53 @@ export default function POSMeseroPage() {
                         const qty = existing?.quantity || 0;
                         const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                         const isRadio = group.maxSelections === 1;
+                        const selected = qty > 0;
                         return (
-                          <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border-2 transition-all ${qty > 0 ? "bg-emerald-500/10 border-emerald-500" : "bg-background border-border hover:border-emerald-500/30"}`}>
-                            <span className="font-bold text-sm">{mod.name}</span>
+                          <div
+                            key={mod.id}
+                            className={cn(
+                              "flex items-center justify-between rounded-[var(--radius)] border px-3 py-2.5 transition-colors",
+                              selected
+                                ? "border-capsula-navy-deep/40 bg-capsula-navy-soft"
+                                : "border-capsula-line bg-capsula-ivory",
+                            )}
+                          >
+                            <span className="text-[13px] font-medium text-capsula-ink">{mod.name}</span>
                             {isRadio ? (
                               <button
                                 onClick={() => updateModifierQuantity(group, mod, 1)}
-                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? "bg-emerald-500 border-emerald-500 text-white scale-110" : "border-border hover:border-emerald-500"}`}
+                                className={cn(
+                                  "inline-flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors",
+                                  selected
+                                    ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                                    : "border-capsula-line text-transparent",
+                                )}
                               >
-                                {qty > 0 && "✓"}
+                                <Check className="h-3 w-3" strokeWidth={2} />
                               </button>
                             ) : (
-                              <div className="flex items-center gap-2 bg-card p-1 rounded-xl border border-border">
-                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-black transition ${qty === 0 ? "text-muted-foreground opacity-20" : "bg-secondary hover:bg-red-500/20 hover:text-red-400"}`}>-</button>
-                                <span className="font-black text-base w-5 text-center text-emerald-400">{qty}</span>
-                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-black transition ${isMax ? "text-muted-foreground opacity-20" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}>+</button>
+                              <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                                <button
+                                  onClick={() => updateModifierQuantity(group, mod, -1)}
+                                  disabled={qty === 0}
+                                  className={cn(
+                                    "inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors",
+                                    qty === 0 ? "text-capsula-ink-faint" : "text-capsula-ink hover:bg-capsula-ivory-alt",
+                                  )}
+                                >
+                                  <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                                </button>
+                                <span className="inline-flex w-6 items-center justify-center font-mono text-[13px] font-semibold text-capsula-navy-deep">{qty}</span>
+                                <button
+                                  onClick={() => updateModifierQuantity(group, mod, 1)}
+                                  disabled={isMax}
+                                  className={cn(
+                                    "inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors",
+                                    isMax ? "text-capsula-ink-faint" : "text-capsula-navy-deep hover:bg-capsula-navy-soft",
+                                  )}
+                                >
+                                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                                </button>
                               </div>
                             )}
                           </div>
@@ -1362,33 +1415,53 @@ export default function POSMeseroPage() {
                   </div>
                 );
               })}
-              <div className="bg-secondary/20 p-4 rounded-2xl border border-border">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Instrucciones especiales</label>
+
+              <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                  Instrucciones especiales
+                </label>
                 <textarea
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="w-full bg-background rounded-xl p-3 h-20 text-sm font-bold border border-border focus:border-emerald-500 focus:outline-none resize-none"
-                  placeholder="Petición del cliente..."
+                  className="h-20 w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                  placeholder="Petición del cliente…"
                 />
               </div>
-              <div className="flex items-center justify-between glass-panel p-4 rounded-2xl border-emerald-900/20">
-                <span className="font-black uppercase tracking-tighter text-base">Cantidad</span>
-                <div className="flex items-center gap-2 bg-background p-1 rounded-xl border border-border">
-                  <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-black text-xl hover:bg-secondary transition active:scale-90">-</button>
-                  <span className="w-12 text-center font-black text-2xl text-emerald-400">{itemQuantity}</span>
-                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-emerald-600 text-white font-black text-xl hover:bg-emerald-500 active:scale-95">+</button>
+
+              <div className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                <span className="text-[13px] font-medium uppercase tracking-[0.08em] text-capsula-ink">Cantidad</span>
+                <div className="flex items-center gap-1 rounded-full border border-capsula-line bg-capsula-ivory-surface p-1">
+                  <button
+                    onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+                  >
+                    <Minus className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                  <span className="inline-flex w-12 items-center justify-center font-mono text-[20px] font-semibold text-capsula-navy-deep">
+                    {itemQuantity}
+                  </span>
+                  <button
+                    onClick={() => setItemQuantity(itemQuantity + 1)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory transition-colors hover:bg-capsula-navy"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2} />
+                  </button>
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-border flex gap-3">
-              <button onClick={() => setShowModifierModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
-              <button
+
+            <div className="flex gap-2 border-t border-capsula-line p-4">
+              <Button variant="ghost" onClick={() => setShowModifierModal(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
                 onClick={confirmAddToCart}
                 disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
-                className="capsula-btn capsula-btn-primary flex-[2] py-4 text-sm bg-emerald-600 border-emerald-700 disabled:opacity-40"
+                className="flex-[2]"
               >
                 Agregar al pedido
-              </button>
+              </Button>
             </div>
           </div>
         </div>
