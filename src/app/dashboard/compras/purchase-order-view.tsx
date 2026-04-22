@@ -10,6 +10,14 @@ import {
     LowStockItem, StockConfigItem
 } from '@/app/actions/purchase.actions';
 import WhatsAppPurchaseOrderParser from '@/components/whatsapp-purchase-order-parser';
+import {
+    ShoppingCart, ClipboardList, Sparkles, Plus, MessageCircle, Settings,
+    Inbox, Search, Save, FolderOpen, Bell, AlertTriangle, Check, Loader2,
+    FileText, Send, Truck, Package, Smartphone, Trash2, X, PartyPopper,
+    Lightbulb, AlertOctagon, FileDown,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 type ViewMode = 'orders' | 'create' | 'auto' | 'config' | 'receive' | 'whatsapp';
 
@@ -142,7 +150,7 @@ export default function PurchaseOrderView() {
 
     async function handleSendOrder(orderId: string) { const r = await sendPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
     async function handleCancelOrder(orderId: string) { if (!confirm('¿Cancelar esta orden?')) return; const r = await cancelPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
-    async function handleExportWhatsApp(orderId: string) { const text = await exportPurchaseOrderTextAction(orderId); if (text) { navigator.clipboard.writeText(text); alert('📋 Orden copiada al portapapeles'); } }
+    async function handleExportWhatsApp(orderId: string) { const text = await exportPurchaseOrderTextAction(orderId); if (text) { navigator.clipboard.writeText(text); alert('Orden copiada al portapapeles'); } }
 
     async function handleReceiveItems() {
         if (!selectedOrderId || !selectedAreaId) return;
@@ -200,9 +208,21 @@ export default function PurchaseOrderView() {
     }, [filteredConfigItems]);
 
     const getStatusBadge = (status: string) => {
-        const s: Record<string, string> = { 'DRAFT': 'bg-gray-100 text-gray-700', 'SENT': 'bg-blue-100 text-blue-700', 'PARTIAL': 'bg-amber-100 text-amber-700', 'RECEIVED': 'bg-green-100 text-green-700', 'CANCELLED': 'bg-red-100 text-red-700' };
-        const l: Record<string, string> = { 'DRAFT': '📝 Borrador', 'SENT': '📤 Enviada', 'PARTIAL': '📦 Parcial', 'RECEIVED': '✅ Recibida', 'CANCELLED': '❌ Cancelada' };
-        return <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', s[status] || s['DRAFT'])}>{l[status] || status}</span>;
+        const v: Record<string, 'neutral' | 'info' | 'warn' | 'ok' | 'danger'> = {
+            DRAFT: 'neutral', SENT: 'info', PARTIAL: 'warn', RECEIVED: 'ok', CANCELLED: 'danger',
+        };
+        const l: Record<string, string> = {
+            DRAFT: 'Borrador', SENT: 'Enviada', PARTIAL: 'Parcial', RECEIVED: 'Recibida', CANCELLED: 'Cancelada',
+        };
+        const IconMap = {
+            DRAFT: FileText, SENT: Send, PARTIAL: Package, RECEIVED: Check, CANCELLED: X,
+        } as const;
+        const SIcon = (IconMap as any)[status] || FileText;
+        return (
+            <Badge variant={v[status] || 'neutral'}>
+                <SIcon className="h-3 w-3" strokeWidth={1.5} /> {l[status] || status}
+            </Badge>
+        );
     };
 
     const lowStockByCategory = useMemo(() => {
@@ -211,73 +231,131 @@ export default function PurchaseOrderView() {
         return groups;
     }, [lowStockItems]);
 
-    if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div><p className="mt-4 text-gray-500">Cargando...</p></div></div>;
+    if (isLoading) return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-capsula-navy" strokeWidth={1.5} />
+                <p className="mt-3 text-[13px] text-capsula-ink-muted">Cargando…</p>
+            </div>
+        </div>
+    );
+
+    const viewTabs: { id: ViewMode; label: string; Icon: typeof ClipboardList }[] = [
+        { id: 'orders',   label: 'Órdenes',      Icon: ClipboardList },
+        { id: 'auto',     label: 'Auto-generar', Icon: Sparkles },
+        { id: 'create',   label: 'Manual',       Icon: Plus },
+        { id: 'whatsapp', label: 'WhatsApp',     Icon: MessageCircle },
+        { id: 'config',   label: 'Stock mín.',   Icon: Settings },
+        { id: 'receive',  label: 'Recibir',      Icon: Inbox },
+    ];
 
     return (
-        <div className="space-y-6 animate-in">
+        <div className="mx-auto max-w-[1400px] animate-in space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 border-b border-capsula-line pb-6 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">🛒 Módulo de Compras</h1>
-                    <p className="text-gray-500">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Finanzas</div>
+                    <h1 className="inline-flex items-center gap-2 font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                        <ShoppingCart className="h-6 w-6 text-capsula-navy" strokeWidth={1.5} />
+                        Módulo de compras
+                    </h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Gestiona órdenes de compra, stock mínimo y recepción de mercancía.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    {(['orders', 'auto', 'create', 'whatsapp', 'config', 'receive'] as ViewMode[]).map(mode => {
-                        const labels: Record<ViewMode, string> = { orders: '📋 Órdenes', auto: '✨ Auto-Generar', create: '➕ Manual', whatsapp: '💬 WhatsApp', config: '⚙️ Stock Mín.', receive: '📥 Recibir' };
-                        return <button key={mode} onClick={() => { setViewMode(mode); if (mode === 'orders') loadData(); if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems); }}
-                            className={cn('px-3 py-2 rounded-lg text-xs font-medium transition-all', viewMode === mode ? (mode === 'whatsapp' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg') : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300')}>{labels[mode]}</button>;
+                <div className="flex flex-wrap gap-1">
+                    {viewTabs.map(tab => {
+                        const Icon = tab.Icon;
+                        const active = viewMode === tab.id;
+                        const isWhatsapp = tab.id === 'whatsapp';
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => {
+                                    setViewMode(tab.id);
+                                    if (tab.id === 'orders') loadData();
+                                    if (tab.id === 'create' || tab.id === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems);
+                                }}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[12px] font-medium transition-colors',
+                                    active
+                                        ? isWhatsapp
+                                            ? 'border-capsula-coral bg-capsula-coral text-white'
+                                            : 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                        : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-line-strong hover:text-capsula-ink',
+                                )}
+                            >
+                                <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                {tab.label}
+                            </button>
+                        );
                     })}
                 </div>
             </div>
 
             {/* ===== CONFIG: Stock Mínimo ===== */}
             {viewMode === 'config' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                    <div className="flex flex-col gap-3 border-b border-capsula-line bg-capsula-ivory px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <h2 className="font-semibold text-gray-900 dark:text-white">⚙️ Configurar Stock Mínimo y Punto de Reorden</h2>
-                            <p className="text-sm text-gray-500 mt-1">Define las cantidades mínimas para que el sistema detecte productos con stock bajo</p>
+                            <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                                <Settings className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+                                Configurar stock mínimo y punto de reorden
+                            </h2>
+                            <p className="mt-1 text-[12px] text-capsula-ink-muted">Define las cantidades mínimas para detectar productos con stock bajo.</p>
                         </div>
                         <div className="flex gap-2">
-                            <input type="text" value={configFilter} onChange={e => setConfigFilter(e.target.value)} placeholder="Filtrar..." className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                            <button onClick={handleSaveConfig} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                {isSubmitting ? '⏳...' : '💾 Guardar Todo'}
-                            </button>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                                <input
+                                    type="text"
+                                    value={configFilter}
+                                    onChange={e => setConfigFilter(e.target.value)}
+                                    placeholder="Filtrar…"
+                                    className="rounded-full border border-capsula-line bg-capsula-ivory-surface py-1.5 pl-8 pr-3 text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                />
+                            </div>
+                            <Button variant="primary" size="sm" onClick={handleSaveConfig} disabled={isSubmitting} isLoading={isSubmitting}>
+                                <Save className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                {isSubmitting ? '...' : 'Guardar todo'}
+                            </Button>
                         </div>
                     </div>
                     <div className="max-h-[65vh] overflow-y-auto">
                         {Object.entries(configByCategory).map(([category, items]) => (
                             <div key={category}>
-                                <div className="sticky top-0 bg-amber-50 dark:bg-amber-900/20 px-6 py-2 border-b border-amber-200 dark:border-amber-800">
-                                    <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">📂 {category}</span>
+                                <div className="sticky top-0 z-10 border-b border-capsula-line bg-capsula-ivory px-6 py-2">
+                                    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
+                                        <FolderOpen className="h-3 w-3 text-capsula-navy" strokeWidth={1.5} /> {category}
+                                    </span>
                                 </div>
                                 {items.map((item: any) => (
-                                    <div key={item.id} className="grid grid-cols-[1fr_100px_100px_100px] gap-3 items-center px-6 py-2.5 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <div key={item.id} className="grid grid-cols-[1fr_100px_100px_100px] items-center gap-3 border-b border-capsula-line px-6 py-2.5 hover:bg-capsula-ivory">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
-                                            <p className="text-xs text-gray-400">{item.sku} · {item.baseUnit}</p>
+                                            <p className="text-[13px] font-medium text-capsula-ink">{item.name}</p>
+                                            <p className="font-mono text-[11px] text-capsula-ink-muted">{item.sku} · {item.baseUnit}</p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-400 mb-0.5">Stock</p>
-                                            <p className={cn('text-sm font-mono font-medium', item.currentStock <= (configEdits[item.id]?.min || 0) ? 'text-red-600' : 'text-gray-700 dark:text-gray-300')}>{formatNumber(item.currentStock)}</p>
+                                            <p className="mb-0.5 text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Stock</p>
+                                            <p className={cn('font-mono text-[13px] font-medium', item.currentStock <= (configEdits[item.id]?.min || 0) ? 'text-capsula-coral' : 'text-capsula-ink-soft')}>
+                                                {formatNumber(item.currentStock)}
+                                            </p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400 mb-0.5 text-center">Mínimo</p>
+                                            <p className="mb-0.5 text-center text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Mínimo</p>
                                             <input type="number" min="0" step="0.5" value={configEdits[item.id]?.min ?? 0}
                                                 onChange={e => setConfigEdits({ ...configEdits, [item.id]: { ...configEdits[item.id], min: parseFloat(e.target.value) || 0 } })}
-                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-center font-mono text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep" />
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400 mb-0.5 text-center">Reorden</p>
+                                            <p className="mb-0.5 text-center text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Reorden</p>
                                             <input type="number" min="0" step="0.5" value={configEdits[item.id]?.reorder ?? 0}
                                                 onChange={e => setConfigEdits({ ...configEdits, [item.id]: { ...configEdits[item.id], reorder: parseFloat(e.target.value) || 0 } })}
-                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-center font-mono text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep" />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ))}
-                        {filteredConfigItems.length === 0 && <div className="p-8 text-center text-gray-500">No hay items que configurar</div>}
+                        {filteredConfigItems.length === 0 && <div className="p-8 text-center text-[13px] text-capsula-ink-muted">No hay items que configurar</div>}
                     </div>
                 </div>
             )}
