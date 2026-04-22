@@ -519,66 +519,98 @@ export default function PurchaseOrderView() {
 
             {/* ===== RECEIVE: Recibir Mercancía ===== */}
             {viewMode === 'receive' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                        <h2 className="font-semibold text-gray-900 dark:text-white">📥 Recibir Mercancía desde Orden de Compra</h2>
-                        <p className="text-sm text-gray-500 mt-1">Selecciona una orden activa y registra lo que va llegando de los proveedores</p>
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                    <div className="border-b border-capsula-line bg-capsula-ivory px-6 py-4">
+                        <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                            <Inbox className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} /> Recibir mercancía desde orden de compra
+                        </h2>
+                        <p className="mt-1 text-[12px] text-capsula-ink-muted">Selecciona una orden activa y registra lo que va llegando de los proveedores.</p>
                     </div>
-                    <div className="p-6 space-y-4">
+                    <div className="space-y-4 p-6">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Orden de Compra</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Orden de compra</label>
                                 <select value={selectedOrderId} onChange={e => { setSelectedOrderId(e.target.value); setReceiveQuantities({}); }}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                    <option value="">Seleccionar orden...</option>
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep">
+                                    <option value="">Seleccionar orden…</option>
                                     {orders.filter(o => ['DRAFT', 'SENT', 'PARTIAL'].includes(o.status)).map(o => (
-                                        <option key={o.id} value={o.id}>{o.orderNumber}{o.orderName ? ` (${o.orderName})` : ''} - {o.supplierName} ({o.itemCount} items) {getStatusLabel(o.status)}</option>
+                                        <option key={o.id} value={o.id}>{o.orderNumber}{o.orderName ? ` (${o.orderName})` : ''} — {o.supplierName} ({o.itemCount} ítems) {getStatusLabel(o.status)}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Área de Almacenamiento</label>
+                                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Área de almacenamiento</label>
                                 <select value={selectedAreaId} onChange={e => setSelectedAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none focus:border-capsula-navy-deep">
                                     {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                 </select>
                             </div>
                         </div>
                         {selectedOrder && (
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line">
                                 {Object.entries(selectedOrderItemsByCategory).map(([cat, items]) => (
                                     <div key={cat}>
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-2 border-b border-amber-200 dark:border-amber-800">
-                                            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">📂 {cat}</span>
+                                        <div className="border-b border-capsula-line bg-capsula-ivory px-4 py-2">
+                                            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
+                                                <FolderOpen className="h-3 w-3 text-capsula-navy" strokeWidth={1.5} /> {cat}
+                                            </span>
                                         </div>
                                         {(items as any[]).map((item: any) => {
                                             const remaining = item.quantityOrdered - item.quantityReceived;
                                             const isComplete = remaining <= 0;
                                             return (
-                                                <div key={item.id} className={cn("grid grid-cols-[1fr_80px_80px_80px_100px] gap-2 items-center px-4 py-2.5 border-b border-gray-100 dark:border-gray-700", isComplete && 'bg-green-50/50 dark:bg-green-900/10')}>
-                                                    <div><p className="text-sm font-medium text-gray-900 dark:text-white">{item.itemName}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Pedido</p><p className="text-sm font-mono">{formatNumber(item.quantityOrdered)}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Recibido</p><p className="text-sm font-mono text-green-600">{formatNumber(item.quantityReceived)}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Falta</p><p className={cn("text-sm font-mono", remaining > 0 ? 'text-red-600' : 'text-green-600')}>{formatNumber(remaining)}</p></div>
-                                                    <div>{!isComplete && (
-                                                        <input type="number" min="0" max={remaining} step="0.1" placeholder="0" value={receiveQuantities[item.id] || ''}
-                                                            onChange={e => setReceiveQuantities({ ...receiveQuantities, [item.id]: parseFloat(e.target.value) || 0 })}
-                                                            className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                                                    )}{isComplete && <span className="text-xs text-green-600 font-medium">✅ Completo</span>}</div>
+                                                <div key={item.id} className={cn("grid grid-cols-[1fr_80px_80px_80px_100px] items-center gap-2 border-b border-capsula-line px-4 py-2.5", isComplete && 'bg-[#E5EDE7]/40')}>
+                                                    <div>
+                                                        <p className="text-[13px] font-medium text-capsula-ink">{item.itemName}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Pedido</p>
+                                                        <p className="font-mono text-[13px] text-capsula-ink">{formatNumber(item.quantityOrdered)}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Recibido</p>
+                                                        <p className="font-mono text-[13px] text-[#2F6B4E]">{formatNumber(item.quantityReceived)}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] uppercase tracking-[0.08em] text-capsula-ink-muted">Falta</p>
+                                                        <p className={cn("font-mono text-[13px]", remaining > 0 ? 'text-capsula-coral' : 'text-[#2F6B4E]')}>{formatNumber(remaining)}</p>
+                                                    </div>
+                                                    <div>
+                                                        {!isComplete && (
+                                                            <input type="number" min="0" max={remaining} step="0.1" placeholder="0" value={receiveQuantities[item.id] || ''}
+                                                                onChange={e => setReceiveQuantities({ ...receiveQuantities, [item.id]: parseFloat(e.target.value) || 0 })}
+                                                                className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-1 text-center font-mono text-[12.5px] text-capsula-ink outline-none focus:border-capsula-navy-deep" />
+                                                        )}
+                                                        {isComplete && (
+                                                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2F6B4E]">
+                                                                <Check className="h-3 w-3" strokeWidth={2} /> Completo
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 ))}
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 flex justify-end">
-                                    <button onClick={handleReceiveItems} disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
-                                        className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                        {isSubmitting ? '⏳ Procesando...' : '📥 Dar Entrada a Mercancía'}
-                                    </button>
+                                <div className="flex justify-end border-t border-capsula-line bg-capsula-ivory p-4">
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleReceiveItems}
+                                        disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
+                                        isLoading={isSubmitting}
+                                    >
+                                        <Inbox className="h-4 w-4" strokeWidth={1.5} />
+                                        {isSubmitting ? 'Procesando…' : 'Dar entrada a mercancía'}
+                                    </Button>
                                 </div>
                             </div>
                         )}
-                        {!selectedOrderId && <div className="text-center py-8 text-gray-500"><span className="text-4xl">📦</span><p className="mt-2">Selecciona una orden de compra para comenzar a recibir mercancía</p></div>}
+                        {!selectedOrderId && (
+                            <div className="py-8 text-center">
+                                <Package className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                <p className="mt-3 text-[13px] text-capsula-ink-muted">Selecciona una orden de compra para comenzar a recibir mercancía</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -681,51 +713,69 @@ export default function PurchaseOrderView() {
     }
 
     function renderOrdersList() {
+        const thClass = 'px-6 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+        const iconBtn = 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink';
         return (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                        <thead className="border-b border-capsula-line bg-capsula-ivory-alt">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Orden</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Proveedor</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Fecha</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Items</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Estado</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                                <th className={thClass}>Orden</th>
+                                <th className={thClass}>Proveedor</th>
+                                <th className={thClass}>Fecha</th>
+                                <th className={`${thClass} text-center`}>Items</th>
+                                <th className={`${thClass} text-center`}>Estado</th>
+                                <th className={`${thClass} text-center`}>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody className="divide-y divide-capsula-line">
                             {orders.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><span className="text-4xl">📭</span><p className="mt-2">No hay órdenes de compra</p></td></tr>
-                            ) : orders.map(order => (
-                                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                    <td className="px-6 py-4">
-                                        <p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p>
-                                        {order.orderName && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{order.orderName}</p>}
-                                        <p className="text-xs text-gray-500">{order.createdBy}</p>
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-16 text-center">
+                                        <Package className="mx-auto h-12 w-12 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                                        <p className="mt-3 text-[13px] text-capsula-ink-soft">No hay órdenes de compra</p>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{order.supplierName}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{new Date(order.orderDate).toLocaleDateString('es-VE')}</td>
-                                    <td className="px-6 py-4 text-center"><span className="font-mono">{order.itemCount}</span></td>
+                                </tr>
+                            ) : orders.map(order => (
+                                <tr key={order.id} className="transition-colors hover:bg-capsula-ivory-alt/50">
+                                    <td className="px-6 py-4">
+                                        <p className="font-mono text-[13px] text-capsula-ink">{order.orderNumber}</p>
+                                        {order.orderName && <p className="text-[11px] uppercase tracking-[0.08em] text-capsula-coral">{order.orderName}</p>}
+                                        <p className="text-[11px] text-capsula-ink-muted">{order.createdBy}</p>
+                                    </td>
+                                    <td className="px-6 py-4 text-[13px] text-capsula-ink">{order.supplierName}</td>
+                                    <td className="px-6 py-4 font-mono text-[12px] text-capsula-ink-muted">{new Date(order.orderDate).toLocaleDateString('es-VE')}</td>
+                                    <td className="px-6 py-4 text-center font-mono text-[13px] text-capsula-ink">{order.itemCount}</td>
                                     <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-1">
-                                            <button onClick={() => handleExportWhatsApp(order.id)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 min-h-[44px] min-w-[44px]" title="Copiar para WhatsApp">📱</button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => handleExportWhatsApp(order.id)} className={iconBtn} title="Copiar para WhatsApp">
+                                                <Smartphone className="h-4 w-4" strokeWidth={1.5} />
+                                            </button>
                                             {['SENT', 'PARTIAL'].includes(order.status) && (
-                                                <button
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
                                                     onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-colors min-h-[44px]"
-                                                    title="Recibir mercancía"
                                                 >
-                                                    📦 Recibir
-                                                </button>
+                                                    <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                                    Recibir
+                                                </Button>
                                             )}
-                                            {order.status === 'DRAFT' && (<>
-                                                <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 min-h-[44px] min-w-[44px]" title="Recibir mercancía">📥</button>
-                                                <button onClick={() => handleSendOrder(order.id)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 min-h-[44px] min-w-[44px]" title="Marcar como enviada">📤</button>
-                                                <button onClick={() => handleCancelOrder(order.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 min-h-[44px] min-w-[44px]" title="Cancelar">🗑️</button>
-                                            </>)}
+                                            {order.status === 'DRAFT' && (
+                                                <>
+                                                    <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className={iconBtn} title="Recibir mercancía">
+                                                        <Inbox className="h-4 w-4" strokeWidth={1.5} />
+                                                    </button>
+                                                    <button onClick={() => handleSendOrder(order.id)} className={iconBtn} title="Marcar como enviada">
+                                                        <Send className="h-4 w-4" strokeWidth={1.5} />
+                                                    </button>
+                                                    <button onClick={() => handleCancelOrder(order.id)} className={iconBtn} title="Cancelar">
+                                                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
