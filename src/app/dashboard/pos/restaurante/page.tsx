@@ -2149,54 +2149,56 @@ export default function POSSportBarPage() {
                 : "Selecciona una mesa o usa Venta Directa (Pickup)"}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden">
               {/* Tab header */}
-              <div className="p-3 border-b border-border bg-card space-y-1.5 shrink-0">
+              <div className="shrink-0 space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-black text-base text-gray-950 dark:text-foreground">{activeTab.customerLabel}</div>
+                    <div className="text-[15px] font-medium text-capsula-ink">{activeTab.customerLabel}</div>
                     {activeTab.customerPhone && (
-                      <div className="text-xs text-muted-foreground">📞 {activeTab.customerPhone}</div>
+                      <div className="inline-flex items-center gap-1 text-[11px] text-capsula-ink-muted">
+                        <Phone className="h-3 w-3" strokeWidth={1.5} /> {activeTab.customerPhone}
+                      </div>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-muted-foreground uppercase">Saldo</div>
-                    <div className="text-xl font-black text-amber-400">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Saldo</div>
+                    <div className="font-mono text-[20px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={activeTab.balanceDue} rate={exchangeRate} size="md" showBs={false} />
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <div>
-                    🔓 Abrió:{" "}
-                    <span className="text-foreground/70">
+                <div className="space-y-0.5 text-[11px] text-capsula-ink-muted">
+                  <div className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" strokeWidth={1.5} /> Abrió:{" "}
+                    <span className="font-medium text-capsula-ink-soft">
                       {activeTab.openedBy.firstName} {activeTab.openedBy.lastName}
-                    </span>{" "}
-                    · {formatDateTime(activeTab.openedAt)}
+                    </span>
+                    <span>· {formatDateTime(activeTab.openedAt)}</span>
                   </div>
                   {(activeTab as any).waiterLabel && (
-                    <div>
-                      👤 Mesonero: <span className="text-foreground/70">{(activeTab as any).waiterLabel}</span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <User className="h-3 w-3" strokeWidth={1.5} /> Mesonero:{" "}
+                      <span className="font-medium text-capsula-ink-soft">{(activeTab as any).waiterLabel}</span>
                     </div>
                   )}
-                  <div>
-                    🏷️ {activeTab.tabCode} · {activeTab.guestCount} pax ·{" "}
-                    <span className={activeTab.status === "OPEN" ? "text-emerald-400" : "text-amber-400"}>
-                      {activeTab.status}
-                    </span>
+                  <div className="inline-flex items-center gap-1.5">
+                    <Info className="h-3 w-3" strokeWidth={1.5} />
+                    <span className="font-mono">{activeTab.tabCode}</span>
+                    <span>· {activeTab.guestCount} pax ·</span>
+                    <Badge variant={activeTab.status === "OPEN" ? "ok" : "warn"}>{activeTab.status}</Badge>
                   </div>
                 </div>
                 {/* Subcuentas toggle */}
-                <button
+                <Button
+                  variant={subAccountMode ? "primary" : "ghost"}
+                  size="sm"
                   onClick={() => setSubAccountMode((p) => !p)}
-                  className={`w-full py-2 rounded-xl text-xs font-black transition ${
-                    subAccountMode
-                      ? "bg-amber-500 text-black"
-                      : "bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70"
-                  }`}
+                  className="w-full"
                 >
-                  ÷ {subAccountMode ? "Viendo subcuentas — Volver a cobro normal" : "Dividir cuenta (subcuentas)"}
-                </button>
+                  <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  {subAccountMode ? "Viendo subcuentas — Volver a cobro normal" : "Dividir cuenta (subcuentas)"}
+                </Button>
               </div>
 
               {subAccountMode ? (
@@ -2207,88 +2209,92 @@ export default function POSSportBarPage() {
                   onTabUpdated={() => loadData(false)}
                 />
               ) : (
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              <div className="flex-1 space-y-3 overflow-y-auto bg-capsula-ivory p-3">
                 {/* Temporary cart */}
-                <div className="rounded-xl border border-border bg-secondary p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Carrito (nueva tanda)</span>
-                    <span className="text-xs font-bold text-amber-400">
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Carrito (nueva tanda)</span>
+                    <span className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                       <PriceDisplay usd={cartTotal} rate={exchangeRate} size="sm" showBs={false} />
                     </span>
                   </div>
                   {cart.length === 0 ? (
-                    <div className="text-xs text-muted-foreground text-center py-2">Agrega items del menú</div>
+                    <div className="py-2 text-center text-[11px] text-capsula-ink-muted">Agrega items del menú</div>
                   ) : (
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    <div className="max-h-36 space-y-1.5 overflow-y-auto">
                       {cart.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between text-xs bg-card rounded-lg px-2 py-1.5"
+                          className="flex items-center justify-between rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory px-3 py-1.5 text-[12px]"
                         >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold truncate text-gray-950 dark:text-foreground">
-                              {item.quantity}× {item.name}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-capsula-ink">
+                              <span className="font-mono font-semibold text-capsula-navy-deep">{item.quantity}×</span>{' '}
+                              <span className="font-medium">{item.name}</span>
                             </div>
                             {item.modifiers.length > 0 && (
-                              <div className="text-muted-foreground truncate">
+                              <div className="truncate text-[10.5px] text-capsula-ink-muted">
                                 {item.modifiers.map((m) => m.name).join(", ")}
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                            <span className="text-amber-400 font-bold">${item.lineTotal.toFixed(2)}</span>
+                          <div className="ml-2 flex shrink-0 items-center gap-1.5">
+                            <span className="font-mono font-semibold text-capsula-ink">${item.lineTotal.toFixed(2)}</span>
                             <button
                               onClick={() => setCart((p) => p.filter((_, i) => i !== idx))}
-                              className="text-red-400 hover:text-red-300 text-base leading-none"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
                             >
-                              ×
+                              <X className="h-3 w-3" strokeWidth={1.5} />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleSendToTab}
                     disabled={cart.length === 0 || isProcessing}
-                    className="mt-2 w-full py-2 bg-muted hover:bg-secondary/80 rounded-lg text-xs font-black transition disabled:opacity-40"
+                    isLoading={isProcessing}
+                    className="mt-2 w-full"
                   >
-                    Agregar consumo a la cuenta →
-                  </button>
+                    Agregar consumo a la cuenta <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </Button>
                 </div>
 
                 {/* Consumed orders */}
                 {activeTab.orders.length > 0 && (
-                  <div className="rounded-xl border border-border bg-secondary p-3">
-                    <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Consumos cargados</div>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3">
+                    <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Consumos cargados</div>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">
                       {activeTab.orders.map((order) => (
-                        <div key={order.id} className="bg-card rounded-lg p-2">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                            <span>{order.orderNumber}</span>
+                        <div key={order.id} className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-2">
+                          <div className="mb-1 flex items-center justify-between text-[10px] text-capsula-ink-muted">
+                            <span className="font-mono">{order.orderNumber}</span>
                             <span className="flex items-center gap-1">
                               {order.createdBy && <span>{order.createdBy.firstName}</span>}·{" "}
                               {formatTime(order.createdAt)}
                             </span>
                           </div>
                           {order.items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between text-xs py-0.5">
-                              <span className="text-gray-950 dark:text-foreground/70 flex-1 truncate">
-                                {item.quantity}× {item.itemName}
+                            <div key={item.id} className="flex items-center justify-between py-0.5 text-[12px]">
+                              <span className="flex-1 truncate text-capsula-ink">
+                                <span className="font-mono text-capsula-ink-muted">{item.quantity}×</span> {item.itemName}
                               </span>
-                              <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                <span className="text-muted-foreground">${item.lineTotal.toFixed(2)}</span>
+                              <div className="ml-2 flex shrink-0 items-center gap-1.5">
+                                <span className="font-mono text-capsula-ink-muted">${item.lineTotal.toFixed(2)}</span>
                                 <button
                                   onClick={() => openRemoveModal(order.id, item)}
-                                  className="text-red-500 hover:text-red-400 text-[10px] font-bold border border-red-800/50 rounded px-1 py-0.5 hover:border-red-600"
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-capsula-coral/30 bg-capsula-coral-subtle/50 text-capsula-coral transition-colors hover:bg-capsula-coral hover:text-white"
                                   title="Eliminar (requiere PIN cajera)"
                                 >
-                                  🗑️
+                                  <Trash2 className="h-3 w-3" strokeWidth={1.5} />
                                 </button>
                               </div>
                             </div>
                           ))}
-                          <div className="text-right text-[10px] text-amber-400 font-bold mt-1">
+                          <div className="mt-1 text-right font-mono text-[11px] font-semibold text-capsula-navy-deep">
                             ${order.total.toFixed(2)}
                           </div>
                         </div>
