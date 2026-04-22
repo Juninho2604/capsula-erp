@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { Plus, UserCircle2, Lock, Star, X } from 'lucide-react';
 import {
     getWaitersAction,
     createWaiterAction,
@@ -9,6 +10,9 @@ import {
     toggleWaiterActiveAction,
     deleteWaiterAction,
 } from '@/app/actions/waiter.actions';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 interface Waiter {
     id: string;
@@ -78,7 +82,6 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
         try {
             let res;
             if (editingId) {
-                // pin: undefined → no tocar · '' → borrar (si clearPin) · string → hashear nuevo
                 const pinPayload = !canManagePin
                     ? undefined
                     : clearPin
@@ -137,81 +140,80 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
     const inactive = waiters.filter(w => !w.isActive);
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">🧑‍🍽️ Mesoneros</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        {active.length} activo{active.length !== 1 ? 's' : ''} · {inactive.length} inactivo{inactive.length !== 1 ? 's' : ''}
-                    </p>
-                </div>
-                <button
-                    onClick={openCreate}
-                    className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition active:scale-95"
-                >
-                    + Agregar mesonero
-                </button>
-            </div>
+        <div className="max-w-3xl mx-auto">
+            <PageHeader
+                kicker="Operaciones"
+                title="Mesoneros"
+                description={`${active.length} activo${active.length !== 1 ? 's' : ''} · ${inactive.length} inactivo${inactive.length !== 1 ? 's' : ''}`}
+                actions={
+                    <Button size="sm" onClick={openCreate}>
+                        <Plus className="h-4 w-4" />
+                        Agregar mesonero
+                    </Button>
+                }
+            />
 
             {/* Waiter list */}
             {isLoading ? (
-                <div className="text-center py-12 text-gray-400">Cargando…</div>
+                <div className="py-12 text-center text-sm text-capsula-ink-muted">Cargando…</div>
             ) : waiters.length === 0 ? (
-                <div className="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                    <div className="text-5xl mb-3">🧑‍🍽️</div>
-                    <p className="text-gray-500 font-medium">No hay mesoneros registrados</p>
-                    <p className="text-gray-400 text-sm mt-1">Agrega los mesoneros de tu restaurante</p>
-                    <button onClick={openCreate} className="mt-4 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 transition">
-                        + Agregar primer mesonero
-                    </button>
+                <div className="rounded-2xl border-2 border-dashed border-capsula-line-strong bg-capsula-ivory-surface py-16 text-center">
+                    <UserCircle2 className="mx-auto mb-3 h-12 w-12 text-capsula-ink-faint" />
+                    <p className="font-medium text-capsula-ink-soft">No hay mesoneros registrados</p>
+                    <p className="mt-1 text-sm text-capsula-ink-muted">Agrega los mesoneros de tu restaurante</p>
+                    <div className="mt-4 flex justify-center">
+                        <Button size="sm" onClick={openCreate}>
+                            <Plus className="h-4 w-4" />
+                            Agregar primer mesonero
+                        </Button>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {/* Active */}
                     {active.map(w => (
-                        <div key={w.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xl dark:bg-amber-900/30">
-                                🧑‍🍽️
+                        <div
+                            key={w.id}
+                            className="flex items-center gap-4 rounded-2xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft"
+                        >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy">
+                                <UserCircle2 className="h-5 w-5" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 dark:text-white">{w.firstName} {w.lastName}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                        Activo
-                                    </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-medium text-capsula-ink">{w.firstName} {w.lastName}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <Badge variant="ok">Activo</Badge>
                                     {w.hasPin ? (
-                                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                                            🔒 PIN
-                                        </span>
+                                        <Badge variant="warn">
+                                            <Lock className="h-3 w-3" />
+                                            PIN
+                                        </Badge>
                                     ) : (
-                                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                                            Sin PIN
-                                        </span>
+                                        <Badge variant="neutral">Sin PIN</Badge>
                                     )}
                                     {w.isCaptain && (
-                                        <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-900/30 dark:text-sky-400">
-                                            ⭐ Capitán
-                                        </span>
+                                        <Badge variant="info">
+                                            <Star className="h-3 w-3" />
+                                            Capitán
+                                        </Badge>
                                     )}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex shrink-0 items-center gap-1">
                                 <button
                                     onClick={() => openEdit(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-navy transition-colors hover:bg-capsula-navy-soft"
                                 >
                                     Editar
                                 </button>
                                 <button
                                     onClick={() => handleToggle(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
                                 >
                                     Desactivar
                                 </button>
                                 <button
                                     onClick={() => handleDelete(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-coral transition-colors hover:bg-capsula-coral-subtle"
                                 >
                                     Eliminar
                                 </button>
@@ -219,31 +221,35 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                         </div>
                     ))}
 
-                    {/* Inactive section */}
                     {inactive.length > 0 && (
                         <div className="mt-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Inactivos</p>
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                                Inactivos
+                            </p>
                             {inactive.map(w => (
-                                <div key={w.id} className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-800/50">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xl dark:bg-gray-700">
-                                        🧑‍🍽️
+                                <div
+                                    key={w.id}
+                                    className="flex items-center gap-4 rounded-2xl border border-capsula-line bg-capsula-ivory-alt px-4 py-3 opacity-70"
+                                >
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-ivory text-capsula-ink-muted">
+                                        <UserCircle2 className="h-5 w-5" />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-gray-600 dark:text-gray-400">{w.firstName} {w.lastName}</p>
-                                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                            Inactivo
-                                        </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-medium text-capsula-ink-soft">{w.firstName} {w.lastName}</p>
+                                        <div className="mt-1">
+                                            <Badge variant="neutral">Inactivo</Badge>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    <div className="flex shrink-0 items-center gap-1">
                                         <button
                                             onClick={() => handleToggle(w)}
-                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
+                                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#2F6B4E] transition-colors hover:bg-[#E5EDE7]/60"
                                         >
                                             Activar
                                         </button>
                                         <button
                                             onClick={() => handleDelete(w)}
-                                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-coral transition-colors hover:bg-capsula-coral-subtle"
                                         >
                                             Eliminar
                                         </button>
@@ -257,104 +263,122 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
-                        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
-                            <h3 className="font-bold text-gray-900 dark:text-white">
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm sm:items-center">
+                    <div className="w-full max-w-sm overflow-hidden rounded-t-3xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep sm:rounded-2xl">
+                        <div className="flex items-center justify-between border-b border-capsula-line px-5 py-4">
+                            <h3 className="font-medium text-capsula-ink">
                                 {editingId ? 'Editar mesonero' : 'Nuevo mesonero'}
                             </h3>
-                            <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                            <button
+                                onClick={() => setShowForm(false)}
+                                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                aria-label="Cerrar"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
                         </div>
-                        <div className="p-5 space-y-4">
+                        <div className="space-y-4 p-5">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Nombre <span className="text-red-400">*</span></label>
+                                <label className="mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                                    Nombre <span className="text-capsula-coral">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     value={firstName}
                                     onChange={e => setFirstName(e.target.value)}
                                     placeholder="Ej: Carlos"
                                     autoFocus
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Apellido <span className="text-red-400">*</span></label>
+                                <label className="mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                                    Apellido <span className="text-capsula-coral">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     value={lastName}
                                     onChange={e => setLastName(e.target.value)}
                                     placeholder="Ej: López"
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 />
                             </div>
-                            {/* Toggle Capitán — siempre visible para roles con acceso */}
-                            <label className="flex items-center justify-between rounded-xl border border-gray-300 px-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800/50">
+
+                            <label className="flex cursor-pointer items-center justify-between rounded-xl border border-capsula-line px-3 py-2.5 transition-colors hover:bg-capsula-ivory-alt">
                                 <div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">⭐ Capitán</span>
-                                    <p className="text-[11px] text-gray-400">Puede dividir cuentas y transferir mesas</p>
+                                    <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-soft">
+                                        <Star className="h-3.5 w-3.5" /> Capitán
+                                    </span>
+                                    <p className="mt-0.5 text-[11px] text-capsula-ink-muted">
+                                        Puede dividir cuentas y transferir mesas
+                                    </p>
                                 </div>
                                 <input
                                     type="checkbox"
                                     checked={isCaptain}
                                     onChange={e => setIsCaptain(e.target.checked)}
-                                    className="h-4 w-4 rounded accent-sky-500"
+                                    className="h-4 w-4 rounded accent-capsula-navy-deep"
                                 />
                             </label>
 
                             {canManagePin && (
-                            <div>
-                                <label className="flex items-center justify-between text-xs font-bold text-gray-500 mb-1">
-                                    <span>
-                                        PIN <span className="text-gray-400 font-normal">(4-6 dígitos · opcional)</span>
-                                    </span>
-                                    {editingId && (
-                                        <label className="flex items-center gap-1 text-[11px] font-medium text-red-500 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={clearPin}
-                                                onChange={e => { setClearPin(e.target.checked); if (e.target.checked) setPin(''); }}
-                                                className="h-3 w-3"
-                                            />
-                                            Borrar PIN
-                                        </label>
-                                    )}
-                                </label>
-                                <input
-                                    type="password"
-                                    inputMode="numeric"
-                                    autoComplete="new-password"
-                                    maxLength={6}
-                                    value={pin}
-                                    onChange={e => {
-                                        const onlyDigits = e.target.value.replace(/\D/g, '');
-                                        setPin(onlyDigits);
-                                        if (onlyDigits) setClearPin(false);
-                                    }}
-                                    disabled={clearPin}
-                                    placeholder={editingId ? '(dejar vacío para no cambiar)' : 'Ej: 1234'}
-                                    onKeyDown={e => e.key === 'Enter' && handleSave()}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-900 text-sm tracking-[0.4em] focus:border-amber-500 focus:outline-none disabled:opacity-50 disabled:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-900"
-                                />
-                                <p className="mt-1 text-[11px] text-gray-400">
-                                    El PIN permite al mesonero identificarse en el POS Mesero.
-                                </p>
-                            </div>
+                                <div>
+                                    <label className="mb-1 flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                                        <span>
+                                            PIN <span className="font-normal normal-case text-capsula-ink-faint">(4-6 dígitos · opcional)</span>
+                                        </span>
+                                        {editingId && (
+                                            <label className="flex cursor-pointer items-center gap-1 text-[11px] font-medium normal-case tracking-normal text-capsula-coral">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={clearPin}
+                                                    onChange={e => { setClearPin(e.target.checked); if (e.target.checked) setPin(''); }}
+                                                    className="h-3 w-3 accent-capsula-coral"
+                                                />
+                                                Borrar PIN
+                                            </label>
+                                        )}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        inputMode="numeric"
+                                        autoComplete="new-password"
+                                        maxLength={6}
+                                        value={pin}
+                                        onChange={e => {
+                                            const onlyDigits = e.target.value.replace(/\D/g, '');
+                                            setPin(onlyDigits);
+                                            if (onlyDigits) setClearPin(false);
+                                        }}
+                                        disabled={clearPin}
+                                        placeholder={editingId ? '(dejar vacío para no cambiar)' : 'Ej: 1234'}
+                                        onKeyDown={e => e.key === 'Enter' && handleSave()}
+                                        className="w-full rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-sm tracking-[0.4em] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none disabled:bg-capsula-ivory-alt disabled:opacity-50"
+                                    />
+                                    <p className="mt-1 text-[11px] text-capsula-ink-muted">
+                                        El PIN permite al mesonero identificarse en el POS Mesero.
+                                    </p>
+                                </div>
                             )}
                         </div>
-                        <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
-                            <button
+                        <div className="flex gap-3 border-t border-capsula-line px-5 py-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setShowForm(false)}
-                                className="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                className="flex-1"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                size="sm"
                                 onClick={handleSave}
                                 disabled={isSaving || !firstName.trim() || !lastName.trim()}
-                                className="flex-[2] rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50 transition active:scale-95"
+                                isLoading={isSaving}
+                                className="flex-[2]"
                             >
                                 {isSaving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear mesonero'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
