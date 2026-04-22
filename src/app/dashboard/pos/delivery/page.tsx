@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2 } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2, Delete, Menu, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -1065,54 +1065,110 @@ export default function POSDeliveryPage() {
             )}
 
             {showPinModal && (
-                <div className="fixed inset-0 bg-background/90 backdrop-blur-xl flex items-end sm:items-center justify-center z-[60] animate-in fade-in duration-500 p-0 sm:p-4">
-                    <div className="bg-card glass-panel p-6 md:p-8 rounded-t-[2rem] sm:rounded-[2.5rem] w-full max-w-md shadow-2xl border-purple-500/20">
-                        <div className="text-center mb-6">
-                            <div className="h-16 w-16 bg-purple-500/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">🎁</div>
-                            <h3 className="font-black text-2xl uppercase tracking-tighter text-purple-600 dark:text-purple-400 italic">Autorizar Cortesía</h3>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">Este descuento requiere validación de gerencia</p>
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-navy-deep/60 p-0 backdrop-blur-sm animate-in fade-in duration-300 sm:items-center sm:p-4">
+                    <div className="w-full max-w-md overflow-hidden rounded-t-2xl border border-capsula-coral/20 bg-capsula-ivory-surface p-6 shadow-cap-deep md:p-8 sm:rounded-2xl">
+                        <div className="mb-6 text-center">
+                            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-capsula-coral-subtle text-capsula-coral">
+                                <Gift className="h-6 w-6" />
+                            </div>
+                            <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">Autorizar cortesía</h3>
+                            <p className="mt-1 text-xs text-capsula-ink-soft">Este descuento requiere validación de gerencia</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center mb-3">Selecciona el % de descuento</label>
+                                <label className="pos-label mb-3 text-center">Selecciona el % de descuento</label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {['25','50','75','100'].map(v => (
-                                        <button key={v} onClick={() => setCortesiaPercent(v)}
-                                            className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${cortesiaPercent === v ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-secondary text-muted-foreground hover:bg-purple-500/10 hover:text-purple-600'}`}>
+                                        <button
+                                            key={v}
+                                            onClick={() => setCortesiaPercent(v)}
+                                            className={`rounded-xl border px-3 py-3 text-sm font-medium tabular-nums transition-colors active:scale-95 ${
+                                                cortesiaPercent === v
+                                                    ? 'border-capsula-coral bg-capsula-coral text-white'
+                                                    : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral hover:text-capsula-coral'
+                                            }`}
+                                        >
                                             {v}%
                                         </button>
                                     ))}
                                 </div>
-                                <div className="mt-3 relative">
-                                    <input type="number" min="1" max="100" value={cortesiaPercent}
+                                <div className="relative mt-3">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={cortesiaPercent}
                                         onChange={e => setCortesiaPercent(e.target.value)}
-                                        className="w-full bg-secondary/50 border border-border rounded-2xl py-4 text-center font-black text-xl focus:border-purple-500 focus:outline-none transition-all placeholder:text-muted-foreground/30"
-                                        placeholder="Valor %" />
-                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-purple-600">%</span>
+                                        className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-4 text-center font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none"
+                                        placeholder="Valor %"
+                                    />
+                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-medium text-capsula-coral">%</span>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center mb-3">Introduce tu PIN de Seguridad</label>
-                                <div className="bg-secondary/40 border border-border rounded-3xl p-6 text-4xl tracking-[1.5em] mb-4 font-black flex justify-center items-center h-24 text-purple-600 shadow-inner">
-                                    {pinInput.length > 0 ? pinInput.replace(/./g, '•') : <span className="text-muted-foreground/10 tracking-normal text-xl font-medium">MODO PIN...</span>}
+                                <label className="pos-label mb-3 text-center">Introduce tu PIN de seguridad</label>
+                                <div className="mb-4 flex h-20 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 font-heading text-3xl tracking-[1.2em] text-capsula-navy-deep">
+                                    {pinInput.length > 0
+                                        ? pinInput.replace(/./g, '•')
+                                        : <span className="text-base font-medium tracking-normal text-capsula-ink-faint">MODO PIN…</span>
+                                    }
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                        <button key={n} onClick={() => handlePinKey(n.toString())} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">{n}</button>
+                                        <button
+                                            key={n}
+                                            onClick={() => handlePinKey(n.toString())}
+                                            className="pos-btn pos-btn-secondary !min-h-[56px] text-xl"
+                                        >
+                                            {n}
+                                        </button>
                                     ))}
-                                    <button onClick={() => handlePinKey('clear')} className="h-16 rounded-2xl bg-red-500/10 text-red-500 font-black text-lg hover:bg-red-500 hover:text-white transition-all active:scale-90 border border-red-500/20 shadow-sm">CLR</button>
-                                    <button key={0} onClick={() => handlePinKey('0')} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">0</button>
-                                    <button onClick={() => handlePinKey('back')} className="h-16 rounded-2xl bg-secondary hover:bg-purple-500/10 hover:text-purple-600 font-black text-2xl transition-all active:scale-90 border border-border/50 shadow-sm">⌫</button>
+                                    <button
+                                        onClick={() => handlePinKey('clear')}
+                                        className="pos-btn pos-btn-secondary !min-h-[56px] text-sm text-capsula-coral"
+                                    >
+                                        CLR
+                                    </button>
+                                    <button
+                                        key={0}
+                                        onClick={() => handlePinKey('0')}
+                                        className="pos-btn pos-btn-secondary !min-h-[56px] text-xl"
+                                    >
+                                        0
+                                    </button>
+                                    <button
+                                        onClick={() => handlePinKey('back')}
+                                        className="pos-btn pos-btn-secondary !min-h-[56px]"
+                                        aria-label="Borrar"
+                                    >
+                                        <Delete className="h-5 w-5" />
+                                    </button>
                                 </div>
                             </div>
 
-                            {pinError && <div className="bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-black text-center py-3 rounded-2xl animate-bounce">{pinError}</div>}
+                            {pinError && (
+                                <div className="rounded-xl border border-[#EFD2C8] bg-[#F7E3DB]/60 py-3 text-center text-xs font-medium text-[#B04A2E]">
+                                    {pinError}
+                                </div>
+                            )}
 
-                            <div className="grid grid-cols-2 gap-4 pt-2">
-                                <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="capsula-btn capsula-btn-secondary py-4 font-black uppercase tracking-widest">Cerrar</button>
-                                <button onClick={handlePinSubmit} disabled={!pinInput} className="capsula-btn capsula-btn-primary bg-purple-600 border-purple-700 shadow-lg shadow-purple-500/20 py-4 font-black uppercase tracking-widest">Validar</button>
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <button
+                                    onClick={() => { setShowPinModal(false); setPinInput(''); }}
+                                    className="pos-btn pos-btn-secondary !min-h-0 py-3.5 text-sm"
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handlePinSubmit}
+                                    disabled={!pinInput}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border-b-4 border-capsula-coral-hover bg-capsula-coral px-5 py-3.5 text-sm font-medium text-white transition-transform active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Validar
+                                </button>
                             </div>
                         </div>
                     </div>
