@@ -395,87 +395,87 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       </div>
 
       {/* Historial de cierres */}
-      <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Historial de Cierres</h3>
+      <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface">
+        <div className="border-b border-capsula-line px-5 py-4">
+          <h3 className="font-heading text-[18px] tracking-[-0.01em] text-capsula-navy-deep">Historial de cierres</h3>
         </div>
         {/* Difference Trend */}
         {diffTrend.length > 1 && (
-          <div className="px-5 py-4 border-b border-border">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Tendencia de Diferencias</p>
+          <div className="border-b border-capsula-line px-5 py-4">
+            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Tendencia de diferencias</p>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={diffTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
                   <Tooltip
                     formatter={(value: number) => [`$${fmt(value)}`, 'Diferencia']}
-                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 11 }}
+                    contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }}
                   />
-                  <ReferenceLine y={0} stroke="var(--border)" />
-                  <Bar
-                    dataKey="difference"
-                    name="Diferencia"
-                    fill="#3b82f6"
-                    radius={[3, 3, 0, 0]}
-                  />
+                  <ReferenceLine y={0} stroke="#E7E2D7" />
+                  <Bar dataKey="difference" name="Diferencia" fill="#11203A" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         )}
         {closedRegisters.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-3xl">🏧</p>
-            <p className="mt-2 text-muted-foreground text-sm">Sin cierres en este período</p>
+          <div className="p-14 text-center">
+            <Wallet className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+            <p className="mt-3 text-[13px] text-capsula-ink-muted">Sin cierres en este período</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30">
-                <tr>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Caja</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Fecha / Turno</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Ventas</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Gastos</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Esperado</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Contado</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Diferencia</th>
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Caja</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Fecha / Turno</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Ventas</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Gastos</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Esperado</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Contado</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Diferencia</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {closedRegisters.map(r => {
                   const diff = r.difference ?? 0;
-                  const diffColor = Math.abs(diff) < 1 ? 'text-emerald-500' : diff > 0 ? 'text-blue-500' : 'text-red-500';
+                  const diffColor = Math.abs(diff) < 1 ? 'text-[#2F6B4E]' : diff > 0 ? 'text-capsula-navy-deep' : 'text-capsula-coral';
                   return (
-                    <tr key={r.id} className="hover:bg-muted/20 transition-colors">
+                    <tr key={r.id} className="border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory">
                       <td className="px-5 py-3">
-                        <div className="font-medium text-foreground">{r.registerName}</div>
+                        <div className="font-medium text-capsula-ink">{r.registerName}</div>
                         {parseOperators(r.operatorsJson).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="mt-1 flex flex-wrap gap-1">
                             {parseOperators(r.operatorsJson).map((op, i) => (
-                              <span key={i} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{op}</span>
+                              <span key={i} className="rounded-full border border-capsula-line bg-capsula-ivory px-1.5 py-0.5 text-[10px] text-capsula-ink-muted">{op}</span>
                             ))}
                           </div>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-muted-foreground">
+                      <td className="px-5 py-3 text-capsula-ink-soft">
                         <div>{new Date(r.shiftDate).toLocaleDateString('es-VE')}</div>
-                        <div className="text-xs">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label}</div>
+                        <div className="text-[11px] text-capsula-ink-muted">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label}</div>
                       </td>
-                      <td className="px-5 py-3 text-right text-foreground">${fmt(r.totalSalesUsd ?? 0)}</td>
-                      <td className="px-5 py-3 text-right text-red-500">${fmt(r.totalExpenses ?? 0)}</td>
-                      <td className="px-5 py-3 text-right text-foreground">${fmt(r.expectedCash ?? 0)}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-foreground">
-                        <div className="flex items-center justify-end gap-1">
-                          <span>${fmt(r.closingCashUsd ?? 0)}</span>
+                      <td className="px-5 py-3 text-right font-mono text-capsula-ink">${fmt(r.totalSalesUsd ?? 0)}</td>
+                      <td className="px-5 py-3 text-right font-mono text-capsula-coral">${fmt(r.totalExpenses ?? 0)}</td>
+                      <td className="px-5 py-3 text-right font-mono text-capsula-ink">${fmt(r.expectedCash ?? 0)}</td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <span className="font-mono font-semibold text-capsula-ink">${fmt(r.closingCashUsd ?? 0)}</span>
                           {(r.openingDenominationsJson || r.closingDenominationsJson) && (
-                            <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
-                              className="text-blue-400 hover:text-blue-300 text-xs">📋</button>
+                            <button
+                              onClick={() => setDenomModal(r)}
+                              title="Ver desglose de billetes"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-capsula-navy transition-colors hover:bg-capsula-navy-soft hover:text-capsula-navy-deep"
+                            >
+                              <Eye className="h-3 w-3" strokeWidth={1.5} />
+                            </button>
                           )}
                         </div>
                       </td>
-                      <td className={`px-5 py-3 text-right font-bold ${diffColor}`}>
+                      <td className={cn("px-5 py-3 text-right font-mono font-semibold", diffColor)}>
                         {diff >= 0 ? '+' : ''}{fmt(diff)}
                       </td>
                     </tr>
@@ -489,24 +489,38 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
 
       {/* Modal: Abrir Caja */}
       {showOpenForm && (
-        <Modal title="Abrir Caja" onClose={() => setShowOpenForm(false)}>
+        <Modal title="Abrir caja" onClose={() => setShowOpenForm(false)}>
           <form onSubmit={handleOpen} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Nombre de Caja *</label>
-              <input value={openForm.registerName} onChange={e => setOpenForm(f => ({ ...f, registerName: e.target.value }))}
-                className="input-field w-full" placeholder="Ej: Caja Restaurante" required />
+              <label className={labelClass}>Nombre de caja *</label>
+              <input
+                value={openForm.registerName}
+                onChange={e => setOpenForm(f => ({ ...f, registerName: e.target.value }))}
+                className={inputClass}
+                placeholder="Ej: Caja Restaurante"
+                required
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Turno</label>
-              <select value={openForm.shiftType} onChange={e => setOpenForm(f => ({ ...f, shiftType: e.target.value }))} className="input-field w-full">
+              <label className={labelClass}>Turno</label>
+              <select
+                value={openForm.shiftType}
+                onChange={e => setOpenForm(f => ({ ...f, shiftType: e.target.value }))}
+                className={inputClass}
+              >
                 {SHIFT_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-muted-foreground">Fondo Inicial USD</label>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                  <input type="checkbox" checked={showOpenDenom} onChange={e => setShowOpenDenom(e.target.checked)} className="rounded accent-primary" />
+              <div className="mb-2 flex items-center justify-between">
+                <label className={labelClass + " mb-0"}>Fondo inicial USD</label>
+                <label className="flex cursor-pointer select-none items-center gap-1.5 text-[11px] text-capsula-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={showOpenDenom}
+                    onChange={e => setShowOpenDenom(e.target.checked)}
+                    className="rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
+                  />
                   Desglosar billetes
                 </label>
               </div>
@@ -516,29 +530,39 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                   onChange={(json, total) => setOpenDenom({ json, total })}
                 />
               ) : (
-                <input type="number" step="0.01" min="0" value={openForm.openingCashUsd}
+                <input
+                  type="number" step="0.01" min="0"
+                  value={openForm.openingCashUsd}
                   onChange={e => setOpenForm(f => ({ ...f, openingCashUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" />
+                  className={inputClass + " font-mono"}
+                  placeholder="0.00"
+                />
               )}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Fondo Inicial Bs</label>
-              <input type="number" step="0.01" min="0" value={openForm.openingCashBs}
+              <label className={labelClass}>Fondo inicial Bs</label>
+              <input
+                type="number" step="0.01" min="0"
+                value={openForm.openingCashBs}
                 onChange={e => setOpenForm(f => ({ ...f, openingCashBs: e.target.value }))}
-                className="input-field w-full" placeholder="0.00" />
+                className={inputClass + " font-mono"}
+                placeholder="0.00"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Notas</label>
-              <textarea value={openForm.notes} onChange={e => setOpenForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field w-full" rows={2} />
+              <label className={labelClass}>Notas</label>
+              <textarea
+                value={openForm.notes}
+                onChange={e => setOpenForm(f => ({ ...f, notes: e.target.value }))}
+                className={inputClass}
+                rows={2}
+              />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setShowOpenForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {isPending ? 'Abriendo...' : 'Abrir Caja'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowOpenForm(false)}>Cancelar</Button>
+              <Button type="submit" variant="primary" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Abriendo…' : (<><Unlock className="h-4 w-4" strokeWidth={1.5} /> Abrir caja</>)}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -548,21 +572,35 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {closeTarget && (
         <Modal title={`Cerrar: ${closeTarget.registerName}`} onClose={() => setCloseTarget(null)}>
           <form onSubmit={handleClose} className="space-y-4">
-            <div className="rounded-xl bg-muted/30 p-4 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Fondo apertura</span><span className="font-semibold text-foreground">${fmt(closeTarget.openingCashUsd)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Apertura</span><span className="text-foreground">{new Date(closeTarget.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span></div>
+            <div className="space-y-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4 text-[13px]">
+              <div className="flex justify-between">
+                <span className="text-capsula-ink-muted">Fondo apertura</span>
+                <span className="font-mono font-semibold text-capsula-ink">${fmt(closeTarget.openingCashUsd)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-capsula-ink-muted">Apertura</span>
+                <span className="font-mono text-capsula-ink">{new Date(closeTarget.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
               {shiftTips && shiftTips.propinas > 0 && (
-                <div className="flex justify-between border-t border-border/50 pt-1 mt-1">
-                  <span className="text-amber-400/80">🪙 Propinas{shiftTips.propinaCount > 1 ? ` (${shiftTips.propinaCount})` : ''}</span>
-                  <span className="font-semibold text-amber-400">+${fmt(shiftTips.propinas)}</span>
+                <div className="mt-1 flex justify-between border-t border-capsula-line pt-1">
+                  <span className="inline-flex items-center gap-1 text-[#946A1C]">
+                    <Coins className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    Propinas{shiftTips.propinaCount > 1 ? ` (${shiftTips.propinaCount})` : ''}
+                  </span>
+                  <span className="font-mono font-semibold text-[#946A1C]">+${fmt(shiftTips.propinas)}</span>
                 </div>
               )}
             </div>
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-muted-foreground">Efectivo Contado USD</label>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                  <input type="checkbox" checked={showCloseDenom} onChange={e => setShowCloseDenom(e.target.checked)} className="rounded accent-primary" />
+              <div className="mb-2 flex items-center justify-between">
+                <label className={labelClass + " mb-0"}>Efectivo contado USD</label>
+                <label className="flex cursor-pointer select-none items-center gap-1.5 text-[11px] text-capsula-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={showCloseDenom}
+                    onChange={e => setShowCloseDenom(e.target.checked)}
+                    className="rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
+                  />
                   Desglosar billetes
                 </label>
               </div>
@@ -572,29 +610,40 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                   onChange={(json, total) => setCloseDenom({ json, total })}
                 />
               ) : (
-                <input type="number" step="0.01" min="0" value={closeForm.closingCashUsd}
+                <input
+                  type="number" step="0.01" min="0"
+                  value={closeForm.closingCashUsd}
                   onChange={e => setCloseForm(f => ({ ...f, closingCashUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className={inputClass + " font-mono"}
+                  placeholder="0.00"
+                  required
+                />
               )}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Efectivo Contado Bs</label>
-              <input type="number" step="0.01" min="0" value={closeForm.closingCashBs}
+              <label className={labelClass}>Efectivo contado Bs</label>
+              <input
+                type="number" step="0.01" min="0"
+                value={closeForm.closingCashBs}
                 onChange={e => setCloseForm(f => ({ ...f, closingCashBs: e.target.value }))}
-                className="input-field w-full" placeholder="0.00" />
+                className={inputClass + " font-mono"}
+                placeholder="0.00"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Observaciones</label>
-              <textarea value={closeForm.notes} onChange={e => setCloseForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field w-full" rows={2} />
+              <label className={labelClass}>Observaciones</label>
+              <textarea
+                value={closeForm.notes}
+                onChange={e => setCloseForm(f => ({ ...f, notes: e.target.value }))}
+                className={inputClass}
+                rows={2}
+              />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setCloseTarget(null)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">
-                {isPending ? 'Cerrando...' : 'Cerrar Caja'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setCloseTarget(null)}>Cancelar</Button>
+              <Button type="submit" variant="destructive" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Cerrando…' : (<><Lock className="h-4 w-4" strokeWidth={1.5} /> Cerrar caja</>)}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -609,7 +658,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
               <DenomBreakdown json={denomModal.closingDenominationsJson} label="Cierre" />
             )}
             {!denomModal.openingDenominationsJson && !denomModal.closingDenominationsJson && (
-              <p className="text-sm text-muted-foreground text-center py-4">Sin desglose de billetes registrado</p>
+              <p className="py-4 text-center text-[13px] text-capsula-ink-muted">Sin desglose de billetes registrado</p>
             )}
           </div>
         </Modal>
@@ -623,40 +672,46 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
         >
           <div className="space-y-4">
             {operatorMode === 'replace' && (
-              <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+              <p className="inline-flex items-start gap-2 rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6] p-3 text-[12px] text-[#946A1C]">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
                 El cambio de turno reemplaza todas las cajeras actuales por la nueva responsable.
               </p>
             )}
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">
+              <label className={labelClass}>
                 {operatorMode === 'add' ? 'Nombre de la cajera' : 'Nueva responsable del turno'}
-              </p>
+              </label>
               <input
                 type="text"
                 value={operatorInput}
                 onChange={e => setOperatorInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleOperatorUpdate(operatorMode); }}
-                placeholder="Nombre completo..."
+                placeholder="Nombre completo…"
                 autoFocus
-                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className={inputClass}
               />
             </div>
             {operatorMode === 'add' && parseOperators(operatorModal.operatorsJson).length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1.5 font-semibold uppercase tracking-wider">Actualmente en turno</p>
+                <label className={labelClass}>Actualmente en turno</label>
                 <div className="flex flex-wrap gap-1.5">
                   {parseOperators(operatorModal.operatorsJson).map((op, i) => (
-                    <span key={i} className="bg-emerald-500/15 text-emerald-300 text-xs font-semibold px-2 py-0.5 rounded-full">{op}</span>
+                    <Badge key={i} variant="navy">{op}</Badge>
                   ))}
                 </div>
               </div>
             )}
-            <button
+            <Button
+              variant="primary"
               onClick={() => handleOperatorUpdate(operatorMode)}
               disabled={!operatorInput.trim() || isPending}
-              className="w-full rounded-xl bg-primary text-white font-bold py-3 text-sm hover:bg-primary/90 disabled:opacity-40 transition-colors">
-              {operatorMode === 'add' ? 'Agregar' : 'Confirmar cambio de turno'}
-            </button>
+              isLoading={isPending}
+              className="w-full"
+            >
+              {operatorMode === 'add'
+                ? (<><UserPlus className="h-4 w-4" strokeWidth={1.5} /> Agregar</>)
+                : (<><RefreshCw className="h-4 w-4" strokeWidth={1.5} /> Confirmar cambio de turno</>)}
+            </Button>
           </div>
         </Modal>
       )}
@@ -664,13 +719,22 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
   );
 }
 
+const inputClass =
+  'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
+const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border border-border shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
+          <h2 className="font-heading text-[18px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">{title}</h2>
+          <button
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
