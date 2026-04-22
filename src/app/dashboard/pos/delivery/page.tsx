@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -445,109 +445,127 @@ export default function POSDeliveryPage() {
                 {/* ══════════════════════════════════════════════════════
                     PANEL IZQUIERDO — Datos del cliente + Menú
                     ══════════════════════════════════════════════════════ */}
-                <div className={`flex-1 flex flex-col overflow-hidden bg-background ${mobileView === "menu" ? "flex" : "hidden"} lg:flex`}>
+                <div className={`flex-1 flex flex-col overflow-hidden bg-capsula-ivory ${mobileView === "menu" ? "flex" : "hidden"} lg:flex`}>
 
                     {/* ── Barra de datos del cliente ───────────────────── */}
-                    <div className="px-4 py-3 bg-blue-950/40 border-b border-blue-500/20 shrink-0">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">📦 Datos del Cliente</span>
+                    <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory-alt px-4 py-3">
+                        <div className="mb-2 flex items-center gap-2">
+                            <span className="pos-kicker">Datos del cliente</span>
                             {(customerName || customerPhone || customerAddress) && (
                                 <button
                                     onClick={() => { setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); }}
-                                    className="text-[10px] text-red-400/60 hover:text-red-400 font-bold transition-colors"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                                 >
-                                    Limpiar ✕
+                                    Limpiar
+                                    <XIcon className="h-3 w-3" />
                                 </button>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                            <div className="relative">
+                                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                                <input
+                                    type="text"
+                                    value={customerName}
+                                    onChange={e => setCustomerName(e.target.value)}
+                                    placeholder="Nombre del cliente"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                                />
+                            </div>
+                            <div className="relative">
+                                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                                <input
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={e => setCustomerPhone(e.target.value)}
+                                    placeholder="Teléfono"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
                             <input
                                 type="text"
-                                value={customerName}
-                                onChange={e => setCustomerName(e.target.value)}
-                                placeholder="👤 Nombre del cliente"
-                                className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
-                            />
-                            <input
-                                type="tel"
-                                value={customerPhone}
-                                onChange={e => setCustomerPhone(e.target.value)}
-                                placeholder="📞 Teléfono"
-                                className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
+                                value={customerAddress}
+                                onChange={e => setCustomerAddress(e.target.value)}
+                                placeholder="Dirección exacta de entrega…"
+                                className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                             />
                         </div>
-                        <input
-                            type="text"
-                            value={customerAddress}
-                            onChange={e => setCustomerAddress(e.target.value)}
-                            placeholder="📍 Dirección exacta de entrega..."
-                            className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-muted-foreground/50"
-                        />
                     </div>
 
                     {/* ── Buscador ─────────────────────────────────────── */}
-                    <div className="px-4 py-3 bg-background border-b border-border shrink-0">
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">🔍</span>
+                    <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory px-4 py-3">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
                             <input
                                 type="text"
                                 value={productSearch}
                                 onChange={(e) => setProductSearch(e.target.value)}
-                                placeholder="Buscar producto por nombre o SKU..."
-                                className="w-full bg-secondary/50 border border-border rounded-2xl py-3 pl-12 pr-12 text-base font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                                placeholder="Buscar producto por nombre o SKU…"
+                                className="w-full rounded-2xl border border-capsula-line bg-capsula-ivory-surface py-3 pl-12 pr-12 text-base font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                             />
                             {productSearch && (
                                 <button
                                     onClick={() => setProductSearch('')}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground"
+                                    className="absolute right-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                    aria-label="Limpiar búsqueda"
                                 >
-                                    ✕
+                                    <XIcon className="h-4 w-4" />
                                 </button>
                             )}
                         </div>
                     </div>
                     {/* Categories */}
                     {!productSearch && (
-                        <div className="flex gap-3 px-6 py-4 bg-background border-b border-border overflow-x-auto no-scrollbar scroll-smooth">
+                        <div className="no-scrollbar scroll-smooth flex gap-2 overflow-x-auto border-b border-capsula-line bg-capsula-ivory px-6 py-4">
                             {categories.map((cat: any) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`group shrink-0 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center gap-2 border-2 ${selectedCategory === cat.id ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-card border-border text-foreground/50 hover:border-primary/30'}`}
+                                    className={`group inline-flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors active:scale-95 ${
+                                        selectedCategory === cat.id
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
+                                    }`}
                                 >
-                                    <span className="text-xl group-hover:rotate-12 transition-transform">{getCategoryIcon(cat.name)}</span> {cat.name}
+                                    <span className="text-lg group-hover:rotate-12 transition-transform" aria-hidden>{getCategoryIcon(cat.name)}</span> {cat.name}
                                 </button>
                             ))}
                         </div>
                     )}
-                    <div className="flex-1 p-6 overflow-y-auto pb-24 scroll-smooth">
+                    <div className="flex-1 overflow-y-auto p-6 pb-24 scroll-smooth">
                         {productSearch && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">
-                                💡 {filteredMenuItems.length} productos coinciden con tu búsqueda
+                            <p className="mb-4 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+                                <Lightbulb className="h-3.5 w-3.5" />
+                                {filteredMenuItems.length} productos coinciden con tu búsqueda
                             </p>
                         )}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4">
                             {filteredMenuItems.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleAddToCart(item)}
-                                    className="capsula-card group p-3 md:p-5 text-left h-32 md:h-40 flex flex-col justify-between border-primary/5 hover:border-primary/40 active:scale-[0.98] transition-transform"
+                                    className="pos-tile group flex h-32 flex-col justify-between !p-3 text-left md:h-40 md:!p-5"
                                 >
-                                    <div className="font-black text-base uppercase leading-tight tracking-tight group-hover:text-primary transition-colors">{item.name}</div>
+                                    <div className="text-base font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                                        {item.name}
+                                    </div>
                                     <div className="flex items-end justify-between">
-                                        <div className="text-2xl font-black text-primary italic">
+                                        <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                                             <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                         </div>
-                                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:translate-y-4 lg:group-hover:translate-y-0">
-                                            ➕
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
+                                            <PlusIcon className="h-4 w-4" />
                                         </div>
                                     </div>
                                 </button>
                             ))}
                             {filteredMenuItems.length === 0 && (
-                                <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
-                                    <span className="text-6xl mb-4">🔍</span>
-                                    <p className="font-black uppercase tracking-widest">Sin resultados</p>
+                                <div className="col-span-full flex flex-col items-center justify-center gap-3 py-20 text-capsula-ink-muted">
+                                    <Search className="h-12 w-12 opacity-40" />
+                                    <p className="text-[11px] font-medium uppercase tracking-[0.12em]">Sin resultados</p>
                                 </div>
                             )}
                         </div>
