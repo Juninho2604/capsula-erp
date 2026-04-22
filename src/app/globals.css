@@ -159,6 +159,20 @@
     --capsula-ivory-surface: #152134;
     --capsula-ivory-alt:     #0B1727;
     --capsula-ink:           #F7F5F0;
+    /* Glass (usado por .glass-panel que envuelve shells de POS legacy) */
+    --glass-background:      rgba(21, 33, 52, 0.78);
+    --glass-border:           rgba(37, 61, 92, 0.6);
+    /* Coral / navy-soft / ink-faint / ok / warn — dark mode */
+    --capsula-coral:         #F25C3B;
+    --capsula-coral-hover:   #D84A2A;
+    --capsula-coral-light:   #F47C62;
+    --capsula-coral-subtle:  #55281C;
+    --capsula-navy-soft:     #2E3E54;
+    --capsula-ink-faint:     #6B7584;
+    --capsula-ok:            #6FB88F;
+    --capsula-ok-soft:       #1E3B2C;
+    --capsula-warn:          #D4A64D;
+    --capsula-warn-soft:     #3B2E14;
     --capsula-ink-soft:      #CDD5DE;
     --capsula-ink-muted:     #94A0B0;
     --capsula-line:          #253D5C;
