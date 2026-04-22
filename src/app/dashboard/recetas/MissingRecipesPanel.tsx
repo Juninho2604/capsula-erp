@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createRecipeStubForMenuItemAction } from '@/app/actions/menu.actions';
+import { AlertTriangle, ChevronDown, ChevronUp, FilePlus2, Loader2 } from 'lucide-react';
 
 interface MissingItem {
     id: string;
@@ -42,41 +43,56 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
     if (pendingItems.length === 0) return null;
 
     return (
-        <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 overflow-hidden">
+        <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-coral/40 bg-capsula-coral/5">
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-orange-500/10 transition-colors"
+                className="flex w-full items-center justify-between px-5 py-4 transition-colors hover:bg-capsula-coral/10"
             >
                 <div className="flex items-center gap-3">
-                    <span className="text-2xl">⚠️</span>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-capsula-coral/10 text-capsula-coral">
+                        <AlertTriangle className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
                     <div className="text-left">
-                        <h3 className="font-bold text-orange-400">
-                            {pendingItems.length} Platos del Menú sin Receta
+                        <h3 className="font-heading text-[15px] text-capsula-coral">
+                            {pendingItems.length} platos del menú sin receta
                         </h3>
-                        <p className="text-sm text-orange-300/70">
+                        <p className="mt-0.5 text-[12px] text-capsula-ink-soft">
                             Sin receta no se puede descontar el inventario al vender. Crea la receta vacía y luego completa los ingredientes.
                         </p>
                     </div>
                 </div>
-                <span className="text-orange-400 text-xl">{isCollapsed ? '▼' : '▲'}</span>
+                {isCollapsed
+                    ? <ChevronDown className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                    : <ChevronUp className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                }
             </button>
 
             {!isCollapsed && (
-                <div className="border-t border-orange-500/20 divide-y divide-orange-500/10">
+                <div className="divide-y divide-capsula-coral/20 border-t border-capsula-coral/20">
                     {pendingItems.map(item => (
-                        <div key={item.id} className="flex items-center justify-between px-5 py-3 hover:bg-orange-500/5">
+                        <div key={item.id} className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-capsula-coral/5">
                             <div>
-                                <span className="font-medium text-gray-200">{item.name}</span>
-                                <span className="ml-2 text-xs text-gray-500">{item.category.name}</span>
+                                <span className="text-[13px] font-medium text-capsula-ink">{item.name}</span>
+                                <span className="ml-2 text-[11px] text-capsula-ink-muted">{item.category.name}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-amber-400 font-mono text-sm">${item.price.toFixed(2)}</span>
+                                <span className="font-mono text-[13px] text-capsula-navy-deep">${item.price.toFixed(2)}</span>
                                 <button
                                     onClick={() => handleCreateStub(item.id, item.name)}
                                     disabled={creating === item.id}
-                                    className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold disabled:opacity-50 transition-colors"
+                                    className="inline-flex items-center gap-1.5 rounded-[var(--radius)] bg-capsula-coral px-3 py-1.5 text-[12px] font-medium text-capsula-ivory-surface transition-colors hover:bg-capsula-coral/90 disabled:opacity-50"
                                 >
-                                    {creating === item.id ? '⏳ Creando...' : '📋 Crear Receta Vacía'}
+                                    {creating === item.id ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                                            Creando…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FilePlus2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                            Crear receta vacía
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
