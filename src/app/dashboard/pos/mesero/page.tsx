@@ -647,7 +647,7 @@ export default function POSMeseroPage() {
                 <button
                   key={z.id}
                   onClick={() => { setSelectedZoneId(z.id); setSelectedTableId(""); }}
-                  className={`flex-1 min-w-0 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/60 hover:border-primary/50"}`}
+                  className={`flex-1 min-w-0 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/60 hover:border-primary/50"}`}
                 >
                   {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
                 </button>
@@ -1176,7 +1176,7 @@ export default function POSMeseroPage() {
                 <div className="flex items-center gap-3 bg-secondary rounded-xl p-1 border border-border">
                   <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-card font-black transition hover:bg-red-500/10 hover:text-red-400">-</button>
                   <span className="w-8 text-center font-black text-lg">{openTabGuests}</span>
-                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-primary text-white font-black transition hover:opacity-90">+</button>
+                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-primary text-primary-foreground font-black transition hover:opacity-90">+</button>
                 </div>
               </div>
               {activeWaiter && (
