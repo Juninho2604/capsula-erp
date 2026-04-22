@@ -511,29 +511,21 @@ export default function ProduccionPage() {
                ═══════════════════════════════════════════════════════════════════ */}
             {activeTab === 'manual' && (
                 <div className="grid gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Producto de salida */}
-                        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <div className="mb-6 flex items-center gap-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg">
-                                    <Wrench className="h-6 w-6" />
+                    <div className="space-y-6 lg:col-span-2">
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                            <div className="mb-6 flex items-center gap-3 border-b border-capsula-line pb-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-capsula-coral/40 bg-capsula-coral/10 text-capsula-coral">
+                                    <Wrench className="h-5 w-5" strokeWidth={1.5} />
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold text-gray-900 dark:text-white">
-                                        Producción Manual
-                                    </h2>
-                                    <p className="text-sm text-gray-500">
-                                        Crea una producción personalizada sin necesidad de receta
-                                    </p>
+                                    <h2 className="font-heading text-[16px] text-capsula-navy-deep">Producción manual</h2>
+                                    <p className="text-[12px] text-capsula-ink-soft">Crea una producción personalizada sin necesidad de receta.</p>
                                 </div>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                {/* Producto que produces */}
                                 <div className="sm:col-span-2">
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        ¿Qué producto estás produciendo? *
-                                    </label>
+                                    <label className={labelClass}>¿Qué producto estás produciendo? *</label>
                                     <Combobox
                                         items={allItems.map(item => ({
                                             value: item.id,
@@ -545,17 +537,14 @@ export default function ProduccionPage() {
                                             const item = allItems.find(i => i.id === val);
                                             if (item) setManualOutputUnit(item.baseUnit);
                                         }}
-                                        placeholder="Seleccionar producto de salida..."
-                                        searchPlaceholder="Buscar producto..."
+                                        placeholder="Seleccionar producto de salida…"
+                                        searchPlaceholder="Buscar producto…"
                                         emptyMessage="No hay productos disponibles"
                                     />
                                 </div>
 
-                                {/* Cantidad */}
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Cantidad Producida *
-                                    </label>
+                                    <label className={labelClass}>Cantidad producida *</label>
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="number"
@@ -564,23 +553,18 @@ export default function ProduccionPage() {
                                             min="0"
                                             step="0.1"
                                             placeholder="0"
-                                            className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            className="w-24 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 font-mono text-[14px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                         />
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            {manualOutputUnit}
-                                        </span>
+                                        <span className="font-mono text-[13px] text-capsula-ink-soft">{manualOutputUnit}</span>
                                     </div>
                                 </div>
 
-                                {/* Área */}
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Área de Producción *
-                                    </label>
+                                    <label className={labelClass}>Área de producción *</label>
                                     <select
                                         value={manualAreaId}
                                         onChange={(e) => setManualAreaId(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={inputClass}
                                     >
                                         {areas.map(area => (
                                             <option key={area.id} value={area.id}>{area.name}</option>
@@ -588,67 +572,60 @@ export default function ProduccionPage() {
                                     </select>
                                 </div>
 
-                                {/* Notas */}
                                 <div className="sm:col-span-2">
-                                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Notas (opcional)
-                                    </label>
+                                    <label className={labelClass}>Notas (opcional)</label>
                                     <textarea
                                         value={manualNotes}
                                         onChange={(e) => setManualNotes(e.target.value)}
-                                        placeholder="Ej: Producción especial, ajuste de inventario..."
+                                        placeholder="Ej: Producción especial, ajuste de inventario…"
                                         rows={2}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={inputClass}
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Ingredientes manuales */}
-                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                            <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
                                 <div>
-                                    <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
-                                        <Package className="h-5 w-5 text-gray-400" />
-                                        Ingredientes a Consumir
+                                    <h3 className="flex items-center gap-2 font-heading text-[15px] text-capsula-navy-deep">
+                                        <Package className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />
+                                        Ingredientes a consumir
                                     </h3>
-                                    <p className="text-sm text-gray-500">
-                                        Agrega los insumos que se consumieron en esta producción
-                                    </p>
+                                    <p className="mt-0.5 text-[12px] text-capsula-ink-soft">Agrega los insumos que se consumieron en esta producción.</p>
                                 </div>
-                                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                    {manualIngredients.length} items
-                                </span>
+                                <Badge variant="warn">
+                                    <span className="font-mono">{manualIngredients.length}</span> ítems
+                                </Badge>
                             </div>
 
-                            {/* Lista de ingredientes agregados */}
                             {manualIngredients.length > 0 && (
-                                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                                <div className="divide-y divide-capsula-line">
                                     {manualIngredients.map((ing, idx) => (
                                         <div key={ing.id} className="flex items-center justify-between px-6 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-alt font-mono text-[11px] text-capsula-ink-soft">
                                                     {idx + 1}
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-gray-900 dark:text-white">{getItemName(ing.itemId)}</p>
-                                                    <p className="text-sm text-gray-500">{formatNumber(ing.quantity)} {ing.unit}</p>
+                                                    <p className="font-medium text-capsula-ink">{getItemName(ing.itemId)}</p>
+                                                    <p className="font-mono text-[12px] text-capsula-ink-muted">{formatNumber(ing.quantity)} {ing.unit}</p>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => removeManualIngredient(ing.id)}
-                                                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                                className="rounded-full p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                title="Eliminar"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
                             )}
 
-                            {/* Form para agregar ingrediente */}
-                            <div className="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-                                <p className="mb-3 text-sm font-medium text-gray-600 dark:text-gray-400">Agregar ingrediente:</p>
+                            <div className="border-t border-capsula-line bg-capsula-ivory-alt/50 p-4">
+                                <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Agregar ingrediente</p>
                                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                                     <Combobox
                                         items={allItems
@@ -663,8 +640,8 @@ export default function ProduccionPage() {
                                             const item = allItems.find(i => i.id === val);
                                             if (item) setNewIngUnit(item.baseUnit);
                                         }}
-                                        placeholder="Seleccionar insumo..."
-                                        searchPlaceholder="Buscar insumo..."
+                                        placeholder="Seleccionar insumo…"
+                                        searchPlaceholder="Buscar insumo…"
                                         emptyMessage="No hay insumos disponibles"
                                     />
                                     <input
@@ -674,66 +651,61 @@ export default function ProduccionPage() {
                                         min="0"
                                         step="0.01"
                                         placeholder="Cant."
-                                        className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="w-20 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 font-mono text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                     />
-                                    <span className="flex items-center text-sm font-medium text-gray-500">
+                                    <span className="flex items-center font-mono text-[12px] text-capsula-ink-muted">
                                         {newIngUnit}
                                     </span>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
                                         onClick={addManualIngredient}
                                         disabled={!newIngItemId || newIngQty <= 0}
-                                        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <Plus className="h-4 w-4" />
-                                    </button>
+                                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                                    </Button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Resultado */}
                         {result && <ResultCard result={result} />}
                     </div>
 
-                    {/* Panel lateral */}
                     <div className="space-y-4">
-                        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
-                            <button
+                        <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral/5 p-6 shadow-cap-soft">
+                            <Button
+                                variant="primary"
+                                size="lg"
                                 onClick={handleManualProduction}
                                 disabled={isSubmitting || !manualOutputItem || manualOutputQty <= 0 || !manualAreaId}
-                                className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-4 text-lg font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                                isLoading={isSubmitting}
+                                className="w-full"
                             >
-                                {isSubmitting ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <span className="animate-spin">⏳</span> Procesando...
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <CheckCircle className="h-5 w-5" /> Registrar Producción Manual
-                                    </span>
-                                )}
-                            </button>
+                                <CheckCircle className="h-4 w-4" strokeWidth={1.5} />
+                                {isSubmitting ? 'Procesando…' : 'Registrar producción manual'}
+                            </Button>
 
                             {manualOutputItem && manualOutputQty > 0 && (
-                                <div className="mt-4 rounded-lg bg-white/60 p-3 dark:bg-gray-800/50">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Resumen:</p>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        + {formatNumber(manualOutputQty)} {manualOutputUnit} de <strong>{getItemName(manualOutputItem)}</strong>
+                                <div className="mt-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-3">
+                                    <p className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">Resumen</p>
+                                    <p className="mt-1 text-[13px] text-capsula-ink">
+                                        <span className="font-mono text-[#2F6B4E]">+{formatNumber(manualOutputQty)}</span> {manualOutputUnit} de <strong className="text-capsula-navy-deep">{getItemName(manualOutputItem)}</strong>
                                     </p>
                                     {manualIngredients.length > 0 && (
-                                        <div className="mt-2 border-t pt-2">
-                                            <p className="text-xs text-gray-500">Se consumirán {manualIngredients.length} ingredientes</p>
+                                        <div className="mt-2 border-t border-capsula-line pt-2">
+                                            <p className="text-[11px] text-capsula-ink-muted">Se consumirán <span className="font-mono">{manualIngredients.length}</span> ingredientes</p>
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
 
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                            <h4 className="mb-2 flex items-center gap-2 font-medium text-blue-800 dark:text-blue-400">
-                                💡 ¿Cuándo usar producción manual?
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-alt/50 p-4">
+                            <h4 className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy-deep">
+                                <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                ¿Cuándo usar producción manual?
                             </h4>
-                            <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
+                            <ul className="space-y-1 text-[12px] text-capsula-ink-soft">
                                 <li>• Cuando no tienes una receta definida aún</li>
                                 <li>• Para ajustes o producciones especiales</li>
                                 <li>• Para registrar producción con cantidades personalizadas</li>
