@@ -17,11 +17,11 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 const PRODUCTION_STATUS: Record<string, { label: string; color: string }> = {
-  COMPLETED: { label: 'Completado', color: 'text-emerald-400' },
-  IN_PROGRESS: { label: 'En proceso', color: 'text-amber-400' },
+  COMPLETED: { label: 'Completado', color: 'text-[#2F6B4E]' },
+  IN_PROGRESS: { label: 'En proceso', color: 'text-[#946A1C]' },
   DRAFT: { label: 'Borrador', color: 'text-muted-foreground' },
-  APPROVED: { label: 'Aprobado', color: 'text-blue-400' },
-  CANCELLED: { label: 'Cancelado', color: 'text-red-400' },
+  APPROVED: { label: 'Aprobado', color: 'text-capsula-navy' },
+  CANCELLED: { label: 'Cancelado', color: 'text-capsula-coral' },
 };
 
 const DISCOUNT_LABELS: Record<string, string> = {
@@ -62,11 +62,11 @@ function StatCard({
 }) {
   const colors = {
     primary: 'text-primary bg-primary/10',
-    emerald: 'text-emerald-400 bg-emerald-400/10',
-    blue: 'text-blue-400 bg-blue-400/10',
-    amber: 'text-amber-400 bg-amber-400/10',
-    red: 'text-red-400 bg-red-400/10',
-    purple: 'text-purple-400 bg-purple-400/10',
+    emerald: 'text-[#2F6B4E] bg-[#2F6B4E]/10',
+    blue: 'text-capsula-navy bg-capsula-navy/10',
+    amber: 'text-[#946A1C] bg-[#946A1C]/10',
+    red: 'text-capsula-coral bg-capsula-coral/10',
+    purple: 'text-capsula-coral bg-capsula-coral/10',
   };
   const textColor = colors[color].split(' ')[0];
   const bgColor = colors[color].split(' ')[1];
@@ -82,7 +82,7 @@ function StatCard({
         {sub && <div className="text-xs text-muted-foreground mt-0.5 font-medium">{sub}</div>}
       </div>
       {trend !== null && trend !== undefined && (
-        <div className={`text-[10px] font-black flex items-center gap-1 ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+        <div className={`text-[10px] font-black flex items-center gap-1 ${trend >= 0 ? 'text-[#2F6B4E]' : 'text-capsula-coral'}`}>
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}% vs ayer
         </div>
       )}
@@ -151,7 +151,7 @@ export default async function EstadisticasPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-secondary/50 rounded-xl border border-border">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-[#2F6B4E] animate-pulse" />
           <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">En vivo</span>
         </div>
       </div>
@@ -273,9 +273,9 @@ export default async function EstadisticasPage() {
                   {d.topItems.map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-black ${
-                        i === 0 ? 'bg-amber-400/20 text-amber-400' :
-                        i === 1 ? 'bg-zinc-400/20 text-zinc-400' :
-                        i === 2 ? 'bg-amber-700/20 text-amber-700' :
+                        i === 0 ? 'bg-[#946A1C]/20 text-[#946A1C]' :
+                        i === 1 ? 'bg-capsula-ink-muted/20 text-capsula-ink-muted' :
+                        i === 2 ? 'bg-[#7A5116]/20 text-[#7A5116]' :
                         'bg-secondary text-muted-foreground'
                       }`}>
                         {i + 1}
@@ -297,11 +297,11 @@ export default async function EstadisticasPage() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Descuentos */}
               {d.discountBreakdown.length > 0 && (
-                <div className="capsula-card p-6 border-amber-500/10">
+                <div className="capsula-card p-6 border-[#946A1C]/20">
                   <SectionTitle icon="🎁" title="Descuentos Aplicados" sub="Solo hoy — requieren revisión" />
                   <div className="space-y-2">
                     {d.discountBreakdown.map((disc, i) => (
-                      <div key={i} className="flex justify-between items-center p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                      <div key={i} className="flex justify-between items-center p-3 bg-[#946A1C]/5 rounded-xl border border-[#946A1C]/20">
                         <div>
                           <div className="text-xs font-black text-foreground">{DISCOUNT_LABELS[disc.type] || disc.type}</div>
                           {disc.authorizedBy && (
@@ -309,7 +309,7 @@ export default async function EstadisticasPage() {
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-black text-amber-400">-${fmt(disc.total)}</div>
+                          <div className="text-sm font-black text-[#946A1C]">-${fmt(disc.total)}</div>
                           <div className="text-[10px] text-muted-foreground">{disc.count} aplicacion{disc.count !== 1 ? 'es' : ''}</div>
                         </div>
                       </div>
@@ -320,17 +320,17 @@ export default async function EstadisticasPage() {
 
               {/* Anulaciones */}
               {d.voidedOrders.length > 0 && (
-                <div className="capsula-card p-6 border-red-500/10">
+                <div className="capsula-card p-6 border-capsula-coral/20">
                   <SectionTitle icon="🚫" title="Órdenes Anuladas" sub="Hoy — log de auditoría" />
                   <div className="space-y-2">
                     {d.voidedOrders.map((v, i) => (
-                      <div key={i} className="flex justify-between items-center p-3 bg-red-500/5 rounded-xl border border-red-500/10">
+                      <div key={i} className="flex justify-between items-center p-3 bg-capsula-coral/5 rounded-xl border border-capsula-coral/20">
                         <div>
-                          <div className="text-xs font-black text-red-400">#{v.orderNumber}</div>
+                          <div className="text-xs font-black text-capsula-coral">#{v.orderNumber}</div>
                           <div className="text-[10px] text-muted-foreground truncate max-w-[160px]">{v.reason}</div>
                           <div className="text-[9px] text-muted-foreground/60">Por: {v.voidedBy} · {v.time}</div>
                         </div>
-                        <div className="text-sm font-black text-red-400">-${fmt(v.total)}</div>
+                        <div className="text-sm font-black text-capsula-coral">-${fmt(v.total)}</div>
                       </div>
                     ))}
                   </div>
@@ -341,19 +341,19 @@ export default async function EstadisticasPage() {
 
           {/* Stock bajo */}
           {d.lowStockAlerts.length > 0 && (
-            <div className="capsula-card p-6 border-amber-500/10">
+            <div className="capsula-card p-6 border-[#946A1C]/20">
               <SectionTitle icon="⚠️" title="Alertas de Stock" sub="Items bajo el mínimo establecido" />
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {d.lowStockAlerts.map((item, i) => (
-                  <div key={i} className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                  <div key={i} className="p-3 bg-[#946A1C]/5 rounded-xl border border-[#946A1C]/20">
                     <div className="text-xs font-black text-foreground uppercase truncate">{item.name}</div>
                     <div className="text-[9px] text-muted-foreground font-bold mt-0.5">{item.sku}</div>
                     <div className="mt-2 flex justify-between items-end">
                       <div>
-                        <div className="text-lg font-black text-amber-400 tabular-nums">{item.currentStock.toFixed(1)}</div>
+                        <div className="text-lg font-black text-[#946A1C] tabular-nums">{item.currentStock.toFixed(1)}</div>
                         <div className="text-[9px] text-muted-foreground">Min: {item.minimumStock} {item.unit}</div>
                       </div>
-                      <div className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg">
+                      <div className="text-[9px] font-black text-[#946A1C] bg-[#946A1C]/10 px-2 py-1 rounded-lg">
                         BAJO
                       </div>
                     </div>
@@ -395,16 +395,16 @@ export default async function EstadisticasPage() {
             </div>
 
             {d.lowStockAlerts.length > 0 && (
-              <div className="capsula-card p-6 border-amber-500/10">
+              <div className="capsula-card p-6 border-[#946A1C]/20">
                 <SectionTitle icon="⚠️" title="Stock Bajo" sub="Requiere atención" />
                 <div className="space-y-2">
                   {d.lowStockAlerts.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <div key={i} className="flex justify-between items-center p-3 bg-[#946A1C]/5 rounded-xl border border-[#946A1C]/20">
                       <div>
                         <div className="text-xs font-black text-foreground uppercase">{item.name}</div>
                         <div className="text-[9px] text-muted-foreground">Mínimo: {item.minimumStock} {item.unit}</div>
                       </div>
-                      <div className="text-sm font-black text-amber-400 tabular-nums">{item.currentStock.toFixed(1)} {item.unit}</div>
+                      <div className="text-sm font-black text-[#946A1C] tabular-nums">{item.currentStock.toFixed(1)} {item.unit}</div>
                     </div>
                   ))}
                 </div>
@@ -440,11 +440,11 @@ export default async function EstadisticasPage() {
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Órdenes</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-black text-emerald-400">${fmt(d.myStats.revenue)}</div>
+                    <div className="text-2xl font-black text-[#2F6B4E]">${fmt(d.myStats.revenue)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Total</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-black text-blue-400">${fmt(d.myStats.avgTicket)}</div>
+                    <div className="text-2xl font-black text-capsula-navy">${fmt(d.myStats.avgTicket)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Promedio</div>
                   </div>
                 </div>
@@ -476,15 +476,15 @@ export default async function EstadisticasPage() {
               {d.kitchenPending.length === 0 ? (
                 <div className="text-center py-10">
                   <div className="text-4xl mb-3">✅</div>
-                  <p className="font-black text-emerald-400">Cocina al día</p>
+                  <p className="font-black text-[#2F6B4E]">Cocina al día</p>
                   <p className="text-sm text-muted-foreground mt-1">No hay pedidos pendientes</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {d.kitchenPending.map((o, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <div key={i} className="flex justify-between items-center p-3 bg-[#946A1C]/5 rounded-xl border border-[#946A1C]/20">
                       <div>
-                        <div className="text-xs font-black text-amber-400">#{o.orderNumber}</div>
+                        <div className="text-xs font-black text-[#946A1C]">#{o.orderNumber}</div>
                         <div className="text-[10px] text-foreground font-bold">{o.tableName}</div>
                       </div>
                       <div className="text-right">
@@ -525,16 +525,16 @@ export default async function EstadisticasPage() {
 
           {/* Stock bajo para chef */}
           {d.lowStockAlerts.length > 0 && (
-            <div className="capsula-card p-6 border-red-500/10">
+            <div className="capsula-card p-6 border-capsula-coral/20">
               <SectionTitle icon="🚨" title="Ingredientes Bajo Mínimo" sub="Notifica a gerencia para reabastecimiento" />
               <div className="grid sm:grid-cols-2 gap-3">
                 {d.lowStockAlerts.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-red-500/5 rounded-xl border border-red-500/10">
+                  <div key={i} className="flex justify-between items-center p-3 bg-capsula-coral/5 rounded-xl border border-capsula-coral/20">
                     <div>
                       <div className="text-xs font-black text-foreground uppercase">{item.name}</div>
                       <div className="text-[9px] text-muted-foreground">Mínimo: {item.minimumStock} {item.unit}</div>
                     </div>
-                    <div className="text-sm font-black text-red-400 tabular-nums">{item.currentStock.toFixed(1)}</div>
+                    <div className="text-sm font-black text-capsula-coral tabular-nums">{item.currentStock.toFixed(1)}</div>
                   </div>
                 ))}
               </div>
@@ -557,17 +557,17 @@ export default async function EstadisticasPage() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Descuentos del día */}
-            <div className="capsula-card p-6 border-amber-500/10">
+            <div className="capsula-card p-6 border-[#946A1C]/20">
               <SectionTitle icon="🎁" title="Descuentos Aplicados" sub="Solo hoy — todas las sesiones" />
               {d.discountBreakdown.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Sin descuentos hoy ✅</p>
               ) : (
                 <div className="space-y-2">
                   {d.discountBreakdown.map((disc, i) => (
-                    <div key={i} className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <div key={i} className="p-3 bg-[#946A1C]/5 rounded-xl border border-[#946A1C]/20">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-black">{DISCOUNT_LABELS[disc.type] || disc.type}</span>
-                        <span className="text-sm font-black text-amber-400">-${fmt(disc.total)}</span>
+                        <span className="text-sm font-black text-[#946A1C]">-${fmt(disc.total)}</span>
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="text-[9px] text-muted-foreground">{disc.count} veces · {disc.authorizedBy ? `Auth: ${disc.authorizedBy}` : 'Sin gerente'}</span>
@@ -579,17 +579,17 @@ export default async function EstadisticasPage() {
             </div>
 
             {/* Anulaciones del día */}
-            <div className="capsula-card p-6 border-red-500/10">
+            <div className="capsula-card p-6 border-capsula-coral/20">
               <SectionTitle icon="🚫" title="Órdenes Anuladas" sub="Log completo de hoy" />
               {d.voidedOrders.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Sin anulaciones hoy ✅</p>
               ) : (
                 <div className="space-y-2">
                   {d.voidedOrders.map((v, i) => (
-                    <div key={i} className="p-3 bg-red-500/5 rounded-xl border border-red-500/10">
+                    <div key={i} className="p-3 bg-capsula-coral/5 rounded-xl border border-capsula-coral/20">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-black text-red-400">#{v.orderNumber}</span>
-                        <span className="text-sm font-black text-red-400">-${fmt(v.total)}</span>
+                        <span className="text-xs font-black text-capsula-coral">#{v.orderNumber}</span>
+                        <span className="text-sm font-black text-capsula-coral">-${fmt(v.total)}</span>
                       </div>
                       <div className="text-[9px] text-muted-foreground mt-1">{v.reason}</div>
                       <div className="text-[9px] text-muted-foreground/60 mt-0.5">Por: {v.voidedBy} · {v.time}</div>
@@ -602,16 +602,16 @@ export default async function EstadisticasPage() {
 
           {/* Variaciones de inventario */}
           {d.inventoryVariances.length > 0 && (
-            <div className="capsula-card p-6 border-purple-500/10">
+            <div className="capsula-card p-6 border-capsula-coral/20">
               <SectionTitle icon="📝" title="Ajustes de Inventario" sub="Movimientos tipo AJUSTE del mes" />
               <div className="space-y-2">
                 {d.inventoryVariances.map((v, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-purple-500/5 rounded-xl border border-purple-500/10">
+                  <div key={i} className="flex justify-between items-center p-3 bg-capsula-coral/5 rounded-xl border border-capsula-coral/20">
                     <div>
                       <div className="text-xs font-black text-foreground uppercase">{v.name}</div>
                       <div className="text-[9px] text-muted-foreground">{v.date}</div>
                     </div>
-                    <span className={`text-sm font-black tabular-nums ${v.variance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-sm font-black tabular-nums ${v.variance >= 0 ? 'text-[#2F6B4E]' : 'text-capsula-coral'}`}>
                       {v.variance >= 0 ? '+' : ''}{v.variance.toFixed(2)} {v.unit}
                     </span>
                   </div>
