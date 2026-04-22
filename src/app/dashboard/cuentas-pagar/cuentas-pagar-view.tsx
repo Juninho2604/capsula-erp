@@ -413,60 +413,58 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Modal: Nueva Cuenta */}
       {showForm && (
-        <Modal title="Nueva Cuenta por Pagar" onClose={() => setShowForm(false)}>
+        <Modal title="Nueva cuenta por pagar" onClose={() => setShowForm(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Descripción *</label>
+              <label className={labelCls}>Descripción *</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="input-field w-full" placeholder="Ej: Factura vegetales 15/03/2026" required />
+                className={inputCls} placeholder="Ej: Factura vegetales 15/03/2026" required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Proveedor (sistema)</label>
+                <label className={labelCls}>Proveedor (sistema)</label>
                 <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value, creditorName: '' }))}
-                  className="input-field w-full">
+                  className={inputCls}>
                   <option value="">— Seleccionar —</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">O nombre del acreedor</label>
+                <label className={labelCls}>O nombre del acreedor</label>
                 <input value={form.creditorName} onChange={e => setForm(f => ({ ...f, creditorName: e.target.value, supplierId: '' }))}
-                  className="input-field w-full" placeholder="Si no está en el sistema" disabled={!!form.supplierId} />
+                  className={inputCls} placeholder="Si no está en el sistema" disabled={!!form.supplierId} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Nº de Factura</label>
+                <label className={labelCls}>Nº de factura</label>
                 <input value={form.invoiceNumber} onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))}
-                  className="input-field w-full" placeholder="Opcional" />
+                  className={inputCls} placeholder="Opcional" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto Total USD *</label>
+                <label className={labelCls}>Monto total USD *</label>
                 <input type="number" step="0.01" min="0.01" value={form.totalAmountUsd}
                   onChange={e => setForm(f => ({ ...f, totalAmountUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className={`${inputCls} font-mono`} placeholder="0.00" required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha Factura *</label>
+                <label className={labelCls}>Fecha factura *</label>
                 <input type="date" value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))}
-                  className="input-field w-full" required />
+                  className={inputCls} required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha Vencimiento</label>
+                <label className={labelCls}>Fecha vencimiento</label>
                 <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                  className="input-field w-full" />
+                  className={inputCls} />
               </div>
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setShowForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
-                {isPending ? 'Guardando...' : 'Registrar Cuenta'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button type="submit" variant="primary" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Guardando…' : 'Registrar cuenta'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -474,50 +472,50 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Modal: Registrar Pago */}
       {payTarget && (
-        <Modal title="Registrar Pago" onClose={() => setPayTarget(null)}>
+        <Modal title="Registrar pago" onClose={() => setPayTarget(null)}>
           <form onSubmit={handlePay} className="space-y-4">
-            <div className="rounded-xl bg-muted/30 p-4 text-sm space-y-1">
-              <p className="font-semibold text-foreground">{payTarget.description}</p>
-              <p className="text-muted-foreground">Pendiente: <span className="font-bold text-amber-500">${fmt(payTarget.remainingUsd)}</span></p>
+            <div className="space-y-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4 text-[13px]">
+              <p className="font-medium text-capsula-ink">{payTarget.description}</p>
+              <p className="text-capsula-ink-muted">
+                Pendiente: <span className="font-mono font-semibold text-[#946A1C]">${fmt(payTarget.remainingUsd)}</span>
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto USD *</label>
+                <label className={labelCls}>Monto USD *</label>
                 <input type="number" step="0.01" min="0.01" value={payForm.amountUsd}
                   onChange={e => setPayForm(f => ({ ...f, amountUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className={`${inputCls} font-mono`} placeholder="0.00" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha *</label>
+                <label className={labelCls}>Fecha *</label>
                 <input type="date" value={payForm.paidAt} onChange={e => setPayForm(f => ({ ...f, paidAt: e.target.value }))}
-                  className="input-field w-full" required />
+                  className={inputCls} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Método *</label>
-                <select value={payForm.paymentMethod} onChange={e => setPayForm(f => ({ ...f, paymentMethod: e.target.value }))} className="input-field w-full">
+                <label className={labelCls}>Método *</label>
+                <select value={payForm.paymentMethod} onChange={e => setPayForm(f => ({ ...f, paymentMethod: e.target.value }))} className={inputCls}>
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Referencia</label>
+                <label className={labelCls}>Referencia</label>
                 <input value={payForm.paymentRef} onChange={e => setPayForm(f => ({ ...f, paymentRef: e.target.value }))}
-                  className="input-field w-full" placeholder="Nº transferencia..." />
+                  className={inputCls} placeholder="Nº transferencia…" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Notas</label>
+              <label className={labelCls}>Notas</label>
               <textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field w-full" rows={2} />
+                className={inputCls} rows={2} />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setPayTarget(null)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
-              <button type="submit" disabled={isPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {isPending ? 'Registrando...' : 'Confirmar Pago'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setPayTarget(null)}>Cancelar</Button>
+              <Button type="submit" variant="primary" disabled={isPending} isLoading={isPending}>
+                {isPending ? 'Registrando…' : (<><Check className="h-4 w-4" strokeWidth={2} /> Confirmar pago</>)}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -526,26 +524,57 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
   );
 }
 
-function KpiCard({ label, value, icon, color, sub }: { label: string; value: string; icon: string; color: string; sub?: string }) {
+const inputCls =
+  'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
+const labelCls = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+
+type KpiAccent = 'warn' | 'coral' | 'ok' | 'navy' | 'neutral';
+
+function KpiCard({ label, value, Icon, accent, sub }: {
+  label: string;
+  value: string;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  accent: KpiAccent;
+  sub?: string;
+}) {
+  const accentClass: Record<KpiAccent, string> = {
+    warn:    'border-[#E8D9B8] bg-[#F3EAD6]/40',
+    coral:   'border-capsula-coral/30 bg-capsula-coral-subtle/40',
+    ok:      'border-[#D3E2D8] bg-[#E5EDE7]/50',
+    navy:    'border-capsula-navy/20 bg-capsula-navy-soft/40',
+    neutral: 'border-capsula-line bg-capsula-ivory-surface',
+  };
+  const iconClass: Record<KpiAccent, string> = {
+    warn:    'text-[#946A1C]',
+    coral:   'text-capsula-coral',
+    ok:      'text-[#2F6B4E]',
+    navy:    'text-capsula-navy',
+    neutral: 'text-capsula-ink-muted',
+  };
   return (
-    <div className={`glass-panel rounded-2xl p-5 border ${color}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-        <span className="text-lg">{icon}</span>
+    <div className={cn("rounded-[var(--radius)] border p-5 shadow-cap-soft", accentClass[accent])}>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
+        <Icon className={cn("h-4 w-4", iconClass[accent])} strokeWidth={1.5} />
       </div>
-      <p className="text-2xl font-black text-foreground truncate">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="truncate font-mono text-[22px] font-semibold text-capsula-ink">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-capsula-ink-muted">{sub}</p>}
     </div>
   );
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border border-border shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
+          <h2 className="font-heading text-[18px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">{title}</h2>
+          <button
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
