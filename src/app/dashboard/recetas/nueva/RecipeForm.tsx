@@ -11,6 +11,12 @@ import { createRecipeAction, updateRecipeAction } from '@/app/actions/recipe.act
 import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
+import {
+    ArrowLeft, Plus, Trash2, FilePlus2, X, Check, Loader2,
+    ClipboardList, Coins, Save, Lock, Soup, Beaker, Factory, Utensils, FolderOpen, Package, ChefHat,
+} from 'lucide-react';
 
 interface IngredientOption {
     id: string;
@@ -258,115 +264,104 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         }
     };
 
+    const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
+    const inputClass = 'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none';
+
     return (
         <div className="space-y-6 animate-in">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href="/dashboard/recetas"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                    >
-                        ←
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {initialData ? 'Editar Receta' : 'Nueva Receta'}
-                        </h1>
-                        <p className="text-gray-500">
-                            {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
-                        </p>
-                    </div>
+            <div className="flex items-center gap-4 border-b border-capsula-line pb-6">
+                <Link
+                    href="/dashboard/recetas"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+                </Link>
+                <div>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Catálogo</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                        {initialData ? 'Editar receta' : 'Nueva receta'}
+                    </h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                        {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
+                    </p>
                 </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
-                {/* Formulario Principal */}
                 <div className="space-y-6 lg:col-span-2">
-                    {/* Info básica */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h2 className="mb-4 font-semibold text-gray-900 dark:text-white">
-                            Información Básica
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                        <h2 className="mb-4 font-heading text-[16px] text-capsula-navy-deep">
+                            Información básica
                         </h2>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Nombre de la Receta *
-                                </label>
+                                <label className={labelClass}>Nombre de la receta *</label>
                                 <input
                                     type="text"
                                     value={recipeName}
                                     onChange={(e) => setRecipeName(e.target.value)}
-                                    placeholder="Ej: Salsa de Ajo de la Casa"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    placeholder="Ej: Salsa de ajo de la casa"
+                                    className={inputClass}
                                 />
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Categoría
-                                </label>
+                                <label className={labelClass}>Categoría</label>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className={inputClass}
                                 >
-                                    <option value="RECETAS CREMAS">🥣 Cremas</option>
-                                    <option value="RECETAS PANTRY">🥫 Pantry</option>
-                                    <option value="RECETAS PRODUCCION">🏭 Producción</option>
-                                    <option value="ARMADO EN SERVICIO">🍽️ Armado en Servicio</option>
-                                    <option value="GENERAL">📋 General/Otros</option>
+                                    <option value="RECETAS CREMAS">Cremas</option>
+                                    <option value="RECETAS PANTRY">Pantry</option>
+                                    <option value="RECETAS PRODUCCION">Producción</option>
+                                    <option value="ARMADO EN SERVICIO">Armado en servicio</option>
+                                    <option value="GENERAL">General / Otros</option>
                                 </select>
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Tipo de Producción
-                                </label>
+                                <label className={labelClass}>Tipo de producción</label>
                                 <div className="flex gap-4">
-                                    <label className="flex items-center gap-2">
+                                    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-capsula-ink">
                                         <input
                                             type="radio"
                                             name="type"
                                             value="SUB_RECIPE"
                                             checked={type === 'SUB_RECIPE'}
                                             onChange={() => setType('SUB_RECIPE')}
-                                            className="text-amber-600 focus:ring-amber-500"
+                                            className="text-capsula-navy-deep focus:ring-capsula-navy-deep"
                                         />
-                                        <span className="text-sm">Sub-receta (Intermedio)</span>
+                                        Sub-receta (intermedio)
                                     </label>
-                                    <label className="flex items-center gap-2">
+                                    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-capsula-ink">
                                         <input
                                             type="radio"
                                             name="type"
                                             value="FINISHED_GOOD"
                                             checked={type === 'FINISHED_GOOD'}
                                             onChange={() => setType('FINISHED_GOOD')}
-                                            className="text-amber-600 focus:ring-amber-500"
+                                            className="text-capsula-navy-deep focus:ring-capsula-navy-deep"
                                         />
-                                        <span className="text-sm">Producto Final (Venta)</span>
+                                        Producto final (venta)
                                     </label>
                                 </div>
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Descripción
-                                </label>
+                                <label className={labelClass}>Descripción</label>
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Instrucciones breves o descripción..."
+                                    placeholder="Instrucciones breves o descripción…"
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className={inputClass}
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Cantidad Producida *
-                                </label>
+                                <label className={labelClass}>Cantidad producida *</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="number"
@@ -374,12 +369,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         onChange={(e) => setOutputQuantity(parseFloat(e.target.value) || 0)}
                                         min="0"
                                         step="0.1"
-                                        className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="w-24 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 font-mono text-[14px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                     />
                                     <select
                                         value={outputUnit}
                                         onChange={(e) => setOutputUnit(e.target.value as UnitOfMeasure)}
-                                        className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={`flex-1 ${inputClass}`}
                                     >
                                         {UNITS.map(u => (
                                             <option key={u.value} value={u.value}>{u.label}</option>
@@ -389,9 +384,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Rendimiento (Yield) %
-                                </label>
+                                <label className={labelClass}>Rendimiento (yield) %</label>
                                 <div className="relative">
                                     <input
                                         type="number"
@@ -399,38 +392,34 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         onChange={(e) => setYieldPercentage(parseFloat(e.target.value) || 100)}
                                         min="1"
                                         max="100"
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 pr-10 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className={`${inputClass} pr-10 font-mono`}
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-capsula-ink-muted">%</span>
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    Real: {formatNumber(effectiveOutput)} {outputUnit}
+                                <p className="mt-1 text-[11px] text-capsula-ink-muted">
+                                    Real: <span className="font-mono">{formatNumber(effectiveOutput)}</span> {outputUnit}
                                 </p>
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Tiempo Prep. (min)
-                                </label>
+                                <label className={labelClass}>Tiempo prep. (min)</label>
                                 <input
                                     type="number"
                                     value={prepTime}
                                     onChange={(e) => setPrepTime(parseInt(e.target.value) || 0)}
                                     min="0"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className={`${inputClass} font-mono`}
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Tiempo Cocción (min)
-                                </label>
+                                <label className={labelClass}>Tiempo cocción (min)</label>
                                 <input
                                     type="number"
                                     value={cookTime}
                                     onChange={(e) => setCookTime(parseInt(e.target.value) || 0)}
                                     min="0"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className={`${inputClass} font-mono`}
                                 />
                             </div>
                         </div>
