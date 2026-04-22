@@ -1005,69 +1005,88 @@ export default function SalesHistoryPage() {
             {/* MODAL ANULACIÓN                                                    */}
             {/* ================================================================ */}
             {voidTarget && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-red-800/60 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <div className="flex items-center justify-between mb-5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-ivory-surface p-6 shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <div className="mb-5 flex items-center justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-red-400">Anular Venta</h2>
-                                <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
+                                <h2 className="inline-flex items-center gap-2 font-heading text-[20px] leading-tight tracking-[-0.01em] text-capsula-coral">
+                                    <Trash2 className="h-5 w-5" strokeWidth={1.5} />
+                                    Anular venta
+                                </h2>
+                                <p className="mt-0.5 font-mono text-[12px] text-capsula-ink-muted">
+                                    {voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}
+                                </p>
                             </div>
-                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white text-2xl font-bold">×</button>
+                            <button
+                                onClick={() => setVoidTarget(null)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                            >
+                                <X className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                         </div>
 
-                        <div className="bg-gray-800 rounded-xl p-4 mb-5 text-sm space-y-1">
-                            <div className="flex justify-between text-gray-300">
-                                <span>Cliente:</span><span>{voidTarget.customerName || 'Cliente General'}</span>
+                        <div className="mb-5 space-y-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4 text-[13px]">
+                            <div className="flex justify-between text-capsula-ink-soft">
+                                <span className="text-capsula-ink-muted">Cliente:</span>
+                                <span className="font-medium text-capsula-ink">{voidTarget.customerName || 'Cliente general'}</span>
                             </div>
-                            <div className="flex justify-between text-gray-300">
-                                <span>Cajera:</span><span>{voidTarget.createdBy?.firstName || '-'}</span>
+                            <div className="flex justify-between text-capsula-ink-soft">
+                                <span className="text-capsula-ink-muted">Cajera:</span>
+                                <span className="font-medium text-capsula-ink">{voidTarget.createdBy?.firstName || '—'}</span>
                             </div>
                             {voidTarget.authorizedById && (
-                                <div className="flex justify-between text-gray-300">
-                                    <span>Autorizado por:</span><span>{voidTarget.authorizedBy?.firstName || voidTarget.authorizedByName || '-'}</span>
+                                <div className="flex justify-between text-capsula-ink-soft">
+                                    <span className="text-capsula-ink-muted">Autorizado por:</span>
+                                    <span className="font-medium text-capsula-ink">{voidTarget.authorizedBy?.firstName || voidTarget.authorizedByName || '—'}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-gray-300">
-                                <span>Items:</span><span>{(voidTarget.items || []).length} productos</span>
+                            <div className="flex justify-between text-capsula-ink-soft">
+                                <span className="text-capsula-ink-muted">Ítems:</span>
+                                <span className="font-medium text-capsula-ink">{(voidTarget.items || []).length} productos</span>
                             </div>
-                            <div className="flex justify-between font-bold text-white pt-1 border-t border-gray-700">
-                                <span>Total cobrado:</span><span>{formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</span>
+                            <div className="flex items-baseline justify-between border-t border-capsula-line pt-1">
+                                <span className="font-medium text-capsula-ink">Total cobrado:</span>
+                                <span className="font-mono text-[16px] font-semibold text-capsula-navy-deep">{formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</span>
                             </div>
                         </div>
 
                         {voidStep === 'reason' && (
                             <>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Motivo de la anulación <span className="text-red-400">*</span>
+                                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    Motivo de la anulación <span className="text-capsula-coral">*</span>
                                 </label>
                                 <textarea
                                     value={voidReason}
                                     onChange={e => setVoidReason(e.target.value)}
-                                    placeholder="Ej: Error de facturación, cliente solicitó cambio de mesa..."
+                                    placeholder="Ej: Error de facturación, cliente solicitó cambio de mesa…"
                                     rows={3}
-                                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:border-red-500 focus:outline-none resize-none mb-5"
+                                    className="mb-5 w-full resize-none rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[13px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-coral"
                                 />
-                                <div className="flex gap-3">
-                                    <button onClick={() => setVoidTarget(null)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-semibold transition-colors">
+                                <div className="flex gap-2">
+                                    <Button variant="ghost" onClick={() => setVoidTarget(null)} className="flex-1">
                                         Cancelar
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
                                         onClick={() => setVoidStep('pin')}
                                         disabled={!voidReason.trim()}
-                                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors"
+                                        className="flex-1"
                                     >
-                                        Continuar →
-                                    </button>
+                                        Continuar <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
+                                    </Button>
                                 </div>
                             </>
                         )}
 
                         {voidStep === 'pin' && (
                             <>
-                                <div className="mb-4 p-3 bg-amber-900/30 border border-amber-700/40 rounded-xl text-xs text-amber-300 leading-relaxed">
-                                    🔐 Requiere PIN de Gerente, Auditor o Dueño. El inventario se reintegrará automáticamente.
+                                <div className="mb-4 inline-flex items-start gap-2 rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6] p-3 text-[12px] leading-relaxed text-[#946A1C]">
+                                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                                    <span>Requiere PIN de Gerente, Auditor o Dueño. El inventario se reintegrará automáticamente.</span>
                                 </div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">PIN de Autorización</label>
+                                <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    PIN de autorización
+                                </label>
                                 <input
                                     type="password"
                                     value={voidPin}
@@ -1076,23 +1095,30 @@ export default function SalesHistoryPage() {
                                     placeholder="••••"
                                     maxLength={8}
                                     autoFocus
-                                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest focus:border-red-500 focus:outline-none mb-1"
+                                    className="mb-1 w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-3 text-center font-mono text-[24px] tracking-[0.3em] text-capsula-navy-deep outline-none focus:border-capsula-coral"
                                 />
-                                {voidPinError && <p className="text-red-400 text-xs mb-3 text-center">{voidPinError}</p>}
-                                <div className="flex gap-3 mt-4">
-                                    <button
+                                {voidPinError && (
+                                    <p className="mb-3 inline-flex w-full items-center justify-center gap-1 text-center text-[11px] font-medium text-capsula-coral">
+                                        <AlertTriangle className="h-3 w-3" strokeWidth={1.5} /> {voidPinError}
+                                    </p>
+                                )}
+                                <div className="mt-4 flex gap-2">
+                                    <Button
+                                        variant="ghost"
                                         onClick={() => { setVoidStep('reason'); setVoidPin(''); setVoidPinError(''); }}
-                                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-semibold transition-colors"
+                                        className="flex-1"
                                     >
-                                        ← Volver
-                                    </button>
-                                    <button
+                                        <ChevronRight className="h-4 w-4 rotate-180" strokeWidth={1.5} /> Volver
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
                                         onClick={handleVoidPinConfirm}
                                         disabled={!voidPin || voidLoading}
-                                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition-colors"
+                                        isLoading={voidLoading}
+                                        className="flex-1"
                                     >
-                                        {voidLoading ? '⏳ Procesando...' : 'Autorizar Anulación'}
-                                    </button>
+                                        {voidLoading ? 'Procesando…' : 'Autorizar anulación'}
+                                    </Button>
                                 </div>
                             </>
                         )}
