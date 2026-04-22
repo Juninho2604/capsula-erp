@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -76,13 +77,19 @@ interface SubAccountPanelProps {
 
 // ─── Payment method labels ────────────────────────────────────────────────────
 
-const PAY_METHODS: { id: POSPaymentMethod; label: string }[] = [
-    { id: 'CASH_USD', label: '💵 Cash $' },
-    { id: 'ZELLE', label: '⚡ Zelle' },
-    { id: 'PDV_SHANKLISH', label: '💳 PDV Shan.' },
-    { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-    { id: 'MOVIL_NG', label: '📱 Móvil NG' },
-    { id: 'CASH_BS', label: '💴 Efectivo Bs' },
+type PayMethodDef = {
+    id: POSPaymentMethod;
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+};
+
+const PAY_METHODS: PayMethodDef[] = [
+    { id: 'CASH_USD',       label: 'Cash $',       Icon: DollarSign },
+    { id: 'ZELLE',          label: 'Zelle',        Icon: Zap },
+    { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',    Icon: CreditCard },
+    { id: 'PDV_SUPERFERRO', label: 'PDV Super.',   Icon: CreditCard },
+    { id: 'MOVIL_NG',       label: 'Móvil NG',     Icon: Smartphone },
+    { id: 'CASH_BS',        label: 'Efectivo Bs',  Icon: Banknote },
 ];
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -116,23 +123,23 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
     const alreadyAssigned = item.subAccountItems.filter((s) => s.quantity > 0);
 
     return (
-        <div className="border border-border/50 rounded-xl bg-background/50 p-2.5 space-y-1.5">
+        <div className="space-y-1.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2.5">
             {/* Item header */}
             <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-foreground truncate">
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-medium text-capsula-ink">
                         {item.quantity}× {item.itemName}
                     </div>
                     {item.modifiers.length > 0 && (
-                        <div className="text-[10px] text-muted-foreground truncate">
+                        <div className="truncate text-[11px] text-capsula-ink-muted">
                             {item.modifiers.map((m) => m.name).join(', ')}
                         </div>
                     )}
                 </div>
                 <div className="shrink-0 text-right">
-                    <div className="text-xs font-black text-amber-400">${item.lineTotal.toFixed(2)}</div>
+                    <div className="text-xs font-medium tabular-nums text-capsula-navy-deep">${item.lineTotal.toFixed(2)}</div>
                     {poolQty > 0 && (
-                        <div className="text-[10px] text-muted-foreground">Pool: {poolQty}</div>
+                        <div className="text-[11px] text-capsula-ink-muted">Pool: {poolQty}</div>
                     )}
                 </div>
             </div>
@@ -142,18 +149,21 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                 const sub = subAccounts.find((s) => s.id === a.subAccountId);
                 if (!sub) return null;
                 return (
-                    <div key={a.subAccountId}
-                        className="flex items-center justify-between text-[10px] bg-amber-500/10 rounded-lg px-2 py-1">
-                        <span className="text-amber-300 font-bold">
+                    <div
+                        key={a.subAccountId}
+                        className="flex items-center justify-between rounded-lg border border-capsula-navy/10 bg-capsula-navy-soft px-2 py-1 text-[11px]"
+                    >
+                        <span className="font-medium text-capsula-navy">
                             {a.quantity}× → {sub.label}
                         </span>
                         {sub.status === 'OPEN' && (
                             <button
                                 disabled={isProcessing}
                                 onClick={() => onUnassign(item.id, a.subAccountId)}
-                                className="text-red-400 hover:text-red-300 font-bold disabled:opacity-40"
+                                className="rounded-full p-0.5 text-capsula-coral transition-colors hover:bg-capsula-coral-subtle disabled:opacity-40"
+                                aria-label="Quitar asignación"
                             >
-                                ✕
+                                <XIcon className="h-3 w-3" />
                             </button>
                         )}
                     </div>
@@ -164,7 +174,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
             {poolQty > 0 && subAccounts.filter((s) => s.status === 'OPEN').length > 0 && (
                 <button
                     onClick={() => { setExpanded((p) => !p); setPickedSub(''); setQty(1); }}
-                    className="w-full text-[10px] font-black uppercase text-primary bg-primary/10 hover:bg-primary/20 rounded-lg py-1.5 transition"
+                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:text-capsula-navy-deep"
                 >
                     {expanded ? 'Cancelar' : `Asignar (${poolQty} disponible${poolQty > 1 ? 's' : ''})`}
                 </button>
@@ -172,17 +182,20 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
 
             {/* Assign form */}
             {expanded && (
-                <div className="space-y-1.5 pt-1 border-t border-border/50">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">Mover a:</div>
+                <div className="space-y-1.5 border-t border-capsula-line pt-1.5">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                        Mover a:
+                    </div>
                     <div className="flex flex-wrap gap-1">
                         {subAccounts.filter((s) => s.status === 'OPEN').map((s) => (
                             <button
                                 key={s.id}
                                 onClick={() => setPickedSub(s.id)}
-                                className={`text-[10px] font-black px-2 py-1 rounded-lg transition ${pickedSub === s.id
-                                    ? 'bg-amber-500 text-black'
-                                    : 'bg-secondary text-foreground/70 hover:bg-muted'
-                                    }`}
+                                className={`rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${
+                                    pickedSub === s.id
+                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                        : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                }`}
                             >
                                 {s.label}
                             </button>
@@ -190,19 +203,27 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                     </div>
                     {pickedSub && poolQty > 1 && (
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground">Cantidad:</span>
-                            <button onClick={() => setQty((q) => Math.max(1, q - 1))}
-                                className="w-6 h-6 rounded-lg bg-secondary text-xs font-black">−</button>
-                            <span className="text-sm font-black w-6 text-center">{qty}</span>
-                            <button onClick={() => setQty((q) => Math.min(poolQty, q + 1))}
-                                className="w-6 h-6 rounded-lg bg-secondary text-xs font-black">+</button>
+                            <span className="text-[11px] text-capsula-ink-muted">Cantidad:</span>
+                            <button
+                                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                                className="h-6 w-6 rounded-lg border border-capsula-line bg-capsula-ivory-surface text-xs font-medium text-capsula-ink transition-colors hover:border-capsula-navy-deep"
+                            >
+                                −
+                            </button>
+                            <span className="w-6 text-center text-sm font-medium tabular-nums text-capsula-ink">{qty}</span>
+                            <button
+                                onClick={() => setQty((q) => Math.min(poolQty, q + 1))}
+                                className="h-6 w-6 rounded-lg border border-capsula-line bg-capsula-ivory-surface text-xs font-medium text-capsula-ink transition-colors hover:border-capsula-navy-deep"
+                            >
+                                +
+                            </button>
                         </div>
                     )}
                     {pickedSub && (
                         <button
                             disabled={isProcessing}
                             onClick={() => { onAssign(item.id, pickedSub, qty); setExpanded(false); }}
-                            className="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black rounded-lg transition disabled:opacity-40"
+                            className="pos-btn w-full !min-h-0 py-1.5 text-[11px] disabled:opacity-40"
                         >
                             Confirmar asignación
                         </button>
