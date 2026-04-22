@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon } from 'lucide-react';
+import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -267,76 +267,98 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     }
 
     return (
-        <div className={`rounded-xl border ${isPaid
-            ? 'border-emerald-500/30 bg-emerald-950/20'
-            : 'border-border bg-card/60'
-        } overflow-hidden`}>
+        <div className={`overflow-hidden rounded-xl border ${
+            isPaid
+                ? 'border-[#D3E2D8] bg-[#E5EDE7]/40'
+                : 'border-capsula-line bg-capsula-ivory-surface'
+        }`}>
             {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-2 ${isPaid ? 'bg-emerald-900/20' : 'bg-secondary/60'}`}>
+            <div className={`flex items-center justify-between px-3 py-2 ${
+                isPaid ? 'bg-[#E5EDE7]/80' : 'bg-capsula-ivory-alt'
+            }`}>
                 {editing ? (
-                    <div className="flex items-center gap-1.5 flex-1">
+                    <div className="flex flex-1 items-center gap-1.5">
                         <input
                             autoFocus
                             value={labelInput}
                             onChange={(e) => setLabelInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditing(false); }}
-                            className="flex-1 bg-background border border-amber-500/50 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none"
+                            className="flex-1 rounded-lg border border-capsula-navy-deep bg-capsula-ivory px-2 py-1 text-xs font-medium text-capsula-ink focus:outline-none"
                         />
-                        <button onClick={handleRename} className="text-[10px] font-black text-amber-400 hover:text-amber-300">✓</button>
-                        <button onClick={() => setEditing(false)} className="text-[10px] text-muted-foreground hover:text-foreground">✕</button>
+                        <button
+                            onClick={handleRename}
+                            className="rounded-full p-0.5 text-capsula-navy-deep transition-colors hover:bg-capsula-navy-soft"
+                            aria-label="Confirmar nombre"
+                        >
+                            <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={() => setEditing(false)}
+                            className="rounded-full p-0.5 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
+                            aria-label="Cancelar edición"
+                        >
+                            <XIcon className="h-3.5 w-3.5" />
+                        </button>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
-                        {isPaid
-                            ? <span className="text-xs font-black text-emerald-400">✓ {sub.label}</span>
-                            : (
-                                <button onClick={() => { setEditing(true); setLabelInput(sub.label); }}
-                                    className="text-xs font-black text-foreground hover:text-amber-400 transition">
-                                    ✏️ {sub.label}
-                                </button>
-                            )}
+                        {isPaid ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#2F6B4E]">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> {sub.label}
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => { setEditing(true); setLabelInput(sub.label); }}
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-capsula-ink transition-colors hover:text-capsula-navy-deep"
+                            >
+                                <Pencil className="h-3 w-3" />
+                                {sub.label}
+                            </button>
+                        )}
                     </div>
                 )}
                 {!isPaid && (
                     <button
                         disabled={isProcessing}
                         onClick={() => onDelete(sub.id)}
-                        className="text-[10px] text-red-400/60 hover:text-red-400 transition disabled:opacity-40 ml-2"
+                        className="ml-2 rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
                         title="Eliminar subcuenta"
+                        aria-label="Eliminar subcuenta"
                     >
-                        🗑
+                        <Trash2 className="h-3.5 w-3.5" />
                     </button>
                 )}
                 {isPaid && (
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                    <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E]">
                         PAGADA ${sub.paidAmount.toFixed(2)}
                     </span>
                 )}
             </div>
 
             {/* Items */}
-            <div className="px-3 py-2 space-y-1">
+            <div className="space-y-1 px-3 py-2">
                 {sub.items.length === 0 ? (
-                    <div className="text-[10px] text-muted-foreground text-center py-1">Sin ítems asignados</div>
+                    <div className="py-1 text-center text-[11px] text-capsula-ink-muted">Sin ítems asignados</div>
                 ) : (
                     sub.items.map((si) => (
-                        <div key={si.id} className="flex items-center justify-between text-[10px]">
-                            <span className="text-foreground/80 flex-1 truncate">
+                        <div key={si.id} className="flex items-center justify-between text-[11px]">
+                            <span className="flex-1 truncate text-capsula-ink-soft">
                                 {si.quantity}× {si.salesOrderItem.itemName}
                                 {si.salesOrderItem.modifiers.length > 0 && (
-                                    <span className="text-muted-foreground ml-1">
+                                    <span className="ml-1 text-capsula-ink-muted">
                                         ({si.salesOrderItem.modifiers.map((m) => m.name).join(', ')})
                                     </span>
                                 )}
                             </span>
-                            <span className="text-amber-400 font-bold ml-2">${si.lineTotal.toFixed(2)}</span>
+                            <span className="ml-2 font-medium tabular-nums text-capsula-navy-deep">${si.lineTotal.toFixed(2)}</span>
                             {!isPaid && (
                                 <button
                                     disabled={isProcessing}
                                     onClick={() => onUnassign(si.salesOrderItem.id, sub.id)}
-                                    className="ml-1.5 text-red-400/60 hover:text-red-400 transition disabled:opacity-40"
+                                    className="ml-1.5 rounded-full p-0.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
+                                    aria-label="Desasignar ítem"
                                 >
-                                    ✕
+                                    <XIcon className="h-3 w-3" />
                                 </button>
                             )}
                         </div>
@@ -345,20 +367,20 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
             </div>
 
             {/* Totals */}
-            <div className="border-t border-border/50 px-3 py-2 text-[10px] space-y-0.5">
-                <div className="flex justify-between text-muted-foreground">
+            <div className="space-y-0.5 border-t border-capsula-line px-3 py-2 text-[11px] tabular-nums">
+                <div className="flex justify-between text-capsula-ink-muted">
                     <span>Subtotal</span>
                     <span>${sub.subtotal.toFixed(2)}</span>
                 </div>
                 {sub.serviceCharge > 0 && (
-                    <div className="flex justify-between text-emerald-400/80">
+                    <div className="flex justify-between text-[#946A1C]">
                         <span>+10% servicio</span>
                         <span>${sub.serviceCharge.toFixed(2)}</span>
                     </div>
                 )}
-                <div className="flex justify-between font-black text-foreground border-t border-border/50 pt-1">
+                <div className="flex justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
                     <span>Total</span>
-                    <span>${sub.total.toFixed(2)}</span>
+                    <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${sub.total.toFixed(2)}</span>
                 </div>
             </div>
 
@@ -369,35 +391,43 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         <button
                             disabled={isProcessing || sub.items.length === 0}
                             onClick={() => { setShowPayForm(true); setAmountInput(totalWithService.toFixed(2)); }}
-                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-xs font-black rounded-xl transition"
+                            className="pos-btn w-full !min-h-0 py-2.5 text-xs disabled:opacity-40"
                         >
-                            💳 Cobrar {sub.label}
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Cobrar {sub.label}
                         </button>
                     ) : (
-                        <div className="space-y-2 pt-2 border-t border-border/50">
+                        <div className="space-y-2 border-t border-capsula-line pt-2">
                             {/* Service fee toggle */}
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" checked={serviceIncluded}
+                            <label className="flex cursor-pointer items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={serviceIncluded}
                                     onChange={(e) => {
                                         setServiceIncluded(e.target.checked);
                                         setAmountInput((sub.subtotal + (e.target.checked ? sub.serviceCharge : 0)).toFixed(2));
                                     }}
-                                    className="rounded border-border text-amber-500 focus:ring-amber-500"
+                                    className="rounded border-capsula-line accent-capsula-navy-deep"
                                 />
-                                <span className="text-[10px] text-foreground/70">+10% servicio</span>
-                                <span className="text-[10px] font-black text-emerald-400">
+                                <span className="text-[11px] text-capsula-ink-soft">+10% servicio</span>
+                                <span className="text-[11px] font-medium tabular-nums text-capsula-navy-deep">
                                     Total: ${totalWithService.toFixed(2)}
                                 </span>
                             </label>
                             {/* Method */}
                             <div className="grid grid-cols-3 gap-1">
                                 {PAY_METHODS.map((m) => (
-                                    <button key={m.id} onClick={() => setPayMethod(m.id)}
-                                        className={`text-[10px] font-black px-1 py-1.5 rounded-lg transition ${payMethod === m.id
-                                            ? 'bg-amber-500 text-black'
-                                            : 'bg-secondary text-foreground/70 hover:bg-muted'
-                                            }`}>
-                                        {m.label}
+                                    <button
+                                        key={m.id}
+                                        onClick={() => setPayMethod(m.id)}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-colors ${
+                                            payMethod === m.id
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                    >
+                                        <m.Icon className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">{m.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -406,20 +436,23 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                 type="number" min="0" step="0.01"
                                 value={amountInput}
                                 onChange={(e) => setAmountInput(e.target.value)}
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-black focus:border-amber-500 focus:outline-none"
+                                className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm font-medium tabular-nums text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 placeholder={`$${totalWithService.toFixed(2)}`}
                             />
                             <div className="flex gap-2">
-                                <button onClick={() => setShowPayForm(false)}
-                                    className="flex-1 py-2 bg-secondary text-xs font-bold rounded-xl">
+                                <button
+                                    onClick={() => setShowPayForm(false)}
+                                    className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep"
+                                >
                                     Cancelar
                                 </button>
                                 <button
                                     disabled={isProcessing}
                                     onClick={handlePayConfirm}
-                                    className="flex-[2] py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition disabled:opacity-40"
+                                    className="pos-btn flex-[2] !min-h-0 py-2 text-xs disabled:opacity-40"
                                 >
-                                    ✓ Confirmar
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Confirmar
                                 </button>
                             </div>
                         </div>
