@@ -550,11 +550,12 @@ export default function SalesEntryView() {
 
             {/* Vista: WhatsApp Parser */}
             {viewMode === 'whatsapp' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-6">
+                <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
                     {/* Opción de cargar archivo .txt */}
-                    <div className="mb-6 rounded-lg border-2 border-dashed border-green-200 bg-green-50/50 p-4 dark:border-green-900/50 dark:bg-green-900/10">
-                        <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
-                            📂 Cargar archivo de chat exportado (.txt)
+                    <div className="mb-6 rounded-[var(--radius)] border border-dashed border-capsula-coral/30 bg-capsula-coral-subtle/30 p-4">
+                        <p className="mb-2 inline-flex items-center gap-2 text-[13px] font-medium text-capsula-coral">
+                            <Upload className="h-4 w-4" strokeWidth={1.5} />
+                            Cargar archivo de chat exportado (.txt)
                         </p>
                         <input
                             type="file"
@@ -563,16 +564,12 @@ export default function SalesEntryView() {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 const text = await file.text();
-                                // Strip WhatsApp metadata (timestamps/sender) from each line
                                 const cleaned = text.split('\n').map(line => {
-                                    // Pattern: "[DD/MM/YYYY, HH:MM:SS] Sender: message" or "DD/MM/YYYY, HH:MM - Sender: message"
                                     const stripped = line
                                         .replace(/^\[?\d{1,2}\/\d{1,2}\/\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?\s*m\.?)?\]?\s*[-–]?\s*/i, '')
                                         .replace(/^[^:]+:\s*/, '');
                                     return stripped;
                                 }).filter(l => l.trim()).join('\n');
-                                // Set the text in the parser - we need a ref or state approach
-                                // For simplicity, we populate a hidden textarea and trigger parse
                                 const textarea = document.querySelector('#whatsapp-chat-input') as HTMLTextAreaElement;
                                 if (textarea) {
                                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
@@ -581,13 +578,12 @@ export default function SalesEntryView() {
                                     textarea.dispatchEvent(new Event('change', { bubbles: true }));
                                 }
                             }}
-                            className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer"
+                            className="block w-full text-[13px] text-capsula-ink-soft file:mr-4 file:cursor-pointer file:rounded-full file:border-0 file:bg-capsula-coral-subtle file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-capsula-coral hover:file:bg-capsula-coral hover:file:text-white"
                         />
                     </div>
 
                     <WhatsAppOrderParser
                         onOrderReady={(items, name, phone, address) => {
-                            // Convert CartItem format from parser to sales-entry format
                             const cartItems: CartItem[] = items.map(i => ({
                                 menuItemId: i.menuItemId,
                                 menuItemName: i.name,
@@ -610,76 +606,78 @@ export default function SalesEntryView() {
 
             {/* Vista: Historial del día */}
             {viewMode === 'history' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b border-gray-200 bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Orden</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Tipo</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Cliente</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Items</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500">Total</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Hora</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                        <table className="w-full border-collapse text-[13px]">
+                            <thead>
+                                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Orden</th>
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Tipo</th>
+                                    <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Cliente</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Ítems</th>
+                                    <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Total</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Hora</th>
+                                    <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody>
                                 {todaySales.sales.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                            <span className="text-4xl">📭</span>
-                                            <p className="mt-2">No hay ventas registradas hoy</p>
+                                        <td colSpan={7} className="px-5 py-14 text-center">
+                                            <ShoppingBag className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                            <p className="mt-3 text-[13px] text-capsula-ink-muted">No hay ventas registradas hoy</p>
                                         </td>
                                     </tr>
                                 ) : (
-                                    todaySales.sales.map((sale: any) => (
-                                        <tr key={sale.id} className={cn(
-                                            'hover:bg-gray-50',
-                                            sale.status === 'VOIDED' && 'opacity-50 bg-red-50'
-                                        )}>
-                                            <td className="px-6 py-4">
-                                                <p className="font-medium text-gray-900">{sale.orderNumber}</p>
-                                                <p className="text-xs text-gray-500">{sale.createdBy}</p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    'px-2.5 py-1 rounded-full text-xs font-medium',
-                                                    sale.orderType === 'RESTAURANT' && 'bg-blue-100 text-blue-700',
-                                                    sale.orderType === 'DELIVERY' && 'bg-purple-100 text-purple-700',
-                                                    sale.orderType === 'TAKEOUT' && 'bg-amber-100 text-amber-700'
-                                                )}>
-                                                    {sale.orderType === 'RESTAURANT' ? '🍽️' : sale.orderType === 'DELIVERY' ? '🛵' : '📦'} {sale.orderType}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-700">
-                                                {sale.customerName || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-mono">
-                                                {sale.itemCount}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-semibold text-emerald-600">
-                                                {formatCurrency(sale.total)}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-sm text-gray-500">
-                                                {new Date(sale.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {sale.status !== 'VOIDED' && (
-                                                    <button
-                                                        onClick={() => handleVoidSale(sale.id)}
-                                                        className="text-red-500 hover:text-red-700 text-sm"
-                                                        title="Anular venta"
-                                                    >
-                                                        🗑️ Anular
-                                                    </button>
-                                                )}
-                                                {sale.status === 'VOIDED' && (
-                                                    <span className="text-red-500 text-xs">ANULADA</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
+                                    todaySales.sales.map((sale: any) => {
+                                        const typeVariant: 'info' | 'coral' | 'warn' =
+                                            sale.orderType === 'RESTAURANT' ? 'info' :
+                                            sale.orderType === 'DELIVERY' ? 'coral' : 'warn';
+                                        const TypeIcon = sale.orderType === 'RESTAURANT' ? UtensilsCrossed :
+                                            sale.orderType === 'DELIVERY' ? Bike : ShoppingBag;
+                                        return (
+                                            <tr key={sale.id} className={cn(
+                                                'border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory',
+                                                sale.status === 'VOIDED' && 'bg-capsula-coral-subtle/30 opacity-60',
+                                            )}>
+                                                <td className="px-5 py-3">
+                                                    <p className="font-mono text-[12.5px] font-semibold text-capsula-ink">{sale.orderNumber}</p>
+                                                    <p className="text-[11px] text-capsula-ink-muted">{sale.createdBy}</p>
+                                                </td>
+                                                <td className="px-5 py-3">
+                                                    <Badge variant={typeVariant}>
+                                                        <TypeIcon className="h-3 w-3" strokeWidth={1.5} /> {sale.orderType}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-5 py-3 text-capsula-ink-soft">
+                                                    {sale.customerName || '—'}
+                                                </td>
+                                                <td className="px-5 py-3 text-center font-mono text-capsula-ink">
+                                                    {sale.itemCount}
+                                                </td>
+                                                <td className="px-5 py-3 text-right font-mono font-semibold text-[#2F6B4E]">
+                                                    {formatCurrency(sale.total)}
+                                                </td>
+                                                <td className="px-5 py-3 text-center font-mono text-[11.5px] text-capsula-ink-muted">
+                                                    {new Date(sale.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td className="px-5 py-3 text-center">
+                                                    {sale.status !== 'VOIDED' && (
+                                                        <button
+                                                            onClick={() => handleVoidSale(sale.id)}
+                                                            className="inline-flex items-center gap-1 rounded-md border border-capsula-coral/30 bg-capsula-coral-subtle/50 px-2 py-1 text-[11px] font-medium text-capsula-coral transition-colors hover:bg-capsula-coral hover:text-white"
+                                                            title="Anular venta"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" strokeWidth={1.5} /> Anular
+                                                        </button>
+                                                    )}
+                                                    {sale.status === 'VOIDED' && (
+                                                        <Badge variant="danger">Anulada</Badge>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
