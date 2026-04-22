@@ -872,20 +872,22 @@ export default function POSDeliveryPage() {
 
             {/* WhatsApp Parser Modal */}
             {showWhatsAppParser && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-card glass-panel w-full max-w-2xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl border-primary/20">
-                        <div className="p-5 border-b border-border flex justify-between items-center flex-shrink-0">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <span className="text-2xl">💬</span> Pegar Chat de WhatsApp
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
+                        <div className="flex shrink-0 items-center justify-between border-b border-capsula-line p-5">
+                            <h3 className="inline-flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                <MessageCircle className="h-5 w-5 text-capsula-ink-muted" />
+                                Pegar chat de WhatsApp
                             </h3>
                             <button
                                 onClick={() => setShowWhatsAppParser(false)}
-                                className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors text-2xl flex items-center justify-center"
+                                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                aria-label="Cerrar"
                             >
-                                &times;
+                                <XIcon className="h-5 w-5" />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-5 no-scrollbar">
+                        <div className="no-scrollbar flex-1 overflow-y-auto p-5">
                             <WhatsAppOrderParser
                                 onOrderReady={(items, name, phone, address) => {
                                     setCart(items);
