@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -741,13 +741,28 @@ export default function POSDeliveryPage() {
 
                             {/* Modo de pago */}
                             <div className="grid grid-cols-2 gap-1.5">
-                                <button type="button" onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${!isMixedMode ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                    Pago Único
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
+                                    className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        !isMixedMode
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                    }`}
+                                >
+                                    Pago único
                                 </button>
-                                <button type="button" onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
-                                    className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all ${isMixedMode ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                    💳 Pago Mixto
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
+                                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        isMixedMode
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                    }`}
+                                >
+                                    <CreditCard className="h-3.5 w-3.5" />
+                                    Pago mixto
                                 </button>
                             </div>
 
@@ -756,38 +771,55 @@ export default function POSDeliveryPage() {
                                 <div className="space-y-2">
                                     <div className="grid grid-cols-3 gap-1.5">
                                         {([
-                                            { id: 'CASH_USD',       label: '💵 Cash $' },
-                                            { id: 'CASH_EUR',       label: '€ Cash €' },
-                                            { id: 'ZELLE',          label: '⚡ Zelle' },
-                                            { id: 'PDV_SHANKLISH',  label: '💳 PDV Shan.' },
-                                            { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-                                            { id: 'MOVIL_NG',       label: '📱 Móvil NG' },
-                                            { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
+                                            { id: 'CASH_USD',       label: 'Cash $',       Icon: DollarSign },
+                                            { id: 'CASH_EUR',       label: 'Cash €',       Icon: Euro },
+                                            { id: 'ZELLE',          label: 'Zelle',        Icon: Zap },
+                                            { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',    Icon: CreditCard },
+                                            { id: 'PDV_SUPERFERRO', label: 'PDV Super.',   Icon: CreditCard },
+                                            { id: 'MOVIL_NG',       label: 'Móvil NG',     Icon: Smartphone },
+                                            { id: 'CASH_BS',        label: 'Efectivo Bs',  Icon: Banknote },
                                         ] as const).map(m => (
-                                            <button key={m.id} type="button" onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
-                                                className={`py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${paymentMethod === m.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted-foreground'}`}>
-                                                {m.label}
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
+                                                className={`inline-flex items-center justify-center gap-1 rounded-xl border px-1 py-2.5 text-[11px] font-medium uppercase tracking-[0.04em] transition-colors active:scale-95 ${
+                                                    paymentMethod === m.id
+                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                        : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
+                                                }`}
+                                            >
+                                                <m.Icon className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{m.label}</span>
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="flex items-center gap-2 bg-background border border-border p-1 rounded-xl">
-                                        <input type="number" value={amountReceived} onChange={e => setAmountReceived(e.target.value)}
-                                            placeholder={isBsPayMethod && exchangeRate ? `Bs ${(finalTotal * exchangeRate).toFixed(0)}` : 'Monto recibido...'}
-                                            className="flex-1 bg-transparent border-none rounded-lg px-3 py-2.5 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30" />
-                                        <div className="pr-3 text-xs font-black text-muted-foreground uppercase">
+                                    <div className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory p-1">
+                                        <input
+                                            type="number"
+                                            value={amountReceived}
+                                            onChange={e => setAmountReceived(e.target.value)}
+                                            placeholder={isBsPayMethod && exchangeRate ? `Bs ${(finalTotal * exchangeRate).toFixed(0)}` : 'Monto recibido…'}
+                                            className="flex-1 rounded-lg border-none bg-transparent px-3 py-2.5 text-lg font-medium tabular-nums text-capsula-ink placeholder:text-capsula-ink-muted focus:outline-none focus:ring-0"
+                                        />
+                                        <div className="pr-3 text-xs font-medium uppercase text-capsula-ink-muted">
                                             {isBsPayMethod ? 'Bs' : 'USD'}
                                         </div>
                                     </div>
                                     {isBsPayMethod && exchangeRate && (parseFloat(amountReceived) || 0) > 0 && (
-                                        <div className="flex justify-between text-xs px-1">
-                                            <span className="text-muted-foreground">Equiv. USD</span>
-                                            <span className="font-bold text-emerald-400">${((parseFloat(amountReceived) || 0) / exchangeRate).toFixed(2)}</span>
+                                        <div className="flex justify-between px-1 text-xs">
+                                            <span className="text-capsula-ink-muted">Equiv. USD</span>
+                                            <span className="font-medium tabular-nums text-[#2F6B4E]">
+                                                ${((parseFloat(amountReceived) || 0) / exchangeRate).toFixed(2)}
+                                            </span>
                                         </div>
                                     )}
                                     {paymentMethod === 'CASH_USD' && (parseFloat(amountReceived) || 0) > finalTotal + 0.001 && (
-                                        <div className="flex justify-between text-sm font-black px-1">
-                                            <span className="text-amber-400">Vuelto</span>
-                                            <span className="text-amber-400">${Math.max(0, (parseFloat(amountReceived) || 0) - finalTotal).toFixed(2)}</span>
+                                        <div className="flex justify-between px-1 text-sm font-medium">
+                                            <span className="text-[#946A1C]">Vuelto</span>
+                                            <span className="font-heading tabular-nums tracking-[-0.01em] text-[#946A1C]">
+                                                ${Math.max(0, (parseFloat(amountReceived) || 0) - finalTotal).toFixed(2)}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
@@ -805,22 +837,33 @@ export default function POSDeliveryPage() {
                                         disabled={isProcessing}
                                     />
                                     {discountType === 'DIVISAS_33' && (divisasUsdAmount ?? 0) > 0 && (
-                                        <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 text-xs text-indigo-300 space-y-0.5">
+                                        <div className="space-y-0.5 rounded-xl border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-2 text-xs text-capsula-ink-soft">
                                             <div className="flex justify-between">
                                                 <span>Divisas sobre ${(divisasUsdAmount ?? 0).toFixed(2)} USD</span>
-                                                <span className="font-black">-${((divisasUsdAmount ?? 0) / 3).toFixed(2)}</span>
+                                                <span className="font-medium tabular-nums">-${((divisasUsdAmount ?? 0) / 3).toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between font-black text-white">
+                                            <div className="flex justify-between font-medium text-capsula-ink">
                                                 <span>Total a cobrar</span>
-                                                <span>${finalTotal.toFixed(2)}</span>
+                                                <span className="tabular-nums">${finalTotal.toFixed(2)}</span>
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            <button onClick={handleCheckout} disabled={cart.length === 0 || isProcessing} className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-2xl shadow-primary/30">
-                                {isProcessing ? 'PROCESANDO...' : `CONFIRMAR ORDEN`}
+                            <button
+                                onClick={handleCheckout}
+                                disabled={cart.length === 0 || isProcessing}
+                                className="pos-btn w-full !min-h-0 py-5 text-lg tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isProcessing ? (
+                                    'Procesando…'
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="h-5 w-5" />
+                                        Confirmar orden
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
