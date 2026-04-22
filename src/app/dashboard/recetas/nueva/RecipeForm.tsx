@@ -425,55 +425,47 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         </div>
                     </div>
 
-                    {/* Ingredientes */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
                             <div>
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    Ingredientes
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    {ingredients.length} items
+                                <h2 className="font-heading text-[16px] text-capsula-navy-deep">Ingredientes</h2>
+                                <p className="text-[12px] text-capsula-ink-muted">
+                                    <span className="font-mono">{ingredients.length}</span> ítems
                                 </p>
                             </div>
-                            <button
-                                onClick={() => setShowAddIngredient(true)}
-                                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600"
-                            >
-                                ➕ Agregar
-                            </button>
+                            <Button variant="primary" size="sm" onClick={() => setShowAddIngredient(true)}>
+                                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                                Agregar
+                            </Button>
                         </div>
 
-                        {/* Lista de ingredientes */}
-                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <div className="divide-y divide-capsula-line">
                             {ingredientCosts.map((ing, index) => (
                                 <div key={ing.id} className="flex items-center gap-4 px-6 py-4">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-alt font-mono text-[12px] text-capsula-ink-soft">
                                         {index + 1}
                                     </div>
 
                                     <div className="flex-1">
-                                        <p className="font-medium text-gray-900 dark:text-white">
-                                            {ing.itemName}
-                                        </p>
-                                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                                            <span>
+                                        <p className="font-medium text-capsula-ink">{ing.itemName}</p>
+                                        <div className="mt-0.5 flex items-center gap-2 text-[12px] text-capsula-ink-muted">
+                                            <span className="font-mono">
                                                 {formatNumber(ing.quantity)} {ing.unit}
                                             </span>
                                             {ing.wastePercentage > 0 && (
-                                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                                <Badge variant="warn">
                                                     {ing.wastePercentage}% merma
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
                                     </div>
 
                                     {showCosts && (
                                         <div className="text-right">
-                                            <p className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                            <p className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                                                 {formatCurrency(ing.totalCost)}
                                             </p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="font-mono text-[11px] text-capsula-ink-muted">
                                                 {(ing.unitCost).toFixed(2)}/u
                                             </p>
                                         </div>
@@ -481,67 +473,71 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                     <button
                                         onClick={() => removeIngredient(ing.id)}
-                                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                        className="rounded-full p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                        title="Eliminar"
                                     >
-                                        🗑️
+                                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                                     </button>
                                 </div>
                             ))}
 
                             {ingredients.length === 0 && !showAddIngredient && (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <span className="text-4xl">📝</span>
-                                    <p className="mt-2 text-gray-500">
+                                    <ClipboardList className="h-10 w-10 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                                    <p className="mt-2 text-[13px] text-capsula-ink-soft">
                                         No hay ingredientes. Agrega el primero.
                                     </p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Modal para agregar ingrediente */}
                         {showAddIngredient && (
-                            <div className="border-t border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/50">
+                            <div className="border-t border-capsula-line bg-capsula-ivory-alt/50 p-6">
                                 <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="font-medium text-gray-900 dark:text-white">
-                                        Agregar Ingrediente
+                                    <h3 className="font-heading text-[14px] text-capsula-navy-deep">
+                                        Agregar ingrediente
                                     </h3>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+                                        className="inline-flex items-center gap-1.5 rounded-[var(--radius)] border border-[#2F6B4E]/40 bg-[#E5EDE7]/60 px-3 py-1.5 text-[12px] font-medium text-[#2F6B4E] transition-colors hover:bg-[#E5EDE7]"
                                     >
-                                        {showCreateItem ? '✕ Cerrar' : '＋ Crear Insumo Nuevo'}
+                                        {showCreateItem ? (
+                                            <>
+                                                <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Cerrar
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FilePlus2 className="h-3.5 w-3.5" strokeWidth={1.5} /> Crear insumo nuevo
+                                            </>
+                                        )}
                                     </button>
                                 </div>
 
-                                {/* Mini-formulario para crear insumo nuevo */}
                                 {showCreateItem && (
-                                    <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/10">
-                                        <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-400">
-                                            🆕 Crear Insumo Nuevo
+                                    <div className="mb-5 rounded-[var(--radius)] border border-[#2F6B4E]/30 bg-[#E5EDE7]/40 p-4">
+                                        <h4 className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#2F6B4E]">
+                                            <FilePlus2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                            Crear insumo nuevo
                                         </h4>
                                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                             <div className="sm:col-span-2">
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                                    Nombre del insumo *
-                                                </label>
+                                                <label className={labelClass}>Nombre del insumo *</label>
                                                 <input
                                                     type="text"
                                                     value={newItemName}
                                                     onChange={(e) => setNewItemName(e.target.value)}
-                                                    placeholder="Ej: Aceite de Oliva, Harina de Trigo..."
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    placeholder="Ej: Aceite de oliva, harina de trigo…"
+                                                    className={inputClass}
                                                     autoFocus
                                                 />
                                             </div>
                                             <div>
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                                    Unidad base *
-                                                </label>
+                                                <label className={labelClass}>Unidad base *</label>
                                                 <select
                                                     value={newItemUnit}
                                                     onChange={(e) => setNewItemUnit(e.target.value)}
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    className={inputClass}
                                                 >
                                                     {UNITS.map(u => (
                                                         <option key={u.value} value={u.value}>{u.label}</option>
@@ -549,44 +545,42 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                                    Tipo
-                                                </label>
+                                                <label className={labelClass}>Tipo</label>
                                                 <select
                                                     value={newItemType}
                                                     onChange={(e) => setNewItemType(e.target.value)}
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    className={inputClass}
                                                 >
-                                                    <option value="RAW_MATERIAL">📦 Materia Prima</option>
-                                                    <option value="SUB_RECIPE">🧀 Sub-Receta</option>
+                                                    <option value="RAW_MATERIAL">Materia prima</option>
+                                                    <option value="SUB_RECIPE">Sub-receta</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div className="mt-3 flex items-center justify-between">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            <p className="text-[11px] text-capsula-ink-muted">
                                                 Se creará en el inventario y podrás darle entrada (compras) luego.
                                             </p>
-                                            <button
-                                                type="button"
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
                                                 onClick={handleCreateItem}
                                                 disabled={!newItemName.trim() || isCreatingItem}
-                                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                                isLoading={isCreatingItem}
                                             >
-                                                {isCreatingItem ? '⏳ Creando...' : '✓ Crear Insumo'}
-                                            </button>
+                                                <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                                {isCreatingItem ? 'Creando…' : 'Crear insumo'}
+                                            </Button>
                                         </div>
                                     </div>
                                 )}
 
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="sm:col-span-2">
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
-                                            Insumo / Sub-receta
-                                        </label>
+                                        <label className={labelClass}>Insumo / sub-receta</label>
                                         <Combobox
                                             items={availableOptions.map(item => ({
                                                 value: item.id,
-                                                label: `${item.type === 'SUB_RECIPE' ? '🧀' : '📦'} ${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
+                                                label: `${item.name} (${item.baseUnit}) — $${formatNumber(item.currentCost)}`
                                             }))}
                                             value={newIngredient.inventoryItemId || ''}
                                             onChange={(val) => {
@@ -597,16 +591,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                     unit: (item?.baseUnit as UnitOfMeasure) || 'KG'
                                                 });
                                             }}
-                                            placeholder="Seleccionar..."
-                                            searchPlaceholder="Buscar insumo..."
+                                            placeholder="Seleccionar…"
+                                            searchPlaceholder="Buscar insumo…"
                                             emptyMessage="No se encontró el insumo."
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
-                                            Cantidad
-                                        </label>
+                                        <label className={labelClass}>Cantidad</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
@@ -615,12 +607,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="1"
-                                                className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="w-20 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 font-mono text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                             />
                                             <select
                                                 value={newIngredient.unit}
                                                 onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value as UnitOfMeasure })}
-                                                className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="flex-1 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-2 py-2 text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                             >
                                                 {UNITS.map(u => (
                                                     <option key={u.value} value={u.value}>{u.label}</option>
@@ -630,9 +622,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
-                                            Merma %
-                                        </label>
+                                        <label className={labelClass}>Merma %</label>
                                         <input
                                             type="number"
                                             value={newIngredient.wastePercentage || ''}
@@ -640,64 +630,61 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             min="0"
                                             max="99"
                                             placeholder="0"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            className={`${inputClass} font-mono`}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="mt-4 flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setShowAddIngredient(false)}
-                                        className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => setShowAddIngredient(false)}>
                                         Cancelar
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
                                         onClick={addIngredient}
                                         disabled={!newIngredient.inventoryItemId || !newIngredient.quantity}
-                                        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
+                                        <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
                                         Agregar
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Panel lateral - Resumen de costos */}
                 <div className="space-y-4">
-                    {/* Costo Total Card */}
                     {showCosts ? (
-                        <div className="sticky top-24 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                        <div className="sticky top-24 rounded-[var(--radius)] border border-capsula-line bg-[#F3EAD6]/40 p-6 shadow-cap-soft">
                             <div className="mb-4 flex items-center gap-2">
-                                <span className="text-2xl">💰</span>
-                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                    Resumen Estimado
+                                <Coins className="h-5 w-5 text-[#946A1C]" strokeWidth={1.5} />
+                                <h3 className="font-heading text-[16px] text-capsula-navy-deep">
+                                    Resumen estimado
                                 </h3>
                             </div>
 
                             <div className="space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Costo ingredientes:</span>
-                                    <span className="font-mono font-medium text-gray-900 dark:text-white">
+                                <div className="flex justify-between text-[12px]">
+                                    <span className="text-capsula-ink-soft">Costo ingredientes</span>
+                                    <span className="font-mono font-medium text-capsula-navy-deep">
                                         {formatCurrency(totalIngredientsCost)}
                                     </span>
                                 </div>
 
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Producción efectiva:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                <div className="flex justify-between text-[12px]">
+                                    <span className="text-capsula-ink-soft">Producción efectiva</span>
+                                    <span className="font-mono text-capsula-navy-deep">
                                         {formatNumber(effectiveOutput)} {outputUnit}
                                     </span>
                                 </div>
 
-                                <div className="border-t border-amber-200 pt-3 dark:border-amber-700">
-                                    <div className="flex justify-between">
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            Costo por unidad:
+                                <div className="border-t border-[#946A1C]/20 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                            Costo por unidad
                                         </span>
-                                        <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                                        <span className="font-mono text-[20px] font-semibold text-capsula-navy-deep">
                                             {formatCurrency(costPerUnit)}
                                         </span>
                                     </div>
@@ -705,28 +692,25 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800">
-                            <span className="text-4xl">🔒</span>
-                            <p className="mt-2 text-sm text-gray-500">
+                        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-alt p-6 text-center">
+                            <Lock className="mx-auto h-8 w-8 text-capsula-ink-muted/60" strokeWidth={1.25} />
+                            <p className="mt-2 text-[13px] text-capsula-ink-soft">
                                 Los costos no están disponibles para tu rol.
                             </p>
                         </div>
                     )}
 
-                    {/* Guardar */}
-                    <button
+                    <Button
+                        variant="primary"
+                        size="lg"
                         onClick={handleSubmit}
                         disabled={!recipeName || ingredients.length === 0 || isSubmitting}
-                        className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+                        isLoading={isSubmitting}
+                        className="w-full"
                     >
-                        {isSubmitting ? (
-                            <>
-                                <span className="animate-spin text-xl">⏳</span> Guardando...
-                            </>
-                        ) : (
-                            '💾 Guardar Receta'
-                        )}
-                    </button>
+                        <Save className="h-4 w-4" strokeWidth={1.5} />
+                        {isSubmitting ? 'Guardando…' : 'Guardar receta'}
+                    </Button>
                 </div>
             </div>
         </div>
