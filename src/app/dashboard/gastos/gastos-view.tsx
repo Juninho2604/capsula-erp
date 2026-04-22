@@ -9,6 +9,14 @@ import {
 } from '@/app/actions/expense.actions';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import ExcelJS from 'exceljs';
+import { cn } from '@/lib/utils';
+import {
+  Coins, FileDown, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, Loader2,
+  ClipboardList, FolderOpen, CreditCard, TrendingUp, TrendingDown, X, PieChart as PieChartIcon,
+  BarChart3, AlertTriangle, Check,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
 
@@ -22,7 +30,7 @@ const PAYMENT_METHODS = [
   { value: 'OTHER', label: 'Otro' },
 ];
 
-const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const PIE_COLORS = ['#11203A', '#F25C3B', '#2F6B4E', '#946A1C', '#253D5C', '#B04A2E', '#3A4656', '#6B7584'];
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -73,7 +81,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
     paymentMethod: 'CASH_USD', paymentRef: '',
     paidAt: new Date().toISOString().slice(0, 10),
   });
-  const [catForm, setCatForm] = useState({ name: '', description: '', color: '#3B82F6', icon: '💸' });
+  const [catForm, setCatForm] = useState({ name: '', description: '', color: '#11203A', icon: '📁' });
 
   // ── Cargar período ──────────────────────────────────────────────────────────
   const loadPeriod = (month: number, year: number) => {
@@ -253,89 +261,102 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1400px] animate-in space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-capsula-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">💸 Gastos Operativos</h1>
-          <p className="text-sm text-muted-foreground">Registro y control de gastos del negocio</p>
+          <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Finanzas</div>
+          <h1 className="inline-flex items-center gap-2 font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+            <Coins className="h-6 w-6 text-capsula-coral" strokeWidth={1.5} />
+            Gastos operativos
+          </h1>
+          <p className="mt-1 text-[13px] text-capsula-ink-soft">Registro y control de gastos del negocio.</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={exportExpensesExcel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-          >
-            📥 Exportar Excel
-          </button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" onClick={exportExpensesExcel}>
+            <FileDown className="h-4 w-4" strokeWidth={1.5} /> Exportar Excel
+          </Button>
           {canManage && (
             <>
               {canAdmin && (
-                <button onClick={() => setShowCatForm(true)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                  + Categoría
-                </button>
+                <Button variant="outline" size="sm" onClick={() => setShowCatForm(true)}>
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Categoría
+                </Button>
               )}
-              <button onClick={() => setShowForm(true)}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
-                + Registrar Gasto
-              </button>
+              <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4" strokeWidth={2} /> Registrar gasto
+              </Button>
             </>
           )}
         </div>
       </div>
 
       {/* Navegador de período */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => handleMonthChange(-1)} className="rounded-lg border border-border p-2 hover:bg-accent transition-colors text-foreground">‹</button>
-        <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleMonthChange(-1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <span className="min-w-[160px] text-center font-heading text-[18px] tracking-[-0.01em] text-capsula-navy-deep">
           {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
         </span>
-        <button onClick={() => handleMonthChange(1)} className="rounded-lg border border-border p-2 hover:bg-accent transition-colors text-foreground">›</button>
-        {isPending && <span className="text-xs text-muted-foreground animate-pulse">Cargando...</span>}
+        <button
+          onClick={() => handleMonthChange(1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronRightIcon className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        {isPending && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-capsula-ink-muted">
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} /> Cargando…
+          </span>
+        )}
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          label="Total Gastos"
+          label="Total gastos"
           value={`$${fmt(summary.totalUsd)}`}
-          icon="💸"
-          color="border-red-500/30 bg-red-500/5"
+          Icon={Coins}
+          accent="coral"
           change={prevSummary ? (prevSummary.totalUsd > 0 ? Math.round(((summary.totalUsd - prevSummary.totalUsd) / prevSummary.totalUsd) * 1000) / 10 : null) : null}
           invertChange
         />
-        <KpiCard label="Nº de Gastos" value={`${expenses.length}`} icon="📋" color="border-blue-500/30 bg-blue-500/5" />
+        <KpiCard label="Nº de gastos" value={`${expenses.length}`} Icon={ClipboardList} accent="navy" />
         <KpiCard
-          label="Mayor Categoría"
+          label="Mayor categoría"
           value={summary.countByCategory[0]?.categoryName ?? '—'}
-          icon={summary.countByCategory[0] ? '📂' : '—'}
-          color="border-amber-500/30 bg-amber-500/5"
+          Icon={FolderOpen}
+          accent="warn"
           sub={summary.countByCategory[0] ? `$${fmt(summary.countByCategory[0].totalUsd)}` : undefined}
         />
         <KpiCard
-          label="Método Principal"
+          label="Método principal"
           value={summary.countByPaymentMethod[0] ? paymentLabel(summary.countByPaymentMethod[0].method) : '—'}
-          icon="💳"
-          color="border-purple-500/30 bg-purple-500/5"
+          Icon={CreditCard}
+          accent="neutral"
           sub={summary.countByPaymentMethod[0] ? `$${fmt(summary.countByPaymentMethod[0].totalUsd)}` : undefined}
         />
       </div>
 
       {/* Desglose por categoría */}
       {summary.countByCategory.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-border p-5">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">Por Categoría</h3>
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Por categoría</h3>
           <div className="space-y-2">
             {summary.countByCategory.sort((a, b) => b.totalUsd - a.totalUsd).map(cat => {
               const pct = summary.totalUsd > 0 ? (cat.totalUsd / summary.totalUsd) * 100 : 0;
               return (
                 <div key={cat.categoryId} className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.categoryColor ?? '#6B7280' }} />
-                  <span className="text-sm text-foreground flex-1 truncate">{cat.categoryName}</span>
-                  <span className="text-xs text-muted-foreground">{cat.count} gastos</span>
-                  <span className="text-sm font-semibold text-foreground w-24 text-right">${fmt(cat.totalUsd)}</span>
-                  <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                  <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cat.categoryColor ?? '#11203A' }} />
+                  <span className="flex-1 truncate text-[13px] text-capsula-ink">{cat.categoryName}</span>
+                  <span className="text-[11px] text-capsula-ink-muted">{cat.count} gastos</span>
+                  <span className="w-24 text-right font-mono text-[13px] font-semibold text-capsula-ink">${fmt(cat.totalUsd)}</span>
+                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-capsula-line">
+                    <div className="h-full rounded-full bg-capsula-navy-deep transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -346,10 +367,12 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* Charts Row */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Pie Chart */}
         {summary.countByCategory.length > 0 && (
-          <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Distribución por Categoría</h3>
+          <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+            <h3 className="mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+              <PieChartIcon className="h-3 w-3" strokeWidth={1.5} />
+              Distribución por categoría
+            </h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -367,7 +390,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
                   </Pie>
                   <Tooltip
                     formatter={(value: number) => [`$${fmt(value)}`, undefined]}
-                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }}
+                    contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -375,17 +398,19 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
           </div>
         )}
 
-        {/* Payment Method Breakdown */}
         {summary.countByPaymentMethod.length > 0 && (
-          <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Por Método de Pago</h3>
+          <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+            <h3 className="mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+              <BarChart3 className="h-3 w-3" strokeWidth={1.5} />
+              Por método de pago
+            </h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={summary.countByPaymentMethod} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                  <XAxis type="number" tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="method" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={100} tickFormatter={(v: string) => paymentLabel(v)} />
-                  <Tooltip formatter={(value: number) => [`$${fmt(value)}`, 'Monto']} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
-                  <Bar dataKey="totalUsd" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                  <XAxis type="number" tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`} tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="method" tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} width={100} tickFormatter={(v: string) => paymentLabel(v)} />
+                  <Tooltip formatter={(value: number) => [`$${fmt(value)}`, 'Monto']} contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }} />
+                  <Bar dataKey="totalUsd" fill="#11203A" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -395,15 +420,15 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
 
       {/* Expense Trend */}
       {expenseTrend.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Tendencia de Gastos (6 Meses)</h3>
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Tendencia de gastos (6 meses)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={expenseTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={(v: number) => `$${v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)}`} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={50} />
-                <Tooltip formatter={(value: number) => [`$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Gastos']} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
-                <Bar dataKey="total" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={(v: number) => `$${v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)}`} tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip formatter={(value: number) => [`$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Gastos']} contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }} />
+                <Bar dataKey="total" name="Gastos" fill="#F25C3B" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -411,21 +436,21 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+          className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
         >
           <option value="">Todas las categorías</option>
           {categories.filter(c => c.isActive).map(c => (
-            <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
         <select
           value={filterMethod}
           onChange={e => setFilterMethod(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+          className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[13px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
         >
           <option value="">Todos los métodos</option>
           {PAYMENT_METHODS.map(m => (
@@ -435,66 +460,67 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         {(filterCategory || filterMethod) && (
           <button
             onClick={() => { setFilterCategory(''); setFilterMethod(''); }}
-            className="text-xs text-blue-500 hover:text-blue-400"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
           >
-            Limpiar filtros
+            <X className="h-3 w-3" strokeWidth={1.5} /> Limpiar filtros
           </button>
         )}
-        <span className="text-xs text-muted-foreground ml-auto">{filteredExpenses.length} gastos</span>
+        <span className="ml-auto text-[11px] text-capsula-ink-muted">{filteredExpenses.length} gastos</span>
       </div>
 
       {/* Tabla de gastos */}
-      <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Detalle de Gastos</h3>
+      <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+        <div className="border-b border-capsula-line bg-capsula-ivory px-5 py-4">
+          <h3 className="font-medium text-capsula-ink">Detalle de gastos</h3>
         </div>
         {filteredExpenses.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl">💸</p>
-            <p className="mt-2 text-muted-foreground font-medium">Sin gastos en este período</p>
-            {canManage && <p className="text-sm text-muted-foreground">Haz clic en "+ Registrar Gasto" para agregar el primero</p>}
+            <Coins className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+            <p className="mt-3 font-medium text-capsula-ink">Sin gastos en este período</p>
+            {canManage && <p className="mt-1 text-[13px] text-capsula-ink-muted">Haz clic en "+ Registrar gasto" para agregar el primero</p>}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30">
-                <tr>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Fecha</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Descripción</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Categoría</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Método</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Monto USD</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Registrado por</th>
-                  {canAdmin && <th className="px-5 py-3 text-center font-semibold text-muted-foreground">Acción</th>}
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Fecha</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Descripción</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Categoría</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Método</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Monto USD</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Registrado por</th>
+                  {canAdmin && <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Acción</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {filteredExpenses.map(e => (
-                  <tr key={e.id} className={`hover:bg-muted/20 transition-colors ${e.status === 'VOID' ? 'opacity-40' : ''}`}>
-                    <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">
+                  <tr key={e.id} className={cn("border-b border-capsula-line transition-colors last:border-b-0 hover:bg-capsula-ivory", e.status === 'VOID' && 'opacity-50 bg-capsula-coral-subtle/20')}>
+                    <td className="whitespace-nowrap px-5 py-3 font-mono text-capsula-ink-soft">
                       {new Date(e.paidAt).toLocaleDateString('es-VE')}
                     </td>
-                    <td className="px-5 py-3 text-foreground">
+                    <td className="px-5 py-3 text-capsula-ink">
                       <div className="font-medium">{e.description}</div>
-                      {e.notes && <div className="text-xs text-muted-foreground">{e.notes}</div>}
-                      {e.paymentRef && <div className="text-xs text-muted-foreground">Ref: {e.paymentRef}</div>}
-                      {e.status === 'VOID' && <span className="inline-block mt-0.5 text-xs font-bold text-red-500">ANULADO</span>}
+                      {e.notes && <div className="text-[11px] text-capsula-ink-muted">{e.notes}</div>}
+                      {e.paymentRef && <div className="text-[11px] text-capsula-ink-muted">Ref: {e.paymentRef}</div>}
+                      {e.status === 'VOID' && <Badge variant="danger">Anulado</Badge>}
                     </td>
                     <td className="px-5 py-3">
-                      <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-foreground">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: e.categoryColor ?? '#6B7280' }} />
-                        {e.categoryIcon && <span>{e.categoryIcon}</span>}
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-capsula-line bg-capsula-ivory px-2 py-0.5 text-[11px] text-capsula-ink">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: e.categoryColor ?? '#11203A' }} />
                         {e.categoryName}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground">{paymentLabel(e.paymentMethod)}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-foreground">${fmt(e.amountUsd)}</td>
-                    <td className="px-5 py-3 text-muted-foreground text-xs">{e.createdByName}</td>
+                    <td className="px-5 py-3 text-capsula-ink-soft">{paymentLabel(e.paymentMethod)}</td>
+                    <td className="px-5 py-3 text-right font-mono font-semibold text-capsula-ink">${fmt(e.amountUsd)}</td>
+                    <td className="px-5 py-3 text-[11px] text-capsula-ink-muted">{e.createdByName}</td>
                     {canAdmin && (
                       <td className="px-5 py-3 text-center">
                         {e.status !== 'VOID' && (
-                          <button onClick={() => setVoidTarget(e)}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium">
+                          <button
+                            onClick={() => setVoidTarget(e)}
+                            className="text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
+                          >
                             Anular
                           </button>
                         )}
