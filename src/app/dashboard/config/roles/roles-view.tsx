@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { UserRole } from '@/types';
 import { updateUserRole, toggleUserStatus } from '@/app/actions/user.actions';
 import { toast } from 'react-hot-toast';
+import { Badge } from '@/components/ui/Badge';
+import { Users } from 'lucide-react';
 
 interface Props {
     initialUsers: any[]; // Usando any para simplificar por ahora, idealmente User[] de prisma select
@@ -58,54 +60,38 @@ export function RolesView({ initialUsers, currentUserRole }: Props) {
     };
 
     return (
-        <div className="bg-white rounded-lg shadowoverflow-hidden">
+        <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <table className="min-w-full">
+                    <thead className="border-b border-capsula-line bg-capsula-ivory-alt">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Usuario
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Email
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Rol Actual
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Estado
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Acciones
-                            </th>
+                            {['Usuario', 'Email', 'Rol actual', 'Estado', 'Acciones'].map(h => (
+                                <th key={h} className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                                    {h}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-capsula-line">
                         {users.map((user) => (
-                            <tr key={user.id} className={user.role === 'OWNER' ? 'bg-amber-50/30' : ''}>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                            <tr key={user.id} className={user.role === 'OWNER' ? 'bg-[#F3EAD6]/30' : 'hover:bg-capsula-ivory-alt/40'}>
+                                <td className="whitespace-nowrap px-6 py-4">
                                     <div className="flex items-center">
-                                        <div className="flex-shrink-0 h-10 w-10">
-                                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold">
-                                                {user.firstName[0]}{user.lastName[0]}
-                                            </div>
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-alt font-medium text-capsula-navy-deep">
+                                            {user.firstName[0]}{user.lastName[0]}
                                         </div>
-                                        <div className="ml-4">
-                                            <div className="text-sm font-medium text-gray-900">
-                                                {user.firstName} {user.lastName}
-                                            </div>
+                                        <div className="ml-4 text-[13px] font-medium text-capsula-ink">
+                                            {user.firstName} {user.lastName}
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{user.email}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="whitespace-nowrap px-6 py-4 text-[13px] text-capsula-ink-soft">{user.email}</td>
+                                <td className="whitespace-nowrap px-6 py-4">
                                     <select
                                         value={user.role}
                                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                        className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                                        disabled={currentUserRole !== 'OWNER' && user.role === 'OWNER'} // No-Owners can't touch Owners
+                                        className="block w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-[13px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
+                                        disabled={currentUserRole !== 'OWNER' && user.role === 'OWNER'}
                                     >
                                         {AVAILABLE_ROLES.map((role) => (
                                             <option key={role.value} value={role.value}>
@@ -114,15 +100,15 @@ export function RolesView({ initialUsers, currentUserRole }: Props) {
                                         ))}
                                     </select>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                <td className="whitespace-nowrap px-6 py-4">
+                                    <Badge variant={user.isActive ? 'ok' : 'danger'}>
                                         {user.isActive ? 'Activo' : 'Inactivo'}
-                                    </span>
+                                    </Badge>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td className="whitespace-nowrap px-6 py-4">
                                     <button
                                         onClick={() => handleStatusToggle(user.id, user.isActive)}
-                                        className={`${user.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                                        className={`text-[13px] font-medium transition-colors ${user.isActive ? 'text-capsula-coral hover:text-capsula-coral/80' : 'text-[#2F6B4E] hover:text-[#2F6B4E]/80'}`}
                                         disabled={currentUserRole !== 'OWNER' && user.role === 'OWNER'}
                                     >
                                         {user.isActive ? 'Desactivar' : 'Activar'}
@@ -134,8 +120,11 @@ export function RolesView({ initialUsers, currentUserRole }: Props) {
                 </table>
             </div>
             {users.length === 0 && (
-                <div className="p-6 text-center text-gray-500">
-                    No se encontraron usuarios o no tienes permisos para verlos.
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <Users className="h-10 w-10 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                    <p className="mt-3 text-[13px] text-capsula-ink-soft">
+                        No se encontraron usuarios o no tienes permisos para verlos.
+                    </p>
                 </div>
             )}
         </div>

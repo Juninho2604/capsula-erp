@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import { getPOSConfig, setPOSConfig, type POSConfig } from '@/lib/pos-settings';
 import { setStockValidationEnabled } from '@/app/actions/system-config.actions';
+import { Package, Bike, Utensils, Settings, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface Props {
   initialStockValidation: boolean;
@@ -29,143 +30,104 @@ export function POSConfigView({ initialStockValidation }: Props) {
     });
   };
 
-  if (!config) return <div className="p-8 text-white">Cargando...</div>;
+  if (!config) return (
+    <div className="flex items-center gap-2 p-8 text-capsula-ink-soft">
+      <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+      Cargando…
+    </div>
+  );
+
+  const Toggle = ({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`relative h-6 w-12 flex-shrink-0 rounded-full transition-colors ${on ? 'bg-capsula-navy-deep' : 'bg-capsula-line'} disabled:opacity-50`}
+    >
+      <span className={`absolute top-1 h-4 w-4 rounded-full bg-capsula-ivory-surface shadow transition-transform ${on ? 'left-7' : 'left-1'}`} />
+    </button>
+  );
 
   return (
-    <div className="max-w-2xl mx-auto p-6 text-white">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-          Configuración POS
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Configura impresión, validación de stock y comportamiento del sistema en cada módulo.
-        </p>
+    <div className="mx-auto max-w-2xl animate-in space-y-6">
+      <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+          <Settings className="h-4 w-4" strokeWidth={1.5} />
+        </div>
+        <div>
+          <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Configuración</div>
+          <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">POS</h1>
+          <p className="mt-1 text-[13px] text-capsula-ink-soft">Configura impresión, validación de stock y comportamiento del sistema en cada módulo.</p>
+        </div>
       </div>
 
       <div className="space-y-6">
-        {/* ── Control de Inventario ───────────────────────────────────── */}
-        <div className={`bg-gray-800 rounded-xl border p-5 ${stockValidation ? 'border-emerald-500/50' : 'border-gray-700'}`}>
-          <h2 className="font-bold text-lg text-emerald-300 mb-1 flex items-center gap-2">
-            📦 Control de Inventario
+        <div className={`rounded-[var(--radius)] border p-5 shadow-cap-soft ${stockValidation ? 'border-[#2F6B4E]/40 bg-[#E5EDE7]/30' : 'border-capsula-line bg-capsula-ivory-surface'}`}>
+          <h2 className="mb-1 flex items-center gap-2 font-heading text-[15px] text-capsula-navy-deep">
+            <Package className="h-4 w-4 text-[#2F6B4E]" strokeWidth={1.5} />
+            Control de inventario
           </h2>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="mb-4 text-[12px] text-capsula-ink-muted">
             Configuración guardada en la base de datos — aplica a todos los terminales.
           </p>
-          <div className="space-y-4">
-            <label className="flex items-start justify-between gap-4 cursor-pointer">
-              <div>
-                <p className="text-gray-300 font-medium">Validar stock antes de confirmar orden</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Si está activo y faltan ingredientes, la orden se bloquea. Actívalo solo cuando todas las recetas estén completas.
+          <label className="flex cursor-pointer items-start justify-between gap-4">
+            <div>
+              <p className="text-[13px] font-medium text-capsula-ink">Validar stock antes de confirmar orden</p>
+              <p className="mt-0.5 text-[12px] text-capsula-ink-soft">
+                Si está activo y faltan ingredientes, la orden se bloquea. Actívalo solo cuando todas las recetas estén completas.
+              </p>
+              {stockValidation && (
+                <p className="mt-1.5 flex items-center gap-1 text-[12px] font-medium text-[#2F6B4E]">
+                  <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Activo — las órdenes sin stock serán rechazadas
                 </p>
-                {stockValidation && (
-                  <p className="text-xs text-emerald-400 font-bold mt-1">
-                    ✅ Activo — las órdenes sin stock serán rechazadas
-                  </p>
-                )}
-                {!stockValidation && (
-                  <p className="text-xs text-amber-400 mt-1">
-                    ⚠️ Desactivado — se permite vender aunque falten insumos
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => toggleStockValidation(!stockValidation)}
-                disabled={isPending}
-                className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors ${
-                  stockValidation ? 'bg-emerald-600' : 'bg-gray-600'
-                } disabled:opacity-50`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    stockValidation ? 'left-7' : 'left-1'
-                  }`}
-                />
-              </button>
+              )}
+              {!stockValidation && (
+                <p className="mt-1.5 flex items-center gap-1 text-[12px] text-[#946A1C]">
+                  <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Desactivado — se permite vender aunque falten insumos
+                </p>
+              )}
+            </div>
+            <Toggle on={stockValidation} onClick={() => toggleStockValidation(!stockValidation)} disabled={isPending} />
+          </label>
+        </div>
+
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft">
+          <h2 className="mb-4 flex items-center gap-2 font-heading text-[15px] text-capsula-navy-deep">
+            <Bike className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} />
+            POS Delivery
+          </h2>
+          <div className="space-y-4">
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <span className="text-[13px] text-capsula-ink">Imprimir comanda cocina al confirmar</span>
+              <Toggle on={config.printComandaOnDelivery} onClick={() => toggle('printComandaOnDelivery', !config.printComandaOnDelivery)} />
+            </label>
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <span className="text-[13px] text-capsula-ink">Imprimir factura automáticamente al confirmar</span>
+              <Toggle on={config.printReceiptOnDelivery} onClick={() => toggle('printReceiptOnDelivery', !config.printReceiptOnDelivery)} />
             </label>
           </div>
         </div>
 
-        {/* ── POS Delivery ─────────────────────────────────────────────── */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
-          <h2 className="font-bold text-lg text-blue-300 mb-4 flex items-center gap-2">
-            🛵 POS Delivery
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft">
+          <h2 className="mb-4 flex items-center gap-2 font-heading text-[15px] text-capsula-navy-deep">
+            <Utensils className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+            POS Restaurante
           </h2>
           <div className="space-y-4">
-            <label className="flex items-center justify-between gap-4 cursor-pointer">
-              <span className="text-gray-300">Imprimir comanda cocina al confirmar</span>
-              <button
-                onClick={() => toggle('printComandaOnDelivery', !config.printComandaOnDelivery)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  config.printComandaOnDelivery ? 'bg-blue-600' : 'bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    config.printComandaOnDelivery ? 'left-7' : 'left-1'
-                  }`}
-                />
-              </button>
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <span className="text-[13px] text-capsula-ink">Imprimir comanda cocina al enviar a mesa</span>
+              <Toggle on={config.printComandaOnRestaurant} onClick={() => toggle('printComandaOnRestaurant', !config.printComandaOnRestaurant)} />
             </label>
-            <label className="flex items-center justify-between gap-4 cursor-pointer">
-              <span className="text-gray-300">Imprimir factura automáticamente al confirmar</span>
-              <button
-                onClick={() => toggle('printReceiptOnDelivery', !config.printReceiptOnDelivery)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  config.printReceiptOnDelivery ? 'bg-blue-600' : 'bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    config.printReceiptOnDelivery ? 'left-7' : 'left-1'
-                  }`}
-                />
-              </button>
-            </label>
-          </div>
-        </div>
-
-        {/* ── POS Restaurante ──────────────────────────────────────────── */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
-          <h2 className="font-bold text-lg text-green-300 mb-4 flex items-center gap-2">
-            🥙 POS Restaurante
-          </h2>
-          <div className="space-y-4">
-            <label className="flex items-center justify-between gap-4 cursor-pointer">
-              <span className="text-gray-300">Imprimir comanda cocina al enviar a mesa</span>
-              <button
-                onClick={() => toggle('printComandaOnRestaurant', !config.printComandaOnRestaurant)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  config.printComandaOnRestaurant ? 'bg-green-600' : 'bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    config.printComandaOnRestaurant ? 'left-7' : 'left-1'
-                  }`}
-                />
-              </button>
-            </label>
-            <label className="flex items-center justify-between gap-4 cursor-pointer">
-              <span className="text-gray-300">Imprimir factura al registrar pago (cerrar cuenta)</span>
-              <button
-                onClick={() => toggle('printReceiptOnRestaurant', !config.printReceiptOnRestaurant)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  config.printReceiptOnRestaurant ? 'bg-green-600' : 'bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    config.printReceiptOnRestaurant ? 'left-7' : 'left-1'
-                  }`}
-                />
-              </button>
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <span className="text-[13px] text-capsula-ink">Imprimir factura al registrar pago (cerrar cuenta)</span>
+              <Toggle on={config.printReceiptOnRestaurant} onClick={() => toggle('printReceiptOnRestaurant', !config.printReceiptOnRestaurant)} />
             </label>
           </div>
         </div>
       </div>
 
-      <p className="mt-6 text-xs text-gray-500">
+      <p className="text-[11px] text-capsula-ink-muted">
         La configuración de impresión se guarda en este navegador. La validación de stock aplica a todos los terminales.
       </p>
     </div>

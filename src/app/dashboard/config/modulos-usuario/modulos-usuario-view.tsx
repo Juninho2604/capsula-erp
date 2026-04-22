@@ -122,7 +122,7 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
                       <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
                     </div>
                     {mods !== null && (
-                      <span className="text-[9px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded shrink-0">
+                      <span className="text-[9px] font-black bg-[#F3EAD6]/60 text-[#946A1C] border border-[#946A1C]/30 px-1.5 py-0.5 rounded shrink-0">
                         personalizado
                       </span>
                     )}
@@ -160,7 +160,7 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
                     Restablecer a rol
                   </button>
                 )}
-                <span className={`text-xs px-2 py-0.5 rounded font-bold ${moduleState === null ? 'bg-secondary text-muted-foreground' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded font-bold ${moduleState === null ? 'bg-secondary text-muted-foreground' : 'bg-[#F3EAD6]/60 text-[#946A1C] border border-[#946A1C]/30'}`}>
                   {moduleState === null ? 'Por rol' : `${moduleState.length} personalizado(s)`}
                 </span>
               </div>

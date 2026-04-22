@@ -2,6 +2,7 @@ import { getUsers } from '@/app/actions/user.actions';
 import { RolesView } from './roles-view';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { ShieldCheck } from 'lucide-react';
 
 export const metadata = {
     title: 'Configuración de Roles | Shanklish App',
@@ -28,10 +29,16 @@ export default async function RolesConfigPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Configuración de Roles y Permisos</h1>
-                <p className="text-gray-500">Administra los accesos de los usuarios al sistema.</p>
+        <div className="space-y-6 animate-in">
+            <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                    <ShieldCheck className="h-4 w-4" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Configuración</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Roles y permisos</h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">Administra los accesos de los usuarios al sistema.</p>
+                </div>
             </div>
 
             <RolesView initialUsers={users} currentUserRole={session.role} />

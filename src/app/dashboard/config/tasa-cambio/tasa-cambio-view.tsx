@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 import { setExchangeRateAction } from '@/app/actions/exchange.actions';
 import { toast } from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { DollarSign, History } from 'lucide-react';
 
 interface ExchangeRate {
     id: string;
@@ -41,16 +43,18 @@ export function TasaCambioView({ history }: Props) {
 
     return (
         <div className="grid gap-6 md:grid-cols-2">
-            {/* ── Tasa actual ── */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tasa actual</p>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />
+                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Tasa actual</p>
+                </div>
                 {latest ? (
                     <>
-                        <p className="mt-1 text-4xl font-bold text-amber-600 dark:text-amber-400">
+                        <p className="mt-2 font-mono text-[36px] font-semibold text-capsula-navy-deep">
                             {latest.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </p>
-                        <p className="mt-1 text-sm text-gray-500">Bs por 1 USD</p>
-                        <p className="mt-3 text-xs text-gray-400">
+                        <p className="mt-1 text-[13px] text-capsula-ink-soft">Bs por 1 USD</p>
+                        <p className="mt-3 text-[11px] text-capsula-ink-muted">
                             Actualizada el{' '}
                             {new Date(latest.effectiveDate).toLocaleDateString('es-VE', {
                                 day: '2-digit',
@@ -60,18 +64,17 @@ export function TasaCambioView({ history }: Props) {
                         </p>
                     </>
                 ) : (
-                    <p className="mt-2 text-gray-400">Sin tasa registrada</p>
+                    <p className="mt-2 text-[13px] text-capsula-ink-muted">Sin tasa registrada</p>
                 )}
             </div>
 
-            {/* ── Formulario ── */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-                <p className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+                <p className="mb-4 font-heading text-[15px] text-capsula-navy-deep">
                     Nueva tasa de hoy
                 </p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                             Tasa BCV (Bs por USD)
                         </label>
                         <input
@@ -80,39 +83,41 @@ export function TasaCambioView({ history }: Props) {
                             placeholder="Ej: 91.50"
                             value={rate}
                             onChange={e => setRate(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-lg font-mono focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-4 py-2.5 font-mono text-[16px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                             disabled={isPending}
                         />
                     </div>
-                    <button
+                    <Button
                         type="submit"
+                        variant="primary"
                         disabled={isPending || !rate.trim()}
-                        className="w-full rounded-lg bg-amber-500 py-2.5 text-sm font-semibold text-white transition-all hover:bg-amber-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        isLoading={isPending}
+                        className="w-full"
                     >
                         {isPending ? 'Guardando…' : 'Guardar tasa de hoy'}
-                    </button>
+                    </Button>
                 </form>
             </div>
 
-            {/* ── Historial ── */}
             {history.length > 0 && (
-                <div className="md:col-span-2 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-                    <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft md:col-span-2">
+                    <div className="flex items-center gap-2 border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
+                        <History className="h-4 w-4 text-capsula-ink-muted" strokeWidth={1.5} />
+                        <h2 className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                             Historial reciente
                         </h2>
                     </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    <div className="divide-y divide-capsula-line">
                         {history.map((r) => (
-                            <div key={r.id} className="flex items-center justify-between px-5 py-3">
-                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                            <div key={r.id} className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-capsula-ivory-alt/40">
+                                <span className="text-[13px] text-capsula-ink-soft">
                                     {new Date(r.effectiveDate).toLocaleDateString('es-VE', {
                                         day: '2-digit',
                                         month: 'short',
                                         year: 'numeric',
                                     })}
                                 </span>
-                                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                <span className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                                     {r.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
                                 </span>
                             </div>
