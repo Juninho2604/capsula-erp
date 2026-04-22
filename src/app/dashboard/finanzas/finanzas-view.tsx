@@ -4,6 +4,14 @@ import { useState, useTransition } from 'react';
 import { getFinancialSummaryAction, type FinancialSummary } from '@/app/actions/finance.actions';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ExcelJS from 'exceljs';
+import { cn } from '@/lib/utils';
+import {
+  BarChart3, FileDown, ChevronLeft, ChevronRight, Loader2, Coins, Ticket,
+  TrendingUp, TrendingDown, AlertOctagon, AlertTriangle, Info, FileText,
+  ChevronRight as ChevronRightArrow, Landmark, ShoppingBag, Receipt,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -35,7 +43,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CORTESIA: 'Cortesía',
 };
 
-const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const PIE_COLORS = ['#11203A', '#F25C3B', '#2F6B4E', '#946A1C', '#253D5C', '#B04A2E', '#3A4656', '#6B7584'];
 
 interface TrendItem { label: string; sales: number; cogs: number; expenses: number; profit: number }
 
@@ -126,50 +134,59 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">📊 Dashboard Financiero</h1>
-          <p className="text-sm text-muted-foreground">Estado de resultados y flujo de caja</p>
-        </div>
-        {s && (
-          <button
-            onClick={exportPnLExcel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-          >
-            📥 Exportar Excel
-          </button>
+    <div className="mx-auto max-w-[1400px] animate-in space-y-6">
+      <PageHeader
+        kicker="Finanzas"
+        title="Dashboard financiero"
+        description="Estado de resultados y flujo de caja."
+        actions={s && (
+          <Button variant="ghost" size="sm" onClick={exportPnLExcel}>
+            <FileDown className="h-4 w-4" strokeWidth={1.5} /> Exportar Excel
+          </Button>
+        )}
+      />
+
+      {/* Navegador período */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleMonthChange(-1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <span className="min-w-[160px] text-center font-heading text-[18px] tracking-[-0.01em] text-capsula-navy-deep">
+          {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+        </span>
+        <button
+          onClick={() => handleMonthChange(1)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-ink transition-colors hover:bg-capsula-ivory-alt"
+        >
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        {isPending && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-capsula-ink-muted">
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} /> Calculando…
+          </span>
         )}
       </div>
 
-      {/* Navegador período */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => handleMonthChange(-1)} className="rounded-lg border border-border p-2 hover:bg-accent text-foreground">‹</button>
-        <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
-          {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
-        </span>
-        <button onClick={() => handleMonthChange(1)} className="rounded-lg border border-border p-2 hover:bg-accent text-foreground">›</button>
-        {isPending && <span className="text-xs text-muted-foreground animate-pulse">Calculando...</span>}
-      </div>
-
       {!s ? (
-        <div className="text-center py-20 text-muted-foreground">
-          {isPending ? 'Cargando...' : 'Sin datos para este período'}
+        <div className="py-20 text-center text-[13px] text-capsula-ink-muted">
+          {isPending ? 'Cargando…' : 'Sin datos para este período'}
         </div>
       ) : (
         <>
           {/* P&L Summary */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <PnLCard label="Ventas Totales" value={`$${fmt(s.income.totalSalesUsd)}`} sub={`${s.income.ordersCount} órdenes`} color="border-emerald-500/30 bg-emerald-500/5" icon="💰" positive change={s.mom?.salesChange ?? null} />
-            <PnLCard label="Ticket Promedio" value={`$${fmt(s.income.avgTicket ?? 0)}`} sub="Por orden" color="border-amber-500/30 bg-amber-500/5" icon="🎫" />
-            <PnLCard label="Gastos Operativos" value={`$${fmt(s.expenses.totalExpensesUsd)}`} sub={`${s.expenses.count} gastos`} color="border-red-500/30 bg-red-500/5" icon="💸" change={s.mom?.expensesChange ?? null} invertChange />
+            <PnLCard label="Ventas totales" value={`$${fmt(s.income.totalSalesUsd)}`} sub={`${s.income.ordersCount} órdenes`} accent="ok" Icon={Coins} positive change={s.mom?.salesChange ?? null} />
+            <PnLCard label="Ticket promedio" value={`$${fmt(s.income.avgTicket ?? 0)}`} sub="Por orden" accent="warn" Icon={Ticket} />
+            <PnLCard label="Gastos operativos" value={`$${fmt(s.expenses.totalExpensesUsd)}`} sub={`${s.expenses.count} gastos`} accent="coral" Icon={Receipt} change={s.mom?.expensesChange ?? null} invertChange />
             <PnLCard
-              label="Utilidad Operativa"
+              label="Utilidad operativa"
               value={`$${fmt(s.profitLoss.operatingProfit)}`}
               sub={`Margen: ${s.profitLoss.operatingMarginPct}%`}
-              color={s.profitLoss.operatingProfit >= 0 ? "border-blue-500/30 bg-blue-500/5" : "border-red-500/30 bg-red-500/10"}
-              icon={s.profitLoss.operatingProfit >= 0 ? "📈" : "📉"}
+              accent={s.profitLoss.operatingProfit >= 0 ? 'navy' : 'coral'}
+              Icon={s.profitLoss.operatingProfit >= 0 ? TrendingUp : TrendingDown}
               positive={s.profitLoss.operatingProfit >= 0}
               change={s.mom?.profitChange ?? null}
             />
@@ -177,53 +194,56 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
 
           {/* Cash Flow Summary */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ingresos (Entradas)</p>
-              <p className="text-2xl font-black text-emerald-500 mt-1">+${fmt(s.cashFlow?.inflows ?? 0)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ventas cobradas</p>
+            <div className="rounded-[var(--radius)] border border-[#D3E2D8] bg-[#E5EDE7]/50 p-5 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ingresos (entradas)</p>
+              <p className="mt-1 font-mono text-[22px] font-semibold text-[#2F6B4E]">+${fmt(s.cashFlow?.inflows ?? 0)}</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Ventas cobradas</p>
             </div>
-            <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Egresos (Salidas)</p>
-              <p className="text-2xl font-black text-red-500 mt-1">-${fmt(s.cashFlow?.outflows ?? 0)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Gastos + pagos a proveedores</p>
+            <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/40 p-5 shadow-cap-soft">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Egresos (salidas)</p>
+              <p className="mt-1 font-mono text-[22px] font-semibold text-capsula-coral">-${fmt(s.cashFlow?.outflows ?? 0)}</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Gastos + pagos a proveedores</p>
             </div>
-            <div className={`glass-panel rounded-2xl border p-5 ${(s.cashFlow?.net ?? 0) >= 0 ? 'border-blue-500/30 bg-blue-500/5' : 'border-red-500/30 bg-red-500/10'}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Flujo Neto</p>
-              <p className={`text-2xl font-black mt-1 ${(s.cashFlow?.net ?? 0) >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+            <div className={cn(
+              "rounded-[var(--radius)] border p-5 shadow-cap-soft",
+              (s.cashFlow?.net ?? 0) >= 0 ? "border-capsula-navy/20 bg-capsula-navy-soft/40" : "border-capsula-coral/30 bg-capsula-coral-subtle/40",
+            )}>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Flujo neto</p>
+              <p className={cn("mt-1 font-mono text-[22px] font-semibold", (s.cashFlow?.net ?? 0) >= 0 ? "text-capsula-navy-deep" : "text-capsula-coral")}>
                 {(s.cashFlow?.net ?? 0) >= 0 ? '+' : '-'}${fmt(Math.abs(s.cashFlow?.net ?? 0))}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Balance del período</p>
+              <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Balance del período</p>
             </div>
           </div>
 
           {/* Estado de Resultados */}
-          <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Estado de Resultados</h3>
+          <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+            <h3 className="mb-5 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Estado de resultados</h3>
             <div className="space-y-3">
               <PnLRow label="(+) Ventas" amount={s.income.totalSalesUsd} positive />
-              <div className="pl-4 space-y-1">
+              <div className="space-y-1 pl-4">
                 {s.income.byType.map(t => (
                   <PnLRow key={t.type} label={`↳ ${ORDER_TYPE_LABELS[t.type] ?? t.type}`} amount={t.total} indent positive />
                 ))}
               </div>
-              <div className="border-t border-border pt-2">
-                <PnLRow label="(−) Costo de Ventas (COGS)" amount={-s.cogs.totalCogsUsd} />
+              <div className="border-t border-capsula-line pt-2">
+                <PnLRow label="(−) Costo de ventas (COGS)" amount={-s.cogs.totalCogsUsd} />
               </div>
-              <div className="border-t border-dashed border-border pt-2 bg-muted/10 rounded-lg px-3 py-2">
-                <PnLRow label="= Utilidad Bruta" amount={s.profitLoss.grossProfit} bold positive={s.profitLoss.grossProfit >= 0} />
-                <p className="text-xs text-muted-foreground mt-0.5">Margen bruto: {s.profitLoss.grossMarginPct}%</p>
+              <div className="rounded-[var(--radius)] border-t border-dashed border-capsula-line bg-capsula-ivory px-3 py-2">
+                <PnLRow label="= Utilidad bruta" amount={s.profitLoss.grossProfit} bold positive={s.profitLoss.grossProfit >= 0} />
+                <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Margen bruto: {s.profitLoss.grossMarginPct}%</p>
               </div>
-              <div className="border-t border-border pt-2">
-                <PnLRow label="(−) Gastos Operativos" amount={-s.expenses.totalExpensesUsd} />
+              <div className="border-t border-capsula-line pt-2">
+                <PnLRow label="(−) Gastos operativos" amount={-s.expenses.totalExpensesUsd} />
               </div>
-              <div className="pl-4 space-y-1">
+              <div className="space-y-1 pl-4">
                 {s.expenses.byCategory.map(c => (
                   <PnLRow key={c.name} label={`↳ ${c.name}`} amount={-c.total} indent />
                 ))}
               </div>
-              <div className="border-t-2 border-border pt-2 bg-muted/10 rounded-lg px-3 py-2">
-                <PnLRow label="= Utilidad Operativa" amount={s.profitLoss.operatingProfit} bold positive={s.profitLoss.operatingProfit >= 0} />
-                <p className="text-xs text-muted-foreground mt-0.5">Margen operativo: {s.profitLoss.operatingMarginPct}%</p>
+              <div className="rounded-[var(--radius)] border-t-2 border-capsula-line bg-capsula-ivory px-3 py-2">
+                <PnLRow label="= Utilidad operativa" amount={s.profitLoss.operatingProfit} bold positive={s.profitLoss.operatingProfit >= 0} />
+                <p className="mt-0.5 text-[11px] text-capsula-ink-muted">Margen operativo: {s.profitLoss.operatingMarginPct}%</p>
               </div>
             </div>
           </div>
@@ -231,26 +251,26 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
           {/* Charts Row */}
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Daily Sales Line Chart */}
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Ventas Diarias del Mes</h3>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+              <h3 className="mb-5 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas diarias del mes</h3>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={s.income.dailySales ?? []} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={50} />
-                    <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
-                    <Line type="monotone" dataKey="total" name="Ventas" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#6B7584' }} axisLine={false} tickLine={false} width={50} />
+                    <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }} />
+                    <Line type="monotone" dataKey="total" name="Ventas" stroke="#2F6B4E" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Expense Donut Chart */}
-            <div className="glass-panel rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-5">Gastos por Categoría</h3>
+            <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+              <h3 className="mb-5 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Gastos por categoría</h3>
               {(s.expenses.byCategory?.length ?? 0) > 0 ? (
                 <div className="flex items-center gap-4">
-                  <div className="h-56 w-56 flex-shrink-0">
+                  <div className="h-56 w-56 shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={s.expenses.byCategory} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
@@ -258,22 +278,22 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                             <Cell key={entry.name} fill={entry.color || PIE_COLORS[index % PIE_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: 12 }} />
+                        <Tooltip formatter={(value: number) => [`$${fmt(value)}`, undefined]} contentStyle={{ background: '#FDFBF7', border: '1px solid #E7E2D7', borderRadius: '10px', fontSize: 12 }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="flex-1 space-y-1.5 overflow-hidden">
                     {s.expenses.byCategory.slice(0, 6).map((cat, i) => (
-                      <div key={cat.name} className="flex items-center gap-2 text-xs">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color || PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-foreground truncate flex-1">{cat.name}</span>
-                        <span className="text-muted-foreground font-semibold">{cat.pct.toFixed(0)}%</span>
+                      <div key={cat.name} className="flex items-center gap-2 text-[11px]">
+                        <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color || PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="flex-1 truncate text-capsula-ink">{cat.name}</span>
+                        <span className="font-mono font-semibold text-capsula-ink-muted">{cat.pct.toFixed(0)}%</span>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-12">Sin gastos registrados</p>
+                <p className="py-12 text-center text-[13px] text-capsula-ink-muted">Sin gastos registrados</p>
               )}
             </div>
           </div>
