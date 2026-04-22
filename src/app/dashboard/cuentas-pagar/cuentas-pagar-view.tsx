@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
   type AccountPayableData,
 } from '@/app/actions/account-payable.actions';
+import { cn } from '@/lib/utils';
+import {
+  FileText, Plus, Clock, AlertOctagon, CheckCircle2, Building2,
+  AlarmClock, X, Loader2, Check,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
 
 const PAYMENT_METHODS = [
   { value: 'CASH_USD', label: 'Efectivo USD' },
@@ -16,13 +23,22 @@ const PAYMENT_METHODS = [
   { value: 'CHECK', label: 'Cheque' },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  PENDING:  { label: 'Pendiente',  color: 'bg-amber-500/20 text-amber-500' },
-  PARTIAL:  { label: 'Parcial',    color: 'bg-blue-500/20 text-blue-500' },
-  PAID:     { label: 'Pagado',     color: 'bg-emerald-500/20 text-emerald-500' },
-  OVERDUE:  { label: 'Vencido',    color: 'bg-red-500/20 text-red-500' },
-  DISPUTED: { label: 'Disputado',  color: 'bg-purple-500/20 text-purple-500' },
-  VOID:     { label: 'Anulado',    color: 'bg-muted text-muted-foreground' },
+const STATUS_VARIANT: Record<string, 'warn' | 'info' | 'ok' | 'danger' | 'coral' | 'neutral'> = {
+  PENDING:  'warn',
+  PARTIAL:  'info',
+  PAID:     'ok',
+  OVERDUE:  'danger',
+  DISPUTED: 'coral',
+  VOID:     'neutral',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING:  'Pendiente',
+  PARTIAL:  'Parcial',
+  PAID:     'Pagado',
+  OVERDUE:  'Vencido',
+  DISPUTED: 'Disputado',
+  VOID:     'Anulado',
 };
 
 function fmt(n: number) {
@@ -170,49 +186,49 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
     .slice(0, 5);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1400px] animate-in space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-capsula-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">📄 Cuentas por Pagar</h1>
-          <p className="text-sm text-muted-foreground">Control de deudas y facturas pendientes</p>
+          <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Finanzas</div>
+          <h1 className="inline-flex items-center gap-2 font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+            <FileText className="h-6 w-6 text-capsula-navy" strokeWidth={1.5} />
+            Cuentas por pagar
+          </h1>
+          <p className="mt-1 text-[13px] text-capsula-ink-soft">Control de deudas y facturas pendientes.</p>
         </div>
         {canManage && (
-          <button onClick={() => setShowForm(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
-            + Nueva Cuenta
-          </button>
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4" strokeWidth={2} /> Nueva cuenta
+          </Button>
         )}
       </div>
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Pendiente" value={`$${fmt(totalPending)}`} color="border-amber-500/30 bg-amber-500/5" icon="⏳" />
-        <KpiCard label="Vencido" value={`$${fmt(overdueAmount)}`} sub={`${overdueCount} facturas`} color={overdueCount > 0 ? "border-red-500/30 bg-red-500/5" : "border-border"} icon="🚨" />
-        <KpiCard label="Total Pagado" value={`$${fmt(totalPaid)}`} color="border-emerald-500/30 bg-emerald-500/5" icon="✅" />
-        <KpiCard label="Acreedores" value={`${new Set(accounts.filter(a=>!['PAID','VOID'].includes(a.status)).map(a=>a.supplierId||a.creditorName)).size}`} color="border-blue-500/30 bg-blue-500/5" icon="🏢" />
+        <KpiCard label="Total pendiente" value={`$${fmt(totalPending)}`} accent="warn" Icon={Clock} />
+        <KpiCard label="Vencido" value={`$${fmt(overdueAmount)}`} sub={`${overdueCount} facturas`} accent={overdueCount > 0 ? 'coral' : 'neutral'} Icon={AlertOctagon} />
+        <KpiCard label="Total pagado" value={`$${fmt(totalPaid)}`} accent="ok" Icon={CheckCircle2} />
+        <KpiCard label="Acreedores" value={`${new Set(accounts.filter(a=>!['PAID','VOID'].includes(a.status)).map(a=>a.supplierId||a.creditorName)).size}`} accent="navy" Icon={Building2} />
       </div>
 
       {/* Aging Report */}
       {hasAging && (
-        <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Envejecimiento de Deudas</h3>
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Envejecimiento de deudas</h3>
           <div className="grid grid-cols-5 gap-2">
             {agingData.map(bucket => {
-              const colorMap: Record<string, string> = {
-                'Vigente': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500',
-                '0-30': 'bg-blue-500/10 border-blue-500/20 text-blue-500',
-                '31-60': 'bg-amber-500/10 border-amber-500/20 text-amber-500',
-                '61-90': 'bg-orange-500/10 border-orange-500/20 text-orange-500',
-                '90+': 'bg-red-500/10 border-red-500/20 text-red-500',
-              };
-              const colors = colorMap[bucket.range] || 'bg-muted border-border text-foreground';
-              const [bgColor, borderColor, textColor] = colors.split(' ');
+              const style =
+                bucket.range === 'Vigente' ? { border: 'border-[#D3E2D8]', bg: 'bg-[#E5EDE7]/50',             text: 'text-[#2F6B4E]' } :
+                bucket.range === '0-30'    ? { border: 'border-capsula-navy/20', bg: 'bg-capsula-navy-soft/40', text: 'text-capsula-navy-deep' } :
+                bucket.range === '31-60'   ? { border: 'border-[#E8D9B8]', bg: 'bg-[#F3EAD6]/40',             text: 'text-[#946A1C]' } :
+                bucket.range === '61-90'   ? { border: 'border-[#E8D9B8]', bg: 'bg-[#F3EAD6]/60',             text: 'text-[#946A1C]' } :
+                                              { border: 'border-capsula-coral/30', bg: 'bg-capsula-coral-subtle/40', text: 'text-capsula-coral' };
               return (
-                <div key={bucket.range} className={`rounded-xl p-3 text-center border ${bgColor} ${borderColor}`}>
-                  <p className="text-[10px] font-bold text-muted-foreground">{bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}</p>
-                  <p className={`text-lg font-black mt-1 ${textColor}`}>${fmt(bucket.amount)}</p>
-                  <p className="text-[10px] text-muted-foreground">{bucket.count} cuentas</p>
+                <div key={bucket.range} className={cn("rounded-[var(--radius)] border p-3 text-center", style.border, style.bg)}>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">{bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}</p>
+                  <p className={cn("mt-1 font-mono text-[16px] font-semibold", style.text)}>${fmt(bucket.amount)}</p>
+                  <p className="text-[10px] text-capsula-ink-muted">{bucket.count} cuentas</p>
                 </div>
               );
             })}
@@ -222,19 +238,19 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Top Acreedores */}
       {supplierSummary.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Principales Acreedores</h3>
+        <div className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Principales acreedores</h3>
           <div className="space-y-2">
             {supplierSummary.map((s, i) => {
               const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;
               return (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-sm font-black text-muted-foreground w-5">{i + 1}</span>
-                  <span className="text-sm text-foreground flex-1 truncate">{s.name}</span>
-                  <span className="text-xs text-muted-foreground">{s.count} cuentas</span>
-                  <span className="text-sm font-bold text-foreground w-24 text-right">${fmt(s.total)}</span>
-                  <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
+                  <span className="w-5 font-mono text-[13px] font-semibold text-capsula-ink-muted">{i + 1}</span>
+                  <span className="flex-1 truncate text-[13px] text-capsula-ink">{s.name}</span>
+                  <span className="text-[11px] text-capsula-ink-muted">{s.count} cuentas</span>
+                  <span className="w-24 text-right font-mono text-[13px] font-semibold text-capsula-ink">${fmt(s.total)}</span>
+                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-capsula-line">
+                    <div className="h-full rounded-full bg-[#946A1C] transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -245,23 +261,25 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Próximos Vencimientos */}
       {upcomingDue.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-amber-500 mb-4">⏰ Próximos Vencimientos (14 días)</h3>
+        <div className="rounded-[var(--radius)] border border-[#E8D9B8] bg-[#F3EAD6]/40 p-6 shadow-cap-soft">
+          <h3 className="mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[#946A1C]">
+            <AlarmClock className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Próximos vencimientos (14 días)
+          </h3>
           <div className="space-y-2">
             {upcomingDue.map(a => {
               const daysUntil = Math.floor((new Date(a.dueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const variant: 'danger' | 'warn' | 'info' = daysUntil <= 3 ? 'danger' : daysUntil <= 7 ? 'warn' : 'info';
               return (
-                <div key={a.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      daysUntil <= 3 ? 'bg-red-500/20 text-red-500' : daysUntil <= 7 ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
-                    }`}>
+                <div key={a.id} className="flex items-center justify-between text-[13px]">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Badge variant={variant}>
                       {daysUntil === 0 ? 'HOY' : daysUntil === 1 ? 'MAÑANA' : `${daysUntil}d`}
-                    </span>
-                    <span className="text-foreground truncate">{a.description}</span>
-                    <span className="text-muted-foreground text-xs">— {a.supplierName || a.creditorName}</span>
+                    </Badge>
+                    <span className="truncate text-capsula-ink">{a.description}</span>
+                    <span className="text-[11px] text-capsula-ink-muted">— {a.supplierName || a.creditorName}</span>
                   </div>
-                  <span className="font-bold text-foreground ml-2">${fmt(a.remainingUsd)}</span>
+                  <span className="ml-2 font-mono font-semibold text-capsula-ink">${fmt(a.remainingUsd)}</span>
                 </div>
               );
             })}
@@ -270,101 +288,121 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       )}
 
       {/* Filtros */}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         {[
           { key: 'ACTIVE', label: 'Activas' },
           { key: 'ALL', label: 'Todas' },
           { key: 'PAID', label: 'Pagadas' },
-        ].map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${filter === f.key ? 'bg-blue-600 text-white' : 'border border-border text-foreground hover:bg-accent'}`}>
-            {f.label}
-          </button>
-        ))}
-        {isPending && <span className="text-xs text-muted-foreground self-center animate-pulse">Cargando...</span>}
+        ].map(f => {
+          const active = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "rounded-full border px-4 py-1.5 text-[12px] font-medium transition-colors",
+                active
+                  ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                  : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:text-capsula-ink",
+              )}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+        {isPending && (
+          <span className="inline-flex items-center gap-1 self-center text-[11px] text-capsula-ink-muted">
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} /> Cargando…
+          </span>
+        )}
       </div>
 
       {/* Tabla */}
-      <div className="glass-panel rounded-2xl border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl">📄</p>
-            <p className="mt-2 text-muted-foreground font-medium">Sin cuentas en esta vista</p>
+            <FileText className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+            <p className="mt-3 font-medium text-capsula-ink">Sin cuentas en esta vista</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30">
-                <tr>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Descripción / Acreedor</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Estado</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Total</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Pendiente</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Vencimiento</th>
-                  {canManage && <th className="px-5 py-3 text-center font-semibold text-muted-foreground">Acción</th>}
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-capsula-line bg-capsula-ivory">
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Descripción / acreedor</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Estado</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Total</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Pendiente</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Vencimiento</th>
+                  {canManage && <th className="px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">Acción</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {filtered.map(a => {
-                  const statusCfg = STATUS_CONFIG[a.status] ?? { label: a.status, color: 'bg-muted text-muted-foreground' };
                   const isExpanded = expandedId === a.id;
                   const isOverdue = a.status === 'OVERDUE';
                   return (
-                    <>
-                      <tr key={a.id}
-                        className={`hover:bg-muted/20 transition-colors cursor-pointer ${isOverdue ? 'bg-red-500/5' : ''}`}
-                        onClick={() => setExpandedId(isExpanded ? null : a.id)}>
+                    <React.Fragment key={a.id}>
+                      <tr
+                        className={cn(
+                          "cursor-pointer border-b border-capsula-line transition-colors hover:bg-capsula-ivory",
+                          isOverdue && "bg-capsula-coral-subtle/20",
+                        )}
+                        onClick={() => setExpandedId(isExpanded ? null : a.id)}
+                      >
                         <td className="px-5 py-3">
-                          <div className="font-medium text-foreground">{a.description}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="font-medium text-capsula-ink">{a.description}</div>
+                          <div className="text-[11px] text-capsula-ink-muted">
                             {a.supplierName || a.creditorName}
                             {a.invoiceNumber && ` · Fact. ${a.invoiceNumber}`}
                           </div>
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusCfg.color}`}>{statusCfg.label}</span>
+                          <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
                         </td>
-                        <td className="px-5 py-3 text-right text-foreground font-medium">${fmt(a.totalAmountUsd)}</td>
-                        <td className={`px-5 py-3 text-right font-bold ${a.remainingUsd > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        <td className="px-5 py-3 text-right font-mono font-medium text-capsula-ink">${fmt(a.totalAmountUsd)}</td>
+                        <td className={cn("px-5 py-3 text-right font-mono font-semibold", a.remainingUsd > 0 ? "text-[#946A1C]" : "text-capsula-ink-muted")}>
                           {a.remainingUsd > 0 ? `$${fmt(a.remainingUsd)}` : '—'}
                         </td>
                         <td className="px-5 py-3">
                           {a.dueDate ? (
-                            <span className={isOverdue ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
+                            <span className={cn("font-mono", isOverdue ? "font-semibold text-capsula-coral" : "text-capsula-ink-muted")}>
                               {new Date(a.dueDate).toLocaleDateString('es-VE')}
                             </span>
-                          ) : <span className="text-muted-foreground">—</span>}
+                          ) : <span className="text-capsula-ink-muted">—</span>}
                         </td>
                         {canManage && (
                           <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                             {!['PAID', 'VOID'].includes(a.status) && (
-                              <button onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
-                                className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-bold px-3 py-1 hover:bg-emerald-500/20">
-                                Registrar Pago
+                              <button
+                                onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
+                                className="inline-flex items-center gap-1 rounded-md border border-[#D3E2D8] bg-[#E5EDE7]/60 px-2.5 py-1 text-[11px] font-medium text-[#2F6B4E] transition-colors hover:bg-[#2F6B4E] hover:text-white"
+                              >
+                                <Check className="h-3 w-3" strokeWidth={2} /> Registrar pago
                               </button>
                             )}
                           </td>
                         )}
                       </tr>
                       {isExpanded && a.payments.length > 0 && (
-                        <tr key={`${a.id}-payments`}>
-                          <td colSpan={canManage ? 6 : 5} className="px-8 py-3 bg-muted/10">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Pagos realizados</p>
+                        <tr>
+                          <td colSpan={canManage ? 6 : 5} className="border-b border-capsula-line bg-capsula-ivory px-8 py-3">
+                            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Pagos realizados</p>
                             <div className="space-y-1">
                               {a.payments.map(p => (
-                                <div key={p.id} className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="text-foreground font-semibold">${fmt(p.amountUsd)}</span>
+                                <div key={p.id} className="flex items-center gap-4 text-[11px] text-capsula-ink-soft">
+                                  <span className="font-mono font-semibold text-capsula-ink">${fmt(p.amountUsd)}</span>
                                   <span>{PAYMENT_METHODS.find(m => m.value === p.paymentMethod)?.label ?? p.paymentMethod}</span>
-                                  {p.paymentRef && <span>Ref: {p.paymentRef}</span>}
-                                  <span>{new Date(p.paidAt).toLocaleDateString('es-VE')}</span>
-                                  <span>{p.createdByName}</span>
+                                  {p.paymentRef && <span className="text-capsula-ink-muted">Ref: {p.paymentRef}</span>}
+                                  <span className="font-mono text-capsula-ink-muted">{new Date(p.paidAt).toLocaleDateString('es-VE')}</span>
+                                  <span className="text-capsula-ink-muted">{p.createdByName}</span>
                                 </div>
                               ))}
                             </div>
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
