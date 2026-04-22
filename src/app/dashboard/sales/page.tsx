@@ -782,57 +782,62 @@ export default function SalesHistoryPage() {
             {/* MODAL REPORTE Z                                                    */}
             {/* ================================================================ */}
             {showZReport && zReport && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white text-black rounded-lg w-full max-w-sm p-8 font-mono shadow-2xl relative">
-                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-2xl font-bold no-print">×</button>
-                        <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
-                            <h2 className="text-2xl font-black">REPORTE Z</h2>
-                            <p className="text-sm">SHANKLISH CARACAS</p>
-                            <p className="text-sm">{new Date().toLocaleString()}</p>
-                            <p className="text-sm mt-1 font-bold">CIERRE DE CAJA DIARIO</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+                    <div className="relative w-full max-w-sm rounded-[var(--radius)] bg-white p-8 font-mono text-black shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <button
+                            onClick={() => setShowZReport(false)}
+                            className="no-print absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-capsula-coral"
+                        >
+                            <X className="h-4 w-4" strokeWidth={1.5} />
+                        </button>
+                        <div className="mb-6 border-b-2 border-dashed border-black pb-4 text-center">
+                            <h2 className="text-[22px] font-bold tracking-[-0.01em]">REPORTE Z</h2>
+                            <p className="text-[12px]">SHANKLISH CARACAS</p>
+                            <p className="text-[12px]">{new Date().toLocaleString()}</p>
+                            <p className="mt-1 text-[12px] font-bold">CIERRE DE CAJA DIARIO</p>
                         </div>
                         {/* ── VENTAS ── */}
-                        <div className="space-y-1 mb-4 border-b-2 border-dashed border-black pb-4">
+                        <div className="mb-4 space-y-1 border-b-2 border-dashed border-black pb-4">
                             <div className="flex justify-between"><span>VENTAS BRUTAS</span><span>{formatMoney(zReport.grossTotal)}</span></div>
                             {zReport.totalDiscounts > 0 && (<>
-                                <div className="flex justify-between text-red-600"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
+                                <div className="flex justify-between text-red-700"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
                                 {zReport.discountBreakdown.divisas > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.cortesias > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.other > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
+                                    <div className="flex justify-between pl-4 text-[11px] text-gray-600"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
                                 )}
                             </>)}
-                            <div className="flex justify-between font-bold text-base mt-1 pt-1 border-t border-gray-300"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
+                            <div className="mt-1 flex justify-between border-t border-gray-300 pt-1 font-bold text-[13px]"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
                             {zReport.totalServiceFee > 0 && (
-                                <div className="flex justify-between text-blue-700"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
+                                <div className="flex justify-between text-blue-800"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
                             )}
                             {zReport.totalTips > 0 && (
-                                <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
+                                <div className="flex justify-between text-green-800"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
-                            <div className="flex justify-between font-black text-xl mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
+                            <div className="mt-2 flex justify-between border-t-2 border-black pt-2 text-[18px] font-bold"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
 
                         {/* ── ARQUEO DE CAJA ── */}
                         <div className="mb-4 border-b-2 border-dashed border-black pb-4">
-                            <h3 className="font-bold underline mb-2">ARQUEO DE CAJA</h3>
-                            <div className="space-y-0.5 text-sm">
+                            <h3 className="mb-2 font-bold underline">ARQUEO DE CAJA</h3>
+                            <div className="space-y-0.5 text-[12px]">
                                 {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
                                 {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
                                 {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
                                 {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
                                 {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
                                 {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
-                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-500"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-600"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                             </div>
                         </div>
 
                         {/* ── PEDIDOS POR CANAL ── */}
-                        <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">
-                            <h3 className="font-bold underline mb-2">PEDIDOS POR CANAL</h3>
+                        <div className="mb-4 border-b-2 border-dashed border-black pb-4 text-[12px]">
+                            <h3 className="mb-2 font-bold underline">PEDIDOS POR CANAL</h3>
                             <div className="space-y-0.5">
                                 {zReport.ordersByType.restaurant > 0 && <div className="flex justify-between"><span>Restaurante / Mesas</span><span>{zReport.ordersByType.restaurant}</span></div>}
                                 {zReport.ordersByType.pickup > 0 && <div className="flex justify-between"><span>Pickup / Mostrador</span><span>{zReport.ordersByType.pickup}</span></div>}
@@ -844,22 +849,16 @@ export default function SalesHistoryPage() {
                             </div>
                         </div>
 
-                        <div className="text-center text-xs text-gray-500 pt-2">
+                        <div className="pt-2 text-center text-[11px] text-gray-600">
                             <p className="font-bold">Total transacciones: {zReport.totalOrders}</p>
                         </div>
-                        <div className="flex gap-3 mt-6 no-print">
-                            <button
-                                onClick={() => exportZReportToExcel(zReport)}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold transition flex items-center justify-center gap-2"
-                            >
-                                📥 Exportar a Excel
-                            </button>
-                            <button
-                                onClick={() => window.print()}
-                                className="flex-1 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition"
-                            >
-                                🖨️ Imprimir
-                            </button>
+                        <div className="no-print mt-6 flex gap-2">
+                            <Button variant="ghost" onClick={() => exportZReportToExcel(zReport)} className="flex-1">
+                                <FileDown className="h-4 w-4" strokeWidth={1.5} /> Exportar a Excel
+                            </Button>
+                            <Button variant="primary" onClick={() => window.print()} className="flex-1">
+                                <Printer className="h-4 w-4" strokeWidth={1.5} /> Imprimir
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -869,19 +868,27 @@ export default function SalesHistoryPage() {
             {/* MODAL CIERRE DEL DÍA                                               */}
             {/* ================================================================ */}
             {showDaySummary && daySummary && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-amber-700/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between mb-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/40 p-4 backdrop-blur-sm">
+                    <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-6 shadow-[0_20px_60px_-20px_rgba(11,23,39,0.35)]">
+                        <div className="mb-4 flex items-center justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-amber-400">Resumen de Cierre del Día</h2>
-                                <p className="text-sm text-gray-400 font-mono mt-0.5">{daySummary.date}</p>
+                                <h2 className="inline-flex items-center gap-2 font-heading text-[22px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">
+                                    <BarChart3 className="h-5 w-5 text-capsula-coral" strokeWidth={1.5} />
+                                    Resumen de cierre del día
+                                </h2>
+                                <p className="mt-0.5 font-mono text-[12px] text-capsula-ink-muted">{daySummary.date}</p>
                             </div>
-                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white text-2xl font-bold">×</button>
+                            <button
+                                onClick={() => setShowDaySummary(false)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                            >
+                                <X className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
                         </div>
 
                         {/* Ventas por canal */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Ventas por Canal</h3>
+                        <div className="mb-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                            <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Ventas por canal</h3>
                             <div className="space-y-1.5">
                                 {([
                                     { key: 'restaurant', label: 'Restaurante / Mesas' },
@@ -894,9 +901,11 @@ export default function SalesHistoryPage() {
                                 ] as { key: keyof typeof daySummary.byChannel; label: string }[])
                                     .filter(r => daySummary.byChannel[r.key] > 0 || daySummary.countByChannel[r.key] > 0)
                                     .map(r => (
-                                        <div key={r.key} className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-300">{r.label} <span className="text-gray-500 text-xs">({daySummary.countByChannel[r.key]})</span></span>
-                                            <span className="font-bold font-mono text-white">${daySummary.byChannel[r.key].toFixed(2)}</span>
+                                        <div key={r.key} className="flex items-center justify-between text-[13px]">
+                                            <span className="text-capsula-ink-soft">
+                                                {r.label} <span className="text-[11px] text-capsula-ink-muted">({daySummary.countByChannel[r.key]})</span>
+                                            </span>
+                                            <span className="font-mono font-semibold text-capsula-ink">${daySummary.byChannel[r.key].toFixed(2)}</span>
                                         </div>
                                     ))
                                 }
@@ -904,48 +913,59 @@ export default function SalesHistoryPage() {
                         </div>
 
                         {/* Totales */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Totales</h3>
-                            <div className="space-y-1.5 text-sm">
+                        <div className="mb-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                            <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Totales</h3>
+                            <div className="space-y-1.5 text-[13px]">
                                 {daySummary.totalDiscounts > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">Descuentos:</span><span className="text-red-400 font-mono">-${daySummary.totalDiscounts.toFixed(2)}</span></div>
+                                    <div className="flex justify-between">
+                                        <span className="text-capsula-ink-muted">Descuentos:</span>
+                                        <span className="font-mono text-capsula-coral">-${daySummary.totalDiscounts.toFixed(2)}</span>
+                                    </div>
                                 )}
                                 {daySummary.totalServiceFee > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">10% Servicio:</span><span className="text-emerald-400 font-mono">+${daySummary.totalServiceFee.toFixed(2)}</span></div>
+                                    <div className="flex justify-between">
+                                        <span className="text-capsula-ink-muted">10% Servicio:</span>
+                                        <span className="font-mono text-[#2F6B4E]">+${daySummary.totalServiceFee.toFixed(2)}</span>
+                                    </div>
                                 )}
                                 {daySummary.propinas > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">Propinas{daySummary.propinaCount > 0 ? ` (${daySummary.propinaCount})` : ''}:</span><span className="text-amber-400 font-mono">+${daySummary.propinas.toFixed(2)}</span></div>
+                                    <div className="flex justify-between">
+                                        <span className="inline-flex items-center gap-1 text-capsula-ink-muted">
+                                            <Coins className="h-3 w-3" strokeWidth={1.5} /> Propinas{daySummary.propinaCount > 0 ? ` (${daySummary.propinaCount})` : ''}:
+                                        </span>
+                                        <span className="font-mono text-[#946A1C]">+${daySummary.propinas.toFixed(2)}</span>
+                                    </div>
                                 )}
-                                <div className="flex justify-between pt-2 border-t border-gray-700">
-                                    <span className="font-bold text-white">Total Cobrado:</span>
-                                    <span className="font-black text-xl text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
+                                <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
+                                    <span className="font-medium text-capsula-ink">Total cobrado:</span>
+                                    <span className="font-mono text-[20px] font-semibold text-capsula-navy-deep">${daySummary.totalUSD.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Divisas vs Bs */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Desglose por Moneda</h3>
+                        <div className="mb-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                            <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Desglose por moneda</h3>
                             <div className="space-y-2">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-300">Divisas (Cash / Zelle)</span>
+                                <div className="flex items-center justify-between text-[13px]">
+                                    <span className="text-capsula-ink-soft">Divisas (Cash / Zelle)</span>
                                     <div className="text-right">
-                                        <span className="font-bold font-mono text-blue-300">${daySummary.receivedInDivisas.toFixed(2)}</span>
-                                        <span className="text-gray-500 text-xs ml-2">{daySummary.pctDivisas.toFixed(1)}%</span>
+                                        <span className="font-mono font-semibold text-capsula-navy-deep">${daySummary.receivedInDivisas.toFixed(2)}</span>
+                                        <span className="ml-2 text-[11px] text-capsula-ink-muted">{daySummary.pctDivisas.toFixed(1)}%</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-300">Bolívares (PDV / Móvil)</span>
+                                <div className="flex items-center justify-between text-[13px]">
+                                    <span className="text-capsula-ink-soft">Bolívares (PDV / Móvil)</span>
                                     <div className="text-right">
-                                        <span className="font-bold font-mono text-purple-300">${daySummary.receivedInBs.toFixed(2)}</span>
-                                        <span className="text-gray-500 text-xs ml-2">{daySummary.pctBs.toFixed(1)}%</span>
+                                        <span className="font-mono font-semibold text-capsula-coral">${daySummary.receivedInBs.toFixed(2)}</span>
+                                        <span className="ml-2 text-[11px] text-capsula-ink-muted">{daySummary.pctBs.toFixed(1)}%</span>
                                     </div>
                                 </div>
                                 {/* Progress bar */}
-                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden mt-1">
-                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${daySummary.pctDivisas}%` }} />
+                                <div className="mt-1 h-2 overflow-hidden rounded-full bg-capsula-line">
+                                    <div className="h-full rounded-full bg-capsula-navy-deep" style={{ width: `${daySummary.pctDivisas}%` }} />
                                 </div>
-                                <div className="flex justify-between text-[10px] text-gray-500">
+                                <div className="flex justify-between text-[10px] text-capsula-ink-muted">
                                     <span>Divisas {daySummary.pctDivisas.toFixed(0)}%</span>
                                     <span>Bs {daySummary.pctBs.toFixed(0)}%</span>
                                 </div>
@@ -953,22 +973,30 @@ export default function SalesHistoryPage() {
                         </div>
 
                         {/* Facturas */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-2">Facturas</h3>
-                            <div className="flex gap-6 text-sm">
-                                <div><span className="text-gray-400">Procesadas: </span><span className="font-bold text-white">{daySummary.totalInvoices}</span></div>
+                        <div className="mb-4 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory p-4">
+                            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Facturas</h3>
+                            <div className="flex gap-6 text-[13px]">
+                                <div>
+                                    <span className="text-capsula-ink-muted">Procesadas: </span>
+                                    <span className="font-mono font-semibold text-capsula-ink">{daySummary.totalInvoices}</span>
+                                </div>
                                 {daySummary.invoicesCancelled > 0 && (
-                                    <div><span className="text-gray-400">Anuladas: </span><span className="font-bold text-red-400">{daySummary.invoicesCancelled}</span></div>
+                                    <div>
+                                        <span className="text-capsula-ink-muted">Anuladas: </span>
+                                        <span className="font-mono font-semibold text-capsula-coral">{daySummary.invoicesCancelled}</span>
+                                    </div>
                                 )}
                             </div>
                         </div>
 
-                        <button
+                        <Button
+                            variant="primary"
+                            size="lg"
                             onClick={() => printEndOfDaySummary(daySummary)}
-                            className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2"
+                            className="w-full"
                         >
-                            🖨️ Imprimir Resumen
-                        </button>
+                            <Printer className="h-4 w-4" strokeWidth={1.5} /> Imprimir resumen
+                        </Button>
                     </div>
                 </div>
             )}
