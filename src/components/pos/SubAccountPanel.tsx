@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -76,13 +77,19 @@ interface SubAccountPanelProps {
 
 // ─── Payment method labels ────────────────────────────────────────────────────
 
-const PAY_METHODS: { id: POSPaymentMethod; label: string }[] = [
-    { id: 'CASH_USD', label: '💵 Cash $' },
-    { id: 'ZELLE', label: '⚡ Zelle' },
-    { id: 'PDV_SHANKLISH', label: '💳 PDV Shan.' },
-    { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-    { id: 'MOVIL_NG', label: '📱 Móvil NG' },
-    { id: 'CASH_BS', label: '💴 Efectivo Bs' },
+type PayMethodDef = {
+    id: POSPaymentMethod;
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+};
+
+const PAY_METHODS: PayMethodDef[] = [
+    { id: 'CASH_USD',       label: 'Cash $',       Icon: DollarSign },
+    { id: 'ZELLE',          label: 'Zelle',        Icon: Zap },
+    { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',    Icon: CreditCard },
+    { id: 'PDV_SUPERFERRO', label: 'PDV Super.',   Icon: CreditCard },
+    { id: 'MOVIL_NG',       label: 'Móvil NG',     Icon: Smartphone },
+    { id: 'CASH_BS',        label: 'Efectivo Bs',  Icon: Banknote },
 ];
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -116,23 +123,23 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
     const alreadyAssigned = item.subAccountItems.filter((s) => s.quantity > 0);
 
     return (
-        <div className="border border-border/50 rounded-xl bg-background/50 p-2.5 space-y-1.5">
+        <div className="space-y-1.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2.5">
             {/* Item header */}
             <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-foreground truncate">
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-medium text-capsula-ink">
                         {item.quantity}× {item.itemName}
                     </div>
                     {item.modifiers.length > 0 && (
-                        <div className="text-[10px] text-muted-foreground truncate">
+                        <div className="truncate text-[11px] text-capsula-ink-muted">
                             {item.modifiers.map((m) => m.name).join(', ')}
                         </div>
                     )}
                 </div>
                 <div className="shrink-0 text-right">
-                    <div className="text-xs font-black text-amber-400">${item.lineTotal.toFixed(2)}</div>
+                    <div className="text-xs font-medium tabular-nums text-capsula-navy-deep">${item.lineTotal.toFixed(2)}</div>
                     {poolQty > 0 && (
-                        <div className="text-[10px] text-muted-foreground">Pool: {poolQty}</div>
+                        <div className="text-[11px] text-capsula-ink-muted">Pool: {poolQty}</div>
                     )}
                 </div>
             </div>
@@ -142,18 +149,21 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                 const sub = subAccounts.find((s) => s.id === a.subAccountId);
                 if (!sub) return null;
                 return (
-                    <div key={a.subAccountId}
-                        className="flex items-center justify-between text-[10px] bg-amber-500/10 rounded-lg px-2 py-1">
-                        <span className="text-amber-300 font-bold">
+                    <div
+                        key={a.subAccountId}
+                        className="flex items-center justify-between rounded-lg border border-capsula-navy/10 bg-capsula-navy-soft px-2 py-1 text-[11px]"
+                    >
+                        <span className="font-medium text-capsula-navy">
                             {a.quantity}× → {sub.label}
                         </span>
                         {sub.status === 'OPEN' && (
                             <button
                                 disabled={isProcessing}
                                 onClick={() => onUnassign(item.id, a.subAccountId)}
-                                className="text-red-400 hover:text-red-300 font-bold disabled:opacity-40"
+                                className="rounded-full p-0.5 text-capsula-coral transition-colors hover:bg-capsula-coral-subtle disabled:opacity-40"
+                                aria-label="Quitar asignación"
                             >
-                                ✕
+                                <XIcon className="h-3 w-3" />
                             </button>
                         )}
                     </div>
@@ -164,7 +174,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
             {poolQty > 0 && subAccounts.filter((s) => s.status === 'OPEN').length > 0 && (
                 <button
                     onClick={() => { setExpanded((p) => !p); setPickedSub(''); setQty(1); }}
-                    className="w-full text-[10px] font-black uppercase text-primary bg-primary/10 hover:bg-primary/20 rounded-lg py-1.5 transition"
+                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:text-capsula-navy-deep"
                 >
                     {expanded ? 'Cancelar' : `Asignar (${poolQty} disponible${poolQty > 1 ? 's' : ''})`}
                 </button>
@@ -172,17 +182,20 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
 
             {/* Assign form */}
             {expanded && (
-                <div className="space-y-1.5 pt-1 border-t border-border/50">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">Mover a:</div>
+                <div className="space-y-1.5 border-t border-capsula-line pt-1.5">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
+                        Mover a:
+                    </div>
                     <div className="flex flex-wrap gap-1">
                         {subAccounts.filter((s) => s.status === 'OPEN').map((s) => (
                             <button
                                 key={s.id}
                                 onClick={() => setPickedSub(s.id)}
-                                className={`text-[10px] font-black px-2 py-1 rounded-lg transition ${pickedSub === s.id
-                                    ? 'bg-amber-500 text-black'
-                                    : 'bg-secondary text-foreground/70 hover:bg-muted'
-                                    }`}
+                                className={`rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${
+                                    pickedSub === s.id
+                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                        : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                }`}
                             >
                                 {s.label}
                             </button>
@@ -190,19 +203,27 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                     </div>
                     {pickedSub && poolQty > 1 && (
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground">Cantidad:</span>
-                            <button onClick={() => setQty((q) => Math.max(1, q - 1))}
-                                className="w-6 h-6 rounded-lg bg-secondary text-xs font-black">−</button>
-                            <span className="text-sm font-black w-6 text-center">{qty}</span>
-                            <button onClick={() => setQty((q) => Math.min(poolQty, q + 1))}
-                                className="w-6 h-6 rounded-lg bg-secondary text-xs font-black">+</button>
+                            <span className="text-[11px] text-capsula-ink-muted">Cantidad:</span>
+                            <button
+                                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                                className="h-6 w-6 rounded-lg border border-capsula-line bg-capsula-ivory-surface text-xs font-medium text-capsula-ink transition-colors hover:border-capsula-navy-deep"
+                            >
+                                −
+                            </button>
+                            <span className="w-6 text-center text-sm font-medium tabular-nums text-capsula-ink">{qty}</span>
+                            <button
+                                onClick={() => setQty((q) => Math.min(poolQty, q + 1))}
+                                className="h-6 w-6 rounded-lg border border-capsula-line bg-capsula-ivory-surface text-xs font-medium text-capsula-ink transition-colors hover:border-capsula-navy-deep"
+                            >
+                                +
+                            </button>
                         </div>
                     )}
                     {pickedSub && (
                         <button
                             disabled={isProcessing}
                             onClick={() => { onAssign(item.id, pickedSub, qty); setExpanded(false); }}
-                            className="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black rounded-lg transition disabled:opacity-40"
+                            className="pos-btn w-full !min-h-0 py-1.5 text-[11px] disabled:opacity-40"
                         >
                             Confirmar asignación
                         </button>
@@ -246,76 +267,98 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     }
 
     return (
-        <div className={`rounded-xl border ${isPaid
-            ? 'border-emerald-500/30 bg-emerald-950/20'
-            : 'border-border bg-card/60'
-        } overflow-hidden`}>
+        <div className={`overflow-hidden rounded-xl border ${
+            isPaid
+                ? 'border-[#D3E2D8] bg-[#E5EDE7]/40'
+                : 'border-capsula-line bg-capsula-ivory-surface'
+        }`}>
             {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-2 ${isPaid ? 'bg-emerald-900/20' : 'bg-secondary/60'}`}>
+            <div className={`flex items-center justify-between px-3 py-2 ${
+                isPaid ? 'bg-[#E5EDE7]/80' : 'bg-capsula-ivory-alt'
+            }`}>
                 {editing ? (
-                    <div className="flex items-center gap-1.5 flex-1">
+                    <div className="flex flex-1 items-center gap-1.5">
                         <input
                             autoFocus
                             value={labelInput}
                             onChange={(e) => setLabelInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditing(false); }}
-                            className="flex-1 bg-background border border-amber-500/50 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none"
+                            className="flex-1 rounded-lg border border-capsula-navy-deep bg-capsula-ivory px-2 py-1 text-xs font-medium text-capsula-ink focus:outline-none"
                         />
-                        <button onClick={handleRename} className="text-[10px] font-black text-amber-400 hover:text-amber-300">✓</button>
-                        <button onClick={() => setEditing(false)} className="text-[10px] text-muted-foreground hover:text-foreground">✕</button>
+                        <button
+                            onClick={handleRename}
+                            className="rounded-full p-0.5 text-capsula-navy-deep transition-colors hover:bg-capsula-navy-soft"
+                            aria-label="Confirmar nombre"
+                        >
+                            <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={() => setEditing(false)}
+                            className="rounded-full p-0.5 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
+                            aria-label="Cancelar edición"
+                        >
+                            <XIcon className="h-3.5 w-3.5" />
+                        </button>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
-                        {isPaid
-                            ? <span className="text-xs font-black text-emerald-400">✓ {sub.label}</span>
-                            : (
-                                <button onClick={() => { setEditing(true); setLabelInput(sub.label); }}
-                                    className="text-xs font-black text-foreground hover:text-amber-400 transition">
-                                    ✏️ {sub.label}
-                                </button>
-                            )}
+                        {isPaid ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#2F6B4E]">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> {sub.label}
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => { setEditing(true); setLabelInput(sub.label); }}
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-capsula-ink transition-colors hover:text-capsula-navy-deep"
+                            >
+                                <Pencil className="h-3 w-3" />
+                                {sub.label}
+                            </button>
+                        )}
                     </div>
                 )}
                 {!isPaid && (
                     <button
                         disabled={isProcessing}
                         onClick={() => onDelete(sub.id)}
-                        className="text-[10px] text-red-400/60 hover:text-red-400 transition disabled:opacity-40 ml-2"
+                        className="ml-2 rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
                         title="Eliminar subcuenta"
+                        aria-label="Eliminar subcuenta"
                     >
-                        🗑
+                        <Trash2 className="h-3.5 w-3.5" />
                     </button>
                 )}
                 {isPaid && (
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                    <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E]">
                         PAGADA ${sub.paidAmount.toFixed(2)}
                     </span>
                 )}
             </div>
 
             {/* Items */}
-            <div className="px-3 py-2 space-y-1">
+            <div className="space-y-1 px-3 py-2">
                 {sub.items.length === 0 ? (
-                    <div className="text-[10px] text-muted-foreground text-center py-1">Sin ítems asignados</div>
+                    <div className="py-1 text-center text-[11px] text-capsula-ink-muted">Sin ítems asignados</div>
                 ) : (
                     sub.items.map((si) => (
-                        <div key={si.id} className="flex items-center justify-between text-[10px]">
-                            <span className="text-foreground/80 flex-1 truncate">
+                        <div key={si.id} className="flex items-center justify-between text-[11px]">
+                            <span className="flex-1 truncate text-capsula-ink-soft">
                                 {si.quantity}× {si.salesOrderItem.itemName}
                                 {si.salesOrderItem.modifiers.length > 0 && (
-                                    <span className="text-muted-foreground ml-1">
+                                    <span className="ml-1 text-capsula-ink-muted">
                                         ({si.salesOrderItem.modifiers.map((m) => m.name).join(', ')})
                                     </span>
                                 )}
                             </span>
-                            <span className="text-amber-400 font-bold ml-2">${si.lineTotal.toFixed(2)}</span>
+                            <span className="ml-2 font-medium tabular-nums text-capsula-navy-deep">${si.lineTotal.toFixed(2)}</span>
                             {!isPaid && (
                                 <button
                                     disabled={isProcessing}
                                     onClick={() => onUnassign(si.salesOrderItem.id, sub.id)}
-                                    className="ml-1.5 text-red-400/60 hover:text-red-400 transition disabled:opacity-40"
+                                    className="ml-1.5 rounded-full p-0.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
+                                    aria-label="Desasignar ítem"
                                 >
-                                    ✕
+                                    <XIcon className="h-3 w-3" />
                                 </button>
                             )}
                         </div>
@@ -324,20 +367,20 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
             </div>
 
             {/* Totals */}
-            <div className="border-t border-border/50 px-3 py-2 text-[10px] space-y-0.5">
-                <div className="flex justify-between text-muted-foreground">
+            <div className="space-y-0.5 border-t border-capsula-line px-3 py-2 text-[11px] tabular-nums">
+                <div className="flex justify-between text-capsula-ink-muted">
                     <span>Subtotal</span>
                     <span>${sub.subtotal.toFixed(2)}</span>
                 </div>
                 {sub.serviceCharge > 0 && (
-                    <div className="flex justify-between text-emerald-400/80">
+                    <div className="flex justify-between text-[#946A1C]">
                         <span>+10% servicio</span>
                         <span>${sub.serviceCharge.toFixed(2)}</span>
                     </div>
                 )}
-                <div className="flex justify-between font-black text-foreground border-t border-border/50 pt-1">
+                <div className="flex justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
                     <span>Total</span>
-                    <span>${sub.total.toFixed(2)}</span>
+                    <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${sub.total.toFixed(2)}</span>
                 </div>
             </div>
 
@@ -348,35 +391,43 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         <button
                             disabled={isProcessing || sub.items.length === 0}
                             onClick={() => { setShowPayForm(true); setAmountInput(totalWithService.toFixed(2)); }}
-                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-xs font-black rounded-xl transition"
+                            className="pos-btn w-full !min-h-0 py-2.5 text-xs disabled:opacity-40"
                         >
-                            💳 Cobrar {sub.label}
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Cobrar {sub.label}
                         </button>
                     ) : (
-                        <div className="space-y-2 pt-2 border-t border-border/50">
+                        <div className="space-y-2 border-t border-capsula-line pt-2">
                             {/* Service fee toggle */}
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" checked={serviceIncluded}
+                            <label className="flex cursor-pointer items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={serviceIncluded}
                                     onChange={(e) => {
                                         setServiceIncluded(e.target.checked);
                                         setAmountInput((sub.subtotal + (e.target.checked ? sub.serviceCharge : 0)).toFixed(2));
                                     }}
-                                    className="rounded border-border text-amber-500 focus:ring-amber-500"
+                                    className="rounded border-capsula-line accent-capsula-navy-deep"
                                 />
-                                <span className="text-[10px] text-foreground/70">+10% servicio</span>
-                                <span className="text-[10px] font-black text-emerald-400">
+                                <span className="text-[11px] text-capsula-ink-soft">+10% servicio</span>
+                                <span className="text-[11px] font-medium tabular-nums text-capsula-navy-deep">
                                     Total: ${totalWithService.toFixed(2)}
                                 </span>
                             </label>
                             {/* Method */}
                             <div className="grid grid-cols-3 gap-1">
                                 {PAY_METHODS.map((m) => (
-                                    <button key={m.id} onClick={() => setPayMethod(m.id)}
-                                        className={`text-[10px] font-black px-1 py-1.5 rounded-lg transition ${payMethod === m.id
-                                            ? 'bg-amber-500 text-black'
-                                            : 'bg-secondary text-foreground/70 hover:bg-muted'
-                                            }`}>
-                                        {m.label}
+                                    <button
+                                        key={m.id}
+                                        onClick={() => setPayMethod(m.id)}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-colors ${
+                                            payMethod === m.id
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                    >
+                                        <m.Icon className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">{m.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -385,20 +436,23 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                 type="number" min="0" step="0.01"
                                 value={amountInput}
                                 onChange={(e) => setAmountInput(e.target.value)}
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-black focus:border-amber-500 focus:outline-none"
+                                className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm font-medium tabular-nums text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 placeholder={`$${totalWithService.toFixed(2)}`}
                             />
                             <div className="flex gap-2">
-                                <button onClick={() => setShowPayForm(false)}
-                                    className="flex-1 py-2 bg-secondary text-xs font-bold rounded-xl">
+                                <button
+                                    onClick={() => setShowPayForm(false)}
+                                    className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep"
+                                >
                                     Cancelar
                                 </button>
                                 <button
                                     disabled={isProcessing}
                                     onClick={handlePayConfirm}
-                                    className="flex-[2] py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition disabled:opacity-40"
+                                    className="pos-btn flex-[2] !min-h-0 py-2 text-xs disabled:opacity-40"
                                 >
-                                    ✓ Confirmar
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Confirmar
                                 </button>
                             </div>
                         </div>
@@ -523,7 +577,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
     if (isLoading) {
         return (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center text-sm text-capsula-ink-muted">
                 Cargando subcuentas…
             </div>
         );
@@ -535,30 +589,39 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const paidSubs = tab.subAccounts.filter((s) => s.status === 'PAID');
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
             {/* ── Header ──────────────────────────────────────────────────── */}
-            <div className="px-3 py-2.5 border-b border-border bg-card/80 shrink-0 space-y-2">
+            <div className="shrink-0 space-y-2 border-b border-capsula-line bg-capsula-ivory-alt px-3 py-2.5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-foreground">÷ Subcuentas</span>
-                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-capsula-ink">
+                            <SplitSquareHorizontal className="h-4 w-4 text-capsula-ink-muted" />
+                            Subcuentas
+                        </span>
+                        <span className="rounded-full border border-capsula-navy/10 bg-capsula-navy-soft px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-capsula-navy">
                             {tab.subAccounts.length}/25
                         </span>
                     </div>
-                    <button onClick={onClose}
-                        className="text-xs text-muted-foreground hover:text-foreground transition px-2 py-1 rounded-lg hover:bg-secondary">
-                        ← Volver
+                    <button
+                        onClick={onClose}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-surface hover:text-capsula-ink"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Volver
                     </button>
                 </div>
 
                 {/* Quick split */}
                 <div className="space-y-1">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">División rápida</div>
+                    <div className="pos-label">División rápida</div>
                     <div className="flex gap-1">
                         {[2, 3, 4, 5, 6].map((n) => (
-                            <button key={n} disabled={isProcessing}
+                            <button
+                                key={n}
+                                disabled={isProcessing}
                                 onClick={() => handleAutoSplit(n)}
-                                className="flex-1 py-2 bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-xs font-black rounded-xl transition disabled:opacity-40">
+                                className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium tabular-nums text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-navy-deep disabled:opacity-40"
+                            >
                                 {n}
                             </button>
                         ))}
@@ -572,23 +635,24 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onChange={(e) => setNewLabel(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleCreateSub()}
                         placeholder={`Cuenta ${tab.subAccounts.length + 1}`}
-                        className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs focus:border-amber-500 focus:outline-none"
+                        className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory px-3 py-2 text-xs text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                     />
                     <button
                         disabled={isProcessing || tab.subAccounts.length >= 25}
                         onClick={handleCreateSub}
-                        className="px-3 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-xs font-black rounded-xl transition"
+                        className="pos-btn !min-h-0 px-3 py-2 text-xs disabled:opacity-40"
                     >
-                        + Nueva
+                        <Plus className="h-3.5 w-3.5" />
+                        Nueva
                     </button>
                 </div>
             </div>
 
             {/* ── Content ─────────────────────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto p-3">
                 {/* Open subcuentas */}
                 {openSubs.length === 0 && paidSubs.length === 0 && (
-                    <div className="text-xs text-muted-foreground text-center py-6">
+                    <div className="py-6 text-center text-xs text-capsula-ink-muted">
                         Crea subcuentas o usa División rápida
                     </div>
                 )}
@@ -609,11 +673,11 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 {poolItems.length > 0 && (
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                            <div className="h-px flex-1 bg-border/50" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">
+                            <div className="h-px flex-1 bg-capsula-line" />
+                            <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted">
                                 Pool sin asignar ({poolItems.length})
                             </span>
-                            <div className="h-px flex-1 bg-border/50" />
+                            <div className="h-px flex-1 bg-capsula-line" />
                         </div>
                         {poolItems.map((item) => (
                             <PoolItemRow
@@ -625,7 +689,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                                 onUnassign={handleUnassign}
                             />
                         ))}
-                        <div className="text-[10px] text-muted-foreground text-center">
+                        <div className="text-center text-[11px] text-capsula-ink-muted">
                             Los ítems del pool se cobran con el botón principal de la mesa
                         </div>
                     </div>
@@ -633,14 +697,14 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
                 {/* Summary row */}
                 {tab.subAccounts.length > 0 && (
-                    <div className="rounded-xl bg-secondary/50 border border-border/50 px-3 py-2 text-[10px] space-y-0.5">
-                        <div className="flex justify-between text-muted-foreground">
+                    <div className="space-y-0.5 rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-[11px] tabular-nums">
+                        <div className="flex justify-between text-capsula-ink-muted">
                             <span>Subcuentas cobradas</span>
                             <span>{paidSubs.length} / {tab.subAccounts.length}</span>
                         </div>
-                        <div className="flex justify-between font-black text-foreground">
+                        <div className="flex justify-between font-medium text-capsula-ink">
                             <span>Saldo restante mesa</span>
-                            <span className="text-amber-400">${tab.balanceDue.toFixed(2)}</span>
+                            <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${tab.balanceDue.toFixed(2)}</span>
                         </div>
                     </div>
                 )}

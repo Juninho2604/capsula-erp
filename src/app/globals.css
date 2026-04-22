@@ -90,6 +90,27 @@
     --tactile-inner:         inset 0 1px 2px rgba(11,23,39,0.04);
     --glass-background:      rgba(253, 251, 247, 0.78);
     --glass-border:          rgba(231, 226, 215, 0.6);
+
+    /* RGB triplets — consumibles por Tailwind con rgb(var(--X) / <alpha-value>) */
+    --capsula-coral-rgb:          242 92 59;
+    --capsula-coral-hover-rgb:    216 74 42;
+    --capsula-coral-light-rgb:    244 124 98;
+    --capsula-coral-subtle-rgb:   245 228 221;
+    --capsula-navy-rgb:           27 42 58;
+    --capsula-navy-deep-rgb:      11 23 39;
+    --capsula-navy-light-rgb:     37 61 92;
+    --capsula-navy-soft-rgb:      230 234 239;
+    --capsula-ivory-rgb:          247 245 240;
+    --capsula-ivory-surface-rgb:  253 251 247;
+    --capsula-ivory-alt-rgb:      239 236 229;
+    --capsula-line-rgb:           231 226 215;
+    --capsula-line-strong-rgb:    216 210 195;
+    --capsula-ink-rgb:            15 26 42;
+    --capsula-ink-soft-rgb:       58 70 86;
+    --capsula-ink-muted-rgb:      107 117 132;
+    --capsula-ink-faint-rgb:      148 160 176;
+    --capsula-gold-rgb:           255 217 61;
+    --capsula-gold-subtle-rgb:    255 251 235;
   }
 
   .dark {
@@ -112,6 +133,27 @@
     --border: 214 30% 22%;
     --input: 214 30% 22%;
     --ring: 42 27% 95%;
+
+    /* RGB triplets — Dark */
+    --capsula-coral-rgb:          242 92 59;
+    --capsula-coral-hover-rgb:    216 74 42;
+    --capsula-coral-light-rgb:    244 124 98;
+    --capsula-coral-subtle-rgb:   85 40 28;      /* coral muy oscuro */
+    --capsula-navy-rgb:           37 61 92;      /* brightens a bit in dark */
+    --capsula-navy-deep-rgb:      11 23 39;
+    --capsula-navy-light-rgb:     58 85 128;
+    --capsula-navy-soft-rgb:      46 62 84;      /* pill activo en dark */
+    --capsula-ivory-rgb:          15 26 42;      /* base bg en dark */
+    --capsula-ivory-surface-rgb:  21 33 52;      /* cards en dark */
+    --capsula-ivory-alt-rgb:      11 23 39;      /* secciones en dark */
+    --capsula-line-rgb:           37 61 92;
+    --capsula-line-strong-rgb:    53 80 111;
+    --capsula-ink-rgb:            247 245 240;   /* texto principal claro */
+    --capsula-ink-soft-rgb:       205 213 222;
+    --capsula-ink-muted-rgb:      148 160 176;
+    --capsula-ink-faint-rgb:      107 117 132;
+    --capsula-gold-rgb:           255 217 61;
+    --capsula-gold-subtle-rgb:    66 52 11;
 
     --capsula-ivory:         #0F1A2A;
     --capsula-ivory-surface: #152134;
@@ -265,6 +307,96 @@
     box-shadow: var(--tactile-shadow-raised);
   }
   .pos-tile:active { transform: scale(0.98); }
+
+  /* ── POS — utilidades complementarias (Minimal Navy) ── */
+  .pos-card {
+    background: var(--capsula-ivory-surface);
+    border: 1px solid var(--capsula-line);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(11,23,39,0.04), 0 2px 8px rgba(11,23,39,0.04);
+  }
+  .pos-panel {
+    background: var(--capsula-ivory-alt);
+    border: 1px solid var(--capsula-line);
+    border-radius: 1rem;
+  }
+  .pos-input {
+    width: 100%;
+    background: var(--capsula-ivory);
+    border: 1px solid var(--capsula-line);
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    color: var(--capsula-ink);
+    font-size: 0.875rem;
+    transition: border-color .15s ease;
+  }
+  .pos-input:focus {
+    outline: none;
+    border-color: var(--capsula-navy-deep);
+  }
+  .pos-input:disabled {
+    opacity: 0.5;
+    background: var(--capsula-ivory-alt);
+  }
+  .pos-kicker {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--capsula-ink-muted);
+  }
+  .pos-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--capsula-ink-muted);
+    margin-bottom: 0.25rem;
+  }
+  .pos-heading-lg {
+    font-family: var(--font-heading), Georgia, serif;
+    font-size: 1.875rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--capsula-navy-deep);
+    font-variant-numeric: tabular-nums;
+  }
+  .pos-amount {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--capsula-ink);
+  }
+  .pos-amount-lg {
+    font-family: var(--font-heading), Georgia, serif;
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--capsula-navy-deep);
+  }
+  /* Soft status pills — coinciden con variants de Badge */
+  .pos-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .pos-badge-neutral { border-color: var(--capsula-line);   background: var(--capsula-ivory-alt); color: var(--capsula-ink-soft); }
+  .pos-badge-ok      { border-color: #D3E2D8; background: #E5EDE7; color: #2F6B4E; }
+  .pos-badge-warn    { border-color: #E8D9B8; background: #F3EAD6; color: #946A1C; }
+  .pos-badge-danger  { border-color: #EFD2C8; background: #F7E3DB; color: #B04A2E; }
+  .pos-badge-info    { border-color: #D1DCE9; background: #E6ECF4; color: #2A4060; }
+  .pos-badge-coral   { border-color: rgba(242,92,59,0.2);  background: var(--capsula-coral-subtle); color: var(--capsula-coral); }
+  .pos-badge-navy    { border-color: rgba(27,42,58,0.1);   background: var(--capsula-navy-soft);    color: var(--capsula-navy); }
+  /* Divider y hover row reutilizables */
+  .pos-divider { border-color: var(--capsula-line); }
+  .pos-row:hover { background: color-mix(in srgb, var(--capsula-ivory-alt) 60%, transparent); }
 }
 
 @layer utilities {

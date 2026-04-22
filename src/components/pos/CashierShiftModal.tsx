@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import { UserCircle2, ArrowRight } from 'lucide-react';
 
 const STORAGE_KEY = 'shanklish_cashier_shift';
 
@@ -60,25 +61,27 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
     if (!isVisible) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4">
-            <div className="bg-card border border-border p-6 rounded-2xl shadow-2xl w-full max-w-sm text-foreground">
-                <div className="text-center mb-6">
-                    <div className="text-4xl mb-2">👩🏻‍💻</div>
-                    <h2 className="text-xl font-black">Apertura de Caja</h2>
-                    <p className="text-sm text-muted-foreground">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-deep">
+                <div className="mb-6 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy">
+                        <UserCircle2 className="h-6 w-6" />
+                    </div>
+                    <h2 className="font-heading text-xl tracking-[-0.02em] text-capsula-navy-deep">Apertura de caja</h2>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
                         {forceOpen ? 'Cambio de cajera' : 'Ingresa tu nombre para iniciar el turno (una vez al día)'}
                     </p>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase">Nombre de Cajera</label>
+                        <label className="pos-label">Nombre de cajera</label>
                         <input
                             type="text"
                             value={name}
                             onChange={e => setName(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleOpen()}
-                            className="w-full bg-background border border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground focus:outline-none focus:border-primary transition"
+                            className="w-full rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 text-lg font-medium text-capsula-ink transition-colors focus:border-capsula-navy-deep focus:outline-none"
                             placeholder="Ej: María Pérez"
                             autoFocus
                         />
@@ -87,9 +90,10 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
                     <button
                         onClick={handleOpen}
                         disabled={!name.trim()}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-black text-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="pos-btn w-full !min-h-[56px] text-base disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {forceOpen ? 'Cambiar Cajera →' : 'Abrir Turno →'}
+                        {forceOpen ? 'Cambiar cajera' : 'Abrir turno'}
+                        <ArrowRight className="ml-2 h-4 w-4" />
                     </button>
                 </div>
             </div>

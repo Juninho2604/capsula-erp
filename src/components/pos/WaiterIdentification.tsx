@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChefHat, AlertTriangle, Delete, ArrowRight } from "lucide-react";
 import {
     getActiveWaitersAction,
     validateWaiterPinAction,
@@ -20,15 +21,14 @@ interface WaiterSummary {
     hasPin: boolean;
 }
 
+// Paleta de avatares alineada a Minimal Navy (subtle pills)
 const AVATAR_PALETTE = [
-    "bg-emerald-500/20 text-emerald-300",
-    "bg-amber-500/20 text-amber-300",
-    "bg-sky-500/20 text-sky-300",
-    "bg-rose-500/20 text-rose-300",
-    "bg-violet-500/20 text-violet-300",
-    "bg-teal-500/20 text-teal-300",
-    "bg-orange-500/20 text-orange-300",
-    "bg-fuchsia-500/20 text-fuchsia-300",
+    "bg-capsula-navy-soft text-capsula-navy",
+    "bg-[#E5EDE7] text-[#2F6B4E]",
+    "bg-[#F3EAD6] text-[#946A1C]",
+    "bg-capsula-coral-subtle text-capsula-coral",
+    "bg-[#E6ECF4] text-[#2A4060]",
+    "bg-capsula-ivory-alt text-capsula-ink-soft",
 ];
 
 function paletteFor(id: string) {
@@ -101,7 +101,6 @@ export function WaiterIdentification({
         }
     };
 
-    // Teclado: Enter valida cuando el PIN tiene ≥ 4 dígitos
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key >= "0" && e.key <= "9") handleDigit(e.key);
@@ -117,46 +116,49 @@ export function WaiterIdentification({
     const waitersWithPin = waiters.filter((w) => w.hasPin);
 
     return (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center px-4 py-6 overflow-y-auto">
-            <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-capsula-ivory px-4 py-6">
+            <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
                 {/* Header */}
                 <div className="text-center">
-                    <div className="text-5xl mb-3">🧑‍🍳</div>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy">
+                        <ChefHat className="h-7 w-7" />
+                    </div>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-navy-deep md:text-4xl">
                         ¿Quién eres?
                     </h1>
-                    <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest mt-2">
+                    <p className="pos-kicker mt-2">
                         Introduce tu PIN para identificarte
                     </p>
                 </div>
 
                 {/* Avatares de mesoneros activos */}
                 {isLoading ? (
-                    <div className="text-muted-foreground text-sm">Cargando mesoneros…</div>
+                    <div className="text-sm text-capsula-ink-muted">Cargando mesoneros…</div>
                 ) : waitersWithPin.length === 0 ? (
-                    <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl px-6 py-4 text-center max-w-md">
-                        <p className="text-amber-400 text-sm font-bold">
+                    <div className="max-w-md rounded-2xl border border-[#E8D9B8] bg-[#F3EAD6]/60 px-6 py-4 text-center">
+                        <p className="flex items-center justify-center gap-2 text-sm font-medium text-[#946A1C]">
+                            <AlertTriangle className="h-4 w-4" />
                             Ningún mesonero tiene PIN configurado.
                         </p>
-                        <p className="text-muted-foreground text-xs mt-1">
+                        <p className="mt-1 text-xs text-capsula-ink-soft">
                             Solicita al administrador que asigne PINs desde el módulo Mesoneros.
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 max-w-2xl">
+                    <div className="grid max-w-2xl grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
                         {waitersWithPin.map((w) => (
                             <div
                                 key={w.id}
-                                className="flex flex-col items-center gap-1.5 opacity-70"
+                                className="flex flex-col items-center gap-1.5 opacity-80"
                             >
                                 <div
-                                    className={`h-14 w-14 md:h-16 md:w-16 rounded-full flex items-center justify-center font-black text-lg md:text-xl ${paletteFor(
+                                    className={`flex h-14 w-14 items-center justify-center rounded-full text-lg font-medium md:h-16 md:w-16 md:text-xl ${paletteFor(
                                         w.id,
                                     )}`}
                                 >
                                     {initialsOf(w.firstName, w.lastName)}
                                 </div>
-                                <p className="text-[10px] md:text-xs font-bold text-foreground/80 text-center leading-tight">
+                                <p className="text-center text-[11px] font-medium leading-tight text-capsula-ink-soft md:text-xs">
                                     {w.firstName}
                                 </p>
                             </div>
@@ -165,30 +167,30 @@ export function WaiterIdentification({
                 )}
 
                 {/* PIN display */}
-                <div className="flex gap-3 items-center justify-center mt-2">
+                <div className="mt-2 flex items-center justify-center gap-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div
                             key={i}
-                            className={`h-4 w-4 md:h-5 md:w-5 rounded-full border-2 transition-all ${
+                            className={`h-4 w-4 rounded-full border-2 transition-all md:h-5 md:w-5 ${
                                 pin.length > i
-                                    ? "bg-emerald-400 border-emerald-400 scale-110"
-                                    : "border-muted-foreground/40"
+                                    ? "scale-110 border-capsula-navy-deep bg-capsula-navy-deep"
+                                    : "border-capsula-line-strong"
                             }`}
                         />
                     ))}
                 </div>
                 {error && (
-                    <p className="text-red-400 text-sm font-bold -mt-2">{error}</p>
+                    <p className="-mt-2 text-sm font-medium text-capsula-coral">{error}</p>
                 )}
 
                 {/* Numeric keypad */}
-                <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+                <div className="grid w-full max-w-xs grid-cols-3 gap-3">
                     {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
                         <button
                             key={d}
                             onClick={() => handleDigit(d)}
                             disabled={isValidating}
-                            className="h-16 rounded-2xl bg-secondary hover:bg-muted border border-border text-2xl font-black text-foreground transition active:scale-90 disabled:opacity-40"
+                            className="pos-btn pos-btn-secondary !min-h-[64px] text-2xl disabled:opacity-40"
                         >
                             {d}
                         </button>
@@ -196,23 +198,24 @@ export function WaiterIdentification({
                     <button
                         onClick={handleClear}
                         disabled={isValidating}
-                        className="h-16 rounded-2xl bg-secondary/50 hover:bg-red-500/10 border border-border text-sm font-black text-red-400 transition active:scale-90 disabled:opacity-40"
+                        className="pos-btn pos-btn-secondary !min-h-[64px] text-sm text-capsula-coral disabled:opacity-40"
                     >
                         Limpiar
                     </button>
                     <button
                         onClick={() => handleDigit("0")}
                         disabled={isValidating}
-                        className="h-16 rounded-2xl bg-secondary hover:bg-muted border border-border text-2xl font-black text-foreground transition active:scale-90 disabled:opacity-40"
+                        className="pos-btn pos-btn-secondary !min-h-[64px] text-2xl disabled:opacity-40"
                     >
                         0
                     </button>
                     <button
                         onClick={handleDelete}
                         disabled={isValidating}
-                        className="h-16 rounded-2xl bg-secondary/50 hover:bg-muted border border-border text-sm font-black text-muted-foreground transition active:scale-90 disabled:opacity-40"
+                        className="pos-btn pos-btn-secondary !min-h-[64px] disabled:opacity-40"
+                        aria-label="Borrar"
                     >
-                        ⌫
+                        <Delete className="h-6 w-6" />
                     </button>
                 </div>
 
@@ -220,9 +223,14 @@ export function WaiterIdentification({
                 <button
                     onClick={handleValidate}
                     disabled={pin.length < 4 || isValidating}
-                    className="w-full max-w-xs py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base tracking-wider uppercase transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/20"
+                    className="pos-btn w-full max-w-xs !min-h-[64px] text-base tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                    {isValidating ? "Validando…" : "Entrar"}
+                    {isValidating ? "Validando…" : (
+                        <>
+                            Entrar
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                    )}
                 </button>
             </div>
         </div>
