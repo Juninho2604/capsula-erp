@@ -363,54 +363,76 @@ export default function PurchaseOrderView() {
             {/* ===== AUTO: Generar Automática ===== */}
             {viewMode === 'auto' && (
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">⚠️ Items con Stock Bajo</h2>
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-capsula-line bg-capsula-ivory px-6 py-4">
+                            <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                                <AlertTriangle className="h-4 w-4 text-capsula-coral" strokeWidth={1.5} />
+                                Ítems con stock bajo
+                            </h2>
                             <div className="flex items-center gap-2">
-                                <button
-                                    onClick={handleCreateReorderAlerts}
-                                    disabled={isSubmitting}
-                                    className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 font-medium transition-colors disabled:opacity-50"
-                                >
-                                    🔔 Enviar alertas
+                                <Button variant="outline" size="sm" onClick={handleCreateReorderAlerts} disabled={isSubmitting}>
+                                    <Bell className="h-3.5 w-3.5" strokeWidth={1.5} /> Enviar alertas
+                                </Button>
+                                <button onClick={addAllSuggestions} className="inline-flex items-center gap-1 text-[12px] font-medium text-capsula-navy hover:text-capsula-navy-deep">
+                                    Agregar todos <Plus className="h-3 w-3" strokeWidth={2} />
                                 </button>
-                                <button onClick={addAllSuggestions} className="text-sm text-amber-600 hover:text-amber-700 font-medium">Agregar todos →</button>
                             </div>
                         </div>
                         <div className="max-h-[60vh] overflow-y-auto">
                             {lowStockItems.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500">
-                                    <span className="text-4xl">🎉</span>
-                                    <p className="mt-2">¡No hay items con stock bajo!</p>
-                                    <p className="text-sm mt-1">¿Ya configuraste los mínimos? Ve a <button onClick={() => setViewMode('config')} className="text-amber-600 underline">⚙️ Stock Mín.</button></p>
+                                <div className="p-10 text-center">
+                                    <PartyPopper className="mx-auto h-10 w-10 text-capsula-ink-faint" strokeWidth={1.5} />
+                                    <p className="mt-3 font-medium text-capsula-ink">¡No hay items con stock bajo!</p>
+                                    <p className="mt-1 text-[12px] text-capsula-ink-muted">
+                                        ¿Ya configuraste los mínimos? Ve a{' '}
+                                        <button onClick={() => setViewMode('config')} className="text-capsula-coral underline hover:text-capsula-coral-hover">Stock mín.</button>
+                                    </p>
                                 </div>
                             ) : (
                                 Object.entries(lowStockByCategory).map(([cat, items]) => (
                                     <div key={cat}>
-                                        <div className="sticky top-0 bg-red-50 dark:bg-red-900/20 px-6 py-1.5 border-b border-red-200 dark:border-red-800">
-                                            <span className="text-xs font-semibold text-red-700 dark:text-red-400">📂 {cat} ({items.length})</span>
+                                        <div className="sticky top-0 z-10 border-b border-capsula-coral/30 bg-capsula-coral-subtle/50 px-6 py-1.5">
+                                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-coral">
+                                                <FolderOpen className="h-3 w-3" strokeWidth={1.5} /> {cat} ({items.length})
+                                            </span>
                                         </div>
-                                        {items.map(item => (
-                                            <div key={item.id} className={cn("flex items-center justify-between px-6 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700", item.isCritical && 'bg-red-50/50 dark:bg-red-900/10')}>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-sm text-gray-900 dark:text-white truncate">{item.isCritical && '🔴 '}{item.name}</p>
-                                                    <p className="text-xs text-gray-500">Stock: <span className="text-red-600 font-medium">{formatNumber(item.currentStock)}</span> / Mín: {formatNumber(item.minimumStock)} {item.baseUnit}</p>
+                                        {items.map(item => {
+                                            const alreadyIn = orderItems.some(oi => oi.inventoryItemId === item.id);
+                                            return (
+                                                <div key={item.id} className={cn("flex items-center justify-between border-b border-capsula-line px-6 py-2.5 hover:bg-capsula-ivory", item.isCritical && 'bg-capsula-coral-subtle/20')}>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="inline-flex items-center gap-1.5 truncate text-[13px] font-medium text-capsula-ink">
+                                                            {item.isCritical && <AlertOctagon className="h-3.5 w-3.5 text-capsula-coral" strokeWidth={1.5} />}
+                                                            {item.name}
+                                                        </p>
+                                                        <p className="text-[11px] text-capsula-ink-muted">
+                                                            Stock: <span className="font-mono font-medium text-capsula-coral">{formatNumber(item.currentStock)}</span>{' '}
+                                                            / Mín: <span className="font-mono">{formatNumber(item.minimumStock)}</span> {item.baseUnit}
+                                                        </p>
+                                                    </div>
+                                                    <div className="ml-4 flex items-center gap-2">
+                                                        <span className="font-mono text-[13px] text-[#946A1C]">+{formatNumber(item.suggestedQuantity)}</span>
+                                                        <button
+                                                            onClick={() => addFromSuggestion(item)}
+                                                            disabled={alreadyIn}
+                                                            className={cn(
+                                                                "inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                                                                alreadyIn
+                                                                    ? "border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]"
+                                                                    : "border-capsula-line bg-capsula-ivory-surface text-capsula-navy hover:border-capsula-navy-deep/40 hover:bg-capsula-navy-soft",
+                                                            )}
+                                                        >
+                                                            {alreadyIn ? <><Check className="h-3 w-3" strokeWidth={2} /> Agregado</> : 'Agregar'}
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 ml-4">
-                                                    <span className="text-sm font-mono text-amber-600">+{formatNumber(item.suggestedQuantity)}</span>
-                                                    <button onClick={() => addFromSuggestion(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
-                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ))
                             )}
                         </div>
                     </div>
-                    {/* Order form panel */}
                     {renderOrderForm()}
                 </div>
             )}
@@ -421,18 +443,20 @@ export default function PurchaseOrderView() {
                     <div className="lg:col-span-2">
                         <WhatsAppPurchaseOrderParser onOrderReady={handleWhatsAppOrderReady} />
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-amber-50/50 dark:bg-gray-800 dark:border-gray-700 p-6">
-                        <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">💡 Cómo usar</h3>
-                        <ol className="text-sm text-amber-900 dark:text-amber-100 space-y-2 list-decimal list-inside">
-                            <li>Exporta o copia el chat de WhatsApp con tu proveedor</li>
-                            <li>Pega el texto en el área de la izquierda</li>
-                            <li>Haz clic en &quot;Analizar Orden&quot;</li>
-                            <li>Revisa y corrige los items reconocidos</li>
-                            <li>Haz clic en &quot;Cargar items a la orden&quot;</li>
-                            <li>Completa proveedor, fecha y crea la orden</li>
+                    <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral-subtle/30 p-6 shadow-cap-soft">
+                        <h3 className="mb-3 inline-flex items-center gap-2 font-medium text-capsula-coral">
+                            <Lightbulb className="h-4 w-4" strokeWidth={1.5} /> Cómo usar
+                        </h3>
+                        <ol className="list-decimal list-inside space-y-2 text-[13px] text-capsula-ink-soft">
+                            <li>Exporta o copia el chat de WhatsApp con tu proveedor.</li>
+                            <li>Pega el texto en el área de la izquierda.</li>
+                            <li>Haz clic en &quot;Analizar orden&quot;.</li>
+                            <li>Revisa y corrige los items reconocidos.</li>
+                            <li>Haz clic en &quot;Cargar items a la orden&quot;.</li>
+                            <li>Completa proveedor, fecha y crea la orden.</li>
                         </ol>
-                        <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">
-                            Formatos soportados: 2 kg Arroz, 5x Aceite, 10 unidades Harina, etc.
+                        <p className="mt-4 text-[11px] text-capsula-ink-muted">
+                            Formatos soportados: 2 kg Arroz, 5× Aceite, 10 unidades Harina, etc.
                         </p>
                     </div>
                 </div>
@@ -441,20 +465,50 @@ export default function PurchaseOrderView() {
             {/* ===== CREATE: Manual ===== */}
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-gray-900 dark:text-white">🔍 Buscar Items</h2></div>
+                    <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                        <div className="border-b border-capsula-line bg-capsula-ivory px-6 py-4">
+                            <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                                <Search className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} /> Buscar ítems
+                            </h2>
+                        </div>
                         <div className="p-6">
-                            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Escriba para buscar..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" strokeWidth={1.5} />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Escriba para buscar…"
+                                    className="w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface py-2.5 pl-10 pr-3 text-[14px] text-capsula-ink outline-none placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep"
+                                />
+                            </div>
                             {filteredItems.length > 0 && (
-                                <div className="mt-3 border rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
-                                    {filteredItems.map(item => (
-                                        <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <div><p className="font-medium text-gray-900 dark:text-white">{item.name}</p><p className="text-xs text-gray-500">Stock: {formatNumber(item.currentStock)} {item.baseUnit} · {item.category || 'Sin cat.'}</p></div>
-                                            <button onClick={() => addManualItem(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)} className="px-3 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50">
-                                                {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
-                                            </button>
-                                        </div>
-                                    ))}
+                                <div className="mt-3 overflow-hidden rounded-[var(--radius)] border border-capsula-line">
+                                    {filteredItems.map(item => {
+                                        const alreadyIn = orderItems.some(oi => oi.inventoryItemId === item.id);
+                                        return (
+                                            <div key={item.id} className="flex items-center justify-between border-b border-capsula-line px-4 py-3 last:border-b-0 hover:bg-capsula-ivory">
+                                                <div>
+                                                    <p className="font-medium text-capsula-ink">{item.name}</p>
+                                                    <p className="text-[11px] text-capsula-ink-muted">
+                                                        Stock: <span className="font-mono">{formatNumber(item.currentStock)}</span> {item.baseUnit} · {item.category || 'Sin cat.'}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => addManualItem(item)}
+                                                    disabled={alreadyIn}
+                                                    className={cn(
+                                                        "inline-flex items-center gap-1 rounded-md border px-3 py-1 text-[11px] font-medium transition-colors",
+                                                        alreadyIn
+                                                            ? "border-[#D3E2D8] bg-[#E5EDE7] text-[#2F6B4E]"
+                                                            : "border-capsula-line bg-capsula-ivory-surface text-capsula-navy hover:border-capsula-navy-deep/40 hover:bg-capsula-navy-soft",
+                                                    )}
+                                                >
+                                                    {alreadyIn ? <><Check className="h-3 w-3" strokeWidth={2} /> Agregado</> : 'Agregar'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -537,41 +591,90 @@ export default function PurchaseOrderView() {
     function getStatusLabel(status: string) { return { DRAFT: 'Borrador', SENT: 'Enviada', PARTIAL: 'Parcial', RECEIVED: 'Recibida', CANCELLED: 'Cancelada' }[status] || status; }
 
     function renderOrderForm() {
+        const inputCls = 'w-full rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2.5 text-[14px] text-capsula-ink outline-none transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep';
+        const labelCls = 'mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-muted';
         return (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-gray-900 dark:text-white">📋 Nueva Orden de Compra</h2></div>
-                <div className="p-6 space-y-4">
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de orden (opcional)</label>
-                        <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proveedor (opcional)</label>
-                        <select value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                            <option value="">Sin proveedor específico</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de entrega esperada</label>
-                        <input type="date" value={expectedDate} onChange={e => setExpectedDate(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items a comprar ({orderItems.length})</label>
-                        {orderItems.length === 0 ? <p className="text-sm text-gray-500 italic">Agrega items desde el panel izquierdo</p> : (
-                            <div className="border rounded-lg max-h-72 overflow-y-auto">
+            <div className="overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
+                <div className="border-b border-capsula-line bg-capsula-ivory px-6 py-4">
+                    <h2 className="inline-flex items-center gap-2 font-medium text-capsula-ink">
+                        <FileText className="h-4 w-4 text-capsula-navy" strokeWidth={1.5} /> Nueva orden de compra
+                    </h2>
+                </div>
+                <div className="space-y-4 p-6">
+                    <div>
+                        <label className={labelCls}>Nombre de orden (opcional)</label>
+                        <input
+                            type="text"
+                            value={orderName}
+                            onChange={e => setOrderName(e.target.value)}
+                            placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X…"
+                            className={inputCls}
+                        />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Proveedor (opcional)</label>
+                        <select value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)} className={inputCls}>
+                            <option value="">Sin proveedor específico</option>
+                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Fecha de entrega esperada</label>
+                        <input type="date" value={expectedDate} onChange={e => setExpectedDate(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Ítems a comprar ({orderItems.length})</label>
+                        {orderItems.length === 0 ? (
+                            <p className="text-[13px] italic text-capsula-ink-muted">Agrega ítems desde el panel izquierdo</p>
+                        ) : (
+                            <div className="max-h-72 overflow-y-auto rounded-[var(--radius)] border border-capsula-line">
                                 {Object.entries(orderItemsByCategory).map(([cat, items]) => (
                                     <div key={cat}>
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1 border-b border-amber-200 dark:border-amber-800"><span className="text-xs font-semibold text-amber-700">{cat}</span></div>
+                                        <div className="border-b border-capsula-line bg-capsula-ivory px-3 py-1.5">
+                                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
+                                                <FolderOpen className="h-3 w-3 text-capsula-navy" strokeWidth={1.5} /> {cat}
+                                            </span>
+                                        </div>
                                         {items.map(item => (
-                                            <div key={item.rowId} className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
-                                                <span className="flex-1 text-sm truncate">{item.name}</span>
-                                                <input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.rowId, parseFloat(e.target.value) || 0)} className="w-16 px-1.5 py-1 text-sm rounded border border-gray-200 text-center" min="0" step="0.1" />
-                                                <span className="text-xs text-gray-500 w-8">{item.unit}</span>
-                                                <button type="button" onClick={() => removeItem(item.rowId)} className="text-red-500 hover:text-red-700 text-sm flex-shrink-0">✕</button>
+                                            <div key={item.rowId} className="flex items-center gap-2 border-b border-capsula-line px-3 py-1.5 last:border-b-0">
+                                                <span className="flex-1 truncate text-[12.5px] text-capsula-ink">{item.name}</span>
+                                                <input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={e => updateItemQuantity(item.rowId, parseFloat(e.target.value) || 0)}
+                                                    className="w-16 rounded border border-capsula-line bg-capsula-ivory-surface px-1.5 py-1 text-center font-mono text-[12px] text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                                    min="0" step="0.1"
+                                                />
+                                                <span className="w-8 text-[11px] text-capsula-ink-muted">{item.unit}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(item.rowId)}
+                                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral"
+                                                >
+                                                    <X className="h-3 w-3" strokeWidth={1.5} />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
                                 ))}
                             </div>
-                        )}</div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas (opcional)</label>
-                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Instrucciones especiales..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <button onClick={handleCreateOrder} disabled={orderItems.length === 0 || isSubmitting} className="w-full py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all">
-                        {isSubmitting ? 'Creando...' : `📝 Crear Orden (${orderItems.length} items)`}
-                    </button>
+                        )}
+                    </div>
+                    <div>
+                        <label className={labelCls}>Notas (opcional)</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Instrucciones especiales…" className={inputCls} />
+                    </div>
+                    <Button
+                        variant="primary"
+                        size="lg"
+                        onClick={handleCreateOrder}
+                        disabled={orderItems.length === 0 || isSubmitting}
+                        isLoading={isSubmitting}
+                        className="w-full"
+                    >
+                        <FileText className="h-4 w-4" strokeWidth={1.5} />
+                        {isSubmitting ? 'Creando…' : `Crear orden (${orderItems.length} ítems)`}
+                    </Button>
                 </div>
             </div>
         );
