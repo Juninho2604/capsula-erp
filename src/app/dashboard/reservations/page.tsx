@@ -1,16 +1,18 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getReservations } from '@/app/actions/games.actions';
+import { CalendarDays, Check, Gamepad2 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 export const metadata = { title: 'Reservaciones | CAPSULA ERP' };
 
-const STATUS_CONFIG = {
-    PENDING:    { label: 'Pendiente',    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
-    CONFIRMED:  { label: 'Confirmada',   cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
-    CHECKED_IN: { label: 'Check-in',     cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' },
-    NO_SHOW:    { label: 'No se presentó', cls: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' },
-    CANCELLED:  { label: 'Cancelada',    cls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500' },
-} as const;
+const STATUS_CONFIG: Record<string, { label: string; variant: 'warn' | 'info' | 'ok' | 'danger' | 'neutral' }> = {
+    PENDING:    { label: 'Pendiente',      variant: 'warn' },
+    CONFIRMED:  { label: 'Confirmada',     variant: 'info' },
+    CHECKED_IN: { label: 'Check-in',       variant: 'ok' },
+    NO_SHOW:    { label: 'No se presentó', variant: 'danger' },
+    CANCELLED:  { label: 'Cancelada',      variant: 'neutral' },
+};
 
 export default async function ReservationsPage() {
     const session = await getSession();
@@ -30,77 +32,73 @@ export default async function ReservationsPage() {
     );
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 animate-in">
+            <div className="flex items-center gap-3 border-b border-capsula-line pb-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                    <CalendarDays className="h-4 w-4" strokeWidth={1.5} />
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">📅 Reservaciones</h1>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        {activeReservations.length} activa{activeReservations.length !== 1 ? 's' : ''} para hoy ·{' '}
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Servicio</div>
+                    <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Reservaciones</h1>
+                    <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                        <span className="font-mono">{activeReservations.length}</span> activa{activeReservations.length !== 1 ? 's' : ''} para hoy ·{' '}
                         {new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
                 </div>
             </div>
 
-            {/* Active reservations */}
             {activeReservations.length === 0 && passedReservations.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
-                    <p className="text-4xl">📅</p>
-                    <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
+                <div className="rounded-[var(--radius)] border border-dashed border-capsula-line p-12 text-center">
+                    <CalendarDays className="mx-auto h-10 w-10 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                    <p className="mt-2 text-[13px] font-medium text-capsula-ink-soft">
                         Sin reservaciones para hoy
                     </p>
                 </div>
             ) : (
                 <div className="space-y-2">
                     {[...activeReservations, ...passedReservations].map(r => {
-                        const cfg = STATUS_CONFIG[r.status as keyof typeof STATUS_CONFIG]
-                            ?? STATUS_CONFIG.PENDING;
+                        const cfg = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.PENDING;
+                        const rowStyles =
+                            r.status === 'CHECKED_IN'
+                                ? 'border-[#2F6B4E]/30 bg-[#E5EDE7]/40'
+                                : r.status === 'CANCELLED' || r.status === 'NO_SHOW'
+                                ? 'border-capsula-line bg-capsula-ivory-alt/40 opacity-60'
+                                : 'border-capsula-line bg-capsula-ivory-surface';
 
                         return (
                             <div
                                 key={r.id}
-                                className={`flex items-center gap-4 rounded-xl border px-5 py-3 transition-colors ${
-                                    r.status === 'CHECKED_IN'
-                                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/10'
-                                        : r.status === 'CANCELLED' || r.status === 'NO_SHOW'
-                                        ? 'border-gray-100 bg-gray-50 opacity-60 dark:border-gray-800 dark:bg-gray-900/50'
-                                        : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
-                                }`}
+                                className={`flex items-center gap-4 rounded-[var(--radius)] border px-5 py-3 transition-colors ${rowStyles}`}
                             >
-                                {/* Game type icon */}
-                                <span className="text-2xl">{r.station.gameType.icon ?? '🎮'}</span>
+                                <span className="text-2xl">{r.station.gameType.icon ?? <Gamepad2 className="h-5 w-5 text-capsula-ink-soft inline" strokeWidth={1.5} />}</span>
 
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                        <p className="font-medium text-gray-900 dark:text-white">{r.customerName}</p>
+                                        <p className="font-medium text-capsula-ink">{r.customerName}</p>
                                         {r.customerPhone && (
-                                            <span className="text-xs text-gray-400">{r.customerPhone}</span>
+                                            <span className="font-mono text-[11px] text-capsula-ink-muted">{r.customerPhone}</span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {r.station.name} · {r.guestCount} persona{r.guestCount !== 1 ? 's' : ''}
+                                    <p className="text-[12.5px] text-capsula-ink-soft">
+                                        {r.station.name} · <span className="font-mono">{r.guestCount}</span> persona{r.guestCount !== 1 ? 's' : ''}
                                         {r.wristbandPlan && ` · ${r.wristbandPlan.name}`}
                                     </p>
                                 </div>
 
-                                {/* Time */}
-                                <div className="text-right shrink-0">
-                                    <p className="font-semibold text-gray-800 dark:text-gray-200">
+                                <div className="shrink-0 text-right">
+                                    <p className="font-mono text-[13px] font-semibold text-capsula-navy-deep">
                                         {new Date(r.scheduledStart).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
                                         {' — '}
                                         {new Date(r.scheduledEnd).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                     {r.depositAmount > 0 && (
-                                        <p className={`text-xs ${r.depositPaid ? 'text-green-500' : 'text-amber-500'}`}>
-                                            Depósito ${r.depositAmount.toFixed(2)} {r.depositPaid ? '✓' : '(pendiente)'}
+                                        <p className={`flex items-center justify-end gap-1 text-[11px] font-mono ${r.depositPaid ? 'text-[#2F6B4E]' : 'text-[#946A1C]'}`}>
+                                            Depósito ${r.depositAmount.toFixed(2)} {r.depositPaid ? <Check className="h-3 w-3" strokeWidth={2} /> : '(pendiente)'}
                                         </p>
                                     )}
                                 </div>
 
-                                {/* Status */}
-                                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.cls}`}>
-                                    {cfg.label}
-                                </span>
+                                <Badge variant={cfg.variant}>{cfg.label}</Badge>
                             </div>
                         );
                     })}

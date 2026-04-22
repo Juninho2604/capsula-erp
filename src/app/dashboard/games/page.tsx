@@ -1,18 +1,20 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getGameStations, getActiveSessions, getGamesDashboardStats } from '@/app/actions/games.actions';
+import { Gamepad2, Coins } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 export const metadata = {
     title: 'Juegos | CAPSULA ERP',
     description: 'Gestión de estaciones de juego y sesiones activas',
 };
 
-const STATUS_CONFIG = {
-    AVAILABLE:   { label: 'Disponible',   dot: '●', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' },
-    IN_USE:      { label: 'En Uso',       dot: '●', cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400' },
-    RESERVED:    { label: 'Reservado',    dot: '●', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
-    MAINTENANCE: { label: 'Mantenimiento',dot: '●', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
-} as const;
+const STATUS_CONFIG: Record<string, { label: string; variant: 'ok' | 'coral' | 'warn' | 'danger' }> = {
+    AVAILABLE:   { label: 'Disponible',    variant: 'ok' },
+    IN_USE:      { label: 'En uso',        variant: 'coral' },
+    RESERVED:    { label: 'Reservado',     variant: 'warn' },
+    MAINTENANCE: { label: 'Mantenimiento', variant: 'danger' },
+};
 
 export default async function GamesPage() {
     const session = await getSession();
@@ -28,45 +30,47 @@ export default async function GamesPage() {
     ]);
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        🎱 Juegos y Entretenimiento
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        {stats.stationsAvailable} libre{stats.stationsAvailable !== 1 ? 's' : ''} ·{' '}
-                        {stats.stationsOccupied} ocupad{stats.stationsOccupied !== 1 ? 'os' : 'o'} ·{' '}
-                        {stats.reservationsToday} reserva{stats.reservationsToday !== 1 ? 's' : ''} hoy ·{' '}
-                        {stats.queueWaiting} en cola
-                    </p>
+        <div className="space-y-6 animate-in">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-capsula-line pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep">
+                        <Gamepad2 className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-capsula-ink-muted">Entretenimiento</div>
+                        <h1 className="font-heading text-[28px] leading-tight tracking-[-0.01em] text-capsula-navy-deep">Juegos y entretenimiento</h1>
+                        <p className="mt-1 text-[13px] text-capsula-ink-soft">
+                            <span className="font-mono">{stats.stationsAvailable}</span> libre{stats.stationsAvailable !== 1 ? 's' : ''} ·{' '}
+                            <span className="font-mono">{stats.stationsOccupied}</span> ocupad{stats.stationsOccupied !== 1 ? 'os' : 'o'} ·{' '}
+                            <span className="font-mono">{stats.reservationsToday}</span> reserva{stats.reservationsToday !== 1 ? 's' : ''} hoy ·{' '}
+                            <span className="font-mono">{stats.queueWaiting}</span> en cola
+                        </p>
+                    </div>
                 </div>
 
-                {/* Revenue today */}
-                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-900/20">
-                    <p className="text-xs text-green-600 dark:text-green-400">Facturado hoy</p>
-                    <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                <div className="rounded-[var(--radius)] border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-2">
+                    <p className="flex items-center gap-1 text-[11px] uppercase tracking-[0.08em] text-[#2F6B4E]">
+                        <Coins className="h-3 w-3" strokeWidth={1.5} />
+                        Facturado hoy
+                    </p>
+                    <p className="mt-0.5 font-mono text-[20px] font-semibold text-[#2F6B4E]">
                         ${stats.revenueToday.toFixed(2)}
                     </p>
                 </div>
             </div>
 
-            {/* Active sessions banner */}
             {activeSessions.length > 0 && (
-                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-700 dark:bg-purple-900/20">
-                    <p className="mb-3 text-sm font-semibold text-purple-700 dark:text-purple-400">
-                        Sesiones activas ({activeSessions.length})
+                <div className="rounded-[var(--radius)] border border-capsula-coral/30 bg-capsula-coral/5 p-4">
+                    <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-coral">
+                        Sesiones activas <span className="font-mono">({activeSessions.length})</span>
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {activeSessions.map(s => {
                             const elapsed = Math.floor((Date.now() - new Date(s.startedAt).getTime()) / 60000);
                             return (
-                                <div key={s.id} className="rounded-lg bg-white px-3 py-2 shadow-sm dark:bg-gray-800">
-                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                                        {s.station.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
+                                <div key={s.id} className="rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface px-3 py-2 shadow-cap-soft">
+                                    <p className="text-[12px] font-semibold text-capsula-ink">{s.station.name}</p>
+                                    <p className="font-mono text-[11px] text-capsula-ink-muted">
                                         {s.customerName ?? 'Cliente'} · {elapsed}min
                                     </p>
                                 </div>
@@ -76,73 +80,65 @@ export default async function GamesPage() {
                 </div>
             )}
 
-            {/* Station grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {stations.map(station => {
                     const activeSession = station.sessions[0];
-                    const cfg = STATUS_CONFIG[station.currentStatus as keyof typeof STATUS_CONFIG]
-                        ?? STATUS_CONFIG.AVAILABLE;
+                    const cfg = STATUS_CONFIG[station.currentStatus] ?? STATUS_CONFIG.AVAILABLE;
 
                     const elapsed = activeSession
                         ? Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 60000)
                         : null;
 
+                    const cardStyles = activeSession
+                        ? 'border-capsula-coral/30 bg-capsula-coral/5'
+                        : station.currentStatus === 'MAINTENANCE'
+                        ? 'border-capsula-coral/20 bg-capsula-coral/5'
+                        : 'border-capsula-line bg-capsula-ivory-surface';
+
                     return (
                         <div
                             key={station.id}
-                            className={`rounded-xl border p-4 transition-all ${
-                                activeSession
-                                    ? 'border-purple-300 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/20'
-                                    : station.currentStatus === 'MAINTENANCE'
-                                    ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                                    : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
-                            }`}
+                            className={`rounded-[var(--radius)] border p-4 shadow-cap-soft transition-all ${cardStyles}`}
                         >
-                            {/* Station header */}
                             <div className="mb-3 flex items-start gap-2">
-                                <span className="text-2xl">{station.gameType.icon ?? '🎮'}</span>
+                                <span className="text-2xl">{station.gameType.icon ?? <Gamepad2 className="h-5 w-5 inline text-capsula-ink-soft" strokeWidth={1.5} />}</span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate font-semibold text-gray-900 dark:text-white">
+                                    <p className="truncate font-heading text-[15px] text-capsula-navy-deep">
                                         {station.name}
                                     </p>
-                                    <p className="text-xs text-gray-400">{station.code}</p>
+                                    <p className="font-mono text-[11px] text-capsula-ink-muted">{station.code}</p>
                                 </div>
                             </div>
 
-                            {/* Status pill */}
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.cls}`}>
-                                {cfg.dot} {cfg.label}
-                            </span>
+                            <Badge variant={cfg.variant}>{cfg.label}</Badge>
 
-                            {/* Active session info */}
                             {activeSession && elapsed !== null && (
-                                <div className="mt-3 rounded-lg bg-white/60 p-2 text-xs dark:bg-black/20">
-                                    <p className="font-medium text-gray-800 dark:text-gray-100">
+                                <div className="mt-3 rounded-[var(--radius)] border border-capsula-line bg-capsula-ivory-surface p-2">
+                                    <p className="text-[12px] font-medium text-capsula-ink">
                                         {activeSession.customerName ?? 'Cliente'}
                                     </p>
-                                    <div className="mt-1 flex items-center justify-between text-gray-500">
-                                        <span>
+                                    <div className="mt-1 flex items-center justify-between">
+                                        <span className="font-mono text-[11px] text-capsula-ink-muted">
                                             {new Date(activeSession.startedAt).toLocaleTimeString('es-VE', {
                                                 hour: '2-digit', minute: '2-digit',
                                             })}
                                         </span>
-                                        <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                        <span className="font-mono text-[12px] font-semibold text-capsula-coral">
                                             {elapsed >= 60
                                                 ? `${Math.floor(elapsed / 60)}h ${elapsed % 60}min`
                                                 : `${elapsed}min`}
                                         </span>
                                     </div>
                                     {station.hourlyRate && (
-                                        <p className="mt-0.5 text-right text-green-600 dark:text-green-400">
+                                        <p className="mt-0.5 text-right font-mono text-[11px] text-[#2F6B4E]">
                                             ~${((elapsed / 60) * station.hourlyRate).toFixed(2)}
                                         </p>
                                     )}
                                 </div>
                             )}
 
-                            {/* Hourly rate */}
                             {station.hourlyRate && !activeSession && (
-                                <p className="mt-2 text-xs text-gray-400">
+                                <p className="mt-2 font-mono text-[11px] text-capsula-ink-muted">
                                     ${station.hourlyRate.toFixed(2)}/hora
                                 </p>
                             )}
@@ -151,12 +147,12 @@ export default async function GamesPage() {
                 })}
 
                 {stations.length === 0 && (
-                    <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
-                        <p className="text-4xl">🎮</p>
-                        <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
+                    <div className="col-span-full rounded-[var(--radius)] border border-dashed border-capsula-line p-12 text-center">
+                        <Gamepad2 className="mx-auto h-10 w-10 text-capsula-ink-muted/50" strokeWidth={1.25} />
+                        <p className="mt-2 font-medium text-capsula-ink-soft">
                             No hay estaciones configuradas
                         </p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-[12px] text-capsula-ink-muted">
                             Inserta un <code className="font-mono">GameType</code> y{' '}
                             <code className="font-mono">GameStation</code> en la base de datos para comenzar.
                         </p>
