@@ -175,7 +175,7 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                             key={w.id}
                             className="flex items-center gap-4 rounded-2xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 shadow-cap-soft"
                         >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-navy">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                                 <UserCircle2 className="h-5 w-5" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -201,7 +201,7 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                             <div className="flex shrink-0 items-center gap-1">
                                 <button
                                     onClick={() => openEdit(w)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-navy transition-colors hover:bg-capsula-navy-soft"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
                                 >
                                     Editar
                                 </button>

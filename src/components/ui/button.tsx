@@ -28,9 +28,9 @@ const buttonVariants = cva(
                 ghost:
                     "bg-transparent text-capsula-ink hover:bg-capsula-ivory-alt",
                 link:
-                    "text-capsula-navy underline-offset-4 hover:underline hover:scale-100 hover:translate-y-0",
+                    "text-capsula-ink underline-offset-4 hover:underline hover:scale-100 hover:translate-y-0",
                 pill:
-                    "bg-capsula-navy-soft text-capsula-navy hover:bg-capsula-navy-deep hover:text-capsula-ivory",
+                    "bg-capsula-navy-soft text-capsula-ink hover:bg-capsula-navy-deep hover:text-capsula-ivory",
             },
             size: {
                 default: "h-10 px-5 py-2",

@@ -277,11 +277,11 @@ export function HelpPanel() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-navy-deep">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-capsula-navy-soft text-capsula-ink">
                   <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">{guide.title}</h2>
+                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">{guide.title}</h2>
                   <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-capsula-ink-muted">Guía de uso</p>
                 </div>
               </div>
@@ -301,7 +301,7 @@ export function HelpPanel() {
                   onClick={() => setActiveTab('guide')}
                   className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
                     activeTab === 'guide'
-                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-navy-deep'
+                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-ink'
                       : 'text-capsula-ink-muted hover:text-capsula-ink'
                   }`}
                 >
@@ -312,7 +312,7 @@ export function HelpPanel() {
                   onClick={() => setActiveTab('standards')}
                   className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
                     activeTab === 'standards'
-                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-navy-deep'
+                      ? 'border-b-2 border-capsula-navy bg-capsula-navy-soft text-capsula-ink'
                       : 'text-capsula-ink-muted hover:text-capsula-ink'
                   }`}
                 >
@@ -339,7 +339,7 @@ export function HelpPanel() {
                     <div className="space-y-2">
                       {guide.steps.map((step, i) => (
                         <div key={i} className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-capsula-navy-soft text-xs font-semibold text-capsula-navy-deep">
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-capsula-navy-soft text-xs font-semibold text-capsula-ink">
                             {i + 1}
                           </div>
                           <p className="text-sm font-medium leading-snug text-capsula-ink-soft">{step}</p>
@@ -377,7 +377,7 @@ export function HelpPanel() {
                   <div className="space-y-3">
                     {guide.standards!.map((s, i) => (
                       <div key={i} className="rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-4">
-                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-navy-deep">{s.label}</div>
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink">{s.label}</div>
                         <div className="rounded-lg bg-capsula-ivory px-3 py-2 font-mono text-xs text-capsula-ink-soft">
                           {s.example}
                         </div>

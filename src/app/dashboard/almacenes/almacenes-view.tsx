@@ -91,7 +91,7 @@ export default function AlmacenesView({ initialData }: { initialData: AreaItem[]
             )}
             <button
               onClick={() => setDuplicates(null)}
-              className="mt-2 text-xs text-capsula-ink-muted hover:text-capsula-navy-deep"
+              className="mt-2 text-xs text-capsula-ink-muted hover:text-capsula-ink"
             >
               Cerrar
             </button>

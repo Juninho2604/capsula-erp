@@ -18,7 +18,7 @@ const badgeVariants = cva(
                 danger:  'border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]',
                 info:    'border-[#D1DCE9] bg-[#E6ECF4] text-[#2A4060]',
                 coral:   'border-capsula-coral/20 bg-capsula-coral-subtle text-capsula-coral',
-                navy:    'border-capsula-navy/10 bg-capsula-navy-soft text-capsula-navy',
+                navy:    'border-capsula-navy/10 bg-capsula-navy-soft text-capsula-ink',
             },
         },
         defaultVariants: { variant: 'neutral' },

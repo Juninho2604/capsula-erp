@@ -137,7 +137,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                     )}
                 </div>
                 <div className="shrink-0 text-right">
-                    <div className="text-xs font-medium tabular-nums text-capsula-navy-deep">${item.lineTotal.toFixed(2)}</div>
+                    <div className="text-xs font-medium tabular-nums text-capsula-ink">${item.lineTotal.toFixed(2)}</div>
                     {poolQty > 0 && (
                         <div className="text-[11px] text-capsula-ink-muted">Pool: {poolQty}</div>
                     )}
@@ -153,7 +153,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                         key={a.subAccountId}
                         className="flex items-center justify-between rounded-lg border border-capsula-navy/10 bg-capsula-navy-soft px-2 py-1 text-[11px]"
                     >
-                        <span className="font-medium text-capsula-navy">
+                        <span className="font-medium text-capsula-ink">
                             {a.quantity}× → {sub.label}
                         </span>
                         {sub.status === 'OPEN' && (
@@ -174,7 +174,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
             {poolQty > 0 && subAccounts.filter((s) => s.status === 'OPEN').length > 0 && (
                 <button
                     onClick={() => { setExpanded((p) => !p); setPickedSub(''); setQty(1); }}
-                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:text-capsula-navy-deep"
+                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:text-capsula-ink"
                 >
                     {expanded ? 'Cancelar' : `Asignar (${poolQty} disponible${poolQty > 1 ? 's' : ''})`}
                 </button>
@@ -287,7 +287,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         />
                         <button
                             onClick={handleRename}
-                            className="rounded-full p-0.5 text-capsula-navy-deep transition-colors hover:bg-capsula-navy-soft"
+                            className="rounded-full p-0.5 text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
                             aria-label="Confirmar nombre"
                         >
                             <Check className="h-3.5 w-3.5" />
@@ -309,7 +309,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         ) : (
                             <button
                                 onClick={() => { setEditing(true); setLabelInput(sub.label); }}
-                                className="inline-flex items-center gap-1.5 text-xs font-medium text-capsula-ink transition-colors hover:text-capsula-navy-deep"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-capsula-ink transition-colors hover:text-capsula-ink"
                             >
                                 <Pencil className="h-3 w-3" />
                                 {sub.label}
@@ -350,7 +350,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     </span>
                                 )}
                             </span>
-                            <span className="ml-2 font-medium tabular-nums text-capsula-navy-deep">${si.lineTotal.toFixed(2)}</span>
+                            <span className="ml-2 font-medium tabular-nums text-capsula-ink">${si.lineTotal.toFixed(2)}</span>
                             {!isPaid && (
                                 <button
                                     disabled={isProcessing}
@@ -380,7 +380,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                 )}
                 <div className="flex justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
                     <span>Total</span>
-                    <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${sub.total.toFixed(2)}</span>
+                    <span className="font-heading tracking-[-0.01em] text-capsula-ink">${sub.total.toFixed(2)}</span>
                 </div>
             </div>
 
@@ -410,7 +410,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     className="rounded border-capsula-line accent-capsula-navy-deep"
                                 />
                                 <span className="text-[11px] text-capsula-ink-soft">+10% servicio</span>
-                                <span className="text-[11px] font-medium tabular-nums text-capsula-navy-deep">
+                                <span className="text-[11px] font-medium tabular-nums text-capsula-ink">
                                     Total: ${totalWithService.toFixed(2)}
                                 </span>
                             </label>
@@ -598,7 +598,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                             <SplitSquareHorizontal className="h-4 w-4 text-capsula-ink-muted" />
                             Subcuentas
                         </span>
-                        <span className="rounded-full border border-capsula-navy/10 bg-capsula-navy-soft px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-capsula-navy">
+                        <span className="rounded-full border border-capsula-navy/10 bg-capsula-navy-soft px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-capsula-ink">
                             {tab.subAccounts.length}/25
                         </span>
                     </div>
@@ -620,7 +620,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                                 key={n}
                                 disabled={isProcessing}
                                 onClick={() => handleAutoSplit(n)}
-                                className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium tabular-nums text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-navy-deep disabled:opacity-40"
+                                className="flex-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 text-xs font-medium tabular-nums text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-ink disabled:opacity-40"
                             >
                                 {n}
                             </button>
@@ -704,7 +704,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         </div>
                         <div className="flex justify-between font-medium text-capsula-ink">
                             <span>Saldo restante mesa</span>
-                            <span className="font-heading tracking-[-0.01em] text-capsula-navy-deep">${tab.balanceDue.toFixed(2)}</span>
+                            <span className="font-heading tracking-[-0.01em] text-capsula-ink">${tab.balanceDue.toFixed(2)}</span>
                         </div>
                     </div>
                 )}

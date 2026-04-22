@@ -52,7 +52,7 @@ function MetaCard({ label, Icon, target, actual, orders, pct }: MetaCardProps) {
         <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
 
-      <p className="font-heading text-3xl leading-tight tracking-[-0.02em] text-capsula-navy-deep">
+      <p className="font-heading text-3xl leading-tight tracking-[-0.02em] text-capsula-ink">
         ${fmt(actual)}
       </p>
       <p className="mt-0.5 text-xs text-capsula-ink-soft">
@@ -206,7 +206,7 @@ export function MetasView({ data }: { data: MetasData }) {
                   <p className="text-xs text-capsula-ink-muted">Merma registrada</p>
                   <p
                     className={`font-heading text-2xl tracking-[-0.02em] ${
-                      wasteOk ? 'text-capsula-navy-deep' : 'text-[#B04A2E]'
+                      wasteOk ? 'text-capsula-ink' : 'text-[#B04A2E]'
                     }`}
                   >
                     ${fmt(actual.wasteThisMonth)}
@@ -215,7 +215,7 @@ export function MetasView({ data }: { data: MetasData }) {
                 <div className="text-xl text-capsula-ink-faint">vs</div>
                 <div>
                   <p className="text-xs text-capsula-ink-muted">Límite aceptable ({config.wastePercent}%)</p>
-                  <p className="font-heading text-2xl tracking-[-0.02em] text-capsula-navy-deep">
+                  <p className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
                     ${fmt(actual.month * config.wastePercent / 100)}
                   </p>
                 </div>
@@ -248,7 +248,7 @@ export function MetasView({ data }: { data: MetasData }) {
         {/* Formulario de edición */}
         {editing && (
           <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft space-y-5">
-            <h2 className="font-heading text-lg tracking-[-0.02em] text-capsula-navy-deep">
+            <h2 className="font-heading text-lg tracking-[-0.02em] text-capsula-ink">
               Configurar metas
             </h2>
 
@@ -310,7 +310,7 @@ export function MetasView({ data }: { data: MetasData }) {
               ].map((item) => (
                 <div key={item.l}>
                   <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">{item.l}</p>
-                  <p className="font-heading text-lg tracking-[-0.02em] text-capsula-navy-deep">
+                  <p className="font-heading text-lg tracking-[-0.02em] text-capsula-ink">
                     {item.pct !== undefined ? `${item.pct}%` : `$${item.v?.toLocaleString()}`}
                   </p>
                 </div>

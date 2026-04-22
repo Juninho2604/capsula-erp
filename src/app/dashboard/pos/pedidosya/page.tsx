@@ -213,7 +213,7 @@ export default function POSPedidosYAPage() {
         <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
             <div className="flex flex-col items-center gap-3 text-center">
                 <Bike className="h-10 w-10 text-capsula-coral" />
-                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-navy-deep">
+                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">
                     Cargando PedidosYA…
                 </div>
             </div>
@@ -229,7 +229,7 @@ export default function POSPedidosYAPage() {
                         <Bike className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
                     <div>
-                        <h1 className="font-heading text-lg tracking-[-0.02em] text-capsula-navy-deep md:text-2xl">
+                        <h1 className="font-heading text-lg tracking-[-0.02em] text-capsula-ink md:text-2xl">
                             POS <span className="text-capsula-coral">PedidosYA</span>
                         </h1>
                         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
@@ -295,7 +295,7 @@ export default function POSPedidosYAPage() {
                                     onClick={() => handleAddToCart(item)}
                                     className="pos-tile group flex h-32 flex-col justify-between !p-4 text-left"
                                 >
-                                    <div className="text-sm font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                                    <div className="text-sm font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-ink">
                                         {item.name}
                                     </div>
                                     <div>
@@ -316,7 +316,7 @@ export default function POSPedidosYAPage() {
                 <div className="z-20 flex w-80 flex-col border-l border-capsula-line bg-capsula-ivory-surface shadow-cap-soft tablet-land:w-96 xl:w-96">
                     {/* Datos del pedido */}
                     <div className="space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-4">
-                        <h2 className="inline-flex items-center gap-2 font-heading text-base tracking-[-0.01em] text-capsula-navy-deep">
+                        <h2 className="inline-flex items-center gap-2 font-heading text-base tracking-[-0.01em] text-capsula-ink">
                             <ShoppingBag className="h-4 w-4 text-capsula-ink-muted" />
                             Datos del pedido
                         </h2>
@@ -388,7 +388,7 @@ export default function POSPedidosYAPage() {
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-medium tabular-nums text-capsula-navy-deep">
+                                    <div className="font-medium tabular-nums text-capsula-ink">
                                         ${item.lineTotal.toFixed(2)}
                                     </div>
                                     <button
@@ -406,7 +406,7 @@ export default function POSPedidosYAPage() {
                     <div className="space-y-3 border-t border-capsula-line bg-capsula-ivory-surface p-4">
                         <div className="flex justify-between rounded-lg border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-sm text-capsula-ink-soft">
                             <span>Total estimado</span>
-                            <span className="font-heading tabular-nums tracking-[-0.01em] text-capsula-navy-deep">
+                            <span className="font-heading tabular-nums tracking-[-0.01em] text-capsula-ink">
                                 ${cartSubtotal.toFixed(2)}
                             </span>
                         </div>
@@ -439,7 +439,7 @@ export default function POSPedidosYAPage() {
                     <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
                         <div className="flex justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-navy-deep">
+                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
                                     {selectedItemForModifier.name}
                                 </h3>
                                 <p className="font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-coral">
@@ -476,7 +476,7 @@ export default function POSPedidosYAPage() {
                                             <span
                                                 className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
                                                     isValid
-                                                        ? 'border border-capsula-navy/10 bg-capsula-navy-soft text-capsula-navy'
+                                                        ? 'border border-capsula-navy/10 bg-capsula-navy-soft text-capsula-ink'
                                                         : 'border border-[#EFD2C8] bg-[#F7E3DB] text-[#B04A2E]'
                                                 }`}
                                             >
@@ -531,7 +531,7 @@ export default function POSPedidosYAPage() {
                                                                 >
                                                                     −
                                                                 </button>
-                                                                <span className="flex w-5 items-center justify-center text-sm font-medium tabular-nums text-capsula-navy-deep">
+                                                                <span className="flex w-5 items-center justify-center text-sm font-medium tabular-nums text-capsula-ink">
                                                                     {qty}
                                                                 </span>
                                                                 <button
@@ -540,7 +540,7 @@ export default function POSPedidosYAPage() {
                                                                     className={`h-7 w-7 rounded-lg text-base font-medium transition-colors ${
                                                                         isMax
                                                                             ? 'text-capsula-ink-faint'
-                                                                            : 'text-capsula-navy-deep hover:bg-capsula-navy-soft'
+                                                                            : 'text-capsula-ink hover:bg-capsula-navy-soft'
                                                                     }`}
                                                                 >
                                                                     +
@@ -572,7 +572,7 @@ export default function POSPedidosYAPage() {
                                     >
                                         −
                                     </button>
-                                    <span className="flex h-10 w-10 items-center justify-center font-medium tabular-nums text-capsula-navy-deep">
+                                    <span className="flex h-10 w-10 items-center justify-center font-medium tabular-nums text-capsula-ink">
                                         {itemQuantity}
                                     </span>
                                     <button

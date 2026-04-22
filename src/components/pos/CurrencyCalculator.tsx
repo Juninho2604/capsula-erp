@@ -107,7 +107,7 @@ export function CurrencyCalculator({
                     value={usdInput}
                     onChange={(e) => setUsdInput(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 text-xl font-medium tabular-nums text-capsula-navy-deep outline-none focus:border-capsula-navy-deep"
+                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface px-4 py-3 text-xl font-medium tabular-nums text-capsula-ink outline-none focus:border-capsula-navy-deep"
                 />
             </div>
             <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-3">
@@ -124,7 +124,7 @@ export function CurrencyCalculator({
             {/* Total de la venta */}
             {typeof totalUsd === 'number' && totalUsd > 0 && effectiveRate > 0 && (
                 <div className="rounded-xl border border-capsula-navy/10 bg-capsula-navy-soft px-4 py-3">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-navy/80">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-soft">
                         Total de la venta ({totalUsd.toFixed(2)} USD)
                     </p>
                     {hasServiceFee && (
@@ -137,7 +137,7 @@ export function CurrencyCalculator({
                             + Delivery ({deliveryFee.toFixed(2)} USD)
                         </p>
                     )}
-                    <p className="mt-2 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                    <p className="mt-2 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                         {usdToBs(
                             totalUsd + (hasServiceFee ? totalUsd * 0.1 : 0) + (deliveryFee || 0),
                             effectiveRate
@@ -167,7 +167,7 @@ export function CurrencyCalculator({
                     <div className="flex min-w-0 items-center gap-2">
                         <ArrowLeftRight className="h-4 w-4 shrink-0 text-capsula-ink-muted" />
                         {effectiveRate > 0 ? (
-                            <span className="text-sm font-medium tabular-nums text-capsula-navy-deep">
+                            <span className="text-sm font-medium tabular-nums text-capsula-ink">
                                 1 USD = {effectiveRate.toLocaleString('es-VE')} Bs
                             </span>
                         ) : (
@@ -216,7 +216,7 @@ export function CurrencyCalculator({
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">
-                            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-navy-deep">
+                            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                 Calculadora USD → Bs
                             </h3>
                             <button
