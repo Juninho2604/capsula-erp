@@ -1176,39 +1176,57 @@ export default function POSDeliveryPage() {
             )}
             {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
             {showTipModal && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-card glass-panel w-full max-w-sm rounded-3xl shadow-2xl border border-amber-500/20 p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-black uppercase tracking-tight text-amber-400">Propina Colectiva</h3>
-                            <button type="button" onClick={() => setShowTipModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="w-full max-w-sm space-y-4 rounded-2xl border border-[#E8D9B8] bg-capsula-ivory-surface p-6 shadow-cap-deep">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-heading text-xl tracking-[-0.02em] text-[#946A1C]">Propina colectiva</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowTipModal(false)}
+                                className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                                aria-label="Cerrar"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Propina recibida después del cobro. Indica el cliente para trazabilidad.</p>
+                        <p className="text-xs text-capsula-ink-soft">
+                            Propina recibida después del cobro. Indica el cliente para trazabilidad.
+                        </p>
                         {/* Cliente / referencia */}
                         <input
                             type="text"
                             value={tipClientRef}
                             onChange={e => setTipClientRef(e.target.value)}
                             placeholder="Nombre del cliente (opcional)"
-                            className="w-full bg-background border border-border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/40"
+                            className="w-full rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-[#946A1C] focus:outline-none"
                         />
                         <div className="grid grid-cols-3 gap-2">
-                            {[
-                                { id: 'CASH_USD',       label: '💵 Cash $' },
-                                { id: 'CASH_EUR',       label: '€ Cash €' },
-                                { id: 'ZELLE',          label: '⚡ Zelle' },
-                                { id: 'PDV_SHANKLISH',  label: '💳 PDV Shan.' },
-                                { id: 'PDV_SUPERFERRO', label: '💳 PDV Super.' },
-                                { id: 'MOVIL_NG',       label: '📱 Móvil NG' },
-                                { id: 'CASH_BS',        label: '💴 Efectivo Bs' },
-                            ].map(m => (
-                                <button key={m.id} type="button" onClick={() => setTipMethod(m.id)}
-                                    className={`py-2 rounded-xl text-xs font-black uppercase transition-all ${tipMethod === m.id ? 'bg-amber-500 text-white' : 'bg-background border border-border text-muted-foreground hover:border-amber-500/50'}`}>
-                                    {m.label}
+                            {([
+                                { id: 'CASH_USD',       label: 'Cash $',       Icon: DollarSign },
+                                { id: 'CASH_EUR',       label: 'Cash €',       Icon: Euro },
+                                { id: 'ZELLE',          label: 'Zelle',        Icon: Zap },
+                                { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',    Icon: CreditCard },
+                                { id: 'PDV_SUPERFERRO', label: 'PDV Super.',   Icon: CreditCard },
+                                { id: 'MOVIL_NG',       label: 'Móvil NG',     Icon: Smartphone },
+                                { id: 'CASH_BS',        label: 'Efectivo Bs',  Icon: Banknote },
+                            ] as const).map(m => (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => setTipMethod(m.id)}
+                                    className={`inline-flex items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        tipMethod === m.id
+                                            ? 'border-[#946A1C] bg-[#946A1C] text-white'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-[#946A1C] hover:text-[#946A1C]'
+                                    }`}
+                                >
+                                    <m.Icon className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{m.label}</span>
                                 </button>
                             ))}
                         </div>
-                        <div className="flex items-center bg-background border border-border rounded-2xl p-1">
-                            <span className="pl-4 text-muted-foreground text-sm font-black">
+                        <div className="flex items-center rounded-xl border border-capsula-line bg-capsula-ivory p-1">
+                            <span className="pl-4 text-sm font-medium text-capsula-ink-muted">
                                 {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) ? 'Bs' : '$'}
                             </span>
                             <input
@@ -1216,53 +1234,65 @@ export default function POSDeliveryPage() {
                                 value={tipAmount}
                                 onChange={e => setTipAmount(e.target.value)}
                                 placeholder="0.00"
-                                className="flex-1 bg-transparent border-none px-3 py-3 text-2xl font-black focus:outline-none placeholder:text-muted-foreground/30"
+                                className="flex-1 border-none bg-transparent px-3 py-3 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink placeholder:text-capsula-ink-muted focus:outline-none"
                                 autoFocus
                             />
                         </div>
                         {['CASH_BS','PDV_SHANKLISH','PDV_SUPERFERRO','MOVIL_NG'].includes(tipMethod) && exchangeRate && (parseFloat(tipAmount) || 0) > 0 && (
-                            <div className="flex justify-between text-xs px-1">
-                                <span className="text-muted-foreground">Equivalente USD</span>
-                                <span className="font-bold text-emerald-400">${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}</span>
+                            <div className="flex justify-between px-1 text-xs">
+                                <span className="text-capsula-ink-muted">Equivalente USD</span>
+                                <span className="font-medium tabular-nums text-[#2F6B4E]">
+                                    ${((parseFloat(tipAmount) || 0) / exchangeRate).toFixed(2)}
+                                </span>
                             </div>
                         )}
                         <button
                             type="button"
                             onClick={handleRecordTip}
                             disabled={isTipProcessing || !(parseFloat(tipAmount) > 0)}
-                            className="w-full py-4 rounded-2xl bg-amber-500 text-white font-black uppercase text-lg shadow-lg shadow-amber-500/30 disabled:opacity-40 active:scale-95 transition-all"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-b-4 border-[#6B4E12] bg-[#946A1C] px-5 py-4 text-base font-medium text-white transition-transform active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            {isTipProcessing ? 'Registrando...' : 'Registrar Propina'}
+                            <CheckCircle2 className="h-4 w-4" />
+                            {isTipProcessing ? 'Registrando…' : 'Registrar propina'}
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Navegación móvil delivery */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-capsula-line bg-capsula-ivory-surface shadow-cap-soft lg:hidden">
                 <button
-                onClick={() => setMobileView("menu")}
-                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
-                    ${mobileView === "menu" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
+                    onClick={() => setMobileView("menu")}
+                    className={`relative flex flex-1 flex-col items-center gap-1 py-3 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors ${
+                        mobileView === "menu"
+                            ? "bg-capsula-navy-soft text-capsula-ink"
+                            : "text-capsula-ink-muted"
+                    }`}
                 >
-                {mobileView === "menu" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
-                <span className="text-xl">🍽️</span>
-                MENÚ
+                    {mobileView === "menu" && (
+                        <div className="absolute inset-x-0 top-0 h-0.5 rounded-b bg-capsula-navy-deep" />
+                    )}
+                    <Menu className="h-5 w-5" />
+                    Menú
                 </button>
                 <button
-                onClick={() => setMobileView("order")}
-                className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors      
-                    ${mobileView === "order" ? "text-blue-500 bg-blue-500/5" : "text-muted-foreground"}`}
+                    onClick={() => setMobileView("order")}
+                    className={`relative flex flex-1 flex-col items-center gap-1 py-3 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors ${
+                        mobileView === "order"
+                            ? "bg-capsula-navy-soft text-capsula-ink"
+                            : "text-capsula-ink-muted"
+                    }`}
                 >
-                {mobileView === "order" && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-b" />}
-                <span className="text-xl">📦</span>
-                ORDEN
-                {cart.length > 0 && (
-                    <span className="absolute top-1 right-8 bg-blue-500 text-white text-[9px] rounded-full min-w-[16px] h-4 flex items-center
-            justify-center font-black px-1">
-                    {cart.length}
-                    </span>
-                )}
+                    {mobileView === "order" && (
+                        <div className="absolute inset-x-0 top-0 h-0.5 rounded-b bg-capsula-navy-deep" />
+                    )}
+                    <ClipboardList className="h-5 w-5" />
+                    Orden
+                    {cart.length > 0 && (
+                        <span className="absolute right-8 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-capsula-coral px-1 text-[9px] font-medium tabular-nums text-white">
+                            {cart.length}
+                        </span>
+                    )}
                 </button>
             </nav>
         </div>
