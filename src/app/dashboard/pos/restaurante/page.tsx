@@ -2417,17 +2417,17 @@ export default function POSSportBarPage() {
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showTableModal && selectedTable && (
         <div
-          className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
           onClick={() => { setShowTableModal(false); resetTableState(); setSelectedTableId(""); }}
         >
           <div
-            className="bg-card border border-border w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl"
+            className="bg-capsula-ivory border border-capsula-line w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-border p-5 flex items-center justify-between">
+            <div className="border-b border-capsula-line p-5 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-black">{selectedTable.name}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink">{selectedTable.name}</h3>
+                <p className="text-xs text-capsula-ink-muted mt-0.5">
                   {selectedTable.currentStatus === "AVAILABLE" ? "Mesa disponible" :
                    selectedTable.currentStatus === "OCCUPIED" ? "Mesa ocupada" :
                    selectedTable.currentStatus === "RESERVED" ? "Mesa reservada" : selectedTable.currentStatus}
@@ -2435,47 +2435,58 @@ export default function POSSportBarPage() {
               </div>
               <button
                 onClick={() => setShowTableModal(false)}
-                className="text-muted-foreground hover:text-white text-2xl leading-none"
-              >×</button>
+                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
+              ><XIcon className="h-4 w-4" /></button>
             </div>
 
             <div className="p-5 space-y-3">
               {!activeTab ? (
                 /* Mesa libre */
                 <>
-                  <p className="text-sm text-muted-foreground">¿Qué deseas hacer con esta mesa?</p>
+                  <p className="text-sm text-capsula-ink-muted">¿Qué deseas hacer con esta mesa?</p>
                   <button
                     onClick={() => { setShowTableModal(false); setShowOpenTabModal(true); }}
-                    className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black text-lg transition active:scale-95"
+                    className="pos-btn w-full min-h-[52px] text-lg inline-flex items-center justify-center gap-2"
                   >
-                    ✚ Abrir cuenta
+                    <PlusIcon className="h-5 w-5" />
+                    Abrir cuenta
                   </button>
                 </>
               ) : (
                 /* Mesa ocupada */
                 <div className="space-y-3">
-                  <div className="rounded-xl bg-secondary p-3 text-sm space-y-1">
-                    <div className="font-bold text-emerald-400 truncate">{activeTab.customerLabel}</div>
-                    {activeTab.customerPhone && <div className="text-muted-foreground text-xs">📞 {activeTab.customerPhone}</div>}
-                    {(activeTab as any).waiterLabel && (
-                      <div className="text-muted-foreground text-xs">🧑‍🍽️ {(activeTab as any).waiterLabel}</div>
+                  <div className="rounded-xl bg-capsula-ivory-surface border border-capsula-line p-3 text-sm space-y-1">
+                    <div className="font-semibold text-capsula-ink truncate">{activeTab.customerLabel}</div>
+                    {activeTab.customerPhone && (
+                      <div className="text-capsula-ink-muted text-xs inline-flex items-center gap-1">
+                        <PhoneIcon className="h-3 w-3" />
+                        {activeTab.customerPhone}
+                      </div>
                     )}
-                    <div className="flex justify-between pt-1 border-t border-border">
-                      <span className="text-muted-foreground">Balance:</span>
-                      <span className="font-black text-amber-400">${activeTab.balanceDue.toFixed(2)}</span>
+                    {(activeTab as any).waiterLabel && (
+                      <div className="text-capsula-ink-muted text-xs inline-flex items-center gap-1">
+                        <UserCircle2 className="h-3 w-3" />
+                        {(activeTab as any).waiterLabel}
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-1 border-t border-capsula-line">
+                      <span className="text-capsula-ink-muted">Balance:</span>
+                      <span className="font-semibold text-capsula-ink tabular-nums">${activeTab.balanceDue.toFixed(2)}</span>
                     </div>
                   </div>
                   <button
                     onClick={() => { setShowTableModal(false); setMobileTab("menu"); }}
-                    className="w-full min-h-[52px] bg-amber-600 hover:bg-amber-500 rounded-2xl font-black transition active:scale-95"
+                    className="pos-btn w-full min-h-[52px] inline-flex items-center justify-center gap-2"
                   >
-                    🍽️ Agregar pedido
+                    <UtensilsCrossed className="h-5 w-5" />
+                    Agregar pedido
                   </button>
                   <button
                     onClick={() => { setShowTableModal(false); setMobileTab("account"); }}
-                    className="w-full min-h-[48px] bg-secondary hover:bg-muted rounded-2xl font-bold text-sm transition active:scale-95 border border-border"
+                    className="pos-btn-secondary w-full min-h-[48px] text-sm inline-flex items-center justify-center gap-2"
                   >
-                    🧾 Ver cuenta
+                    <ReceiptIcon className="h-4 w-4" />
+                    Ver cuenta
                   </button>
                 </div>
               )}
@@ -2491,67 +2502,71 @@ export default function POSSportBarPage() {
       {/* MODAL: NUEVA VENTA PICKUP                                         */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showPickupOpenModal && (
-        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black">🛍️ Nueva Venta Pickup</h3>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
+            <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink inline-flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-capsula-navy-deep" />
+                Nueva venta Pickup
+              </h3>
               <button
                 onClick={() => setShowPickupOpenModal(false)}
-                className="text-muted-foreground hover:text-destructive text-2xl leading-none"
+                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
               >
-                ×
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
                   Número de pickup del día
                 </label>
-                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-foreground text-sm font-black tracking-wide flex items-center gap-2">
-                  <span className="flex-1">{newPickupNumber}</span>
+                <div className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-semibold tracking-wide flex items-center gap-2">
+                  <span className="flex-1 tabular-nums">{newPickupNumber}</span>
                   {newPickupNumber === "PK-…" && (
-                    <span className="text-xs text-muted-foreground animate-pulse">calculando…</span>
+                    <span className="text-xs text-capsula-ink-muted animate-pulse">calculando…</span>
                   )}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Nombre del cliente <span className="text-muted-foreground font-normal">(opcional)</span>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                  Nombre del cliente <span className="text-capsula-ink-faint font-normal normal-case">(opcional)</span>
                 </label>
                 <input
                   type="text"
                   value={newPickupName}
                   onChange={(e) => setNewPickupName(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-indigo-400 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Teléfono <span className="text-muted-foreground font-normal">(opcional)</span>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                  Teléfono <span className="text-capsula-ink-faint font-normal normal-case">(opcional)</span>
                 </label>
                 <input
                   type="tel"
                   value={newPickupPhone}
                   onChange={(e) => setNewPickupPhone(e.target.value)}
                   placeholder="Ej: 0414-1234567"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-indigo-400 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
+            <div className="border-t border-capsula-line p-4 flex gap-3">
               <button
                 onClick={() => setShowPickupOpenModal(false)}
-                className="flex-1 py-3 bg-secondary hover:bg-muted rounded-xl font-bold text-sm transition"
+                className="pos-btn-secondary flex-1 py-3 text-sm"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleCreatePickupTab}
                 disabled={isProcessing}
-                className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-black text-sm transition disabled:opacity-50"
+                className="pos-btn flex-[2] py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                ✓ Abrir Pickup
+                <Check className="h-4 w-4" />
+                Abrir Pickup
               </button>
             </div>
           </div>
@@ -2562,55 +2577,58 @@ export default function POSSportBarPage() {
       {/* MODAL: ABRIR CUENTA                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black">Abrir cuenta — {selectedTable.name}</h3>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
+            <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink">Abrir cuenta</h3>
+                <p className="text-xs text-capsula-ink-muted mt-0.5">{selectedTable.name}</p>
+              </div>
               <button
                 onClick={() => setShowOpenTabModal(false)}
-                className="text-muted-foreground hover:text-destructive text-2xl leading-none"
+                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
               >
-                ×
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Nombre del cliente <span className="text-muted-foreground font-normal">(opcional)</span>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                  Nombre del cliente <span className="text-capsula-ink-faint font-normal normal-case">(opcional)</span>
                 </label>
                 <input
                   type="text"
                   value={openTabName}
                   onChange={(e) => setOpenTabName(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Número de personas</label>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Número de personas</label>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))}
-                      className="w-9 h-9 bg-secondary rounded-lg font-bold text-lg"
+                      className="w-9 h-9 bg-capsula-ivory-surface border border-capsula-line rounded-lg font-semibold text-lg text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                     >
                       −
                     </button>
-                    <span className="flex-1 text-center font-black text-lg">{openTabGuests}</span>
+                    <span className="flex-1 text-center font-semibold text-lg text-capsula-ink tabular-nums">{openTabGuests}</span>
                     <button
                       onClick={() => setOpenTabGuests(openTabGuests + 1)}
-                      className="w-9 h-9 bg-amber-600 rounded-lg font-bold text-lg"
+                      className="w-9 h-9 bg-capsula-navy-deep text-capsula-ivory rounded-lg font-semibold text-lg hover:bg-capsula-navy-deep/90 transition"
                     >
                       +
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Mesonero asignado</label>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Mesonero asignado</label>
                   <select
                     value={openTabWaiter}
                     onChange={(e) => setOpenTabWaiter(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:border-amber-500 focus:outline-none"
+                    className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2 text-capsula-ink text-sm font-medium focus:border-capsula-navy-deep focus:outline-none transition"
                   >
                     <option value="">— Ninguno —</option>
                     {users.map((u) => (
@@ -2622,19 +2640,19 @@ export default function POSSportBarPage() {
                 </div>
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
+            <div className="border-t border-capsula-line p-4 flex gap-3">
               <button
                 onClick={() => setShowOpenTabModal(false)}
-                className="flex-1 py-3 bg-secondary hover:bg-muted rounded-xl font-bold text-sm transition"
+                className="pos-btn-secondary flex-1 py-3 text-sm"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleOpenTab}
                 disabled={isProcessing}
-                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition disabled:opacity-50"
+                className="pos-btn flex-[2] py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isProcessing ? "Abriendo..." : "✓ Abrir cuenta"}
+                {isProcessing ? "Abriendo…" : (<><Check className="h-4 w-4" />Abrir cuenta</>)}
               </button>
             </div>
           </div>
