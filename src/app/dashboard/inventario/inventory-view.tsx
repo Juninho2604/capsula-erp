@@ -159,7 +159,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                         Inventario
                     </h1>
                     <p className="text-gray-500">
@@ -228,7 +228,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.total}</p>
                     <p className="text-sm text-gray-500">Total Items</p>
                 </button>
 
@@ -241,7 +241,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.rawMaterials}</p>
+                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.rawMaterials}</p>
                     <p className="text-sm text-gray-500">📦 Insumos</p>
                 </button>
 
@@ -254,7 +254,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.subRecipes}</p>
+                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.subRecipes}</p>
                     <p className="text-sm text-gray-500">🧀 Sub-recetas</p>
                 </button>
 
@@ -267,7 +267,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.finished}</p>
+                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.finished}</p>
                     <p className="text-sm text-gray-500">🍽️ Productos</p>
                 </button>
 

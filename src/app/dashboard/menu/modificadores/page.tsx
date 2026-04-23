@@ -15,7 +15,7 @@ export default async function ModificadoresPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                     Gestión de Modificadores
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">

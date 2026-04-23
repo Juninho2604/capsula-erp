@@ -34,7 +34,7 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                     </Link>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                                 {recipe.name}
                             </h1>
                             <span className={cn(

@@ -33,7 +33,7 @@ export default async function ReservationsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">📅 Reservaciones</h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Reservaciones</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {activeReservations.length} activa{activeReservations.length !== 1 ? 's' : ''} para hoy ·{' '}
                         {new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}

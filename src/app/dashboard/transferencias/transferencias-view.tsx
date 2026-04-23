@@ -361,8 +361,8 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                     <div className="capsula-card p-8 border-primary/5 shadow-2xl animate-in slide-in-from-bottom-4 duration-500">
                         <div className="mb-10 flex items-center justify-between">
                             <div>
-                                <h3 className="text-2xl font-black uppercase tracking-tighter italic text-primary">Nueva Requisición</h3>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Gestión de Transferencias CAPSULA</p>
+                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">Nueva requisición</h3>
+                                <p className="mt-1 text-xs font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">Gestión de transferencias CAPSULA</p>
                             </div>
                             <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl">📥</div>
                         </div>

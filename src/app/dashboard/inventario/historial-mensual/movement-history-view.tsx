@@ -120,7 +120,7 @@ export default function MovementHistoryView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                         📊 Historial de Movimientos
                     </h1>
                     <p className="text-gray-500">
@@ -210,7 +210,7 @@ export default function MovementHistoryView() {
                 <div className="grid gap-4 sm:grid-cols-4">
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Total Movimientos</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.totalMovements}</p>
+                        <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{summary.totalMovements}</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Costo Compras</p>
@@ -219,7 +219,7 @@ export default function MovementHistoryView() {
                     {Object.entries(summary.byType as Record<string, number>).slice(0, 2).map(([type, count]) => (
                         <div key={type} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                             <p className="text-sm text-gray-500">{getTypeInfo(type).icon} {getTypeLabel(type)}</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{count as number}</p>
+                            <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{count as number}</p>
                         </div>
                     ))}
                 </div>

@@ -158,10 +158,10 @@ export default function MenuManagementPage() {
         <div className="p-6 max-w-7xl mx-auto text-white">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                        Gestión de Menú
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+                        Gestión de menú
                     </h1>
-                    <p className="text-gray-400">Administra precios, productos y disponibilidad</p>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}

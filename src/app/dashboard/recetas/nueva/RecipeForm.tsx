@@ -270,7 +270,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         ←
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                             {initialData ? 'Editar Receta' : 'Nueva Receta'}
                         </h1>
                         <p className="text-gray-500">

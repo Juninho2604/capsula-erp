@@ -128,8 +128,8 @@ export default function PhysicalCountClient({
         >
           ← Volver a Inventario
         </Link>
-        <h1 className="text-2xl font-bold">Conteo físico semanal (carga tipo Excel)</h1>
-        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Conteo físico semanal (carga tipo Excel)</h1>
+        <p className="mt-1 text-sm text-capsula-ink-soft">
           Mismo formato que su hoja <strong>INVENTARIO GENERAL</strong>: fila con encabezado{' '}
           <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PRODUCTO</code> y columna de cantidades.
           Opcionalmente tres columnas para cargar <strong>Almacén principal</strong> y{' '}

@@ -121,7 +121,7 @@ export function CostImporter() {
                 {summary && (
                     <div className="mt-4 grid grid-cols-4 gap-3">
                         <div className="text-center p-3 bg-gray-100 rounded-lg dark:bg-gray-700">
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary.total}</div>
+                            <div className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{summary.total}</div>
                             <div className="text-xs text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-3 bg-green-100 rounded-lg dark:bg-green-900/30">

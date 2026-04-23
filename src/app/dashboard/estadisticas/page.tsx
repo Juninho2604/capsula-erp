@@ -93,10 +93,10 @@ function StatCard({
 function SectionTitle({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-xl">{icon}</div>
+      <div className="h-10 w-10 rounded-2xl bg-capsula-navy-soft text-capsula-ink flex items-center justify-center text-xl">{icon}</div>
       <div>
-        <h2 className="text-base font-black uppercase tracking-tight text-foreground">{title}</h2>
-        {sub && <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{sub}</p>}
+        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{title}</h2>
+        {sub && <p className="mt-0.5 text-xs text-capsula-ink-muted">{sub}</p>}
       </div>
     </div>
   );
@@ -137,12 +137,12 @@ export default async function EstadisticasPage() {
       {/* ── HEADER ────────────────────────────────────────────────────────── */}
       <div className="glass-panel p-6 rounded-3xl border-primary/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">
-            📊 <span className="text-primary italic">ESTADÍSTICAS</span>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+            <span className="text-capsula-coral">Estadísticas</span>
           </h1>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
+          <p className="mt-1 text-sm text-capsula-ink-soft">
             Vista personalizada para{' '}
-            <span className="text-foreground font-black">{d.userName}</span>
+            <span className="font-medium text-capsula-ink">{d.userName}</span>
             {' · '}
             {new Date().toLocaleDateString('es-VE', {
               weekday: 'long', day: 'numeric', month: 'long',

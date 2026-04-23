@@ -279,7 +279,7 @@ export default function ProduccionPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink flex items-center gap-3">
                         <Factory className="h-7 w-7 text-emerald-600" />
                         Producción
                     </h1>

@@ -257,8 +257,8 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">💸 Gastos Operativos</h1>
-          <p className="text-sm text-muted-foreground">Registro y control de gastos del negocio</p>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Gastos operativos</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Registro y control de gastos del negocio</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -349,7 +349,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         {/* Pie Chart */}
         {summary.countByCategory.length > 0 && (
           <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Distribución por Categoría</h3>
+            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Distribución por Categoría</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -378,7 +378,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         {/* Payment Method Breakdown */}
         {summary.countByPaymentMethod.length > 0 && (
           <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Por Método de Pago</h3>
+            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Por Método de Pago</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={summary.countByPaymentMethod} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -396,7 +396,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
       {/* Expense Trend */}
       {expenseTrend.length > 0 && (
         <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Tendencia de Gastos (6 Meses)</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Tendencia de Gastos (6 Meses)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={expenseTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>

@@ -213,8 +213,8 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">🏧 Control de Caja</h1>
-          <p className="text-sm text-muted-foreground">Apertura y cierre de caja diaria</p>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Control de caja</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Apertura y cierre de caja diaria</p>
         </div>
         {canManage && (
           <button onClick={() => setShowOpenForm(true)}
@@ -227,7 +227,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Cajas abiertas */}
       {openRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-emerald-500">Cajas Abiertas</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Cajas abiertas</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {openRegisters.map(r => (
               <div key={r.id} className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
@@ -297,7 +297,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Monthly Summary */}
       {closedRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Mes</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Resumen del mes</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>

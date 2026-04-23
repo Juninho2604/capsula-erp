@@ -32,7 +32,7 @@ export default async function GamesPage() {
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                         🎱 Juegos y Entretenimiento
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
