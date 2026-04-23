@@ -22,8 +22,10 @@ export default function CapsulaLogo({
     className,
     tone = 'default',
 }: CapsulaLogoProps) {
+    // 'default' usa la var --capsula-ink (dark en light, light en dark)
+    // 'ivory' y 'navy' son fijos (para fondos específicos).
     const wordColor =
-        tone === 'ivory' ? '#F7F5F0' : tone === 'navy' ? '#1B2A3A' : '#0F1A2A';
+        tone === 'ivory' ? '#F7F5F0' : tone === 'navy' ? '#1B2A3A' : 'var(--capsula-ink)';
 
     const Mark = (
         <svg
