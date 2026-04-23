@@ -213,8 +213,8 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">🏧 Control de Caja</h1>
-          <p className="text-sm text-muted-foreground">Apertura y cierre de caja diaria</p>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Control de caja</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Apertura y cierre de caja diaria</p>
         </div>
         {canManage && (
           <button onClick={() => setShowOpenForm(true)}

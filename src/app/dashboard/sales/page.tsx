@@ -283,10 +283,10 @@ export default function SalesHistoryPage() {
             {/* HEADER */}
             <div className="flex flex-wrap justify-between items-start mb-5 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-                        Historial de Ventas
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+                        Historial de ventas
                     </h1>
-                    <p className="text-gray-400 text-sm mt-0.5">
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
                         Registro de transacciones y cierres
                         {' · '}
                         <span className="text-gray-300 font-medium">{shownCount} de {totalCount} órdenes</span>

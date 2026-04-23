@@ -242,10 +242,10 @@ export default function AsistentePage() {
       {/* HEADER */}
       <div className="glass-panel p-6 rounded-3xl border-primary/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">
-            🧭 <span className="text-primary italic">ASISTENTE</span> de Nomenclatura
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+            <span className="text-capsula-coral">Asistente</span> de nomenclatura
           </h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">
+          <p className="mt-1 text-sm text-capsula-ink-soft">
             Crea insumos con los estándares correctos · La base para que el inventario se descuente automáticamente
           </p>
         </div>

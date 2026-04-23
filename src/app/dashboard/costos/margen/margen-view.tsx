@@ -89,8 +89,8 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
       {/* Header */}
       <div className="glass-panel rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-foreground">Margen por Plato</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Costo de receta vs precio de venta · En tiempo real</p>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Margen por plato</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Costo de receta vs precio de venta · En tiempo real</p>
         </div>
         <button onClick={exportCSV} className="capsula-btn capsula-btn-secondary text-sm px-5 py-2 min-h-0">
           📥 Exportar CSV

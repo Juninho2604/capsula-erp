@@ -257,8 +257,8 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">💸 Gastos Operativos</h1>
-          <p className="text-sm text-muted-foreground">Registro y control de gastos del negocio</p>
+          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Gastos operativos</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Registro y control de gastos del negocio</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button

@@ -91,8 +91,8 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
     <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="glass-panel rounded-3xl p-6">
-        <h1 className="text-2xl font-black text-foreground">Módulos por Usuario</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por usuario</h1>
+        <p className="mt-1 text-sm text-capsula-ink-soft">
           Selecciona un usuario para configurar qué módulos puede ver en su menú. Si usas acceso por rol, el sistema aplica las reglas predeterminadas del rol.
         </p>
       </div>
