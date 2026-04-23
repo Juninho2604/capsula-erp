@@ -27,7 +27,7 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
-import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft } from "lucide-react";
+import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet } from "lucide-react";
 
 // ============================================================================
 // TIPOS
@@ -1701,16 +1701,20 @@ export default function POSSportBarPage() {
         </main>
 
         {/* ══ RIGHT: ACCOUNT PANEL ════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-[380px] tablet-land:w-[380px] xl:w-[440px] shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-[380px] tablet-land:w-[380px] xl:w-[440px] shrink-0 bg-capsula-ivory flex flex-col overflow-hidden border-l border-capsula-line ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
           {isPickupMode ? (
-            <div className="flex-1 flex flex-col overflow-hidden bg-secondary/80">
-              <div className="p-4 border-b border-indigo-900/50 bg-indigo-900/20 space-y-2 shrink-0">
+            <div className="flex-1 flex flex-col overflow-hidden bg-capsula-ivory-surface">
+              <div className="p-4 border-b border-capsula-line bg-capsula-navy-soft space-y-2 shrink-0">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-black text-lg text-indigo-300 flex items-center gap-2">
-                    🛍️ {activePickupTab?.pickupNumber || "Pickup"}
+                  <h2 className="font-semibold text-lg text-capsula-ink flex items-center gap-2 tracking-[-0.02em]">
+                    <ShoppingBag className="h-5 w-5 text-capsula-navy-deep" />
+                    {activePickupTab?.pickupNumber || "Pickup"}
                   </h2>
                   {activePickupTab?.customerPhone && (
-                    <span className="text-xs text-muted-foreground">📞 {activePickupTab.customerPhone}</span>
+                    <span className="text-xs text-capsula-ink-muted inline-flex items-center gap-1">
+                      <PhoneIcon className="h-3 w-3" />
+                      {activePickupTab.customerPhone}
+                    </span>
                   )}
                 </div>
                 <input
@@ -1726,44 +1730,44 @@ export default function POSSportBarPage() {
                       );
                     }
                   }}
-                  placeholder="Nombre del Cliente..."
-                  className="w-full bg-background/50 border border-indigo-500/30 rounded py-2 px-3 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  placeholder="Nombre del cliente…"
+                  className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
                 {cart.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-capsula-ink-muted">
                     Carrito vacío
                   </div>
                 )}
                 {cart.map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-card p-4 rounded-2xl border border-border flex justify-between shadow-sm"
+                    className="bg-capsula-ivory p-4 rounded-2xl border border-capsula-line flex justify-between"
                   >
                     <div>
-                      <div className="font-bold text-sm flex items-center gap-1.5 flex-wrap">
-                        <span className="text-indigo-400">x{item.quantity}</span>
+                      <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap text-capsula-ink">
+                        <span className="text-capsula-navy-deep">x{item.quantity}</span>
                         {item.name}
                         {item.takeaway && (
-                          <span className="inline-flex items-center rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-black text-amber-400 uppercase tracking-wide">
-                            🥡 Llevar
+                          <span className="inline-flex items-center rounded bg-capsula-navy-soft border border-capsula-line-strong px-1.5 py-0.5 text-[10px] font-semibold text-capsula-ink uppercase tracking-wide">
+                            Llevar
                           </span>
                         )}
                       </div>
                       {item.modifiers.length > 0 && (
-                        <div className="text-xs text-muted-foreground pl-4">
+                        <div className="text-xs text-capsula-ink-muted pl-4">
                           {item.modifiers.map((m) => m.name).join(", ")}
                         </div>
                       )}
-                      {item.notes && <div className="text-xs text-amber-300 pl-4 italic">&quot;{item.notes}&quot;</div>}
+                      {item.notes && <div className="text-xs text-capsula-ink-soft pl-4 italic">&quot;{item.notes}&quot;</div>}
                     </div>
                     <div className="text-right flex flex-col justify-between items-end">
-                      <div className="font-bold text-sm leading-none">${item.lineTotal.toFixed(2)}</div>
+                      <div className="font-semibold text-sm leading-none text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</div>
                       <button
                         onClick={() => setCart((p) => p.filter((_, i) => i !== idx))}
-                        className="text-red-400/80 text-xs hover:text-red-300 leading-none"
+                        className="text-capsula-coral text-xs hover:opacity-80 leading-none font-semibold"
                       >
                         Borrar
                       </button>
@@ -1772,12 +1776,12 @@ export default function POSSportBarPage() {
                 ))}
               </div>
 
-              <div className="overflow-y-auto p-4 bg-card border-t border-border space-y-3 shrink-0 max-h-[calc(100vh-200px)]">
+              <div className="overflow-y-auto p-4 bg-capsula-ivory border-t border-capsula-line space-y-3 shrink-0 max-h-[calc(100vh-200px)]">
                 {/* Descuento */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={clearDiscount}
-                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "NONE" ? "bg-muted-foreground/60 text-white ring-1 ring-white" : "bg-secondary hover:bg-muted"}`}
+                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "NONE" ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
                   >
                     Normal
                   </button>
@@ -1785,17 +1789,18 @@ export default function POSSportBarPage() {
                     onClick={() => isPagoDivisasPickup ? setDiscountType("DIVISAS_33") : undefined}
                     disabled={!isPagoDivisasPickup}
                     title={!isPagoDivisasPickup ? "Solo con Efectivo o Zelle" : ""}
-                    className={`py-3 text-sm font-bold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-indigo-600 text-white" : isPagoDivisasPickup ? "bg-secondary text-foreground/70 hover:bg-muted" : "bg-secondary text-foreground/50 cursor-not-allowed opacity-50"}`}
+                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-ivory" : isPagoDivisasPickup ? "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
                   >
-                    Divisas -33%
+                    Divisas −33%
                   </button>
                   <button
                     onClick={openCortesiaModal}
-                    className={`col-span-2 py-3 text-sm font-bold rounded-xl transition ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
+                    className={`col-span-2 py-3 text-sm font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-capsula-coral text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}
                   >
+                    <Gift className="h-4 w-4" />
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
-                      ? `🎁 Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"}`
-                      : "🎁 Cortesía (PIN)"}
+                      ? `Cortesía ${discountType === "CORTESIA_PERCENT" ? cortesiaPercentNum + "%" : "100%"}`
+                      : "Cortesía (PIN)"}
                   </button>
                 </div>
                 {/* Modo de pago + total calculado */}
@@ -1816,12 +1821,15 @@ export default function POSSportBarPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(false); setMixedPaymentsPickup([]); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${!isPickupMixedMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
-                        >Pago Único</button>
+                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all ${!isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                        >Pago único</button>
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(true); setAmountReceived(""); }}
-                          className={`py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isPickupMixedMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}
-                        >💳 Pago Mixto</button>
+                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2 ${isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                        >
+                          <Wallet className="h-4 w-4" />
+                          Pago mixto
+                        </button>
                       </div>
 
                       {!isPickupMixedMode ? (
@@ -1830,32 +1838,32 @@ export default function POSSportBarPage() {
                           <div className="grid grid-cols-2 gap-2">
                             {SINGLE_PAY_METHODS.map((m) => (
                               <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95 ${paymentMethod === m ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/50"}`}>
+                                className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all active:scale-95 ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}>
                                 {PAYMENT_LABELS[m]}
                               </button>
                             ))}
                           </div>
-                          <div className="flex items-center gap-2 bg-background border border-border p-1 rounded-2xl">
+                          <div className="flex items-center gap-2 bg-capsula-ivory-surface border border-capsula-line p-1 rounded-2xl">
                             <input type="number" value={amountReceived}
                               onChange={(e) => { setAmountReceived(e.target.value); setCheckoutTip(''); }}
-                              placeholder="Recibido..."
-                              className="flex-1 bg-transparent border-none rounded-xl px-4 py-3 text-lg font-black focus:ring-0 placeholder:text-muted-foreground/30 text-foreground" />
-                            <div className="pr-4 text-xs font-black text-muted-foreground uppercase">
+                              placeholder="Recibido…"
+                              className="flex-1 bg-transparent border-none rounded-xl px-4 py-3 text-lg font-semibold focus:ring-0 placeholder:text-capsula-ink-muted text-capsula-ink tabular-nums" />
+                            <div className="pr-4 text-xs font-semibold text-capsula-ink-muted uppercase tracking-wider">
                               {isBsPayMethod ? 'Bs' : 'USD'}
                             </div>
                           </div>
                           {/* Equivalente USD para métodos Bs */}
                           {isBsPayMethod && exchangeRate && rawAmount > 0 && (
                             <div className="flex justify-between text-xs px-1">
-                              <span className="text-muted-foreground">Equivalente USD</span>
-                              <span className="font-bold text-emerald-400">${(rawAmount / exchangeRate).toFixed(2)}</span>
+                              <span className="text-capsula-ink-muted">Equivalente USD</span>
+                              <span className="font-semibold text-capsula-ink tabular-nums">${(rawAmount / exchangeRate).toFixed(2)}</span>
                             </div>
                           )}
                           {/* Vuelto para efectivo USD */}
                           {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0)) && (
-                            <div className="flex justify-between text-sm font-black px-1">
-                              <span className="text-amber-400">Vuelto</span>
-                              <span className="text-amber-400">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
+                            <div className="flex justify-between text-sm font-semibold px-1">
+                              <span className="text-capsula-ink">Vuelto</span>
+                              <span className="text-capsula-ink tabular-nums">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
                             </div>
                           )}
                         </div>
@@ -1870,14 +1878,14 @@ export default function POSSportBarPage() {
                             disabled={isProcessing}
                           />
                           {discountType === "DIVISAS_33" && (divisasUsdAmountPickup ?? 0) > 0 && (
-                            <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 text-xs text-indigo-300 space-y-0.5">
+                            <div className="rounded-xl bg-capsula-navy-soft border border-capsula-line-strong px-3 py-2 text-xs text-capsula-ink space-y-0.5">
                               <div className="flex justify-between">
                                 <span>Divisas sobre ${(divisasUsdAmountPickup ?? 0).toFixed(2)} USD</span>
-                                <span className="font-black">-${((divisasUsdAmountPickup ?? 0) / 3).toFixed(2)}</span>
+                                <span className="font-semibold tabular-nums">−${((divisasUsdAmountPickup ?? 0) / 3).toFixed(2)}</span>
                               </div>
-                              <div className="flex justify-between font-black text-white">
+                              <div className="flex justify-between font-semibold text-capsula-ink">
                                 <span>Total a cobrar</span>
-                                <span>${pickupTotal.toFixed(2)}</span>
+                                <span className="tabular-nums">${pickupTotal.toFixed(2)}</span>
                               </div>
                             </div>
                           )}
@@ -1889,36 +1897,39 @@ export default function POSSportBarPage() {
                         const tipVal = Math.min(parseFloat(checkoutTip) || 0, pickupChange);
                         const changeBack = pickupChange - tipVal;
                         return (
-                          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                          <div className="rounded-2xl border border-capsula-line-strong bg-capsula-ivory-surface p-3 space-y-2">
                             {/* Fila principal: vuelto a devolver (lo más importante) */}
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-black text-amber-400">💵 Vuelto a devolver:</span>
-                              <span className="text-lg font-black text-amber-400">${Math.max(0, changeBack).toFixed(2)}</span>
+                              <span className="text-sm font-semibold text-capsula-ink inline-flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-capsula-navy-deep" />
+                                Vuelto a devolver:
+                              </span>
+                              <span className="text-lg font-semibold text-capsula-ink tabular-nums">${Math.max(0, changeBack).toFixed(2)}</span>
                             </div>
                             {/* Separador antes de la propina opcional */}
-                            <div className="border-t border-amber-500/20 pt-2">
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                            <div className="border-t border-capsula-line pt-2">
+                              <div className="text-[10px] text-capsula-ink-muted uppercase tracking-[0.14em] mb-1.5">
                                 Propina voluntaria (opcional — solo si el cliente la deja)
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="flex-1 flex items-center bg-background border border-border rounded-lg px-2">
-                                  <span className="text-xs text-muted-foreground mr-1">$</span>
+                                <div className="flex-1 flex items-center bg-capsula-ivory border border-capsula-line rounded-lg px-2">
+                                  <span className="text-xs text-capsula-ink-muted mr-1">$</span>
                                   <input
                                     type="number" min="0" step="0.01"
                                     max={pickupChange}
                                     value={checkoutTip}
                                     onChange={e => setCheckoutTip(e.target.value)}
                                     placeholder="0.00"
-                                    className="flex-1 bg-transparent text-sm font-black focus:outline-none py-1.5 w-0"
+                                    className="flex-1 bg-transparent text-sm font-semibold text-capsula-ink focus:outline-none py-1.5 w-0 tabular-nums"
                                   />
                                 </div>
                                 {tipVal > 0 && (
                                   <button
                                     type="button"
                                     onClick={() => setCheckoutTip("")}
-                                    className="text-muted-foreground hover:text-destructive text-lg leading-none px-1"
+                                    className="text-capsula-ink-muted hover:text-capsula-coral h-6 w-6 rounded-full flex items-center justify-center"
                                     title="Limpiar propina"
-                                  >×</button>
+                                  ><XIcon className="h-3.5 w-3.5" /></button>
                                 )}
                               </div>
                             </div>
@@ -1933,16 +1944,17 @@ export default function POSSportBarPage() {
                         return (
                           <>
                             {needsAmount && (
-                              <div className="text-center text-xs text-amber-400 font-bold py-1">
-                                ⚠️ Ingresa el monto recibido
+                              <div className="text-center text-xs text-capsula-coral font-semibold py-1 inline-flex items-center justify-center gap-1.5 w-full">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                Ingresa el monto recibido
                               </div>
                             )}
                             <button
                               onClick={handleCheckoutPickup}
                               disabled={cart.length === 0 || isProcessing || needsAmount}
-                              className="capsula-btn capsula-btn-primary w-full py-6 text-xl shadow-xl shadow-primary/20"
+                              className="pos-btn w-full py-5 text-lg disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              {isProcessing ? "PROCESANDO..." : `COBRAR $${pickupTotal.toFixed(2)}`}
+                              {isProcessing ? "Procesando…" : `Cobrar $${pickupTotal.toFixed(2)}`}
                             </button>
                           </>
                         );
@@ -1970,9 +1982,10 @@ export default function POSSportBarPage() {
                         serviceFee: 0,
                       });
                     }}
-                    className="w-full py-3 bg-secondary hover:bg-muted text-foreground rounded-xl font-bold flex items-center justify-center gap-2 border border-border text-sm"
+                    className="pos-btn-secondary w-full py-3 text-sm inline-flex items-center justify-center gap-2"
                   >
-                    🖨️ Reimprimir {lastPickupOrder.pickupNumber || lastPickupOrder.orderNumber}
+                    <Printer className="h-4 w-4" />
+                    Reimprimir {lastPickupOrder.pickupNumber || lastPickupOrder.orderNumber}
                   </button>
                 )}
               </div>
