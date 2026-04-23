@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -921,49 +921,56 @@ export default function POSMeseroPage() {
         </main>
 
         {/* ══ RIGHT: PEDIDO PANEL (sin cobro) ═════════════════════════════ */}
-        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-capsula-ivory-surface flex flex-col overflow-hidden border-l border-capsula-line ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
 
           {/* Carrito pendiente */}
           {cart.length > 0 && (
-            <div className="border-b border-emerald-900/50 bg-emerald-950/30 p-4 shrink-0">
+            <div className="border-b border-capsula-line bg-capsula-navy-soft p-4 shrink-0">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-black text-sm text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                  🛒 Nuevo pedido
-                  <span className="bg-emerald-500 text-black text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">
+                <h2 className="font-semibold text-xs text-capsula-ink uppercase tracking-[0.14em] flex items-center gap-2">
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  Nuevo pedido
+                  <span className="bg-capsula-navy-deep text-capsula-ivory text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center">
                     {cart.length}
                   </span>
                 </h2>
                 <button
                   onClick={() => setCart([])}
-                  className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                  className="text-[10px] text-capsula-coral hover:opacity-80 font-semibold uppercase tracking-wider"
                 >
                   Limpiar
                 </button>
               </div>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {cart.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-xs bg-emerald-900/20 rounded-lg px-3 py-2">
-                    <span className="font-bold text-foreground/80 truncate flex-1">
-                      <span className="text-emerald-400 font-black">x{item.quantity}</span> {item.name}
+                  <div key={i} className="flex justify-between items-center text-xs bg-capsula-ivory rounded-lg px-3 py-2 border border-capsula-line">
+                    <span className="font-semibold text-capsula-ink-soft truncate flex-1">
+                      <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.name}
                     </span>
-                    <span className="text-emerald-400 font-black ml-2">${item.lineTotal.toFixed(2)}</span>
+                    <span className="text-capsula-ink font-semibold ml-2 tabular-nums">${item.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex justify-between items-center border-t border-emerald-900/50 pt-2">
-                <span className="text-xs font-black text-muted-foreground uppercase">Subtotal</span>
-                <span className="text-sm font-black text-emerald-400">${cartTotal.toFixed(2)}</span>
+              <div className="mt-3 flex justify-between items-center border-t border-capsula-line pt-2">
+                <span className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-wider">Subtotal</span>
+                <span className="text-sm font-semibold text-capsula-ink tabular-nums">${cartTotal.toFixed(2)}</span>
               </div>
               <button
                 onClick={() => { handleSendToTab(); if (window.innerWidth < 1024) setMobileTab("tables"); }}
                 disabled={!activeTab || isProcessing}
-                className={`w-full mt-3 py-4 rounded-xl font-black text-sm transition-all active:scale-95 ${
+                className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                   sendSuccess
-                    ? "bg-emerald-500 text-black"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
+                    : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory disabled:opacity-40 disabled:cursor-not-allowed"
                 }`}
               >
-                {sendSuccess ? "✓ ¡Enviado a cocina!" : isProcessing ? "Enviando..." : `🍳 Enviar a cocina · $${cartTotal.toFixed(2)}`}
+                {sendSuccess ? (
+                  <><Check className="h-4 w-4" /> ¡Enviado a cocina!</>
+                ) : isProcessing ? (
+                  "Enviando..."
+                ) : (
+                  <><ChefHat className="h-4 w-4" /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
+                )}
               </button>
             </div>
           )}
@@ -979,98 +986,107 @@ export default function POSMeseroPage() {
           ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {!activeTab ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">🪑</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
+              <div className="h-full flex flex-col items-center justify-center text-capsula-ink-muted py-10">
+                <Armchair className="h-12 w-12 mb-3 opacity-60" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-center">
                   Selecciona una mesa<br />para ver la cuenta
                 </p>
               </div>
             ) : activeTab.orders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">📋</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
+              <div className="h-full flex flex-col items-center justify-center text-capsula-ink-muted py-10">
+                <ClipboardList className="h-12 w-12 mb-3 opacity-60" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-center">
                   Cuenta abierta<br />Agrega productos del menú
                 </p>
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-[10px] font-semibold uppercase text-capsula-ink-muted tracking-[0.14em]">
                   Pedidos enviados
                 </p>
                 {activeTab.orders.map((order) => (
-                  <div key={order.id} className="glass-panel rounded-2xl overflow-hidden border-emerald-900/20">
-                    <div className="flex items-center justify-between px-3 py-2 bg-emerald-900/20 border-b border-emerald-900/30">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase">#{order.orderNumber}</span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                        order.kitchenStatus === "SENT" ? "bg-amber-500/20 text-amber-400" :
-                        order.kitchenStatus === "READY" ? "bg-emerald-500/20 text-emerald-400" :
-                        "bg-secondary text-muted-foreground"
+                  <div key={order.id} className="bg-capsula-ivory rounded-2xl overflow-hidden border border-capsula-line">
+                    <div className="flex items-center justify-between px-3 py-2 bg-capsula-ivory-alt border-b border-capsula-line">
+                      <span className="text-[10px] font-semibold text-capsula-ink uppercase tracking-wider">#{order.orderNumber}</span>
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                        order.kitchenStatus === "SENT" ? "bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]" :
+                        order.kitchenStatus === "READY" ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]" :
+                        "bg-capsula-ivory-alt text-capsula-ink-muted"
                       }`}>
-                        {order.kitchenStatus === "SENT" ? "🔥 En cocina" : order.kitchenStatus === "READY" ? "✅ Listo" : order.kitchenStatus}
+                        {order.kitchenStatus === "SENT" ? (
+                          <><Flame className="h-2.5 w-2.5" /> En cocina</>
+                        ) : order.kitchenStatus === "READY" ? (
+                          <><Check className="h-2.5 w-2.5" /> Listo</>
+                        ) : (
+                          order.kitchenStatus
+                        )}
                       </span>
                     </div>
                     <div className="p-3 space-y-1.5">
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between items-center text-xs group">
                           <div className="flex-1 min-w-0">
-                            <span className="font-bold text-foreground/80">
-                              <span className="text-primary font-black">x{item.quantity}</span> {item.itemName}
+                            <span className="font-semibold text-capsula-ink-soft">
+                              <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.itemName}
                             </span>
                             {item.modifiers && item.modifiers.length > 0 && (
-                              <div className="text-[9px] text-muted-foreground truncate pl-4">
+                              <div className="text-[9px] text-capsula-ink-muted truncate pl-4">
                                 {item.modifiers.map((m) => m.name).join(" · ")}
                               </div>
                             )}
                           </div>
                           <div className="flex items-center gap-2 ml-2 shrink-0">
-                            <span className="text-foreground/60">${item.lineTotal.toFixed(2)}</span>
+                            <span className="text-capsula-ink-soft tabular-nums">${item.lineTotal.toFixed(2)}</span>
                             <button
                               onClick={() => openRemoveModal(order.id, item)}
-                              className="h-5 w-5 rounded-md bg-red-500/0 hover:bg-red-500/20 text-red-500/40 hover:text-red-400 flex items-center justify-center text-[10px] transition-all opacity-0 group-hover:opacity-100"
+                              className="h-5 w-5 rounded-md hover:bg-capsula-coral/10 text-capsula-ink-faint hover:text-capsula-coral flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
                               title="Anular (requiere PIN supervisor)"
                             >
-                              ✕
+                              <XIcon className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="px-3 pb-3 flex justify-between items-center border-t border-border/50 pt-2">
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase">Orden</span>
-                      <span className="text-sm font-black text-foreground">${order.total.toFixed(2)}</span>
+                    <div className="px-3 pb-3 flex justify-between items-center border-t border-capsula-line pt-2">
+                      <span className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-wider">Orden</span>
+                      <span className="text-sm font-semibold text-capsula-ink tabular-nums">${order.total.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
 
                 {/* Total cuenta — solo informativo, sin botón de cobro */}
-                <div className="capsula-card p-4 border-emerald-900/30 mt-2">
+                <div className="rounded-2xl border border-capsula-line-strong bg-capsula-ivory p-4 mt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total cuenta</span>
-                    <span className="text-xl font-black text-emerald-400">${activeTab.balanceDue.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">Total cuenta</span>
+                    <span className="text-xl font-semibold text-capsula-ink tabular-nums">${activeTab.balanceDue.toFixed(2)}</span>
                   </div>
-                  <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
+                  <p className="text-[9px] text-capsula-ink-faint mt-1 font-semibold uppercase tracking-wider">
                     El cobro lo gestiona el cajero
                   </p>
                   {/* Mostrar cuenta al cliente */}
                   <button
                     onClick={() => setShowBillModal(true)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory transition inline-flex items-center justify-center gap-2"
                   >
-                    🧾 Mostrar cuenta al cliente
+                    <Receipt className="h-3.5 w-3.5" />
+                    Mostrar cuenta al cliente
                   </button>
                   {canUseCaptainFeatures && (
                     <>
                       <button
                         onClick={() => setSubAccountMode(true)}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
                       >
-                        ÷ Dividir cuenta (subcuentas)
+                        <Divide className="h-3.5 w-3.5" />
+                        Dividir cuenta (subcuentas)
                       </button>
                       <button
                         onClick={openTransferModal}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-sky-500/20 hover:text-sky-400 text-foreground/70 transition"
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
                       >
-                        ↔ Transferir mesa
+                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                        Transferir mesa
                       </button>
                     </>
                   )}
@@ -1083,22 +1099,23 @@ export default function POSMeseroPage() {
       </div>
 
       {/* ── NAVEGACIÓN MÓVIL ─────────────────────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-capsula-ivory-surface border-t border-capsula-line flex z-50 shadow-xl">
         {(["tables", "menu", "account"] as const).map((tab) => {
-          const icons = { tables: "🪑", menu: "🍽️", account: "📋" };
-          const labels = { tables: "MESAS", menu: "MENÚ", account: "PEDIDO" };
+          const Icon = tab === "tables" ? Armchair : tab === "menu" ? UtensilsCrossed : ClipboardList;
+          const labels = { tables: "Mesas", menu: "Menú", account: "Pedido" };
+          const active = mobileTab === tab;
           return (
             <button
               key={tab}
               onClick={() => setMobileTab(tab)}
-              className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors
-                ${mobileTab === tab ? "text-emerald-400 bg-emerald-400/5" : "text-muted-foreground"}`}
+              className={`flex-1 py-3 flex flex-col items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] relative transition-colors
+                ${active ? "text-capsula-ink bg-capsula-navy-soft" : "text-capsula-ink-muted hover:text-capsula-ink-soft"}`}
             >
-              {mobileTab === tab && <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-b" />}
-              <span className="text-xl">{icons[tab]}</span>
+              {active && <div className="absolute top-0 left-0 right-0 h-0.5 bg-capsula-navy-deep rounded-b" />}
+              <Icon className="h-5 w-5" />
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-emerald-500 text-black text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-black px-1">
+                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-ivory text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
                   {cartBadgeCount}
                 </span>
               )}
