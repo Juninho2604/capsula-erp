@@ -27,6 +27,7 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
+import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote } from "lucide-react";
 
 // ============================================================================
 // TIPOS
@@ -1229,17 +1230,17 @@ export default function POSSportBarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-capsula-ivory-surface text-capsula-ink flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">🍸</div>
-          <div className="text-xl font-bold text-foreground">Cargando Restaurante...</div>
+          <Wine className="h-10 w-10 mx-auto mb-3 text-capsula-navy-deep animate-pulse" />
+          <div className="text-xl font-semibold tracking-[-0.02em] text-capsula-ink">Cargando Restaurante…</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col pb-16 lg:pb-0">
+    <div className="min-h-screen bg-capsula-ivory-surface text-capsula-ink flex flex-col pb-16 lg:pb-0">
       <CashierShiftModal
         forceOpen={showChangeCashierModal}
         onShiftOpen={(name) => {
@@ -1314,19 +1315,22 @@ export default function POSSportBarPage() {
       )}
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div className="glass-panel px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 shadow-lg border-b-primary/10">
+      <div className="bg-capsula-ivory px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 border-b border-capsula-line">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-3xl shadow-inner">🍸</div>
+          <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-navy-deep">
+            <Wine className="h-6 w-6" />
+          </div>
           <div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tight text-gray-950 dark:text-foreground">POS <span className="text-primary italic">RESTAURANTE</span></h1>
-            <p className="text-[10px] font-bold text-gray-700 dark:text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              Gestión Táctil CAPSULA · Operaciones en Vivo
+            <h1 className="text-lg md:text-2xl font-semibold tracking-[-0.02em] text-capsula-ink">POS <span className="text-capsula-coral">Restaurante</span></h1>
+            <p className="text-[10px] font-semibold text-capsula-ink-muted uppercase tracking-[0.14em] flex items-center gap-2 mt-0.5">
+              Gestión táctil CAPSULA · Operaciones en vivo
               {cashierName ? (
-                <span className="flex items-center gap-2 bg-secondary/50 px-2 py-0.5 rounded-full border border-border">
-                  👤 {cashierName}
+                <span className="flex items-center gap-2 bg-capsula-ivory-surface px-2 py-0.5 rounded-full border border-capsula-line text-capsula-ink">
+                  <UserCog className="h-3 w-3" />
+                  {cashierName}
                   <button
                     onClick={() => setShowChangeCashierModal(true)}
-                    className="text-primary hover:text-accent font-black underline"
+                    className="text-capsula-coral hover:opacity-80 font-semibold underline underline-offset-2"
                   >
                     Cambiar
                   </button>
@@ -1344,11 +1348,13 @@ export default function POSSportBarPage() {
           <button
             type="button"
             onClick={() => setShowTipModal(true)}
-            className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase hover:bg-amber-500/20 transition-colors"
+            className="px-3 py-2 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-capsula-ink text-xs font-semibold uppercase tracking-wider hover:bg-capsula-navy-soft transition inline-flex items-center gap-1.5"
           >
-            + Propina
+            <PlusIcon className="h-3.5 w-3.5" />
+            Propina
           </button>
-          <div className="px-4 py-2 bg-secondary/30 rounded-xl border border-border font-black text-sm tabular-nums text-foreground/70">
+          <div className="px-4 py-2 bg-capsula-ivory-surface rounded-xl border border-capsula-line font-semibold text-sm tabular-nums text-capsula-ink-soft hidden sm:flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" />
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
