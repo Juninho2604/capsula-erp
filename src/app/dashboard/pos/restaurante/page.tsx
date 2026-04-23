@@ -27,7 +27,7 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
-import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock } from "lucide-react";
+import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check } from "lucide-react";
 
 // ============================================================================
 // TIPOS
@@ -3072,23 +3072,23 @@ export default function POSSportBarPage() {
         </div>
       )}
       {/* Navegación móvil — solo visible en móvil/tablet */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl safe-area-inset-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-capsula-ivory border-t border-capsula-line flex z-50 shadow-xl safe-area-inset-bottom">
         {(["tables", "menu", "account"] as const).map((tab) => {
-          const icons = { tables: "🪑", menu: "🍽️", account: "🧾" };
-          const labels = { tables: "MESAS", menu: "MENÚ", account: "CUENTA" };
+          const Icon = tab === "tables" ? Armchair : tab === "menu" ? UtensilsCrossed : ReceiptIcon;
+          const labels = { tables: "Mesas", menu: "Menú", account: "Cuenta" };
+          const active = mobileTab === tab;
           return (
             <button
               key={tab}
               onClick={() => setMobileTab(tab)}
-              className={`flex-1 min-h-[56px] py-2 flex flex-col items-center justify-center gap-1 text-[10px] font-black uppercase tracking-widest relative transition-colors
-                ${mobileTab === tab ? "text-primary bg-primary/5" : "text-muted-foreground"}`}
+              className={`flex-1 min-h-[56px] py-2 flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] relative transition-colors
+                ${active ? "text-capsula-ink bg-capsula-navy-soft" : "text-capsula-ink-muted hover:text-capsula-ink-soft"}`}
             >
-              {mobileTab === tab && <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary rounded-b" />}
-              <span className="text-xl">{icons[tab]}</span>
+              {active && <div className="absolute top-0 left-0 right-0 h-0.5 bg-capsula-navy-deep rounded-b" />}
+              <Icon className="h-5 w-5" />
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-primary text-primary-foreground text-[9px] rounded-full min-w-[16px] h-4 flex items-center
-      justify-center font-black px-1">
+                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-ivory text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
                   {cartBadgeCount}
                 </span>
               )}
