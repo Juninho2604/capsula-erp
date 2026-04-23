@@ -93,9 +93,7 @@ export function CostImporter() {
         <div className="space-y-6">
             {/* Upload Section */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    📁 Importar Costos desde Excel
-                </h3>
+                <h3 className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Importar Costos desde Excel</h3>
 
                 <div className="flex items-center gap-4">
                     <label className="flex-1">
@@ -144,9 +142,7 @@ export function CostImporter() {
             {previewItems.length > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Vista Previa ({previewItems.length} registros)
-                        </h3>
+                        <h3 className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink">Vista Previa ({previewItems.length} registros)</h3>
                         <button
                             onClick={handleProcessImport}
                             disabled={isProcessing || summary?.matched === 0}

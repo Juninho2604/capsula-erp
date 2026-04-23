@@ -260,9 +260,7 @@ export default function AsistentePage() {
       {/* PANEL DE ESTADO DE RECETAS */}
       <div className="capsula-card p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">
-            Estado de conexión ventas → inventario
-          </h2>
+          <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">Estado de conexión ventas → inventario</h2>
           <button onClick={loadStatus} className="text-[10px] font-black text-primary hover:underline uppercase tracking-widest">
             Actualizar
           </button>
@@ -393,9 +391,7 @@ export default function AsistentePage() {
             </div>
           ))}
           <div className="ml-auto">
-            <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink-soft">
-              {step === 1 ? 'Nuevo insumo' : step === 2 ? `${selectedCategory?.label}` : 'Creado'}
-            </h2>
+            <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink-soft">{step === 1 ? 'Nuevo insumo' : step === 2 ? `${selectedCategory?.label}` : 'Creado'}</h2>
           </div>
         </div>
 
@@ -673,9 +669,7 @@ export default function AsistentePage() {
 
       {/* GUÍA RÁPIDA DE NOMENCLATURA */}
       <div className="capsula-card p-6">
-        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">
-          Estándares de nomenclatura CAPSULA
-        </h2>
+        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Estándares de nomenclatura CAPSULA</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             { icon: '🥩', cat: 'Proteínas', rule: 'Nombre descriptivo + tipo + estado', ex: '"Pollo Pechuga Fresca", "Carne Molida 80/20"' },

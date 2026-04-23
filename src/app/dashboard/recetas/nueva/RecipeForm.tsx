@@ -270,9 +270,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         ←
                     </Link>
                     <div>
-                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                            {initialData ? 'Editar Receta' : 'Nueva Receta'}
-                        </h1>
+                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>
                         <p className="text-gray-500">
                             {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
                         </p>
@@ -285,9 +283,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 <div className="space-y-6 lg:col-span-2">
                     {/* Info básica */}
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h2 className="mb-4 font-semibold text-gray-900 dark:text-white">
-                            Información Básica
-                        </h2>
+                        <h2 className="mb-4 font-heading text-lg tracking-[-0.01em] text-capsula-ink">Información Básica</h2>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="sm:col-span-2">
@@ -440,9 +436,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                             <div>
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    Ingredientes
-                                </h2>
+                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Ingredientes</h2>
                                 <p className="text-sm text-gray-500">
                                     {ingredients.length} items
                                 </p>
@@ -481,7 +475,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                     {showCosts && (
                                         <div className="text-right">
-                                            <p className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                            <p className="font-mono text-sm font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                                 {formatCurrency(ing.totalCost)}
                                             </p>
                                             <p className="text-xs text-gray-500">
@@ -513,9 +507,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         {showAddIngredient && (
                             <div className="border-t border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/50">
                                 <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="font-medium text-gray-900 dark:text-white">
-                                        Agregar Ingrediente
-                                    </h3>
+                                    <h3 className="font-medium text-gray-900 dark:text-white">Agregar Ingrediente</h3>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
@@ -683,9 +675,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         <div className="sticky top-24 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
                             <div className="mb-4 flex items-center gap-2">
                                 <span className="text-2xl">💰</span>
-                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                    Resumen Estimado
-                                </h3>
+                                <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Resumen Estimado</h3>
                             </div>
 
                             <div className="space-y-3">

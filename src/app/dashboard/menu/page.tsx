@@ -158,9 +158,7 @@ export default function MenuManagementPage() {
         <div className="p-6 max-w-7xl mx-auto text-white">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        Gestión de menú
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Gestión de menú</h1>
                     <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
                 <button

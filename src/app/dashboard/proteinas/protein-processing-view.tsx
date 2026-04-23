@@ -361,10 +361,8 @@ export default function ProteinProcessingView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        🥩 Procesamiento de Proteínas
-                    </h1>
-                    <p className="text-gray-500">
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Procesamiento de proteínas</h1>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
                         Registro de desposte y rendimiento de carnes
                     </p>
                 </div>
@@ -536,9 +534,7 @@ export default function ProteinProcessingView() {
                     {/* Formulario principal */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                📋 Datos del Procesamiento
-                            </h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Datos del Procesamiento</h2>
                         </div>
 
                         <div className="p-6 space-y-4">
@@ -774,9 +770,7 @@ export default function ProteinProcessingView() {
                     {/* Subproductos */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🍖 Subproductos ({subProducts.length})
-                            </h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Subproductos ({subProducts.length})</h2>
                         </div>
 
                         <div className="p-6 space-y-4">
@@ -996,9 +990,7 @@ export default function ProteinProcessingView() {
                 <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                     <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex justify-between items-center">
                         <div>
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                {selectedProcessing.code}
-                            </h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{selectedProcessing.code}</h2>
                             <p className="text-sm text-gray-500">
                                 {new Date(selectedProcessing.processDate).toLocaleDateString('es-VE', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'

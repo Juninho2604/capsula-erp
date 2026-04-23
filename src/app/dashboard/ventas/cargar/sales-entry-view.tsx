@@ -212,9 +212,7 @@ export default function SalesEntryView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        💰 Cargar Ventas
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Cargar Ventas</h1>
                     <p className="text-gray-500">
                         Registra las comandas de WhatsApp
                     </p>
@@ -290,9 +288,7 @@ export default function SalesEntryView() {
                     <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    📋 Menú
-                                </h2>
+                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Menú</h2>
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -360,9 +356,7 @@ export default function SalesEntryView() {
                     {/* Carrito y checkout */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🛒 Comanda ({cart.length})
-                            </h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Comanda ({cart.length})</h2>
                         </div>
 
                         <div className="p-4 space-y-4 max-h-[30vh] overflow-y-auto">

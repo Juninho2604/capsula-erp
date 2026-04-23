@@ -325,9 +325,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                         ←
                     </Link>
                     <div>
-                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                            Entrada de Mercancía
-                        </h1>
+                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Entrada de Mercancía</h1>
                         <p className="text-gray-500">
                             Registro de llegada de insumos de proveedores
                         </p>
@@ -345,9 +343,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 📄
                             </div>
                             <div>
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    Datos de la Nota de Entrega
-                                </h2>
+                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Datos de la Nota de Entrega</h2>
                                 <p className="text-sm text-gray-500">
                                     Información del documento de Profit
                                 </p>
@@ -502,9 +498,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 📦
                             </div>
                             <div>
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    Insumos Recibidos
-                                </h2>
+                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Insumos Recibidos</h2>
                                 <p className="text-sm text-gray-500">
                                     Agrega los items de la nota de entrega
                                 </p>
@@ -708,7 +702,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 <div className="space-y-4">
                     {/* Resumen y botón guardar */}
                     <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
-                        <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                        <h3 className="mb-4 flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                             <span>📋</span> Resumen de Entrada
                         </h3>
 
@@ -736,7 +730,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             </div>
                             {showCosts && (
                                 <div className="flex justify-between border-t border-amber-200 pt-3 dark:border-amber-700">
-                                    <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
+                                    <span className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Total:</span>
                                     <span className="font-heading text-xl tracking-[-0.02em] text-amber-600">
                                         {formatCurrency(totalEntrada)}
                                     </span>
@@ -821,9 +815,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                     <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
                         <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                🤖 Resultados del Análisis IA
-                            </h3>
+                            <h3 className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink">Resultados del Análisis IA</h3>
                             <p className="text-sm text-gray-500">
                                 Revisa los items detectados. La IA puede equivocarse con la caligrafía difícil.
                             </p>

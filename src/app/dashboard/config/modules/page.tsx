@@ -19,9 +19,7 @@ export default async function ModulesConfigPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                    🧩 Configuración de Módulos
-                </h1>
+                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Configuración de Módulos</h1>
                 <p className="text-gray-500 dark:text-gray-400">
                     Activa o desactiva módulos. Los cambios se guardan en la base de datos
                     y se aplican de inmediato — sin reiniciar el servidor ni editar variables de entorno.

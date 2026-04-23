@@ -343,9 +343,7 @@ export default function ProduccionPage() {
                                     <ChefHat className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold text-gray-900 dark:text-white">
-                                        Producción desde Receta
-                                    </h2>
+                                    <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Producción desde Receta</h2>
                                     <p className="text-sm text-gray-500">
                                         Chef: {user?.firstName} {user?.lastName}
                                     </p>
@@ -434,7 +432,7 @@ export default function ProduccionPage() {
                         {requirements.length > 0 && (
                             <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                                 <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                                    <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                                    <h3 className="flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                         <Package className="h-5 w-5 text-gray-400" />
                                         Ingredientes que se consumirán
                                     </h3>
@@ -545,9 +543,7 @@ export default function ProduccionPage() {
                                     <Wrench className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold text-gray-900 dark:text-white">
-                                        Producción Manual
-                                    </h2>
+                                    <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Producción Manual</h2>
                                     <p className="text-sm text-gray-500">
                                         Crea una producción personalizada sin necesidad de receta
                                     </p>
@@ -634,7 +630,7 @@ export default function ProduccionPage() {
                         <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                                 <div>
-                                    <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                                    <h3 className="flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                         <Package className="h-5 w-5 text-gray-400" />
                                         Ingredientes a Consumir
                                     </h3>

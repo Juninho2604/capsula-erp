@@ -50,9 +50,7 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">⚠️</span>
                     <div className="text-left">
-                        <h3 className="font-bold text-orange-400">
-                            {pendingItems.length} Platos del Menú sin Receta
-                        </h3>
+                        <h3 className="font-bold text-orange-400">{pendingItems.length} Platos del Menú sin Receta</h3>
                         <p className="text-sm text-orange-300/70">
                             Sin receta no se puede descontar el inventario al vender. Crea la receta vacía y luego completa los ingredientes.
                         </p>

@@ -159,9 +159,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        Inventario
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Inventario</h1>
                     <p className="text-gray-500">
                         {filteredItems.length} de {stats.total} items
                     </p>

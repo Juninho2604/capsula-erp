@@ -37,9 +37,7 @@ export default async function IntercompanyPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        🔗 Intercompany
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Intercompany</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         Liquidaciones y transferencias entre negocios del grupo
                     </p>
@@ -83,7 +81,7 @@ export default async function IntercompanyPage() {
                                             {STATUS_LABEL[s.status] ?? s.status}
                                         </span>
                                     </td>
-                                    <td className="px-5 py-3 text-right font-semibold text-gray-900 dark:text-white">
+                                    <td className="px-5 py-3 text-right font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                         ${s.totalAmount.toFixed(2)}
                                     </td>
                                     <td className="px-5 py-3 text-right text-gray-500">

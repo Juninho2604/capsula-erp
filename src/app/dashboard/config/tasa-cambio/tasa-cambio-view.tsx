@@ -98,9 +98,7 @@ export function TasaCambioView({ history }: Props) {
             {history.length > 0 && (
                 <div className="md:col-span-2 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
                     <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            Historial reciente
-                        </h2>
+                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Historial reciente</h2>
                     </div>
                     <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {history.map((r) => (
@@ -112,7 +110,7 @@ export function TasaCambioView({ history }: Props) {
                                         year: 'numeric',
                                     })}
                                 </span>
-                                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                <span className="font-mono text-sm font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                     {r.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
                                 </span>
                             </div>

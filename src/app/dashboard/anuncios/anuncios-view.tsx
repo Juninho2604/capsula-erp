@@ -73,9 +73,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
       <div className="space-y-5">
         {/* Formulario nuevo comunicado */}
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-5 space-y-4 shadow-cap-soft">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-            Nuevo comunicado
-          </h2>
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Nuevo comunicado</h2>
 
           <div className="space-y-3">
             <div>
@@ -142,9 +140,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
         {/* Mensajes activos */}
         <div className="overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-soft">
           <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
-            <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-              Activos ({active.length})
-            </h2>
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Activos ({active.length})</h2>
           </div>
           {active.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center text-capsula-ink-muted">
@@ -185,9 +181,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
         {archived.length > 0 && (
           <div className="overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface opacity-80 shadow-cap-soft">
             <div className="border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
-              <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-                Historial ({archived.length})
-              </h2>
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Historial ({archived.length})</h2>
             </div>
             <div className="divide-y divide-capsula-line">
               {archived.slice(0, 20).map(m => {

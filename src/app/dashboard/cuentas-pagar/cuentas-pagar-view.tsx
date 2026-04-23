@@ -236,9 +236,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       {/* Aging Report */}
       {hasAging && (
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
-          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-            Envejecimiento de deudas
-          </h3>
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Envejecimiento de deudas</h3>
           <div className="grid grid-cols-5 gap-2">
             {agingData.map(bucket => {
               const styles = agingBucketStyles(bucket.range);
@@ -261,9 +259,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       {/* Top Acreedores */}
       {supplierSummary.length > 0 && (
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
-          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-            Principales acreedores
-          </h3>
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Principales acreedores</h3>
           <div className="space-y-2">
             {supplierSummary.map((s, i) => {
               const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;

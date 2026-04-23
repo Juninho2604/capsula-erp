@@ -32,9 +32,7 @@ export default async function GamesPage() {
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        🎱 Juegos y Entretenimiento
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Juegos y Entretenimiento</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {stats.stationsAvailable} libre{stats.stationsAvailable !== 1 ? 's' : ''} ·{' '}
                         {stats.stationsOccupied} ocupad{stats.stationsOccupied !== 1 ? 'os' : 'o'} ·{' '}
@@ -102,7 +100,7 @@ export default async function GamesPage() {
                             <div className="mb-3 flex items-start gap-2">
                                 <span className="text-2xl">{station.gameType.icon ?? '🎮'}</span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate font-semibold text-gray-900 dark:text-white">
+                                    <p className="truncate font-heading text-lg tracking-[-0.01em] text-capsula-ink">
                                         {station.name}
                                     </p>
                                     <p className="text-xs text-gray-400">{station.code}</p>

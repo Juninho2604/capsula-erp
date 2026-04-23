@@ -75,9 +75,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                                 category.includes('PANTRY') ? '🥫' :
                                     category.includes('PRODUCCION') ? '🏭' : '📋'}
                         </span>
-                        <h2 className="font-heading text-xl tracking-[-0.02em] text-gray-800 dark:text-white">
-                            {category}
-                        </h2>
+                        <h2 className="font-heading text-xl tracking-[-0.02em] text-gray-800 dark:text-white">{category}</h2>
                         <span className="text-sm text-gray-500">
                             ({groupedRecipes[category].length})
                         </span>
@@ -96,9 +94,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                                             {recipe.type === 'SUB_RECIPE' ? '🧀' : '🍽️'}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                {recipe.name}
-                                            </h3>
+                                            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{recipe.name}</h3>
                                             <span className={cn(
                                                 'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
                                                 recipe.type === 'SUB_RECIPE'

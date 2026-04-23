@@ -20,9 +20,7 @@ export default async function RecetasPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        Recetas
-                    </h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Recetas</h1>
                     <p className="text-gray-500">
                         {allRecipes.length} recetas disponibles
                         {missingItems.length > 0 && (
@@ -52,9 +50,7 @@ export default async function RecetasPage() {
                 /* Empty State */
                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-16 text-center dark:border-gray-600">
                     <span className="text-5xl">📋</span>
-                    <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-                        No hay recetas
-                    </h3>
+                    <h3 className="mt-4 text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink">No hay recetas</h3>
                     <p className="mt-1 text-gray-500">
                         Comienza creando tu primera receta para calcular sus costos
                     </p>

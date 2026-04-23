@@ -248,9 +248,7 @@ export function MetasView({ data }: { data: MetasData }) {
         {/* Formulario de edición */}
         {editing && (
           <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft space-y-5">
-            <h2 className="font-heading text-lg tracking-[-0.02em] text-capsula-ink">
-              Configurar metas
-            </h2>
+            <h2 className="font-heading text-lg tracking-[-0.02em] text-capsula-ink">Configurar metas</h2>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5">

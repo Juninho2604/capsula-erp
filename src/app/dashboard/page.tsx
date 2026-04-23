@@ -251,9 +251,7 @@ export default async function DashboardPage() {
                             <AlertOctagon className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div>
-                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
-                                Alertas Críticas de Stock
-                            </h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Alertas Críticas de Stock</h2>
                             <p className="text-sm font-medium text-capsula-ink-muted">
                                 Insumos por debajo del punto de reorden
                             </p>

@@ -56,7 +56,7 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700">
                 <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-t-2xl flex justify-between items-center">
                     <div>
-                        <h2 className="font-heading text-xl tracking-[-0.02em]">⚙️ Productos Críticos</h2>
+                        <h2 className="font-heading text-xl tracking-[-0.02em]">️ Productos Críticos</h2>
                         <p className="text-amber-100 text-sm mt-1">Configurando para: <strong>{areaName}</strong></p>
                     </div>
                     <button onClick={() => { onUpdate(); onClose(); }} className="text-white hover:text-gray-200 text-2xl">×</button>
@@ -84,7 +84,7 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
                             {items.map(item => (
                                 <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border transition ${item.isCriticalForArea ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50'}`}>
                                     <div>
-                                        <p className="font-bold text-gray-900 dark:text-white text-sm">{item.name}</p>
+                                        <p className="font-heading text-lg tracking-[-0.01em] text-capsula-ink text-sm">{item.name}</p>
                                         <p className="text-[10px] text-gray-500 font-mono">{item.sku} • {item.category || 'Sin categoría'} • {item.baseUnit}</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">

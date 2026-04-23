@@ -907,9 +907,7 @@ export default function POSDeliveryPage() {
                     <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep sm:max-h-[90vh] sm:rounded-2xl">
                         <div className="flex items-center justify-between border-b border-capsula-line p-6">
                             <div>
-                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
-                                    {selectedItemForModifier.name}
-                                </h3>
+                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
                                 <div className="mt-1 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                                     <PriceDisplay usd={selectedItemForModifier.price} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>

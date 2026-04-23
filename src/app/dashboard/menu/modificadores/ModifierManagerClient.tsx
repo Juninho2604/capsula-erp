@@ -378,7 +378,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                 </div>
                             ) : (
                                 <div className="min-w-0">
-                                    <h3 className="font-bold text-gray-900 dark:text-white truncate">{group.name}</h3>
+                                    <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink truncate">{group.name}</h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
                                         {group.modifiers.length} opciones
                                         {group.isRequired && ' • Requerido'}

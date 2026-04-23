@@ -235,7 +235,7 @@ export default function PurchaseOrderView() {
                 <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                     <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h2 className="font-semibold text-gray-900 dark:text-white">⚙️ Configurar Stock Mínimo y Punto de Reorden</h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">️ Configurar Stock Mínimo y Punto de Reorden</h2>
                             <p className="text-sm text-gray-500 mt-1">Define las cantidades mínimas para que el sistema detecte productos con stock bajo</p>
                         </div>
                         <div className="flex gap-2">
@@ -287,7 +287,7 @@ export default function PurchaseOrderView() {
                 <div className="grid gap-6 lg:grid-cols-2">
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">⚠️ Items con Stock Bajo</h2>
+                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">️ Items con Stock Bajo</h2>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleCreateReorderAlerts}
@@ -344,7 +344,7 @@ export default function PurchaseOrderView() {
                         <WhatsAppPurchaseOrderParser onOrderReady={handleWhatsAppOrderReady} />
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-amber-50/50 dark:bg-gray-800 dark:border-gray-700 p-6">
-                        <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">💡 Cómo usar</h3>
+                        <h3 className="font-heading text-base tracking-[-0.01em] text-[#946A1C] mb-2">Cómo usar</h3>
                         <ol className="text-sm text-amber-900 dark:text-amber-100 space-y-2 list-decimal list-inside">
                             <li>Exporta o copia el chat de WhatsApp con tu proveedor</li>
                             <li>Pega el texto en el área de la izquierda</li>
@@ -364,7 +364,7 @@ export default function PurchaseOrderView() {
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-gray-900 dark:text-white">🔍 Buscar Items</h2></div>
+                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Buscar Items</h2></div>
                         <div className="p-6">
                             <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Escriba para buscar..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                             {filteredItems.length > 0 && (
@@ -389,7 +389,7 @@ export default function PurchaseOrderView() {
             {viewMode === 'receive' && (
                 <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                     <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                        <h2 className="font-semibold text-gray-900 dark:text-white">📥 Recibir Mercancía desde Orden de Compra</h2>
+                        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Recibir Mercancía desde Orden de Compra</h2>
                         <p className="text-sm text-gray-500 mt-1">Selecciona una orden activa y registra lo que va llegando de los proveedores</p>
                     </div>
                     <div className="p-6 space-y-4">
@@ -461,7 +461,7 @@ export default function PurchaseOrderView() {
     function renderOrderForm() {
         return (
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-gray-900 dark:text-white">📋 Nueva Orden de Compra</h2></div>
+                <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Nueva Orden de Compra</h2></div>
                 <div className="p-6 space-y-4">
                     <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de orden (opcional)</label>
                         <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>

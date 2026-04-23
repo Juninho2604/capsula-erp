@@ -28,9 +28,7 @@ export default async function QueuePage() {
             {/* Called tickets */}
             {called.length > 0 && (
                 <div>
-                    <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                        Llamados — pasen a su estación
-                    </h2>
+                    <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Llamados — pasen a su estación</h2>
                     <div className="space-y-2">
                         {called.map(t => (
                             <div
@@ -62,9 +60,7 @@ export default async function QueuePage() {
 
             {/* Waiting tickets */}
             <div>
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    En Espera
-                </h2>
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">En Espera</h2>
                 {waiting.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
                         <p className="text-3xl">🎫</p>

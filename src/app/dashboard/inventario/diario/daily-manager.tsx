@@ -256,7 +256,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             {showRangeReport && (
                 <div className="mx-4 mt-4 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 p-4">
                     <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
-                        <h3 className="font-bold text-blue-800 dark:text-blue-200">📊 Reporte por Rango de Fechas</h3>
+                        <h3 className="font-heading text-base tracking-[-0.01em] text-capsula-navy">Reporte por Rango de Fechas</h3>
                         <div className="flex items-center gap-2 flex-wrap">
                             <input
                                 type="date"

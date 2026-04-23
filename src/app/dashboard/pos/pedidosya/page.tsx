@@ -439,9 +439,7 @@ export default function POSPedidosYAPage() {
                     <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
                         <div className="flex justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
-                                    {selectedItemForModifier.name}
-                                </h3>
+                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
                                 <p className="font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-coral">
                                     ${getPYAPrice(selectedItemForModifier).toFixed(2)}
                                     <span className="ml-2 text-sm tabular-nums text-capsula-ink-muted line-through">
