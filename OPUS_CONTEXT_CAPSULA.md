@@ -4007,6 +4007,167 @@ tradeoff velocidad vs riesgo). Razones documentadas:
 
 ---
 
+### 18.38 Minimal Navy Design System — catálogo vivo (2026-04-23)
+
+> Migración completa concluida: sidebar, dashboard, estadísticas, 4 POS (delivery, pedidosya, mesero, restaurante), cuentas-pagar. Cualquier archivo nuevo debe usar ESTE sistema. Las reglas permanentes viven en `CLAUDE.md` en la raíz del repo.
+
+#### Decisión cromática y tipográfica
+
+- **Tipografía única en UI:** Inter Tight sans (`var(--font-body)`). Instrument Serif (`var(--font-heading)`) queda declarado pero **no se aplica** en titulares — `h1/h2/h3` reciben `font-family: var(--font-body)` + `font-weight: 600` + `letter-spacing: -0.02em` desde `globals.css`. Convenir jerarquía con tamaño/peso, no con familia.
+- **Paleta editorial:** coral (`#EF5B3A`), navy (`#0B1727` deep / `#20334D` base / navy-soft = tinte claro), ivory (base + surface + alt), ink (4 escalones para texto), line (separador + strong).
+- **Iconografía:** `lucide-react` en todo chrome de UI. Los emojis solo sobreviven en payloads de impresoras térmicas, contenido del usuario y debug.
+
+#### Arquitectura de tokens
+
+- **HSL vars** (`hsl(var(--x))`) — siguen usándose para `--background`, `--foreground`, `--primary`, etc. (shadcn/ui primitives). No tocar.
+- **RGB triplets** (`rgb(var(--capsula-X-rgb) / <alpha-value>)`) — definidos en `:root` (light) y `.dark` (dark) en `src/app/globals.css` para cada `capsula-*` token. Tailwind consume estos en `tailwind.config.ts → colors.capsula`. Esto permite `text-capsula-ink/70`, `bg-capsula-coral/10`, etc. con dark-mode automático.
+- **Hex legado** (`--capsula-navy-deep` sin sufijo `-rgb`) — sobrevive para los helpers CSS (`.pos-btn`, `.pos-tile`) que consumen la var directo. Los dos conjuntos (hex y rgb triplet) deben mantenerse sincronizados en `:root` y `.dark`.
+
+#### Clases canónicas (usar siempre)
+
+```
+Fondos:    bg-capsula-ivory · bg-capsula-ivory-surface · bg-capsula-ivory-alt
+           bg-capsula-navy-deep · bg-capsula-navy · bg-capsula-navy-soft
+           bg-capsula-coral · bg-capsula-coral-hover
+Texto:     text-capsula-ink · text-capsula-ink-soft · text-capsula-ink-muted · text-capsula-ink-faint
+           text-capsula-ivory · text-capsula-coral · text-capsula-navy-deep
+Bordes:    border-capsula-line · border-capsula-line-strong
+Helpers:   pos-btn · pos-btn-secondary · pos-btn-danger
+           pos-tile · pos-card · pos-panel · pos-input
+           pos-label · pos-kicker · pos-amount · pos-heading-lg
+Overlay:   bg-capsula-ink/60 backdrop-blur-sm  (modales)
+Focus:     focus:border-capsula-navy-deep  (inputs)
+Números:   tabular-nums  (obligatorio en precios/saldos)
+Kickers:   text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted
+Titulares: font-semibold tracking-[-0.02em] text-capsula-ink
+```
+
+#### Clases prohibidas en código nuevo (lista curada tras la migración)
+
+| Prohibido | Reemplazo |
+|-----------|-----------|
+| `font-black`, `font-bold` (en UI nueva) | `font-semibold` |
+| `font-heading`, `Instrument Serif` | `font-body` (default) |
+| `text-primary`, `bg-primary text-white` en POS | `bg-capsula-navy-deep text-capsula-ivory` |
+| `text-capsula-navy*` para texto largo | `text-capsula-ink` (invierte en dark) |
+| `bg-emerald-*`, `bg-amber-*`, `bg-sky-*`, `bg-red-*`, `bg-blue-*`, `bg-purple-*`, `bg-indigo-*` (chrome) | `bg-capsula-navy-soft`, `bg-capsula-ivory-alt`, `bg-capsula-coral/10` |
+| `text-emerald-*`, `text-amber-*`, `text-sky-*`, `text-red-*`, `text-blue-*` (chrome) | `text-capsula-ink` / `text-capsula-coral` |
+| `capsula-btn`, `capsula-btn-primary`, `capsula-btn-secondary`, `capsula-card` | `pos-btn` family + `pos-card` |
+| `glass-panel` en UI nueva | `bg-capsula-ivory border border-capsula-line` |
+| `shadow-2xl shadow-primary/20` sobre `pos-btn` | los helpers ya traen `--tactile-shadow` |
+| `bg-black/70`, `bg-background/90` (backdrops) | `bg-capsula-ink/60 backdrop-blur-sm` |
+| Emojis en JSX chrome (🍸 🔥 ✅ 🧾 🪑 etc.) | Icono `lucide-react` — ver tabla completa en `CLAUDE.md` |
+| `text-gray-950 dark:text-foreground` (hack dark) | `text-capsula-ink` |
+
+#### 4 tonos sutiles autorizados para estado (NO abrir tokens adicionales)
+
+Cuando necesites señalización cromática (ok/warn/danger/info), escribir hex inline con `dark:` override:
+
+```
+ok      bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]   (Listo / enviado a cocina)
+warn    bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]   (En cocina / pendiente)
+danger  bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]   (Error — alterna con capsula-coral)
+info    bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]   (Informativo neutro)
+```
+
+Usar solo donde el status lo amerita. Por defecto seguir capsula-* neutro.
+
+#### Iconografía — mapa canónico emoji → lucide
+
+(Resumen; tabla completa en `CLAUDE.md`)
+
+| Área | Icono |
+|------|-------|
+| POS Restaurante header | `Wine` |
+| POS Mesero / Enviar cocina | `ChefHat` |
+| Pickup / Venta directa | `ShoppingBag` |
+| Carrito | `ShoppingCart` |
+| Cuenta / factura | `Receipt` |
+| Reimprimir / Pre-cuenta | `Printer` |
+| Mesas | `Armchair` |
+| Menú | `UtensilsCrossed` |
+| Zona Bar / Jardín | `Beer` / `Leaf` |
+| Cortesía | `Gift` |
+| PIN / Autorización | `Lock` |
+| Cuenta abierta | `Unlock` |
+| Mesonero / Cajera | `UserCircle2` / `UserCog` |
+| Subcuentas | `Divide` |
+| Transferir mesa | `ArrowLeftRight` |
+| Cash USD / EUR | `DollarSign` / `Euro` |
+| Zelle / PDV / Móvil / Bs | `Zap` / `CreditCard` / `Smartphone` / `Banknote` |
+| Anular / Ajustar / Cambiar | `Ban` / `Pencil` / `RefreshCw` |
+| En cocina / Listo | `Flame` / `Check` |
+| Cerrar | `X as XIcon` |
+| Volver | `ArrowLeft` |
+| Advertencia | `AlertTriangle` |
+| Teléfono | `Phone as PhoneIcon` |
+| Fecha | `Calendar` |
+| Código / Tag | `Tag` |
+
+Los iconos de **sidebar y módulos** viven centralizados en `src/lib/module-icons.ts` (44 `MODULE_ICONS` + 4 `SUBGROUP_ICONS`). Añadir cualquier módulo nuevo ahí antes de registrarlo en el sidebar.
+
+#### Patrón de modal estándar
+
+```tsx
+<div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+  <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+    <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+      <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Título</h3>
+      <button className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center">
+        <XIcon className="h-4 w-4" />
+      </button>
+    </div>
+    <div className="p-5 space-y-4">…</div>
+    <div className="border-t border-capsula-line p-4 flex gap-3">
+      <button className="pos-btn-secondary flex-1 py-3 text-sm">Cancelar</button>
+      <button className="pos-btn flex-[2] py-3 text-sm inline-flex items-center justify-center gap-2">
+        <Check className="h-4 w-4" /> Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+```
+
+z-index: modales POS en `z-[60]` (sec. 18.1); BellPanel/HelpPanel en `z-[70]`.
+
+#### Archivos de referencia viva
+
+Cuando dudes, copia del archivo migrado más reciente:
+
+| Patrón                          | Archivo canónico                              |
+|---------------------------------|-----------------------------------------------|
+| Header POS + badge cajera       | `src/app/dashboard/pos/restaurante/page.tsx`  |
+| Grid de mesas / zonas           | `src/app/dashboard/pos/restaurante/page.tsx`  |
+| Panel pedido activo + cobro     | `src/app/dashboard/pos/restaurante/page.tsx`  |
+| Mesero layout + modales PIN     | `src/app/dashboard/pos/mesero/page.tsx`       |
+| Pickup mode / Pago mixto        | `src/app/dashboard/pos/restaurante/page.tsx`  |
+| Delivery (captura WhatsApp)     | `src/app/dashboard/pos/delivery/page.tsx`     |
+| Tabla expandible + KPIs         | `src/app/dashboard/cuentas-pagar/cuentas-pagar-view.tsx` |
+| Dashboard hero + stat cards     | `src/app/dashboard/page.tsx`                  |
+| Estadísticas con iconFor()      | `src/app/dashboard/estadisticas/page.tsx`     |
+| Sidebar grupos + submódulos     | `src/components/layout/Sidebar.tsx`           |
+
+#### Gates antes de commitear cambios de UI
+
+```bash
+npx tsc --noEmit            # exit 0 obligatorio
+npx vitest run              # 27/27 obligatorio
+```
+
+Render desde `main` auto-despliega; los feature branches se mergean vía PR solo cuando el usuario lo pida. No `--amend` a commits empujados.
+
+#### Lecciones duras de la migración (no repetir)
+
+1. **Tailwind no sabe de CSS vars HSL sin wrapper.** Tokens capsula-* deben usar el patrón `rgb(var(--X-rgb) / <alpha-value>)` para que Tailwind pueda aplicar alpha. Hex directo mata dark mode.
+2. **`text-capsula-navy*` no invierte en dark** — se usa navy puro en light y en dark, resultando en texto invisible. Para cuerpo/texto largo usar `text-capsula-ink` (que sí cambia).
+3. **`bg-primary text-white`** desaparece en dark porque `--primary` invierte a un tono pálido. Usar tokens capsula fijos.
+4. **`glass-panel`** y similares que declaran `background: rgba(...)` sin override `.dark` quedan blanquísimos o invisibles. Siempre revisar que cualquier var CSS referenciada tenga redefinición en `.dark`.
+5. **Instrument Serif (Times-like)** se activa por herencia si algún ancestro aplica `font-heading`. La migración forzó `h1/h2/h3` globales a `font-body`, pero cualquier clase `font-heading` residual lo reactiva. Buscar y eliminar en nuevos archivos.
+6. **Sed con brackets Tailwind** requiere escape: `tracking-\[-0.02em\]`. Sin escape, `-` dentro de `[]` se interpreta como rango de caracteres.
+7. **Nunca amendar commits ya pusheados** a rama viva. Si una migración rompe algo, push un nuevo commit corrector.
+
+---
+
 *Actualizado el 2026-04-19 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
 *Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master
