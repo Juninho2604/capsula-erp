@@ -227,7 +227,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Cajas abiertas */}
       {openRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-emerald-500">Cajas Abiertas</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Cajas abiertas</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {openRegisters.map(r => (
               <div key={r.id} className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
@@ -297,7 +297,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Monthly Summary */}
       {closedRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Mes</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Resumen del mes</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>

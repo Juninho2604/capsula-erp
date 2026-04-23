@@ -349,7 +349,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         {/* Pie Chart */}
         {summary.countByCategory.length > 0 && (
           <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Distribución por Categoría</h3>
+            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Distribución por Categoría</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -378,7 +378,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
         {/* Payment Method Breakdown */}
         {summary.countByPaymentMethod.length > 0 && (
           <div className="glass-panel rounded-2xl border border-border p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Por Método de Pago</h3>
+            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Por Método de Pago</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={summary.countByPaymentMethod} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -396,7 +396,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
       {/* Expense Trend */}
       {expenseTrend.length > 0 && (
         <div className="glass-panel rounded-2xl border border-border p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Tendencia de Gastos (6 Meses)</h3>
+          <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Tendencia de Gastos (6 Meses)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={expenseTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
