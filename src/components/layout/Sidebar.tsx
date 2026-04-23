@@ -11,6 +11,7 @@ import { UserRole } from '@/types';
 import { logoutAction } from '@/app/actions/auth.actions';
 import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 import { getVisibleModules, type ModuleDefinition } from '@/lib/constants/modules-registry';
+import { MODULE_ICONS, SUBGROUP_ICONS } from '@/lib/module-icons';
 import { CapsulaNavbarLogo } from '@/components/ui/CapsulaLogo';
 import { X, User, LogOut } from 'lucide-react';
 
@@ -276,7 +277,12 @@ function ModuleLink({
                     : cn('text-capsula-ink-soft', c.linkHover),
             )}
         >
-            <span className="text-base leading-none">{mod.icon}</span>
+            {(() => {
+                const LucideIcon = MODULE_ICONS[mod.id];
+                return LucideIcon
+                    ? <LucideIcon className="h-4 w-4 shrink-0" />
+                    : <span className="text-base leading-none">{mod.icon}</span>;
+            })()}
             <span className="flex-1 leading-snug">{mod.label}</span>
             {active && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', c.dot)} />}
         </Link>
@@ -322,7 +328,12 @@ function SubGroup({
                         : cn('text-capsula-ink-soft', c.sgHover),
                 )}
             >
-                <span className="text-base leading-none">{def.icon}</span>
+                {(() => {
+                    const LucideIcon = SUBGROUP_ICONS[def.id];
+                    return LucideIcon
+                        ? <LucideIcon className="h-4 w-4 shrink-0" />
+                        : <span className="text-base leading-none">{def.icon}</span>;
+                })()}
                 <span className="flex-1 text-left font-medium leading-snug">{def.label}</span>
                 <Chevron open={isOpen} className={cn(c.chevron, 'opacity-70')} />
             </button>
