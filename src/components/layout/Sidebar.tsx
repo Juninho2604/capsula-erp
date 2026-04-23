@@ -127,7 +127,7 @@ const ORPHAN_SECTION_ID = 'otros';
 // Minimal Navy: todos los schemes se unifican a tokens de marca.
 // Los 5 nombres se conservan para compatibilidad con SIDEBAR_TREE.
 const BASE_SCHEME = {
-    sectionText:  'text-capsula-ink-muted',
+    sectionText:  'text-capsula-ink',
     sectionHover: 'hover:bg-capsula-ivory-alt',
     activeLink:   'bg-capsula-navy-soft text-capsula-ink font-medium',
     dot:          'bg-capsula-coral',
@@ -388,15 +388,15 @@ function Section({
     if (!hasVisible) return null;
 
     return (
-        <div className="mb-1">
+        <div className="mb-1 mt-4 first:mt-0">
             <button
                 onClick={onToggle}
                 className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 transition-colors duration-150',
+                    'flex w-full items-center gap-2 rounded-lg border-b border-capsula-line/60 px-3 py-2.5 transition-colors duration-150',
                     c.sectionHover,
                 )}
             >
-                <span className={cn('flex-1 text-left text-[11px] font-bold uppercase tracking-widest', c.sectionText)}>
+                <span className={cn('flex-1 text-left text-xs font-semibold uppercase tracking-[0.14em]', c.sectionText)}>
                     {def.label}
                 </span>
                 <Chevron open={isOpen} className={c.chevron} />
