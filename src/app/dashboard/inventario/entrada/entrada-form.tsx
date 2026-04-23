@@ -737,7 +737,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             {showCosts && (
                                 <div className="flex justify-between border-t border-amber-200 pt-3 dark:border-amber-700">
                                     <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
-                                    <span className="text-xl font-bold text-amber-600">
+                                    <span className="font-heading text-xl tracking-[-0.02em] text-amber-600">
                                         {formatCurrency(totalEntrada)}
                                     </span>
                                 </div>

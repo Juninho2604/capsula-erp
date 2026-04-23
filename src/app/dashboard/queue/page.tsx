@@ -37,7 +37,7 @@ export default async function QueuePage() {
                                 key={t.id}
                                 className="flex items-center gap-4 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 dark:border-amber-700 dark:bg-amber-900/20"
                             >
-                                <span className="text-2xl font-bold text-amber-600">#{t.ticketNumber}</span>
+                                <span className="font-heading text-2xl tracking-[-0.02em] text-amber-600">#{t.ticketNumber}</span>
                                 <div className="flex-1">
                                     <p className="font-medium text-gray-900 dark:text-white">{t.customerName}</p>
                                     <p className="text-sm text-gray-500">

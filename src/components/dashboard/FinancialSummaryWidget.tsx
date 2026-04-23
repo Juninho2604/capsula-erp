@@ -93,7 +93,7 @@ function ModalHeader({
           ✕
         </button>
       </div>
-      <p className={`text-2xl font-black mt-1 ${valueColor}`}>{value}</p>
+      <p className={`font-heading text-2xl tracking-[-0.02em] mt-1 ${valueColor}`}>{value}</p>
       {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
     </div>
   );
@@ -498,7 +498,7 @@ function FlujoNetoModal({
               </p>
               <p className="text-xs text-muted-foreground">entradas − salidas</p>
             </div>
-            <p className={`text-xl font-black ${isPositive ? 'text-blue-500' : 'text-red-500'}`}>
+            <p className={`font-heading text-xl tracking-[-0.02em] ${isPositive ? 'text-blue-500' : 'text-red-500'}`}>
               {isPositive ? '' : '-'}${fmt(Math.abs(finance.cashFlow.net))}
             </p>
           </div>
@@ -641,7 +641,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
               ver más
             </span>
           </div>
-          <p className="text-xl font-black text-emerald-500 mt-0.5">
+          <p className="font-heading text-xl tracking-[-0.02em] text-emerald-500 mt-0.5">
             ${fmt(finance.income.totalSalesUsd)}
           </p>
           {finance.mom.salesChange != null && (
@@ -667,7 +667,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
               ver más
             </span>
           </div>
-          <p className="text-xl font-black text-red-500 mt-0.5">
+          <p className="font-heading text-xl tracking-[-0.02em] text-red-500 mt-0.5">
             ${fmt(finance.expenses.totalExpensesUsd)}
           </p>
           {finance.mom.expensesChange != null && (
@@ -694,7 +694,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
             </span>
           </div>
           <p
-            className={`text-xl font-black mt-0.5 ${finance.profitLoss.operatingProfit >= 0 ? 'text-blue-500' : 'text-red-500'}`}
+            className={`font-heading text-xl tracking-[-0.02em] mt-0.5 ${finance.profitLoss.operatingProfit >= 0 ? 'text-blue-500' : 'text-red-500'}`}
           >
             ${fmt(Math.abs(finance.profitLoss.operatingProfit))}
           </p>
@@ -717,7 +717,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
             </span>
           </div>
           <p
-            className={`text-xl font-black mt-0.5 ${(finance.cashFlow?.net ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
+            className={`font-heading text-xl tracking-[-0.02em] mt-0.5 ${(finance.cashFlow?.net ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
           >
             ${fmt(Math.abs(finance.cashFlow?.net ?? 0))}
           </p>
@@ -737,7 +737,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
             </span>
           </div>
           <p
-            className={`text-xl font-black mt-0.5 ${finance.accountsPayable.overdueUsd > 0 ? 'text-red-500' : 'text-foreground'}`}
+            className={`font-heading text-xl tracking-[-0.02em] mt-0.5 ${finance.accountsPayable.overdueUsd > 0 ? 'text-red-500' : 'text-foreground'}`}
           >
             ${fmt(finance.accountsPayable.totalPendingUsd)}
           </p>

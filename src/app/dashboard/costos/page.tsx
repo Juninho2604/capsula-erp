@@ -50,7 +50,7 @@ export default async function CostosPage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-green-600">
+                    <div className="mt-4 font-heading text-3xl tracking-[-0.02em] text-green-600">
                         {withCost}
                     </div>
                     <p className="text-xs text-gray-400">Ítems con precio registrado</p>
@@ -71,7 +71,7 @@ export default async function CostosPage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-amber-600">
+                    <div className="mt-4 font-heading text-3xl tracking-[-0.02em] text-amber-600">
                         {withoutCost}
                     </div>
                     <p className="text-xs text-gray-400">Requieren actualización</p>
@@ -92,7 +92,7 @@ export default async function CostosPage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-blue-600">
+                    <div className="mt-4 font-heading text-3xl tracking-[-0.02em] text-blue-600">
                         {items.length}
                     </div>
                     <p className="text-xs text-gray-400">En el inventario</p>

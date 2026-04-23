@@ -102,24 +102,24 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass-panel rounded-2xl p-4 border border-border">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Margen promedio</p>
-            <p className={`text-3xl font-black mt-1 ${summary.avgMarginPct < 35 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            <p className={`font-heading text-3xl tracking-[-0.02em] mt-1 ${summary.avgMarginPct < 35 ? 'text-amber-400' : 'text-emerald-400'}`}>
               {summary.avgMarginPct}%
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{summary.withFullData} platos con datos completos</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-red-500/20 bg-red-500/5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">En riesgo (&lt;30%)</p>
-            <p className="text-3xl font-black mt-1 text-red-400">{summary.atRisk}</p>
+            <p className="font-heading text-3xl tracking-[-0.02em] mt-1 text-red-400">{summary.atRisk}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Margen insuficiente</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 bg-emerald-500/5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rentables (≥50%)</p>
-            <p className="text-3xl font-black mt-1 text-emerald-400">{summary.healthy}</p>
+            <p className="font-heading text-3xl tracking-[-0.02em] mt-1 text-emerald-400">{summary.healthy}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Margen saludable</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-border">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total platos</p>
-            <p className="text-3xl font-black mt-1 text-foreground">{summary.total}</p>
+            <p className="font-heading text-3xl tracking-[-0.02em] mt-1 text-foreground">{summary.total}</p>
             {summary.worstDish && (
               <p className="text-xs text-red-400 mt-0.5 truncate" title={`Menor margen: ${summary.worstDish}`}>
                 ↓ {summary.worstDish}

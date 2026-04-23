@@ -657,7 +657,7 @@ function KpiCard({ label, value, icon, color, sub, change, invertChange }: {
         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
         <span className="text-lg">{icon}</span>
       </div>
-      <p className="text-2xl font-black text-foreground truncate">{value}</p>
+      <p className="font-heading text-2xl tracking-[-0.02em] text-foreground truncate">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       {change != null && (
         <span className={`inline-flex items-center text-[10px] font-bold mt-1 ${

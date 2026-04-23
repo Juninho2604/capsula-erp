@@ -200,7 +200,7 @@ export default function MenuManagementPage() {
                     <div key={category.id} className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
                         <div className="px-6 py-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
                             <span className="text-2xl">{category.name.includes('Bebida') ? '🥤' : '🍽️'}</span>
-                            <h2 className="text-xl font-bold text-gray-200">{category.name}</h2>
+                            <h2 className="font-heading text-xl tracking-[-0.02em] text-gray-200">{category.name}</h2>
                             <span className="text-gray-500 text-sm ml-auto">{category.items.length} items</span>
                         </div>
 
@@ -312,7 +312,7 @@ export default function MenuManagementPage() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-700 shadow-2xl">
-                        <h2 className="text-2xl font-bold mb-6">Nuevo Producto</h2>
+                        <h2 className="font-heading text-2xl tracking-[-0.02em] mb-6">Nuevo Producto</h2>
 
                         <div className="space-y-4">
                             <div>

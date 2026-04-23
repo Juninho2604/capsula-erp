@@ -271,7 +271,7 @@ export default function SalesEntryView() {
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                     <p className="text-sm text-gray-500">Ingresos Hoy</p>
-                    <p className="text-2xl font-bold text-emerald-600">{formatCurrency(todaySales.summary.totalRevenue)}</p>
+                    <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-600">{formatCurrency(todaySales.summary.totalRevenue)}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                     <p className="text-sm text-gray-500">🍽️ Restaurante</p>

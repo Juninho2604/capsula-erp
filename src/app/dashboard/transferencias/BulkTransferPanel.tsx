@@ -108,7 +108,7 @@ export default function BulkTransferPanel({ areasList }: Props) {
         <div className="capsula-card border-primary/20 bg-gradient-to-br from-background to-secondary/30 p-8">
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h3 className="flex items-center gap-2 text-xl font-bold text-primary dark:text-primary">
+                    <h3 className="flex items-center gap-2 font-heading text-xl tracking-[-0.02em] text-primary dark:text-primary">
                         ⚡ Transferencia Rápida
                     </h3>
                     <p className="text-sm text-muted-foreground">

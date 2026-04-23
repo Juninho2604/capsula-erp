@@ -71,7 +71,7 @@ export function ChangePasswordDialog({ children }: ChangePasswordDialogProps) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">Cambiar Contraseña</DialogTitle>
+                    <DialogTitle className="font-heading text-xl tracking-[-0.02em] text-gray-900 dark:text-gray-100">Cambiar Contraseña</DialogTitle>
                     <DialogDescription className="text-gray-500 dark:text-gray-400">
                         Ingresa tu contraseña actual y la nueva contraseña para actualizar tu acceso.
                     </DialogDescription>

@@ -448,7 +448,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 onClick={() => setRequestItems([...requestItems, { id: '', name: '', quantity: 0, unit: '-' }])}
                                 className="flex w-full items-center justify-center gap-2 bg-secondary/10 py-5 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all active:scale-[0.99]"
                             >
-                                <span className="text-xl font-black">+</span> Agregar otra fila
+                                <span className="font-heading text-xl tracking-[-0.02em]">+</span> Agregar otra fila
                             </button>
                         </div>
 
@@ -496,7 +496,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
                                                         <div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-orange-600 tracking-tighter">{req.code}</span>
+                                                                <span className="font-heading text-xl tracking-[-0.02em] italic text-orange-600 tracking-tighter">{req.code}</span>
                                                                 <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-orange-500 text-white shadow-lg shadow-orange-500/20">⏳ Pendiente</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">
@@ -564,7 +564,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
                                                         <div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-blue-600 tracking-tighter">{req.code}</span>
+                                                                <span className="font-heading text-xl tracking-[-0.02em] italic text-blue-600 tracking-tighter">{req.code}</span>
                                                                 <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-lg shadow-blue-500/20">📦 Despachado</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">

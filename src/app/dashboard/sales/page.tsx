@@ -423,26 +423,26 @@ export default function SalesHistoryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Órdenes</p>
-                    <p className="text-2xl font-black text-white">{shownCount}</p>
+                    <p className="font-heading text-2xl tracking-[-0.02em] text-white">{shownCount}</p>
                     {shownCount !== totalCount && <p className="text-xs text-gray-500">de {totalCount} total</p>}
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Facturado</p>
-                    <p className="text-2xl font-black text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
+                    <p className="font-heading text-2xl tracking-[-0.02em] text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Cobrado</p>
-                    <p className="text-2xl font-black text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
+                    <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Descuentos</p>
-                    <p className={`text-2xl font-black ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                    <p className={`font-heading text-2xl tracking-[-0.02em] ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
                         {filteredTotals.discounts > 0 ? `-${formatMoney(filteredTotals.discounts)}` : '$0.00'}
                     </p>
                 </div>
                 <div className={`rounded-xl px-4 py-3 border ${voidCount > 0 ? 'bg-red-900/20 border-red-800/50' : 'bg-gray-800 border-gray-700'}`}>
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Anuladas hoy</p>
-                    <p className={`text-2xl font-black ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
+                    <p className={`font-heading text-2xl tracking-[-0.02em] ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
                     {voidAmount > 0 && <p className="text-xs text-red-500/80 font-bold">{formatMoney(voidAmount)}</p>}
                 </div>
             </div>
@@ -755,9 +755,9 @@ export default function SalesHistoryPage() {
             {showZReport && zReport && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white text-black rounded-lg w-full max-w-sm p-8 font-mono shadow-2xl relative">
-                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-2xl font-bold no-print">×</button>
+                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 font-heading text-2xl tracking-[-0.02em] no-print">×</button>
                         <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
-                            <h2 className="text-2xl font-black">REPORTE Z</h2>
+                            <h2 className="font-heading text-2xl tracking-[-0.02em]">REPORTE Z</h2>
                             <p className="text-sm">SHANKLISH CARACAS</p>
                             <p className="text-sm">{new Date().toLocaleString()}</p>
                             <p className="text-sm mt-1 font-bold">CIERRE DE CAJA DIARIO</p>
@@ -784,7 +784,7 @@ export default function SalesHistoryPage() {
                             {zReport.totalTips > 0 && (
                                 <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
-                            <div className="flex justify-between font-black text-xl mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
+                            <div className="flex justify-between font-heading text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
 
                         {/* ── ARQUEO DE CAJA ── */}
@@ -844,10 +844,10 @@ export default function SalesHistoryPage() {
                     <div className="bg-gray-900 border border-amber-700/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h2 className="text-xl font-bold text-amber-400">Resumen de Cierre del Día</h2>
+                                <h2 className="font-heading text-xl tracking-[-0.02em] text-amber-400">Resumen de Cierre del Día</h2>
                                 <p className="text-sm text-gray-400 font-mono mt-0.5">{daySummary.date}</p>
                             </div>
-                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white text-2xl font-bold">×</button>
+                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white font-heading text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
                         {/* Ventas por canal */}
@@ -889,7 +889,7 @@ export default function SalesHistoryPage() {
                                 )}
                                 <div className="flex justify-between pt-2 border-t border-gray-700">
                                     <span className="font-bold text-white">Total Cobrado:</span>
-                                    <span className="font-black text-xl text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
+                                    <span className="font-heading text-xl tracking-[-0.02em] text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -952,10 +952,10 @@ export default function SalesHistoryPage() {
                     <div className="bg-gray-900 border border-red-800/60 rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex items-center justify-between mb-5">
                             <div>
-                                <h2 className="text-xl font-bold text-red-400">Anular Venta</h2>
+                                <h2 className="font-heading text-xl tracking-[-0.02em] text-red-400">Anular Venta</h2>
                                 <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
                             </div>
-                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white text-2xl font-bold">×</button>
+                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white font-heading text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
                         <div className="bg-gray-800 rounded-xl p-4 mb-5 text-sm space-y-1">

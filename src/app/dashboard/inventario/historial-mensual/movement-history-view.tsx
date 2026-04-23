@@ -214,7 +214,7 @@ export default function MovementHistoryView() {
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Costo Compras</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatCurrency(summary.totalPurchaseCost)}</p>
+                        <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-600">{formatCurrency(summary.totalPurchaseCost)}</p>
                     </div>
                     {Object.entries(summary.byType as Record<string, number>).slice(0, 2).map(([type, count]) => (
                         <div key={type} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
