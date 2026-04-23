@@ -1259,14 +1259,16 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: MODIFICADORES ══════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-border">
-            <div className="p-5 border-b border-border flex justify-between items-center">
+        <div className="fixed inset-0 z-50 bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-capsula-ivory w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-capsula-line">
+            <div className="p-5 border-b border-capsula-line flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">{selectedItemForModifier.name}</h3>
-                <p className="text-emerald-400 font-black text-lg">${selectedItemForModifier.price.toFixed(2)}</p>
+                <h3 className="text-xl font-semibold tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
+                <p className="text-capsula-ink font-semibold text-lg tabular-nums mt-0.5">${selectedItemForModifier.price.toFixed(2)}</p>
               </div>
-              <button onClick={() => setShowModifierModal(false)} className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center">&times;</button>
+              <button onClick={() => setShowModifierModal(false)} className="h-10 w-10 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted">
+                <XIcon className="h-4 w-4" />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {selectedItemForModifier.modifierGroups?.map((groupRel) => {
@@ -1274,10 +1276,10 @@ export default function POSMeseroPage() {
                 const totalSelected = currentModifiers.filter((m) => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                 return (
-                  <div key={group.id} className={`p-4 rounded-2xl border-2 transition-colors ${isValid ? "border-border bg-secondary/20" : "border-red-500 bg-red-500/5"}`}>
+                  <div key={group.id} className={`p-4 rounded-2xl border transition-colors ${isValid ? "border-capsula-line bg-capsula-ivory-surface" : "border-capsula-coral bg-capsula-coral/5"}`}>
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-black text-sm uppercase tracking-widest text-foreground/70">{group.name}</h4>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500 text-white animate-bounce"}`}>
+                      <h4 className="font-semibold text-sm uppercase tracking-[0.14em] text-capsula-ink-soft">{group.name}</h4>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-ivory"}`}>
                         {totalSelected}/{group.maxSelections}{group.isRequired ? " · Req." : ""}
                       </span>
                     </div>
@@ -1288,20 +1290,20 @@ export default function POSMeseroPage() {
                         const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                         const isRadio = group.maxSelections === 1;
                         return (
-                          <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border-2 transition-all ${qty > 0 ? "bg-emerald-500/10 border-emerald-500" : "bg-background border-border hover:border-emerald-500/30"}`}>
-                            <span className="font-bold text-sm">{mod.name}</span>
+                          <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line hover:border-capsula-navy-deep/40"}`}>
+                            <span className="font-semibold text-sm text-capsula-ink">{mod.name}</span>
                             {isRadio ? (
                               <button
                                 onClick={() => updateModifierQuantity(group, mod, 1)}
-                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? "bg-emerald-500 border-emerald-500 text-white scale-110" : "border-border hover:border-emerald-500"}`}
+                                className={`h-8 w-8 rounded-full border flex justify-center items-center transition-all ${qty > 0 ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory scale-110" : "border-capsula-line hover:border-capsula-navy-deep"}`}
                               >
-                                {qty > 0 && "✓"}
+                                {qty > 0 && <Check className="h-4 w-4" />}
                               </button>
                             ) : (
-                              <div className="flex items-center gap-2 bg-card p-1 rounded-xl border border-border">
-                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-black transition ${qty === 0 ? "text-muted-foreground opacity-20" : "bg-secondary hover:bg-red-500/20 hover:text-red-400"}`}>-</button>
-                                <span className="font-black text-base w-5 text-center text-emerald-400">{qty}</span>
-                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-black transition ${isMax ? "text-muted-foreground opacity-20" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}>+</button>
+                              <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
+                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-semibold transition ${qty === 0 ? "text-capsula-ink-faint opacity-40" : "bg-capsula-ivory-alt hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink"}`}>−</button>
+                                <span className="font-semibold text-base w-5 text-center text-capsula-ink tabular-nums">{qty}</span>
+                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-semibold transition ${isMax ? "text-capsula-ink-faint opacity-40" : "bg-capsula-navy-deep text-capsula-ivory hover:bg-capsula-navy-deep/90"}`}>+</button>
                               </div>
                             )}
                           </div>
@@ -1311,31 +1313,32 @@ export default function POSMeseroPage() {
                   </div>
                 );
               })}
-              <div className="bg-secondary/20 p-4 rounded-2xl border border-border">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Instrucciones especiales</label>
+              <div className="bg-capsula-ivory-surface p-4 rounded-2xl border border-capsula-line">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2 block">Instrucciones especiales</label>
                 <textarea
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="w-full bg-background rounded-xl p-3 h-20 text-sm font-bold border border-border focus:border-emerald-500 focus:outline-none resize-none"
+                  className="w-full bg-capsula-ivory rounded-xl p-3 h-20 text-sm font-medium text-capsula-ink border border-capsula-line placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none resize-none transition"
                   placeholder="Petición del cliente..."
                 />
               </div>
-              <div className="flex items-center justify-between glass-panel p-4 rounded-2xl border-emerald-900/20">
-                <span className="font-black uppercase tracking-tighter text-base">Cantidad</span>
-                <div className="flex items-center gap-2 bg-background p-1 rounded-xl border border-border">
-                  <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-black text-xl hover:bg-secondary transition active:scale-90">-</button>
-                  <span className="w-12 text-center font-black text-2xl text-emerald-400">{itemQuantity}</span>
-                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-emerald-600 text-white font-black text-xl hover:bg-emerald-500 active:scale-95">+</button>
+              <div className="flex items-center justify-between bg-capsula-ivory-surface p-4 rounded-2xl border border-capsula-line">
+                <span className="font-semibold uppercase tracking-[0.14em] text-base text-capsula-ink">Cantidad</span>
+                <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
+                  <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-semibold text-xl text-capsula-ink hover:bg-capsula-ivory-alt transition active:scale-90">−</button>
+                  <span className="w-12 text-center font-semibold text-2xl text-capsula-ink tabular-nums">{itemQuantity}</span>
+                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold text-xl hover:bg-capsula-navy-deep/90 active:scale-95">+</button>
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-border flex gap-3">
-              <button onClick={() => setShowModifierModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
+            <div className="p-5 border-t border-capsula-line flex gap-3">
+              <button onClick={() => setShowModifierModal(false)} className="pos-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
               <button
                 onClick={confirmAddToCart}
                 disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
-                className="capsula-btn capsula-btn-primary flex-[2] py-4 text-sm bg-emerald-600 border-emerald-700 disabled:opacity-40"
+                className="pos-btn flex-[2] py-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
+                <PlusIcon className="h-4 w-4" />
                 Agregar al pedido
               </button>
             </div>
