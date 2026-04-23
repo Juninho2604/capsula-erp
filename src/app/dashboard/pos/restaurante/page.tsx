@@ -2806,36 +2806,45 @@ export default function POSSportBarPage() {
           (!removeReplaceSearch.trim() || m.name.toLowerCase().includes(removeReplaceSearch.toLowerCase()))
         ).slice(0, 30);
         return (
-          <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-card border border-red-900/50 w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
               {/* Header */}
-              <div className="border-b border-border p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-black text-red-400">✏️ Modificar ítem</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    <span className="font-bold text-foreground">{removeTarget.quantity}×</span> {removeTarget.itemName}
-                    <span className="ml-2 text-red-400 font-bold">−${removeTarget.lineTotal.toFixed(2)}</span>
-                  </p>
+              <div className="border-b border-capsula-line p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="h-10 w-10 bg-capsula-coral/10 rounded-xl flex items-center justify-center text-capsula-coral flex-shrink-0">
+                    <Pencil className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-semibold tracking-[-0.02em] text-capsula-ink">Modificar ítem</h3>
+                    <p className="text-xs text-capsula-ink-muted mt-0.5 truncate">
+                      <span className="font-semibold text-capsula-ink">{removeTarget.quantity}×</span> {removeTarget.itemName}
+                      <span className="ml-2 text-capsula-coral font-semibold tabular-nums">−${removeTarget.lineTotal.toFixed(2)}</span>
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setShowRemoveModal(false)} className="text-muted-foreground hover:text-destructive text-2xl ml-4">×</button>
+                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center ml-2 shrink-0">
+                  <XIcon className="h-4 w-4" />
+                </button>
               </div>
 
               <div className="p-5 space-y-4">
                 {/* Opciones */}
                 <div className="grid grid-cols-3 gap-2">
                   {(["VOID", "ADJUST_QTY", "REPLACE"] as const).map((t) => {
-                    const labels = { VOID: "❌ Cancelar", ADJUST_QTY: "✏️ Ajustar", REPLACE: "🔄 Cambiar" };
+                    const Icon = t === "VOID" ? Ban : t === "ADJUST_QTY" ? Pencil : RefreshCw;
+                    const label = t === "VOID" ? "Cancelar" : t === "ADJUST_QTY" ? "Ajustar" : "Cambiar";
                     return (
                       <button
                         key={t}
                         onClick={() => setRemoveModType(t)}
-                        className={`py-2.5 rounded-xl text-xs font-black border transition ${
+                        className={`py-2.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center gap-1.5 ${
                           removeModType === t
-                            ? "bg-red-700 border-red-600 text-white"
-                            : "bg-secondary border-border hover:border-red-500/40 hover:text-red-400"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                         }`}
                       >
-                        {labels[t]}
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
                       </button>
                     );
                   })}
@@ -2844,21 +2853,21 @@ export default function POSSportBarPage() {
                 {/* Ajustar cantidad */}
                 {removeModType === "ADJUST_QTY" && (
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground mb-2">
+                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2">
                       Nueva cantidad (actual: {removeTarget.quantity})
                     </label>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setRemoveNewQty((q) => Math.max(1, q - 1))}
-                        className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-red-500/40"
+                        className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                       >−</button>
-                      <span className="flex-1 text-center text-2xl font-black">{removeNewQty}</span>
+                      <span className="flex-1 text-center text-2xl font-semibold text-capsula-ink tabular-nums">{removeNewQty}</span>
                       <button
                         onClick={() => setRemoveNewQty((q) => Math.min(removeTarget.quantity - 1, q + 1))}
-                        className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-sky-500/40"
+                        className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-navy-deep/40 transition"
                       >+</button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                    <p className="text-[10px] text-capsula-ink-muted mt-1.5 text-center">
                       Se anularán {removeTarget.quantity - removeNewQty} unidad(es)
                     </p>
                   </div>
@@ -2867,30 +2876,30 @@ export default function POSSportBarPage() {
                 {/* Cambiar por otro ítem */}
                 {removeModType === "REPLACE" && (
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-muted-foreground">Producto de reemplazo</label>
+                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Producto de reemplazo</label>
                     <input
                       value={removeReplaceSearch}
                       onChange={(e) => setRemoveReplaceSearch(e.target.value)}
-                      placeholder="Buscar producto..."
-                      className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                      placeholder="Buscar producto…"
+                      className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2 text-sm font-medium text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                     />
                     <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                       {replaceItems.map((m: MenuItem) => (
                         <button
                           key={m.id}
                           onClick={() => setRemoveReplaceItemId(m.id)}
-                          className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-bold transition border ${
+                          className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition border ${
                             removeReplaceItemId === m.id
-                              ? "bg-sky-700 border-sky-600 text-white"
-                              : "bg-secondary border-border hover:border-sky-500/40"
+                              ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                              : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                           }`}
                         >
                           <span className="truncate">{m.name}</span>
-                          <span className="ml-2 shrink-0 opacity-70">${m.price?.toFixed(2)}</span>
+                          <span className="ml-2 shrink-0 opacity-70 tabular-nums">${m.price?.toFixed(2)}</span>
                         </button>
                       ))}
                       {replaceItems.length === 0 && (
-                        <p className="text-xs text-muted-foreground px-2 py-1">Sin resultados</p>
+                        <p className="text-xs text-capsula-ink-muted px-2 py-1">Sin resultados</p>
                       )}
                     </div>
                   </div>
@@ -2898,22 +2907,22 @@ export default function POSSportBarPage() {
 
                 {/* Motivo */}
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">
-                    Motivo <span className="text-red-400">*</span>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                    Motivo <span className="text-capsula-coral normal-case tracking-normal">*</span>
                   </label>
                   <textarea
                     value={removeJustification}
                     onChange={(e) => { setRemoveJustification(e.target.value); setRemoveError(""); }}
-                    placeholder="Ej: Error de pedido, cliente cambió de opinión..."
+                    placeholder="Ej: Error de pedido, cliente cambió de opinión…"
                     rows={2}
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm resize-none focus:border-amber-500 focus:outline-none"
+                    className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted resize-none focus:border-capsula-coral focus:outline-none transition"
                   />
                 </div>
 
                 {/* PIN */}
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">
-                    PIN de capitán / gerente <span className="text-red-400">*</span>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                    PIN de capitán / gerente <span className="text-capsula-coral normal-case tracking-normal">*</span>
                   </label>
                   <input
                     type="password"
@@ -2922,25 +2931,25 @@ export default function POSSportBarPage() {
                     onChange={(e) => { setRemovePin(e.target.value); setRemoveError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleRemoveItem()}
                     placeholder="••••••"
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-3 text-center text-xl tracking-widest focus:border-red-500 focus:outline-none"
+                    className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-3 text-capsula-ink text-center text-xl tracking-[0.3em] placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none transition"
                   />
-                  {removeError && <p className="text-red-400 text-xs mt-1">{removeError}</p>}
+                  {removeError && <p className="text-capsula-coral text-xs mt-1 font-semibold">{removeError}</p>}
                 </div>
               </div>
 
-              <div className="border-t border-border p-4 flex gap-3">
-                <button onClick={() => setShowRemoveModal(false)} className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm">
+              <div className="border-t border-capsula-line p-4 flex gap-3">
+                <button onClick={() => setShowRemoveModal(false)} className="pos-btn-secondary flex-1 py-3 text-sm">
                   Cancelar
                 </button>
                 <button
                   onClick={handleRemoveItem}
                   disabled={!removePin.trim() || !removeJustification.trim() || isProcessing}
-                  className="flex-[2] py-3 bg-red-700 hover:bg-red-600 rounded-xl font-black text-sm transition disabled:opacity-50"
+                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? "Procesando..." : (
-                    removeModType === "VOID"       ? "❌ Anular ítem" :
-                    removeModType === "ADJUST_QTY" ? "✏️ Ajustar cantidad" :
-                                                     "🔄 Confirmar cambio"
+                  {isProcessing ? "Procesando…" : (
+                    removeModType === "VOID"       ? (<><Ban className="h-4 w-4" />Anular ítem</>) :
+                    removeModType === "ADJUST_QTY" ? (<><Pencil className="h-4 w-4" />Ajustar cantidad</>) :
+                                                     (<><RefreshCw className="h-4 w-4" />Confirmar cambio</>)
                   )}
                 </button>
               </div>
@@ -2953,15 +2962,15 @@ export default function POSSportBarPage() {
       {/* MODAL: MODIFICADORES                                              */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/90 p-4 text-foreground">
-          <div className="max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg mx-auto overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-border bg-card shadow-2xl">
-            <div className="border-b border-border p-5 flex items-start justify-between">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-capsula-ink/60 backdrop-blur-sm p-4">
+          <div className="max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg mx-auto overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-capsula-line bg-capsula-ivory shadow-2xl">
+            <div className="border-b border-capsula-line p-5 flex items-start justify-between">
               <div>
-                <h3 className="text-xl font-black text-foreground">{selectedItemForModifier.name}</h3>
-                <p className="mt-1 text-lg font-bold text-amber-400">${selectedItemForModifier.price.toFixed(2)}</p>
+                <h3 className="text-xl font-semibold tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
+                <p className="mt-1 text-lg font-semibold text-capsula-ink tabular-nums">${selectedItemForModifier.price.toFixed(2)}</p>
               </div>
-              <button onClick={() => setShowModifierModal(false)} className="text-muted-foreground hover:text-destructive text-2xl">
-                ×
+              <button onClick={() => setShowModifierModal(false)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center">
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
 
@@ -2971,14 +2980,15 @@ export default function POSSportBarPage() {
                 const totalSel = currentModifiers
                   .filter((m) => m.groupId === group.id)
                   .reduce((s, m) => s + m.quantity, 0);
+                const isValid = !group.isRequired || totalSel >= group.minSelections;
                 return (
-                  <div key={group.id} className="rounded-xl border border-border bg-secondary p-4">
+                  <div key={group.id} className={`rounded-xl border p-4 transition-colors ${isValid ? "border-capsula-line bg-capsula-ivory-surface" : "border-capsula-coral bg-capsula-coral/5"}`}>
                     <div className="flex justify-between items-center mb-3">
-                      <span className="font-bold text-foreground">
+                      <span className="font-semibold text-sm uppercase tracking-[0.14em] text-capsula-ink-soft">
                         {group.name}
-                        {group.isRequired && <span className="text-red-400 ml-1 text-xs">*</span>}
+                        {group.isRequired && <span className="text-capsula-coral ml-1">*</span>}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-ivory"}`}>
                         {totalSel}/{group.maxSelections}
                       </span>
                     </div>
@@ -2992,33 +3002,33 @@ export default function POSSportBarPage() {
                           return (
                             <div
                               key={modifier.id}
-                              className="flex items-center justify-between rounded-lg bg-card px-3 py-2"
+                              className={`flex items-center justify-between rounded-lg px-3 py-2 border transition ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line"}`}
                             >
                               <div>
-                                <div className="text-sm font-medium text-foreground">{modifier.name}</div>
+                                <div className="text-sm font-semibold text-capsula-ink">{modifier.name}</div>
                                 {modifier.priceAdjustment !== 0 && (
-                                  <div className="text-xs text-muted-foreground">+${modifier.priceAdjustment.toFixed(2)}</div>
+                                  <div className="text-xs text-capsula-ink-muted tabular-nums">+${modifier.priceAdjustment.toFixed(2)}</div>
                                 )}
                               </div>
                               {isRadio ? (
                                 <button
                                   onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                  className={`h-7 w-7 rounded-full border text-sm ${qty > 0 ? "border-amber-500 bg-amber-500 text-black" : "border-muted-foreground/50"}`}
+                                  className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${qty > 0 ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory" : "border-capsula-line hover:border-capsula-navy-deep"}`}
                                 >
-                                  {qty > 0 ? "✓" : ""}
+                                  {qty > 0 && <Check className="h-3.5 w-3.5" />}
                                 </button>
                               ) : (
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => updateModifierQuantity(group, modifier, -1)}
-                                      className="h-8 w-8 rounded-lg bg-muted font-bold text-foreground"
+                                      className="h-8 w-8 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                                     >
                                       −
                                     </button>
-                                    <span className="w-5 text-center font-black text-amber-400">{qty}</span>
+                                    <span className="w-5 text-center font-semibold text-capsula-ink tabular-nums">{qty}</span>
                                     <button
                                       onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                      className="h-8 w-8 rounded-lg bg-amber-600 font-bold text-white"
+                                      className="h-8 w-8 rounded-lg bg-capsula-navy-deep font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition"
                                     >
                                       +
                                     </button>
@@ -3032,29 +3042,29 @@ export default function POSSportBarPage() {
                 );
               })}
 
-              <div className="rounded-xl border border-border bg-secondary p-4">
-                <label className="block text-xs font-bold text-muted-foreground mb-2">Notas</label>
+              <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2">Notas</label>
                 <textarea
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="h-16 w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-amber-500 focus:outline-none"
-                  placeholder="Sin hielo, extra limón..."
+                  className="h-16 w-full resize-none rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
+                  placeholder="Sin hielo, extra limón…"
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary p-4">
-                <span className="font-bold text-foreground">Cantidad</span>
+              <div className="flex items-center justify-between rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
+                <span className="font-semibold uppercase tracking-[0.14em] text-capsula-ink">Cantidad</span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                    className="h-10 w-10 rounded-full bg-muted font-bold text-xl text-foreground"
+                    className="h-10 w-10 rounded-full bg-capsula-ivory border border-capsula-line font-semibold text-xl text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center text-xl font-black text-foreground">{itemQuantity}</span>
+                  <span className="w-8 text-center text-xl font-semibold text-capsula-ink tabular-nums">{itemQuantity}</span>
                   <button
                     onClick={() => setItemQuantity(itemQuantity + 1)}
-                    className="h-10 w-10 rounded-full bg-amber-600 font-bold text-xl text-white"
+                    className="h-10 w-10 rounded-full bg-capsula-navy-deep font-semibold text-xl text-capsula-ivory hover:bg-capsula-navy-deep/90 transition"
                   >
                     +
                   </button>
@@ -3068,30 +3078,31 @@ export default function POSSportBarPage() {
                   onClick={() => setItemTakeaway(!itemTakeaway)}
                   className={`w-full rounded-xl border p-4 flex items-center justify-between transition-all ${
                     itemTakeaway
-                      ? "border-amber-500 bg-amber-500/10 text-amber-400"
-                      : "border-border bg-secondary text-muted-foreground"
+                      ? "border-capsula-navy-deep bg-capsula-navy-soft text-capsula-ink"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted"
                   }`}
                 >
-                  <span className="font-bold">🥡 Para llevar</span>
-                  <span className={`text-xs font-black uppercase ${itemTakeaway ? "text-amber-400" : "text-muted-foreground"}`}>
-                    {itemTakeaway ? "SÍ — aparecerá en comanda" : "No"}
+                  <span className="font-semibold">Para llevar</span>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${itemTakeaway ? "text-capsula-ink" : "text-capsula-ink-muted"}`}>
+                    {itemTakeaway ? "Sí — aparecerá en comanda" : "No"}
                   </span>
                 </button>
               )}
             </div>
 
-            <div className="flex gap-3 border-t border-border p-5">
+            <div className="flex gap-3 border-t border-capsula-line p-5">
               <button
                 onClick={() => setShowModifierModal(false)}
-                className="flex-1 rounded-xl bg-muted py-3 font-bold text-foreground"
+                className="pos-btn-secondary flex-1 py-3 text-sm"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmAddToCart}
                 disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
-                className="flex-[2] rounded-xl bg-amber-600 hover:bg-amber-500 py-3 font-black transition disabled:opacity-50 text-white"
+                className="pos-btn flex-[2] py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
+                <PlusIcon className="h-4 w-4" />
                 Agregar al carrito
               </button>
             </div>
