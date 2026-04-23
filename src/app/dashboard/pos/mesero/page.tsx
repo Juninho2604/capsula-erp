@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -1354,18 +1354,20 @@ export default function POSMeseroPage() {
           ).map((t) => ({ ...t, zoneName: z.name }))
         ) ?? [];
         return (
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-card glass-panel w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-capsula-ivory w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-capsula-line max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">↔</div>
+                <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-navy-deep flex-shrink-0">
+                  <ArrowLeftRight className="h-5 w-5" />
+                </div>
                 <div>
-                  <h3 className="font-black text-base text-sky-400">Mover mesa</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Mover mesa</h3>
+                  <p className="text-xs text-capsula-ink-muted">
                     {selectedTable?.name}
                     {activeTab.customerLabel ? ` · ${activeTab.customerLabel}` : ""}
                     {" → "}
-                    <span className={transferToTableId ? "text-sky-400 font-bold" : "text-muted-foreground"}>
+                    <span className={transferToTableId ? "text-capsula-ink font-semibold" : "text-capsula-ink-muted"}>
                       {transferToTableId
                         ? (availableTables.find((t) => t.id === transferToTableId)?.name ?? "...")
                         : "selecciona destino"}
@@ -1374,19 +1376,19 @@ export default function POSMeseroPage() {
                 </div>
                 <button
                   onClick={() => setShowTransferModal(false)}
-                  className="ml-auto h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground flex-shrink-0"
+                  className="ml-auto h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted flex-shrink-0"
                 >
-                  ×
+                  <XIcon className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Grid de mesas disponibles */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2 block">
                   Mesa destino (disponibles)
                 </label>
                 {availableTables.length === 0 ? (
-                  <p className="text-xs text-muted-foreground bg-secondary rounded-xl px-4 py-3">
+                  <p className="text-xs text-capsula-ink-muted bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3">
                     No hay mesas disponibles en este momento.
                   </p>
                 ) : (
@@ -1395,14 +1397,14 @@ export default function POSMeseroPage() {
                       <button
                         key={t.id}
                         onClick={() => setTransferToTableId(t.id)}
-                        className={`rounded-xl py-3 px-2 text-xs font-black transition border flex flex-col items-center gap-0.5 ${
+                        className={`rounded-xl py-3 px-2 text-xs font-semibold transition border flex flex-col items-center gap-0.5 ${
                           transferToTableId === t.id
-                            ? "bg-sky-600 border-sky-500 text-white"
-                            : "bg-secondary border-border hover:border-sky-500/50 hover:text-sky-400"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/50"
                         }`}
                       >
                         <span className="text-sm">{t.name}</span>
-                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-sky-200" : "text-muted-foreground"}`}>
+                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-capsula-ivory/70" : "text-capsula-ink-muted"}`}>
                           {t.zoneName}
                         </span>
                       </button>
@@ -1413,20 +1415,20 @@ export default function POSMeseroPage() {
 
               {/* Motivo */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   Motivo (opcional)
                 </label>
                 <textarea
                   value={transferReason}
                   onChange={(e) => setTransferReason(e.target.value)}
                   placeholder="Ej: Petición del cliente, cambio de zona..."
-                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-sky-500 focus:outline-none resize-none h-14"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl p-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none resize-none h-14 transition"
                 />
               </div>
 
               {/* PIN */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   PIN de capitán o gerente
                 </label>
                 <input
@@ -1435,12 +1437,12 @@ export default function POSMeseroPage() {
                   placeholder="••••"
                   value={transferCaptainPin}
                   onChange={(e) => setTransferCaptainPin(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-4 py-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none tracking-[0.3em] transition"
                 />
               </div>
 
               {transferError && (
-                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                <p className="text-capsula-coral text-xs font-semibold bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl px-3 py-2">
                   {transferError}
                 </p>
               )}
@@ -1448,16 +1450,16 @@ export default function POSMeseroPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowTransferModal(false)}
-                  className="capsula-btn capsula-btn-secondary flex-1 py-3"
+                  className="pos-btn-secondary flex-1 py-3"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleTableTransfer}
                   disabled={isProcessing || !transferToTableId || !transferCaptainPin.trim()}
-                  className="flex-[2] py-3 bg-sky-600 hover:bg-sky-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                  className="pos-btn flex-[2] py-3 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? "Moviendo..." : "↔ Confirmar movimiento"}
+                  {isProcessing ? "Moviendo..." : (<><ArrowLeftRight className="h-4 w-4" />Confirmar movimiento</>)}
                 </button>
               </div>
             </div>
@@ -1472,36 +1474,42 @@ export default function POSMeseroPage() {
           (!removeReplaceSearch.trim() || m.name.toLowerCase().includes(removeReplaceSearch.toLowerCase()))
         ).slice(0, 30);
         return (
-          <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-red-900/30 max-h-[92vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-capsula-ivory w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-capsula-line max-h-[92vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 bg-red-500/10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">✏️</div>
+                <div className="h-11 w-11 bg-capsula-coral/10 rounded-2xl flex items-center justify-center text-capsula-coral flex-shrink-0">
+                  <Pencil className="h-5 w-5" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-sm text-red-400">Modificar ítem enviado</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    <span className="font-bold text-foreground">{removeTarget.quantity}×</span> {removeTarget.itemName}
-                    <span className="ml-2 text-muted-foreground">${removeTarget.lineTotal.toFixed(2)}</span>
+                  <h3 className="font-semibold text-sm text-capsula-ink tracking-[-0.02em]">Modificar ítem enviado</h3>
+                  <p className="text-xs text-capsula-ink-muted truncate">
+                    <span className="font-semibold text-capsula-ink">{removeTarget.quantity}×</span> {removeTarget.itemName}
+                    <span className="ml-2 tabular-nums">${removeTarget.lineTotal.toFixed(2)}</span>
                   </p>
                 </div>
-                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 text-xl flex items-center justify-center flex-shrink-0">×</button>
+                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 text-capsula-ink-muted hover:text-capsula-coral flex items-center justify-center flex-shrink-0">
+                  <XIcon className="h-4 w-4" />
+                </button>
               </div>
 
               {/* Opciones de modificación */}
               <div className="grid grid-cols-3 gap-2">
                 {(["VOID", "ADJUST_QTY", "REPLACE"] as const).map((t) => {
-                  const labels = { VOID: "❌ Cancelar", ADJUST_QTY: "✏️ Ajustar", REPLACE: "🔄 Cambiar" };
+                  const Icon = t === "VOID" ? Ban : t === "ADJUST_QTY" ? Pencil : RefreshCw;
+                  const label = t === "VOID" ? "Cancelar" : t === "ADJUST_QTY" ? "Ajustar" : "Cambiar";
                   return (
                     <button
                       key={t}
                       onClick={() => setRemoveModType(t)}
-                      className={`py-2.5 rounded-xl text-xs font-black border transition ${
+                      className={`py-2.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center gap-1.5 ${
                         removeModType === t
-                          ? "bg-red-600 border-red-500 text-white"
-                          : "bg-secondary border-border hover:border-red-500/40 hover:text-red-400"
+                          ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                          : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                       }`}
                     >
-                      {labels[t]}
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
                     </button>
                   );
                 })}
@@ -1510,21 +1518,21 @@ export default function POSMeseroPage() {
               {/* Ajustar cantidad */}
               {removeModType === "ADJUST_QTY" && (
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                     Nueva cantidad (actual: {removeTarget.quantity})
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setRemoveNewQty((q) => Math.max(1, q - 1))}
-                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-red-500/40"
+                      className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                     >−</button>
-                    <span className="flex-1 text-center text-2xl font-black">{removeNewQty}</span>
+                    <span className="flex-1 text-center text-2xl font-semibold text-capsula-ink tabular-nums">{removeNewQty}</span>
                     <button
                       onClick={() => setRemoveNewQty((q) => Math.min(removeTarget.quantity - 1, q + 1))}
-                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-sky-500/40"
+                      className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-navy-deep/40 transition"
                     >+</button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  <p className="text-[10px] text-capsula-ink-muted mt-1 text-center">
                     Se anularán {removeTarget.quantity - removeNewQty} unidad(es) y se reimprimirá la comanda
                   </p>
                 </div>
@@ -1533,32 +1541,32 @@ export default function POSMeseroPage() {
               {/* Cambiar por otro ítem */}
               {removeModType === "REPLACE" && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted block">
                     Producto de reemplazo
                   </label>
                   <input
                     value={removeReplaceSearch}
                     onChange={(e) => setRemoveReplaceSearch(e.target.value)}
                     placeholder="Buscar producto..."
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                    className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-3 py-2 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                   />
                   <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                     {replaceItems.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => setRemoveReplaceItemId(m.id)}
-                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-bold transition border ${
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition border ${
                           removeReplaceItemId === m.id
-                            ? "bg-sky-600 border-sky-500 text-white"
-                            : "bg-secondary border-border hover:border-sky-500/40"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                         }`}
                       >
                         <span className="truncate">{m.name}</span>
-                        <span className="ml-2 shrink-0 opacity-70">${m.price?.toFixed(2)}</span>
+                        <span className="ml-2 shrink-0 opacity-70 tabular-nums">${m.price?.toFixed(2)}</span>
                       </button>
                     ))}
                     {replaceItems.length === 0 && (
-                      <p className="text-xs text-muted-foreground px-2 py-1">Sin resultados</p>
+                      <p className="text-xs text-capsula-ink-muted px-2 py-1">Sin resultados</p>
                     )}
                   </div>
                 </div>
@@ -1566,20 +1574,20 @@ export default function POSMeseroPage() {
 
               {/* Motivo */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   Motivo (obligatorio)
                 </label>
                 <textarea
                   value={removeJustification}
                   onChange={(e) => setRemoveJustification(e.target.value)}
                   placeholder="Ej: error del cliente, cambio de pedido..."
-                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none resize-none h-14"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl p-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none resize-none h-14 transition"
                 />
               </div>
 
               {/* PIN */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   PIN de capitán o gerente
                 </label>
                 <input
@@ -1588,29 +1596,29 @@ export default function POSMeseroPage() {
                   placeholder="••••"
                   value={removePin}
                   onChange={(e) => setRemovePin(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-red-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-4 py-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none tracking-[0.3em] transition"
                 />
               </div>
 
               {removeError && (
-                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                <p className="text-capsula-coral text-xs font-semibold bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl px-3 py-2">
                   {removeError}
                 </p>
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setShowRemoveModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
+                <button onClick={() => setShowRemoveModal(false)} className="pos-btn-secondary flex-1 py-3">
                   Cancelar
                 </button>
                 <button
                   onClick={handleRemoveItem}
                   disabled={isProcessing || !removeJustification.trim() || !removePin.trim()}
-                  className="flex-[2] py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {isProcessing ? "Procesando..." : (
-                    removeModType === "VOID"       ? "❌ Confirmar anulación" :
-                    removeModType === "ADJUST_QTY" ? "✏️ Ajustar cantidad" :
-                                                     "🔄 Confirmar cambio"
+                    removeModType === "VOID"       ? (<><Ban className="h-4 w-4" />Confirmar anulación</>) :
+                    removeModType === "ADJUST_QTY" ? (<><Pencil className="h-4 w-4" />Ajustar cantidad</>) :
+                                                     (<><RefreshCw className="h-4 w-4" />Confirmar cambio</>)
                   )}
                 </button>
               </div>
