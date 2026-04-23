@@ -122,7 +122,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
             {/* Header */}
             <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Módulos por Usuario</h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por Usuario</h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Selecciona un usuario para configurar qué módulos del sistema puede ver en su menú.
                         Si usas <span className="font-semibold">acceso por rol</span>, el sistema aplica las reglas predeterminadas del rol.

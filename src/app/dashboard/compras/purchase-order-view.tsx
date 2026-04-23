@@ -218,7 +218,7 @@ export default function PurchaseOrderView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">🛒 Módulo de Compras</h1>
+                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Módulo de compras</h1>
                     <p className="text-gray-500">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
                 </div>
                 <div className="flex flex-wrap gap-2">

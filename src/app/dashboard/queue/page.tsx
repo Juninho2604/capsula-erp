@@ -19,7 +19,7 @@ export default async function QueuePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">🎫 Cola de Espera</h1>
+                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Cola de espera</h1>
                 <p className="text-gray-500 dark:text-gray-400">
                     {waiting.length} en espera · {called.length} llamado{called.length !== 1 ? 's' : ''}
                 </p>

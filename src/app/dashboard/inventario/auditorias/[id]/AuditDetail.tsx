@@ -104,7 +104,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
             <div className="flex flex-col justify-between gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 print:hidden sm:flex-row sm:items-center">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                             {audit.name || 'Auditoría sin nombre'}
                         </h1>
                         <span className={cn(
@@ -156,7 +156,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
 
             {/* Print Header (Visible only on print) */}
             <div className="hidden print:block mb-8">
-                <h1 className="text-2xl font-bold">Reporte de Auditoría de Inventario</h1>
+                <h1 className="font-heading text-2xl tracking-[-0.02em]">Reporte de auditoría de inventario</h1>
                 <p className="text-sm">Ref: {audit.id}</p>
                 <div className="mt-4 flex justify-between border-b pb-4">
                     <div>

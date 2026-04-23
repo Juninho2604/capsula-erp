@@ -220,7 +220,7 @@ export default function ImportPage() {
 
     return (
         <div className="space-y-6 animate-in">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
                 Importación Masiva de Planillas
             </h1>
 
