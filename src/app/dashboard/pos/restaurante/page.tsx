@@ -2663,42 +2663,45 @@ export default function POSSportBarPage() {
       {/* MODAL: PIN CAJERA — REGISTRAR PAGO                               */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showPaymentPinModal && activeTab && (
-        <div className="fixed inset-0 z-[60] bg-background/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black">🔐 Autorizar cobro</h3>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-capsula-ivory border border-capsula-line w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
+            <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink inline-flex items-center gap-2">
+                <Lock className="h-5 w-5 text-capsula-navy-deep" />
+                Autorizar cobro
+              </h3>
               <button
                 onClick={() => setShowPaymentPinModal(false)}
-                className="text-muted-foreground hover:text-destructive text-2xl"
+                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
               >
-                ×
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="bg-secondary rounded-xl p-3 text-sm space-y-1">
+              <div className="bg-capsula-ivory-surface border border-capsula-line rounded-xl p-3 text-sm space-y-1 tabular-nums">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Método:</span>
-                  <span className="font-bold">{PAYMENT_LABELS[paymentMethod]}</span>
+                  <span className="text-capsula-ink-muted">Método:</span>
+                  <span className="font-semibold text-capsula-ink">{PAYMENT_LABELS[paymentMethod]}</span>
                 </div>
                 {discountType === "DIVISAS_33" && activeTab && (
-                  <div className="flex justify-between text-blue-400 text-xs">
-                    <span>Descuento -33.33%:</span>
-                    <span>-${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                  <div className="flex justify-between text-capsula-ink-soft text-xs">
+                    <span>Descuento −33.33%:</span>
+                    <span>−${(activeTab.balanceDue / 3).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monto:</span>
-                  <span className="font-black text-emerald-400 text-base">${paidAmount.toFixed(2)}</span>
+                  <span className="text-capsula-ink-muted">Monto:</span>
+                  <span className="font-semibold text-capsula-ink text-base">${paidAmount.toFixed(2)}</span>
                 </div>
                 {exchangeRate && (
-                  <div className="flex justify-between text-muted-foreground text-xs">
+                  <div className="flex justify-between text-capsula-ink-muted text-xs">
                     <span>Equivalente Bs:</span>
                     <span>Bs. {(paidAmount * exchangeRate).toFixed(2)}</span>
                   </div>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">PIN de cajera / gerente</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">PIN de cajera / gerente</label>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -2709,24 +2712,24 @@ export default function POSSportBarPage() {
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handlePaymentPinConfirm()}
                   placeholder="••••••"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-3 text-foreground text-center text-xl tracking-widest focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-3 text-capsula-ink text-center text-xl tracking-[0.3em] placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
-                {paymentPinError && <p className="text-red-400 text-xs mt-1">{paymentPinError}</p>}
+                {paymentPinError && <p className="text-capsula-coral text-xs mt-1 font-semibold">{paymentPinError}</p>}
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
+            <div className="border-t border-capsula-line p-4 flex gap-3">
               <button
                 onClick={() => setShowPaymentPinModal(false)}
-                className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm"
+                className="pos-btn-secondary flex-1 py-3 text-sm"
               >
                 Cancelar
               </button>
               <button
                 onClick={handlePaymentPinConfirm}
                 disabled={!paymentPin || isProcessing}
-                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-sm transition disabled:opacity-50"
+                className="pos-btn flex-[2] py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isProcessing ? "Procesando..." : "✓ Confirmar pago"}
+                {isProcessing ? "Procesando…" : (<><Check className="h-4 w-4" />Confirmar pago</>)}
               </button>
             </div>
           </div>
@@ -2737,19 +2740,24 @@ export default function POSSportBarPage() {
       {/* MODAL: CORTESÍA (PIN + PORCENTAJE)                               */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showCortesiaModal && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-card border border-purple-800/60 w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
-            <div className="border-b border-border p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black text-purple-300">🎁 Cortesía</h3>
-              <button onClick={() => setShowCortesiaModal(false)} className="text-muted-foreground hover:text-destructive text-2xl">×</button>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-capsula-ivory border border-capsula-line w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
+            <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink inline-flex items-center gap-2">
+                <Gift className="h-5 w-5 text-capsula-coral" />
+                Cortesía
+              </h3>
+              <button onClick={() => setShowCortesiaModal(false)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center">
+                <XIcon className="h-4 w-4" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">% de Cortesía</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">% de cortesía</label>
                 <div className="flex gap-2 mb-2">
                   {["25", "50", "75", "100"].map(v => (
                     <button key={v} onClick={() => setCortesiaPercent(v)}
-                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition ${cortesiaPercent === v ? "bg-purple-600 text-white" : "bg-secondary text-foreground/70 hover:bg-muted"}`}>
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${cortesiaPercent === v ? "bg-capsula-coral text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}>
                       {v}%
                     </button>
                   ))}
@@ -2758,30 +2766,31 @@ export default function POSSportBarPage() {
                   type="number" min="1" max="100"
                   value={cortesiaPercent}
                   onChange={e => setCortesiaPercent(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-foreground text-center text-lg font-bold focus:border-purple-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2 text-capsula-ink text-center text-lg font-semibold placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none transition tabular-nums"
                   placeholder="% personalizado"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">PIN de Gerente / Dueño</label>
-                <div className="bg-secondary p-3 rounded-xl text-2xl tracking-widest text-center font-mono mb-3 min-h-[3rem]">
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">PIN de gerente / dueño</label>
+                <div className="bg-capsula-ivory-surface border border-capsula-line p-3 rounded-xl text-2xl tracking-[0.3em] text-center font-mono text-capsula-ink mb-3 min-h-[3rem]">
                   {cortesiaPin.replace(/./g, "•")}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[1,2,3,4,5,6,7,8,9,0].map(n => (
                     <button key={n} onClick={() => handleCortesiaPinKey(n.toString())}
-                      className="bg-muted hover:bg-secondary/80 rounded-lg py-3 font-bold text-xl">{n}</button>
+                      className="bg-capsula-ivory-surface border border-capsula-line hover:border-capsula-navy-deep/40 text-capsula-ink rounded-lg py-3 font-semibold text-xl transition">{n}</button>
                   ))}
-                  <button onClick={() => handleCortesiaPinKey("clear")} className="bg-red-900 hover:bg-red-800 rounded-lg py-3 font-bold text-red-200 text-sm">C</button>
-                  <button onClick={() => handleCortesiaPinKey("back")} className="bg-secondary hover:bg-muted-foreground/60 rounded-lg py-3 font-bold">⌫</button>
+                  <button onClick={() => handleCortesiaPinKey("clear")} className="bg-capsula-coral/10 hover:bg-capsula-coral/20 border border-capsula-coral/30 text-capsula-coral rounded-lg py-3 font-semibold text-sm transition">C</button>
+                  <button onClick={() => handleCortesiaPinKey("back")} className="bg-capsula-ivory-surface border border-capsula-line hover:border-capsula-navy-deep/40 text-capsula-ink rounded-lg py-3 font-semibold transition">⌫</button>
                 </div>
-                {cortesiaPinError && <p className="text-red-400 text-xs mt-2 text-center">{cortesiaPinError}</p>}
+                {cortesiaPinError && <p className="text-capsula-coral text-xs mt-2 text-center font-semibold">{cortesiaPinError}</p>}
               </div>
             </div>
-            <div className="border-t border-border p-4 flex gap-3">
-              <button onClick={() => setShowCortesiaModal(false)} className="flex-1 py-3 bg-secondary rounded-xl font-bold text-sm">Cancelar</button>
-              <button onClick={handleCortesiaPinConfirm} disabled={!cortesiaPin} className="flex-[2] py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-xl font-black text-sm transition">
-                Aplicar Cortesía
+            <div className="border-t border-capsula-line p-4 flex gap-3">
+              <button onClick={() => setShowCortesiaModal(false)} className="pos-btn-secondary flex-1 py-3 text-sm">Cancelar</button>
+              <button onClick={handleCortesiaPinConfirm} disabled={!cortesiaPin} className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2">
+                <Gift className="h-4 w-4" />
+                Aplicar cortesía
               </button>
             </div>
           </div>
