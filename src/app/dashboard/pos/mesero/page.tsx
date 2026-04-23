@@ -1126,31 +1126,31 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
       {showBillModal && activeTab && (
-        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-3xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-capsula-ivory w-full max-w-sm rounded-3xl shadow-2xl border border-capsula-line flex flex-col max-h-[90vh]">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-capsula-line shrink-0">
               <div>
-                <h3 className="font-black text-base text-foreground">Cuenta</h3>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Cuenta</h3>
+                <p className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-[0.14em] mt-0.5">
                   {selectedTable?.name} · {activeTab.customerLabel}
                 </p>
               </div>
               <button
                 onClick={() => setShowBillModal(false)}
-                className="h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
+                className="h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted"
               >
-                ×
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
               {activeTab.orders.flatMap(o => o.items).map((item, i) => (
                 <div key={i} className="flex justify-between items-baseline text-sm">
-                  <span className="text-foreground/80 font-semibold flex-1 mr-2">
-                    <span className="text-foreground/50 text-xs">×{item.quantity}</span> {item.itemName}
+                  <span className="text-capsula-ink-soft font-semibold flex-1 mr-2">
+                    <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
                   </span>
-                  <span className="font-black tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                  <span className="font-semibold text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1162,30 +1162,30 @@ export default function POSMeseroPage() {
               const divisas33 = totalUsd * (1 - 0.33);
               const totalBs = exchangeRate ? totalUsd * exchangeRate : null;
               return (
-                <div className="px-5 py-4 border-t border-border space-y-2 shrink-0">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider">Subtotal</span>
-                    <span className="font-black tabular-nums">${subtotal.toFixed(2)}</span>
+                <div className="px-5 py-4 border-t border-capsula-line space-y-2 shrink-0">
+                  <div className="flex justify-between text-xs text-capsula-ink-muted">
+                    <span className="font-semibold uppercase tracking-wider">Subtotal</span>
+                    <span className="font-semibold text-capsula-ink tabular-nums">${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider">Servicio (10%)</span>
-                    <span className="font-black tabular-nums">${serviceCharge.toFixed(2)}</span>
+                  <div className="flex justify-between text-xs text-capsula-ink-muted">
+                    <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
+                    <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-baseline border-t border-border pt-2 mt-1">
-                    <span className="text-sm font-black text-foreground uppercase tracking-widest">Total USD</span>
-                    <span className="text-2xl font-black text-emerald-400 tabular-nums">${totalUsd.toFixed(2)}</span>
+                  <div className="flex justify-between items-baseline border-t border-capsula-line pt-2 mt-1">
+                    <span className="text-sm font-semibold text-capsula-ink uppercase tracking-[0.14em]">Total USD</span>
+                    <span className="text-2xl font-semibold text-capsula-ink tabular-nums">${totalUsd.toFixed(2)}</span>
                   </div>
-                  <div className="rounded-xl bg-secondary/50 border border-border p-3 space-y-1.5 mt-1">
+                  <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-1.5 mt-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground font-bold uppercase tracking-wider">Divisas (33% desc.)</span>
-                      <span className="font-black tabular-nums text-amber-400">${divisas33.toFixed(2)}</span>
+                      <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">Divisas (33% desc.)</span>
+                      <span className="font-semibold tabular-nums text-capsula-ink">${divisas33.toFixed(2)}</span>
                     </div>
                     {totalBs !== null && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground font-bold uppercase tracking-wider">
+                        <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">
                           Bs. (Tasa {exchangeRate?.toFixed(2)})
                         </span>
-                        <span className="font-black tabular-nums text-sky-400">
+                        <span className="font-semibold tabular-nums text-capsula-ink">
                           Bs. {totalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -1200,54 +1200,57 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
-            <h3 className="font-black text-lg">Abrir cuenta — {selectedTable.name}</h3>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-capsula-ivory w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-capsula-line">
+            <div>
+              <h3 className="font-semibold text-lg text-capsula-ink tracking-[-0.02em]">Abrir cuenta</h3>
+              <p className="text-xs text-capsula-ink-muted mt-0.5">{selectedTable.name}</p>
+            </div>
             <div className="space-y-3">
               <input
                 type="text"
                 placeholder="Nombre del cliente *"
                 value={openTabName}
                 onChange={(e) => setOpenTabName(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3 text-sm font-medium text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
               />
               <input
                 type="tel"
                 placeholder="Teléfono *"
                 value={openTabPhone}
                 onChange={(e) => setOpenTabPhone(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3 text-sm font-medium text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
               />
               <div className="flex items-center gap-3">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest w-24">Personas</label>
-                <div className="flex items-center gap-3 bg-secondary rounded-xl p-1 border border-border">
-                  <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-card font-black transition hover:bg-red-500/10 hover:text-red-400">-</button>
-                  <span className="w-8 text-center font-black text-lg">{openTabGuests}</span>
-                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-primary text-primary-foreground font-black transition hover:opacity-90">+</button>
+                <label className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em] w-24">Personas</label>
+                <div className="flex items-center gap-3 bg-capsula-ivory-surface rounded-xl p-1 border border-capsula-line">
+                  <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink transition hover:bg-capsula-coral/10 hover:text-capsula-coral hover:border-capsula-coral/40">−</button>
+                  <span className="w-8 text-center font-semibold text-lg text-capsula-ink tabular-nums">{openTabGuests}</span>
+                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold transition hover:bg-capsula-navy-deep/90">+</button>
                 </div>
               </div>
               {activeWaiter && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs">
-                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black">
+                <div className="flex items-center gap-2 px-4 py-3 bg-capsula-navy-soft border border-capsula-line rounded-xl text-xs">
+                  <span className="h-7 w-7 rounded-full bg-capsula-navy-deep text-capsula-ivory flex items-center justify-center font-semibold">
                     {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
                   </span>
                   <div>
-                    <div className="font-black text-emerald-300">{activeWaiter.firstName} {activeWaiter.lastName}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Mesonero de la mesa</div>
+                    <div className="font-semibold text-capsula-ink">{activeWaiter.firstName} {activeWaiter.lastName}</div>
+                    <div className="text-[10px] text-capsula-ink-muted uppercase tracking-[0.14em]">Mesonero de la mesa</div>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowOpenTabModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
+              <button onClick={() => setShowOpenTabModal(false)} className="pos-btn-secondary flex-1 py-3">
                 Cancelar
               </button>
               <button
                 onClick={handleOpenTab}
                 disabled={isProcessing || !openTabName.trim() || !openTabPhone.trim()}
-                className="capsula-btn capsula-btn-primary flex-[2] py-3 disabled:opacity-40"
+                className="pos-btn flex-[2] py-3 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isProcessing ? "Abriendo..." : "✓ Abrir cuenta"}
+                {isProcessing ? "Abriendo..." : (<><Check className="h-4 w-4" />Abrir cuenta</>)}
               </button>
             </div>
           </div>
