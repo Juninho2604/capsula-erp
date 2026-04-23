@@ -866,7 +866,7 @@ export async function createSalesOrderAction(
                 await prisma.salesOrder.update({
                     where: { id: newOrder.id },
                     data: {
-                        notes: `[⚠️ DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${newOrder.notes ? ' | ' + newOrder.notes : ''}`,
+                        notes: `[DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${newOrder.notes ? ' | ' + newOrder.notes : ''}`,
                     },
                 });
             } catch { /* best effort */ }
@@ -1214,7 +1214,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                 await prisma.salesOrder.update({
                     where: { id: createdOrder.id },
                     data: {
-                        notes: `[⚠️ DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${createdOrder.notes ? ' | ' + createdOrder.notes : ''}`,
+                        notes: `[DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${createdOrder.notes ? ' | ' + createdOrder.notes : ''}`,
                     },
                 });
             } catch { /* best effort */ }

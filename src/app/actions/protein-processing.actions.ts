@@ -500,7 +500,7 @@ export async function completeProteinProcessingAction(
                     }
                 }
 
-                console.log(`💰 COSTOS CALCULADOS para ${processing.code}: Costo total materia prima $${totalSourceCost.toFixed(2)} distribuido en ${processing.subProducts.length} subproductos`);
+                console.log(`COSTOS CALCULADOS para ${processing.code}: Costo total materia prima $${totalSourceCost.toFixed(2)} distribuido en ${processing.subProducts.length} subproductos`);
             }
 
             // 3. Marcar procesamiento como completado

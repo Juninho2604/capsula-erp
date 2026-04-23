@@ -33,7 +33,7 @@ export default async function ReservationsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Reservaciones</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Reservaciones</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {activeReservations.length} activa{activeReservations.length !== 1 ? 's' : ''} para hoy ·{' '}
                         {new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -44,7 +44,7 @@ export default async function ReservationsPage() {
             {/* Active reservations */}
             {activeReservations.length === 0 && passedReservations.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
-                    <p className="text-4xl">📅</p>
+                    <p className="text-4xl"></p>
                     <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
                         Sin reservaciones para hoy
                     </p>
@@ -67,7 +67,7 @@ export default async function ReservationsPage() {
                                 }`}
                             >
                                 {/* Game type icon */}
-                                <span className="text-2xl">{r.station.gameType.icon ?? '🎮'}</span>
+                                <span className="text-2xl">{r.station.gameType.icon ?? ''}</span>
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">

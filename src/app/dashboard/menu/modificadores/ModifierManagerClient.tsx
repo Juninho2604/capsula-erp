@@ -110,7 +110,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
         startTransition(async () => {
             const res = await linkModifierToMenuItemAction(modifierId, menuItemId);
             setSavingModifier(null);
-            if (res.success) showToast(`✅ "${localGroups[groupIdx].modifiers[modIdx].name}" ${menuItemId ? 'vinculado' : 'desvinculado'}`);
+            if (res.success) showToast(`"${localGroups[groupIdx].modifiers[modIdx].name}" ${menuItemId ? 'vinculado' : 'desvinculado'}`);
         });
     };
 
@@ -149,7 +149,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
             setExpandedGroup(res.data.id);
             setShowNewGroupForm(false);
             setNewGroupName(''); setNewGroupDesc(''); setNewGroupRequired(false); setNewGroupMin(0); setNewGroupMax(1);
-            showToast(`✅ Grupo "${res.data.name}" creado`);
+            showToast(`Grupo "${res.data.name}" creado`);
         }
     };
 
@@ -218,7 +218,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
             });
             setAddingModifierToGroup(null);
             setNewModName(''); setNewModPrice('0'); setNewModLinkedItem('');
-            showToast(`✅ Modificador "${res.data.name}" agregado`);
+            showToast(`Modificador "${res.data.name}" agregado`);
         }
     };
 
@@ -256,7 +256,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                     next[groupIdx] = { ...next[groupIdx], menuItems: [...next[groupIdx].menuItems, { menuItem: { id: item.id, name: item.name } }] };
                     return next;
                 });
-                showToast(`✅ Grupo "${group.name}" vinculado a "${item.name}"`);
+                showToast(`Grupo "${group.name}" vinculado a "${item.name}"`);
             }
         }
     };
@@ -270,7 +270,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                 next[groupIdx] = { ...next[groupIdx], menuItems: next[groupIdx].menuItems.filter(m => m.menuItem.id !== menuItemId) };
                 return next;
             });
-            showToast(`✅ Desvinculado de "${menuItemName}"`);
+            showToast(`Desvinculado de "${menuItemName}"`);
         }
     };
 
@@ -349,7 +349,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
 
             {localGroups.length === 0 && !showNewGroupForm && (
                 <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500">
-                    <p className="text-4xl mb-3">🔧</p>
+                    <p className="text-4xl mb-3"></p>
                     <p className="font-medium">No hay grupos de modificadores. Crea uno con el botón de arriba.</p>
                 </div>
             )}
@@ -374,11 +374,11 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                     <input type="number" min={0} value={editGroupMin} onChange={e => setEditGroupMin(parseInt(e.target.value)||0)} className="w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-1 text-xs" placeholder="mín" />
                                     <input type="number" min={1} value={editGroupMax} onChange={e => setEditGroupMax(parseInt(e.target.value)||1)} className="w-16 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-1 text-xs" placeholder="máx" />
                                     <button onClick={() => handleSaveGroupEdit(group.id)} className="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-bold">Guardar</button>
-                                    <button onClick={() => setEditingGroupId(null)} className="px-2 py-1 bg-gray-400 text-white rounded text-xs">✕</button>
+                                    <button onClick={() => setEditingGroupId(null)} className="px-2 py-1 bg-gray-400 text-white rounded text-xs"></button>
                                 </div>
                             ) : (
                                 <div className="min-w-0">
-                                    <h3 className="font-bold text-gray-900 dark:text-white truncate">{group.name}</h3>
+                                    <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink truncate">{group.name}</h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
                                         {group.modifiers.length} opciones
                                         {group.isRequired && ' • Requerido'}
@@ -393,8 +393,8 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${group.modifiers.some(m => m.linkedMenuItemId) ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
                                     {group.modifiers.filter(m => m.linkedMenuItemId).length}/{group.modifiers.length} vinculados
                                 </span>
-                                <button onClick={() => startEditGroup(group)} title="Editar grupo" className="p-1 text-gray-400 hover:text-blue-600 rounded text-sm">✏️</button>
-                                <button onClick={() => handleDeleteGroup(group.id, group.name)} title="Eliminar grupo" className="p-1 text-gray-400 hover:text-red-500 rounded text-sm">🗑️</button>
+                                <button onClick={() => startEditGroup(group)} title="Editar grupo" className="p-1 text-gray-400 hover:text-blue-600 rounded text-sm"></button>
+                                <button onClick={() => handleDeleteGroup(group.id, group.name)} title="Eliminar grupo" className="p-1 text-gray-400 hover:text-red-500 rounded text-sm"></button>
                             </div>
                         )}
                     </div>
@@ -446,7 +446,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                                     title={modifier.isAvailable ? 'Desactivar' : 'Activar'}
                                                     className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${modifier.isAvailable ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-400'}`}
                                                 >
-                                                    {modifier.isAvailable && <span className="text-[10px] font-bold leading-none">✓</span>}
+                                                    {modifier.isAvailable && <span className="text-[10px] font-bold leading-none"></span>}
                                                 </button>
                                                 <span className="font-medium text-gray-900 dark:text-white truncate">{modifier.name}</span>
                                                 {modifier.priceAdjustment !== 0 && (
@@ -541,7 +541,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                                 {Object.entries(itemsByCategory).map(([cat, items]) => (
                                                     <optgroup key={cat} label={cat}>
                                                         {items.map(item => (
-                                                            <option key={item.id} value={item.id}>{item.name}{!item.recipeId ? ' ⚠️' : ''}</option>
+                                                            <option key={item.id} value={item.id}>{item.name}{!item.recipeId ? ' ' : ''}</option>
                                                         ))}
                                                     </optgroup>
                                                 ))}
@@ -580,7 +580,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
             {/* Nota sobre recetas */}
             {localGroups.length > 0 && (
                 <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4 text-sm text-amber-800 dark:text-amber-300">
-                    <strong>⚠️ Modificadores vinculados sin receta</strong> no descontarán inventario. Asegúrate de que el plato vinculado tenga su receta completa en el módulo de Recetas.
+                    <strong>Modificadores vinculados sin receta</strong> no descontarán inventario. Asegúrate de que el plato vinculado tenga su receta completa en el módulo de Recetas.
                 </div>
             )}
         </div>

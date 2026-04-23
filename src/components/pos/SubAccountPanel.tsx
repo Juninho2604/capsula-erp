@@ -380,7 +380,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                 )}
                 <div className="flex justify-between border-t border-capsula-line pt-1 font-medium text-capsula-ink">
                     <span>Total</span>
-                    <span className="font-heading tracking-[-0.01em] text-capsula-ink">${sub.total.toFixed(2)}</span>
+                    <span className="font-semibold tracking-[-0.01em] text-capsula-ink">${sub.total.toFixed(2)}</span>
                 </div>
             </div>
 
@@ -704,7 +704,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         </div>
                         <div className="flex justify-between font-medium text-capsula-ink">
                             <span>Saldo restante mesa</span>
-                            <span className="font-heading tracking-[-0.01em] text-capsula-ink">${tab.balanceDue.toFixed(2)}</span>
+                            <span className="font-semibold tracking-[-0.01em] text-capsula-ink">${tab.balanceDue.toFixed(2)}</span>
                         </div>
                     </div>
                 )}

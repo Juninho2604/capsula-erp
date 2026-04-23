@@ -197,7 +197,7 @@ export default function MixedPaymentSelector({
           {overpay > 0.001 ? (
             <>
               <span>Vuelto</span>
-              <span className="font-heading text-base tabular-nums tracking-[-0.01em]">${overpay.toFixed(2)}</span>
+              <span className="font-semibold text-base tabular-nums tracking-[-0.01em]">${overpay.toFixed(2)}</span>
             </>
           ) : isComplete ? (
             <>
@@ -207,7 +207,7 @@ export default function MixedPaymentSelector({
           ) : (
             <>
               <span>Pendiente</span>
-              <span className="font-heading text-base tabular-nums tracking-[-0.01em] text-[#946A1C]">
+              <span className="font-semibold text-base tabular-nums tracking-[-0.01em] text-[#946A1C]">
                 ${remaining.toFixed(2)}
               </span>
             </>

@@ -20,9 +20,7 @@ export default async function TasaCambioPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                    💱 Tasa de Cambio
-                </h1>
+                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Tasa de Cambio</h1>
                 <p className="text-gray-500 dark:text-gray-400">
                     Actualiza la tasa BCV diaria. Se aplica en todos los POS de manera inmediata.
                 </p>

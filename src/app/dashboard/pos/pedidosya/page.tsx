@@ -213,7 +213,7 @@ export default function POSPedidosYAPage() {
         <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
             <div className="flex flex-col items-center gap-3 text-center">
                 <Bike className="h-10 w-10 text-capsula-coral" />
-                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">
+                <div className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink">
                     Cargando PedidosYA…
                 </div>
             </div>
@@ -229,7 +229,7 @@ export default function POSPedidosYAPage() {
                         <Bike className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
                     <div>
-                        <h1 className="font-heading text-lg tracking-[-0.02em] text-capsula-ink md:text-2xl">
+                        <h1 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink md:text-2xl">
                             POS <span className="text-capsula-coral">PedidosYA</span>
                         </h1>
                         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
@@ -299,7 +299,7 @@ export default function POSPedidosYAPage() {
                                         {item.name}
                                     </div>
                                     <div>
-                                        <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-coral">
+                                        <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-coral">
                                             ${getPYAPrice(item).toFixed(2)}
                                         </div>
                                         <div className="text-xs tabular-nums text-capsula-ink-muted line-through">
@@ -316,7 +316,7 @@ export default function POSPedidosYAPage() {
                 <div className="z-20 flex w-80 flex-col border-l border-capsula-line bg-capsula-ivory-surface shadow-cap-soft tablet-land:w-96 xl:w-96">
                     {/* Datos del pedido */}
                     <div className="space-y-2 border-b border-capsula-line bg-capsula-ivory-surface p-4">
-                        <h2 className="inline-flex items-center gap-2 font-heading text-base tracking-[-0.01em] text-capsula-ink">
+                        <h2 className="inline-flex items-center gap-2 font-semibold text-base tracking-[-0.01em] text-capsula-ink">
                             <ShoppingBag className="h-4 w-4 text-capsula-ink-muted" />
                             Datos del pedido
                         </h2>
@@ -406,7 +406,7 @@ export default function POSPedidosYAPage() {
                     <div className="space-y-3 border-t border-capsula-line bg-capsula-ivory-surface p-4">
                         <div className="flex justify-between rounded-lg border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-sm text-capsula-ink-soft">
                             <span>Total estimado</span>
-                            <span className="font-heading tabular-nums tracking-[-0.01em] text-capsula-ink">
+                            <span className="font-semibold tabular-nums tracking-[-0.01em] text-capsula-ink">
                                 ${cartSubtotal.toFixed(2)}
                             </span>
                         </div>
@@ -439,10 +439,8 @@ export default function POSPedidosYAPage() {
                     <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
                         <div className="flex justify-between border-b border-capsula-line p-5">
                             <div>
-                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
-                                    {selectedItemForModifier.name}
-                                </h3>
-                                <p className="font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-coral">
+                                <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
+                                <p className="font-semibold text-xl tabular-nums tracking-[-0.02em] text-capsula-coral">
                                     ${getPYAPrice(selectedItemForModifier).toFixed(2)}
                                     <span className="ml-2 text-sm tabular-nums text-capsula-ink-muted line-through">
                                         ${selectedItemForModifier.price.toFixed(2)}

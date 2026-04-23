@@ -128,7 +128,7 @@ export default function PhysicalCountClient({
         >
           ← Volver a Inventario
         </Link>
-        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Conteo físico semanal (carga tipo Excel)</h1>
+        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Conteo físico semanal (carga tipo Excel)</h1>
         <p className="mt-1 text-sm text-capsula-ink-soft">
           Mismo formato que su hoja <strong>INVENTARIO GENERAL</strong>: fila con encabezado{' '}
           <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PRODUCTO</code> y columna de cantidades.
@@ -275,7 +275,7 @@ export default function PhysicalCountClient({
                     )}
                     <td className="p-2 border-t text-xs">
                       {r.inventoryItemId ? (
-                        <span className="text-green-600 dark:text-green-400">✓ {r.matchedName}</span>
+                        <span className="text-green-600 dark:text-green-400">{r.matchedName}</span>
                       ) : (
                         <span className="text-amber-700 dark:text-amber-300">Sin coincidencia</span>
                       )}

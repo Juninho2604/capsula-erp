@@ -19,7 +19,7 @@ export default async function QueuePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Cola de espera</h1>
+                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Cola de espera</h1>
                 <p className="text-gray-500 dark:text-gray-400">
                     {waiting.length} en espera · {called.length} llamado{called.length !== 1 ? 's' : ''}
                 </p>
@@ -28,16 +28,14 @@ export default async function QueuePage() {
             {/* Called tickets */}
             {called.length > 0 && (
                 <div>
-                    <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                        Llamados — pasen a su estación
-                    </h2>
+                    <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Llamados — pasen a su estación</h2>
                     <div className="space-y-2">
                         {called.map(t => (
                             <div
                                 key={t.id}
                                 className="flex items-center gap-4 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 dark:border-amber-700 dark:bg-amber-900/20"
                             >
-                                <span className="font-heading text-2xl tracking-[-0.02em] text-amber-600">#{t.ticketNumber}</span>
+                                <span className="font-semibold text-2xl tracking-[-0.02em] text-amber-600">#{t.ticketNumber}</span>
                                 <div className="flex-1">
                                     <p className="font-medium text-gray-900 dark:text-white">{t.customerName}</p>
                                     <p className="text-sm text-gray-500">
@@ -62,12 +60,10 @@ export default async function QueuePage() {
 
             {/* Waiting tickets */}
             <div>
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    En Espera
-                </h2>
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">En Espera</h2>
                 {waiting.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-                        <p className="text-3xl">🎫</p>
+                        <p className="text-3xl"></p>
                         <p className="mt-1 text-gray-500 dark:text-gray-400">Cola vacía — sin espera activa</p>
                     </div>
                 ) : (

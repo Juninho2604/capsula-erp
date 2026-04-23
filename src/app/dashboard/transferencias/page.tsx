@@ -23,9 +23,7 @@ export default async function TransferenciasPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        Transferencias de Inventario
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Transferencias de Inventario</h1>
                     <p className="text-gray-500">
                         Solicitud y Despacho de insumos entre áreas (Almacén Central → Cocina, Barra, etc.)
                     </p>

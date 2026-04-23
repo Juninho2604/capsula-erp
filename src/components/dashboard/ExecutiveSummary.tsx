@@ -94,7 +94,7 @@ export default function ExecutiveSummary({
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-primary/5 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-xl">📋</span>
+          <span className="text-xl"></span>
           <div className="text-left">
             <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">
               Resumen Gerencial
@@ -190,7 +190,7 @@ export default function ExecutiveSummary({
           {/* Alertas de deudas vencidas */}
           {overdueUsd > 0 && (
             <div className="flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2">
-              <span className="text-red-500 text-xs mt-0.5 flex-shrink-0">🔴</span>
+              <span className="text-red-500 text-xs mt-0.5 flex-shrink-0"></span>
               <p className="text-xs font-medium text-foreground">
                 <strong>
                   ${overdueUsd.toLocaleString('es-VE', { minimumFractionDigits: 0 })}
@@ -208,7 +208,7 @@ export default function ExecutiveSummary({
                   key={i}
                   className="flex items-start gap-2 rounded-xl bg-red-500/5 border border-red-500/10 px-3 py-2"
                 >
-                  <span className="text-red-500 text-[10px] mt-0.5 flex-shrink-0 font-black">⚠</span>
+                  <span className="text-red-500 text-[10px] mt-0.5 flex-shrink-0 font-black"></span>
                   <p className="text-xs font-medium text-foreground">{issue}</p>
                 </div>
               ))}
@@ -223,7 +223,7 @@ export default function ExecutiveSummary({
                   key={i}
                   className="flex items-start gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/10 px-3 py-2"
                 >
-                  <span className="text-emerald-500 text-[10px] mt-0.5 flex-shrink-0 font-black">✓</span>
+                  <span className="text-emerald-500 text-[10px] mt-0.5 flex-shrink-0 font-black"></span>
                   <p className="text-xs font-medium text-foreground">{pos}</p>
                 </div>
               ))}

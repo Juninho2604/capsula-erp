@@ -733,7 +733,7 @@ export async function createReorderBroadcastsAction(): Promise<{ created: number
         let skipped = 0;
 
         for (const item of lowStockItems) {
-            const title = `🔁 Reorden: ${item.name}`;
+            const title = `Reorden: ${item.name}`;
             if (existingTitles.has(title)) { skipped++; continue; }
 
             const severity = item.isCritical ? 'ALERT' : 'WARNING';
@@ -789,7 +789,7 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
 
         const date = new Date(order.orderDate).toLocaleDateString('es-VE');
 
-        let text = `📋 *ORDEN DE COMPRA*\n`;
+        let text = `*ORDEN DE COMPRA*\n`;
         text += `━━━━━━━━━━━━━━━━━━━━\n`;
         text += `*Número:* ${order.orderNumber}\n`;
         if (order.orderName) {
@@ -812,7 +812,7 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
         }
 
         for (const [category, catItems] of Object.entries(byCategory)) {
-            text += `\n📦 *${category}:*\n`;
+            text += `\n*${category}:*\n`;
             for (const item of catItems) {
                 text += `• ${item.inventoryItem.name}: ${item.quantityOrdered} ${item.unit}\n`;
             }
@@ -822,7 +822,7 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
         text += `*Total Items:* ${order.items.length}\n`;
 
         if (order.notes) {
-            text += `\n📝 *Notas:* ${order.notes}\n`;
+            text += `\n*Notas:* ${order.notes}\n`;
         }
 
         text += `\n_Shanklish Caracas ERP_`;

@@ -220,9 +220,7 @@ export default function ImportPage() {
 
     return (
         <div className="space-y-6 animate-in">
-            <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                Importación Masiva de Planillas
-            </h1>
+            <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Importación Masiva de Planillas</h1>
 
             <Card>
                 <CardContent className="pt-6">

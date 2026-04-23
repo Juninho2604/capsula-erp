@@ -391,7 +391,7 @@ export default function POSDeliveryPage() {
         <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
             <div className="flex flex-col items-center gap-3 text-center">
                 <Bike className="h-10 w-10 text-capsula-ink-muted" />
-                <div className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">
+                <div className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink">
                     Cargando Delivery…
                 </div>
             </div>
@@ -406,7 +406,7 @@ export default function POSDeliveryPage() {
                         <Bike className="h-5 w-5 md:h-7 md:w-7" />
                     </div>
                     <div>
-                        <h1 className="font-heading text-xl tracking-[-0.02em] text-capsula-ink md:text-3xl">
+                        <h1 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink md:text-3xl">
                             Shanklish <span className="text-capsula-coral">Delivery</span>
                         </h1>
                         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
@@ -553,7 +553,7 @@ export default function POSDeliveryPage() {
                                         {item.name}
                                     </div>
                                     <div className="flex items-end justify-between">
-                                        <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                        <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                                             <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                         </div>
                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
@@ -678,7 +678,7 @@ export default function POSDeliveryPage() {
                             )}
                             <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
                                 <span className="text-sm font-medium uppercase tracking-[0.1em] text-capsula-ink-soft">Total</span>
-                                <div className="font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
+                                <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                     <PriceDisplay usd={finalTotal} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
@@ -817,7 +817,7 @@ export default function POSDeliveryPage() {
                                     {paymentMethod === 'CASH_USD' && (parseFloat(amountReceived) || 0) > finalTotal + 0.001 && (
                                         <div className="flex justify-between px-1 text-sm font-medium">
                                             <span className="text-[#946A1C]">Vuelto</span>
-                                            <span className="font-heading tabular-nums tracking-[-0.01em] text-[#946A1C]">
+                                            <span className="font-semibold tabular-nums tracking-[-0.01em] text-[#946A1C]">
                                                 ${Math.max(0, (parseFloat(amountReceived) || 0) - finalTotal).toFixed(2)}
                                             </span>
                                         </div>
@@ -875,7 +875,7 @@ export default function POSDeliveryPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
                         <div className="flex shrink-0 items-center justify-between border-b border-capsula-line p-5">
-                            <h3 className="inline-flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                            <h3 className="inline-flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                 <MessageCircle className="h-5 w-5 text-capsula-ink-muted" />
                                 Pegar chat de WhatsApp
                             </h3>
@@ -907,10 +907,8 @@ export default function POSDeliveryPage() {
                     <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep sm:max-h-[90vh] sm:rounded-2xl">
                         <div className="flex items-center justify-between border-b border-capsula-line p-6">
                             <div>
-                                <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">
-                                    {selectedItemForModifier.name}
-                                </h3>
-                                <div className="mt-1 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
+                                <div className="mt-1 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                                     <PriceDisplay usd={selectedItemForModifier.price} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
@@ -1032,7 +1030,7 @@ export default function POSDeliveryPage() {
                                     >
                                         −
                                     </button>
-                                    <span className="w-14 text-center font-heading text-3xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                    <span className="w-14 text-center font-semibold text-3xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
                                         {itemQuantity}
                                     </span>
                                     <button
@@ -1071,7 +1069,7 @@ export default function POSDeliveryPage() {
                             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-capsula-coral-subtle text-capsula-coral">
                                 <Gift className="h-6 w-6" />
                             </div>
-                            <h3 className="font-heading text-2xl tracking-[-0.02em] text-capsula-ink">Autorizar cortesía</h3>
+                            <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">Autorizar cortesía</h3>
                             <p className="mt-1 text-xs text-capsula-ink-soft">Este descuento requiere validación de gerencia</p>
                         </div>
 
@@ -1100,7 +1098,7 @@ export default function POSDeliveryPage() {
                                         max="100"
                                         value={cortesiaPercent}
                                         onChange={e => setCortesiaPercent(e.target.value)}
-                                        className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-4 text-center font-heading text-xl tabular-nums tracking-[-0.02em] text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none"
+                                        className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-4 text-center font-semibold text-xl tabular-nums tracking-[-0.02em] text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none"
                                         placeholder="Valor %"
                                     />
                                     <span className="absolute right-6 top-1/2 -translate-y-1/2 font-medium text-capsula-coral">%</span>
@@ -1109,7 +1107,7 @@ export default function POSDeliveryPage() {
 
                             <div>
                                 <label className="pos-label mb-3 text-center">Introduce tu PIN de seguridad</label>
-                                <div className="mb-4 flex h-20 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 font-heading text-3xl tracking-[1.2em] text-capsula-navy-deep">
+                                <div className="mb-4 flex h-20 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 font-semibold text-3xl tracking-[1.2em] text-capsula-navy-deep">
                                     {pinInput.length > 0
                                         ? pinInput.replace(/./g, '•')
                                         : <span className="text-base font-medium tracking-normal text-capsula-ink-faint">MODO PIN…</span>
@@ -1179,7 +1177,7 @@ export default function POSDeliveryPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="w-full max-w-sm space-y-4 rounded-2xl border border-[#E8D9B8] bg-capsula-ivory-surface p-6 shadow-cap-deep">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-heading text-xl tracking-[-0.02em] text-[#946A1C]">Propina colectiva</h3>
+                            <h3 className="font-semibold text-xl tracking-[-0.02em] text-[#946A1C]">Propina colectiva</h3>
                             <button
                                 type="button"
                                 onClick={() => setShowTipModal(false)}
@@ -1234,7 +1232,7 @@ export default function POSDeliveryPage() {
                                 value={tipAmount}
                                 onChange={e => setTipAmount(e.target.value)}
                                 placeholder="0.00"
-                                className="flex-1 border-none bg-transparent px-3 py-3 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink placeholder:text-capsula-ink-muted focus:outline-none"
+                                className="flex-1 border-none bg-transparent px-3 py-3 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink placeholder:text-capsula-ink-muted focus:outline-none"
                                 autoFocus
                             />
                         </div>

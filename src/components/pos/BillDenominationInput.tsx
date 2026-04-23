@@ -78,7 +78,7 @@ export function BillDenominationInput({ label = 'Desglose de Billetes', onChange
                 })}
                 <div className="flex items-center justify-between border-t-2 border-capsula-navy-deep/30 bg-capsula-navy-soft px-3 py-2">
                     <span className="text-sm font-medium uppercase tracking-[0.1em] text-capsula-ink">Total</span>
-                    <span className="font-heading text-lg tabular-nums tracking-[-0.01em] text-capsula-ink">${total.toFixed(2)}</span>
+                    <span className="font-semibold text-lg tabular-nums tracking-[-0.01em] text-capsula-ink">${total.toFixed(2)}</span>
                 </div>
             </div>
         </div>

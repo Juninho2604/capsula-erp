@@ -122,7 +122,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
             {/* Header */}
             <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por Usuario</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por Usuario</h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Selecciona un usuario para configurar qué módulos del sistema puede ver en su menú.
                         Si usas <span className="font-semibold">acceso por rol</span>, el sistema aplica las reglas predeterminadas del rol.
@@ -133,7 +133,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                         onClick={() => setShowCreateModal(true)}
                         className="shrink-0 flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white shadow-lg hover:bg-amber-600 active:scale-95 transition-all"
                     >
-                        <span className="text-base leading-none">➕</span>
+                        <span className="text-base leading-none"></span>
                         Nuevo Usuario
                     </button>
                 )}
@@ -196,7 +196,7 @@ export default function UsersView({ initialUsers, enabledModuleIds }: UsersViewP
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
-                            <div className="text-5xl opacity-30">👤</div>
+                            <div className="text-5xl opacity-30"></div>
                             <p className="font-medium">Selecciona un usuario de la lista</p>
                         </div>
                     )}
@@ -681,7 +681,7 @@ function ModulesPanel({ user, enabledModuleIds, canManage, canResetPassword, isO
                 ) : (
                     /* ── Modo lectura ── */
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0">👤</div>
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xl shrink-0"></div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                                 <p className="font-bold text-foreground">{user.firstName} {user.lastName}</p>

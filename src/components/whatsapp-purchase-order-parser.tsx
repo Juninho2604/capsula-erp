@@ -254,7 +254,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="text-2xl">💬</span> Pegar Chat de WhatsApp
+                        <span className="text-2xl"></span> Pegar Chat de WhatsApp
                     </h3>
                     <span className="text-xs text-gray-400">{allItems.length} insumos disponibles</span>
                 </div>
@@ -289,7 +289,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
             {parsedLines.length > 0 && (
                 <div className="space-y-4">
                     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3">📋 Datos extraídos</h4>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3">Datos extraídos</h4>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <input
                                 type="text"
@@ -325,7 +325,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
 
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                         <div className="border-b border-gray-200 px-5 py-3 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800 flex items-center justify-between">
-                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">🛒 Items de la Orden ({parsedLines.length})</h4>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Items de la Orden ({parsedLines.length})</h4>
                             <button
                                 onClick={() => setShowAddProduct(!showAddProduct)}
                                 className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
@@ -408,7 +408,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                                             ) : (
                                                 <div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                        <span className="font-mono text-amber-600">⚠️</span> &quot;{line.productName}&quot;
+                                                        <span className="font-mono text-amber-600"></span> &quot;{line.productName}&quot;
                                                     </p>
                                                     <p className="text-[11px] text-gray-400">No se encontró en insumos</p>
                                                 </div>
@@ -436,7 +436,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                                             <button
                                                 onClick={() => removeLine(line.id)}
                                                 className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 text-sm"
-                                            >✕</button>
+                                            ></button>
                                         </div>
                                     </div>
                                 </div>
@@ -449,7 +449,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                             onClick={handleConfirm}
                             className="w-full min-h-[56px] rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
                         >
-                            <span className="text-lg">✅</span>
+                            <span className="text-lg"></span>
                             <span>Cargar {matchedLines.length} items a la orden</span>
                         </button>
                     )}
