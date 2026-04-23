@@ -57,14 +57,13 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Header */}
-            <div className="glass-panel flex flex-col items-start justify-between gap-4 rounded-3xl border-capsula-line/50 p-6 shadow-cap-raised sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
-                        Bienvenido,{' '}
-                        <span className="text-capsula-coral">{session?.firstName || 'Usuario'}</span>
-                    </h1>
-                    <p className="mt-1 text-sm font-medium text-capsula-ink-muted">
-                        Resumen de operaciones · <span className="text-capsula-ink">Gerencia Operativa CÁPSULA</span>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
+                        Resumen de operaciones
+                    </p>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
+                        Gerencia Operativa <span className="text-capsula-ink">CÁPSULA</span>
                     </p>
                 </div>
                 <Link
