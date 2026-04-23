@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -640,31 +640,39 @@ export default function POSMeseroPage() {
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ══ LEFT: TABLE GRID ═══════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-72 xl:w-80 shrink-0 border-r border-border bg-card/30 flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`absolute inset-0 z-10 flex w-full shrink-0 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory-alt/40 lg:relative lg:z-auto lg:w-72 xl:w-80 ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex`}>
           {/* Zone selector */}
-          <div className="p-4 border-b border-border space-y-3">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Secciones</p>
-            <div className="flex gap-2 flex-wrap">
+          <div className="space-y-3 border-b border-capsula-line p-4">
+            <p className="pl-1 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Secciones</p>
+            <div className="flex flex-wrap gap-2">
               {layout?.serviceZones.map((z) => (
                 <button
                   key={z.id}
                   onClick={() => { setSelectedZoneId(z.id); setSelectedTableId(""); }}
-                  className={`flex-1 min-w-0 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/60 hover:border-primary/50"}`}
+                  className={`min-w-0 flex-1 rounded-xl border py-3 text-xs font-semibold transition-colors active:scale-95 ${
+                    selectedZoneId === z.id
+                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep"
+                  }`}
                 >
-                  {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
+                  {z.name}
                 </button>
               ))}
             </div>
             {layoutError && (
-              <button onClick={() => loadData()} className="text-xs text-red-400 hover:text-red-300 py-1 text-center w-full">
-                ⚠️ Error · Reintentar
+              <button
+                onClick={() => loadData()}
+                className="inline-flex w-full items-center justify-center gap-1.5 py-1 text-xs font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Error · Reintentar
               </button>
             )}
           </div>
 
           {/* Table grid */}
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 lg:grid-cols-3">
               {selectedZone?.tablesOrStations.map((table) => {
                 const tab = table.openTabs[0];
                 const isSelected = table.id === selectedTableId;
@@ -674,29 +682,30 @@ export default function POSMeseroPage() {
                     onClick={() => {
                       setSelectedTableId(table.id);
                       if (!tab) {
-                        // Mesa libre → abrir modal de cuenta directamente
                         setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2);
                         setShowOpenTabModal(true);
                       } else if (window.innerWidth < 1024) {
                         setMobileTab("account");
                       }
                     }}
-                    className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
+                    className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 transition-colors active:scale-90 ${
                       isSelected
-                        ? "border-emerald-400 bg-emerald-400/10 shadow-lg shadow-emerald-400/10 ring-2 ring-emerald-400 ring-offset-2 ring-offset-background"
+                        ? "border-capsula-navy-deep bg-capsula-navy-soft shadow-cap-soft"
                         : tab
-                          ? "border-emerald-500/50 bg-emerald-500/5"
-                          : "border-border bg-card/50 hover:border-emerald-400/30"
+                          ? "border-capsula-coral/40 bg-capsula-coral-subtle"
+                          : "border-capsula-line bg-capsula-ivory-surface hover:border-capsula-navy-deep"
                     }`}
                   >
-                    <div className={`text-sm md:text-base font-black ${isSelected ? "text-emerald-400" : tab ? "text-emerald-500" : "text-foreground/40"}`}>
+                    <div className={`text-sm font-semibold md:text-base ${
+                      isSelected ? "text-capsula-ink" : tab ? "text-capsula-coral" : "text-capsula-ink-muted"
+                    }`}>
                       {table.code}
                     </div>
                     {tab && (
-                      <div className="absolute top-1 right-1 h-2.5 w-2.5 bg-emerald-500 rounded-full border-2 border-background animate-pulse" />
+                      <div className="absolute right-1 top-1 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-capsula-ivory-surface bg-capsula-coral" />
                     )}
                     {tab && (
-                      <div className="mt-0.5 text-[8px] font-black text-foreground/60 truncate w-full px-1 text-center">
+                      <div className="mt-0.5 w-full truncate px-1 text-center text-[10px] font-medium tabular-nums text-capsula-ink-soft">
                         ${tab.balanceDue.toFixed(0)}
                       </div>
                     )}
@@ -708,14 +717,17 @@ export default function POSMeseroPage() {
 
           {/* Info de mesa ocupada seleccionada */}
           {selectedTable && activeTab && (
-            <div className="border-t border-border p-3 bg-card space-y-1 text-xs shrink-0">
-              <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
+            <div className="shrink-0 space-y-1 border-t border-capsula-line bg-capsula-ivory-surface p-3 text-xs">
+              <div className="truncate font-semibold text-capsula-ink">{activeTab.customerLabel}</div>
               {activeTab.customerPhone && (
-                <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
+                <div className="inline-flex items-center gap-1.5 text-capsula-ink-muted">
+                  <Phone className="h-3 w-3" />
+                  {activeTab.customerPhone}
+                </div>
               )}
-              <div className="text-muted-foreground">
-                Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
-                <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
+              <div className="text-capsula-ink-muted">
+                Abrió: <span className="text-capsula-ink">{activeTab.openedBy.firstName}</span>
+                <span className="text-capsula-ink-muted"> · {formatTime(activeTab.openedAt)}</span>
               </div>
             </div>
           )}
