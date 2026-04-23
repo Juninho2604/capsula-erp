@@ -34,7 +34,7 @@ export function POSConfigView({ initialStockValidation }: Props) {
   return (
     <div className="max-w-2xl mx-auto p-6 text-white">
       <div className="mb-8">
-        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Configuración POS</h1>
+        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Configuración POS</h1>
         <p className="mt-1 text-sm text-capsula-ink-soft">
           Configura impresión, validación de stock y comportamiento del sistema en cada módulo.
         </p>

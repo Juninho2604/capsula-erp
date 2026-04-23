@@ -216,7 +216,7 @@ export default function BarraDisplayPage() {
         return (
             <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
                 <div className="text-center">
-                    <div className="text-6xl mb-4 animate-pulse">🥤</div>
+                    <div className="text-6xl mb-4 animate-pulse"></div>
                     <p className="text-xl">Cargando comandera de barra...</p>
                 </div>
             </div>
@@ -229,7 +229,7 @@ export default function BarraDisplayPage() {
             <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="text-3xl">🥤</span>
+                        <span className="text-3xl"></span>
                         <div>
                             <h1 className="text-xl font-bold">COMANDERA - BARRA</h1>
                             <p className="text-blue-100 text-xs">Solo bebidas · Órdenes pendientes</p>
@@ -291,7 +291,7 @@ export default function BarraDisplayPage() {
             <div className="p-4">
                 {orders.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">
-                        <span className="text-8xl block mb-4">✅</span>
+                        <span className="text-8xl block mb-4"></span>
                         <p className="text-2xl">No hay bebidas pendientes</p>
                         <p className="text-lg">Las nuevas órdenes de barra aparecerán aquí</p>
                     </div>
@@ -315,7 +315,7 @@ export default function BarraDisplayPage() {
 
                                 {/* Timer */}
                                 <div className={`text-center py-2 bg-gray-900 ${getTimerColor(order.createdAt)}`}>
-                                    <span className="text-3xl font-mono">⏱️ {getTimeSince(order.createdAt)}</span>
+                                    <span className="text-3xl font-mono">⏱{getTimeSince(order.createdAt)}</span>
                                 </div>
 
                                 {/* Mesa */}

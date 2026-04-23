@@ -211,7 +211,7 @@ export function NotificationBell() {
                   <Bell className="h-5 w-5" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">Notificaciones</h2>
+                  <h2 className="font-semibold text-base tracking-[-0.01em] text-capsula-ink">Notificaciones</h2>
                   <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-capsula-ink-muted">
                     {unreadCount > 0 ? `${unreadCount} sin atender` : 'Todo en orden'}
                   </p>
@@ -287,7 +287,7 @@ export function NotificationBell() {
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                         <Gem className="h-7 w-7" strokeWidth={1.75} />
                       </div>
-                      <p className="font-heading text-capsula-ink">¡Inventario OK!</p>
+                      <p className="font-semibold text-capsula-ink">¡Inventario OK!</p>
                       <p className="max-w-[200px] text-xs text-capsula-ink-muted">
                         No hay insumos por debajo del stock mínimo en este momento.
                       </p>
@@ -320,7 +320,7 @@ export function NotificationBell() {
                             <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${s.text}`} strokeWidth={1.75} />
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className={`font-heading text-sm ${s.text}`}>{alert.name}</p>
+                                <p className={`font-semibold text-sm ${s.text}`}>{alert.name}</p>
                                 <span className="rounded bg-capsula-ivory px-1.5 py-0.5 text-[9px] font-semibold uppercase text-capsula-ink-muted">
                                   {alert.sku}
                                 </span>
@@ -365,7 +365,7 @@ export function NotificationBell() {
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                         <Inbox className="h-7 w-7" strokeWidth={1.75} />
                       </div>
-                      <p className="font-heading text-capsula-ink">Sin mensajes</p>
+                      <p className="font-semibold text-capsula-ink">Sin mensajes</p>
                       <p className="max-w-[200px] text-xs text-capsula-ink-muted">
                         No hay anuncios activos del sistema en este momento.
                       </p>
@@ -387,7 +387,7 @@ export function NotificationBell() {
                         <div className="flex items-start gap-2">
                           <Icon className={`h-5 w-5 shrink-0 ${s.text}`} strokeWidth={1.75} />
                           <div className="min-w-0 flex-1">
-                            <p className={`font-heading text-sm ${s.text}`}>{msg.title}</p>
+                            <p className={`font-semibold text-sm ${s.text}`}>{msg.title}</p>
                             <p className="mt-1 text-xs font-medium leading-snug text-capsula-ink-soft">{msg.body}</p>
                             <p className="mt-2 text-[9px] font-medium text-capsula-ink-muted">{ts}</p>
                           </div>

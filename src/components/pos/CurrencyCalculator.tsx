@@ -114,7 +114,7 @@ export function CurrencyCalculator({
                 <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#2F6B4E]/80">
                     Equivalente en bolívares
                 </p>
-                <p className="mt-1 font-heading text-2xl tabular-nums tracking-[-0.02em] text-[#2F6B4E]">
+                <p className="mt-1 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-[#2F6B4E]">
                     {bs > 0
                         ? bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : '0,00'} Bs
@@ -137,7 +137,7 @@ export function CurrencyCalculator({
                             + Delivery ({deliveryFee.toFixed(2)} USD)
                         </p>
                     )}
-                    <p className="mt-2 font-heading text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
+                    <p className="mt-2 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                         {usdToBs(
                             totalUsd + (hasServiceFee ? totalUsd * 0.1 : 0) + (deliveryFee || 0),
                             effectiveRate
@@ -216,7 +216,7 @@ export function CurrencyCalculator({
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">
-                            <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                 Calculadora USD → Bs
                             </h3>
                             <button

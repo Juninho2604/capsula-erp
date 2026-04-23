@@ -16,7 +16,7 @@ export default async function WristbandsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Planes de pulsera</h1>
+                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Planes de pulsera</h1>
                 <p className="text-gray-500 dark:text-gray-400">
                     {plans.length} plan{plans.length !== 1 ? 'es' : ''} activo{plans.length !== 1 ? 's' : ''}
                 </p>
@@ -42,7 +42,7 @@ export default async function WristbandsPage() {
                                         ⌚
                                     </div>
                                     <div>
-                                        <p className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{plan.name}</p>
+                                        <p className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{plan.name}</p>
                                         <p className="text-xs text-gray-400 font-mono">{plan.code}</p>
                                     </div>
                                 </div>
@@ -54,7 +54,7 @@ export default async function WristbandsPage() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
                                         <span className="text-sm text-gray-500">Duración</span>
-                                        <span className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                        <span className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                             {hours > 0 && `${hours}h `}{minutes > 0 && `${minutes}min`}
                                         </span>
                                     </div>

@@ -67,7 +67,7 @@ export function CashierShiftModal({ onShiftOpen, forceOpen = false }: CashierShi
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                         <UserCircle2 className="h-6 w-6" />
                     </div>
-                    <h2 className="font-heading text-xl tracking-[-0.02em] text-capsula-ink">Apertura de caja</h2>
+                    <h2 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink">Apertura de caja</h2>
                     <p className="mt-1 text-sm text-capsula-ink-soft">
                         {forceOpen ? 'Cambio de cajera' : 'Ingresa tu nombre para iniciar el turno (una vez al día)'}
                     </p>

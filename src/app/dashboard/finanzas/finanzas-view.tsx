@@ -159,7 +159,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="min-w-[160px] text-center font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+          <span className="min-w-[160px] text-center font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
             {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
           </span>
           <button
@@ -219,14 +219,14 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
             <div className="grid gap-4 sm:grid-cols-3">
               <div className={`${CARD_BASE} border-[#D3E2D8] bg-[#E5EDE7]/40`}>
                 <p className={KICKER}>Ingresos (entradas)</p>
-                <p className="mt-1 font-heading text-2xl tracking-[-0.02em] text-[#2F6B4E]">
+                <p className="mt-1 font-semibold text-2xl tracking-[-0.02em] text-[#2F6B4E]">
                   +${fmt(s.cashFlow?.inflows ?? 0)}
                 </p>
                 <p className="mt-0.5 text-xs text-capsula-ink-soft">Ventas cobradas</p>
               </div>
               <div className={`${CARD_BASE} border-[#EFD2C8] bg-[#F7E3DB]/40`}>
                 <p className={KICKER}>Egresos (salidas)</p>
-                <p className="mt-1 font-heading text-2xl tracking-[-0.02em] text-[#B04A2E]">
+                <p className="mt-1 font-semibold text-2xl tracking-[-0.02em] text-[#B04A2E]">
                   -${fmt(s.cashFlow?.outflows ?? 0)}
                 </p>
                 <p className="mt-0.5 text-xs text-capsula-ink-soft">Gastos + pagos a proveedores</p>
@@ -234,7 +234,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               <div className={`${CARD_BASE} ${(s.cashFlow?.net ?? 0) >= 0 ? 'border-capsula-line' : 'border-[#EFD2C8] bg-[#F7E3DB]/40'}`}>
                 <p className={KICKER}>Flujo neto</p>
                 <p
-                  className={`mt-1 font-heading text-2xl tracking-[-0.02em] ${
+                  className={`mt-1 font-semibold text-2xl tracking-[-0.02em] ${
                     (s.cashFlow?.net ?? 0) >= 0 ? 'text-capsula-ink' : 'text-[#B04A2E]'
                   }`}
                 >
@@ -366,7 +366,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                     {s.expenses.topExpenses.map((exp, i) => (
                       <div key={i} className="flex items-center justify-between">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span className="w-6 font-heading text-lg text-capsula-ink-muted">{i + 1}</span>
+                          <span className="w-6 font-semibold text-lg text-capsula-ink-muted">{i + 1}</span>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-capsula-ink">{exp.description}</p>
                             <p className="text-xs text-capsula-ink-muted">
@@ -463,7 +463,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
             <div className="grid gap-4 sm:grid-cols-3">
               <div className={`${CARD_BASE} border-[#E8D9B8] bg-[#F3EAD6]/40`}>
                 <p className={KICKER}>Deudas pendientes</p>
-                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+                <p className="mt-1 font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
                   ${fmt(s.accountsPayable.totalPendingUsd)}
                 </p>
                 <p className="mt-1 text-xs text-capsula-ink-muted">
@@ -477,7 +477,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               >
                 <p className={KICKER}>Vencido</p>
                 <p
-                  className={`mt-1 font-heading text-3xl tracking-[-0.02em] ${
+                  className={`mt-1 font-semibold text-3xl tracking-[-0.02em] ${
                     s.accountsPayable.overdueUsd > 0 ? 'text-[#B04A2E]' : 'text-capsula-ink'
                   }`}
                 >
@@ -487,7 +487,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               </div>
               <div className={`${CARD_BASE} border-capsula-line`}>
                 <p className={KICKER}>Compras del período</p>
-                <p className="mt-1 font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+                <p className="mt-1 font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
                   ${fmt(s.purchases.totalPurchasesUsd)}
                 </p>
                 <p className="mt-1 text-xs text-capsula-ink-muted">
@@ -511,7 +511,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                         <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
                           {bucket.range} días
                         </p>
-                        <p className={`mt-1 font-heading text-lg tracking-[-0.02em] ${agingStyles.text}`}>
+                        <p className={`mt-1 font-semibold text-lg tracking-[-0.02em] ${agingStyles.text}`}>
                           ${fmt(bucket.amount)}
                         </p>
                         <p className="text-[11px] text-capsula-ink-muted">{bucket.count} facturas</p>
@@ -564,7 +564,7 @@ function PnLCard({
         <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
       <p
-        className={`font-heading text-2xl tracking-[-0.02em] ${
+        className={`font-semibold text-2xl tracking-[-0.02em] ${
           negative ? 'text-[#B04A2E]' : 'text-capsula-ink'
         }`}
       >
@@ -599,7 +599,7 @@ function PnLRow({
     <div className={`flex items-center justify-between ${indent ? 'text-xs text-capsula-ink-muted' : 'text-sm text-capsula-ink'}`}>
       <span className={bold ? 'font-medium text-capsula-ink' : ''}>{label}</span>
       <span
-        className={`${bold ? 'font-heading text-base tracking-[-0.01em]' : 'font-medium'} ${
+        className={`${bold ? 'font-semibold text-base tracking-[-0.01em]' : 'font-medium'} ${
           amount < 0 ? 'text-[#B04A2E]' : amount > 0 && isPositive ? 'text-[#2F6B4E]' : 'text-capsula-ink'
         }`}
       >

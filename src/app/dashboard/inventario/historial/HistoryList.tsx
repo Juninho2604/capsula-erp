@@ -159,7 +159,7 @@ export default function HistoryList({ initialMovements }: { initialMovements: an
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{typeStyle.label}</h3>
+                                                <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{typeStyle.label}</h3>
                                                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                                                     {group.totalItems} items
                                                 </span>

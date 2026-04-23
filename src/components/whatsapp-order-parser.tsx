@@ -409,7 +409,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                 <div className="space-y-4">
                     {/* Customer info */}
                     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3">📋 Datos del Cliente</h4>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3">Datos del Cliente</h4>
                         <div className="grid gap-3 sm:grid-cols-3">
                             <input
                                 type="text"
@@ -451,7 +451,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                         </div>
                         <div className="text-right">
                             <span className="text-sm opacity-80">Total estimado</span>
-                            <span className="ml-2 font-heading text-xl tracking-[-0.02em]">{formatCurrency(orderTotal)}</span>
+                            <span className="ml-2 font-semibold text-xl tracking-[-0.02em]">{formatCurrency(orderTotal)}</span>
                         </div>
                     </div>
 
@@ -577,7 +577,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                                             ) : (
                                                 <div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                        <span className="font-mono text-amber-600">⚠️</span> &quot;{line.productName}&quot;
+                                                        <span className="font-mono text-amber-600"></span> &quot;{line.productName}&quot;
                                                     </p>
                                                     <p className="text-[11px] text-gray-400">No se encontró coincidencia en el menú</p>
                                                 </div>
@@ -711,7 +711,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                             onClick={handleConfirm}
                             className="w-full min-h-[56px] rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
                         >
-                            <span className="text-lg">✅</span>
+                            <span className="text-lg"></span>
                             <span>Cargar {matchedLines.length} items al carrito</span>
                             <span className="rounded-full bg-white/20 px-3 py-1 text-sm">{formatCurrency(orderTotal)}</span>
                         </button>

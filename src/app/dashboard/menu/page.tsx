@@ -158,7 +158,7 @@ export default function MenuManagementPage() {
         <div className="p-6 max-w-7xl mx-auto text-white">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Gestión de menú</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Gestión de menú</h1>
                     <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
                 <button
@@ -172,7 +172,7 @@ export default function MenuManagementPage() {
             {/* Barra de búsqueda + filtros */}
             <div className="mb-6 flex gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                    <span className="absolute left-4 top-3 text-gray-500">🔍</span>
+                    <span className="absolute left-4 top-3 text-gray-500"></span>
                     <input
                         type="text"
                         placeholder="Buscar plato..."
@@ -197,8 +197,8 @@ export default function MenuManagementPage() {
                 {filteredCategories.map(category => (
                     <div key={category.id} className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
                         <div className="px-6 py-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
-                            <span className="text-2xl">{category.name.includes('Bebida') ? '🥤' : '🍽️'}</span>
-                            <h2 className="font-heading text-xl tracking-[-0.02em] text-gray-200">{category.name}</h2>
+                            <span className="text-2xl">{category.name.includes('Bebida') ? '' : ''}</span>
+                            <h2 className="font-semibold text-xl tracking-[-0.02em] text-gray-200">{category.name}</h2>
                             <span className="text-gray-500 text-sm ml-auto">{category.items.length} items</span>
                         </div>
 
@@ -310,7 +310,7 @@ export default function MenuManagementPage() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-700 shadow-2xl">
-                        <h2 className="font-heading text-2xl tracking-[-0.02em] mb-6">Nuevo Producto</h2>
+                        <h2 className="font-semibold text-2xl tracking-[-0.02em] mb-6">Nuevo Producto</h2>
 
                         <div className="space-y-4">
                             <div>

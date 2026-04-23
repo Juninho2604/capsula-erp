@@ -279,7 +279,7 @@ export default function ProduccionPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink flex items-center gap-3">
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink flex items-center gap-3">
                         <Factory className="h-7 w-7 text-emerald-600" />
                         Producción
                     </h1>
@@ -343,7 +343,7 @@ export default function ProduccionPage() {
                                     <ChefHat className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Producción desde Receta</h2>
+                                    <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Producción desde Receta</h2>
                                     <p className="text-sm text-gray-500">
                                         Chef: {user?.firstName} {user?.lastName}
                                     </p>
@@ -432,7 +432,7 @@ export default function ProduccionPage() {
                         {requirements.length > 0 && (
                             <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                                 <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                                    <h3 className="flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                    <h3 className="flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                         <Package className="h-5 w-5 text-gray-400" />
                                         Ingredientes que se consumirán
                                     </h3>
@@ -466,9 +466,9 @@ export default function ProduccionPage() {
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         {req.sufficient ? (
-                                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">✓ OK</span>
+                                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">OK</span>
                                                         ) : (
-                                                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">✗ Falta {formatNumber(req.gross - req.available, 3)}</span>
+                                                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">Falta {formatNumber(req.gross - req.available, 3)}</span>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -543,7 +543,7 @@ export default function ProduccionPage() {
                                     <Wrench className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Producción Manual</h2>
+                                    <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Producción Manual</h2>
                                     <p className="text-sm text-gray-500">
                                         Crea una producción personalizada sin necesidad de receta
                                     </p>
@@ -630,7 +630,7 @@ export default function ProduccionPage() {
                         <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                                 <div>
-                                    <h3 className="flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                    <h3 className="flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                         <Package className="h-5 w-5 text-gray-400" />
                                         Ingredientes a Consumir
                                     </h3>
@@ -881,7 +881,7 @@ function ResultCard({ result }: { result: ProductionActionResult }) {
                 : 'border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
         )}>
             <div className="flex items-start gap-3">
-                <span className="text-2xl">{result.success ? '✅' : '❌'}</span>
+                <span className="text-2xl">{result.success ? '' : ''}</span>
                 <div>
                     <p className={cn(
                         'font-semibold',
@@ -891,7 +891,7 @@ function ResultCard({ result }: { result: ProductionActionResult }) {
                     </p>
                     {result.success && result.data && (
                         <div className="mt-3 space-y-2 text-sm text-emerald-700 dark:text-emerald-300">
-                            <p>📦 Producido: {result.data.productAdded?.quantity} {result.data.productAdded?.unit} de {result.data.productAdded?.name}</p>
+                            <p>Producido: {result.data.productAdded?.quantity} {result.data.productAdded?.unit} de {result.data.productAdded?.name}</p>
                             {result.data.ingredientsConsumed && result.data.ingredientsConsumed.length > 0 && (
                                 <div className="mt-2">
                                     <p className="font-medium">Ingredientes consumidos:</p>

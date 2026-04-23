@@ -37,7 +37,7 @@ export default async function IntercompanyPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Intercompany</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Intercompany</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         Liquidaciones y transferencias entre negocios del grupo
                     </p>
@@ -48,7 +48,7 @@ export default async function IntercompanyPage() {
             {/* Settlements table */}
             {settlements.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
-                    <p className="text-4xl">🔗</p>
+                    <p className="text-4xl"></p>
                     <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
                         No hay liquidaciones registradas
                     </p>
@@ -81,7 +81,7 @@ export default async function IntercompanyPage() {
                                             {STATUS_LABEL[s.status] ?? s.status}
                                         </span>
                                     </td>
-                                    <td className="px-5 py-3 text-right font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                    <td className="px-5 py-3 text-right font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                         ${s.totalAmount.toFixed(2)}
                                     </td>
                                     <td className="px-5 py-3 text-right text-gray-500">

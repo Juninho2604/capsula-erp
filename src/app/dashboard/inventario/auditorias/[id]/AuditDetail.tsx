@@ -104,7 +104,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
             <div className="flex flex-col justify-between gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 print:hidden sm:flex-row sm:items-center">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{audit.name || 'Auditoría sin nombre'}</h1>
+                        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{audit.name || 'Auditoría sin nombre'}</h1>
                         <span className={cn(
                             "rounded-full px-2.5 py-0.5 text-xs font-semibold",
                             audit.status === 'DRAFT' ? "bg-yellow-100 text-yellow-800" :
@@ -154,7 +154,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
 
             {/* Print Header (Visible only on print) */}
             <div className="hidden print:block mb-8">
-                <h1 className="font-heading text-2xl tracking-[-0.02em]">Reporte de auditoría de inventario</h1>
+                <h1 className="font-semibold text-2xl tracking-[-0.02em]">Reporte de auditoría de inventario</h1>
                 <p className="text-sm">Ref: {audit.id}</p>
                 <div className="mt-4 flex justify-between border-b pb-4">
                     <div>
@@ -174,10 +174,10 @@ export function AuditDetail({ audit }: { audit: Audit }) {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-700/50 print:bg-gray-100">
                         <tr>
-                            <th className="px-4 py-3 font-heading text-lg tracking-[-0.01em] text-capsula-ink">Item</th>
-                            <th className="px-4 py-3 font-heading text-lg tracking-[-0.01em] text-capsula-ink text-right">Sistema</th>
-                            <th className="px-4 py-3 font-heading text-lg tracking-[-0.01em] text-capsula-ink text-right">Conteo Físico</th>
-                            <th className="px-4 py-3 font-heading text-lg tracking-[-0.01em] text-capsula-ink text-right">Diferencia</th>
+                            <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Item</th>
+                            <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-right">Sistema</th>
+                            <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-right">Conteo Físico</th>
+                            <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-right">Diferencia</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

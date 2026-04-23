@@ -242,7 +242,7 @@ export default function AsistentePage() {
       {/* HEADER */}
       <div className="glass-panel p-6 rounded-3xl border-primary/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+          <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
             <span className="text-capsula-coral">Asistente</span> de nomenclatura
           </h1>
           <p className="mt-1 text-sm text-capsula-ink-soft">
@@ -260,7 +260,7 @@ export default function AsistentePage() {
       {/* PANEL DE ESTADO DE RECETAS */}
       <div className="capsula-card p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">Estado de conexión ventas → inventario</h2>
+          <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">Estado de conexión ventas → inventario</h2>
           <button onClick={loadStatus} className="text-[10px] font-black text-primary hover:underline uppercase tracking-widest">
             Actualizar
           </button>
@@ -292,18 +292,18 @@ export default function AsistentePage() {
             {/* Leyenda */}
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20">
-                <div className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">{recipeSummary.complete}</div>
-                <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1">✅ Receta completa</div>
+                <div className="font-semibold text-2xl tracking-[-0.02em] text-emerald-400">{recipeSummary.complete}</div>
+                <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1">Receta completa</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Descuenta inventario</div>
               </div>
               <div className="bg-amber-400/10 rounded-xl p-3 text-center border border-amber-400/20">
-                <div className="font-heading text-2xl tracking-[-0.02em] text-amber-400">{recipeSummary.stub}</div>
-                <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">🟡 Receta vacía</div>
+                <div className="font-semibold text-2xl tracking-[-0.02em] text-amber-400">{recipeSummary.stub}</div>
+                <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">Receta vacía</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Sin ingredientes aún</div>
               </div>
               <div className="bg-red-500/10 rounded-xl p-3 text-center border border-red-500/20">
-                <div className="font-heading text-2xl tracking-[-0.02em] text-red-400">{recipeSummary.none}</div>
-                <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-1">❌ Sin receta</div>
+                <div className="font-semibold text-2xl tracking-[-0.02em] text-red-400">{recipeSummary.none}</div>
+                <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-1">Sin receta</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">No descuenta</div>
               </div>
             </div>
@@ -320,7 +320,7 @@ export default function AsistentePage() {
                     .map((item) => (
                       <div key={item.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/30 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span>{item.recipeStatus === 'STUB' ? '🟡' : '❌'}</span>
+                          <span>{item.recipeStatus === 'STUB' ? '' : ''}</span>
                           <span className="font-bold text-foreground truncate">{item.name}</span>
                           <span className="text-muted-foreground shrink-0">{item.categoryName}</span>
                         </div>
@@ -352,7 +352,7 @@ export default function AsistentePage() {
 
             {recipeSummary.complete === recipeSummary.total && recipeSummary.total > 0 && (
               <div className="text-center py-4">
-                <div className="text-3xl mb-2">🎉</div>
+                <div className="text-3xl mb-2"></div>
                 <p className="font-black text-emerald-400">¡Todos los platos tienen receta completa!</p>
                 <p className="text-xs text-muted-foreground mt-1">El inventario se descuenta automáticamente en cada venta</p>
               </div>
@@ -391,7 +391,7 @@ export default function AsistentePage() {
             </div>
           ))}
           <div className="ml-auto">
-            <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink-soft">{step === 1 ? 'Nuevo insumo' : step === 2 ? `${selectedCategory?.label}` : 'Creado'}</h2>
+            <h2 className="font-semibold text-base tracking-[-0.01em] text-capsula-ink-soft">{step === 1 ? 'Nuevo insumo' : step === 2 ? `${selectedCategory?.label}` : 'Creado'}</h2>
           </div>
         </div>
 
@@ -569,7 +569,7 @@ export default function AsistentePage() {
             {/* Bebidas alcohólicas: campos adicionales */}
             {form.isBeverage && (
               <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/20 flex items-center gap-3">
-                <span className="text-2xl">🍾</span>
+                <span className="text-2xl"></span>
                 <div>
                   <p className="text-xs font-black text-blue-400">Marcado como bebida alcohólica</p>
                   <p className="text-[10px] text-muted-foreground">Las recetas de cócteles usarán ML como unidad en sus ingredientes</p>
@@ -592,7 +592,7 @@ export default function AsistentePage() {
                 disabled={isSubmitting || !form.name.trim() || !form.sku.trim()}
                 className="capsula-btn capsula-btn-primary py-3 flex-[2] disabled:opacity-40"
               >
-                {isSubmitting ? 'Creando...' : `✓ Crear ${selectedCategory.type === 'SUB_RECIPE' ? 'Sub-Receta' : 'Insumo'}`}
+                {isSubmitting ? 'Creando...' : `Crear ${selectedCategory.type === 'SUB_RECIPE' ? 'Sub-Receta' : 'Insumo'}`}
               </button>
             </div>
           </div>
@@ -602,8 +602,8 @@ export default function AsistentePage() {
         {step === 3 && submitResult?.success && (
           <div className="space-y-6">
             <div className="text-center py-6">
-              <div className="text-5xl mb-4">✅</div>
-              <h3 className="font-heading text-xl tracking-[-0.02em] text-emerald-400">{submitResult.message}</h3>
+              <div className="text-5xl mb-4"></div>
+              <h3 className="font-semibold text-xl tracking-[-0.02em] text-emerald-400">{submitResult.message}</h3>
               <p className="text-sm text-muted-foreground mt-2">
                 El insumo está listo para usarse en recetas
               </p>
@@ -669,7 +669,7 @@ export default function AsistentePage() {
 
       {/* GUÍA RÁPIDA DE NOMENCLATURA */}
       <div className="capsula-card p-6">
-        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Estándares de nomenclatura CAPSULA</h2>
+        <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink mb-4">Estándares de nomenclatura CAPSULA</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             { icon: '🥩', cat: 'Proteínas', rule: 'Nombre descriptivo + tipo + estado', ex: '"Pollo Pechuga Fresca", "Carne Molida 80/20"' },

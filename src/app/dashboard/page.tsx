@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             {/* Header */}
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
                         Bienvenido,{' '}
                         <span className="text-capsula-coral">{session?.firstName || 'Usuario'}</span>
                     </h1>
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
                             <AlertOctagon className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div>
-                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Alertas Críticas de Stock</h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Alertas Críticas de Stock</h2>
                             <p className="text-sm font-medium text-capsula-ink-muted">
                                 Insumos por debajo del punto de reorden
                             </p>
@@ -348,7 +348,7 @@ export default async function DashboardPage() {
                         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                             <Gem className="h-9 w-9" strokeWidth={1.5} />
                         </div>
-                        <p className="font-heading text-xl text-capsula-ink">
+                        <p className="font-semibold text-xl text-capsula-ink">
                             ¡Inventario Perfecto!
                         </p>
                         <p className="mx-auto mt-2 max-w-xs text-sm font-medium text-capsula-ink-muted">

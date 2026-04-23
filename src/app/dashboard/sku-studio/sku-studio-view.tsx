@@ -324,7 +324,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
                 <div className="divide-y divide-capsula-line">
                   {families.map(f => (
                     <div key={f.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-capsula-ivory-alt/60">
-                      <span className="text-xl" aria-hidden>{f.icon || '📦'}</span>
+                      <span className="text-xl" aria-hidden>{f.icon || ''}</span>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-capsula-ink">{f.name}</p>
                         <p className="font-mono text-[11px] text-capsula-ink-muted">

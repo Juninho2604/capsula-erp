@@ -159,7 +159,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Inventario</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Inventario</h1>
                     <p className="text-gray-500">
                         {filteredItems.length} de {stats.total} items
                     </p>
@@ -173,7 +173,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             onChange={(e) => setSelectedArea(e.target.value)}
                             className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-smfont-medium text-gray-700 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                         >
-                            <option value="">🏢 Todos los Almacenes</option>
+                            <option value="">Todos los Almacenes</option>
                             {initialAreas.map(area => (
                                 <option key={area.id} value={area.id}>{area.name}</option>
                             ))}
@@ -226,7 +226,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.total}</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.total}</p>
                     <p className="text-sm text-gray-500">Total Items</p>
                 </button>
 
@@ -239,8 +239,8 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.rawMaterials}</p>
-                    <p className="text-sm text-gray-500">📦 Insumos</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.rawMaterials}</p>
+                    <p className="text-sm text-gray-500">Insumos</p>
                 </button>
 
                 <button
@@ -252,8 +252,8 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.subRecipes}</p>
-                    <p className="text-sm text-gray-500">🧀 Sub-recetas</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.subRecipes}</p>
+                    <p className="text-sm text-gray-500">Sub-recetas</p>
                 </button>
 
                 <button
@@ -265,8 +265,8 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{stats.finished}</p>
-                    <p className="text-sm text-gray-500">🍽️ Productos</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.finished}</p>
+                    <p className="text-sm text-gray-500">Productos</p>
                 </button>
 
                 <button
@@ -278,15 +278,15 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="font-heading text-2xl tracking-[-0.02em] text-red-600 dark:text-red-400">{stats.lowStock}</p>
-                    <p className="text-sm text-gray-500">⚠️ Stock Bajo</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-red-600 dark:text-red-400">{stats.lowStock}</p>
+                    <p className="text-sm text-gray-500">Stock Bajo</p>
                 </button>
             </div>
 
             {/* Search and Filters */}
             <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></span>
                     <input
                         type="text"
                         value={searchQuery}
@@ -461,7 +461,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
                 {filteredItems.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <span className="text-4xl">🔍</span>
+                        <span className="text-4xl"></span>
                         <p className="mt-2 font-medium text-gray-900 dark:text-white">
                             No se encontraron items
                         </p>

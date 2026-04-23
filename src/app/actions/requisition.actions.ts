@@ -669,7 +669,7 @@ export async function executeBulkTransferAction(
 
         return {
             success: true,
-            message: `✅ Transferencia ${code} completada: ${locationsToTransfer.length} items de "${category}" movidos`,
+            message: `Transferencia ${code} completada: ${locationsToTransfer.length} items de "${category}" movidos`,
             data: { code, count: locationsToTransfer.length }
         };
 

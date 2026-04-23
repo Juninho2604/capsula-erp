@@ -167,11 +167,11 @@ export default function SalesHistoryPage() {
         }
         setVoidLoading(false);
         if (!lastError) {
-            alert(`✅ ${orderIds.length > 1 ? 'Mesa anulada correctamente' : 'Orden anulada correctamente'}`);
+            alert(`${orderIds.length > 1 ? 'Mesa anulada correctamente' : 'Orden anulada correctamente'}`);
             setVoidTarget(null);
             loadData();
         } else {
-            alert(`❌ ${lastError}`);
+            alert(`${lastError}`);
         }
     };
 
@@ -283,7 +283,7 @@ export default function SalesHistoryPage() {
             {/* HEADER */}
             <div className="flex flex-wrap justify-between items-start mb-5 gap-4">
                 <div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Historial de ventas</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Historial de ventas</h1>
                     <p className="mt-1 text-sm text-capsula-ink-soft">
                         Registro de transacciones y cierres
                         {' · '}
@@ -293,7 +293,7 @@ export default function SalesHistoryPage() {
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Date filter - dark pill style */}
                     <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
-                        <span className="text-gray-400 text-sm">📅</span>
+                        <span className="text-gray-400 text-sm"></span>
                         <input
                             type="date"
                             value={filterDate}
@@ -328,7 +328,7 @@ export default function SalesHistoryPage() {
             <div className="bg-gray-800/80 rounded-2xl border border-gray-700 p-4 mb-4 flex flex-wrap gap-3 items-end">
                 {/* Búsqueda libre */}
                 <div className="flex-1 min-w-[200px]">
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">🔍 Buscar</label>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">Buscar</label>
                     <input
                         type="text"
                         value={filterSearch}
@@ -339,39 +339,39 @@ export default function SalesHistoryPage() {
                 </div>
                 {/* Método de pago */}
                 <div>
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">💳 Método</label>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">Método</label>
                     <select
                         value={filterPaymentMethod}
                         onChange={e => setFilterPaymentMethod(e.target.value)}
                         className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
                     >
                         <option value="ALL">Todos</option>
-                        <option value="CASH_USD">💵 Cash $</option>
+                        <option value="CASH_USD">Cash $</option>
                         <option value="CASH_EUR">€ Cash €</option>
-                        <option value="ZELLE">⚡ Zelle</option>
-                        <option value="PDV_SHANKLISH">💳 PDV Shanklish</option>
-                        <option value="PDV_SUPERFERRO">💳 PDV Superferro</option>
-                        <option value="MOBILE_PAY">📱 Pago Móvil</option>
-                        <option value="MOVIL_NG">📱 Móvil NG</option>
-                        <option value="TRANSFER">🏦 Transferencia</option>
-                        <option value="CASH_BS">🇻🇪 Efectivo Bs</option>
-                        <option value="CORTESIA">🎁 Cortesía</option>
-                        <option value="MIXED">🔀 Pago Mixto</option>
+                        <option value="ZELLE">Zelle</option>
+                        <option value="PDV_SHANKLISH">PDV Shanklish</option>
+                        <option value="PDV_SUPERFERRO">PDV Superferro</option>
+                        <option value="MOBILE_PAY">Pago Móvil</option>
+                        <option value="MOVIL_NG">Móvil NG</option>
+                        <option value="TRANSFER">Transferencia</option>
+                        <option value="CASH_BS">Efectivo Bs</option>
+                        <option value="CORTESIA">Cortesía</option>
+                        <option value="MIXED">Pago Mixto</option>
                     </select>
                 </div>
                 {/* Tipo de orden */}
                 <div>
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">📦 Tipo</label>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1.5 block tracking-widest">Tipo</label>
                     <select
                         value={filterOrderType}
                         onChange={e => setFilterOrderType(e.target.value)}
                         className="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
                     >
                         <option value="ALL">Todos</option>
-                        <option value="DELIVERY">🛵 Delivery</option>
-                        <option value="RESTAURANT">🍽️ Mesa / Pickup</option>
-                        <option value="PEDIDOSYA">🟡 PedidosYA</option>
-                        <option value="PROPINAS">🪙 Propinas</option>
+                        <option value="DELIVERY">Delivery</option>
+                        <option value="RESTAURANT">Mesa / Pickup</option>
+                        <option value="PEDIDOSYA">PedidosYA</option>
+                        <option value="PROPINAS">Propinas</option>
                     </select>
                 </div>
                 {/* Con descuento */}
@@ -421,26 +421,26 @@ export default function SalesHistoryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Órdenes</p>
-                    <p className="font-heading text-2xl tracking-[-0.02em] text-white">{shownCount}</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-white">{shownCount}</p>
                     {shownCount !== totalCount && <p className="text-xs text-gray-500">de {totalCount} total</p>}
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Facturado</p>
-                    <p className="font-heading text-2xl tracking-[-0.02em] text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-blue-300">{formatMoney(filteredTotals.invoiced)}</p>
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Cobrado</p>
-                    <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-400">{formatMoney(filteredTotals.collected)}</p>
                 </div>
                 <div className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Descuentos</p>
-                    <p className={`font-heading text-2xl tracking-[-0.02em] ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                    <p className={`font-semibold text-2xl tracking-[-0.02em] ${filteredTotals.discounts > 0 ? 'text-red-400' : 'text-gray-600'}`}>
                         {filteredTotals.discounts > 0 ? `-${formatMoney(filteredTotals.discounts)}` : '$0.00'}
                     </p>
                 </div>
                 <div className={`rounded-xl px-4 py-3 border ${voidCount > 0 ? 'bg-red-900/20 border-red-800/50' : 'bg-gray-800 border-gray-700'}`}>
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Anuladas hoy</p>
-                    <p className={`font-heading text-2xl tracking-[-0.02em] ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
+                    <p className={`font-semibold text-2xl tracking-[-0.02em] ${voidCount > 0 ? 'text-red-400' : 'text-gray-600'}`}>{voidCount}</p>
                     {voidAmount > 0 && <p className="text-xs text-red-500/80 font-bold">{formatMoney(voidAmount)}</p>}
                 </div>
             </div>
@@ -502,7 +502,7 @@ export default function SalesHistoryPage() {
                                                     {sale.orderNumber}
                                                 </span>
                                                 {isPropina && (
-                                                    <span className="bg-amber-800/60 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-600/40">🪙 PROPINA</span>
+                                                    <span className="bg-amber-800/60 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-600/40">PROPINA</span>
                                                 )}
                                                 {isVoided && (
                                                     <span className="bg-red-900 text-red-300 text-[10px] px-1.5 py-0.5 rounded font-bold">ANULADA</span>
@@ -573,7 +573,7 @@ export default function SalesHistoryPage() {
                                         <td className="px-4 py-3 text-center">
                                             {sale.orderType === 'RESTAURANT' ? (
                                                 sale.serviceFeeIncluded ? (
-                                                    <span className="text-emerald-400 text-xs font-bold">✓ Sí</span>
+                                                    <span className="text-emerald-400 text-xs font-bold">Sí</span>
                                                 ) : (
                                                     <span className="text-gray-600 text-xs">No</span>
                                                 )
@@ -586,13 +586,13 @@ export default function SalesHistoryPage() {
                                             {sale.discount > 0 ? (
                                                 <div className="flex flex-col gap-0.5">
                                                     {sale.discountType === 'DIVISAS_33' && (
-                                                        <span className="text-blue-400 text-xs">📉 -{formatMoney(sale.discount)}</span>
+                                                        <span className="text-blue-400 text-xs">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {(sale.discountType === 'CORTESIA_100' || sale.discountType === 'CORTESIA') && (
-                                                        <span className="text-purple-400 text-xs font-bold">🎁 -{formatMoney(sale.discount)}</span>
+                                                        <span className="text-purple-400 text-xs font-bold">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {sale.discountType === 'CORTESIA_PERCENT' && (
-                                                        <span className="text-purple-400 text-xs font-bold">🎁 -{formatMoney(sale.discount)}</span>
+                                                        <span className="text-purple-400 text-xs font-bold">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {sale.authorizedById && (
                                                         <span className="text-green-500 text-[10px] bg-green-900/30 px-1 rounded w-fit">
@@ -753,9 +753,9 @@ export default function SalesHistoryPage() {
             {showZReport && zReport && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white text-black rounded-lg w-full max-w-sm p-8 font-mono shadow-2xl relative">
-                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 font-heading text-2xl tracking-[-0.02em] no-print">×</button>
+                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 font-semibold text-2xl tracking-[-0.02em] no-print">×</button>
                         <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
-                            <h2 className="font-heading text-2xl tracking-[-0.02em]">REPORTE Z</h2>
+                            <h2 className="font-semibold text-2xl tracking-[-0.02em]">REPORTE Z</h2>
                             <p className="text-sm">SHANKLISH CARACAS</p>
                             <p className="text-sm">{new Date().toLocaleString()}</p>
                             <p className="text-sm mt-1 font-bold">CIERRE DE CAJA DIARIO</p>
@@ -782,7 +782,7 @@ export default function SalesHistoryPage() {
                             {zReport.totalTips > 0 && (
                                 <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
-                            <div className="flex justify-between font-heading text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
+                            <div className="flex justify-between font-semibold text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                         </div>
 
                         {/* ── ARQUEO DE CAJA ── */}
@@ -842,10 +842,10 @@ export default function SalesHistoryPage() {
                     <div className="bg-gray-900 border border-amber-700/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h2 className="font-heading text-xl tracking-[-0.02em] text-amber-400">Resumen de Cierre del Día</h2>
+                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-amber-400">Resumen de Cierre del Día</h2>
                                 <p className="text-sm text-gray-400 font-mono mt-0.5">{daySummary.date}</p>
                             </div>
-                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white font-heading text-2xl tracking-[-0.02em]">×</button>
+                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white font-semibold text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
                         {/* Ventas por canal */}
@@ -887,7 +887,7 @@ export default function SalesHistoryPage() {
                                 )}
                                 <div className="flex justify-between pt-2 border-t border-gray-700">
                                     <span className="font-bold text-white">Total Cobrado:</span>
-                                    <span className="font-heading text-xl tracking-[-0.02em] text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
+                                    <span className="font-semibold text-xl tracking-[-0.02em] text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -950,10 +950,10 @@ export default function SalesHistoryPage() {
                     <div className="bg-gray-900 border border-red-800/60 rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex items-center justify-between mb-5">
                             <div>
-                                <h2 className="font-heading text-xl tracking-[-0.02em] text-red-400">Anular Venta</h2>
+                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-red-400">Anular Venta</h2>
                                 <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
                             </div>
-                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white font-heading text-2xl tracking-[-0.02em]">×</button>
+                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white font-semibold text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
                         <div className="bg-gray-800 rounded-xl p-4 mb-5 text-sm space-y-1">

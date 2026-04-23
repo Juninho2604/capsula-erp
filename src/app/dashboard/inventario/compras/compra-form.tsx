@@ -98,7 +98,7 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                         ←
                     </Link>
                     <div>
-                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Compra Rápida</h1>
+                        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Compra Rápida</h1>
                         <p className="text-gray-500">
                             Ingreso simple sin nota de entrega
                         </p>
@@ -115,7 +115,7 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                 📦
                             </div>
                             <div>
-                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Nueva Entrada de Inventario</h2>
+                                <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Nueva Entrada de Inventario</h2>
                                 <p className="text-sm text-gray-500">
                                     Registrado por: {user?.firstName || 'Usuario'}
                                 </p>
@@ -220,7 +220,7 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                     Costo Total
                                 </label>
                                 <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-600 dark:bg-gray-700">
-                                    <span className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                    <span className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                         {formatCurrency(quantity * unitCost)}
                                     </span>
                                 </div>
@@ -250,7 +250,7 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                     : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                             )}>
                                 <div className="flex items-center gap-2">
-                                    <span>{result.success ? '✅' : '❌'}</span>
+                                    <span>{result.success ? '' : ''}</span>
                                     <p className="font-medium">{result.message}</p>
                                 </div>
                             </div>
@@ -281,8 +281,8 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                 {/* Panel lateral - Compras recientes */}
                 <div className="space-y-4">
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h3 className="mb-4 flex items-center gap-2 font-heading text-lg tracking-[-0.01em] text-capsula-ink">
-                            <span>🕐</span> Compras Recientes
+                        <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                            <span></span> Compras Recientes
                         </h3>
 
                         {recentPurchases.length === 0 ? (

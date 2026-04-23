@@ -108,7 +108,7 @@ export default function BulkTransferPanel({ areasList }: Props) {
         <div className="capsula-card border-primary/20 bg-gradient-to-br from-background to-secondary/30 p-8">
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h3 className="flex items-center gap-2 font-heading text-xl tracking-[-0.02em] text-primary dark:text-primary">Transferencia Rápida</h3>
+                    <h3 className="flex items-center gap-2 font-semibold text-xl tracking-[-0.02em] text-primary dark:text-primary">Transferencia Rápida</h3>
                     <p className="text-sm text-muted-foreground">
                         Mueve stock por categoría con un solo toque táctil
                     </p>
@@ -177,7 +177,7 @@ export default function BulkTransferPanel({ areasList }: Props) {
             {/* Preview */}
             {isLoading ? (
                 <div className="py-12 text-center text-primary">
-                    <div className="inline-block animate-bounce text-3xl mb-2">🔄</div>
+                    <div className="inline-block animate-bounce text-3xl mb-2"></div>
                     <p className="font-bold animate-pulse">Preparando lotes...</p>
                 </div>
             ) : previewItems.length > 0 ? (
@@ -236,7 +236,7 @@ export default function BulkTransferPanel({ areasList }: Props) {
             >
                 {isExecuting ? (
                     <span className="flex items-center justify-center gap-3">
-                        <span className="animate-spin text-2xl">⚡</span> Procesando transferencia...
+                        <span className="animate-spin text-2xl"></span> Procesando transferencia...
                     </span>
                 ) : (
                     <span className="flex items-center justify-center gap-2">

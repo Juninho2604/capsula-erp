@@ -1,8 +1,24 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getEstadisticasAction } from '@/app/actions/estadisticas.actions';
+import {
+  Wallet, Receipt, Gift, CalendarRange, ListChecks, Ban, Package,
+  CalendarClock, CreditCard, Trophy, AlertTriangle, BarChart3, Flame,
+  Clock, Users, ChefHat, TrendingUp, type LucideIcon,
+} from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+// Mapa de emoji → lucide icon usado por StatCard/SectionTitle
+const EMOJI_TO_ICON: Record<string, LucideIcon> = {
+  '💰': Wallet, '🧾': Receipt, '🎁': Gift, '📅': CalendarRange, '📆': CalendarClock,
+  '🪑': Users, '🚫': Ban, '📦': Package, '💳': CreditCard, '🏆': Trophy,
+  '⚠️': AlertTriangle, '📊': BarChart3, '🔥': Flame, '⏰': Clock, '👨‍🍳': ChefHat,
+  '🍽️': ChefHat, '📈': TrendingUp,
+};
+function iconFor(s: string): LucideIcon {
+  return EMOJI_TO_ICON[s] ?? BarChart3;
+}
 
 // ============================================================================
 // HELPERS
@@ -71,18 +87,21 @@ function StatCard({
   const textColor = colors[color].split(' ')[0];
   const bgColor = colors[color].split(' ')[1];
 
+  const Icon = iconFor(icon);
   return (
     <div className="capsula-card p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-        <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-lg ${bgColor}`}>{icon}</div>
+        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</span>
+        <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${bgColor}`}>
+          <Icon className={`h-4 w-4 ${textColor}`} />
+        </div>
       </div>
       <div>
-        <div className={`font-heading text-2xl tracking-[-0.02em] ${textColor} tabular-nums`}>{value}</div>
-        {sub && <div className="text-xs text-muted-foreground mt-0.5 font-medium">{sub}</div>}
+        <div className={`font-semibold text-2xl tracking-[-0.02em] ${textColor} tabular-nums`}>{value}</div>
+        {sub && <div className="text-xs text-capsula-ink-muted mt-0.5">{sub}</div>}
       </div>
       {trend !== null && trend !== undefined && (
-        <div className={`text-[10px] font-black flex items-center gap-1 ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+        <div className={`text-[11px] font-medium flex items-center gap-1 ${trend >= 0 ? 'text-[#2F6B4E]' : 'text-capsula-coral'}`}>
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}% vs ayer
         </div>
       )}
@@ -91,11 +110,14 @@ function StatCard({
 }
 
 function SectionTitle({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+  const Icon = iconFor(icon);
   return (
     <div className="flex items-center gap-3 mb-4">
-      <div className="h-10 w-10 rounded-2xl bg-capsula-navy-soft text-capsula-ink flex items-center justify-center text-xl">{icon}</div>
+      <div className="h-10 w-10 rounded-2xl bg-capsula-navy-soft text-capsula-ink flex items-center justify-center">
+        <Icon className="h-5 w-5" />
+      </div>
       <div>
-        <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">{title}</h2>
+        <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{title}</h2>
         {sub && <p className="mt-0.5 text-xs text-capsula-ink-muted">{sub}</p>}
       </div>
     </div>
@@ -116,7 +138,7 @@ export default async function EstadisticasPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4">
         <div className="text-5xl">📊</div>
-        <p className="font-heading text-xl tracking-[-0.02em] text-foreground">Error cargando estadísticas</p>
+        <p className="font-semibold text-xl tracking-[-0.02em] text-foreground">Error cargando estadísticas</p>
         <p className="text-sm text-muted-foreground">{result.message}</p>
       </div>
     );
@@ -137,7 +159,7 @@ export default async function EstadisticasPage() {
       {/* ── HEADER ────────────────────────────────────────────────────────── */}
       <div className="glass-panel p-6 rounded-3xl border-primary/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">
+          <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
             <span className="text-capsula-coral">Estadísticas</span>
           </h1>
           <p className="mt-1 text-sm text-capsula-ink-soft">
@@ -436,15 +458,15 @@ export default async function EstadisticasPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="font-heading text-2xl tracking-[-0.02em] text-primary">{d.myStats.orders}</div>
+                    <div className="font-semibold text-2xl tracking-[-0.02em] text-primary">{d.myStats.orders}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Órdenes</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">${fmt(d.myStats.revenue)}</div>
+                    <div className="font-semibold text-2xl tracking-[-0.02em] text-emerald-400">${fmt(d.myStats.revenue)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Total</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="font-heading text-2xl tracking-[-0.02em] text-blue-400">${fmt(d.myStats.avgTicket)}</div>
+                    <div className="font-semibold text-2xl tracking-[-0.02em] text-blue-400">${fmt(d.myStats.avgTicket)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Promedio</div>
                   </div>
                 </div>

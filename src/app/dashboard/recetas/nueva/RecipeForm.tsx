@@ -270,7 +270,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         ←
                     </Link>
                     <div>
-                        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>
+                        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>
                         <p className="text-gray-500">
                             {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
                         </p>
@@ -283,7 +283,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 <div className="space-y-6 lg:col-span-2">
                     {/* Info básica */}
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h2 className="mb-4 font-heading text-lg tracking-[-0.01em] text-capsula-ink">Información Básica</h2>
+                        <h2 className="mb-4 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Información Básica</h2>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="sm:col-span-2">
@@ -308,11 +308,11 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     onChange={(e) => setCategory(e.target.value)}
                                     className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 >
-                                    <option value="RECETAS CREMAS">🥣 Cremas</option>
-                                    <option value="RECETAS PANTRY">🥫 Pantry</option>
-                                    <option value="RECETAS PRODUCCION">🏭 Producción</option>
-                                    <option value="ARMADO EN SERVICIO">🍽️ Armado en Servicio</option>
-                                    <option value="GENERAL">📋 General/Otros</option>
+                                    <option value="RECETAS CREMAS">Cremas</option>
+                                    <option value="RECETAS PANTRY">Pantry</option>
+                                    <option value="RECETAS PRODUCCION">Producción</option>
+                                    <option value="ARMADO EN SERVICIO">Armado en Servicio</option>
+                                    <option value="GENERAL">General/Otros</option>
                                 </select>
                             </div>
 
@@ -436,7 +436,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                             <div>
-                                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Ingredientes</h2>
+                                <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Ingredientes</h2>
                                 <p className="text-sm text-gray-500">
                                     {ingredients.length} items
                                 </p>
@@ -475,7 +475,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                     {showCosts && (
                                         <div className="text-right">
-                                            <p className="font-mono text-sm font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                                            <p className="font-mono text-sm font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                                 {formatCurrency(ing.totalCost)}
                                             </p>
                                             <p className="text-xs text-gray-500">
@@ -495,7 +495,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                             {ingredients.length === 0 && !showAddIngredient && (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <span className="text-4xl">📝</span>
+                                    <span className="text-4xl"></span>
                                     <p className="mt-2 text-gray-500">
                                         No hay ingredientes. Agrega el primero.
                                     </p>
@@ -560,8 +560,8 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                     onChange={(e) => setNewItemType(e.target.value)}
                                                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 >
-                                                    <option value="RAW_MATERIAL">📦 Materia Prima</option>
-                                                    <option value="SUB_RECIPE">🧀 Sub-Receta</option>
+                                                    <option value="RAW_MATERIAL">Materia Prima</option>
+                                                    <option value="SUB_RECIPE">Sub-Receta</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -589,7 +589,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <Combobox
                                             items={availableOptions.map(item => ({
                                                 value: item.id,
-                                                label: `${item.type === 'SUB_RECIPE' ? '🧀' : '📦'} ${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
+                                                label: `${item.type === 'SUB_RECIPE' ? '' : ''} ${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
                                             }))}
                                             value={newIngredient.inventoryItemId || ''}
                                             onChange={(val) => {
@@ -674,8 +674,8 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                     {showCosts ? (
                         <div className="sticky top-24 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
                             <div className="mb-4 flex items-center gap-2">
-                                <span className="text-2xl">💰</span>
-                                <h3 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">Resumen Estimado</h3>
+                                <span className="text-2xl"></span>
+                                <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resumen Estimado</h3>
                             </div>
 
                             <div className="space-y-3">
@@ -698,7 +698,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <span className="font-medium text-gray-900 dark:text-white">
                                             Costo por unidad:
                                         </span>
-                                        <span className="font-heading text-xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
+                                        <span className="font-semibold text-xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
                                             {formatCurrency(costPerUnit)}
                                         </span>
                                     </div>
@@ -707,7 +707,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         </div>
                     ) : (
                         <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800">
-                            <span className="text-4xl">🔒</span>
+                            <span className="text-4xl"></span>
                             <p className="mt-2 text-sm text-gray-500">
                                 Los costos no están disponibles para tu rol.
                             </p>

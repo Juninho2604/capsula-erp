@@ -115,11 +115,11 @@ export async function registrarEntradaMercancia(
         let finalUserId = input.userId;
         const userExists = await prisma.user.findUnique({ where: { id: input.userId } });
         if (!userExists) {
-            console.warn(`⚠️ Usuario ${input.userId} no encontrado. Buscando fallback...`);
+            console.warn(`Usuario ${input.userId} no encontrado. Buscando fallback...`);
             const adminUser = await prisma.user.findFirst({ where: { role: 'OWNER' } });
             if (adminUser) {
                 finalUserId = adminUser.id;
-                console.log(`✅ Usando usuario fallback: ${adminUser.email} (${adminUser.id})`);
+                console.log(`Usando usuario fallback: ${adminUser.email} (${adminUser.id})`);
             } else {
                 throw new Error('No existe ningún usuario ADMIN en la base de datos para asignar la operación.');
             }
@@ -212,7 +212,7 @@ export async function registrarEntradaMercancia(
         revalidatePath('/dashboard/inventario/entrada');
 
         // 9. Construir mensaje de respuesta
-        let message = `✅ Entrada registrada: +${quantityInBaseUnit} ${item.baseUnit} de ${item.name}`;
+        let message = `Entrada registrada: +${quantityInBaseUnit} ${item.baseUnit} de ${item.name}`;
         if (previousCost !== weightedCost && previousCost > 0) {
             const cambio = ((weightedCost - previousCost) / previousCost * 100).toFixed(1);
             message += ` | Costo actualizado: $${previousCost.toFixed(2)} → $${weightedCost.toFixed(2)} (${cambio}%)`;

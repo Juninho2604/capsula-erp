@@ -79,7 +79,7 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
     if (!selected) return;
     startTransition(async () => {
       const r = await updateUserModules(selected.id, moduleState);
-      setFeedback(r.success ? '✅ Módulos guardados' : `❌ ${r.message}`);
+      setFeedback(r.success ? '✅ Módulos guardados' : `${r.message}`);
     });
   };
 
@@ -91,7 +91,7 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
     <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="glass-panel rounded-3xl p-6">
-        <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por usuario</h1>
+        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Módulos por usuario</h1>
         <p className="mt-1 text-sm text-capsula-ink-soft">
           Selecciona un usuario para configurar qué módulos puede ver en su menú. Si usas acceso por rol, el sistema aplica las reglas predeterminadas del rol.
         </p>
@@ -197,7 +197,7 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
             {/* Footer */}
             <div className="px-5 py-4 border-t border-border bg-secondary/10 flex items-center justify-between gap-3">
               {feedback ? (
-                <p className={`text-xs ${feedback.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>{feedback}</p>
+                <p className={`text-xs ${feedback.startsWith('') ? 'text-emerald-400' : 'text-red-400'}`}>{feedback}</p>
               ) : <span />}
               <button
                 onClick={handleSave}

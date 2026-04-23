@@ -23,7 +23,7 @@ export function Navbar() {
                 >
                     <Menu className="h-5 w-5" strokeWidth={1.75} />
                 </button>
-                <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
+                <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                     {user?.firstName ? `${user.firstName}` : 'CÁPSULA'}
                 </h2>
             </div>

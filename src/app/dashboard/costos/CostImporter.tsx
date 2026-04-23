@@ -93,13 +93,13 @@ export function CostImporter() {
         <div className="space-y-6">
             {/* Upload Section */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-                <h3 className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink mb-4">Importar Costos desde Excel</h3>
+                <h3 className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink mb-4">Importar Costos desde Excel</h3>
 
                 <div className="flex items-center gap-4">
                     <label className="flex-1">
                         <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-500 transition-colors dark:border-gray-600 dark:hover:border-amber-400">
                             <div className="text-center">
-                                <span className="text-3xl">📊</span>
+                                <span className="text-3xl"></span>
                                 <p className="mt-2 text-sm text-gray-500">
                                     {isLoading ? 'Procesando...' : 'Click para subir archivo COSTO.xlsx'}
                                 </p>
@@ -119,19 +119,19 @@ export function CostImporter() {
                 {summary && (
                     <div className="mt-4 grid grid-cols-4 gap-3">
                         <div className="text-center p-3 bg-gray-100 rounded-lg dark:bg-gray-700">
-                            <div className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink">{summary.total}</div>
+                            <div className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{summary.total}</div>
                             <div className="text-xs text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-3 bg-green-100 rounded-lg dark:bg-green-900/30">
-                            <div className="font-heading text-2xl tracking-[-0.02em] text-green-600">{summary.matched}</div>
+                            <div className="font-semibold text-2xl tracking-[-0.02em] text-green-600">{summary.matched}</div>
                             <div className="text-xs text-green-600">Coincidentes</div>
                         </div>
                         <div className="text-center p-3 bg-amber-100 rounded-lg dark:bg-amber-900/30">
-                            <div className="font-heading text-2xl tracking-[-0.02em] text-amber-600">{summary.notFound}</div>
+                            <div className="font-semibold text-2xl tracking-[-0.02em] text-amber-600">{summary.notFound}</div>
                             <div className="text-xs text-amber-600">No Encontrados</div>
                         </div>
                         <div className="text-center p-3 bg-red-100 rounded-lg dark:bg-red-900/30">
-                            <div className="font-heading text-2xl tracking-[-0.02em] text-red-600">{summary.invalid}</div>
+                            <div className="font-semibold text-2xl tracking-[-0.02em] text-red-600">{summary.invalid}</div>
                             <div className="text-xs text-red-600">Inválidos</div>
                         </div>
                     </div>
@@ -142,13 +142,13 @@ export function CostImporter() {
             {previewItems.length > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-heading text-lg tracking-[-0.01em] text-capsula-ink">Vista Previa ({previewItems.length} registros)</h3>
+                        <h3 className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Vista Previa ({previewItems.length} registros)</h3>
                         <button
                             onClick={handleProcessImport}
                             disabled={isProcessing || summary?.matched === 0}
                             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            {isProcessing ? 'Procesando...' : `✓ Importar ${summary?.matched || 0} Costos`}
+                            {isProcessing ? 'Procesando...' : `Importar ${summary?.matched || 0} Costos`}
                         </button>
                     </div>
 

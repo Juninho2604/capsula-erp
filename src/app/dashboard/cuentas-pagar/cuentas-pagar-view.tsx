@@ -245,7 +245,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                   <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
                     {bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}
                   </p>
-                  <p className={`mt-1 font-heading text-lg tracking-[-0.02em] ${styles.text}`}>
+                  <p className={`mt-1 font-semibold text-lg tracking-[-0.02em] ${styles.text}`}>
                     ${fmt(bucket.amount)}
                   </p>
                   <p className="text-[11px] text-capsula-ink-muted">{bucket.count} cuentas</p>
@@ -265,7 +265,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
               const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;
               return (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="w-5 font-heading text-base text-capsula-ink-muted">{i + 1}</span>
+                  <span className="w-5 font-semibold text-base text-capsula-ink-muted">{i + 1}</span>
                   <span className="flex-1 truncate text-sm text-capsula-ink">{s.name}</span>
                   <span className="text-xs text-capsula-ink-muted">{s.count} cuentas</span>
                   <span className="w-24 text-right text-sm font-medium text-capsula-ink">${fmt(s.total)}</span>
@@ -338,7 +338,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       <div className="glass-panel rounded-2xl border border-border overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl">📄</p>
+            <p className="text-4xl"></p>
             <p className="mt-2 text-muted-foreground font-medium">Sin cuentas en esta vista</p>
           </div>
         ) : (
@@ -563,7 +563,7 @@ function KpiCard({
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
         <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
-      <p className="truncate font-heading text-2xl tracking-[-0.02em] text-capsula-ink">{value}</p>
+      <p className="truncate font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-capsula-ink-soft">{sub}</p>}
     </div>
   );
@@ -574,7 +574,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
         <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
-          <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">{title}</h2>
+          <h2 className="font-semibold text-base tracking-[-0.01em] text-capsula-ink">{title}</h2>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
