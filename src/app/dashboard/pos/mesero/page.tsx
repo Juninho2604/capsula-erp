@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -565,10 +566,10 @@ export default function POSMeseroPage() {
 
   if (isLoading || !waiterHydrated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🧑‍🍳</div>
-          <div className="text-xl font-black text-foreground">Cargando POS Mesero...</div>
+      <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <ChefHat className="h-10 w-10 text-capsula-ink-muted" />
+          <div className="text-xl font-semibold text-capsula-ink">Cargando POS Mesero…</div>
         </div>
       </div>
     );
@@ -579,58 +580,59 @@ export default function POSMeseroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col pb-16 lg:pb-0">
+    <div className="flex min-h-screen flex-col bg-capsula-ivory pb-16 text-capsula-ink lg:pb-0">
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div className="glass-panel px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 shadow-lg border-b border-border">
+      <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 shadow-cap-soft md:px-6 md:py-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 md:h-12 md:w-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">
-            🧑‍🍳
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-ink md:h-12 md:w-12">
+            <ChefHat className="h-5 w-5 md:h-6 md:w-6" />
           </div>
           <div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">
-              POS <span className="text-emerald-400 italic">MESERO</span>
+            <h1 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink md:text-2xl">
+              POS <span className="text-capsula-coral">Mesero</span>
             </h1>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
               Solo toma de pedidos · Sin acceso a cobro
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Mesonero identificado */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-            <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-xs">
+          <div className="hidden items-center gap-2 rounded-xl border border-capsula-line bg-capsula-navy-soft px-3 py-1.5 sm:flex">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-capsula-ivory text-xs font-semibold text-capsula-ink">
               {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
             </span>
-            <div className="text-[10px] leading-tight">
-              <div className="font-black text-emerald-300 uppercase tracking-wider">{activeWaiter.firstName}</div>
-              <div className="text-[9px] text-muted-foreground">Mesonero activo</div>
+            <div className="text-[11px] leading-tight">
+              <div className="font-semibold uppercase tracking-[0.06em] text-capsula-ink">{activeWaiter.firstName}</div>
+              <div className="text-[10px] text-capsula-ink-muted">Mesonero activo</div>
             </div>
           </div>
           <button
             onClick={handleWaiterLogout}
-            className="h-9 px-3 rounded-xl bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-muted-foreground hover:text-red-400 hover:border-red-500/30 transition-all uppercase tracking-widest"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-soft transition-colors hover:border-capsula-coral hover:text-capsula-coral"
             title="Cambiar mesonero"
           >
+            <LogOut className="h-3.5 w-3.5" />
             Salir
           </button>
           <button
             onClick={() => loadData()}
-            className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:border-capsula-navy-deep hover:text-capsula-ink"
             title="Actualizar"
           >
-            🔄
+            <RefreshCw className="h-4 w-4" />
           </button>
-          <div className="hidden md:block px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+          <div className="hidden rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft md:block">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
       </div>
 
       {/* ── BADGE MÓDULO RESTRINGIDO ─────────────────────────────────────── */}
-      <div className="bg-emerald-950/40 border-b border-emerald-900/40 px-4 py-1.5 flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-        <span>🔒</span>
+      <div className="flex items-center gap-2 border-b border-[#E8D9B8] bg-[#F3EAD6]/40 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[#946A1C]">
+        <Lock className="h-3 w-3" />
         Modo Mesero — No se permite cobro ni descuentos en esta sesión
       </div>
 
@@ -638,31 +640,39 @@ export default function POSMeseroPage() {
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ══ LEFT: TABLE GRID ═══════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-72 xl:w-80 shrink-0 border-r border-border bg-card/30 flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`absolute inset-0 z-10 flex w-full shrink-0 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory-alt/40 lg:relative lg:z-auto lg:w-72 xl:w-80 ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex`}>
           {/* Zone selector */}
-          <div className="p-4 border-b border-border space-y-3">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Secciones</p>
-            <div className="flex gap-2 flex-wrap">
+          <div className="space-y-3 border-b border-capsula-line p-4">
+            <p className="pl-1 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Secciones</p>
+            <div className="flex flex-wrap gap-2">
               {layout?.serviceZones.map((z) => (
                 <button
                   key={z.id}
                   onClick={() => { setSelectedZoneId(z.id); setSelectedTableId(""); }}
-                  className={`flex-1 min-w-0 py-3 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedZoneId === z.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-card border border-border text-foreground/60 hover:border-primary/50"}`}
+                  className={`min-w-0 flex-1 rounded-xl border py-3 text-xs font-semibold transition-colors active:scale-95 ${
+                    selectedZoneId === z.id
+                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep"
+                  }`}
                 >
-                  {z.zoneType === "BAR" ? "🍺" : "🌿"} {z.name}
+                  {z.name}
                 </button>
               ))}
             </div>
             {layoutError && (
-              <button onClick={() => loadData()} className="text-xs text-red-400 hover:text-red-300 py-1 text-center w-full">
-                ⚠️ Error · Reintentar
+              <button
+                onClick={() => loadData()}
+                className="inline-flex w-full items-center justify-center gap-1.5 py-1 text-xs font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Error · Reintentar
               </button>
             )}
           </div>
 
           {/* Table grid */}
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 lg:grid-cols-3">
               {selectedZone?.tablesOrStations.map((table) => {
                 const tab = table.openTabs[0];
                 const isSelected = table.id === selectedTableId;
@@ -672,29 +682,30 @@ export default function POSMeseroPage() {
                     onClick={() => {
                       setSelectedTableId(table.id);
                       if (!tab) {
-                        // Mesa libre → abrir modal de cuenta directamente
                         setOpenTabName(""); setOpenTabPhone(""); setOpenTabGuests(2);
                         setShowOpenTabModal(true);
                       } else if (window.innerWidth < 1024) {
                         setMobileTab("account");
                       }
                     }}
-                    className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-90 border-2 ${
+                    className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 transition-colors active:scale-90 ${
                       isSelected
-                        ? "border-emerald-400 bg-emerald-400/10 shadow-lg shadow-emerald-400/10 ring-2 ring-emerald-400 ring-offset-2 ring-offset-background"
+                        ? "border-capsula-navy-deep bg-capsula-navy-soft shadow-cap-soft"
                         : tab
-                          ? "border-emerald-500/50 bg-emerald-500/5"
-                          : "border-border bg-card/50 hover:border-emerald-400/30"
+                          ? "border-capsula-coral/40 bg-capsula-coral-subtle"
+                          : "border-capsula-line bg-capsula-ivory-surface hover:border-capsula-navy-deep"
                     }`}
                   >
-                    <div className={`text-sm md:text-base font-black ${isSelected ? "text-emerald-400" : tab ? "text-emerald-500" : "text-foreground/40"}`}>
+                    <div className={`text-sm font-semibold md:text-base ${
+                      isSelected ? "text-capsula-ink" : tab ? "text-capsula-coral" : "text-capsula-ink-muted"
+                    }`}>
                       {table.code}
                     </div>
                     {tab && (
-                      <div className="absolute top-1 right-1 h-2.5 w-2.5 bg-emerald-500 rounded-full border-2 border-background animate-pulse" />
+                      <div className="absolute right-1 top-1 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-capsula-ivory-surface bg-capsula-coral" />
                     )}
                     {tab && (
-                      <div className="mt-0.5 text-[8px] font-black text-foreground/60 truncate w-full px-1 text-center">
+                      <div className="mt-0.5 w-full truncate px-1 text-center text-[10px] font-medium tabular-nums text-capsula-ink-soft">
                         ${tab.balanceDue.toFixed(0)}
                       </div>
                     )}
@@ -706,58 +717,64 @@ export default function POSMeseroPage() {
 
           {/* Info de mesa ocupada seleccionada */}
           {selectedTable && activeTab && (
-            <div className="border-t border-border p-3 bg-card space-y-1 text-xs shrink-0">
-              <div className="font-bold text-emerald-300 truncate">{activeTab.customerLabel}</div>
+            <div className="shrink-0 space-y-1 border-t border-capsula-line bg-capsula-ivory-surface p-3 text-xs">
+              <div className="truncate font-semibold text-capsula-ink">{activeTab.customerLabel}</div>
               {activeTab.customerPhone && (
-                <div className="text-muted-foreground">📞 {activeTab.customerPhone}</div>
+                <div className="inline-flex items-center gap-1.5 text-capsula-ink-muted">
+                  <Phone className="h-3 w-3" />
+                  {activeTab.customerPhone}
+                </div>
               )}
-              <div className="text-muted-foreground">
-                Abrió: <span className="text-white">{activeTab.openedBy.firstName}</span>
-                <span className="text-muted-foreground"> · {formatTime(activeTab.openedAt)}</span>
+              <div className="text-capsula-ink-muted">
+                Abrió: <span className="text-capsula-ink">{activeTab.openedBy.firstName}</span>
+                <span className="text-capsula-ink-muted"> · {formatTime(activeTab.openedAt)}</span>
               </div>
             </div>
           )}
         </aside>
 
         {/* ══ CENTER: MENU ════════════════════════════════════════════════ */}
-        <main className={`flex-1 flex flex-col border-r border-border bg-background overflow-hidden ${mobileTab === "menu" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <main className={`absolute inset-0 z-10 flex flex-1 flex-col overflow-hidden border-r border-capsula-line bg-capsula-ivory lg:relative lg:z-auto ${mobileTab === "menu" ? "flex" : "hidden"} lg:flex`}>
           {/* Search + Categories */}
-          <div className="p-3 border-b border-border space-y-2 shrink-0">
+          <div className="shrink-0 space-y-2 border-b border-capsula-line p-3">
             {/* Active tab banner */}
             {activeTab ? (
-              <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                <span className="text-emerald-200">
+              <div className="flex items-center justify-between rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-3 py-2 text-xs">
+                <span className="text-[#2F6B4E]">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                 </span>
-                <span className="text-emerald-400 font-black text-xs">
+                <span className="text-xs font-semibold tabular-nums text-[#2F6B4E]">
                   ${activeTab.balanceDue.toFixed(2)}
                 </span>
               </div>
             ) : selectedTable ? (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs text-capsula-ink-soft">
                 {selectedTable.name} · Sin cuenta abierta — presiona &quot;Abrir cuenta&quot; para empezar
               </div>
             ) : (
-              <div className="bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs text-capsula-ink-soft">
                 Selecciona una mesa para comenzar
               </div>
             )}
 
             {/* Search */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">🔍</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar producto..."
-                className="w-full bg-secondary border border-border rounded-xl py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500"
+                placeholder="Buscar producto…"
+                className="w-full rounded-xl border border-capsula-line bg-capsula-ivory-surface py-2 pl-9 pr-9 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
               />
               {productSearch && (
                 <button
                   onClick={() => setProductSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
-                >✕</button>
+                  className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
               )}
             </div>
 
@@ -772,7 +789,11 @@ export default function POSMeseroPage() {
                     setSelectedGroup("");
                     setProductSearch("");
                   }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedCategory === cat.id ? "bg-emerald-500 text-black" : "bg-secondary text-foreground/70 hover:bg-muted"}`}
+                  className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+                    selectedCategory === cat.id
+                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep"
+                  }`}
                 >
                   {cat.name}
                 </button>
@@ -784,7 +805,11 @@ export default function POSMeseroPage() {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 <button
                   onClick={() => { setSelectedSubcategory(""); setSelectedGroup(""); }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${!selectedSubcategory ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                  className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                    !selectedSubcategory
+                      ? "border-capsula-navy-deep bg-capsula-navy-soft text-capsula-ink"
+                      : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:border-capsula-navy-deep"
+                  }`}
                 >
                   Todos
                 </button>
@@ -792,7 +817,11 @@ export default function POSMeseroPage() {
                   <button
                     key={subcat}
                     onClick={() => { setSelectedSubcategory(subcat); setSelectedGroup(""); }}
-                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubcategory === subcat ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-secondary text-foreground/50 hover:bg-muted"}`}
+                    className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                      selectedSubcategory === subcat
+                        ? "border-capsula-navy-deep bg-capsula-navy-soft text-capsula-ink"
+                        : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:border-capsula-navy-deep"
+                    }`}
                   >
                     {subcat}
                   </button>
@@ -802,18 +831,19 @@ export default function POSMeseroPage() {
           </div>
 
           {/* Menu items */}
-          <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+          <div className="scroll-smooth flex-1 overflow-y-auto p-4">
             {/* Back button cuando estás dentro de un grupo */}
             {selectedGroup && !productSearch && (
               <button
                 onClick={() => setSelectedGroup("")}
-                className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-400 hover:text-emerald-300 active:scale-95 transition"
+                className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-capsula-navy-deep transition-colors hover:text-capsula-ink active:scale-95"
               >
-                ← {selectedGroup}
+                <ArrowLeft className="h-4 w-4" />
+                {selectedGroup}
               </button>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 tablet-land:grid-cols-4 xl:grid-cols-4 md:gap-4">
 
               {/* ── Grupos (uno por cada posGroup único) ── */}
               {!selectedGroup && !productSearch && groupsInView.map((group) => {
@@ -826,15 +856,15 @@ export default function POSMeseroPage() {
                     key={group}
                     onClick={() => setSelectedGroup(group)}
                     disabled={!activeTab}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                   >
-                    <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{group}</div>
-                    <div className="flex items-end justify-between mt-2">
-                      <div className="text-base font-black text-emerald-400">
+                    <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">{group}</div>
+                    <div className="mt-2 flex items-end justify-between">
+                      <div className="text-base font-semibold tabular-nums text-capsula-navy-deep">
                         {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
                       </div>
-                      <div className="text-[10px] font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                        {gItems.length} op →
+                      <div className="rounded-full border border-capsula-line bg-capsula-ivory-alt px-2 py-0.5 text-[11px] font-medium text-capsula-ink-muted">
+                        {gItems.length} op
                       </div>
                     </div>
                   </button>
@@ -849,10 +879,10 @@ export default function POSMeseroPage() {
                     key={item.id}
                     onClick={() => handleAddToCart(item)}
                     disabled={!activeTab}
-                    className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                    className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                   >
-                    <div className="text-lg font-black text-gray-950 dark:text-foreground uppercase tracking-tight">{sizeLabel}</div>
-                    <div className="text-xl font-black text-emerald-400 mt-auto">
+                    <div className="text-lg font-semibold uppercase tracking-[-0.01em] text-capsula-ink">{sizeLabel}</div>
+                    <div className="mt-auto text-xl font-semibold tabular-nums text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                   </button>
@@ -865,15 +895,15 @@ export default function POSMeseroPage() {
                   key={item.id}
                   onClick={() => handleAddToCart(item)}
                   disabled={!activeTab}
-                  className="capsula-card group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 border-primary/5 hover:border-emerald-500/40 active:scale-95 transition-transform bg-white dark:bg-card"
+                  className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                 >
-                  <div className="text-sm font-black text-gray-950 dark:text-foreground group-hover:text-emerald-500 transition-colors leading-tight line-clamp-2 uppercase tracking-tight">{item.name}</div>
-                  <div className="flex items-end justify-between mt-2">
-                    <div className="text-xl font-black text-emerald-400">
+                  <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">{item.name}</div>
+                  <div className="mt-2 flex items-end justify-between">
+                    <div className="text-xl font-semibold tabular-nums text-capsula-navy-deep">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
-                      ➕
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:opacity-0 lg:group-hover:translate-y-[-4px] lg:group-hover:opacity-100">
+                      <PlusIcon className="h-4 w-4" />
                     </div>
                   </div>
                 </button>
@@ -881,59 +911,66 @@ export default function POSMeseroPage() {
 
               {/* Empty state */}
               {!productSearch && groupsInView.length === 0 && subcatFilteredItems.filter((i) => !i.posGroup).length === 0 && !selectedGroup && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin productos en esta categoría</div>
+                <div className="col-span-full py-12 text-center text-sm text-capsula-ink-muted">Sin productos en esta categoría</div>
               )}
               {productSearch && filteredMenuItems.length === 0 && (
-                <div className="col-span-full text-center text-muted-foreground py-12 text-sm">Sin resultados para &quot;{productSearch}&quot;</div>
+                <div className="col-span-full py-12 text-center text-sm text-capsula-ink-muted">Sin resultados para &quot;{productSearch}&quot;</div>
               )}
             </div>
           </div>
         </main>
 
         {/* ══ RIGHT: PEDIDO PANEL (sin cobro) ═════════════════════════════ */}
-        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-card/80 flex flex-col overflow-hidden ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
+        <aside className={`w-full lg:w-80 xl:w-96 shrink-0 bg-capsula-ivory-surface flex flex-col overflow-hidden border-l border-capsula-line ${mobileTab === "account" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
 
           {/* Carrito pendiente */}
           {cart.length > 0 && (
-            <div className="border-b border-emerald-900/50 bg-emerald-950/30 p-4 shrink-0">
+            <div className="border-b border-capsula-line bg-capsula-navy-soft p-4 shrink-0">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-black text-sm text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                  🛒 Nuevo pedido
-                  <span className="bg-emerald-500 text-black text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">
+                <h2 className="font-semibold text-xs text-capsula-ink uppercase tracking-[0.14em] flex items-center gap-2">
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  Nuevo pedido
+                  <span className="bg-capsula-navy-deep text-capsula-ivory text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center">
                     {cart.length}
                   </span>
                 </h2>
                 <button
                   onClick={() => setCart([])}
-                  className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                  className="text-[10px] text-capsula-coral hover:opacity-80 font-semibold uppercase tracking-wider"
                 >
                   Limpiar
                 </button>
               </div>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {cart.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-xs bg-emerald-900/20 rounded-lg px-3 py-2">
-                    <span className="font-bold text-foreground/80 truncate flex-1">
-                      <span className="text-emerald-400 font-black">x{item.quantity}</span> {item.name}
+                  <div key={i} className="flex justify-between items-center text-xs bg-capsula-ivory rounded-lg px-3 py-2 border border-capsula-line">
+                    <span className="font-semibold text-capsula-ink-soft truncate flex-1">
+                      <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.name}
                     </span>
-                    <span className="text-emerald-400 font-black ml-2">${item.lineTotal.toFixed(2)}</span>
+                    <span className="text-capsula-ink font-semibold ml-2 tabular-nums">${item.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex justify-between items-center border-t border-emerald-900/50 pt-2">
-                <span className="text-xs font-black text-muted-foreground uppercase">Subtotal</span>
-                <span className="text-sm font-black text-emerald-400">${cartTotal.toFixed(2)}</span>
+              <div className="mt-3 flex justify-between items-center border-t border-capsula-line pt-2">
+                <span className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-wider">Subtotal</span>
+                <span className="text-sm font-semibold text-capsula-ink tabular-nums">${cartTotal.toFixed(2)}</span>
               </div>
               <button
                 onClick={() => { handleSendToTab(); if (window.innerWidth < 1024) setMobileTab("tables"); }}
                 disabled={!activeTab || isProcessing}
-                className={`w-full mt-3 py-4 rounded-xl font-black text-sm transition-all active:scale-95 ${
+                className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                   sendSuccess
-                    ? "bg-emerald-500 text-black"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
+                    : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory disabled:opacity-40 disabled:cursor-not-allowed"
                 }`}
               >
-                {sendSuccess ? "✓ ¡Enviado a cocina!" : isProcessing ? "Enviando..." : `🍳 Enviar a cocina · $${cartTotal.toFixed(2)}`}
+                {sendSuccess ? (
+                  <><Check className="h-4 w-4" /> ¡Enviado a cocina!</>
+                ) : isProcessing ? (
+                  "Enviando..."
+                ) : (
+                  <><ChefHat className="h-4 w-4" /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
+                )}
               </button>
             </div>
           )}
@@ -949,98 +986,107 @@ export default function POSMeseroPage() {
           ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {!activeTab ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">🪑</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
+              <div className="h-full flex flex-col items-center justify-center text-capsula-ink-muted py-10">
+                <Armchair className="h-12 w-12 mb-3 opacity-60" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-center">
                   Selecciona una mesa<br />para ver la cuenta
                 </p>
               </div>
             ) : activeTab.orders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 py-10">
-                <span className="text-5xl mb-3">📋</span>
-                <p className="text-xs font-black uppercase tracking-widest text-center">
+              <div className="h-full flex flex-col items-center justify-center text-capsula-ink-muted py-10">
+                <ClipboardList className="h-12 w-12 mb-3 opacity-60" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-center">
                   Cuenta abierta<br />Agrega productos del menú
                 </p>
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-[10px] font-semibold uppercase text-capsula-ink-muted tracking-[0.14em]">
                   Pedidos enviados
                 </p>
                 {activeTab.orders.map((order) => (
-                  <div key={order.id} className="glass-panel rounded-2xl overflow-hidden border-emerald-900/20">
-                    <div className="flex items-center justify-between px-3 py-2 bg-emerald-900/20 border-b border-emerald-900/30">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase">#{order.orderNumber}</span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                        order.kitchenStatus === "SENT" ? "bg-amber-500/20 text-amber-400" :
-                        order.kitchenStatus === "READY" ? "bg-emerald-500/20 text-emerald-400" :
-                        "bg-secondary text-muted-foreground"
+                  <div key={order.id} className="bg-capsula-ivory rounded-2xl overflow-hidden border border-capsula-line">
+                    <div className="flex items-center justify-between px-3 py-2 bg-capsula-ivory-alt border-b border-capsula-line">
+                      <span className="text-[10px] font-semibold text-capsula-ink uppercase tracking-wider">#{order.orderNumber}</span>
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                        order.kitchenStatus === "SENT" ? "bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]" :
+                        order.kitchenStatus === "READY" ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]" :
+                        "bg-capsula-ivory-alt text-capsula-ink-muted"
                       }`}>
-                        {order.kitchenStatus === "SENT" ? "🔥 En cocina" : order.kitchenStatus === "READY" ? "✅ Listo" : order.kitchenStatus}
+                        {order.kitchenStatus === "SENT" ? (
+                          <><Flame className="h-2.5 w-2.5" /> En cocina</>
+                        ) : order.kitchenStatus === "READY" ? (
+                          <><Check className="h-2.5 w-2.5" /> Listo</>
+                        ) : (
+                          order.kitchenStatus
+                        )}
                       </span>
                     </div>
                     <div className="p-3 space-y-1.5">
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between items-center text-xs group">
                           <div className="flex-1 min-w-0">
-                            <span className="font-bold text-foreground/80">
-                              <span className="text-primary font-black">x{item.quantity}</span> {item.itemName}
+                            <span className="font-semibold text-capsula-ink-soft">
+                              <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.itemName}
                             </span>
                             {item.modifiers && item.modifiers.length > 0 && (
-                              <div className="text-[9px] text-muted-foreground truncate pl-4">
+                              <div className="text-[9px] text-capsula-ink-muted truncate pl-4">
                                 {item.modifiers.map((m) => m.name).join(" · ")}
                               </div>
                             )}
                           </div>
                           <div className="flex items-center gap-2 ml-2 shrink-0">
-                            <span className="text-foreground/60">${item.lineTotal.toFixed(2)}</span>
+                            <span className="text-capsula-ink-soft tabular-nums">${item.lineTotal.toFixed(2)}</span>
                             <button
                               onClick={() => openRemoveModal(order.id, item)}
-                              className="h-5 w-5 rounded-md bg-red-500/0 hover:bg-red-500/20 text-red-500/40 hover:text-red-400 flex items-center justify-center text-[10px] transition-all opacity-0 group-hover:opacity-100"
+                              className="h-5 w-5 rounded-md hover:bg-capsula-coral/10 text-capsula-ink-faint hover:text-capsula-coral flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
                               title="Anular (requiere PIN supervisor)"
                             >
-                              ✕
+                              <XIcon className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="px-3 pb-3 flex justify-between items-center border-t border-border/50 pt-2">
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase">Orden</span>
-                      <span className="text-sm font-black text-foreground">${order.total.toFixed(2)}</span>
+                    <div className="px-3 pb-3 flex justify-between items-center border-t border-capsula-line pt-2">
+                      <span className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-wider">Orden</span>
+                      <span className="text-sm font-semibold text-capsula-ink tabular-nums">${order.total.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
 
                 {/* Total cuenta — solo informativo, sin botón de cobro */}
-                <div className="capsula-card p-4 border-emerald-900/30 mt-2">
+                <div className="rounded-2xl border border-capsula-line-strong bg-capsula-ivory p-4 mt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Total cuenta</span>
-                    <span className="text-xl font-black text-emerald-400">${activeTab.balanceDue.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">Total cuenta</span>
+                    <span className="text-xl font-semibold text-capsula-ink tabular-nums">${activeTab.balanceDue.toFixed(2)}</span>
                   </div>
-                  <p className="text-[9px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-widest">
+                  <p className="text-[9px] text-capsula-ink-faint mt-1 font-semibold uppercase tracking-wider">
                     El cobro lo gestiona el cajero
                   </p>
                   {/* Mostrar cuenta al cliente */}
                   <button
                     onClick={() => setShowBillModal(true)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory transition inline-flex items-center justify-center gap-2"
                   >
-                    🧾 Mostrar cuenta al cliente
+                    <Receipt className="h-3.5 w-3.5" />
+                    Mostrar cuenta al cliente
                   </button>
                   {canUseCaptainFeatures && (
                     <>
                       <button
                         onClick={() => setSubAccountMode(true)}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-amber-500/20 hover:text-amber-400 text-foreground/70 transition"
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
                       >
-                        ÷ Dividir cuenta (subcuentas)
+                        <Divide className="h-3.5 w-3.5" />
+                        Dividir cuenta (subcuentas)
                       </button>
                       <button
                         onClick={openTransferModal}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-black bg-secondary hover:bg-sky-500/20 hover:text-sky-400 text-foreground/70 transition"
+                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
                       >
-                        ↔ Transferir mesa
+                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                        Transferir mesa
                       </button>
                     </>
                   )}
@@ -1053,22 +1099,23 @@ export default function POSMeseroPage() {
       </div>
 
       {/* ── NAVEGACIÓN MÓVIL ─────────────────────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex z-50 shadow-2xl">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-capsula-ivory-surface border-t border-capsula-line flex z-50 shadow-xl">
         {(["tables", "menu", "account"] as const).map((tab) => {
-          const icons = { tables: "🪑", menu: "🍽️", account: "📋" };
-          const labels = { tables: "MESAS", menu: "MENÚ", account: "PEDIDO" };
+          const Icon = tab === "tables" ? Armchair : tab === "menu" ? UtensilsCrossed : ClipboardList;
+          const labels = { tables: "Mesas", menu: "Menú", account: "Pedido" };
+          const active = mobileTab === tab;
           return (
             <button
               key={tab}
               onClick={() => setMobileTab(tab)}
-              className={`flex-1 py-3 flex flex-col items-center gap-1 text-[9px] font-black uppercase tracking-widest relative transition-colors
-                ${mobileTab === tab ? "text-emerald-400 bg-emerald-400/5" : "text-muted-foreground"}`}
+              className={`flex-1 py-3 flex flex-col items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] relative transition-colors
+                ${active ? "text-capsula-ink bg-capsula-navy-soft" : "text-capsula-ink-muted hover:text-capsula-ink-soft"}`}
             >
-              {mobileTab === tab && <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-b" />}
-              <span className="text-xl">{icons[tab]}</span>
+              {active && <div className="absolute top-0 left-0 right-0 h-0.5 bg-capsula-navy-deep rounded-b" />}
+              <Icon className="h-5 w-5" />
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-emerald-500 text-black text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-black px-1">
+                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-ivory text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
                   {cartBadgeCount}
                 </span>
               )}
@@ -1079,31 +1126,31 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
       {showBillModal && activeTab && (
-        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-3xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-capsula-ivory w-full max-w-sm rounded-3xl shadow-2xl border border-capsula-line flex flex-col max-h-[90vh]">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-capsula-line shrink-0">
               <div>
-                <h3 className="font-black text-base text-foreground">Cuenta</h3>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Cuenta</h3>
+                <p className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-[0.14em] mt-0.5">
                   {selectedTable?.name} · {activeTab.customerLabel}
                 </p>
               </div>
               <button
                 onClick={() => setShowBillModal(false)}
-                className="h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground"
+                className="h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted"
               >
-                ×
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
               {activeTab.orders.flatMap(o => o.items).map((item, i) => (
                 <div key={i} className="flex justify-between items-baseline text-sm">
-                  <span className="text-foreground/80 font-semibold flex-1 mr-2">
-                    <span className="text-foreground/50 text-xs">×{item.quantity}</span> {item.itemName}
+                  <span className="text-capsula-ink-soft font-semibold flex-1 mr-2">
+                    <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
                   </span>
-                  <span className="font-black tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                  <span className="font-semibold text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1115,30 +1162,30 @@ export default function POSMeseroPage() {
               const divisas33 = totalUsd * (1 - 0.33);
               const totalBs = exchangeRate ? totalUsd * exchangeRate : null;
               return (
-                <div className="px-5 py-4 border-t border-border space-y-2 shrink-0">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider">Subtotal</span>
-                    <span className="font-black tabular-nums">${subtotal.toFixed(2)}</span>
+                <div className="px-5 py-4 border-t border-capsula-line space-y-2 shrink-0">
+                  <div className="flex justify-between text-xs text-capsula-ink-muted">
+                    <span className="font-semibold uppercase tracking-wider">Subtotal</span>
+                    <span className="font-semibold text-capsula-ink tabular-nums">${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wider">Servicio (10%)</span>
-                    <span className="font-black tabular-nums">${serviceCharge.toFixed(2)}</span>
+                  <div className="flex justify-between text-xs text-capsula-ink-muted">
+                    <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
+                    <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-baseline border-t border-border pt-2 mt-1">
-                    <span className="text-sm font-black text-foreground uppercase tracking-widest">Total USD</span>
-                    <span className="text-2xl font-black text-emerald-400 tabular-nums">${totalUsd.toFixed(2)}</span>
+                  <div className="flex justify-between items-baseline border-t border-capsula-line pt-2 mt-1">
+                    <span className="text-sm font-semibold text-capsula-ink uppercase tracking-[0.14em]">Total USD</span>
+                    <span className="text-2xl font-semibold text-capsula-ink tabular-nums">${totalUsd.toFixed(2)}</span>
                   </div>
-                  <div className="rounded-xl bg-secondary/50 border border-border p-3 space-y-1.5 mt-1">
+                  <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-1.5 mt-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground font-bold uppercase tracking-wider">Divisas (33% desc.)</span>
-                      <span className="font-black tabular-nums text-amber-400">${divisas33.toFixed(2)}</span>
+                      <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">Divisas (33% desc.)</span>
+                      <span className="font-semibold tabular-nums text-capsula-ink">${divisas33.toFixed(2)}</span>
                     </div>
                     {totalBs !== null && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground font-bold uppercase tracking-wider">
+                        <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">
                           Bs. (Tasa {exchangeRate?.toFixed(2)})
                         </span>
-                        <span className="font-black tabular-nums text-sky-400">
+                        <span className="font-semibold tabular-nums text-capsula-ink">
                           Bs. {totalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -1153,54 +1200,57 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-border">
-            <h3 className="font-black text-lg">Abrir cuenta — {selectedTable.name}</h3>
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-capsula-ivory w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-capsula-line">
+            <div>
+              <h3 className="font-semibold text-lg text-capsula-ink tracking-[-0.02em]">Abrir cuenta</h3>
+              <p className="text-xs text-capsula-ink-muted mt-0.5">{selectedTable.name}</p>
+            </div>
             <div className="space-y-3">
               <input
                 type="text"
                 placeholder="Nombre del cliente *"
                 value={openTabName}
                 onChange={(e) => setOpenTabName(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3 text-sm font-medium text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
               />
               <input
                 type="tel"
                 placeholder="Teléfono *"
                 value={openTabPhone}
                 onChange={(e) => setOpenTabPhone(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3 text-sm font-medium text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
               />
               <div className="flex items-center gap-3">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest w-24">Personas</label>
-                <div className="flex items-center gap-3 bg-secondary rounded-xl p-1 border border-border">
-                  <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-card font-black transition hover:bg-red-500/10 hover:text-red-400">-</button>
-                  <span className="w-8 text-center font-black text-lg">{openTabGuests}</span>
-                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-primary text-primary-foreground font-black transition hover:opacity-90">+</button>
+                <label className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em] w-24">Personas</label>
+                <div className="flex items-center gap-3 bg-capsula-ivory-surface rounded-xl p-1 border border-capsula-line">
+                  <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink transition hover:bg-capsula-coral/10 hover:text-capsula-coral hover:border-capsula-coral/40">−</button>
+                  <span className="w-8 text-center font-semibold text-lg text-capsula-ink tabular-nums">{openTabGuests}</span>
+                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold transition hover:bg-capsula-navy-deep/90">+</button>
                 </div>
               </div>
               {activeWaiter && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs">
-                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black">
+                <div className="flex items-center gap-2 px-4 py-3 bg-capsula-navy-soft border border-capsula-line rounded-xl text-xs">
+                  <span className="h-7 w-7 rounded-full bg-capsula-navy-deep text-capsula-ivory flex items-center justify-center font-semibold">
                     {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
                   </span>
                   <div>
-                    <div className="font-black text-emerald-300">{activeWaiter.firstName} {activeWaiter.lastName}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Mesonero de la mesa</div>
+                    <div className="font-semibold text-capsula-ink">{activeWaiter.firstName} {activeWaiter.lastName}</div>
+                    <div className="text-[10px] text-capsula-ink-muted uppercase tracking-[0.14em]">Mesonero de la mesa</div>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowOpenTabModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
+              <button onClick={() => setShowOpenTabModal(false)} className="pos-btn-secondary flex-1 py-3">
                 Cancelar
               </button>
               <button
                 onClick={handleOpenTab}
                 disabled={isProcessing || !openTabName.trim() || !openTabPhone.trim()}
-                className="capsula-btn capsula-btn-primary flex-[2] py-3 disabled:opacity-40"
+                className="pos-btn flex-[2] py-3 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isProcessing ? "Abriendo..." : "✓ Abrir cuenta"}
+                {isProcessing ? "Abriendo..." : (<><Check className="h-4 w-4" />Abrir cuenta</>)}
               </button>
             </div>
           </div>
@@ -1209,14 +1259,16 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: MODIFICADORES ══════════════════════════════════════════ */}
       {showModifierModal && selectedItemForModifier && (
-        <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-card glass-panel w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-border">
-            <div className="p-5 border-b border-border flex justify-between items-center">
+        <div className="fixed inset-0 z-50 bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-capsula-ivory w-full max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh] shadow-2xl border border-capsula-line">
+            <div className="p-5 border-b border-capsula-line flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">{selectedItemForModifier.name}</h3>
-                <p className="text-emerald-400 font-black text-lg">${selectedItemForModifier.price.toFixed(2)}</p>
+                <h3 className="text-xl font-semibold tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
+                <p className="text-capsula-ink font-semibold text-lg tabular-nums mt-0.5">${selectedItemForModifier.price.toFixed(2)}</p>
               </div>
-              <button onClick={() => setShowModifierModal(false)} className="h-10 w-10 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center">&times;</button>
+              <button onClick={() => setShowModifierModal(false)} className="h-10 w-10 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted">
+                <XIcon className="h-4 w-4" />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {selectedItemForModifier.modifierGroups?.map((groupRel) => {
@@ -1224,10 +1276,10 @@ export default function POSMeseroPage() {
                 const totalSelected = currentModifiers.filter((m) => m.groupId === group.id).reduce((s, m) => s + m.quantity, 0);
                 const isValid = !group.isRequired || totalSelected >= group.minSelections;
                 return (
-                  <div key={group.id} className={`p-4 rounded-2xl border-2 transition-colors ${isValid ? "border-border bg-secondary/20" : "border-red-500 bg-red-500/5"}`}>
+                  <div key={group.id} className={`p-4 rounded-2xl border transition-colors ${isValid ? "border-capsula-line bg-capsula-ivory-surface" : "border-capsula-coral bg-capsula-coral/5"}`}>
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-black text-sm uppercase tracking-widest text-foreground/70">{group.name}</h4>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500 text-white animate-bounce"}`}>
+                      <h4 className="font-semibold text-sm uppercase tracking-[0.14em] text-capsula-ink-soft">{group.name}</h4>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-ivory"}`}>
                         {totalSelected}/{group.maxSelections}{group.isRequired ? " · Req." : ""}
                       </span>
                     </div>
@@ -1238,20 +1290,20 @@ export default function POSMeseroPage() {
                         const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                         const isRadio = group.maxSelections === 1;
                         return (
-                          <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border-2 transition-all ${qty > 0 ? "bg-emerald-500/10 border-emerald-500" : "bg-background border-border hover:border-emerald-500/30"}`}>
-                            <span className="font-bold text-sm">{mod.name}</span>
+                          <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line hover:border-capsula-navy-deep/40"}`}>
+                            <span className="font-semibold text-sm text-capsula-ink">{mod.name}</span>
                             {isRadio ? (
                               <button
                                 onClick={() => updateModifierQuantity(group, mod, 1)}
-                                className={`h-8 w-8 rounded-full border-2 flex justify-center items-center transition-all ${qty > 0 ? "bg-emerald-500 border-emerald-500 text-white scale-110" : "border-border hover:border-emerald-500"}`}
+                                className={`h-8 w-8 rounded-full border flex justify-center items-center transition-all ${qty > 0 ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory scale-110" : "border-capsula-line hover:border-capsula-navy-deep"}`}
                               >
-                                {qty > 0 && "✓"}
+                                {qty > 0 && <Check className="h-4 w-4" />}
                               </button>
                             ) : (
-                              <div className="flex items-center gap-2 bg-card p-1 rounded-xl border border-border">
-                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-black transition ${qty === 0 ? "text-muted-foreground opacity-20" : "bg-secondary hover:bg-red-500/20 hover:text-red-400"}`}>-</button>
-                                <span className="font-black text-base w-5 text-center text-emerald-400">{qty}</span>
-                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-black transition ${isMax ? "text-muted-foreground opacity-20" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}>+</button>
+                              <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
+                                <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-semibold transition ${qty === 0 ? "text-capsula-ink-faint opacity-40" : "bg-capsula-ivory-alt hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink"}`}>−</button>
+                                <span className="font-semibold text-base w-5 text-center text-capsula-ink tabular-nums">{qty}</span>
+                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-semibold transition ${isMax ? "text-capsula-ink-faint opacity-40" : "bg-capsula-navy-deep text-capsula-ivory hover:bg-capsula-navy-deep/90"}`}>+</button>
                               </div>
                             )}
                           </div>
@@ -1261,31 +1313,32 @@ export default function POSMeseroPage() {
                   </div>
                 );
               })}
-              <div className="bg-secondary/20 p-4 rounded-2xl border border-border">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Instrucciones especiales</label>
+              <div className="bg-capsula-ivory-surface p-4 rounded-2xl border border-capsula-line">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2 block">Instrucciones especiales</label>
                 <textarea
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="w-full bg-background rounded-xl p-3 h-20 text-sm font-bold border border-border focus:border-emerald-500 focus:outline-none resize-none"
+                  className="w-full bg-capsula-ivory rounded-xl p-3 h-20 text-sm font-medium text-capsula-ink border border-capsula-line placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none resize-none transition"
                   placeholder="Petición del cliente..."
                 />
               </div>
-              <div className="flex items-center justify-between glass-panel p-4 rounded-2xl border-emerald-900/20">
-                <span className="font-black uppercase tracking-tighter text-base">Cantidad</span>
-                <div className="flex items-center gap-2 bg-background p-1 rounded-xl border border-border">
-                  <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-black text-xl hover:bg-secondary transition active:scale-90">-</button>
-                  <span className="w-12 text-center font-black text-2xl text-emerald-400">{itemQuantity}</span>
-                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-emerald-600 text-white font-black text-xl hover:bg-emerald-500 active:scale-95">+</button>
+              <div className="flex items-center justify-between bg-capsula-ivory-surface p-4 rounded-2xl border border-capsula-line">
+                <span className="font-semibold uppercase tracking-[0.14em] text-base text-capsula-ink">Cantidad</span>
+                <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
+                  <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-semibold text-xl text-capsula-ink hover:bg-capsula-ivory-alt transition active:scale-90">−</button>
+                  <span className="w-12 text-center font-semibold text-2xl text-capsula-ink tabular-nums">{itemQuantity}</span>
+                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold text-xl hover:bg-capsula-navy-deep/90 active:scale-95">+</button>
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-border flex gap-3">
-              <button onClick={() => setShowModifierModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
+            <div className="p-5 border-t border-capsula-line flex gap-3">
+              <button onClick={() => setShowModifierModal(false)} className="pos-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
               <button
                 onClick={confirmAddToCart}
                 disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
-                className="capsula-btn capsula-btn-primary flex-[2] py-4 text-sm bg-emerald-600 border-emerald-700 disabled:opacity-40"
+                className="pos-btn flex-[2] py-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
+                <PlusIcon className="h-4 w-4" />
                 Agregar al pedido
               </button>
             </div>
@@ -1301,18 +1354,20 @@ export default function POSMeseroPage() {
           ).map((t) => ({ ...t, zoneName: z.name }))
         ) ?? [];
         return (
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-card glass-panel w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-sky-900/30 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-capsula-ivory w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-capsula-line max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">↔</div>
+                <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-navy-deep flex-shrink-0">
+                  <ArrowLeftRight className="h-5 w-5" />
+                </div>
                 <div>
-                  <h3 className="font-black text-base text-sky-400">Mover mesa</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Mover mesa</h3>
+                  <p className="text-xs text-capsula-ink-muted">
                     {selectedTable?.name}
                     {activeTab.customerLabel ? ` · ${activeTab.customerLabel}` : ""}
                     {" → "}
-                    <span className={transferToTableId ? "text-sky-400 font-bold" : "text-muted-foreground"}>
+                    <span className={transferToTableId ? "text-capsula-ink font-semibold" : "text-capsula-ink-muted"}>
                       {transferToTableId
                         ? (availableTables.find((t) => t.id === transferToTableId)?.name ?? "...")
                         : "selecciona destino"}
@@ -1321,19 +1376,19 @@ export default function POSMeseroPage() {
                 </div>
                 <button
                   onClick={() => setShowTransferModal(false)}
-                  className="ml-auto h-9 w-9 rounded-full hover:bg-red-500/10 hover:text-red-400 transition text-2xl flex items-center justify-center text-muted-foreground flex-shrink-0"
+                  className="ml-auto h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted flex-shrink-0"
                 >
-                  ×
+                  <XIcon className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Grid de mesas disponibles */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2 block">
                   Mesa destino (disponibles)
                 </label>
                 {availableTables.length === 0 ? (
-                  <p className="text-xs text-muted-foreground bg-secondary rounded-xl px-4 py-3">
+                  <p className="text-xs text-capsula-ink-muted bg-capsula-ivory-surface border border-capsula-line rounded-xl px-4 py-3">
                     No hay mesas disponibles en este momento.
                   </p>
                 ) : (
@@ -1342,14 +1397,14 @@ export default function POSMeseroPage() {
                       <button
                         key={t.id}
                         onClick={() => setTransferToTableId(t.id)}
-                        className={`rounded-xl py-3 px-2 text-xs font-black transition border flex flex-col items-center gap-0.5 ${
+                        className={`rounded-xl py-3 px-2 text-xs font-semibold transition border flex flex-col items-center gap-0.5 ${
                           transferToTableId === t.id
-                            ? "bg-sky-600 border-sky-500 text-white"
-                            : "bg-secondary border-border hover:border-sky-500/50 hover:text-sky-400"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/50"
                         }`}
                       >
                         <span className="text-sm">{t.name}</span>
-                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-sky-200" : "text-muted-foreground"}`}>
+                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-capsula-ivory/70" : "text-capsula-ink-muted"}`}>
                           {t.zoneName}
                         </span>
                       </button>
@@ -1360,20 +1415,20 @@ export default function POSMeseroPage() {
 
               {/* Motivo */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   Motivo (opcional)
                 </label>
                 <textarea
                   value={transferReason}
                   onChange={(e) => setTransferReason(e.target.value)}
                   placeholder="Ej: Petición del cliente, cambio de zona..."
-                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-sky-500 focus:outline-none resize-none h-14"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl p-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none resize-none h-14 transition"
                 />
               </div>
 
               {/* PIN */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   PIN de capitán o gerente
                 </label>
                 <input
@@ -1382,12 +1437,12 @@ export default function POSMeseroPage() {
                   placeholder="••••"
                   value={transferCaptainPin}
                   onChange={(e) => setTransferCaptainPin(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-4 py-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none tracking-[0.3em] transition"
                 />
               </div>
 
               {transferError && (
-                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                <p className="text-capsula-coral text-xs font-semibold bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl px-3 py-2">
                   {transferError}
                 </p>
               )}
@@ -1395,16 +1450,16 @@ export default function POSMeseroPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowTransferModal(false)}
-                  className="capsula-btn capsula-btn-secondary flex-1 py-3"
+                  className="pos-btn-secondary flex-1 py-3"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleTableTransfer}
                   disabled={isProcessing || !transferToTableId || !transferCaptainPin.trim()}
-                  className="flex-[2] py-3 bg-sky-600 hover:bg-sky-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                  className="pos-btn flex-[2] py-3 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? "Moviendo..." : "↔ Confirmar movimiento"}
+                  {isProcessing ? "Moviendo..." : (<><ArrowLeftRight className="h-4 w-4" />Confirmar movimiento</>)}
                 </button>
               </div>
             </div>
@@ -1419,36 +1474,42 @@ export default function POSMeseroPage() {
           (!removeReplaceSearch.trim() || m.name.toLowerCase().includes(removeReplaceSearch.toLowerCase()))
         ).slice(0, 30);
         return (
-          <div className="fixed inset-0 z-50 bg-background/90 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-card glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-red-900/30 max-h-[92vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-capsula-ivory w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-capsula-line max-h-[92vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 bg-red-500/10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">✏️</div>
+                <div className="h-11 w-11 bg-capsula-coral/10 rounded-2xl flex items-center justify-center text-capsula-coral flex-shrink-0">
+                  <Pencil className="h-5 w-5" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-sm text-red-400">Modificar ítem enviado</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    <span className="font-bold text-foreground">{removeTarget.quantity}×</span> {removeTarget.itemName}
-                    <span className="ml-2 text-muted-foreground">${removeTarget.lineTotal.toFixed(2)}</span>
+                  <h3 className="font-semibold text-sm text-capsula-ink tracking-[-0.02em]">Modificar ítem enviado</h3>
+                  <p className="text-xs text-capsula-ink-muted truncate">
+                    <span className="font-semibold text-capsula-ink">{removeTarget.quantity}×</span> {removeTarget.itemName}
+                    <span className="ml-2 tabular-nums">${removeTarget.lineTotal.toFixed(2)}</span>
                   </p>
                 </div>
-                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-400 text-xl flex items-center justify-center flex-shrink-0">×</button>
+                <button onClick={() => setShowRemoveModal(false)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 text-capsula-ink-muted hover:text-capsula-coral flex items-center justify-center flex-shrink-0">
+                  <XIcon className="h-4 w-4" />
+                </button>
               </div>
 
               {/* Opciones de modificación */}
               <div className="grid grid-cols-3 gap-2">
                 {(["VOID", "ADJUST_QTY", "REPLACE"] as const).map((t) => {
-                  const labels = { VOID: "❌ Cancelar", ADJUST_QTY: "✏️ Ajustar", REPLACE: "🔄 Cambiar" };
+                  const Icon = t === "VOID" ? Ban : t === "ADJUST_QTY" ? Pencil : RefreshCw;
+                  const label = t === "VOID" ? "Cancelar" : t === "ADJUST_QTY" ? "Ajustar" : "Cambiar";
                   return (
                     <button
                       key={t}
                       onClick={() => setRemoveModType(t)}
-                      className={`py-2.5 rounded-xl text-xs font-black border transition ${
+                      className={`py-2.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center gap-1.5 ${
                         removeModType === t
-                          ? "bg-red-600 border-red-500 text-white"
-                          : "bg-secondary border-border hover:border-red-500/40 hover:text-red-400"
+                          ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                          : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                       }`}
                     >
-                      {labels[t]}
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
                     </button>
                   );
                 })}
@@ -1457,21 +1518,21 @@ export default function POSMeseroPage() {
               {/* Ajustar cantidad */}
               {removeModType === "ADJUST_QTY" && (
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                     Nueva cantidad (actual: {removeTarget.quantity})
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setRemoveNewQty((q) => Math.max(1, q - 1))}
-                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-red-500/40"
+                      className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
                     >−</button>
-                    <span className="flex-1 text-center text-2xl font-black">{removeNewQty}</span>
+                    <span className="flex-1 text-center text-2xl font-semibold text-capsula-ink tabular-nums">{removeNewQty}</span>
                     <button
                       onClick={() => setRemoveNewQty((q) => Math.min(removeTarget.quantity - 1, q + 1))}
-                      className="h-10 w-10 rounded-xl bg-secondary border border-border text-lg font-black hover:border-sky-500/40"
+                      className="h-10 w-10 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-lg font-semibold text-capsula-ink hover:border-capsula-navy-deep/40 transition"
                     >+</button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  <p className="text-[10px] text-capsula-ink-muted mt-1 text-center">
                     Se anularán {removeTarget.quantity - removeNewQty} unidad(es) y se reimprimirá la comanda
                   </p>
                 </div>
@@ -1480,32 +1541,32 @@ export default function POSMeseroPage() {
               {/* Cambiar por otro ítem */}
               {removeModType === "REPLACE" && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted block">
                     Producto de reemplazo
                   </label>
                   <input
                     value={removeReplaceSearch}
                     onChange={(e) => setRemoveReplaceSearch(e.target.value)}
                     placeholder="Buscar producto..."
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm font-bold focus:border-sky-500 focus:outline-none"
+                    className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-3 py-2 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                   />
                   <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                     {replaceItems.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => setRemoveReplaceItemId(m.id)}
-                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-bold transition border ${
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition border ${
                           removeReplaceItemId === m.id
-                            ? "bg-sky-600 border-sky-500 text-white"
-                            : "bg-secondary border-border hover:border-sky-500/40"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                         }`}
                       >
                         <span className="truncate">{m.name}</span>
-                        <span className="ml-2 shrink-0 opacity-70">${m.price?.toFixed(2)}</span>
+                        <span className="ml-2 shrink-0 opacity-70 tabular-nums">${m.price?.toFixed(2)}</span>
                       </button>
                     ))}
                     {replaceItems.length === 0 && (
-                      <p className="text-xs text-muted-foreground px-2 py-1">Sin resultados</p>
+                      <p className="text-xs text-capsula-ink-muted px-2 py-1">Sin resultados</p>
                     )}
                   </div>
                 </div>
@@ -1513,20 +1574,20 @@ export default function POSMeseroPage() {
 
               {/* Motivo */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   Motivo (obligatorio)
                 </label>
                 <textarea
                   value={removeJustification}
                   onChange={(e) => setRemoveJustification(e.target.value)}
                   placeholder="Ej: error del cliente, cambio de pedido..."
-                  className="w-full bg-secondary border border-border rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none resize-none h-14"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl p-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none resize-none h-14 transition"
                 />
               </div>
 
               {/* PIN */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
                   PIN de capitán o gerente
                 </label>
                 <input
@@ -1535,29 +1596,29 @@ export default function POSMeseroPage() {
                   placeholder="••••"
                   value={removePin}
                   onChange={(e) => setRemovePin(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm font-bold focus:border-red-500 focus:outline-none"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-4 py-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none tracking-[0.3em] transition"
                 />
               </div>
 
               {removeError && (
-                <p className="text-red-400 text-xs font-bold bg-red-950/30 border border-red-900/30 rounded-xl px-3 py-2">
+                <p className="text-capsula-coral text-xs font-semibold bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl px-3 py-2">
                   {removeError}
                 </p>
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setShowRemoveModal(false)} className="capsula-btn capsula-btn-secondary flex-1 py-3">
+                <button onClick={() => setShowRemoveModal(false)} className="pos-btn-secondary flex-1 py-3">
                   Cancelar
                 </button>
                 <button
                   onClick={handleRemoveItem}
                   disabled={isProcessing || !removeJustification.trim() || !removePin.trim()}
-                  className="flex-[2] py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition disabled:opacity-40"
+                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {isProcessing ? "Procesando..." : (
-                    removeModType === "VOID"       ? "❌ Confirmar anulación" :
-                    removeModType === "ADJUST_QTY" ? "✏️ Ajustar cantidad" :
-                                                     "🔄 Confirmar cambio"
+                    removeModType === "VOID"       ? (<><Ban className="h-4 w-4" />Confirmar anulación</>) :
+                    removeModType === "ADJUST_QTY" ? (<><Pencil className="h-4 w-4" />Ajustar cantidad</>) :
+                                                     (<><RefreshCw className="h-4 w-4" />Confirmar cambio</>)
                   )}
                 </button>
               </div>
