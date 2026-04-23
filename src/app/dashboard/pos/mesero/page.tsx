@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChefHat, Lock, LogOut, RefreshCw } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -565,10 +566,10 @@ export default function POSMeseroPage() {
 
   if (isLoading || !waiterHydrated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🧑‍🍳</div>
-          <div className="text-xl font-black text-foreground">Cargando POS Mesero...</div>
+      <div className="flex min-h-screen items-center justify-center bg-capsula-ivory">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <ChefHat className="h-10 w-10 text-capsula-ink-muted" />
+          <div className="text-xl font-semibold text-capsula-ink">Cargando POS Mesero…</div>
         </div>
       </div>
     );
@@ -579,58 +580,59 @@ export default function POSMeseroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col pb-16 lg:pb-0">
+    <div className="flex min-h-screen flex-col bg-capsula-ivory pb-16 text-capsula-ink lg:pb-0">
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div className="glass-panel px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 shadow-lg border-b border-border">
+      <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 shadow-cap-soft md:px-6 md:py-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 md:h-12 md:w-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-inner">
-            🧑‍🍳
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-ink md:h-12 md:w-12">
+            <ChefHat className="h-5 w-5 md:h-6 md:w-6" />
           </div>
           <div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tight text-foreground">
-              POS <span className="text-emerald-400 italic">MESERO</span>
+            <h1 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink md:text-2xl">
+              POS <span className="text-capsula-coral">Mesero</span>
             </h1>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />
               Solo toma de pedidos · Sin acceso a cobro
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Mesonero identificado */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-            <span className="h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-xs">
+          <div className="hidden items-center gap-2 rounded-xl border border-capsula-line bg-capsula-navy-soft px-3 py-1.5 sm:flex">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-capsula-ivory text-xs font-semibold text-capsula-ink">
               {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
             </span>
-            <div className="text-[10px] leading-tight">
-              <div className="font-black text-emerald-300 uppercase tracking-wider">{activeWaiter.firstName}</div>
-              <div className="text-[9px] text-muted-foreground">Mesonero activo</div>
+            <div className="text-[11px] leading-tight">
+              <div className="font-semibold uppercase tracking-[0.06em] text-capsula-ink">{activeWaiter.firstName}</div>
+              <div className="text-[10px] text-capsula-ink-muted">Mesonero activo</div>
             </div>
           </div>
           <button
             onClick={handleWaiterLogout}
-            className="h-9 px-3 rounded-xl bg-secondary border border-border flex items-center justify-center text-[10px] font-black text-muted-foreground hover:text-red-400 hover:border-red-500/30 transition-all uppercase tracking-widest"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-soft transition-colors hover:border-capsula-coral hover:text-capsula-coral"
             title="Cambiar mesonero"
           >
+            <LogOut className="h-3.5 w-3.5" />
             Salir
           </button>
           <button
             onClick={() => loadData()}
-            className="h-9 w-9 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition-colors hover:border-capsula-navy-deep hover:text-capsula-ink"
             title="Actualizar"
           >
-            🔄
+            <RefreshCw className="h-4 w-4" />
           </button>
-          <div className="hidden md:block px-3 py-2 bg-secondary/30 rounded-xl border border-border font-black text-xs tabular-nums text-foreground/60">
+          <div className="hidden rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft md:block">
             {new Date().toLocaleDateString("es-VE", { timeZone: "America/Caracas" })}
           </div>
         </div>
       </div>
 
       {/* ── BADGE MÓDULO RESTRINGIDO ─────────────────────────────────────── */}
-      <div className="bg-emerald-950/40 border-b border-emerald-900/40 px-4 py-1.5 flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-        <span>🔒</span>
+      <div className="flex items-center gap-2 border-b border-[#E8D9B8] bg-[#F3EAD6]/40 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[#946A1C]">
+        <Lock className="h-3 w-3" />
         Modo Mesero — No se permite cobro ni descuentos en esta sesión
       </div>
 
