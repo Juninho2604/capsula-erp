@@ -708,7 +708,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <span className="font-medium text-gray-900 dark:text-white">
                                             Costo por unidad:
                                         </span>
-                                        <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                                        <span className="font-heading text-xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
                                             {formatCurrency(costPerUnit)}
                                         </span>
                                     </div>

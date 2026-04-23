@@ -56,7 +56,7 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700">
                 <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-t-2xl flex justify-between items-center">
                     <div>
-                        <h2 className="text-xl font-bold">⚙️ Productos Críticos</h2>
+                        <h2 className="font-heading text-xl tracking-[-0.02em]">⚙️ Productos Críticos</h2>
                         <p className="text-amber-100 text-sm mt-1">Configurando para: <strong>{areaName}</strong></p>
                     </div>
                     <button onClick={() => { onUpdate(); onClose(); }} className="text-white hover:text-gray-200 text-2xl">×</button>

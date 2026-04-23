@@ -125,15 +125,15 @@ export function CostImporter() {
                             <div className="text-xs text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-3 bg-green-100 rounded-lg dark:bg-green-900/30">
-                            <div className="text-2xl font-bold text-green-600">{summary.matched}</div>
+                            <div className="font-heading text-2xl tracking-[-0.02em] text-green-600">{summary.matched}</div>
                             <div className="text-xs text-green-600">Coincidentes</div>
                         </div>
                         <div className="text-center p-3 bg-amber-100 rounded-lg dark:bg-amber-900/30">
-                            <div className="text-2xl font-bold text-amber-600">{summary.notFound}</div>
+                            <div className="font-heading text-2xl tracking-[-0.02em] text-amber-600">{summary.notFound}</div>
                             <div className="text-xs text-amber-600">No Encontrados</div>
                         </div>
                         <div className="text-center p-3 bg-red-100 rounded-lg dark:bg-red-900/30">
-                            <div className="text-2xl font-bold text-red-600">{summary.invalid}</div>
+                            <div className="font-heading text-2xl tracking-[-0.02em] text-red-600">{summary.invalid}</div>
                             <div className="text-xs text-red-600">Inválidos</div>
                         </div>
                     </div>

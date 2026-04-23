@@ -280,7 +280,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
                     )}
                 >
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.lowStock}</p>
+                    <p className="font-heading text-2xl tracking-[-0.02em] text-red-600 dark:text-red-400">{stats.lowStock}</p>
                     <p className="text-sm text-gray-500">⚠️ Stock Bajo</p>
                 </button>
             </div>

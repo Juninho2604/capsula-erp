@@ -415,19 +415,19 @@ export default function ProteinProcessingView() {
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Peso Total Procesado</p>
-                        <p className="text-2xl font-bold text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
+                        <p className="font-heading text-2xl tracking-[-0.02em] text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Subproductos Obtenidos</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
+                        <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Rendimiento Promedio</p>
-                        <p className="text-2xl font-bold text-amber-600">{formatNumber(stats.avgYield)}%</p>
+                        <p className="font-heading text-2xl tracking-[-0.02em] text-amber-600">{formatNumber(stats.avgYield)}%</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Desperdicio Promedio</p>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(stats.avgWaste)}%</p>
+                        <p className="font-heading text-2xl tracking-[-0.02em] text-red-600">{formatNumber(stats.avgWaste)}%</p>
                     </div>
                 </div>
             )}

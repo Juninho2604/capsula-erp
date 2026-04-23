@@ -46,7 +46,7 @@ export function TasaCambioView({ history }: Props) {
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tasa actual</p>
                 {latest ? (
                     <>
-                        <p className="mt-1 text-4xl font-bold text-amber-600 dark:text-amber-400">
+                        <p className="mt-1 font-heading text-4xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
                             {latest.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </p>
                         <p className="mt-1 text-sm text-gray-500">Bs por 1 USD</p>

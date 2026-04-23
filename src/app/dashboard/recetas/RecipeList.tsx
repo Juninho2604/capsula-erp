@@ -75,7 +75,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                                 category.includes('PANTRY') ? '🥫' :
                                     category.includes('PRODUCCION') ? '🏭' : '📋'}
                         </span>
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+                        <h2 className="font-heading text-xl tracking-[-0.02em] text-gray-800 dark:text-white">
                             {category}
                         </h2>
                         <span className="text-sm text-gray-500">

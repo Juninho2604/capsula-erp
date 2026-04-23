@@ -301,12 +301,12 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>
-              <p className="text-2xl font-black text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
+              <p className="font-heading text-2xl tracking-[-0.02em] text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.shiftsCount} turnos cerrados</p>
             </div>
             <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gastos del Mes</p>
-              <p className="text-2xl font-black text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
+              <p className="font-heading text-2xl tracking-[-0.02em] text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Descontados de caja</p>
             </div>
             <div className={`glass-panel rounded-2xl border p-4 ${
@@ -314,7 +314,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
               monthlyStats.totalDifference < 0 ? 'border-red-500/30 bg-red-500/5' : 'border-blue-500/30 bg-blue-500/5'
             }`}>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Diferencia Acumulada</p>
-              <p className={`text-2xl font-black mt-1 ${
+              <p className={`font-heading text-2xl tracking-[-0.02em] mt-1 ${
                 Math.abs(monthlyStats.totalDifference) < 5 ? 'text-emerald-500' :
                 monthlyStats.totalDifference < 0 ? 'text-red-500' : 'text-blue-500'
               }`}>
@@ -324,7 +324,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
             </div>
             <div className="glass-panel rounded-2xl border border-border p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Precisión de Cuadre</p>
-              <p className={`text-2xl font-black mt-1 ${
+              <p className={`font-heading text-2xl tracking-[-0.02em] mt-1 ${
                 monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.8 ? 'text-emerald-500' :
                 monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.5 ? 'text-amber-500' : 'text-red-500'
               }`}>

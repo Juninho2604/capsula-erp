@@ -78,7 +78,7 @@ function StatCard({
         <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-lg ${bgColor}`}>{icon}</div>
       </div>
       <div>
-        <div className={`text-2xl font-black ${textColor} tabular-nums`}>{value}</div>
+        <div className={`font-heading text-2xl tracking-[-0.02em] ${textColor} tabular-nums`}>{value}</div>
         {sub && <div className="text-xs text-muted-foreground mt-0.5 font-medium">{sub}</div>}
       </div>
       {trend !== null && trend !== undefined && (
@@ -116,7 +116,7 @@ export default async function EstadisticasPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4">
         <div className="text-5xl">📊</div>
-        <p className="font-black text-xl text-foreground">Error cargando estadísticas</p>
+        <p className="font-heading text-xl tracking-[-0.02em] text-foreground">Error cargando estadísticas</p>
         <p className="text-sm text-muted-foreground">{result.message}</p>
       </div>
     );
@@ -436,15 +436,15 @@ export default async function EstadisticasPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-black text-primary">{d.myStats.orders}</div>
+                    <div className="font-heading text-2xl tracking-[-0.02em] text-primary">{d.myStats.orders}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Órdenes</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-black text-emerald-400">${fmt(d.myStats.revenue)}</div>
+                    <div className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">${fmt(d.myStats.revenue)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Total</div>
                   </div>
                   <div className="bg-secondary/30 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-black text-blue-400">${fmt(d.myStats.avgTicket)}</div>
+                    <div className="font-heading text-2xl tracking-[-0.02em] text-blue-400">${fmt(d.myStats.avgTicket)}</div>
                     <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Promedio</div>
                   </div>
                 </div>

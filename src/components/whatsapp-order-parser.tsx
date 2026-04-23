@@ -451,7 +451,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
                         </div>
                         <div className="text-right">
                             <span className="text-sm opacity-80">Total estimado</span>
-                            <span className="ml-2 text-xl font-bold">{formatCurrency(orderTotal)}</span>
+                            <span className="ml-2 font-heading text-xl tracking-[-0.02em]">{formatCurrency(orderTotal)}</span>
                         </div>
                     </div>
 

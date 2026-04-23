@@ -46,7 +46,7 @@ export default async function GamesPage() {
                 {/* Revenue today */}
                 <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-900/20">
                     <p className="text-xs text-green-600 dark:text-green-400">Facturado hoy</p>
-                    <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                    <p className="font-heading text-xl tracking-[-0.02em] text-green-700 dark:text-green-300">
                         ${stats.revenueToday.toFixed(2)}
                     </p>
                 </div>

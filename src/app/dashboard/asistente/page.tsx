@@ -294,17 +294,17 @@ export default function AsistentePage() {
             {/* Leyenda */}
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20">
-                <div className="text-2xl font-black text-emerald-400">{recipeSummary.complete}</div>
+                <div className="font-heading text-2xl tracking-[-0.02em] text-emerald-400">{recipeSummary.complete}</div>
                 <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1">✅ Receta completa</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Descuenta inventario</div>
               </div>
               <div className="bg-amber-400/10 rounded-xl p-3 text-center border border-amber-400/20">
-                <div className="text-2xl font-black text-amber-400">{recipeSummary.stub}</div>
+                <div className="font-heading text-2xl tracking-[-0.02em] text-amber-400">{recipeSummary.stub}</div>
                 <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">🟡 Receta vacía</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Sin ingredientes aún</div>
               </div>
               <div className="bg-red-500/10 rounded-xl p-3 text-center border border-red-500/20">
-                <div className="text-2xl font-black text-red-400">{recipeSummary.none}</div>
+                <div className="font-heading text-2xl tracking-[-0.02em] text-red-400">{recipeSummary.none}</div>
                 <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-1">❌ Sin receta</div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">No descuenta</div>
               </div>
@@ -607,7 +607,7 @@ export default function AsistentePage() {
           <div className="space-y-6">
             <div className="text-center py-6">
               <div className="text-5xl mb-4">✅</div>
-              <h3 className="text-xl font-black text-emerald-400">{submitResult.message}</h3>
+              <h3 className="font-heading text-xl tracking-[-0.02em] text-emerald-400">{submitResult.message}</h3>
               <p className="text-sm text-muted-foreground mt-2">
                 El insumo está listo para usarse en recetas
               </p>

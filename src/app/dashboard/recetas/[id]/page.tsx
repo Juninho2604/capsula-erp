@@ -181,7 +181,7 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
 
                             <div className="space-y-1">
                                 <p className="text-xs text-gray-500 uppercase tracking-wider">Costo Unitario</p>
-                                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                                <p className="font-heading text-3xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
                                     {formatCurrency(recipe.outputItem.currentCost)}
                                 </p>
                                 <p className="text-sm text-gray-500">
