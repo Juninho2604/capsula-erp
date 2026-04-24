@@ -1357,6 +1357,39 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
     }
 }
 
+const VALID_TIP_PERCENTS = [0, 10, 15, 20];
+
+export async function setOpenTabTipAction(data: { openTabId: string; tipPercent: number }): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        if (!VALID_TIP_PERCENTS.includes(data.tipPercent)) {
+            return { success: false, message: 'Porcentaje de propina no válido' };
+        }
+
+        const openTab = await prisma.openTab.findUnique({ where: { id: data.openTabId } });
+        if (!openTab || !['OPEN', 'PARTIALLY_PAID'].includes(openTab.status)) {
+            return { success: false, message: 'Cuenta no disponible' };
+        }
+
+        const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
+
+        const updated = await prisma.openTab.update({
+            where: { id: data.openTabId },
+            data: { tipPercent: data.tipPercent, tipAmount },
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+
+        return { success: true, message: 'Propina guardada', data: { tipPercent: updated.tipPercent, tipAmount: updated.tipAmount } };
+    } catch (error) {
+        console.error('Error setting tip:', error);
+        return { success: false, message: 'Error guardando propina' };
+    }
+}
+
 export async function closeOpenTabAction(openTabId: string): Promise<ActionResult> {
     try {
         const session = await getSession();
