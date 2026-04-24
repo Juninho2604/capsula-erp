@@ -1272,6 +1272,10 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const nextOrderPaymentStatus = newBalance === 0 ? 'PAID' : 'PARTIAL';
         const nextPaymentMethod = openTab.paymentSplits.length > 0 ? 'MULTIPLE' : data.paymentMethod;
 
+        // 10% service charge is mandatory for all TABLE_SERVICE tabs
+        const isTableService = openTab.serviceType === 'TABLE_SERVICE';
+        const serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
+
         const updatedTab = await prisma.$transaction(async (tx) => {
             await assertOpenTabVersionUpdate({
                 tx,
@@ -1282,12 +1286,13 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     runningDiscount: newRunningDiscount,
                     runningTotal: newRunningTotal,
                     status: nextTabStatus,
-                    closedAt: newBalance === 0 ? new Date() : null
+                    closedAt: newBalance === 0 ? new Date() : null,
+                    totalServiceCharge: openTab.totalServiceCharge + serviceCharge,
                 }
             });
 
             const baseLabel = data.splitLabel || `Pago ${openTab.paymentSplits.length + 1}`;
-            const splitLabel = data.serviceFeeIncluded ? `${baseLabel} | +10% serv` : baseLabel;
+            const splitLabel = isTableService ? `${baseLabel} | +10% serv` : baseLabel;
             await tx.paymentSplit.create({
                 data: {
                     openTabId: openTab.id,
@@ -1295,6 +1300,8 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     splitType: 'CUSTOM',
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
+                    subtotal: appliedAmount,
+                    serviceChargeAmount: serviceCharge,
                     total: appliedAmount,
                     paidAmount: data.amount,
                     paidAt: new Date(),
@@ -2205,8 +2212,11 @@ export async function paySubAccountAction(data: {
             return { success: false, message: 'La mesa no está disponible para cobro' };
         }
 
+        // TABLE_SERVICE tabs always include 10% service charge
+        const isTableService = openTab.serviceType === 'TABLE_SERVICE';
+        const applyServiceFee = isTableService || (data.serviceFeeIncluded ?? false);
         const baseLabel = data.splitLabel || sub.label;
-        const splitLabel = data.serviceFeeIncluded ? `${baseLabel} | +10% serv` : baseLabel;
+        const splitLabel = applyServiceFee ? `${baseLabel} | +10% serv` : baseLabel;
 
         const updatedTab = await prisma.$transaction(async (tx) => {
             // Mark subcuenta as PAID
@@ -2230,7 +2240,7 @@ export async function paySubAccountAction(data: {
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
                     subtotal: sub.subtotal,
-                    serviceChargeAmount: data.serviceFeeIncluded ? sub.serviceCharge : 0,
+                    serviceChargeAmount: applyServiceFee ? sub.serviceCharge : 0,
                     total: sub.total,
                     paidAmount: data.amount,
                     paidAt: new Date(),
@@ -2255,7 +2265,7 @@ export async function paySubAccountAction(data: {
                     status: tabClosed ? 'CLOSED' : 'PARTIALLY_PAID',
                     closedAt: tabClosed ? new Date() : undefined,
                     closedById: tabClosed ? session.id : undefined,
-                    totalServiceCharge: data.serviceFeeIncluded
+                    totalServiceCharge: applyServiceFee
                         ? openTab.totalServiceCharge + sub.serviceCharge
                         : openTab.totalServiceCharge,
                     version: { increment: 1 },
