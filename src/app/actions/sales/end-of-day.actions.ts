@@ -59,6 +59,9 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
                             where: { status: 'PAID' },
                             select: { paymentMethod: true, paidAmount: true },
                         },
+                        subAccounts: {
+                            select: { id: true, status: true },
+                        },
                     },
                 },
             },
@@ -112,7 +115,6 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
         for (const group of Array.from(tabGroups.values())) {
             const cancelled = group.every(o => o.status === 'CANCELLED');
             if (cancelled) { invoicesCancelled++; continue; }
-            totalInvoices++;
 
             const tab = group[0].openTab!;
             const netProds = tab.runningTotal;
@@ -132,8 +134,13 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
             if (tabPropina > 0) propinaCount++;
             totalUSD += totalCobrado;
 
+            // Count each paid sub-account as a separate invoice
+            const subAccounts = tab.subAccounts ?? [];
+            const paidSubCount = subAccounts.filter((s: { status: string }) => s.status === 'PAID').length;
+            const invoiceCount = Math.max(1, paidSubCount);
+            totalInvoices += invoiceCount;
             byChannel.restaurant += totalCobrado;
-            countByChannel.restaurant++;
+            countByChannel.restaurant += invoiceCount;
 
             if (splits.length > 0) {
                 for (const s of splits) classifyPayment(s.paymentMethod ?? '', s.paidAmount ?? 0);
