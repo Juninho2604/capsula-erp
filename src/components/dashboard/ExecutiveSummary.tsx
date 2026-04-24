@@ -170,7 +170,7 @@ export default function ExecutiveSummary({
                   Margen Mensual
                 </p>
                 <p
-                  className={`text-lg font-black mt-0.5 ${operatingProfit >= 0 ? 'text-blue-500' : 'text-red-500'}`}
+                  className={`text-lg font-semibold mt-0.5 ${operatingProfit >= 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}
                 >
                   {operatingMarginPct}%
                 </p>

@@ -201,7 +201,7 @@ export function NotificationBell() {
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-raised animate-in fade-in zoom-in-95 duration-200"
+            className="flex max-h-[85dvh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-raised animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

@@ -549,11 +549,11 @@ export default function POSDeliveryPage() {
                                     onClick={() => handleAddToCart(item)}
                                     className="pos-tile group flex h-32 flex-col justify-between !p-3 text-left md:h-40 md:!p-5"
                                 >
-                                    <div className="text-base font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">
+                                    <div className="text-base font-medium uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-ink">
                                         {item.name}
                                     </div>
                                     <div className="flex items-end justify-between">
-                                        <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                        <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                             <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                         </div>
                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
@@ -908,7 +908,7 @@ export default function POSDeliveryPage() {
                         <div className="flex items-center justify-between border-b border-capsula-line p-6">
                             <div>
                                 <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">{selectedItemForModifier.name}</h3>
-                                <div className="mt-1 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                <div className="mt-1 font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                     <PriceDisplay usd={selectedItemForModifier.price} rate={exchangeRate} size="lg" showBs={false} />
                                 </div>
                             </div>
@@ -989,7 +989,7 @@ export default function POSDeliveryPage() {
                                                                 >
                                                                     −
                                                                 </button>
-                                                                <span className="w-6 text-center text-base font-medium tabular-nums text-capsula-navy-deep">{qty}</span>
+                                                                <span className="w-6 text-center text-base font-medium tabular-nums text-capsula-ink">{qty}</span>
                                                                 <button
                                                                     onClick={() => updateModifierQuantity(group, mod, 1)}
                                                                     disabled={isMax}
@@ -1030,7 +1030,7 @@ export default function POSDeliveryPage() {
                                     >
                                         −
                                     </button>
-                                    <span className="w-14 text-center font-semibold text-3xl tabular-nums tracking-[-0.02em] text-capsula-navy-deep">
+                                    <span className="w-14 text-center font-semibold text-3xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                         {itemQuantity}
                                     </span>
                                     <button
@@ -1107,7 +1107,7 @@ export default function POSDeliveryPage() {
 
                             <div>
                                 <label className="pos-label mb-3 text-center">Introduce tu PIN de seguridad</label>
-                                <div className="mb-4 flex h-20 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 font-semibold text-3xl tracking-[1.2em] text-capsula-navy-deep">
+                                <div className="mb-4 flex h-20 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 font-semibold text-3xl tracking-[1.2em] text-capsula-ink">
                                     {pinInput.length > 0
                                         ? pinInput.replace(/./g, '•')
                                         : <span className="text-base font-medium tracking-normal text-capsula-ink-faint">MODO PIN…</span>
