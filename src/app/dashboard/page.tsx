@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                             ${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         {salesKPIs.revenueChange !== null ? (
-                            <p className={`mt-1 text-xs font-medium ${salesKPIs.revenueChange >= 0 ? 'text-emerald-600' : 'text-capsula-coral'}`}>
+                            <p className={`mt-1 text-xs font-medium ${salesKPIs.revenueChange >= 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}>
                                 {salesKPIs.revenueChange >= 0 ? '▲' : '▼'} {Math.abs(salesKPIs.revenueChange).toFixed(1)}% vs ayer
                             </p>
                         ) : (
@@ -135,6 +135,17 @@ export default async function DashboardPage() {
                             <p className="mt-1 text-xs text-capsula-ink-muted">Todo cobrado</p>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* Propinas Colectivas — secondary KPI row */}
+            {salesKPIs && salesKPIs.propinasHoy && salesKPIs.propinasHoy.count > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas colectivas hoy</span>
+                    <span className="font-semibold tabular-nums text-capsula-ink">
+                        ${salesKPIs.propinasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-capsula-ink-muted">({salesKPIs.propinasHoy.count} reg.)</span>
                 </div>
             )}
 

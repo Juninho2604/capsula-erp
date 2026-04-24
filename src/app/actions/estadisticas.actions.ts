@@ -29,6 +29,7 @@ export interface EstadisticasData {
   paymentBreakdown: { method: string; total: number; count: number }[];
   topItems: { name: string; quantity: number; revenue: number }[];
   openTabs: { count: number; totalExposed: number };
+  propinasHoy: { total: number; count: number };
   lowStockAlerts: { name: string; sku: string; currentStock: number; minimumStock: number; unit: string }[];
   discountBreakdown: { type: string; total: number; count: number; authorizedBy: string | null }[];
   voidedOrders: { orderNumber: string; total: number; reason: string; voidedBy: string; time: string }[];
@@ -68,6 +69,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       monthAgg,
       openTabsAgg,
       lowStockItems,
+      propinasHoyAgg,
     ] = await Promise.all([
       // Ventas hoy
       prisma.salesOrder.aggregate({
@@ -135,6 +137,18 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
               }))
           )
         : Promise.resolve([]),
+      // Propinas colectivas hoy (admin + auditor)
+      isAdmin || isAuditor
+        ? prisma.salesOrder.aggregate({
+            where: {
+              createdAt: { gte: todayStart, lte: todayEnd },
+              status: { not: 'CANCELLED' },
+              customerName: 'PROPINA COLECTIVA',
+            },
+            _sum: { total: true },
+            _count: { id: true },
+          })
+        : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
     ]);
 
     // ── Queries adicionales según rol ─────────────────────────────────────────
@@ -345,6 +359,10 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         openTabs: {
           count: openTabsAgg._count.id,
           totalExposed: Number(openTabsAgg._sum.balanceDue || 0),
+        },
+        propinasHoy: {
+          total: Number(propinasHoyAgg._sum.total || 0),
+          count: propinasHoyAgg._count.id,
         },
         lowStockAlerts: lowStockItems,
         discountBreakdown,

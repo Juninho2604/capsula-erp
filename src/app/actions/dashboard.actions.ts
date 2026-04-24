@@ -14,7 +14,7 @@ export async function getDashboardStatsAction() {
         const { start: todayStart, end: todayEnd } = getCaracasDayRange();
         const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
 
-        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg] = await Promise.all([
+        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg, propinasHoyAgg] = await Promise.all([
             prisma.inventoryItem.findMany({
                 where: { isActive: true },
                 include: {
@@ -51,6 +51,16 @@ export async function getDashboardStatsAction() {
                 _count: { id: true },
                 _sum: { balanceDue: true },
             }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
+            // Propinas colectivas hoy
+            isAdmin ? prisma.salesOrder.aggregate({
+                where: {
+                    createdAt: { gte: todayStart, lte: todayEnd },
+                    status: { not: 'CANCELLED' },
+                    customerName: 'PROPINA COLECTIVA',
+                },
+                _sum: { total: true },
+                _count: { id: true },
+            }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
         ]);
 
         // Process items to calculate stock and status
@@ -88,6 +98,10 @@ export async function getDashboardStatsAction() {
                     : null,
                 openTabs: openTabsAgg._count.id,
                 openTabsExposed: Number(openTabsAgg._sum.balanceDue || 0),
+                propinasHoy: {
+                    total: Number(propinasHoyAgg._sum.total || 0),
+                    count: propinasHoyAgg._count.id,
+                },
             } : null,
             lowStockItems: lowStockItems.map(item => ({
                 id: item.id,

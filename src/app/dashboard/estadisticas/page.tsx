@@ -248,6 +248,17 @@ export default async function EstadisticasPage() {
             />
           </div>
 
+          {/* Propinas colectivas — fila secundaria */}
+          {d.propinasHoy && d.propinasHoy.count > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas colectivas hoy</span>
+              <span className="font-semibold tabular-nums text-capsula-ink">
+                ${d.propinasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-capsula-ink-muted">({d.propinasHoy.count} reg.)</span>
+            </div>
+          )}
+
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Métodos de pago */}
             <div className="capsula-card p-6">
