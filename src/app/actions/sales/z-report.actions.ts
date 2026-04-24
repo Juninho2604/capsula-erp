@@ -74,6 +74,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                                 where:  { status: 'PAID' },
                                 select: { paymentMethod: true, paidAmount: true, splitLabel: true },
                             },
+                            subAccounts: {
+                                select: { id: true, status: true },
+                            },
                         },
                     },
                 },
@@ -148,7 +151,10 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             grossTotal     += subtotal;
             totalDiscounts += discount;
             for (const o of group) addDiscount(o);
-            byType.restaurant++;
+            // Count each paid sub-account as a separate invoice; fall back to 1 if no sub-accounts
+            const subAccounts = tab.subAccounts ?? [];
+            const paidSubCount = subAccounts.filter((s: { status: string }) => s.status === 'PAID').length;
+            byType.restaurant += Math.max(1, paidSubCount);
             totalServiceFee += serviceFee;
 
             const tabTip = Math.max(0, totalCobrado - totalFactura);
@@ -195,7 +201,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             success: true,
             data: {
                 period:         today.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' }),
-                totalOrders:    tabGroups.size + nonTabOrders.length,
+                totalOrders:    byType.restaurant + byType.delivery + byType.pickup + byType.pedidosya + byType.wink + byType.evento + byType.tablePong,
                 ordersByType:   byType,
                 grossTotal,
                 totalDiscounts,
@@ -207,7 +213,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 discountBreakdown: disc,
                 paymentBreakdown:  pay,
                 ordersByStatus: {
-                    PAID:      tabGroups.size + nonTabOrders.length - openTabsPending.count,
+                    PAID:      byType.restaurant + byType.delivery + byType.pickup + byType.pedidosya + byType.wink + byType.evento + byType.tablePong - openTabsPending.count,
                     CANCELLED: cancelledAgg._count.id,
                     OPEN:      openTabsPending.count,
                 },
