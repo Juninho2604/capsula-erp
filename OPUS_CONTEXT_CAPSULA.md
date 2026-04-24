@@ -4168,12 +4168,240 @@ Render desde `main` auto-despliega; los feature branches se mergean vía PR solo
 
 ---
 
+## 20. Correcciones de Agregación de Ventas (2026-04-24)
+
+Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.
+
+---
+
+### 20.1 Bug crítico — `finance.actions.ts` siempre mostraba $0
+
+**Síntoma:** El módulo `/dashboard/finanzas` mostraba ventas = $0 para cualquier mes.
+
+**Causa:** Las 4 queries de `SalesOrder` filtraban `status: 'COMPLETED'`. El modelo `SalesOrder` **nunca alcanza** el estado `COMPLETED` — solo tiene `PAID` y `CANCELLED`. El estado `COMPLETED` es exclusivo de `ProductionOrder` e `InventoryMovement`.
+
+**Fix:**
+```ts
+// Antes (roto — nunca matchea ningún registro)
+where: { status: 'COMPLETED', ... }
+
+// Después (correcto)
+where: { status: { not: 'CANCELLED' }, ... }
+```
+
+Archivo: `src/app/actions/finance.actions.ts` — aplicado en las 4 funciones exportadas.
+
+---
+
+### 20.2 Zona horaria — regla canónica (Caracas = UTC-4)
+
+**Síntoma:** Dashboard, Estadísticas, Metas y Finanzas usaban `new Date().setHours(0,0,0,0)` (servidor UTC) en lugar de la hora local de Caracas. Los cortes de día eran erróneos en ±4 horas.
+
+**Regla fija:** Todo rango de fecha para ventas debe construirse con las utilidades de `src/lib/datetime.ts`:
+
+```ts
+import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
+
+// Día actual en Caracas
+const { start: todayStart, end: todayEnd } = getCaracasDayRange();
+
+// Día anterior
+const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(
+  new Date(Date.now() - 86400000)
+);
+
+// Inicio de mes en Caracas
+const { year: _cy, month: _cm } = getCaracasNowParts();
+const monthStart = new Date(Date.UTC(_cy, _cm, 1, 4, 0, 0, 0));
+// medianoche Caracas = 04:00 UTC
+
+// Fin de mes en Caracas
+const endDate = new Date(Date.UTC(y, m, 1, 3, 59, 59, 999));
+// 23:59:59 Caracas del último día = 03:59:59 UTC del día 1 del mes siguiente
+```
+
+`getCaracasDayRange()` devuelve `{ start, end }` donde:
+- `start` = 04:00 UTC de ese día (= medianoche Caracas)
+- `end` = 27:59:59.999 UTC = 23:59:59.999 Caracas del mismo día
+
+**Archivos actualizados:** `dashboard.actions.ts`, `estadisticas.actions.ts`, `metas.actions.ts`, `finance.actions.ts`.
+
+---
+
+### 20.3 Helper canónico de agregación — `src/lib/sales-where.ts`
+
+**Regla:** Toda query de `SalesOrder` que compute **revenue** debe pasar por estas funciones. No escribir los filtros inline.
+
+```ts
+import { revenueWhere, propinasWhere, cancelledWhere } from '@/lib/sales-where';
+
+// Revenue normal (excluye canceladas + propinas colectivas)
+prisma.salesOrder.aggregate({
+  where: revenueWhere(start, end),
+  ...
+})
+
+// Solo propinas colectivas
+prisma.salesOrder.aggregate({
+  where: propinasWhere(start, end),
+  ...
+})
+
+// Canceladas del día (por voidedAt)
+prisma.salesOrder.aggregate({
+  where: cancelledWhere(start, end),
+  ...
+})
+```
+
+**Reglas codificadas en `revenueWhere`:**
+1. `status: { not: 'CANCELLED' }` — excluye anuladas
+2. `customerName: { not: 'PROPINA COLECTIVA' }` — excluye propinas del revenue
+3. `createdAt: { gte: start, lte: end }` — rango cerrado
+
+**Nota:** para queries con rango abierto (ej. `createdAt: { gte: monthStart }` sin end) NO se puede usar `revenueWhere()` — usar los filtros inline con los mismos valores.
+
+---
+
+### 20.4 Propinas Colectivas — modelo de datos y KPI
+
+Las propinas colectivas son `SalesOrder` con `customerName = 'PROPINA COLECTIVA'`. Son un mecanismo para registrar propinas del equipo de servicio separadas del revenue de mesa.
+
+**Regla de negocio:**
+- NO se suman al revenue de ventas en ningún dashboard
+- Tienen su propio KPI: fila secundaria compacta debajo del grid principal
+- Solo aparece si `count > 0` en el período
+
+**Ubicación visual:**
+- `/dashboard` → fila pill `bg-capsula-ivory-alt` debajo de los 4 KPI cards
+- `/dashboard/estadisticas` → igual, después de la segunda fila de StatCards
+
+**Query:**
+```ts
+prisma.salesOrder.aggregate({
+  where: propinasWhere(todayStart, todayEnd),
+  _sum: { total: true },
+  _count: { id: true },
+})
+// → propinasHoy: { total: number; count: number }
+```
+
+---
+
+### 20.5 Cargo de servicio — campo `totalServiceCharge`
+
+**Síntoma anterior:** La detección del +10% de servicio usaba string-matching frágil:
+```ts
+splits.some(s => (s.splitLabel || '').includes('| +10% serv'))
+```
+Si el label del split cambiaba, el cargo de servicio quedaba en $0.
+
+**Fix:** Usar el campo `OpenTab.totalServiceCharge Float @default(0)` (schema línea ~1633) que ya es poblado por `pos.actions.ts` al cobrar una mesa.
+
+```ts
+// En getSalesHistoryAction, getSalesForArqueoAction, getDailyZReportAction:
+openTab: {
+  select: {
+    ...,
+    totalServiceCharge: true,  // ← añadir siempre
+  }
+}
+
+// Uso (en lugar del string match):
+const servicioAmount = tab?.totalServiceCharge ?? 0;
+const serviceFeeIncluded = servicioAmount > 0;
+const totalFactura = total + servicioAmount;
+```
+
+---
+
+### 20.6 Cuentas abiertas — exclusión del Reporte Z
+
+**Regla de negocio:** Una mesa abierta (OpenTab) cuenta como venta **solo cuando se cobra** (cuando tiene `paymentSplits` con `status: 'PAID'`).
+
+**Implementación en `getDailyZReportAction`:**
+
+```ts
+// El query de paymentSplits ya filtra por PAID:
+paymentSplits: {
+  where: { status: 'PAID' },
+  ...
+}
+
+// Al procesar tabs: si splits.length === 0 → tab sin cobrar → excluir del revenue
+if (splits.length === 0) {
+  openTabsPending.count++;
+  openTabsPending.total += totalFactura;
+  continue;  // no suma a grossTotal, paymentBreakdown, etc.
+}
+```
+
+**`ZReportData` interface** — campos nuevos (2026-04-24):
+```ts
+openTabsPending: { count: number; total: number }  // mesas abiertas excluidas
+cancelledTotal: number                              // monto de anulaciones del día
+ordersByStatus: { PAID: number; CANCELLED: number; OPEN: number }  // auditoría
+```
+
+**Visual:** banner dashed ámbar bajo "TOTAL COBRADO" en la UI del cierre Z cuando hay tabs pendientes.
+
+---
+
+### 20.7 Órdenes canceladas — visibilidad para auditoría
+
+**Regla:** Las anulaciones deben estar visibles en todo momento para control operativo.
+
+**Dashboard `/dashboard`:**
+- Chip rojo danger en fila secundaria (junto a propinas)
+- Aparece solo si `cancelledCount > 0` hoy
+- Colores: `bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]` (danger state canónico)
+
+**Reporte Z `/dashboard/sales`:**
+- Sección "AUDITORÍA — ANULACIONES" con count y monto
+- Solo se renderiza si `ordersByStatus['CANCELLED'] > 0`
+
+**Query para canceladas del día:**
+```ts
+prisma.salesOrder.aggregate({
+  where: cancelledWhere(todayStart, todayEnd),  // filtra por voidedAt
+  _count: { id: true },
+  _sum: { total: true },
+})
+```
+
+---
+
+### 20.8 Tabla de consistencia — superficies vs reglas
+
+| Surface | Status filter | Propinas | Timezone | Helper |
+|---------|--------------|----------|----------|--------|
+| Dashboard | `not CANCELLED` | excluidas | Caracas ✓ | `revenueWhere` |
+| Estadísticas | `not CANCELLED` | excluidas | Caracas ✓ | `revenueWhere` |
+| Metas | `not CANCELLED` | excluidas | Caracas ✓ | `revenueWhere` |
+| Finanzas | `not CANCELLED` | excluidas | Caracas ✓ | `revenueWhere` |
+| Reporte Z | `notIn CANCELLED` | incluidas* | Caracas ✓ | inline |
+| Historial ventas | sin filtro | visibles | Caracas ✓ | inline |
+
+*El Reporte Z incluye propinas porque consolida todo lo cobrado en el día (arqueo completo). Las propinas aparecen en `totalTips`.
+
+---
+
+### 20.9 Fases pendientes (al 2026-04-24)
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| 9 | Reorganizar `sales.actions.ts` en subcarpeta | Pendiente |
+| 10 | Validación cruzada entre todas las surfaces | Pendiente |
+
+---
+
 *Actualizado el 2026-04-19 — Shanklish ERP / Cápsula SaaS — Documento Completo*
 *46 modelos Prisma · 47 módulos · 52 actions · 4 API routes · 3 services · 25 componentes*
 *Sistema de permisos 4 capas — commits sesión: 36eed85 · db76d09 · 1e0912c · 3ad8394 · 3617929 · ddb8c8f · 9bb217e · 895cc0c · 8d83bd3 · 34f0349* master
 
 ---
 Extendido 2026-04-19 — Consolidación Cápsula (secciones 19, 19.11 actualizada, 19.14, 19.15 nuevas)
+Extendido 2026-04-24 — Correcciones de agregación de ventas (sección 20)
 Repo canónico: capsula-erp
 Branch: main (post-cutover)
 Commits de consolidación: eec5e92 · b310466 · 591d323 · 3798142 · 4f18704 · 19b85f6 · 089dee5 · 95ba60e · ec37b51

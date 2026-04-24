@@ -3,6 +3,7 @@
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
+import { revenueWhere, propinasWhere } from '@/lib/sales-where';
 
 // ============================================================================
 // TIPOS
@@ -74,9 +75,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       // Ventas hoy
       prisma.salesOrder.aggregate({
         where: {
-          createdAt: { gte: todayStart, lte: todayEnd },
-          status: { not: 'CANCELLED' },
-          customerName: { not: 'PROPINA COLECTIVA' },
+          ...revenueWhere(todayStart, todayEnd),
           ...(isCashier ? { createdById: userId } : {}),
         },
         _sum: { total: true, discount: true },
@@ -85,22 +84,18 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       // Ventas ayer (solo admin+)
       isAdmin || isAuditor
         ? prisma.salesOrder.aggregate({
-            where: {
-              createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
-              status: { not: 'CANCELLED' },
-              customerName: { not: 'PROPINA COLECTIVA' },
-            },
+            where: revenueWhere(yesterdayStart, yesterdayEnd),
             _sum: { total: true },
             _count: { id: true },
           })
         : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
-      // Ventas mes
+      // Ventas mes (rango abierto hasta ahora)
       isAdmin || isAuditor
         ? prisma.salesOrder.aggregate({
             where: {
-              createdAt: { gte: monthStart },
               status: { not: 'CANCELLED' },
               customerName: { not: 'PROPINA COLECTIVA' },
+              createdAt: { gte: monthStart },
             },
             _sum: { total: true },
             _count: { id: true },
@@ -140,11 +135,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       // Propinas colectivas hoy (admin + auditor)
       isAdmin || isAuditor
         ? prisma.salesOrder.aggregate({
-            where: {
-              createdAt: { gte: todayStart, lte: todayEnd },
-              status: { not: 'CANCELLED' },
-              customerName: 'PROPINA COLECTIVA',
-            },
+            where: propinasWhere(todayStart, todayEnd),
             _sum: { total: true },
             _count: { id: true },
           })
@@ -167,9 +158,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         ? prisma.salesOrder.groupBy({
             by: ['paymentMethod'],
             where: {
-              createdAt: { gte: todayStart, lte: todayEnd },
-              status: { not: 'CANCELLED' },
-              customerName: { not: 'PROPINA COLECTIVA' },
+              ...revenueWhere(todayStart, todayEnd),
               paymentMethod: { not: null },
             },
             _sum: { total: true },
@@ -296,10 +285,8 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       isCashier
         ? prisma.salesOrder.aggregate({
             where: {
+              ...revenueWhere(todayStart, todayEnd),
               createdById: userId,
-              createdAt: { gte: todayStart, lte: todayEnd },
-              status: { not: 'CANCELLED' },
-              customerName: { not: 'PROPINA COLECTIVA' },
             },
             _sum: { total: true },
             _count: { id: true },

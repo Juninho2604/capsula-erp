@@ -53,6 +53,7 @@ export interface ZReportData {
     };
 
     ordersByStatus: Record<string, number>;
+    cancelledTotal: number;  // monto total de órdenes anuladas hoy (auditoría)
 }
 
 /**
@@ -364,27 +365,38 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         // Usar rango en timezone Caracas (UTC-4) para capturar el día completo
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
-        const orders = await prisma.salesOrder.findMany({
-            where: {
-                createdAt: { gte: startOfDay, lte: endOfDay },
-                status:    { notIn: ['CANCELLED'] },
-            },
-            include: {
-                orderPayments: { select: { method: true, amountUSD: true } },
-                openTab: {
-                    select: {
-                        runningSubtotal:    true,
-                        runningDiscount:    true,
-                        runningTotal:       true,
-                        totalServiceCharge: true,
-                        paymentSplits: {
-                            where:  { status: 'PAID' },
-                            select: { paymentMethod: true, paidAmount: true, splitLabel: true },
+        const [orders, cancelledAgg] = await Promise.all([
+            prisma.salesOrder.findMany({
+                where: {
+                    createdAt: { gte: startOfDay, lte: endOfDay },
+                    status:    { notIn: ['CANCELLED'] },
+                },
+                include: {
+                    orderPayments: { select: { method: true, amountUSD: true } },
+                    openTab: {
+                        select: {
+                            runningSubtotal:    true,
+                            runningDiscount:    true,
+                            runningTotal:       true,
+                            totalServiceCharge: true,
+                            paymentSplits: {
+                                where:  { status: 'PAID' },
+                                select: { paymentMethod: true, paidAmount: true, splitLabel: true },
+                            },
                         },
                     },
                 },
-            },
-        });
+            }),
+            // Canceladas del día para auditoría (por voidedAt)
+            prisma.salesOrder.aggregate({
+                where: {
+                    voidedAt: { gte: startOfDay, lte: endOfDay },
+                    status: 'CANCELLED',
+                },
+                _count: { id: true },
+                _sum: { total: true },
+            }),
+        ]);
 
         type OrderRow = typeof orders[number];
         type Split = { paymentMethod: string | null; paidAmount: number; splitLabel: string };
@@ -515,8 +527,13 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 totalCollected,
                 discountBreakdown: disc,
                 paymentBreakdown:  pay,
-                ordersByStatus:    {},
+                ordersByStatus: {
+                    PAID:      tabGroups.size + nonTabOrders.length - openTabsPending.count,
+                    CANCELLED: cancelledAgg._count.id,
+                    OPEN:      openTabsPending.count,
+                },
                 openTabsPending,
+                cancelledTotal: Number(cancelledAgg._sum.total || 0),
             },
         };
     } catch (error) {
