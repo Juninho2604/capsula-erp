@@ -88,7 +88,7 @@ function ModalHeader({
         </p>
         <button
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground transition-colors text-base leading-none w-6 h-6 flex items-center justify-center rounded-lg hover:bg-muted"
+          className="text-capsula-ink-muted hover:text-capsula-coral transition-colors text-base leading-none w-6 h-6 flex items-center justify-center rounded-lg hover:bg-capsula-coral/10"
         >
           ✕
         </button>
@@ -351,7 +351,7 @@ function UtilidadModal({
     {
       label: 'Utilidad Bruta',
       value: finance.profitLoss.grossProfit,
-      color: finance.profitLoss.grossProfit >= 0 ? 'text-blue-400' : 'text-red-500',
+      color: finance.profitLoss.grossProfit >= 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral',
       bg: finance.profitLoss.grossProfit >= 0 ? 'bg-blue-500/10' : 'bg-red-500/10',
       bold: true,
     },
@@ -364,7 +364,7 @@ function UtilidadModal({
     {
       label: 'Utilidad Operativa',
       value: finance.profitLoss.operatingProfit,
-      color: isProfit ? 'text-blue-500' : 'text-red-500',
+      color: isProfit ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral',
       bg: isProfit ? 'bg-blue-500/15' : 'bg-red-500/15',
       bold: true,
     },
@@ -376,7 +376,7 @@ function UtilidadModal({
         title="P&L del Mes"
         subtitle={finance.period.label}
         value={`${isProfit ? '' : '-'}$${fmt(Math.abs(finance.profitLoss.operatingProfit))}`}
-        valueColor={isProfit ? 'text-blue-500' : 'text-red-500'}
+        valueColor={isProfit ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}
         onClose={onClose}
         headerBg={isProfit ? 'bg-blue-500/10' : 'bg-red-500/10'}
       />
@@ -419,7 +419,7 @@ function UtilidadModal({
               Margen Operativo
             </p>
             <p
-              className={`text-lg font-black mt-0.5 ${isProfit ? 'text-blue-500' : 'text-red-500'}`}
+              className={`text-lg font-black mt-0.5 ${isProfit ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}
             >
               {finance.profitLoss.operatingMarginPct.toFixed(1)}%
             </p>
@@ -498,7 +498,7 @@ function FlujoNetoModal({
               </p>
               <p className="text-xs text-muted-foreground">entradas − salidas</p>
             </div>
-            <p className={`font-semibold text-xl tracking-[-0.02em] ${isPositive ? 'text-blue-500' : 'text-red-500'}`}>
+            <p className={`font-semibold text-xl tracking-[-0.02em] ${isPositive ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}>
               {isPositive ? '' : '-'}${fmt(Math.abs(finance.cashFlow.net))}
             </p>
           </div>
@@ -608,7 +608,7 @@ function DeudasModal({
         {/* Link a módulo */}
         <Link
           href="/dashboard/cuentas-pagar"
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 text-xs font-black text-primary hover:bg-primary/15 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-xl bg-capsula-navy-soft border border-capsula-line px-4 py-2.5 text-xs font-semibold text-capsula-ink hover:bg-capsula-coral/10 hover:text-capsula-coral hover:border-capsula-coral/40 transition-colors"
           onClick={onClose}
         >
           Ver detalle completo →
@@ -694,7 +694,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
             </span>
           </div>
           <p
-            className={`font-semibold text-xl tracking-[-0.02em] mt-0.5 ${finance.profitLoss.operatingProfit >= 0 ? 'text-blue-500' : 'text-red-500'}`}
+            className={`font-semibold text-xl tracking-[-0.02em] mt-0.5 ${finance.profitLoss.operatingProfit >= 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}
           >
             ${fmt(Math.abs(finance.profitLoss.operatingProfit))}
           </p>

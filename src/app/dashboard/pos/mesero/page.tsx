@@ -851,7 +851,7 @@ export default function POSMeseroPage() {
             {selectedGroup && !productSearch && (
               <button
                 onClick={() => setSelectedGroup("")}
-                className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-capsula-navy-deep transition-colors hover:text-capsula-ink active:scale-95"
+                className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-capsula-ink transition-colors hover:text-capsula-ink active:scale-95"
               >
                 <ArrowLeft className="h-4 w-4" />
                 {selectedGroup}
@@ -873,9 +873,9 @@ export default function POSMeseroPage() {
                     disabled={!activeTab}
                     className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                   >
-                    <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">{group}</div>
+                    <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-ink">{group}</div>
                     <div className="mt-2 flex items-end justify-between">
-                      <div className="text-base font-semibold tabular-nums text-capsula-navy-deep">
+                      <div className="text-base font-semibold tabular-nums text-capsula-ink">
                         {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
                       </div>
                       <div className="rounded-full border border-capsula-line bg-capsula-ivory-alt px-2 py-0.5 text-[11px] font-medium text-capsula-ink-muted">
@@ -897,7 +897,7 @@ export default function POSMeseroPage() {
                     className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                   >
                     <div className="text-lg font-semibold uppercase tracking-[-0.01em] text-capsula-ink">{sizeLabel}</div>
-                    <div className="mt-auto text-xl font-semibold tabular-nums text-capsula-navy-deep">
+                    <div className="mt-auto text-xl font-semibold tabular-nums text-capsula-ink">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                   </button>
@@ -912,9 +912,9 @@ export default function POSMeseroPage() {
                   disabled={!activeTab}
                   className="pos-tile group flex h-28 flex-col justify-between !p-3 text-left disabled:opacity-30 disabled:grayscale md:h-32 md:!p-4"
                 >
-                  <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-navy-deep">{item.name}</div>
+                  <div className="line-clamp-2 text-sm font-semibold uppercase leading-tight tracking-[-0.01em] text-capsula-ink transition-colors group-hover:text-capsula-ink">{item.name}</div>
                   <div className="mt-2 flex items-end justify-between">
-                    <div className="text-xl font-semibold tabular-nums text-capsula-navy-deep">
+                    <div className="text-xl font-semibold tabular-nums text-capsula-ink">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:opacity-0 lg:group-hover:translate-y-[-4px] lg:group-hover:opacity-100">
@@ -960,7 +960,7 @@ export default function POSMeseroPage() {
                 {cart.map((item, i) => (
                   <div key={i} className="flex justify-between items-center text-xs bg-capsula-ivory rounded-lg px-3 py-2 border border-capsula-line">
                     <span className="font-semibold text-capsula-ink-soft truncate flex-1">
-                      <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.name}
+                      <span className="text-capsula-ink font-semibold">x{item.quantity}</span> {item.name}
                     </span>
                     <span className="text-capsula-ink font-semibold ml-2 tabular-nums">${item.lineTotal.toFixed(2)}</span>
                   </div>
@@ -1042,7 +1042,7 @@ export default function POSMeseroPage() {
                         <div key={item.id} className="flex justify-between items-center text-xs group">
                           <div className="flex-1 min-w-0">
                             <span className="font-semibold text-capsula-ink-soft">
-                              <span className="text-capsula-navy-deep font-semibold">x{item.quantity}</span> {item.itemName}
+                              <span className="text-capsula-ink font-semibold">x{item.quantity}</span> {item.itemName}
                             </span>
                             {item.modifiers && item.modifiers.length > 0 && (
                               <div className="text-[9px] text-capsula-ink-muted truncate pl-4">
@@ -1499,7 +1499,7 @@ export default function POSMeseroPage() {
             <div className="bg-capsula-ivory w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl border border-capsula-line max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-navy-deep flex-shrink-0">
+                <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-ink flex-shrink-0">
                   <ArrowLeftRight className="h-5 w-5" />
                 </div>
                 <div>
