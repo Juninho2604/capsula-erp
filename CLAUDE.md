@@ -163,8 +163,9 @@ No commitear nada sin tsc limpio. Es producción activa, Render auto-deploy desd
 - Desarrollar en la rama asignada por la sesión (ver header del prompt de agente).
 - **Commits pequeños y temáticos**, uno por sección/área visible. Los POS se migraron en 5a–5g (mesero) y 6a–6g (restaurante) — mismo patrón para futuras migraciones.
 - Mensaje de commit: `feat(design): <área> — <cambio breve> (Minimal Navy)` con cuerpo en bullets.
-- Push: `git push -u origin <branch>`. Render desplegará solo cuando la rama se mergee a `main`.
-- No abrir PRs sin pedido explícito del usuario.
+- Push: `git push -u origin <branch>`.
+- **Merge automático a `main`**: al terminar cada fase o bloque de trabajo, crear el PR (si no existe) y mergearlo a `main` inmediatamente usando `mcp__github__merge_pull_request` con `merge_method: squash`. No esperar instrucción del usuario.
+- Render auto-despliega desde `main` tras cada merge.
 
 ### Obligatorio: actualizar OPUS_CONTEXT_CAPSULA.md
 
