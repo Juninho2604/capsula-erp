@@ -46,7 +46,7 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
         const orders = await prisma.salesOrder.findMany({
-            where: { createdAt: { gte: startOfDay, lte: endOfDay } },
+            where: { createdAt: { gte: startOfDay, lte: endOfDay }, customerName: { not: 'PROPINA COLECTIVA' } },
             include: {
                 orderPayments: { select: { method: true, amountUSD: true } },
                 openTab: {
