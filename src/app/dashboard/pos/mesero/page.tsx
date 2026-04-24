@@ -9,6 +9,7 @@ import {
   getRestaurantLayoutAction,
   openTabAction,
   modifyTabItemAction,
+  setOpenTabTipAction,
   type CartItem,
   type ModifyTabItemModification,
 } from "@/app/actions/pos.actions";
@@ -102,6 +103,8 @@ interface OpenTabSummary {
   runningTotal: number;
   totalServiceCharge: number;
   balanceDue: number;
+  tipPercent: number | null;
+  tipAmount: number | null;
   openedAt: string;
   openedBy: UserSummary;
   assignedWaiter?: UserSummary | null;
@@ -201,6 +204,7 @@ export default function POSMeseroPage() {
 
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
+  const [isTipSetting, setIsTipSetting] = useState(false);
 
   // ── Mover tab entre mesas físicas (solo capitanes) ────────────────────────
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -573,6 +577,18 @@ export default function POSMeseroPage() {
 
   // ============================================================================
   // RENDER
+  const handleSetTip = async (tipPercent: number) => {
+    if (!activeTab || isTipSetting) return;
+    setIsTipSetting(true);
+    try {
+      const result = await setOpenTabTipAction({ openTabId: activeTab.id, tipPercent });
+      if (!result.success) { toast.error(result.message); return; }
+      await loadData();
+    } finally {
+      setIsTipSetting(false);
+    }
+  };
+
   // ============================================================================
 
   if (isLoading || !waiterHydrated) {
@@ -1241,6 +1257,51 @@ export default function POSMeseroPage() {
                   )}
                 </div>
 
+                {/* Propina */}
+                {(() => {
+                  const currentTipPct = activeTab.tipPercent;
+                  const currentTipAmt = activeTab.tipAmount;
+                  const tipOptions = [
+                    { label: 'Sin propina', pct: 0 },
+                    { label: '10%', pct: 10 },
+                    { label: '15%', pct: 15 },
+                    { label: '20%', pct: 20 },
+                  ];
+                  return (
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-3 space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propina</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {tipOptions.map(({ label, pct }) => {
+                          const isActive = currentTipPct !== null && currentTipPct !== undefined && currentTipPct === pct;
+                          return (
+                            <button
+                              key={pct}
+                              disabled={isTipSetting}
+                              onClick={() => handleSetTip(pct)}
+                              className={`py-2 rounded-lg text-[11px] font-semibold transition active:scale-95 ${
+                                isActive
+                                  ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                  : 'bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {currentTipPct !== null && currentTipPct !== undefined && currentTipPct > 0 && currentTipAmt !== null && currentTipAmt !== undefined && (
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-wider">Propina {currentTipPct}%</span>
+                          <span className="text-sm font-semibold text-[#2F6B4E] dark:text-[#6FB88F] tabular-nums">${currentTipAmt.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {currentTipPct === 0 && (
+                        <p className="text-[10px] text-capsula-ink-muted font-semibold">Cliente indicó: sin propina</p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Pagos ya registrados */}
                 {paidSplits.length > 0 && (
                   <div className="rounded-xl bg-[#E6ECF4] dark:bg-[#1A2636] border border-capsula-line p-3 space-y-1.5">
@@ -1294,6 +1355,7 @@ export default function POSMeseroPage() {
                         ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
                         `TOTAL USD:      $${grandTotal.toFixed(2)}`,
                         ...(saldoBs !== null ? [`Bs equiv.:      Bs ${(grandTotal * (exchangeRate ?? 1)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
+                        ...(activeTab.tipPercent != null && activeTab.tipPercent > 0 && activeTab.tipAmount != null ? [`Propina ${activeTab.tipPercent}%:  $${activeTab.tipAmount.toFixed(2)}`] : []),
                         ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldo.toFixed(2)}`] : []),
                       ];
                       navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));

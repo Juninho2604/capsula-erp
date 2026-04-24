@@ -104,6 +104,8 @@ interface OpenTabSummary {
   status: string;
   runningTotal: number;
   balanceDue: number;
+  tipPercent: number | null;
+  tipAmount: number | null;
   openedAt: string;
   waiterLabel?: string | null;
   openedBy: UserSummary;
@@ -2272,6 +2274,12 @@ export default function POSSportBarPage() {
                           <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-[0.10em]">10% Servicio incluido</span>
                           <Check className="h-3.5 w-3.5 text-[#2F6B4E] dark:text-[#6FB88F]" />
                         </div>
+                        {activeTab.tipPercent != null && activeTab.tipPercent > 0 && activeTab.tipAmount != null && (
+                          <div className="flex items-center justify-between rounded-lg bg-[#F3EAD6] dark:bg-[#3B2F15] px-3 py-1.5">
+                            <span className="text-[11px] font-semibold text-[#946A1C] dark:text-[#E8D9B8] uppercase tracking-[0.10em]">Propina {activeTab.tipPercent}% (cliente)</span>
+                            <span className="text-[11px] font-semibold text-[#946A1C] dark:text-[#E8D9B8] tabular-nums">${activeTab.tipAmount.toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between font-semibold text-capsula-ink border-t border-capsula-line pt-1">
                           <span>A cobrar</span>
                           <span>${paymentAmountToCharge.toFixed(2)}</span>
@@ -2349,6 +2357,10 @@ export default function POSSportBarPage() {
                     onClick={() => {
                       setPaymentPin("");
                       setPaymentPinError("");
+                      // Pre-fill tip from mesero selection if cashier hasn't entered one yet
+                      if (!checkoutTip && activeTab.tipAmount != null && activeTab.tipAmount > 0) {
+                        setCheckoutTip(activeTab.tipAmount.toFixed(2));
+                      }
                       setShowPaymentPinModal(true);
                     }}
                     disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing)}
