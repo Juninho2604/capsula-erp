@@ -166,6 +166,15 @@ No commitear nada sin tsc limpio. Es producción activa, Render auto-deploy desd
 - Push: `git push -u origin <branch>`. Render desplegará solo cuando la rama se mergee a `main`.
 - No abrir PRs sin pedido explícito del usuario.
 
+### Obligatorio: actualizar OPUS_CONTEXT_CAPSULA.md
+
+Después de cada cambio significativo (nueva convención, bug fix, nuevo campo de schema, nueva regla de negocio), añadir o actualizar la sección correspondiente en `OPUS_CONTEXT_CAPSULA.md`. No dejar que el documento quede desincronizado con el código real.
+
+- Cambios de **diseño/UI** → actualizar §18 o §18.38 (Minimal Navy)
+- Cambios de **lógica de ventas/agregación** → actualizar §20
+- Cambios de **schema/modelos** → actualizar §2
+- Cambios de **acciones/business logic** → actualizar la sección del módulo correspondiente (§5–§8)
+
 ---
 
 ## 📚 Referencias
@@ -174,6 +183,8 @@ No commitear nada sin tsc limpio. Es producción activa, Render auto-deploy desd
 - **Tailwind tokens:** `tailwind.config.ts` (colors.capsula, fontFamily).
 - **Helpers POS:** `globals.css` a partir de `.pos-btn`.
 - **Iconos de módulos:** `src/lib/module-icons.ts` (44 mapeos).
-- **Contexto de negocio:** `OPUS_CONTEXT_CAPSULA.md` — sección 18 tiene todas las convenciones acumuladas; la 18.38 es el índice Minimal Navy.
+- **Contexto de negocio:** `OPUS_CONTEXT_CAPSULA.md`:
+  - §18 / §18.38 → convenciones Minimal Navy
+  - §20 → reglas de agregación de ventas, timezone Caracas, helper `sales-where.ts`
 
 Cuando dudes entre dos patrones, elige el que coincide con `pos/mesero/page.tsx` o `pos/restaurante/page.tsx` — son las referencias vivas de la paleta.
