@@ -4,17 +4,15 @@ import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on server
 import { InventoryItemType } from '@/types';
+import { getCaracasDayRange } from '@/lib/datetime';
 
 export async function getDashboardStatsAction() {
     try {
         const session = await getSession();
         const isAdmin = session && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(session.role);
 
-        const now = new Date();
-        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-        const yesterdayEnd = new Date(todayEnd); yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+        const { start: todayStart, end: todayEnd } = getCaracasDayRange();
+        const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
 
         const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg] = await Promise.all([
             prisma.inventoryItem.findMany({
@@ -32,6 +30,7 @@ export async function getDashboardStatsAction() {
                 where: {
                     createdAt: { gte: todayStart, lte: todayEnd },
                     status: { not: 'CANCELLED' },
+                    customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 _sum: { total: true },
                 _count: { id: true },
@@ -41,6 +40,7 @@ export async function getDashboardStatsAction() {
                 where: {
                     createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
                     status: { not: 'CANCELLED' },
+                    customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 _sum: { total: true },
                 _count: { id: true },

@@ -2,6 +2,7 @@
 
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
 
 // ============================================================================
 // TIPOS
@@ -48,20 +49,12 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
     const role = session.role;
     const userId = session.id;
-    const now = new Date();
 
-    // Rangos de fecha en zona horaria Venezuela (UTC-4)
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Rangos de fecha en zona horaria Caracas (UTC-4)
+    const { start: todayStart, end: todayEnd } = getCaracasDayRange();
+    const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
+    const { year: _cy, month: _cm } = getCaracasNowParts();
+    const monthStart = new Date(Date.UTC(_cy, _cm, 1, 4, 0, 0, 0));
 
     const isCashier = role === 'CASHIER' || role === 'WAITER';
     const isChef = role === 'CHEF' || role === 'KITCHEN_CHEF';
@@ -81,6 +74,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         where: {
           createdAt: { gte: todayStart, lte: todayEnd },
           status: { not: 'CANCELLED' },
+          customerName: { not: 'PROPINA COLECTIVA' },
           ...(isCashier ? { createdById: userId } : {}),
         },
         _sum: { total: true, discount: true },
@@ -92,6 +86,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
             where: {
               createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
               status: { not: 'CANCELLED' },
+              customerName: { not: 'PROPINA COLECTIVA' },
             },
             _sum: { total: true },
             _count: { id: true },
@@ -103,6 +98,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
             where: {
               createdAt: { gte: monthStart },
               status: { not: 'CANCELLED' },
+              customerName: { not: 'PROPINA COLECTIVA' },
             },
             _sum: { total: true },
             _count: { id: true },
@@ -159,6 +155,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
             where: {
               createdAt: { gte: todayStart, lte: todayEnd },
               status: { not: 'CANCELLED' },
+              customerName: { not: 'PROPINA COLECTIVA' },
               paymentMethod: { not: null },
             },
             _sum: { total: true },
@@ -288,6 +285,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
               createdById: userId,
               createdAt: { gte: todayStart, lte: todayEnd },
               status: { not: 'CANCELLED' },
+              customerName: { not: 'PROPINA COLECTIVA' },
             },
             _sum: { total: true },
             _count: { id: true },
