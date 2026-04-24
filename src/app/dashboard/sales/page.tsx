@@ -818,6 +818,23 @@ export default function SalesHistoryPage() {
                             </div>
                         </div>
 
+                        {/* ── AUDITORÍA: ANULACIONES ── */}
+                        {zReport.ordersByStatus['CANCELLED'] > 0 && (
+                            <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">
+                                <h3 className="font-bold underline mb-2">AUDITORÍA — ANULACIONES</h3>
+                                <div className="space-y-0.5">
+                                    <div className="flex justify-between">
+                                        <span>Órdenes anuladas hoy</span>
+                                        <span className="font-bold">{zReport.ordersByStatus['CANCELLED']}</span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Monto anulado</span>
+                                        <span>-{formatMoney(zReport.cancelledTotal ?? 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="text-center text-xs text-gray-500 pt-2">
                             <p className="font-bold">Total transacciones: {zReport.totalOrders}</p>
                         </div>

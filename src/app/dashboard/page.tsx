@@ -138,14 +138,29 @@ export default async function DashboardPage() {
                 </div>
             )}
 
-            {/* Propinas Colectivas — secondary KPI row */}
-            {salesKPIs && salesKPIs.propinasHoy && salesKPIs.propinasHoy.count > 0 && (
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas colectivas hoy</span>
-                    <span className="font-semibold tabular-nums text-capsula-ink">
-                        ${salesKPIs.propinasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-capsula-ink-muted">({salesKPIs.propinasHoy.count} reg.)</span>
+            {/* Secondary audit row: propinas + canceladas */}
+            {salesKPIs && (salesKPIs.propinasHoy?.count > 0 || salesKPIs.canceladasHoy?.count > 0) && (
+                <div className="flex flex-wrap items-center gap-3">
+                    {salesKPIs.propinasHoy?.count > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas colectivas hoy</span>
+                            <span className="font-semibold tabular-nums text-capsula-ink">
+                                ${salesKPIs.propinasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-capsula-ink-muted">({salesKPIs.propinasHoy.count} reg.)</span>
+                        </div>
+                    )}
+                    {salesKPIs.canceladasHoy?.count > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#F7E3DB] border border-[#EFD2C8] dark:bg-[#3B1F14] dark:border-[#3B1F14] text-sm">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#B04A2E] dark:text-[#EFD2C8]">Anuladas hoy</span>
+                            <span className="font-semibold tabular-nums text-[#B04A2E] dark:text-[#EFD2C8]">
+                                {salesKPIs.canceladasHoy.count} órd.
+                            </span>
+                            <span className="text-[#B04A2E]/70 dark:text-[#EFD2C8]/70">
+                                — ${salesKPIs.canceladasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} anulados
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 
