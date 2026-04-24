@@ -4,6 +4,7 @@ import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
+import { revenueWhere } from '@/lib/sales-where';
 
 // ============================================================================
 // TIPOS
@@ -92,17 +93,17 @@ export async function getMetasAction(): Promise<{ success: boolean; data?: Metas
 
     const [todayAgg, weekAgg, monthAgg, wasteAgg] = await Promise.all([
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: todayStart, lte: todayEnd }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
+        where: revenueWhere(todayStart, todayEnd),
         _sum: { total: true },
         _count: { id: true },
       }),
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: weekStart }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
+        where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: weekStart } },
         _sum: { total: true },
         _count: { id: true },
       }),
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: monthStart }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
+        where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: monthStart } },
         _sum: { total: true },
         _count: { id: true },
       }),

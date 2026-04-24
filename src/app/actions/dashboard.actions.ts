@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth';
 import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on server
 import { InventoryItemType } from '@/types';
 import { getCaracasDayRange } from '@/lib/datetime';
+import { revenueWhere, propinasWhere, cancelledWhere } from '@/lib/sales-where';
 
 export async function getDashboardStatsAction() {
     try {
@@ -25,23 +26,15 @@ export async function getDashboardStatsAction() {
                     }
                 }
             }),
-            // Today's sales (always fetch for admin roles)
+            // Today's sales
             isAdmin ? prisma.salesOrder.aggregate({
-                where: {
-                    createdAt: { gte: todayStart, lte: todayEnd },
-                    status: { not: 'CANCELLED' },
-                    customerName: { not: 'PROPINA COLECTIVA' },
-                },
+                where: revenueWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Yesterday comparison
             isAdmin ? prisma.salesOrder.aggregate({
-                where: {
-                    createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
-                    status: { not: 'CANCELLED' },
-                    customerName: { not: 'PROPINA COLECTIVA' },
-                },
+                where: revenueWhere(yesterdayStart, yesterdayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
@@ -53,20 +46,13 @@ export async function getDashboardStatsAction() {
             }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
             // Propinas colectivas hoy
             isAdmin ? prisma.salesOrder.aggregate({
-                where: {
-                    createdAt: { gte: todayStart, lte: todayEnd },
-                    status: { not: 'CANCELLED' },
-                    customerName: 'PROPINA COLECTIVA',
-                },
+                where: propinasWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Órdenes canceladas hoy (auditoría)
             isAdmin ? prisma.salesOrder.aggregate({
-                where: {
-                    voidedAt: { gte: todayStart, lte: todayEnd },
-                    status: 'CANCELLED',
-                },
+                where: cancelledWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
