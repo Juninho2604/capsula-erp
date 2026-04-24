@@ -262,14 +262,14 @@
     font-weight: 500;
     font-size: 34px; line-height: 1;
     letter-spacing: -0.02em;
-    color: var(--capsula-navy-deep);
+    color: var(--capsula-ink);
   }
   .capsula-stat-value-lg {
     font-family: var(--font-body);
     font-weight: 500;
     font-size: 48px; line-height: 1;
     letter-spacing: -0.02em;
-    color: var(--capsula-navy-deep);
+    color: var(--capsula-ink);
   }
 
   /* ── Glass ──────────────────────────────────────────── */
@@ -291,7 +291,7 @@
   .pos-btn {
     @apply relative inline-flex items-center justify-center transition-all duration-150 active:scale-[0.98] touch-manipulation min-h-[48px] px-5 rounded-xl font-semibold;
     background: var(--capsula-navy-deep);
-    color: var(--capsula-ivory);
+    color: #F7F5F0;
     border-bottom: 4px solid rgba(11,23,39,0.35);
     box-shadow: var(--tactile-shadow);
   }

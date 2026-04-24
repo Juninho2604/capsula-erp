@@ -1232,7 +1232,7 @@ export default function POSSportBarPage() {
     return (
       <div className="min-h-screen bg-capsula-ivory-surface text-capsula-ink flex items-center justify-center">
         <div className="text-center">
-          <Wine className="h-10 w-10 mx-auto mb-3 text-capsula-navy-deep animate-pulse" />
+          <Wine className="h-10 w-10 mx-auto mb-3 text-capsula-ink animate-pulse" />
           <div className="text-xl font-semibold tracking-[-0.02em] text-capsula-ink">Cargando Restaurante…</div>
         </div>
       </div>
@@ -1320,7 +1320,7 @@ export default function POSSportBarPage() {
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div className="bg-capsula-ivory px-3 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0 border-b border-capsula-line">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-navy-deep">
+          <div className="h-12 w-12 bg-capsula-navy-soft rounded-2xl flex items-center justify-center text-capsula-ink">
             <Wine className="h-6 w-6" />
           </div>
           <div>
@@ -1472,7 +1472,7 @@ export default function POSSportBarPage() {
                           : "border-capsula-line bg-capsula-ivory-surface hover:border-capsula-navy-deep/40"
                     }`}
                   >
-                    <div className={`text-sm md:text-base font-semibold ${isSelected ? 'text-capsula-navy-deep' : tab ? 'text-capsula-coral' : 'text-capsula-ink-muted'}`}>{table.code}</div>
+                    <div className={`text-sm md:text-base font-semibold ${isSelected ? 'text-capsula-ink' : tab ? 'text-capsula-coral' : 'text-capsula-ink-muted'}`}>{table.code}</div>
                     {tab ? (
                       <div className="absolute top-1 right-1 h-2.5 w-2.5 bg-capsula-coral rounded-full ring-2 ring-capsula-ivory"></div>
                     ) : null}
@@ -1616,7 +1616,7 @@ export default function POSSportBarPage() {
             {selectedGroup && !productSearch && (
               <button
                 onClick={() => setSelectedGroup("")}
-                className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-capsula-navy-deep hover:opacity-80 active:scale-95 transition"
+                className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-capsula-ink hover:opacity-80 active:scale-95 transition"
               >
                 <ArrowLeft className="h-4 w-4" />
                 {selectedGroup}
@@ -1638,9 +1638,9 @@ export default function POSSportBarPage() {
                     disabled={!activeTab && !isPickupMode}
                     className="pos-tile group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 active:scale-[0.98] transition-transform"
                   >
-                    <div className="text-sm font-semibold text-capsula-ink group-hover:text-capsula-navy-deep transition-colors leading-tight line-clamp-2 uppercase tracking-[-0.01em]">{group}</div>
+                    <div className="text-sm font-semibold text-capsula-ink group-hover:text-capsula-ink transition-colors leading-tight line-clamp-2 uppercase tracking-[-0.01em]">{group}</div>
                     <div className="flex items-end justify-between mt-2">
-                      <div className="text-base font-semibold text-capsula-navy-deep tabular-nums">
+                      <div className="text-base font-semibold text-capsula-ink tabular-nums">
                         {minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(0)} – $${maxP.toFixed(0)}`}
                       </div>
                       <div className="text-[10px] font-semibold text-capsula-ink-muted bg-capsula-ivory-surface border border-capsula-line px-2 py-0.5 rounded-full">
@@ -1662,7 +1662,7 @@ export default function POSSportBarPage() {
                     className="pos-tile group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 active:scale-[0.98] transition-transform"
                   >
                     <div className="text-lg font-semibold text-capsula-ink uppercase tracking-[-0.01em]">{sizeLabel}</div>
-                    <div className="text-xl font-semibold text-capsula-navy-deep mt-auto tabular-nums">
+                    <div className="text-xl font-semibold text-capsula-ink mt-auto tabular-nums">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                   </button>
@@ -1677,9 +1677,9 @@ export default function POSSportBarPage() {
                   disabled={!activeTab && !isPickupMode}
                   className="pos-tile group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 active:scale-[0.98] transition-transform"
                 >
-                  <div className="text-sm font-semibold text-capsula-ink group-hover:text-capsula-navy-deep transition-colors leading-tight line-clamp-2 uppercase tracking-[-0.01em]">{item.name}</div>
+                  <div className="text-sm font-semibold text-capsula-ink group-hover:text-capsula-ink transition-colors leading-tight line-clamp-2 uppercase tracking-[-0.01em]">{item.name}</div>
                   <div className="flex items-end justify-between mt-2">
-                    <div className="text-xl font-semibold text-capsula-navy-deep tabular-nums">
+                    <div className="text-xl font-semibold text-capsula-ink tabular-nums">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                     <div className="h-8 w-8 rounded-full bg-capsula-navy-deep text-capsula-ivory flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
@@ -1707,7 +1707,7 @@ export default function POSSportBarPage() {
               <div className="p-4 border-b border-capsula-line bg-capsula-navy-soft space-y-2 shrink-0">
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold text-lg text-capsula-ink flex items-center gap-2 tracking-[-0.02em]">
-                    <ShoppingBag className="h-5 w-5 text-capsula-navy-deep" />
+                    <ShoppingBag className="h-5 w-5 text-capsula-ink" />
                     {activePickupTab?.pickupNumber || "Pickup"}
                   </h2>
                   {activePickupTab?.customerPhone && (
@@ -1748,7 +1748,7 @@ export default function POSSportBarPage() {
                   >
                     <div>
                       <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap text-capsula-ink">
-                        <span className="text-capsula-navy-deep">x{item.quantity}</span>
+                        <span className="text-capsula-ink">x{item.quantity}</span>
                         {item.name}
                         {item.takeaway && (
                           <span className="inline-flex items-center rounded bg-capsula-navy-soft border border-capsula-line-strong px-1.5 py-0.5 text-[10px] font-semibold text-capsula-ink uppercase tracking-wide">
@@ -1901,7 +1901,7 @@ export default function POSSportBarPage() {
                             {/* Fila principal: vuelto a devolver (lo más importante) */}
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-semibold text-capsula-ink inline-flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-capsula-navy-deep" />
+                                <DollarSign className="h-4 w-4 text-capsula-ink" />
                                 Vuelto a devolver:
                               </span>
                               <span className="text-lg font-semibold text-capsula-ink tabular-nums">${Math.max(0, changeBack).toFixed(2)}</span>
@@ -2274,7 +2274,7 @@ export default function POSSportBarPage() {
                             type="checkbox"
                             checked={serviceFeeIncluded}
                             onChange={(e) => setServiceFeeIncluded(e.target.checked)}
-                            className="rounded border-capsula-line bg-capsula-ivory-surface text-capsula-navy-deep focus:ring-capsula-navy-deep"
+                            className="rounded border-capsula-line bg-capsula-ivory-surface text-capsula-ink focus:ring-capsula-navy-deep"
                           />
                           <span className="text-capsula-ink-soft">Incluir 10% servicio</span>
                         </label>
@@ -2506,7 +2506,7 @@ export default function POSSportBarPage() {
           <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
             <div className="border-b border-capsula-line p-5 flex items-center justify-between">
               <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink inline-flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-capsula-navy-deep" />
+                <ShoppingBag className="h-5 w-5 text-capsula-ink" />
                 Nueva venta Pickup
               </h3>
               <button
@@ -2667,7 +2667,7 @@ export default function POSSportBarPage() {
           <div className="bg-capsula-ivory border border-capsula-line w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
             <div className="border-b border-capsula-line p-5 flex items-center justify-between">
               <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink inline-flex items-center gap-2">
-                <Lock className="h-5 w-5 text-capsula-navy-deep" />
+                <Lock className="h-5 w-5 text-capsula-ink" />
                 Autorizar cobro
               </h3>
               <button
