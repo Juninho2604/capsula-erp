@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban, DollarSign, Zap, CreditCard, Smartphone, Banknote, Euro } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban, DollarSign, Zap, CreditCard, Smartphone, Banknote, Euro, Printer } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
-import { printKitchenCommand, printVoidKitchenCommand, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printKitchenCommand, printVoidKitchenCommand, printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -750,14 +750,18 @@ export default function POSMeseroPage() {
           <div className="shrink-0 space-y-2 border-b border-capsula-line p-3">
             {/* Active tab banner */}
             {activeTab ? (
-              <div className="flex items-center justify-between rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-3 py-2 text-xs">
-                <span className="text-[#2F6B4E]">
+              <button
+                onClick={() => setShowBillModal(true)}
+                className="flex w-full items-center justify-between rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-3 py-2 text-xs hover:bg-[#D3E2D8]/60 transition active:scale-[0.98]"
+              >
+                <span className="text-[#2F6B4E] truncate">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                 </span>
-                <span className="text-xs font-semibold tabular-nums text-[#2F6B4E]">
+                <span className="flex items-center gap-1 font-semibold tabular-nums text-[#2F6B4E] shrink-0 ml-2">
                   ${activeTab.balanceDue.toFixed(2)}
+                  <Receipt className="h-3 w-3 opacity-60" />
                 </span>
-              </div>
+              </button>
             ) : selectedTable ? (
               <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs text-capsula-ink-soft">
                 {selectedTable.name} · Sin cuenta abierta — presiona &quot;Abrir cuenta&quot; para empezar
@@ -1130,6 +1134,11 @@ export default function POSMeseroPage() {
                   {cartBadgeCount}
                 </span>
               )}
+              {tab === "account" && activeTab && activeTab.balanceDue > 0.01 && cartBadgeCount === 0 && (
+                <span className="text-[9px] font-semibold tabular-nums text-capsula-coral leading-none">
+                  ${activeTab.balanceDue.toFixed(0)}
+                </span>
+              )}
             </button>
           );
         })}
@@ -1268,6 +1277,61 @@ export default function POSMeseroPage() {
                       <span className="font-semibold tabular-nums text-capsula-ink">{value}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* Acciones rápidas */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      const lines = [
+                        `SHANKLISH — ${selectedTable?.name} (${activeTab.tabCode})`,
+                        `Cliente: ${activeTab.customerLabel ?? ''}`,
+                        '',
+                        ...activeTab.orders.flatMap(o => o.items).map(it => `× ${it.quantity}  ${it.itemName}  $${it.lineTotal.toFixed(2)}`),
+                        '',
+                        `Subtotal:       $${subtotal.toFixed(2)}`,
+                        ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
+                        ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
+                        `TOTAL USD:      $${grandTotal.toFixed(2)}`,
+                        ...(saldoBs !== null ? [`Bs equiv.:      Bs ${(grandTotal * (exchangeRate ?? 1)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
+                        ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldo.toFixed(2)}`] : []),
+                      ];
+                      navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));
+                    }}
+                    className="flex-1 py-2.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface hover:bg-capsula-navy-soft text-capsula-ink text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    Copiar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const items = activeTab.orders.flatMap(o => o.items).map(it => ({
+                        name: it.itemName,
+                        quantity: it.quantity,
+                        unitPrice: it.lineTotal / (it.quantity || 1),
+                        total: it.lineTotal,
+                        modifiers: (it.modifiers ?? []).map((m: any) => typeof m === 'string' ? m : m?.name ?? ''),
+                      }));
+                      printReceipt({
+                        orderNumber: activeTab.tabCode,
+                        orderType: 'RESTAURANT',
+                        date: new Date(),
+                        cashierName: activeTab.openedBy.firstName,
+                        customerName: activeTab.customerLabel,
+                        tableLabel: selectedTable?.name,
+                        items,
+                        subtotal,
+                        discount: discount > 0.001 ? discount : 0,
+                        total: grandTotal,
+                        serviceFee: serviceCharge > 0.001 ? serviceCharge : undefined,
+                        isPrecuenta: true,
+                      });
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Imprimir
+                  </button>
                 </div>
               </div>
             </div>
