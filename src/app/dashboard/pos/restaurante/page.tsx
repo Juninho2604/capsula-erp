@@ -246,8 +246,8 @@ export default function POSSportBarPage() {
   const [cortesiaPercent, setCortesiaPercent] = useState("100");
   const [cortesiaPinError, setCortesiaPinError] = useState("");
 
-  // ── 10% Servicio (solo sala principal, opcional) ───────────────────────────
-  const [serviceFeeIncluded, setServiceFeeIncluded] = useState(true);
+  // ── 10% Servicio — obligatorio para todas las mesas ──────────────────────
+  const serviceFeeIncluded = true;
 
   // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -914,7 +914,6 @@ export default function POSSportBarPage() {
       setPaymentPin("");
       setCheckoutTip('');
       clearDiscount();
-      setServiceFeeIncluded(true);
       setShowPaymentPinModal(false);
       setIsTableMixedMode(false);
       setMixedPaymentsTable([]);
@@ -2269,24 +2268,14 @@ export default function POSSportBarPage() {
                             <span>−${(activeTab.balanceDue / 3).toFixed(2)}</span>
                           </div>
                         )}
-                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={serviceFeeIncluded}
-                            onChange={(e) => setServiceFeeIncluded(e.target.checked)}
-                            className="rounded border-capsula-line bg-capsula-ivory-surface text-capsula-ink focus:ring-capsula-navy-deep"
-                          />
-                          <span className="text-capsula-ink-soft">Incluir 10% servicio</span>
-                        </label>
+                        <div className="flex items-center justify-between mt-2 rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-3 py-1.5">
+                          <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-[0.10em]">10% Servicio incluido</span>
+                          <Check className="h-3.5 w-3.5 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                        </div>
                         <div className="flex justify-between font-semibold text-capsula-ink border-t border-capsula-line pt-1">
                           <span>A cobrar</span>
                           <span>${paymentAmountToCharge.toFixed(2)}</span>
                         </div>
-                        {!serviceFeeIncluded && (
-                          <div className="flex justify-between text-capsula-coral text-[10px]">
-                            <span>Sin 10% servicio</span>
-                          </div>
-                        )}
                       </div>
                     );
                   })()}
