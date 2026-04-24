@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getSalesForArqueoAction } from '@/app/actions/sales.actions';
+import { getSalesForArqueoAction } from '@/app/actions/sales/arqueo.actions';
 import { buildArqueoWorkbookFromTemplate, getArqueoFileName } from '@/lib/arqueo-excel-utils';
 
 export const dynamic = 'force-dynamic';

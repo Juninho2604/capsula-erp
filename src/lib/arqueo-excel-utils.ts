@@ -7,7 +7,7 @@
  * No depende de una plantilla .xlsx externa.
  */
 import ExcelJS from 'exceljs';
-import type { ArqueoSaleRow } from '@/app/actions/sales.actions';
+import type { ArqueoSaleRow } from '@/app/actions/sales/arqueo.actions';
 
 // ─────────────────────────────────────────────────────────────
 //  Paleta de colores (ARGB, 8 dígitos)

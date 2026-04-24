@@ -7,7 +7,7 @@ import {
   updateRegisterOperatorsAction,
   type CashRegisterData,
 } from '@/app/actions/cash-register.actions';
-import { getEndOfDaySummaryAction } from '@/app/actions/sales.actions';
+import { getEndOfDaySummaryAction } from '@/app/actions/sales/end-of-day.actions';
 import { BillDenominationInput } from '@/components/pos/BillDenominationInput';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
