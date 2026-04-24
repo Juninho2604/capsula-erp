@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban, DollarSign, Zap, CreditCard, Smartphone, Banknote, Euro, Printer } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
-import { printKitchenCommand, printVoidKitchenCommand, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printKitchenCommand, printVoidKitchenCommand, printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -83,6 +83,13 @@ interface UserSummary {
   lastName: string;
   role: string;
 }
+interface PaymentSplitSummary {
+  id: string;
+  splitLabel: string | null;
+  paymentMethod: string | null;
+  status: string;
+  paidAmount: number;
+}
 interface OpenTabSummary {
   id: string;
   tabCode: string;
@@ -90,12 +97,16 @@ interface OpenTabSummary {
   customerPhone?: string;
   guestCount: number;
   status: string;
+  runningSubtotal: number;
+  runningDiscount: number;
   runningTotal: number;
+  totalServiceCharge: number;
   balanceDue: number;
   openedAt: string;
   openedBy: UserSummary;
   assignedWaiter?: UserSummary | null;
   orders: SalesOrderSummary[];
+  paymentSplits: PaymentSplitSummary[];
 }
 interface TableSummary {
   id: string;
@@ -739,14 +750,18 @@ export default function POSMeseroPage() {
           <div className="shrink-0 space-y-2 border-b border-capsula-line p-3">
             {/* Active tab banner */}
             {activeTab ? (
-              <div className="flex items-center justify-between rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-3 py-2 text-xs">
-                <span className="text-[#2F6B4E]">
+              <button
+                onClick={() => setShowBillModal(true)}
+                className="flex w-full items-center justify-between rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-3 py-2 text-xs hover:bg-[#D3E2D8]/60 transition active:scale-[0.98]"
+              >
+                <span className="text-[#2F6B4E] truncate">
                   <b>{selectedTable?.name}</b> · {activeTab.customerLabel}
                 </span>
-                <span className="text-xs font-semibold tabular-nums text-[#2F6B4E]">
+                <span className="flex items-center gap-1 font-semibold tabular-nums text-[#2F6B4E] shrink-0 ml-2">
                   ${activeTab.balanceDue.toFixed(2)}
+                  <Receipt className="h-3 w-3 opacity-60" />
                 </span>
-              </div>
+              </button>
             ) : selectedTable ? (
               <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs text-capsula-ink-soft">
                 {selectedTable.name} · Sin cuenta abierta — presiona &quot;Abrir cuenta&quot; para empezar
@@ -1119,84 +1134,210 @@ export default function POSMeseroPage() {
                   {cartBadgeCount}
                 </span>
               )}
+              {tab === "account" && activeTab && activeTab.balanceDue > 0.01 && cartBadgeCount === 0 && (
+                <span className="text-[9px] font-semibold tabular-nums text-capsula-coral leading-none">
+                  ${activeTab.balanceDue.toFixed(0)}
+                </span>
+              )}
             </button>
           );
         })}
       </nav>
 
       {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
-      {showBillModal && activeTab && (
-        <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-capsula-ivory w-full max-w-sm rounded-3xl shadow-2xl border border-capsula-line flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-capsula-line shrink-0">
-              <div>
-                <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Cuenta</h3>
-                <p className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-[0.14em] mt-0.5">
-                  {selectedTable?.name} · {activeTab.customerLabel}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowBillModal(false)}
-                className="h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted"
-              >
-                <XIcon className="h-4 w-4" />
-              </button>
-            </div>
-            {/* Items */}
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
-              {activeTab.orders.flatMap(o => o.items).map((item, i) => (
-                <div key={i} className="flex justify-between items-baseline text-sm">
-                  <span className="text-capsula-ink-soft font-semibold flex-1 mr-2">
-                    <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
-                  </span>
-                  <span className="font-semibold text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</span>
+      {showBillModal && activeTab && (() => {
+        const subtotal      = activeTab.runningSubtotal;
+        const discount      = activeTab.runningDiscount;
+        const serviceCharge = activeTab.totalServiceCharge ?? 0;
+        const grandTotal    = activeTab.runningTotal + serviceCharge;
+        const paidSplits    = (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
+        const saldo         = activeTab.balanceDue;
+        const amountToShow  = saldo > 0.01 ? saldo : grandTotal;
+        const totalBs       = exchangeRate ? grandTotal * exchangeRate : null;
+        const saldoBs       = exchangeRate ? amountToShow * exchangeRate : null;
+
+        const methodLabel = (pm: string | null) => {
+          const k = (pm ?? '').toUpperCase();
+          if (k === 'CASH' || k === 'CASH_USD') return 'Cash USD';
+          if (k === 'CASH_EUR') return 'Cash EUR';
+          if (k === 'CASH_BS') return 'Efectivo Bs';
+          if (k === 'ZELLE') return 'Zelle';
+          if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH' || k === 'PDV_SUPERFERRO') return 'Punto de Venta';
+          if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG') return 'Pago Móvil';
+          if (k === 'TRANSFER' || k === 'BANK_TRANSFER') return 'Transferencia';
+          return pm ?? 'Otro';
+        };
+
+        const payMethods: { Icon: React.ElementType; label: string; value: string }[] = [
+          { Icon: DollarSign, label: 'Cash USD / Zelle', value: `$${amountToShow.toFixed(2)}` },
+          { Icon: Euro,       label: 'Cash EUR',          value: 'consultar tasa' },
+          { Icon: CreditCard, label: 'Punto de Venta',    value: `$${amountToShow.toFixed(2)}` },
+          ...(saldoBs !== null ? [
+            { Icon: Smartphone, label: 'Pago Móvil',      value: `Bs ${saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}` },
+            { Icon: Banknote,   label: 'Transferencia',   value: `Bs ${saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}` },
+          ] : []),
+        ];
+
+        return (
+          <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-capsula-ivory w-full max-w-sm rounded-3xl shadow-2xl border border-capsula-line flex flex-col max-h-[92vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-capsula-line shrink-0">
+                <div>
+                  <h3 className="font-semibold text-base text-capsula-ink tracking-[-0.02em]">Cuenta</h3>
+                  <p className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-[0.14em] mt-0.5">
+                    {selectedTable?.name} · {activeTab.tabCode} · {activeTab.customerLabel}
+                  </p>
                 </div>
-              ))}
-            </div>
-            {/* Totals */}
-            {(() => {
-              const subtotal = activeTab.orders.reduce((s, o) => s + o.total, 0);
-              const serviceCharge = subtotal * 0.10;
-              const totalUsd = subtotal + serviceCharge;
-              const divisas33 = totalUsd * (1 - 0.33);
-              const totalBs = exchangeRate ? totalUsd * exchangeRate : null;
-              return (
-                <div className="px-5 py-4 border-t border-capsula-line space-y-2 shrink-0">
+                <button
+                  onClick={() => setShowBillModal(false)}
+                  className="h-9 w-9 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral transition flex items-center justify-center text-capsula-ink-muted"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Items */}
+              <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1 min-h-0">
+                {activeTab.orders.flatMap(o => o.items).map((item, i) => (
+                  <div key={i} className="flex justify-between items-baseline text-sm">
+                    <span className="text-capsula-ink-soft font-semibold flex-1 mr-2">
+                      <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
+                    </span>
+                    <span className="font-semibold text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totales + pagos + métodos */}
+              <div className="px-5 pt-3 pb-4 border-t border-capsula-line space-y-3 shrink-0 overflow-y-auto">
+                {/* Desglose */}
+                <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-capsula-ink-muted">
                     <span className="font-semibold uppercase tracking-wider">Subtotal</span>
                     <span className="font-semibold text-capsula-ink tabular-nums">${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-capsula-ink-muted">
-                    <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
-                    <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-baseline border-t border-capsula-line pt-2 mt-1">
-                    <span className="text-sm font-semibold text-capsula-ink uppercase tracking-[0.14em]">Total USD</span>
-                    <span className="text-2xl font-semibold text-capsula-ink tabular-nums">${totalUsd.toFixed(2)}</span>
-                  </div>
-                  <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-1.5 mt-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">Divisas (33% desc.)</span>
-                      <span className="font-semibold tabular-nums text-capsula-ink">${divisas33.toFixed(2)}</span>
+                  {discount > 0.001 && (
+                    <div className="flex justify-between text-xs text-[#2F6B4E] dark:text-[#6FB88F]">
+                      <span className="font-semibold uppercase tracking-wider">Descuento</span>
+                      <span className="font-semibold tabular-nums">−${discount.toFixed(2)}</span>
                     </div>
-                    {totalBs !== null && (
-                      <div className="flex justify-between text-[11px]">
-                        <span className="text-capsula-ink-muted font-semibold uppercase tracking-wider">
-                          Bs. (Tasa {exchangeRate?.toFixed(2)})
-                        </span>
-                        <span className="font-semibold tabular-nums text-capsula-ink">
-                          Bs. {totalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}
-                        </span>
+                  )}
+                  {serviceCharge > 0.001 && (
+                    <div className="flex justify-between text-xs text-capsula-ink-muted">
+                      <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
+                      <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-baseline border-t border-capsula-line pt-2">
+                    <span className="text-sm font-semibold text-capsula-ink uppercase tracking-[0.14em]">Total USD</span>
+                    <span className="text-2xl font-semibold text-capsula-ink tabular-nums">${grandTotal.toFixed(2)}</span>
+                  </div>
+                  {totalBs !== null && (
+                    <div className="flex justify-between text-[11px] text-capsula-ink-muted">
+                      <span className="font-semibold uppercase tracking-wider">Bs (tasa {exchangeRate?.toFixed(2)})</span>
+                      <span className="font-semibold tabular-nums">Bs {totalBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagos ya registrados */}
+                {paidSplits.length > 0 && (
+                  <div className="rounded-xl bg-[#E6ECF4] dark:bg-[#1A2636] border border-capsula-line p-3 space-y-1.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2A4060] dark:text-[#D1DCE9]">Pagos registrados</p>
+                    {paidSplits.map((sp, i) => (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span className="text-capsula-ink-soft font-semibold">{sp.splitLabel || methodLabel(sp.paymentMethod)}</span>
+                        <span className="font-semibold tabular-nums text-capsula-ink">${sp.paidAmount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center border-t border-capsula-line pt-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-capsula-ink">Saldo pendiente</span>
+                      <span className={`text-base font-semibold tabular-nums ${saldo > 0.01 ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'}`}>
+                        {saldo > 0.01 ? `$${saldo.toFixed(2)}` : 'PAGADO'}
+                      </span>
+                    </div>
+                    {saldoBs !== null && saldo > 0.01 && (
+                      <div className="text-right text-[10px] text-capsula-ink-muted font-semibold tabular-nums">
+                        Bs {saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Métodos de pago aceptados */}
+                <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Métodos de pago</p>
+                  {payMethods.map(({ Icon, label, value }) => (
+                    <div key={label} className="flex justify-between items-center text-[11px]">
+                      <div className="flex items-center gap-1.5 text-capsula-ink-soft">
+                        <Icon className="h-3 w-3 text-capsula-ink-muted shrink-0" />
+                        <span className="font-semibold">{label}</span>
+                      </div>
+                      <span className="font-semibold tabular-nums text-capsula-ink">{value}</span>
+                    </div>
+                  ))}
                 </div>
-              );
-            })()}
+
+                {/* Acciones rápidas */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      const lines = [
+                        `SHANKLISH — ${selectedTable?.name} (${activeTab.tabCode})`,
+                        `Cliente: ${activeTab.customerLabel ?? ''}`,
+                        '',
+                        ...activeTab.orders.flatMap(o => o.items).map(it => `× ${it.quantity}  ${it.itemName}  $${it.lineTotal.toFixed(2)}`),
+                        '',
+                        `Subtotal:       $${subtotal.toFixed(2)}`,
+                        ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
+                        ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
+                        `TOTAL USD:      $${grandTotal.toFixed(2)}`,
+                        ...(saldoBs !== null ? [`Bs equiv.:      Bs ${(grandTotal * (exchangeRate ?? 1)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
+                        ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldo.toFixed(2)}`] : []),
+                      ];
+                      navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));
+                    }}
+                    className="flex-1 py-2.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface hover:bg-capsula-navy-soft text-capsula-ink text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    Copiar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const items = activeTab.orders.flatMap(o => o.items).map(it => ({
+                        name: it.itemName,
+                        quantity: it.quantity,
+                        unitPrice: it.lineTotal / (it.quantity || 1),
+                        total: it.lineTotal,
+                        modifiers: (it.modifiers ?? []).map((m: any) => typeof m === 'string' ? m : m?.name ?? ''),
+                      }));
+                      printReceipt({
+                        orderNumber: activeTab.tabCode,
+                        orderType: 'RESTAURANT',
+                        date: new Date(),
+                        cashierName: activeTab.openedBy.firstName,
+                        customerName: activeTab.customerLabel,
+                        tableLabel: selectedTable?.name,
+                        items,
+                        subtotal,
+                        discount: discount > 0.001 ? discount : 0,
+                        total: grandTotal,
+                        serviceFee: serviceCharge > 0.001 ? serviceCharge : undefined,
+                        isPrecuenta: true,
+                      });
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Imprimir
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ══ MODAL: ABRIR CUENTA ═══════════════════════════════════════════ */}
       {showOpenTabModal && selectedTable && (

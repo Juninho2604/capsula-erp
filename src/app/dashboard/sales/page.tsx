@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSalesHistoryAction, getDailyZReportAction, getEndOfDaySummaryAction, voidSalesOrderAction, type ZReportData, type EndOfDaySummary } from '@/app/actions/sales.actions';
+import { getSalesHistoryAction } from '@/app/actions/sales/history.actions';
+import { getDailyZReportAction, type ZReportData } from '@/app/actions/sales/z-report.actions';
+import { getEndOfDaySummaryAction, type EndOfDaySummary } from '@/app/actions/sales/end-of-day.actions';
+import { voidSalesOrderAction } from '@/app/actions/sales/void.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';

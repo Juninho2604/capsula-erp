@@ -58,8 +58,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const [orders, cancelledAgg] = await Promise.all([
             prisma.salesOrder.findMany({
                 where: {
-                    createdAt: { gte: startOfDay, lte: endOfDay },
-                    status:    { notIn: ['CANCELLED'] },
+                    createdAt:    { gte: startOfDay, lte: endOfDay },
+                    status:       { notIn: ['CANCELLED'] },
+                    customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 include: {
                     orderPayments: { select: { method: true, amountUSD: true } },
