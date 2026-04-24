@@ -1,7 +1,7 @@
 'use client';
 
 import * as XLSX from 'xlsx';
-import type { ZReportData } from '@/app/actions/sales.actions';
+import type { ZReportData } from '@/app/actions/sales/z-report.actions';
 
 function fmt(amount: number) {
     return `$${amount.toFixed(2)}`;

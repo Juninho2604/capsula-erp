@@ -1,7 +1,7 @@
 'use client';
 
 import * as XLSX from 'xlsx';
-import type { ArqueoSaleRow } from '@/app/actions/sales.actions';
+import type { ArqueoSaleRow } from '@/app/actions/sales/arqueo.actions';
 
 /**
  * Columnas del Excel de arqueo (0-based):
