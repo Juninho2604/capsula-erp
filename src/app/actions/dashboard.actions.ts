@@ -4,19 +4,17 @@ import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on server
 import { InventoryItemType } from '@/types';
+import { getCaracasDayRange } from '@/lib/datetime';
 
 export async function getDashboardStatsAction() {
     try {
         const session = await getSession();
         const isAdmin = session && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(session.role);
 
-        const now = new Date();
-        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-        const yesterdayEnd = new Date(todayEnd); yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+        const { start: todayStart, end: todayEnd } = getCaracasDayRange();
+        const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
 
-        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg] = await Promise.all([
+        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg, propinasHoyAgg] = await Promise.all([
             prisma.inventoryItem.findMany({
                 where: { isActive: true },
                 include: {
@@ -32,6 +30,7 @@ export async function getDashboardStatsAction() {
                 where: {
                     createdAt: { gte: todayStart, lte: todayEnd },
                     status: { not: 'CANCELLED' },
+                    customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 _sum: { total: true },
                 _count: { id: true },
@@ -41,6 +40,7 @@ export async function getDashboardStatsAction() {
                 where: {
                     createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
                     status: { not: 'CANCELLED' },
+                    customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 _sum: { total: true },
                 _count: { id: true },
@@ -51,6 +51,16 @@ export async function getDashboardStatsAction() {
                 _count: { id: true },
                 _sum: { balanceDue: true },
             }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
+            // Propinas colectivas hoy
+            isAdmin ? prisma.salesOrder.aggregate({
+                where: {
+                    createdAt: { gte: todayStart, lte: todayEnd },
+                    status: { not: 'CANCELLED' },
+                    customerName: 'PROPINA COLECTIVA',
+                },
+                _sum: { total: true },
+                _count: { id: true },
+            }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
         ]);
 
         // Process items to calculate stock and status
@@ -88,6 +98,10 @@ export async function getDashboardStatsAction() {
                     : null,
                 openTabs: openTabsAgg._count.id,
                 openTabsExposed: Number(openTabsAgg._sum.balanceDue || 0),
+                propinasHoy: {
+                    total: Number(propinasHoyAgg._sum.total || 0),
+                    count: propinasHoyAgg._count.id,
+                },
             } : null,
             lowStockItems: lowStockItems.map(item => ({
                 id: item.id,

@@ -783,6 +783,11 @@ export default function SalesHistoryPage() {
                                 <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="flex justify-between font-semibold text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
+                            {zReport.openTabsPending && zReport.openTabsPending.count > 0 && (
+                                <div className="mt-2 p-2 border border-dashed border-amber-600 rounded text-xs bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
+                                    <span className="font-bold">CUENTAS PENDIENTES ({zReport.openTabsPending.count})</span>{' — '}{formatMoney(zReport.openTabsPending.total)} no cobradas aún (excluidas del cierre)
+                                </div>
+                            )}
                         </div>
 
                         {/* ── ARQUEO DE CAJA ── */}

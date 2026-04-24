@@ -3,6 +3,7 @@
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
 
 // ============================================================================
 // TIPOS
@@ -76,35 +77,32 @@ export async function getMetasAction(): Promise<{ success: boolean; data?: Metas
     const role = session.role;
     const canEdit = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(role);
 
-    const now = new Date();
+    // Rangos Caracas (UTC-4)
+    const { start: todayStart, end: todayEnd } = getCaracasDayRange();
+    const { year: _cy, month: _cm, day: _cd } = getCaracasNowParts();
 
-    // Rangos Venezuela (UTC-4)
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-
-    // Semana: lunes a domingo
-    const dayOfWeek = now.getDay(); // 0=Dom, 1=Lun...
+    // Semana: lunes a domingo (basado en día Caracas)
+    const caracasDayRef = new Date(Date.UTC(_cy, _cm, _cd));
+    const dayOfWeek = caracasDayRef.getUTCDay(); // 0=Dom, 1=Lun...
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - daysFromMonday);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(todayStart.getTime() - daysFromMonday * 86400000);
 
-    // Mes actual
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Mes actual en Caracas
+    const monthStart = new Date(Date.UTC(_cy, _cm, 1, 4, 0, 0, 0));
 
     const [todayAgg, weekAgg, monthAgg, wasteAgg] = await Promise.all([
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: todayStart, lte: todayEnd }, status: { not: 'CANCELLED' } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
         _sum: { total: true },
         _count: { id: true },
       }),
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: weekStart }, status: { not: 'CANCELLED' } },
+        where: { createdAt: { gte: weekStart }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
         _sum: { total: true },
         _count: { id: true },
       }),
       prisma.salesOrder.aggregate({
-        where: { createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
+        where: { createdAt: { gte: monthStart }, status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' } },
         _sum: { total: true },
         _count: { id: true },
       }),
@@ -125,8 +123,9 @@ export async function getMetasAction(): Promise<{ success: boolean; data?: Metas
     const wasteThisMonth = Math.abs(Number(wasteAgg._sum.totalCost || 0));
 
     // Proyección: fracción del día transcurrida en Venezuela (UTC-4)
-    const caracasHour = (now.getUTCHours() - 4 + 24) % 24;
-    const caracasMin  = now.getUTCMinutes();
+    const _now = new Date();
+    const caracasHour = (_now.getUTCHours() - 4 + 24) % 24;
+    const caracasMin  = _now.getUTCMinutes();
     const minutesPassed = caracasHour * 60 + caracasMin;
     // Solo proyectar en horario operativo (06:00–23:59)
     const operativeStart = 6 * 60; // 6 AM

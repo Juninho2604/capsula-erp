@@ -3,6 +3,7 @@
 import { prisma } from '@/server/db';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
+import { getCaracasNowParts } from '@/lib/datetime';
 
 export interface FinancialSummary {
   period: { month: number; year: number; label: string };
@@ -62,16 +63,21 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
   const guard = await checkActionPermission(PERM.VIEW_FINANCES);
   if (!guard.ok) return { success: false, error: guard.message };
 
-  const now = new Date();
-  const m = month ?? (now.getMonth() + 1);
-  const y = year ?? now.getFullYear();
-  const startDate = new Date(y, m - 1, 1);
-  const endDate = new Date(y, m, 0, 23, 59, 59, 999);
+  const { year: _cy, month: _cm } = getCaracasNowParts();
+  const m = month ?? (_cm + 1);
+  const y = year ?? _cy;
+  // Month boundaries in Caracas time (UTC-4): midnight Caracas = 04:00 UTC
+  const startDate = new Date(Date.UTC(y, m - 1, 1, 4, 0, 0, 0));
+  const endDate = new Date(Date.UTC(y, m, 1, 3, 59, 59, 999));
 
   try {
     // 1. Ventas del período
     const salesOrders = await prisma.salesOrder.findMany({
-      where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+      where: {
+        status: { not: 'CANCELLED' },
+        customerName: { not: 'PROPINA COLECTIVA' },
+        createdAt: { gte: startDate, lte: endDate },
+      },
       select: {
         total: true,
         orderType: true,
@@ -211,12 +217,16 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
     // 7. Month over Month
     const prevMonth = m === 1 ? 12 : m - 1;
     const prevYear = m === 1 ? y - 1 : y;
-    const prevStart = new Date(prevYear, prevMonth - 1, 1);
-    const prevEnd = new Date(prevYear, prevMonth, 0, 23, 59, 59, 999);
+    const prevStart = new Date(Date.UTC(prevYear, prevMonth - 1, 1, 4, 0, 0, 0));
+    const prevEnd = new Date(Date.UTC(prevYear, prevMonth, 1, 3, 59, 59, 999));
 
     const [prevSalesOrders, prevExpAgg] = await Promise.all([
       prisma.salesOrder.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: prevStart, lte: prevEnd } },
+        where: {
+          status: { not: 'CANCELLED' },
+          customerName: { not: 'PROPINA COLECTIVA' },
+          createdAt: { gte: prevStart, lte: prevEnd },
+        },
         select: { total: true, items: { select: { costTotal: true } } },
       }),
       prisma.expense.aggregate({
@@ -296,17 +306,22 @@ export async function getMonthlyTrendAction(months = 6): Promise<{
 
   try {
     const results: { label: string; sales: number; cogs: number; expenses: number; profit: number }[] = [];
-    const now = new Date();
+    const { year: _cy, month: _cm } = getCaracasNowParts();
 
     for (let i = months - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      const startDate = new Date(y, m - 1, 1);
-      const endDate = new Date(y, m, 0, 23, 59, 59, 999);
+      // Walk back i months from current Caracas month; Date handles negative month rollover
+      const d = new Date(Date.UTC(_cy, _cm - i, 1, 4, 0, 0, 0));
+      const m = d.getUTCMonth() + 1;
+      const y = d.getUTCFullYear();
+      const startDate = new Date(Date.UTC(y, m - 1, 1, 4, 0, 0, 0));
+      const endDate = new Date(Date.UTC(y, m, 1, 3, 59, 59, 999));
 
       const salesOrders = await prisma.salesOrder.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+        where: {
+          status: { not: 'CANCELLED' },
+          customerName: { not: 'PROPINA COLECTIVA' },
+          createdAt: { gte: startDate, lte: endDate },
+        },
         select: { total: true, items: { select: { costTotal: true } } },
       });
       const sales = salesOrders.reduce((s: number, o) => s + o.total, 0);
@@ -341,18 +356,23 @@ export async function getDailySalesAction(month: number, year: number): Promise<
   const guard = await checkActionPermission(PERM.VIEW_FINANCES);
   if (!guard.ok) return { success: false, error: guard.message };
 
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  const startDate = new Date(Date.UTC(year, month - 1, 1, 4, 0, 0, 0));
+  const endDate = new Date(Date.UTC(year, month, 1, 3, 59, 59, 999));
 
   try {
     const salesOrders = await prisma.salesOrder.findMany({
-      where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+      where: {
+        status: { not: 'CANCELLED' },
+        customerName: { not: 'PROPINA COLECTIVA' },
+        createdAt: { gte: startDate, lte: endDate },
+      },
       select: { total: true, createdAt: true },
     });
 
+    const CARACAS_OFFSET_MS = -4 * 3600 * 1000;
     const dailySalesMap = new Map<number, { total: number; orders: number }>();
     for (const o of salesOrders) {
-      const day = new Date(o.createdAt).getDate();
+      const day = new Date(o.createdAt.getTime() + CARACAS_OFFSET_MS).getUTCDate();
       const existing = dailySalesMap.get(day) || { total: 0, orders: 0 };
       existing.total += o.total;
       existing.orders += 1;

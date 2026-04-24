@@ -33,6 +33,7 @@ export interface ZReportData {
     totalTips: number;         // propinas voluntarias totales del día
     tipCount: number;          // número de transacciones de propina
     totalCollected: number;    // dinero real que entró en caja
+    openTabsPending: { count: number; total: number };  // mesas abiertas no cobradas
 
     discountBreakdown: {
         divisas: number;
@@ -76,7 +77,7 @@ export async function getSalesHistoryAction(date?: string) {
                 authorizedBy: { select: { firstName: true, lastName: true } },
                 createdBy: { select: { firstName: true, lastName: true } },
                 voidedBy: { select: { firstName: true, lastName: true } },
-                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, paymentSplits: { select: { splitLabel: true, paymentMethod: true, paidAmount: true } } } },
+                openTab: { select: { tabCode: true, customerLabel: true, customerPhone: true, runningSubtotal: true, runningDiscount: true, runningTotal: true, totalServiceCharge: true, paymentSplits: { select: { splitLabel: true, paymentMethod: true, paidAmount: true } } } },
                 orderPayments: { select: { method: true, amountUSD: true, amountBS: true, exchangeRate: true } },
                 items: {
                     include: {
@@ -122,14 +123,11 @@ export async function getSalesHistoryAction(date?: string) {
                     modifiers: (it.modifiers || []).map((m: any) => m.name)
                 })));
                 const splits = tab?.paymentSplits || [];
-                // Solo considerar el 10% servicio si se registró un pago con ese concepto.
-                // Si no hay splits (tab abierta / sin cobrar), no asumir servicio.
-                const serviceFeeIncluded = splits.length > 0
-                    ? splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'))
-                    : false;
-                const totalFactura = serviceFeeIncluded ? total * 1.1 : total;
+                // Use stored totalServiceCharge instead of fragile string matching
+                const servicioAmount = tab?.totalServiceCharge ?? 0;
+                const serviceFeeIncluded = servicioAmount > 0;
+                const totalFactura = total + servicioAmount;
                 const totalCobrado = splits.reduce((s: number, sp: { paidAmount?: number }) => s + (sp.paidAmount || 0), 0) || totalFactura;
-                const servicioAmount = serviceFeeIncluded ? total * 0.1 : 0;
                 const propina = Math.max(0, totalCobrado - totalFactura);
                 const paymentBreakdown = splits.map((sp: { paymentMethod?: string | null; paidAmount?: number }) => ({
                     method: sp.paymentMethod || 'CASH',
@@ -239,6 +237,7 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                         tabCode: true,
                         customerLabel: true,
                         runningTotal: true,
+                        totalServiceCharge: true,
                         tableOrStation: { select: { name: true } },
                         paymentSplits: { select: { paymentMethod: true, paidAmount: true, splitLabel: true } }
                     }
@@ -270,9 +269,9 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
 
                 const breakdown = { cashUsd: 0, cashEur: 0, cashBs: 0, zelle: 0, cardPdVShanklish: 0, cardPdVSuperferro: 0, mobileShanklish: 0, mobileNour: 0 };
                 const splits = tab?.paymentSplits || [];
-                let serviceFee = 0;
-                const hasService = splits.length > 0 && splits.some((s: { splitLabel?: string }) => (s.splitLabel || '').includes('| +10% serv'));
-                const totalFactura = hasService ? total * 1.1 : total;
+                // Use stored totalServiceCharge instead of fragile string matching
+                const serviceFee = tab?.totalServiceCharge ?? 0;
+                const totalFactura = total + serviceFee;
                 const totalCobrado = splits.length > 0
                     ? splits.reduce((s: number, sp: { paidAmount?: number }) => s + (sp.paidAmount || 0), 0)
                     : totalFactura;
@@ -290,7 +289,6 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
                         else if (pm === 'MOBILE_PAY' || pm === 'PAGO_MOVIL' || pm === 'MOVIL_NG') breakdown.mobileShanklish += amt;
                         // MULTIPLE, CORTESIA → silently excluded
                     }
-                    serviceFee = hasService ? total * 0.1 : 0;
                 } else {
                     const pm = (group[0].paymentMethod || '').toUpperCase();
                     if (pm === 'CASH' || pm === 'CASH_USD') breakdown.cashUsd = total;
@@ -375,9 +373,10 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 orderPayments: { select: { method: true, amountUSD: true } },
                 openTab: {
                     select: {
-                        runningSubtotal: true,
-                        runningDiscount: true,
-                        runningTotal:    true,
+                        runningSubtotal:    true,
+                        runningDiscount:    true,
+                        runningTotal:       true,
+                        totalServiceCharge: true,
                         paymentSplits: {
                             where:  { status: 'PAID' },
                             select: { paymentMethod: true, paidAmount: true, splitLabel: true },
@@ -430,6 +429,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         let totalTips       = 0;
         let tipCount        = 0;
         const byType = { restaurant: 0, delivery: 0, pickup: 0, pedidosya: 0, wink: 0, evento: 0, tablePong: 0 };
+        const openTabsPending = { count: 0, total: 0 };
 
         // ── process tab groups (mesas) ────────────────────────────────────────
         for (const group of Array.from(tabGroups.values())) {
@@ -438,29 +438,31 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             const discount = tab.runningDiscount;
             const netProds = tab.runningTotal;      // subtotal - discount
 
+            const splits: Split[]  = (tab.paymentSplits ?? []) as Split[];
+            const serviceFee = tab.totalServiceCharge ?? 0;
+            const totalFactura = netProds + serviceFee;
+            const totalCobrado = splits.reduce((acc: number, sp: Split) => acc + (sp.paidAmount ?? 0), 0);
+
+            // Tab not yet paid — track as pending, exclude from revenue
+            if (splits.length === 0) {
+                openTabsPending.count++;
+                openTabsPending.total += totalFactura;
+                continue;
+            }
+
             grossTotal     += subtotal;
             totalDiscounts += discount;
             for (const o of group) addDiscount(o);
             byType.restaurant++;
 
-            const splits: Split[]  = (tab.paymentSplits ?? []) as Split[];
-            const hasService = splits.some((s: Split) => (s.splitLabel ?? '').includes('| +10% serv'));
-            const serviceFee = hasService ? netProds * 0.1 : 0;
+            // Use stored totalServiceCharge — no string matching needed
             totalServiceFee += serviceFee;
 
-            const totalFactura = netProds + serviceFee;
-            const totalCobrado = splits.length > 0
-                ? splits.reduce((acc: number, sp: Split) => acc + (sp.paidAmount ?? 0), 0)
-                : totalFactura;
             const tabTip = Math.max(0, totalCobrado - totalFactura);
             totalTips += tabTip;
             if (tabTip > 0) tipCount++;
 
-            if (splits.length > 0) {
-                for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0);
-            } else {
-                addPayment(group[0].paymentMethod, totalCobrado);
-            }
+            for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0);
         }
 
         // ── process non-tab orders (delivery / pickup / pedidosya / directo) ──
@@ -514,6 +516,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 discountBreakdown: disc,
                 paymentBreakdown:  pay,
                 ordersByStatus:    {},
+                openTabsPending,
             },
         };
     } catch (error) {
