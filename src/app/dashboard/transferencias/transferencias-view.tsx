@@ -361,10 +361,10 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                     <div className="capsula-card p-8 border-primary/5 shadow-2xl animate-in slide-in-from-bottom-4 duration-500">
                         <div className="mb-10 flex items-center justify-between">
                             <div>
-                                <h3 className="text-2xl font-black uppercase tracking-tighter italic text-primary">Nueva Requisición</h3>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Gestión de Transferencias CAPSULA</p>
+                                <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">Nueva requisición</h3>
+                                <p className="mt-1 text-xs font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">Gestión de transferencias CAPSULA</p>
                             </div>
-                            <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl">📥</div>
+                            <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl"></div>
                         </div>
 
                         <div className="mb-10 grid gap-8 sm:grid-cols-2">
@@ -448,7 +448,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 onClick={() => setRequestItems([...requestItems, { id: '', name: '', quantity: 0, unit: '-' }])}
                                 className="flex w-full items-center justify-center gap-2 bg-secondary/10 py-5 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all active:scale-[0.99]"
                             >
-                                <span className="text-xl font-black">+</span> Agregar otra fila
+                                <span className="font-semibold text-xl tracking-[-0.02em]">+</span> Agregar otra fila
                             </button>
                         </div>
 
@@ -476,7 +476,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                         {activeReqs.length === 0 ? (
                             <div className="py-24 text-center glass-panel rounded-[3rem] border-primary/5">
-                                <span className="text-7xl block mb-6 grayscale opacity-20">📭</span>
+                                <span className="text-7xl block mb-6 grayscale opacity-20"></span>
                                 <p className="font-black uppercase tracking-[0.3em] text-muted-foreground">Bandeja Vacía</p>
                                 <p className="text-xs font-bold text-muted-foreground/50 mt-2 uppercase">No hay solicitudes en curso actualmente</p>
                             </div>
@@ -496,7 +496,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
                                                         <div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-orange-600 tracking-tighter">{req.code}</span>
+                                                                <span className="font-semibold text-xl tracking-[-0.02em] italic text-orange-600 tracking-tighter">{req.code}</span>
                                                                 <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-orange-500 text-white shadow-lg shadow-orange-500/20">⏳ Pendiente</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">
@@ -515,9 +515,9 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                             </p>
                                                         </div>
                                                         <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
-                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">❌ Rechazar</button>
-                                                            <button onClick={() => handleDispatch(req)} disabled={isSubmitting} className="capsula-btn capsula-btn-primary min-h-0 py-3 px-8 text-sm">📦 Despachar</button>
-                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-500/20">✅ Aprobar Directo</button>
+                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">Rechazar</button>
+                                                            <button onClick={() => handleDispatch(req)} disabled={isSubmitting} className="capsula-btn capsula-btn-primary min-h-0 py-3 px-8 text-sm">Despachar</button>
+                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-500/20">Aprobar Directo</button>
                                                         </div>
                                                     </div>
 
@@ -564,8 +564,8 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between relative z-10">
                                                         <div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="font-black text-xl italic text-blue-600 tracking-tighter">{req.code}</span>
-                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-lg shadow-blue-500/20">📦 Despachado</span>
+                                                                <span className="font-semibold text-xl tracking-[-0.02em] italic text-blue-600 tracking-tighter">{req.code}</span>
+                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-lg shadow-blue-500/20">Despachado</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">
                                                                 <div className="bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
@@ -583,9 +583,9 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
-                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">❌ Rechazar</button>
-                                                            <button onClick={() => handleReceive(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-purple-600 text-white shadow-lg shadow-purple-500/20 border-purple-700 font-black text-xs uppercase tracking-widest">📋 Confirmar Recepción</button>
-                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-emerald-700 font-black text-xs uppercase tracking-widest">✅ Aprobar Directo</button>
+                                                            <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">Rechazar</button>
+                                                            <button onClick={() => handleReceive(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-purple-600 text-white shadow-lg shadow-purple-500/20 border-purple-700 font-black text-xs uppercase tracking-widest">Confirmar Recepción</button>
+                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-emerald-700 font-black text-xs uppercase tracking-widest">Aprobar Directo</button>
                                                         </div>
                                                     </div>
 
@@ -810,7 +810,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                         ...(transferQuantity !== undefined && { quantity: transferQuantity }),
                     };
                     setRequestItems(newItems);
-                    setMsg({ type: 'success', text: `✅ Producto "${newItem.name}" creado y agregado a la solicitud` });
+                    setMsg({ type: 'success', text: `Producto "${newItem.name}" creado y agregado a la solicitud` });
                 }}
             />
         </div>

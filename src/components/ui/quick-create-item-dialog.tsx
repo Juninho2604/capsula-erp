@@ -154,7 +154,7 @@ export function QuickCreateItemDialog({
                 <div className="mx-5 mt-4 flex gap-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex-shrink-0">
                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
-                        <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">⚠️ Antes de crear este producto</p>
+                        <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Antes de crear este producto</p>
                         <p className="text-amber-700 dark:text-amber-400 text-xs">
                             Asegúrate de que <strong>este producto no existe ya</strong> en el sistema con otro nombre.
                             Coordina con los demás jefes de cocina y producción para usar el <strong>mismo nombre de referencia</strong>.

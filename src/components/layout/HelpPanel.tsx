@@ -281,7 +281,7 @@ export function HelpPanel() {
                   <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">{guide.title}</h2>
+                  <h2 className="font-semibold text-base tracking-[-0.01em] text-capsula-ink">{guide.title}</h2>
                   <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-capsula-ink-muted">Guía de uso</p>
                 </div>
               </div>

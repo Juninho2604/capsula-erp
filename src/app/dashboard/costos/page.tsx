@@ -24,9 +24,7 @@ export default async function CostosPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        💰 Módulo de Costos
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Módulo de Costos</h1>
                     <p className="mt-1 text-sm text-gray-500">
                         Gestión de precios de compra y cálculo de COGS
                     </p>
@@ -42,15 +40,13 @@ export default async function CostosPage() {
                             ✅
                         </div>
                         <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Con Costo
-                            </h3>
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Con Costo</h3>
                             <p className="text-sm text-gray-500">
                                 Materias primas
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-green-600">
+                    <div className="mt-4 font-semibold text-3xl tracking-[-0.02em] text-green-600">
                         {withCost}
                     </div>
                     <p className="text-xs text-gray-400">Ítems con precio registrado</p>
@@ -63,15 +59,13 @@ export default async function CostosPage() {
                             ⚠️
                         </div>
                         <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Sin Costo
-                            </h3>
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Sin Costo</h3>
                             <p className="text-sm text-gray-500">
                                 Pendientes de precio
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-amber-600">
+                    <div className="mt-4 font-semibold text-3xl tracking-[-0.02em] text-amber-600">
                         {withoutCost}
                     </div>
                     <p className="text-xs text-gray-400">Requieren actualización</p>
@@ -84,15 +78,13 @@ export default async function CostosPage() {
                             📦
                         </div>
                         <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                                Total Items
-                            </h3>
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Total Items</h3>
                             <p className="text-sm text-gray-500">
                                 Materias primas
                             </p>
                         </div>
                     </div>
-                    <div className="mt-4 text-3xl font-bold text-blue-600">
+                    <div className="mt-4 font-semibold text-3xl tracking-[-0.02em] text-blue-600">
                         {items.length}
                     </div>
                     <p className="text-xs text-gray-400">En el inventario</p>
@@ -106,9 +98,7 @@ export default async function CostosPage() {
             {items.length > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            📋 Costos Actuales de Materias Primas
-                        </h3>
+                        <h3 className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Costos Actuales de Materias Primas</h3>
                     </div>
                     <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                         <table className="w-full text-sm">

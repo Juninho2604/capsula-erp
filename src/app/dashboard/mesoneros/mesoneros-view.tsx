@@ -266,9 +266,7 @@ export function MesonerosView({ currentUserRole }: { currentUserRole: string }) 
                 <div className="fixed inset-0 z-50 flex items-end justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm sm:items-center">
                     <div className="w-full max-w-sm overflow-hidden rounded-t-3xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep sm:rounded-2xl">
                         <div className="flex items-center justify-between border-b border-capsula-line px-5 py-4">
-                            <h3 className="font-medium text-capsula-ink">
-                                {editingId ? 'Editar mesonero' : 'Nuevo mesonero'}
-                            </h3>
+                            <h3 className="font-medium text-capsula-ink">{editingId ? 'Editar mesonero' : 'Nuevo mesonero'}</h3>
                             <button
                                 onClick={() => setShowForm(false)}
                                 className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"

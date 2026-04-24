@@ -30,7 +30,7 @@ export default async function RolesConfigPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Configuración de Roles y Permisos</h1>
+                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Configuración de Roles y Permisos</h1>
                 <p className="text-gray-500">Administra los accesos de los usuarios al sistema.</p>
             </div>
 

@@ -46,7 +46,7 @@ export function TasaCambioView({ history }: Props) {
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tasa actual</p>
                 {latest ? (
                     <>
-                        <p className="mt-1 text-4xl font-bold text-amber-600 dark:text-amber-400">
+                        <p className="mt-1 font-semibold text-4xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
                             {latest.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </p>
                         <p className="mt-1 text-sm text-gray-500">Bs por 1 USD</p>
@@ -98,9 +98,7 @@ export function TasaCambioView({ history }: Props) {
             {history.length > 0 && (
                 <div className="md:col-span-2 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
                     <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            Historial reciente
-                        </h2>
+                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Historial reciente</h2>
                     </div>
                     <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {history.map((r) => (
@@ -112,7 +110,7 @@ export function TasaCambioView({ history }: Props) {
                                         year: 'numeric',
                                     })}
                                 </span>
-                                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                <span className="font-mono text-sm font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                     {r.rate.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs
                                 </span>
                             </div>

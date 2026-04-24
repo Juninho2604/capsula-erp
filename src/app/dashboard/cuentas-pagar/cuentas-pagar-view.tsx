@@ -236,9 +236,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       {/* Aging Report */}
       {hasAging && (
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
-          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-            Envejecimiento de deudas
-          </h3>
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Envejecimiento de deudas</h3>
           <div className="grid grid-cols-5 gap-2">
             {agingData.map(bucket => {
               const styles = agingBucketStyles(bucket.range);
@@ -247,7 +245,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                   <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
                     {bucket.range === 'Vigente' ? 'Al día' : `${bucket.range} días`}
                   </p>
-                  <p className={`mt-1 font-heading text-lg tracking-[-0.02em] ${styles.text}`}>
+                  <p className={`mt-1 font-semibold text-lg tracking-[-0.02em] ${styles.text}`}>
                     ${fmt(bucket.amount)}
                   </p>
                   <p className="text-[11px] text-capsula-ink-muted">{bucket.count} cuentas</p>
@@ -261,15 +259,13 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       {/* Top Acreedores */}
       {supplierSummary.length > 0 && (
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
-          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-            Principales acreedores
-          </h3>
+          <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Principales acreedores</h3>
           <div className="space-y-2">
             {supplierSummary.map((s, i) => {
               const pct = totalPending > 0 ? (s.total / totalPending) * 100 : 0;
               return (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="w-5 font-heading text-base text-capsula-ink-muted">{i + 1}</span>
+                  <span className="w-5 font-semibold text-base text-capsula-ink-muted">{i + 1}</span>
                   <span className="flex-1 truncate text-sm text-capsula-ink">{s.name}</span>
                   <span className="text-xs text-capsula-ink-muted">{s.count} cuentas</span>
                   <span className="w-24 text-right text-sm font-medium text-capsula-ink">${fmt(s.total)}</span>
@@ -339,26 +335,25 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       </div>
 
       {/* Tabla */}
-      <div className="glass-panel rounded-2xl border border-border overflow-hidden">
+      <div className="rounded-2xl border border-capsula-line bg-capsula-ivory overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl">📄</p>
-            <p className="mt-2 text-muted-foreground font-medium">Sin cuentas en esta vista</p>
+            <p className="text-capsula-ink-muted font-medium">Sin cuentas en esta vista</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30">
+              <thead className="border-b border-capsula-line bg-capsula-ivory-surface">
                 <tr>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Descripción / Acreedor</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Estado</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Total</th>
-                  <th className="px-5 py-3 text-right font-semibold text-muted-foreground">Pendiente</th>
-                  <th className="px-5 py-3 text-left font-semibold text-muted-foreground">Vencimiento</th>
-                  {canManage && <th className="px-5 py-3 text-center font-semibold text-muted-foreground">Acción</th>}
+                  <th className="px-5 py-3 text-left font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Descripción / Acreedor</th>
+                  <th className="px-5 py-3 text-left font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Estado</th>
+                  <th className="px-5 py-3 text-right font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Total</th>
+                  <th className="px-5 py-3 text-right font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Pendiente</th>
+                  <th className="px-5 py-3 text-left font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Vencimiento</th>
+                  {canManage && <th className="px-5 py-3 text-center font-semibold uppercase tracking-[0.14em] text-[11px] text-capsula-ink-muted">Acción</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-capsula-line">
                 {filtered.map(a => {
                   const statusCfg = STATUS_CONFIG[a.status] ?? { label: a.status, variant: 'neutral' as StatusVariant };
                   const isExpanded = expandedId === a.id;
@@ -366,11 +361,11 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                   return (
                     <>
                       <tr key={a.id}
-                        className={`hover:bg-muted/20 transition-colors cursor-pointer ${isOverdue ? 'bg-red-500/5' : ''}`}
+                        className={`hover:bg-capsula-ivory-surface transition-colors cursor-pointer ${isOverdue ? 'bg-capsula-coral/5' : ''}`}
                         onClick={() => setExpandedId(isExpanded ? null : a.id)}>
                         <td className="px-5 py-3">
-                          <div className="font-medium text-foreground">{a.description}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="font-semibold text-capsula-ink">{a.description}</div>
+                          <div className="text-xs text-capsula-ink-muted">
                             {a.supplierName || a.creditorName}
                             {a.invoiceNumber && ` · Fact. ${a.invoiceNumber}`}
                           </div>
@@ -378,23 +373,23 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                         <td className="px-5 py-3">
                           <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                         </td>
-                        <td className="px-5 py-3 text-right text-foreground font-medium">${fmt(a.totalAmountUsd)}</td>
-                        <td className={`px-5 py-3 text-right font-bold ${a.remainingUsd > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        <td className="px-5 py-3 text-right text-capsula-ink font-semibold tabular-nums">${fmt(a.totalAmountUsd)}</td>
+                        <td className={`px-5 py-3 text-right font-semibold tabular-nums ${a.remainingUsd > 0 ? 'text-capsula-coral' : 'text-capsula-ink-muted'}`}>
                           {a.remainingUsd > 0 ? `$${fmt(a.remainingUsd)}` : '—'}
                         </td>
                         <td className="px-5 py-3">
                           {a.dueDate ? (
-                            <span className={isOverdue ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
+                            <span className={isOverdue ? 'text-capsula-coral font-semibold' : 'text-capsula-ink-soft'}>
                               {new Date(a.dueDate).toLocaleDateString('es-VE')}
                             </span>
-                          ) : <span className="text-muted-foreground">—</span>}
+                          ) : <span className="text-capsula-ink-muted">—</span>}
                         </td>
                         {canManage && (
                           <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                             {!['PAID', 'VOID'].includes(a.status) && (
                               <button onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
-                                className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-bold px-3 py-1 hover:bg-emerald-500/20">
-                                Registrar Pago
+                                className="rounded-lg bg-capsula-navy-deep text-capsula-ivory text-xs font-semibold px-3 py-1.5 hover:bg-capsula-navy-deep/90 transition">
+                                Registrar pago
                               </button>
                             )}
                           </td>
@@ -402,12 +397,12 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                       </tr>
                       {isExpanded && a.payments.length > 0 && (
                         <tr key={`${a.id}-payments`}>
-                          <td colSpan={canManage ? 6 : 5} className="px-8 py-3 bg-muted/10">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Pagos realizados</p>
+                          <td colSpan={canManage ? 6 : 5} className="px-8 py-3 bg-capsula-ivory-surface">
+                            <p className="text-[10px] font-semibold text-capsula-ink-muted uppercase tracking-[0.14em] mb-2">Pagos realizados</p>
                             <div className="space-y-1">
                               {a.payments.map(p => (
-                                <div key={p.id} className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="text-foreground font-semibold">${fmt(p.amountUsd)}</span>
+                                <div key={p.id} className="flex items-center gap-4 text-xs text-capsula-ink-soft">
+                                  <span className="text-capsula-ink font-semibold tabular-nums">${fmt(p.amountUsd)}</span>
                                   <span>{PAYMENT_METHODS.find(m => m.value === p.paymentMethod)?.label ?? p.paymentMethod}</span>
                                   {p.paymentRef && <span>Ref: {p.paymentRef}</span>}
                                   <span>{new Date(p.paidAt).toLocaleDateString('es-VE')}</span>
@@ -429,59 +424,59 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Modal: Nueva Cuenta */}
       {showForm && (
-        <Modal title="Nueva Cuenta por Pagar" onClose={() => setShowForm(false)}>
+        <Modal title="Nueva cuenta por pagar" onClose={() => setShowForm(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Descripción *</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Descripción *</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="input-field w-full" placeholder="Ej: Factura vegetales 15/03/2026" required />
+                className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition" placeholder="Ej: Factura vegetales 15/03/2026" required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Proveedor (sistema)</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Proveedor (sistema)</label>
                 <select value={form.supplierId} onChange={e => setForm(f => ({ ...f, supplierId: e.target.value, creditorName: '' }))}
-                  className="input-field w-full">
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition">
                   <option value="">— Seleccionar —</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">O nombre del acreedor</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">O nombre del acreedor</label>
                 <input value={form.creditorName} onChange={e => setForm(f => ({ ...f, creditorName: e.target.value, supplierId: '' }))}
-                  className="input-field w-full" placeholder="Si no está en el sistema" disabled={!!form.supplierId} />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition disabled:opacity-50" placeholder="Si no está en el sistema" disabled={!!form.supplierId} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Nº de Factura</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Nº de factura</label>
                 <input value={form.invoiceNumber} onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))}
-                  className="input-field w-full" placeholder="Opcional" />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition" placeholder="Opcional" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto Total USD *</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Monto total USD *</label>
                 <input type="number" step="0.01" min="0.01" value={form.totalAmountUsd}
                   onChange={e => setForm(f => ({ ...f, totalAmountUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition tabular-nums" placeholder="0.00" required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha Factura *</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Fecha factura *</label>
                 <input type="date" value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))}
-                  className="input-field w-full" required />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha Vencimiento</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Fecha vencimiento</label>
                 <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                  className="input-field w-full" />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition" />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <button type="button" onClick={() => setShowForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
+                className="rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2 text-sm font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-surface transition">Cancelar</button>
               <button type="submit" disabled={isPending}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
-                {isPending ? 'Guardando...' : 'Registrar Cuenta'}
+                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
+                {isPending ? 'Guardando…' : 'Registrar cuenta'}
               </button>
             </div>
           </form>
@@ -490,49 +485,49 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
 
       {/* Modal: Registrar Pago */}
       {payTarget && (
-        <Modal title="Registrar Pago" onClose={() => setPayTarget(null)}>
+        <Modal title="Registrar pago" onClose={() => setPayTarget(null)}>
           <form onSubmit={handlePay} className="space-y-4">
-            <div className="rounded-xl bg-muted/30 p-4 text-sm space-y-1">
-              <p className="font-semibold text-foreground">{payTarget.description}</p>
-              <p className="text-muted-foreground">Pendiente: <span className="font-bold text-amber-500">${fmt(payTarget.remainingUsd)}</span></p>
+            <div className="rounded-xl bg-capsula-ivory border border-capsula-line p-4 text-sm space-y-1">
+              <p className="font-semibold text-capsula-ink">{payTarget.description}</p>
+              <p className="text-capsula-ink-muted">Pendiente: <span className="font-semibold text-capsula-ink tabular-nums">${fmt(payTarget.remainingUsd)}</span></p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Monto USD *</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Monto USD *</label>
                 <input type="number" step="0.01" min="0.01" value={payForm.amountUsd}
                   onChange={e => setPayForm(f => ({ ...f, amountUsd: e.target.value }))}
-                  className="input-field w-full" placeholder="0.00" required />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition tabular-nums" placeholder="0.00" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Fecha *</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Fecha *</label>
                 <input type="date" value={payForm.paidAt} onChange={e => setPayForm(f => ({ ...f, paidAt: e.target.value }))}
-                  className="input-field w-full" required />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition" required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Método *</label>
-                <select value={payForm.paymentMethod} onChange={e => setPayForm(f => ({ ...f, paymentMethod: e.target.value }))} className="input-field w-full">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Método *</label>
+                <select value={payForm.paymentMethod} onChange={e => setPayForm(f => ({ ...f, paymentMethod: e.target.value }))} className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition">
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Referencia</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Referencia</label>
                 <input value={payForm.paymentRef} onChange={e => setPayForm(f => ({ ...f, paymentRef: e.target.value }))}
-                  className="input-field w-full" placeholder="Nº transferencia..." />
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition" placeholder="Nº transferencia…" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Notas</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Notas</label>
               <textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                className="input-field w-full" rows={2} />
+                className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition resize-none" rows={2} />
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <button type="button" onClick={() => setPayTarget(null)}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-accent">Cancelar</button>
+                className="rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2 text-sm font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-surface transition">Cancelar</button>
               <button type="submit" disabled={isPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {isPending ? 'Registrando...' : 'Confirmar Pago'}
+                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
+                {isPending ? 'Registrando…' : 'Confirmar pago'}
               </button>
             </div>
           </form>
@@ -567,7 +562,7 @@ function KpiCard({
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">{label}</p>
         <Icon className="h-4 w-4 text-capsula-ink-muted" />
       </div>
-      <p className="truncate font-heading text-2xl tracking-[-0.02em] text-capsula-ink">{value}</p>
+      <p className="truncate font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-capsula-ink-soft">{sub}</p>}
     </div>
   );
@@ -578,7 +573,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-capsula-line bg-capsula-ivory-surface shadow-cap-deep">
         <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
-          <h2 className="font-heading text-base tracking-[-0.01em] text-capsula-ink">{title}</h2>
+          <h2 className="font-semibold text-base tracking-[-0.01em] text-capsula-ink">{title}</h2>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"

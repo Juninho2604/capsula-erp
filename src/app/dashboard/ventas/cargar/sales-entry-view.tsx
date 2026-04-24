@@ -147,7 +147,7 @@ export default function SalesEntryView() {
         });
 
         if (result.success) {
-            alert(`✅ ${result.message}`);
+            alert(`${result.message}`);
             // Limpiar formulario
             setCart([]);
             setDiscountType('');
@@ -160,7 +160,7 @@ export default function SalesEntryView() {
             const salesData = await getTodaySalesAction();
             setTodaySales(salesData);
         } else {
-            alert(`❌ ${result.message}`);
+            alert(`${result.message}`);
         }
         setIsSubmitting(false);
     }
@@ -212,9 +212,7 @@ export default function SalesEntryView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        💰 Cargar Ventas
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Cargar Ventas</h1>
                     <p className="text-gray-500">
                         Registra las comandas de WhatsApp
                     </p>
@@ -267,19 +265,19 @@ export default function SalesEntryView() {
             <div className="grid gap-4 sm:grid-cols-4">
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                     <p className="text-sm text-gray-500">Ventas Hoy</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.totalSales}</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{todaySales.summary.totalSales}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                     <p className="text-sm text-gray-500">Ingresos Hoy</p>
-                    <p className="text-2xl font-bold text-emerald-600">{formatCurrency(todaySales.summary.totalRevenue)}</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-600">{formatCurrency(todaySales.summary.totalRevenue)}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">🍽️ Restaurante</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.byType?.RESTAURANT || 0}</p>
+                    <p className="text-sm text-gray-500">Restaurante</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{todaySales.summary.byType?.RESTAURANT || 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">🛵 Delivery</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{todaySales.summary.byType?.DELIVERY || 0}</p>
+                    <p className="text-sm text-gray-500">Delivery</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{todaySales.summary.byType?.DELIVERY || 0}</p>
                 </div>
             </div>
 
@@ -290,9 +288,7 @@ export default function SalesEntryView() {
                     <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="font-semibold text-gray-900 dark:text-white">
-                                    📋 Menú
-                                </h2>
+                                <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Menú</h2>
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -360,9 +356,7 @@ export default function SalesEntryView() {
                     {/* Carrito y checkout */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🛒 Comanda ({cart.length})
-                            </h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Comanda ({cart.length})</h2>
                         </div>
 
                         <div className="p-4 space-y-4 max-h-[30vh] overflow-y-auto">
@@ -599,7 +593,7 @@ export default function SalesEntryView() {
                                 {todaySales.sales.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                            <span className="text-4xl">📭</span>
+                                            <span className="text-4xl"></span>
                                             <p className="mt-2">No hay ventas registradas hoy</p>
                                         </td>
                                     </tr>

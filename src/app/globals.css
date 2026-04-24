@@ -190,9 +190,9 @@
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, .font-heading {
-    font-family: var(--font-heading);
+    font-family: var(--font-body);
     letter-spacing: -0.02em;
-    font-weight: 400;
+    font-weight: 600;
   }
 }
 
@@ -369,9 +369,9 @@
     margin-bottom: 0.25rem;
   }
   .pos-heading-lg {
-    font-family: var(--font-heading), Georgia, serif;
+    font-family: var(--font-body);
     font-size: 1.875rem;
-    font-weight: 400;
+    font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.1;
     color: var(--capsula-navy-deep);
@@ -383,7 +383,8 @@
     color: var(--capsula-ink);
   }
   .pos-amount-lg {
-    font-family: var(--font-heading), Georgia, serif;
+    font-family: var(--font-body);
+    font-weight: 600;
     font-size: 1.5rem;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;

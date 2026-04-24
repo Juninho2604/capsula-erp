@@ -101,9 +101,7 @@ export default function AlmacenesView({ initialData }: { initialData: AreaItem[]
         {/* Formulario crear */}
         {showForm && (
           <div className="rounded-2xl border border-capsula-line-strong bg-capsula-ivory-surface p-5 space-y-4 shadow-cap-soft">
-            <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-              Nuevo almacén
-            </h2>
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Nuevo almacén</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">

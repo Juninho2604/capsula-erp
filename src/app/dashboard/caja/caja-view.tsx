@@ -213,8 +213,8 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">🏧 Control de Caja</h1>
-          <p className="text-sm text-muted-foreground">Apertura y cierre de caja diaria</p>
+          <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Control de caja</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Apertura y cierre de caja diaria</p>
         </div>
         {canManage && (
           <button onClick={() => setShowOpenForm(true)}
@@ -227,7 +227,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Cajas abiertas */}
       {openRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-emerald-500">Cajas Abiertas</h3>
+          <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Cajas abiertas</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {openRegisters.map(r => (
               <div key={r.id} className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
@@ -245,7 +245,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                       <span className="font-semibold text-foreground">${fmt(r.openingCashUsd)}</span>
                       {r.openingDenominationsJson && (
                         <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
-                          className="text-emerald-400 hover:text-emerald-300 text-xs">📋</button>
+                          className="text-emerald-400 hover:text-emerald-300 text-xs"></button>
                       )}
                     </div>
                   </div>
@@ -297,16 +297,16 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
       {/* Monthly Summary */}
       {closedRegisters.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumen del Mes</h3>
+          <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resumen del mes</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="glass-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventas del Mes</p>
-              <p className="text-2xl font-black text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
+              <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-500 mt-1">${fmt(monthlyStats.totalSales)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{monthlyStats.shiftsCount} turnos cerrados</p>
             </div>
             <div className="glass-panel rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gastos del Mes</p>
-              <p className="text-2xl font-black text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
+              <p className="font-semibold text-2xl tracking-[-0.02em] text-red-500 mt-1">${fmt(monthlyStats.totalExpenses)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Descontados de caja</p>
             </div>
             <div className={`glass-panel rounded-2xl border p-4 ${
@@ -314,7 +314,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
               monthlyStats.totalDifference < 0 ? 'border-red-500/30 bg-red-500/5' : 'border-blue-500/30 bg-blue-500/5'
             }`}>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Diferencia Acumulada</p>
-              <p className={`text-2xl font-black mt-1 ${
+              <p className={`font-semibold text-2xl tracking-[-0.02em] mt-1 ${
                 Math.abs(monthlyStats.totalDifference) < 5 ? 'text-emerald-500' :
                 monthlyStats.totalDifference < 0 ? 'text-red-500' : 'text-blue-500'
               }`}>
@@ -324,7 +324,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
             </div>
             <div className="glass-panel rounded-2xl border border-border p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Precisión de Cuadre</p>
-              <p className={`text-2xl font-black mt-1 ${
+              <p className={`font-semibold text-2xl tracking-[-0.02em] mt-1 ${
                 monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.8 ? 'text-emerald-500' :
                 monthlyStats.shiftsCount > 0 && (monthlyStats.perfectShifts / monthlyStats.shiftsCount) >= 0.5 ? 'text-amber-500' : 'text-red-500'
               }`}>
@@ -378,7 +378,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
         )}
         {closedRegisters.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-3xl">🏧</p>
+            <p className="text-3xl"></p>
             <p className="mt-2 text-muted-foreground text-sm">Sin cierres en este período</p>
           </div>
         ) : (
@@ -423,7 +423,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                           <span>${fmt(r.closingCashUsd ?? 0)}</span>
                           {(r.openingDenominationsJson || r.closingDenominationsJson) && (
                             <button onClick={() => setDenomModal(r)} title="Ver desglose de billetes"
-                              className="text-blue-400 hover:text-blue-300 text-xs">📋</button>
+                              className="text-blue-400 hover:text-blue-300 text-xs"></button>
                           )}
                         </div>
                       </td>

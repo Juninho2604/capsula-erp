@@ -57,13 +57,14 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Header */}
-            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-                        Resumen de operaciones
-                    </p>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
+                        Bienvenido,{' '}
+                        <span className="text-capsula-coral">{session?.firstName || 'Usuario'}</span>
+                    </h1>
                     <p className="mt-1 text-sm text-capsula-ink-soft">
-                        Gerencia Operativa <span className="text-capsula-ink">CÁPSULA</span>
+                        Resumen de operaciones · <span className="text-capsula-ink">Gerencia Operativa CÁPSULA</span>
                     </p>
                 </div>
                 <Link
@@ -250,9 +251,7 @@ export default async function DashboardPage() {
                             <AlertOctagon className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div>
-                            <h2 className="font-heading text-lg tracking-[-0.01em] text-capsula-ink">
-                                Alertas Críticas de Stock
-                            </h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Alertas Críticas de Stock</h2>
                             <p className="text-sm font-medium text-capsula-ink-muted">
                                 Insumos por debajo del punto de reorden
                             </p>
@@ -349,7 +348,7 @@ export default async function DashboardPage() {
                         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                             <Gem className="h-9 w-9" strokeWidth={1.5} />
                         </div>
-                        <p className="font-heading text-xl text-capsula-ink">
+                        <p className="font-semibold text-xl text-capsula-ink">
                             ¡Inventario Perfecto!
                         </p>
                         <p className="mx-auto mt-2 max-w-xs text-sm font-medium text-capsula-ink-muted">

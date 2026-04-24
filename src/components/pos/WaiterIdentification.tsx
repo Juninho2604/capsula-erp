@@ -123,7 +123,7 @@ export function WaiterIdentification({
                     <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-capsula-navy-soft text-capsula-ink">
                         <ChefHat className="h-7 w-7" />
                     </div>
-                    <h1 className="font-heading text-3xl tracking-[-0.02em] text-capsula-ink md:text-4xl">
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink md:text-4xl">
                         ¿Quién eres?
                     </h1>
                     <p className="pos-kicker mt-2">

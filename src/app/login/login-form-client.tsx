@@ -123,7 +123,7 @@ export default function LoginForm() {
             {/* Error */}
             {error && (
                 <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                    <span className="mt-px shrink-0">⚠️</span>
+                    <span className="mt-px shrink-0"></span>
                     <span>{error}</span>
                 </div>
             )}

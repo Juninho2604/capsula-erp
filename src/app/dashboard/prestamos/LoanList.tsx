@@ -102,9 +102,7 @@ export default function LoanList({ loans, areas }: LoanListProps) {
                                     {loan.type === 'PAYMENT' ? '💰' : '📦'}
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                                        {loan.loaneeName}
-                                    </h3>
+                                    <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{loan.loaneeName}</h3>
                                     <p className="text-xs text-gray-500">
                                         {format(new Date(loan.loanDate), "d MMM, yyyy", { locale: es })}
                                     </p>
@@ -178,9 +176,7 @@ export default function LoanList({ loans, areas }: LoanListProps) {
             {showResolveModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800 animate-in fade-in zoom-in-95">
-                        <h3 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
-                            Confirmar Resolución
-                        </h3>
+                        <h3 className="mb-4 text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Confirmar Resolución</h3>
 
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600 dark:text-gray-300">

@@ -184,7 +184,7 @@ ${order.items.map(item => `
 <div class="details">
 <div class="name">${item.name}</div>
 ${item.modifiers.length > 0 ? `<div class="mods">+ ${item.modifiers.map(m => m.name).join('<br>+ ')}</div>` : ''}
-${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
+${item.notes ? `<div class="notes">${item.notes}</div>` : ''}
 </div></div>`).join('')}
 </body></html>`;
 
@@ -366,7 +366,7 @@ ${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
         return (
             <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
                 <div className="text-center">
-                    <div className="text-6xl mb-4 animate-pulse">👨‍🍳</div>
+                    <div className="text-6xl mb-4 animate-pulse">‍</div>
                     <p className="text-xl">Cargando comandera...</p>
                 </div>
             </div>
@@ -379,7 +379,7 @@ ${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
             <div className="bg-gradient-to-r from-red-600 to-orange-600 px-6 py-3 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="text-3xl">👨‍🍳</span>
+                        <span className="text-3xl">‍</span>
                         <div>
                             <h1 className="text-xl font-bold">COMANDERA - COCINA</h1>
                             <p className="text-red-100 text-xs">Órdenes pendientes</p>
@@ -460,7 +460,7 @@ ${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
             <div className="p-4">
                 {orders.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">
-                        <span className="text-8xl block mb-4">✅</span>
+                        <span className="text-8xl block mb-4"></span>
                         <p className="text-2xl">No hay órdenes pendientes</p>
                         <p className="text-lg">Las nuevas órdenes aparecerán aquí automáticamente</p>
                     </div>
@@ -484,7 +484,7 @@ ${item.notes ? `<div class="notes">📝 ${item.notes}</div>` : ''}
 
                                 {/* Timer grande */}
                                 <div className={`text-center py-2 bg-gray-900 ${getTimerColor(order.createdAt)}`}>
-                                    <span className="text-3xl font-mono">⏱️ {getTimeSince(order.createdAt)}</span>
+                                    <span className="text-3xl font-mono">⏱{getTimeSince(order.createdAt)}</span>
                                 </div>
 
                                 {/* Mesa */}

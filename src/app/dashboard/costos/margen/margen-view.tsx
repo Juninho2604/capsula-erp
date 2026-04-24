@@ -89,8 +89,8 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
       {/* Header */}
       <div className="glass-panel rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-foreground">Margen por Plato</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Costo de receta vs precio de venta · En tiempo real</p>
+          <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Margen por plato</h1>
+          <p className="mt-1 text-sm text-capsula-ink-soft">Costo de receta vs precio de venta · En tiempo real</p>
         </div>
         <button onClick={exportCSV} className="capsula-btn capsula-btn-secondary text-sm px-5 py-2 min-h-0">
           📥 Exportar CSV
@@ -102,24 +102,24 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass-panel rounded-2xl p-4 border border-border">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Margen promedio</p>
-            <p className={`text-3xl font-black mt-1 ${summary.avgMarginPct < 35 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            <p className={`font-semibold text-3xl tracking-[-0.02em] mt-1 ${summary.avgMarginPct < 35 ? 'text-amber-400' : 'text-emerald-400'}`}>
               {summary.avgMarginPct}%
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{summary.withFullData} platos con datos completos</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-red-500/20 bg-red-500/5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">En riesgo (&lt;30%)</p>
-            <p className="text-3xl font-black mt-1 text-red-400">{summary.atRisk}</p>
+            <p className="font-semibold text-3xl tracking-[-0.02em] mt-1 text-red-400">{summary.atRisk}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Margen insuficiente</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 bg-emerald-500/5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rentables (≥50%)</p>
-            <p className="text-3xl font-black mt-1 text-emerald-400">{summary.healthy}</p>
+            <p className="font-semibold text-3xl tracking-[-0.02em] mt-1 text-emerald-400">{summary.healthy}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Margen saludable</p>
           </div>
           <div className="glass-panel rounded-2xl p-4 border border-border">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total platos</p>
-            <p className="text-3xl font-black mt-1 text-foreground">{summary.total}</p>
+            <p className="font-semibold text-3xl tracking-[-0.02em] mt-1 text-foreground">{summary.total}</p>
             {summary.worstDish && (
               <p className="text-xs text-red-400 mt-0.5 truncate" title={`Menor margen: ${summary.worstDish}`}>
                 ↓ {summary.worstDish}
@@ -132,7 +132,7 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
       {/* Filtros */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[180px]">
-          <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">🔍</span>
+          <span className="absolute left-3 top-2.5 text-muted-foreground text-sm"></span>
           <input
             type="text" placeholder="Buscar plato o categoría..."
             value={search} onChange={e => setSearch(e.target.value)}
@@ -232,7 +232,7 @@ export function MargenView({ result }: { result: DishMarginsResult }) {
 
         {filtered.length === 0 && (
           <div className="py-12 text-center text-muted-foreground">
-            <p className="text-3xl mb-2">🍽️</p>
+            <p className="text-3xl mb-2"></p>
             <p className="font-bold">Sin resultados</p>
             <p className="text-xs mt-1">Prueba cambiando el filtro o la búsqueda</p>
           </div>

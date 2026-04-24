@@ -93,14 +93,14 @@ export default function ProteinProcessingView() {
                 setTemplateChain(chain);
                 setLoadingTemplate(false);
                 if (template) {
-                    toast.success(`📋 Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
+                    toast.success(`Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
                     // Auto-detect if this step can gain weight
                     if ((template as any).canGainWeight) {
-                        toast(`⬆️ En este paso el peso puede AUMENTAR (ej: condimentos)`, { icon: '🥘' });
+                        toast(`⬆En este paso el peso puede AUMENTAR (ej: condimentos)`, { icon: '🥘' });
                     }
                 }
                 if (chain.length > 1) {
-                    toast(`🔗 Cadena de ${chain.length} pasos disponible para esta proteína`, { icon: '📋' });
+                    toast(`Cadena de ${chain.length} pasos disponible para esta proteína`, { icon: '📋' });
                 }
             });
         } else {
@@ -267,12 +267,12 @@ export default function ProteinProcessingView() {
         });
 
         if (result.success) {
-            alert(`✅ ${result.message}`);
+            alert(`${result.message}`);
             resetForm();
             setViewMode('list');
             loadData();
         } else {
-            alert(`❌ ${result.message}`);
+            alert(`${result.message}`);
         }
         setIsSubmitting(false);
     }
@@ -361,10 +361,8 @@ export default function ProteinProcessingView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        🥩 Procesamiento de Proteínas
-                    </h1>
-                    <p className="text-gray-500">
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Procesamiento de proteínas</h1>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
                         Registro de desposte y rendimiento de carnes
                     </p>
                 </div>
@@ -411,23 +409,23 @@ export default function ProteinProcessingView() {
                 <div className="grid gap-4 sm:grid-cols-5">
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Total Procesamientos</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalProcessings}</p>
+                        <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.totalProcessings}</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Peso Total Procesado</p>
-                        <p className="text-2xl font-bold text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Subproductos Obtenidos</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Rendimiento Promedio</p>
-                        <p className="text-2xl font-bold text-amber-600">{formatNumber(stats.avgYield)}%</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-amber-600">{formatNumber(stats.avgYield)}%</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Desperdicio Promedio</p>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(stats.avgWaste)}%</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-red-600">{formatNumber(stats.avgWaste)}%</p>
                     </div>
                 </div>
             )}
@@ -453,7 +451,7 @@ export default function ProteinProcessingView() {
                                 {processings.length === 0 ? (
                                     <tr>
                                         <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                            <span className="text-4xl">🥩</span>
+                                            <span className="text-4xl"></span>
                                             <p className="mt-2">No hay procesamientos registrados</p>
                                             <button
                                                 onClick={() => setViewMode('create')}
@@ -536,9 +534,7 @@ export default function ProteinProcessingView() {
                     {/* Formulario principal */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                📋 Datos del Procesamiento
-                            </h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Datos del Procesamiento</h2>
                         </div>
 
                         <div className="p-6 space-y-4">
@@ -583,7 +579,7 @@ export default function ProteinProcessingView() {
                                 {/* Template chain indicator */}
                                 {templateChain.length > 0 && (
                                     <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                                        <span>📋 Cadena disponible:</span>
+                                        <span>Cadena disponible:</span>
                                         {templateChain
                                             .sort((a: any, b: any) => a.chainOrder - b.chainOrder)
                                             .map((t: any, i: number) => {
@@ -774,9 +770,7 @@ export default function ProteinProcessingView() {
                     {/* Subproductos */}
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                🍖 Subproductos ({subProducts.length})
-                            </h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Subproductos ({subProducts.length})</h2>
                         </div>
 
                         <div className="p-6 space-y-4">
@@ -848,7 +842,7 @@ export default function ProteinProcessingView() {
                                                     <strong>{activeTemplate.name}</strong>
                                                     <span className="opacity-70">({activeTemplate.allowedOutputs.length} subproductos)</span>
                                                     {activeTemplate.canGainWeight && (
-                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">⬆️ Peso puede aumentar</span>
+                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">⬆Peso puede aumentar</span>
                                                     )}
                                                 </div>
                                                 {activeTemplate.allowedOutputs.some((o: any) => o.isIntermediate) && (
@@ -936,7 +930,7 @@ export default function ProteinProcessingView() {
                                                     <span className="text-gray-400 mr-2">{index + 1}.</span>
                                                     <span className="font-medium">{sp.name}</span>
                                                     {isIntermediate && (
-                                                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-200 text-orange-700 font-medium">🔗 Intermedio</span>
+                                                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-200 text-orange-700 font-medium">Intermedio</span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3">
@@ -996,9 +990,7 @@ export default function ProteinProcessingView() {
                 <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                     <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex justify-between items-center">
                         <div>
-                            <h2 className="font-semibold text-gray-900 dark:text-white">
-                                {selectedProcessing.code}
-                            </h2>
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{selectedProcessing.code}</h2>
                             <p className="text-sm text-gray-500">
                                 {new Date(selectedProcessing.processDate).toLocaleDateString('es-VE', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'

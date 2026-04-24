@@ -270,9 +270,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
           <div className="space-y-4">
             {/* Crear familia */}
             <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft space-y-3">
-              <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">
-                Nueva familia
-              </h2>
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-capsula-ink-muted">Nueva familia</h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <label className={FIELD_LABEL}>Código *</label>
@@ -326,7 +324,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
                 <div className="divide-y divide-capsula-line">
                   {families.map(f => (
                     <div key={f.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-capsula-ivory-alt/60">
-                      <span className="text-xl" aria-hidden>{f.icon || '📦'}</span>
+                      <span className="text-xl" aria-hidden>{f.icon || ''}</span>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-capsula-ink">{f.name}</p>
                         <p className="font-mono text-[11px] text-capsula-ink-muted">

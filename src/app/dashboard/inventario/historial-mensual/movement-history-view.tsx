@@ -120,9 +120,7 @@ export default function MovementHistoryView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        📊 Historial de Movimientos
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Historial de Movimientos</h1>
                     <p className="text-gray-500">
                         Consulta y exporta todos los movimientos de inventario por mes
                     </p>
@@ -210,16 +208,16 @@ export default function MovementHistoryView() {
                 <div className="grid gap-4 sm:grid-cols-4">
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Total Movimientos</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.totalMovements}</p>
+                        <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{summary.totalMovements}</p>
                     </div>
                     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                         <p className="text-sm text-gray-500">Costo Compras</p>
-                        <p className="text-2xl font-bold text-emerald-600">{formatCurrency(summary.totalPurchaseCost)}</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-600">{formatCurrency(summary.totalPurchaseCost)}</p>
                     </div>
                     {Object.entries(summary.byType as Record<string, number>).slice(0, 2).map(([type, count]) => (
                         <div key={type} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                             <p className="text-sm text-gray-500">{getTypeInfo(type).icon} {getTypeLabel(type)}</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{count as number}</p>
+                            <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{count as number}</p>
                         </div>
                     ))}
                 </div>
@@ -233,7 +231,7 @@ export default function MovementHistoryView() {
                     </div>
                 ) : movements.length === 0 ? (
                     <div className="py-16 text-center text-gray-500">
-                        <span className="text-4xl">📭</span>
+                        <span className="text-4xl"></span>
                         <p className="mt-3 text-lg font-medium">No hay movimientos para {MONTHS[month - 1]} {year}</p>
                         <p className="text-sm">Selecciona otro período o ajusta los filtros</p>
                     </div>

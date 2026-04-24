@@ -32,9 +32,7 @@ export default async function GamesPage() {
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        🎱 Juegos y Entretenimiento
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Juegos y Entretenimiento</h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {stats.stationsAvailable} libre{stats.stationsAvailable !== 1 ? 's' : ''} ·{' '}
                         {stats.stationsOccupied} ocupad{stats.stationsOccupied !== 1 ? 'os' : 'o'} ·{' '}
@@ -46,7 +44,7 @@ export default async function GamesPage() {
                 {/* Revenue today */}
                 <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-900/20">
                     <p className="text-xs text-green-600 dark:text-green-400">Facturado hoy</p>
-                    <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                    <p className="font-semibold text-xl tracking-[-0.02em] text-green-700 dark:text-green-300">
                         ${stats.revenueToday.toFixed(2)}
                     </p>
                 </div>
@@ -100,9 +98,9 @@ export default async function GamesPage() {
                         >
                             {/* Station header */}
                             <div className="mb-3 flex items-start gap-2">
-                                <span className="text-2xl">{station.gameType.icon ?? '🎮'}</span>
+                                <span className="text-2xl">{station.gameType.icon ?? ''}</span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate font-semibold text-gray-900 dark:text-white">
+                                    <p className="truncate font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                         {station.name}
                                     </p>
                                     <p className="text-xs text-gray-400">{station.code}</p>
@@ -152,7 +150,7 @@ export default async function GamesPage() {
 
                 {stations.length === 0 && (
                     <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
-                        <p className="text-4xl">🎮</p>
+                        <p className="text-4xl"></p>
                         <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
                             No hay estaciones configuradas
                         </p>

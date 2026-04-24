@@ -94,9 +94,7 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                     ←
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Registrar Préstamo
-                    </h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Registrar Préstamo</h1>
                     <p className="text-gray-500">
                         Salida de insumos a terceros
                     </p>
@@ -193,8 +191,8 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                                 onChange={(e) => setType(e.target.value as any)}
                                 className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             >
-                                <option value="REPLACEMENT">📦 Reposición (Devuelven producto)</option>
-                                <option value="PAYMENT">💰 Pago (Compran producto)</option>
+                                <option value="REPLACEMENT">Reposición (Devuelven producto)</option>
+                                <option value="PAYMENT">Pago (Compran producto)</option>
                             </select>
                         </div>
                     </div>

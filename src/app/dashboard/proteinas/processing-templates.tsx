@@ -192,9 +192,7 @@ export default function ProcessingTemplates() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        📋 Plantillas de Procesamiento
-                    </h2>
+                    <h2 className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Plantillas de Procesamiento</h2>
                     <p className="text-sm text-gray-500">
                         Define los pasos y sub-productos de cada proteína. Puedes crear plantillas por paso (Limpieza → Maserado → Distribución).
                     </p>
@@ -221,7 +219,7 @@ export default function ProcessingTemplates() {
             {/* Formulario de Creación */}
             {showCreate && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-900/50 dark:bg-amber-900/10 space-y-5">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Nueva Plantilla de Procesamiento</h3>
+                    <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Nueva Plantilla de Procesamiento</h3>
 
                     {/* Paso del procesamiento */}
                     <div>
@@ -418,7 +416,7 @@ export default function ProcessingTemplates() {
             {/* Lista de Plantillas - Agrupadas por Proteína */}
             {templates.length === 0 && !showCreate ? (
                 <div className="rounded-xl border-2 border-dashed border-gray-300 py-12 text-center dark:border-gray-600">
-                    <span className="text-5xl">📋</span>
+                    <span className="text-5xl"></span>
                     <p className="mt-3 text-gray-500">No hay plantillas de procesamiento definidas.</p>
                     <p className="text-sm text-gray-400">Crea una para estandarizar el procesamiento de proteínas.</p>
                 </div>
@@ -428,7 +426,7 @@ export default function ProcessingTemplates() {
                         <div key={sourceId} className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                             {/* Header del grupo */}
                             <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
-                                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">
                                     🥩 {group.sourceItem.name}
                                     <span className="text-xs font-normal text-gray-500">
                                         ({group.templates.length} {group.templates.length === 1 ? 'paso' : 'pasos'})

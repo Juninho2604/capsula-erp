@@ -34,10 +34,8 @@ export function POSConfigView({ initialStockValidation }: Props) {
   return (
     <div className="max-w-2xl mx-auto p-6 text-white">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-          Configuración POS
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Configuración POS</h1>
+        <p className="mt-1 text-sm text-capsula-ink-soft">
           Configura impresión, validación de stock y comportamiento del sistema en cada módulo.
         </p>
       </div>
@@ -45,9 +43,7 @@ export function POSConfigView({ initialStockValidation }: Props) {
       <div className="space-y-6">
         {/* ── Control de Inventario ───────────────────────────────────── */}
         <div className={`bg-gray-800 rounded-xl border p-5 ${stockValidation ? 'border-emerald-500/50' : 'border-gray-700'}`}>
-          <h2 className="font-bold text-lg text-emerald-300 mb-1 flex items-center gap-2">
-            📦 Control de Inventario
-          </h2>
+          <h2 className="font-bold text-lg text-emerald-300 mb-1 flex items-center gap-2">Control de Inventario</h2>
           <p className="text-xs text-gray-500 mb-4">
             Configuración guardada en la base de datos — aplica a todos los terminales.
           </p>
@@ -88,9 +84,7 @@ export function POSConfigView({ initialStockValidation }: Props) {
 
         {/* ── POS Delivery ─────────────────────────────────────────────── */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
-          <h2 className="font-bold text-lg text-blue-300 mb-4 flex items-center gap-2">
-            🛵 POS Delivery
-          </h2>
+          <h2 className="font-bold text-lg text-blue-300 mb-4 flex items-center gap-2">POS Delivery</h2>
           <div className="space-y-4">
             <label className="flex items-center justify-between gap-4 cursor-pointer">
               <span className="text-gray-300">Imprimir comanda cocina al confirmar</span>
@@ -127,9 +121,7 @@ export function POSConfigView({ initialStockValidation }: Props) {
 
         {/* ── POS Restaurante ──────────────────────────────────────────── */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
-          <h2 className="font-bold text-lg text-green-300 mb-4 flex items-center gap-2">
-            🥙 POS Restaurante
-          </h2>
+          <h2 className="font-bold text-lg text-green-300 mb-4 flex items-center gap-2">POS Restaurante</h2>
           <div className="space-y-4">
             <label className="flex items-center justify-between gap-4 cursor-pointer">
               <span className="text-gray-300">Imprimir comanda cocina al enviar a mesa</span>

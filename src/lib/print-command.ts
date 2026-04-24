@@ -398,17 +398,17 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     <div class="order-num">#${orderNum}</div>
     <div class="order-type">${
         data.orderType === 'DELIVERY'
-            ? '🛵 DELIVERY'
+            ? 'DELIVERY'
             : data.sourceChannel === 'POS_PEDIDOSYA'
-                ? '📱 PEDIDOS YA'
+                ? 'PEDIDOS YA'
                 : data.tableName
                     ? `🪑 ${data.tableName}`
-                    : '🥡 PICKUP'
+                    : 'PICKUP'
     }</div>
     <div class="sep">--------------------------------</div>
     <div class="meta">${formattedTime}</div>
     ${data.customerName ? `<div class="customer">${data.customerName}</div>` : ''}
-    ${waiterLabel ? `<div style="text-align:center;font-size:13px;font-weight:bold;margin:2px 0;">🧑‍🍽️ ${waiterLabel}</div>` : ''}
+    ${waiterLabel ? `<div style="text-align:center;font-size:13px;font-weight:bold;margin:2px 0;">‍${waiterLabel}</div>` : ''}
     ${data.address ? `<div style="text-align:center;font-size:12px;font-weight:normal;margin:2px 4px;">${data.address}</div>` : ''}
     <div class="sep">--------------------------------</div>
 
@@ -417,7 +417,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
         <div class="qty-box">${item.quantity}</div>
         <div class="details">
             <div class="name">${item.name}</div>
-            ${item.takeaway ? `<div style="font-size:13px;font-weight:900;color:#000;background:#ffe066;display:inline-block;padding:1px 6px;margin:2px 0;border-radius:4px;">🥡 LLEVAR</div>` : ''}
+            ${item.takeaway ? `<div style="font-size:13px;font-weight:900;color:#000;background:#ffe066;display:inline-block;padding:1px 6px;margin:2px 0;border-radius:4px;">LLEVAR</div>` : ''}
             ${item.modifiers && item.modifiers.length > 0 ? `
                 <div class="mods">+ ${item.modifiers.join('<br>+ ')}</div>
             ` : ''}
@@ -529,17 +529,17 @@ export function printVoidKitchenCommand(data: VoidKitchenCommandData, station: '
 <body>
   <div class="sep">================================</div>
   <div class="title">${stationLabel}</div>
-  <div class="warn">⚠️ MODIFICACIÓN ⚠️</div>
+  <div class="warn">MODIFICACIÓN </div>
   <div class="num">#${orderNum}</div>
   <div class="sep">================================</div>
   <div class="meta">${data.tableName || 'Mesa'} · ${time}</div>
   <div class="auth">Autor: <b>${data.authorizerName}</b></div>
-  ${data.waiterLabel ? `<div class="auth">🧑‍🍽️ ${data.waiterLabel}</div>` : ''}
+  ${data.waiterLabel ? `<div class="auth">‍${data.waiterLabel}</div>` : ''}
   <div class="sep">--------------------------------</div>
 
   <!-- Ítem cancelado/ajustado -->
   <div class="block">
-    <div class="block-label" style="color:#000;">❌ ${modLabel}</div>
+    <div class="block-label" style="color:#000;">${modLabel}</div>
     <div class="item-row">
       <div class="qty-box">${data.voidedItem.quantity}</div>
       <div>
@@ -552,7 +552,7 @@ export function printVoidKitchenCommand(data: VoidKitchenCommandData, station: '
   ${data.newItem ? `
   <!-- Ítem nuevo -->
   <div class="block">
-    <div class="block-label">✅ ${data.modificationType === 'ADJUST_QTY' ? 'NUEVA CANTIDAD' : 'NUEVO ÍTEM'}</div>
+    <div class="block-label">${data.modificationType === 'ADJUST_QTY' ? 'NUEVA CANTIDAD' : 'NUEVO ÍTEM'}</div>
     <div class="item-row">
       <div class="qty-box light">${data.newItem.quantity}</div>
       <div>
