@@ -4386,12 +4386,169 @@ prisma.salesOrder.aggregate({
 
 ---
 
-### 20.9 Fases pendientes (al 2026-04-24)
+### 20.9 Fases — historial al 2026-04-24
 
 | Fase | Descripción | Estado |
 |------|-------------|--------|
-| 9 | Reorganizar `sales.actions.ts` en subcarpeta | Pendiente |
-| 10 | Validación cruzada entre todas las surfaces | Pendiente |
+| 9 | Reorganizar `sales.actions.ts` en subcarpeta (`src/app/actions/sales/{history,z-report,end-of-day,arqueo,void}.actions.ts`) | ✅ Completada |
+| 10 | Validación cruzada entre superficies (PROPINA COLECTIVA excluida, totalServiceCharge canónico) | ✅ Completada |
+
+---
+
+## 21. Cobranza POS Mesero — modal "Mostrar cuenta al cliente" (2026-04-24)
+
+El modal de pre-cuenta del POS Mesonero (`/dashboard/pos/mesero`, `showBillModal`) muestra los datos reales del `OpenTab` para que el mesonero pueda enseñarle la cuenta al cliente antes de cobrar.
+
+**Datos mostrados** (todos en vivo desde `OpenTab`):
+- Subtotal (`runningSubtotal`)
+- Descuento (`runningDiscount`)
+- Servicio 10% (`totalServiceCharge`)
+- Total USD = `runningTotal + totalServiceCharge`
+- Equivalente Bs (a la tasa actual)
+- Pagos ya registrados (`paymentSplits` con `status='PAID'`)
+- Saldo pendiente (`balanceDue`) en coral si > 0
+- Métodos de pago aceptados (Cash USD/Zelle, Cash EUR, PDV, Pago Móvil, Transferencia)
+
+**Acciones rápidas:**
+- **Copiar** — genera texto plano con desglose completo y lo copia al portapapeles
+- **Imprimir** — usa `printReceipt({ isPrecuenta: true })` para imprimir pre-cuenta sin cerrar la mesa
+
+**Z-index:** modal en `z-[70]` (sobre BellPanel/HelpPanel `z-[70]` y modales POS `z-[60]`).
+
+---
+
+## 22. Servicio 10% obligatorio en restaurante (2026-04-24)
+
+**Regla de negocio:** Toda mesa (`OpenTab.serviceType === 'TABLE_SERVICE'`) cobra **siempre** el 10% de servicio. No hay opción de excluirlo.
+
+**Backend (`pos.actions.ts`):**
+
+```ts
+// registerOpenTabPaymentAction — siempre persiste serviceCharge para TABLE_SERVICE
+const isTableService = openTab.serviceType === 'TABLE_SERVICE';
+const serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
+
+// PaymentSplit:
+{ serviceChargeAmount: serviceCharge, subtotal: appliedAmount, total: appliedAmount, ... }
+
+// OpenTab update:
+totalServiceCharge: openTab.totalServiceCharge + serviceCharge
+```
+
+**`paySubAccountAction`** fuerza `applyServiceFee = true` para TABLE_SERVICE, ignorando el flag del caller.
+
+**UI POS Restaurante:**
+- Eliminado el checkbox "Incluir 10% servicio"
+- Reemplazado por badge estático verde (ok-tone): "10% Servicio incluido ✓"
+- `serviceFeeIncluded = true` como `const`, `paymentAmountToCharge` siempre aplica `× 1.1`
+
+**Bug histórico (corregido):** `registerOpenTabPaymentAction` solo añadía un label de texto `| +10% serv` pero NUNCA actualizaba `OpenTab.totalServiceCharge` ni `PaymentSplit.serviceChargeAmount`. Solo `paySubAccountAction` lo hacía. Las mesas cobradas vía pago directo (sin subcuentas) tenían el servicio en $0 en los reportes.
+
+---
+
+## 23. Selección de propina por el cliente (2026-04-24)
+
+**Schema** — `OpenTab` añade dos campos:
+```prisma
+tipPercent  Float?   // 0, 10, 15, 20 — null = no seleccionada
+tipAmount   Float?   // tipPercent/100 × runningSubtotal
+```
+
+Migración: `prisma/migrations/20260424100000_add_tip_fields_to_open_tab/`.
+
+**Acción nueva:** `setOpenTabTipAction({ openTabId, tipPercent })` en `pos.actions.ts`. Valida `tipPercent ∈ [0, 10, 15, 20]`, calcula `tipAmount = runningSubtotal × pct/100`, persiste y revalida `/dashboard/pos/restaurante` y `/dashboard/pos/mesero`.
+
+**UI POS Mesero** (modal `showBillModal`):
+- Sección "Propina" con 4 botones: Sin propina / 10% / 15% / 20%
+- Botón activo en `bg-capsula-navy-deep text-capsula-ivory`
+- Al seleccionar, llama `setOpenTabTipAction` y recarga
+- Cuando hay selección > 0: confirmación verde "Propina X% = $Y"
+- Cuando es 0: leyenda "Cliente indicó: sin propina"
+- Texto copiado al portapapeles incluye `Propina X%: $Y` cuando hay propina
+
+**UI POS Restaurante** (cajera):
+- Banner amarillo (warn-tone) en resumen de cobro: "Propina X% (cliente) = $Y"
+- Al abrir el modal de PIN: pre-rellena `checkoutTip` con `tipAmount` (solo si la cajera no ingresó un monto propio)
+- Diferencia con `recordCollectiveTipAction`: la propina del cliente es una **preferencia declarada**, mientras que `recordCollectiveTipAction` crea un `SalesOrder` separado con `customerName='PROPINA COLECTIVA'` cuando se cobra efectivamente
+
+---
+
+## 24. Subcuentas como facturas separadas en reportes (2026-04-24)
+
+**Problema:** Mesa con N subcuentas cobradas aparecía como una sola fila consolidada en historial/Z-report/arqueo. Operativamente, cada subcuenta es una factura distinta (cada cliente paga lo suyo).
+
+**Regla:** Si `OpenTab.subAccounts.length > 0`, expandir a una fila por subcuenta. Si no hay subcuentas, comportamiento anterior (1 fila por mesa).
+
+**Archivos afectados** (todos en `src/app/actions/sales/`):
+
+### 24.1 `history.actions.ts` — `getSalesHistoryAction`
+- Query: añade `subAccounts: { ... }` y `paymentSplits.subAccountId` al `openTab.select`
+- Lógica: `subAccounts.length > 0` → N filas + 1 fila "Otros" si hay PaymentSplits sin `subAccountId` (pool)
+- Cada fila de subcuenta tiene su propio `subtotal`, `serviceCharge`, `total`, `paymentMethod`
+- Campos nuevos en la fila: `_isSubAccount: true`, `subAccountLabel: 'Cuenta A'`
+- `customerName`: `${tab.customerLabel} — ${sub.label}`
+
+### 24.2 `arqueo.actions.ts` — `getSalesForArqueoAction`
+- Misma expansión por subcuenta — solo PAID
+- `description`: `Mesa 5 Carlos — Cuenta A`
+- `correlativo`: `TAB-042/Cuenta A`
+- Refactor: helper `addToBreakdown()` y `emptyBreakdown()` para eliminar duplicación
+
+### 24.3 `z-report.actions.ts` — `getDailyZReportAction`
+- Query: añade `subAccounts: { select: { id, status } }` al `openTab.select`
+- Conteo: `byType.restaurant += Math.max(1, subcuentas_paid)`
+- `totalOrders`: ahora se calcula sumando `byType.*` (antes usaba `tabGroups.size + nonTabOrders.length`)
+- Totales financieros (`grossTotal`, `totalServiceFee`, etc.): sin cambio
+
+### 24.4 `end-of-day.actions.ts` — `getEndOfDaySummaryAction`
+- Query: igual addition de `subAccounts`
+- `totalInvoices` y `countByChannel.restaurant`: incrementan por número de subcuentas pagadas (mínimo 1)
+- Totales monetarios: sin cambio
+
+**Sin regresión:** Si una mesa no tiene subcuentas, las 4 acciones siguen produciendo 1 fila/factura por tab — comportamiento anterior preservado.
+
+---
+
+## 25. Dark mode visual audit (2026-04-24)
+
+Sesión de fix masivo de visibilidad en dark mode. Patrones encontrados y corregidos:
+
+**Patrón 1 — `text-capsula-navy-deep` invisible en dark:**
+El token `--capsula-navy-deep` NO se invierte en dark mode (queda dark). Usar `text-capsula-ink` (ya es dark-aware).
+
+Mass replace ejecutado en `pos/{delivery,mesero,restaurante}/page.tsx` y archivos relacionados (43+ ocurrencias).
+
+**Patrón 2 — Helpers `.capsula-stat-value` con color hardcoded:**
+```css
+/* Antes */
+.capsula-stat-value { color: var(--capsula-navy-deep); }
+
+/* Después */
+.capsula-stat-value { color: var(--capsula-ink); }
+```
+
+**Patrón 3 — `.pos-btn` con `var(--capsula-ivory)` invisible:**
+En dark, `--capsula-ivory` queda dark, haciendo el texto del botón navy invisible. Se hardcodeó `color: #F7F5F0` (always-light) porque el botón siempre es navy.
+
+**Patrón 4 — Botón fullscreen (`DashboardShell`) invisible:**
+`bg-capsula-navy-deep text-capsula-ivory` se vuelve dark/dark en modo oscuro. Cambio a `bg-capsula-coral text-white` (siempre visible).
+
+**Patrón 5 — Viewport en móvil:**
+Modales de notificaciones/help usaban `max-h-[90vh]` que en Chrome iOS se desbordaba al aparecer la barra. Cambio a `max-h-[85dvh]` (dynamic viewport height — se ajusta cuando aparece/desaparece la barra).
+
+**Patrón 6 — `FinancialSummaryWidget` y `ExecutiveSummary` con tokens shadcn:**
+`text-muted-foreground hover:text-foreground hover:bg-muted` → equivalentes capsula-*. Conditionals de profit cambiados a hex con `dark:` override (ok-tone verde / coral).
+
+---
+
+### Tipo de servicio en `OpenTab`
+
+`OpenTab.serviceType` (default `'TABLE_SERVICE'`):
+- `TABLE_SERVICE` — mesa de restaurante (10% servicio obligatorio, propina opcional)
+- `BAR_TAB` — barra
+- `EVENT` — evento
+
+Para validaciones, usar `openTab.serviceType === 'TABLE_SERVICE'` directamente — no inferir desde `orders[0].orderType`.
 
 ---
 
@@ -4402,6 +4559,7 @@ prisma.salesOrder.aggregate({
 ---
 Extendido 2026-04-19 — Consolidación Cápsula (secciones 19, 19.11 actualizada, 19.14, 19.15 nuevas)
 Extendido 2026-04-24 — Correcciones de agregación de ventas (sección 20)
+Extendido 2026-04-24 — Cobranza POS Mesero, servicio 10% obligatorio, selección de propina, subcuentas como facturas separadas, dark mode audit (secciones 21–25)
 Repo canónico: capsula-erp
 Branch: main (post-cutover)
 Commits de consolidación: eec5e92 · b310466 · 591d323 · 3798142 · 4f18704 · 19b85f6 · 089dee5 · 95ba60e · ec37b51
