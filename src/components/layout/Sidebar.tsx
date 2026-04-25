@@ -160,12 +160,30 @@ const SCHEMES: Record<ColorScheme, Scheme> = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function modIsActive(mod: ModuleDefinition, pathname: string): boolean {
-    return (
-        pathname === mod.href ||
-        pathname.startsWith(mod.href + '/') ||
-        (mod.subRoutes?.some(s => pathname === s || pathname.startsWith(s + '/')) ?? false)
-    );
+// Devuelve el id del único módulo activo usando longest-prefix-match.
+// Tie-break: href canónico gana sobre subRoute a igual longitud.
+function findActiveModuleId(pathname: string, visibleMap: Map<string, ModuleDefinition>): string | null {
+    let bestId: string | null = null;
+    let bestLen = -1;
+    let bestIsHref = false;
+
+    for (const mod of visibleMap.values()) {
+        const candidates: { path: string; isHref: boolean }[] = [
+            { path: mod.href, isHref: true },
+            ...(mod.subRoutes ?? []).map(s => ({ path: s, isHref: false })),
+        ];
+        for (const { path, isHref } of candidates) {
+            if (pathname !== path && !pathname.startsWith(path + '/')) continue;
+            const len = path.length;
+            if (len > bestLen || (len === bestLen && isHref && !bestIsHref)) {
+                bestLen = len;
+                bestId = mod.id;
+                bestIsHref = isHref;
+            }
+        }
+    }
+
+    return bestId;
 }
 
 // Conjunto de moduleIds presentes en SIDEBAR_TREE (incluyendo dentro de subgrupos).
@@ -257,19 +275,19 @@ function Collapsible({ open, children }: { open: boolean; children: React.ReactN
 
 function ModuleLink({
     mod,
-    pathname,
+    activeModuleId,
     scheme,
     indent,
     closeSidebar,
 }: {
     mod: ModuleDefinition;
-    pathname: string;
+    activeModuleId: string | null;
     scheme: ColorScheme;
     indent: boolean;
     closeSidebar: () => void;
 }) {
     const c = SCHEMES[scheme];
-    const active = modIsActive(mod, pathname);
+    const active = activeModuleId === mod.id;
 
     return (
         <Link
@@ -300,7 +318,7 @@ function ModuleLink({
 function SubGroup({
     def,
     visibleMap,
-    pathname,
+    activeModuleId,
     scheme,
     isOpen,
     onToggle,
@@ -308,7 +326,7 @@ function SubGroup({
 }: {
     def: TreeSubGroup;
     visibleMap: Map<string, ModuleDefinition>;
-    pathname: string;
+    activeModuleId: string | null;
     scheme: ColorScheme;
     isOpen: boolean;
     onToggle: () => void;
@@ -321,7 +339,7 @@ function SubGroup({
 
     if (visibleItems.length === 0) return null;
 
-    const hasActive = visibleItems.some(m => modIsActive(m, pathname));
+    const hasActive = visibleItems.some(m => activeModuleId === m.id);
 
     return (
         <div>
@@ -350,7 +368,7 @@ function SubGroup({
                         <ModuleLink
                             key={mod.id}
                             mod={mod}
-                            pathname={pathname}
+                            activeModuleId={activeModuleId}
                             scheme={scheme}
                             indent
                             closeSidebar={closeSidebar}
@@ -367,7 +385,7 @@ function SubGroup({
 function Section({
     def,
     visibleMap,
-    pathname,
+    activeModuleId,
     isOpen,
     openSubGroups,
     onToggle,
@@ -376,7 +394,7 @@ function Section({
 }: {
     def: SectionDef;
     visibleMap: Map<string, ModuleDefinition>;
-    pathname: string;
+    activeModuleId: string | null;
     isOpen: boolean;
     openSubGroups: Set<string>;
     onToggle: () => void;
@@ -418,7 +436,7 @@ function Section({
                                 <ModuleLink
                                     key={`${def.id}-${item.moduleId}-${idx}`}
                                     mod={mod}
-                                    pathname={pathname}
+                                    activeModuleId={activeModuleId}
                                     scheme={def.scheme}
                                     indent={false}
                                     closeSidebar={closeSidebar}
@@ -430,7 +448,7 @@ function Section({
                                 key={item.id}
                                 def={item}
                                 visibleMap={visibleMap}
-                                pathname={pathname}
+                                activeModuleId={activeModuleId}
                                 scheme={def.scheme}
                                 isOpen={openSubGroups.has(item.id)}
                                 onToggle={() => onToggleSubGroup(item.id)}
@@ -449,12 +467,12 @@ function Section({
 function SearchResults({
     query,
     visibleMap,
-    pathname,
+    activeModuleId,
     closeSidebar,
 }: {
     query: string;
     visibleMap: Map<string, ModuleDefinition>;
-    pathname: string;
+    activeModuleId: string | null;
     closeSidebar: () => void;
 }) {
     const q = query.toLowerCase().trim();
@@ -481,7 +499,7 @@ function SearchResults({
                 <ModuleLink
                     key={mod.id}
                     mod={mod}
-                    pathname={pathname}
+                    activeModuleId={activeModuleId}
                     scheme="coral"
                     indent={false}
                     closeSidebar={closeSidebar}
@@ -534,6 +552,12 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
         return new Map(mods.map(m => [m.id, m]));
     }, [userRole, enabledModuleIds, userAllowedModules]);
 
+    // Único módulo activo — longest-prefix-match sobre la ruta actual
+    const activeModuleId = useMemo(
+        () => findActiveModuleId(pathname, visibleMap),
+        [pathname, visibleMap],
+    );
+
     // D2 — Red de seguridad: cualquier módulo visible que NO esté en SIDEBAR_TREE
     // cae en una sección "Otros" al final.
     const orphanSection = useMemo<SectionDef | null>(() => {
@@ -574,46 +598,40 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
         persistState(sectionsState, subGroupsState);
     }, [sectionsState, subGroupsState]);
 
-    // Auto-expandir sección + subgrupo que contenga la ruta activa
+    // Auto-expandir únicamente la sección (y subgrupo) que contiene el módulo activo.
+    // Usa activeModuleId — ya es el único match, no puede abrir secciones extra por falso positivo.
     useEffect(() => {
-        const openSecs: string[] = [];
-        const openSGs:  string[] = [];
+        if (!activeModuleId) return;
 
-        const visitModule = (modId: string, sectionId: string, subGroupId?: string) => {
-            const mod = visibleMap.get(modId);
-            if (mod && modIsActive(mod, pathname)) {
-                openSecs.push(sectionId);
-                if (subGroupId) openSGs.push(subGroupId);
-            }
-        };
+        let foundSection: string | null = null;
+        let foundSubGroup: string | null = null;
 
-        for (const section of SIDEBAR_TREE) {
+        const allSections = orphanSection ? [...SIDEBAR_TREE, orphanSection] : SIDEBAR_TREE;
+        outer: for (const section of allSections) {
             for (const item of section.items) {
-                if (item.kind === 'link') visitModule(item.moduleId, section.id);
-                else item.items.forEach(id => visitModule(id, section.id, item.id));
-            }
-        }
-        if (orphanSection) {
-            for (const item of orphanSection.items) {
-                if (item.kind === 'link') visitModule(item.moduleId, orphanSection.id);
+                if (item.kind === 'link' && item.moduleId === activeModuleId) {
+                    foundSection = section.id;
+                    break outer;
+                }
+                if (item.kind === 'subgroup' && item.items.includes(activeModuleId)) {
+                    foundSection = section.id;
+                    foundSubGroup = item.id;
+                    break outer;
+                }
             }
         }
 
-        if (openSecs.length > 0) {
-            setSectionsState(prev => {
-                const next = { ...prev };
-                openSecs.forEach(id => { next[id] = true; });
-                return next;
-            });
+        if (foundSection) {
+            setSectionsState(prev =>
+                prev[foundSection!] ? prev : { ...prev, [foundSection!]: true },
+            );
         }
-        if (openSGs.length > 0) {
-            setSubGroupsState(prev => {
-                const next = { ...prev };
-                openSGs.forEach(id => { next[id] = true; });
-                return next;
-            });
+        if (foundSubGroup) {
+            setSubGroupsState(prev =>
+                prev[foundSubGroup!] ? prev : { ...prev, [foundSubGroup!]: true },
+            );
         }
-    }, [pathname, visibleMap, orphanSection]);
+    }, [activeModuleId, orphanSection]);
 
     const toggleSection  = (id: string) =>
         setSectionsState(prev => ({ ...prev, [id]: !prev[id] }));
@@ -689,7 +707,7 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                         <SearchResults
                             query={searchQuery}
                             visibleMap={visibleMap}
-                            pathname={pathname}
+                            activeModuleId={activeModuleId}
                             closeSidebar={() => { setSearchQuery(''); closeSidebar(); }}
                         />
                     ) : (
@@ -698,7 +716,7 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                                 key={section.id}
                                 def={section}
                                 visibleMap={visibleMap}
-                                pathname={pathname}
+                                activeModuleId={activeModuleId}
                                 isOpen={sectionsState[section.id] ?? false}
                                 openSubGroups={openSubGroupsSet}
                                 onToggle={() => toggleSection(section.id)}
