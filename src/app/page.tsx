@@ -64,7 +64,7 @@ export default function HomePage() {
 
                 <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-capsula-coral" />
-                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy-light">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
                         ERP operativo para restaurantes
                     </span>
                 </div>
@@ -106,7 +106,7 @@ export default function HomePage() {
                     {logos.map((l) => (
                         <div
                             key={l}
-                            className="font-semibold text-center text-lg tracking-[0.08em] text-capsula-navy-light opacity-70"
+                            className="font-semibold text-center text-lg tracking-[0.08em] text-capsula-ink-soft opacity-70"
                         >
                             {l}
                         </div>
@@ -117,7 +117,7 @@ export default function HomePage() {
             {/* ── FEATURES ──────────────────────────────────────── */}
             <section id="producto" className="mx-auto max-w-[1280px] px-10 py-24">
                 <div className="mx-auto mb-16 max-w-[680px] text-center">
-                    <div className="mb-5 inline-block rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-navy-light">
+                    <div className="mb-5 inline-block rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
                         Plataforma
                     </div>
                     <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
