@@ -167,7 +167,7 @@ function findActiveModuleId(pathname: string, visibleMap: Map<string, ModuleDefi
     let bestLen = -1;
     let bestIsHref = false;
 
-    for (const mod of visibleMap.values()) {
+    for (const mod of Array.from(visibleMap.values())) {
         const candidates: { path: string; isHref: boolean }[] = [
             { path: mod.href, isHref: true },
             ...(mod.subRoutes ?? []).map(s => ({ path: s, isHref: false })),
