@@ -5,7 +5,10 @@ import { useAuthStore } from '@/stores/auth.store';
 import { createRequisition, dispatchRequisition, approveRequisition, rejectRequisition, receiveRequisition, completeRequisition } from '@/app/actions/requisition.actions';
 import { formatNumber, cn } from '@/lib/utils';
 import { UserRole } from '@/types';
-import { Trash2 } from 'lucide-react';
+import {
+    Trash2, ArrowLeftRight, User, CalendarDays, Package,
+    Send, ChevronRight, Download, Check, X as XIcon,
+} from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { QuickCreateItemDialog } from '@/components/ui/quick-create-item-dialog';
 
@@ -318,39 +321,39 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* TABS HEADER - CAPSULA STYLE */}
-            <div className="flex p-1.5 bg-secondary/30 backdrop-blur-xl rounded-2xl border border-border w-fit shadow-inner">
+            <div className="flex p-1.5 bg-capsula-ivory-surface rounded-2xl border border-capsula-line w-fit">
                 <button
                     onClick={() => setActiveTab('NEW')}
                     className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl",
+                        "px-6 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all duration-300 rounded-xl",
                         activeTab === 'NEW'
-                            ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-capsula-navy-deep text-capsula-ivory scale-105"
+                            : "text-capsula-ink-muted hover:text-capsula-ink"
                     )}
                 >
-                    📝 Nueva Solicitud
+                    Nueva Solicitud
                 </button>
                 <button
                     onClick={() => setActiveTab('PENDING')}
                     className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl flex items-center gap-2",
+                        "px-6 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all duration-300 rounded-xl flex items-center gap-2",
                         activeTab === 'PENDING'
-                            ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-orange-500 text-white scale-105"
+                            : "text-capsula-ink-muted hover:text-capsula-ink"
                     )}
                 >
-                    ⏳ En Proceso <span className="bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full text-[10px]">{activeReqs.length}</span>
+                    En Proceso <span className="bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full text-[10px]">{activeReqs.length}</span>
                 </button>
                 <button
                     onClick={() => setActiveTab('HISTORY')}
                     className={cn(
-                        "px-6 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 rounded-xl",
+                        "px-6 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all duration-300 rounded-xl",
                         activeTab === 'HISTORY'
-                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-105"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-[#2F6B4E] text-white dark:bg-[#1E3B2C] dark:text-[#6FB88F] scale-105"
+                            : "text-capsula-ink-muted hover:text-capsula-ink"
                     )}
                 >
-                    📜 Historial
+                    Historial
                 </button>
             </div>
 
@@ -364,16 +367,18 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">Nueva requisición</h3>
                                 <p className="mt-1 text-xs font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">Gestión de transferencias CAPSULA</p>
                             </div>
-                            <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl"></div>
+                            <div className="h-12 w-12 bg-capsula-navy-soft/10 rounded-2xl flex items-center justify-center text-capsula-navy-deep dark:text-capsula-ivory">
+                                <ArrowLeftRight className="h-6 w-6" />
+                            </div>
                         </div>
 
                         <div className="mb-10 grid gap-8 sm:grid-cols-2">
                             {/* Origen */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted pl-1">
                                     Punto de Origen
                                 </label>
-                                <div className="glass-panel p-1 rounded-2xl border-primary/5 focus-within:border-primary/30 transition-all">
+                                <div className="bg-capsula-ivory border border-capsula-line rounded-2xl p-1 focus-within:border-capsula-coral/50 transition-all">
                                     <Combobox
                                         items={areasList.map(a => ({ value: a.id, label: a.name }))}
                                         value={sourceAreaId}
@@ -387,10 +392,10 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
 
                             {/* Destino */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
+                                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted pl-1">
                                     Punto de Destino
                                 </label>
-                                <div className="glass-panel p-1 rounded-2xl border-primary/5 focus-within:border-primary/30 transition-all">
+                                <div className="bg-capsula-ivory border border-capsula-line rounded-2xl p-1 focus-within:border-capsula-coral/50 transition-all">
                                     <Combobox
                                         items={areasList.map(a => ({ value: a.id, label: a.name }))}
                                         value={targetAreaId}
@@ -404,17 +409,17 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                         </div>
 
                         {/* Tabla de Items */}
-                        <div className="mb-10 overflow-hidden rounded-[2rem] border border-border shadow-inner bg-card">
+                        <div className="mb-10 overflow-hidden rounded-[2rem] border border-capsula-line bg-capsula-ivory">
                             <table className="w-full text-sm">
-                                <thead className="bg-secondary/30 text-left">
+                                <thead className="bg-capsula-ivory-alt text-left">
                                     <tr>
-                                        <th className="px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground">Insumo</th>
-                                        <th className="w-32 px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground text-center">Cantidad</th>
-                                        <th className="w-24 px-6 py-4 font-black uppercase tracking-widest text-[10px] text-muted-foreground text-center">Unidad</th>
+                                        <th className="px-6 py-4 font-semibold uppercase tracking-[0.14em] text-[10px] text-capsula-ink-muted">Insumo</th>
+                                        <th className="w-32 px-6 py-4 font-semibold uppercase tracking-[0.14em] text-[10px] text-capsula-ink-muted text-center">Cantidad</th>
+                                        <th className="w-24 px-6 py-4 font-semibold uppercase tracking-[0.14em] text-[10px] text-capsula-ink-muted text-center">Unidad</th>
                                         <th className="w-16 px-6 py-4"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border">
+                                <tbody className="divide-y divide-capsula-line">
                                     {requestItems.map((item, index) => (
                                         <TransferItemRow
                                             key={index}
@@ -446,16 +451,16 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
 
                             <button
                                 onClick={() => setRequestItems([...requestItems, { id: '', name: '', quantity: 0, unit: '-' }])}
-                                className="flex w-full items-center justify-center gap-2 bg-secondary/10 py-5 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all active:scale-[0.99]"
+                                className="flex w-full items-center justify-center gap-2 bg-capsula-ivory-alt py-5 text-xs font-semibold uppercase tracking-widest text-capsula-navy-deep dark:text-capsula-ivory hover:bg-capsula-ivory-surface transition-all active:scale-[0.99]"
                             >
                                 <span className="font-semibold text-xl tracking-[-0.02em]">+</span> Agregar otra fila
                             </button>
                         </div>
 
                         {/* Acciones */}
-                        <div className="flex flex-col items-end gap-6 pt-6 border-t border-border">
+                        <div className="flex flex-col items-end gap-6 pt-6 border-t border-capsula-line">
                             {msg && (
-                                <div className={cn("rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-widest animate-in slide-in-from-right-4", msg.type === 'success' ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-red-500/10 text-red-600 border border-red-500/20")}>
+                                <div className={cn("rounded-2xl px-6 py-3 text-xs font-semibold uppercase tracking-widest animate-in slide-in-from-right-4", msg.type === 'success' ? "bg-[#E5EDE7] text-[#2F6B4E] border border-[#2F6B4E]/20 dark:bg-[#1E3B2C] dark:text-[#6FB88F]" : "bg-[#F7E3DB] text-[#B04A2E] border border-[#B04A2E]/20 dark:bg-[#3B1F14] dark:text-[#EFD2C8]")}>
                                     {msg.text}
                                 </div>
                             )}
@@ -463,9 +468,9 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                             <button
                                 onClick={handleCreateRequisition}
                                 disabled={isSubmitting || requestItems.filter(i => i.id && i.quantity > 0).length === 0 || !targetAreaId}
-                                className="capsula-btn capsula-btn-primary px-12 py-5 text-sm shadow-xl shadow-primary/20"
+                                className="capsula-btn capsula-btn-primary px-12 py-5 text-sm"
                             >
-                                {isSubmitting ? 'PROCESANDO...' : '📨 ENVIAR REQUISICIÓN'}
+                                {isSubmitting ? 'PROCESANDO...' : 'ENVIAR REQUISICIÓN'}
                             </button>
                         </div>
                     </div>
@@ -475,18 +480,18 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                 {activeTab === 'PENDING' && (
                     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                         {activeReqs.length === 0 ? (
-                            <div className="py-24 text-center glass-panel rounded-[3rem] border-primary/5">
-                                <span className="text-7xl block mb-6 grayscale opacity-20"></span>
-                                <p className="font-black uppercase tracking-[0.3em] text-muted-foreground">Bandeja Vacía</p>
-                                <p className="text-xs font-bold text-muted-foreground/50 mt-2 uppercase">No hay solicitudes en curso actualmente</p>
+                            <div className="py-24 text-center bg-capsula-ivory border border-capsula-line rounded-3xl">
+                                <Package className="h-16 w-16 mx-auto mb-6 opacity-20 text-capsula-ink-muted" />
+                                <p className="font-semibold uppercase tracking-[0.3em] text-capsula-ink-muted">Bandeja Vacía</p>
+                                <p className="text-xs text-capsula-ink-faint mt-2 uppercase">No hay solicitudes en curso actualmente</p>
                             </div>
                         ) : (
                             <>
                                 {/* Sección PENDING - Esperando despacho */}
                                 {pendingReqs.length > 0 && (
                                     <div className="space-y-4">
-                                        <h3 className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400 pl-2">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-orange-500/10 text-xs shadow-inner">1</span>
+                                        <h3 className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-orange-600 dark:text-orange-400 pl-2">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-orange-500/10 text-xs">1</span>
                                             Esperando Despacho ({pendingReqs.length})
                                         </h3>
                                         <div className="grid gap-6">
@@ -497,21 +502,23 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                         <div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="font-semibold text-xl tracking-[-0.02em] italic text-orange-600 tracking-tighter">{req.code}</span>
-                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-orange-500 text-white shadow-lg shadow-orange-500/20">⏳ Pendiente</span>
+                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-semibold uppercase tracking-widest bg-orange-500 text-white">Pendiente</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">
-                                                                <div className="bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
-                                                                    <span className="text-[10px] block text-muted-foreground uppercase mb-0.5">Origen</span>
+                                                                <div className="bg-capsula-ivory-alt px-3 py-1.5 rounded-xl border border-capsula-line">
+                                                                    <span className="text-[10px] block text-capsula-ink-muted uppercase mb-0.5">Origen</span>
                                                                     {req.sourceArea?.name || 'Almacén Central'}
                                                                 </div>
-                                                                <span className="text-muted-foreground">→</span>
-                                                                <div className="bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
-                                                                    <span className="text-[10px] block text-primary uppercase mb-0.5">Destino</span>
+                                                                <span className="text-capsula-ink-muted">→</span>
+                                                                <div className="bg-capsula-navy-soft/10 px-3 py-1.5 rounded-xl border border-capsula-navy-soft/20">
+                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-ivory uppercase mb-0.5">Destino</span>
                                                                     {req.targetArea.name}
                                                                 </div>
                                                             </div>
-                                                            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-                                                                👤 {req.requestedBy.firstName} {req.requestedBy.lastName} • 📅 {new Date(req.createdAt).toLocaleString('es-VE')}
+                                                            <p className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-capsula-ink-faint flex items-center gap-1.5">
+                                                                <User className="h-3 w-3" /> {req.requestedBy.firstName} {req.requestedBy.lastName}
+                                                                <span className="opacity-40 mx-0.5">•</span>
+                                                                <CalendarDays className="h-3 w-3" /> {new Date(req.createdAt).toLocaleString('es-VE')}
                                                             </p>
                                                         </div>
                                                         <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
@@ -522,12 +529,12 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     </div>
 
                                                     <div className="mt-8 pt-6 border-t border-orange-500/10">
-                                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 block">Detalle de Solicitud (Ajusta si despachas menos)</label>
+                                                        <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-4 block">Detalle de Solicitud (Ajusta si despachas menos)</label>
                                                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                                             {req.items.map(item => (
-                                                                <div key={item.inventoryItemId} className="glass-panel p-4 rounded-2xl border-orange-500/5 flex items-center justify-between">
+                                                                <div key={item.inventoryItemId} className="bg-capsula-ivory border border-capsula-line p-4 rounded-2xl flex items-center justify-between">
                                                                     <div className="flex-1 min-w-0 mr-3">
-                                                                        <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1 truncate">{item.inventoryItem.name}</span>
+                                                                        <span className="text-[10px] font-semibold uppercase text-capsula-ink-muted block mb-1 truncate">{item.inventoryItem.name}</span>
                                                                         <span className="text-xs font-bold text-orange-600">Pedido: {formatNumber(item.quantity)} {item.inventoryItem.baseUnit}</span>
                                                                     </div>
                                                                     <div className="relative">
@@ -537,7 +544,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                                             min={0}
                                                                             defaultValue={item.quantity}
                                                                             onChange={e => setDispatchQuantities(prev => ({ ...prev, [item.inventoryItemId]: parseFloat(e.target.value) || 0 }))}
-                                                                            className="w-24 bg-background border border-border rounded-xl px-3 py-2 text-center text-sm font-black focus:border-orange-500 focus:ring-0 transition-all"
+                                                                            className="w-24 bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2 text-center text-sm font-semibold text-capsula-ink focus:border-capsula-coral focus:ring-0 transition-all"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -553,7 +560,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 {/* Sección DISPATCHED - Esperando aprobación gerencial */}
                                 {dispatchedReqs.length > 0 && (
                                     <div className="space-y-4">
-                                        <h3 className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 pl-2">
+                                        <h3 className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400 pl-2">
                                             <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-blue-500/10 text-xs shadow-inner">2</span>
                                             En Tránsito — Pendiente de Recepción ({dispatchedReqs.length})
                                         </h3>
@@ -565,27 +572,31 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                         <div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="font-semibold text-xl tracking-[-0.02em] italic text-blue-600 tracking-tighter">{req.code}</span>
-                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-lg shadow-blue-500/20">Despachado</span>
+                                                                <span className="rounded-xl px-3 py-1 text-[10px] font-semibold uppercase tracking-widest bg-blue-500 text-white">Despachado</span>
                                                             </div>
                                                             <div className="mt-4 flex items-center gap-4 text-sm font-bold">
-                                                                <div className="bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
-                                                                    <span className="text-[10px] block text-muted-foreground uppercase mb-0.5">Desde</span>
+                                                                <div className="bg-capsula-ivory-alt px-3 py-1.5 rounded-xl border border-capsula-line">
+                                                                    <span className="text-[10px] block text-capsula-ink-muted uppercase mb-0.5">Desde</span>
                                                                     {req.sourceArea?.name || 'Almacén Central'}
                                                                 </div>
-                                                                <span className="text-muted-foreground">→</span>
-                                                                <div className="bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
-                                                                    <span className="text-[10px] block text-primary uppercase mb-0.5">Hacia</span>
+                                                                <span className="text-capsula-ink-muted">→</span>
+                                                                <div className="bg-capsula-navy-soft/10 px-3 py-1.5 rounded-xl border border-capsula-navy-soft/20">
+                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-ivory uppercase mb-0.5">Hacia</span>
                                                                     {req.targetArea.name}
                                                                 </div>
                                                             </div>
-                                                            <div className="mt-4 p-3 bg-secondary/20 rounded-2xl border border-border inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                                                👤 {req.requestedBy.firstName} • 📤 {req.dispatchedBy?.firstName || '—'} • 📅 {req.dispatchedAt && new Date(req.dispatchedAt).toLocaleString('es-VE')}
+                                                            <div className="mt-4 p-3 bg-capsula-ivory-alt rounded-2xl border border-capsula-line inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-capsula-ink-muted">
+                                                                <User className="h-3 w-3" /> {req.requestedBy.firstName}
+                                                                <span className="opacity-40 mx-0.5">•</span>
+                                                                <Send className="h-3 w-3" /> {req.dispatchedBy?.firstName || '—'}
+                                                                <span className="opacity-40 mx-0.5">•</span>
+                                                                <CalendarDays className="h-3 w-3" /> {req.dispatchedAt && new Date(req.dispatchedAt).toLocaleString('es-VE')}
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
                                                             <button onClick={() => handleReject(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 bg-red-100 dark:bg-red-900/20 text-red-600 border-red-500/20">Rechazar</button>
-                                                            <button onClick={() => handleReceive(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-purple-600 text-white shadow-lg shadow-purple-500/20 border-purple-700 font-black text-xs uppercase tracking-widest">Confirmar Recepción</button>
-                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-emerald-700 font-black text-xs uppercase tracking-widest">Aprobar Directo</button>
+                                                            <button onClick={() => handleReceive(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-purple-600 text-white border border-purple-700 font-semibold text-xs uppercase tracking-widest">Confirmar Recepción</button>
+                                                            <button onClick={() => handleApprove(req)} disabled={isSubmitting} className="capsula-btn min-h-0 py-3 px-8 bg-[#2F6B4E] text-white border border-[#2F6B4E] font-semibold text-xs uppercase tracking-widest dark:bg-[#1E3B2C] dark:text-[#6FB88F]">Aprobar Directo</button>
                                                         </div>
                                                     </div>
 
@@ -667,7 +678,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 }}
                                 className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                             >
-                                📥 Exportar CSV
+                                <Download className="h-4 w-4" /> Exportar CSV
                             </button>
                         </div>
 
@@ -700,9 +711,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                 >
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-2">
-                                                            <span className={`transform transition-transform duration-200 ${expandedId === req.id ? 'rotate-90' : ''}`}>
-                                                                ▶
-                                                            </span>
+                                                            <ChevronRight className={`h-3 w-3 transition-transform duration-200 text-capsula-ink-muted ${expandedId === req.id ? 'rotate-90' : ''}`} />
                                                             <span className="font-mono text-gray-600 dark:text-gray-400">{req.code}</span>
                                                         </div>
                                                     </td>
@@ -722,13 +731,13 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             <span className={cn(
                                                                 "rounded-full px-2 py-0.5 text-xs font-medium",
-                                                                req.status === 'COMPLETED' ? "bg-emerald-100 text-emerald-800" :
-                                                                    req.status === 'RECEIVED' ? "bg-purple-100 text-purple-800" :
-                                                                        req.status === 'REJECTED' ? "bg-red-100 text-red-800" :
-                                                                            req.status === 'DISPATCHED' ? "bg-blue-100 text-blue-800" :
-                                                                                "bg-gray-100 text-gray-800"
+                                                                req.status === 'COMPLETED' ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]" :
+                                                                    req.status === 'RECEIVED' ? "bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]" :
+                                                                        req.status === 'REJECTED' ? "bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]" :
+                                                                            req.status === 'DISPATCHED' ? "bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]" :
+                                                                                "bg-capsula-ivory-alt text-capsula-ink-muted"
                                                             )}>
-                                                                {req.status === 'COMPLETED' ? '✅ Completado' : req.status === 'RECEIVED' ? '📋 Recibido' : req.status === 'REJECTED' ? '❌ Rechazado' : req.status === 'DISPATCHED' ? '📦 Despachado' : req.status}
+                                                                {req.status === 'COMPLETED' ? 'Completado' : req.status === 'RECEIVED' ? 'Recibido' : req.status === 'REJECTED' ? 'Rechazado' : req.status === 'DISPATCHED' ? 'Despachado' : req.status}
                                                             </span>
                                                             <span className="text-xs text-gray-400">
                                                                 {req.items.length} items
@@ -737,9 +746,9 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleComplete(req); }}
                                                                     disabled={isSubmitting}
-                                                                    className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-medium text-white shadow-sm hover:bg-emerald-600 disabled:opacity-50"
+                                                                    className="rounded-lg bg-[#2F6B4E] dark:bg-[#1E3B2C] px-2.5 py-1 text-xs font-medium text-white dark:text-[#6FB88F] hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-1"
                                                                 >
-                                                                    ✅ Completar
+                                                                    <Check className="h-3 w-3" /> Completar
                                                                 </button>
                                                             )}
                                                         </div>
@@ -750,8 +759,8 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                     <tr key={`${req.id}-details`}>
                                                         <td colSpan={6} className="bg-gray-50 dark:bg-gray-800/30 p-0">
                                                             <div className="p-4 animate-in slide-in-from-top-2 duration-200">
-                                                                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                                                    📦 Items Transferidos ({req.items.length})
+                                                                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+                                                                    <Package className="h-4 w-4" /> Items Transferidos ({req.items.length})
                                                                 </div>
                                                                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                                     {req.items.map((item, idx) => (
