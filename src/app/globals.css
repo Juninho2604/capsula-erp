@@ -226,14 +226,17 @@
     color: #F7F5F0;
     box-shadow: 0 10px 24px -8px rgba(11,23,39,0.4);
   }
-  /* Dark: navy-deep (#0B1727) blends with page bg (#0F1A2A); use navy-light + line for definition */
+  /* Dark: navy-deep (#0B1727) blends with page bg (#0F1A2A).
+     Use the dark-mode RGB triplet (#3A5580) directly — the hex var
+     --capsula-navy-light is NOT overridden in .dark, only its RGB triplet is. */
   .dark .capsula-btn-primary {
-    background: var(--capsula-navy-light);
-    border: 1px solid var(--capsula-line-strong);
+    background: rgb(var(--capsula-navy-light-rgb));
+    border: 1px solid rgb(var(--capsula-line-strong-rgb));
   }
   .dark .capsula-btn-primary:hover {
-    background: var(--capsula-navy);
+    background: rgb(var(--capsula-line-strong-rgb));
     border-color: var(--capsula-coral);
+    box-shadow: 0 10px 24px -8px rgba(0,0,0,0.5);
   }
 
   .capsula-btn-secondary {
