@@ -24,10 +24,10 @@ export default function HomePage() {
     const logos = ['LA BARRA', 'OSTERÍA NOVE', 'CASA MILA', 'TERRAZA 14', 'ALMA', 'FOGÓN'];
 
     const metrics = [
-        { k: '−18%',     l: 'merma de inventario',  d: 'tras el primer trimestre de uso' },
+        { k: '−18%',     l: 'merma de inventario',  d: 'mediana entre clientes activos' },
         { k: '+4.6 pts', l: 'de margen operativo',  d: 'medido contra período base' },
         { k: '6 h',      l: 'ahorradas por semana', d: 'en reportería y conciliación' },
-        { k: '99.9%',    l: 'de uptime',            d: 'infraestructura gestionada' },
+        { k: '99.9%',    l: 'de uptime',            d: 'SLA garantizado' },
     ];
 
     return (
@@ -65,7 +65,7 @@ export default function HomePage() {
                 <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-capsula-coral" />
                     <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
-                        ERP operativo para restaurantes
+                        Software de gestión gastronómica
                     </span>
                 </div>
 
@@ -76,7 +76,7 @@ export default function HomePage() {
                 </h1>
 
                 <p className="mx-auto mb-9 max-w-[560px] text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
-                    Simple para el mesero, poderoso para el gerente.
+                    Una sola plataforma, del salón a la dirección.
                 </p>
 
                 <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -118,14 +118,13 @@ export default function HomePage() {
             <section id="producto" className="mx-auto max-w-[1280px] px-10 py-24">
                 <div className="mx-auto mb-16 max-w-[680px] text-center">
                     <div className="mb-5 inline-block rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
-                        Plataforma
+                        Producto
                     </div>
                     <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
-                        Un sistema operativo para tu cocina.
+                        Toda la operación, en módulos que conversan.
                     </h2>
                     <p className="text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
-                        Módulos independientes que se comunican entre sí. Implementación por fases,
-                        sin romper la operación diaria de tu restaurante.
+                        Implementación por fases. Adopta solo lo que necesitas, cuando lo necesitas.
                     </p>
                 </div>
 
@@ -154,18 +153,18 @@ export default function HomePage() {
                 <div className="mx-auto grid max-w-[1280px] grid-cols-1 items-center gap-20 px-10 py-28 lg:grid-cols-[1.1fr_1fr]">
                     <div>
                         <div className="mb-5 inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#E7D6CF]">
-                            Resultados medibles
+                            Impacto verificado
                         </div>
                         <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-[#F7F5F0]">
                             Menos mermas.
                             <br />
                             Más margen.
                             <br />
-                            <span className="text-capsula-ink-faint">Operación más tranquila.</span>
+                            <span className="text-capsula-ink-faint">Decisiones con evidencia.</span>
                         </h2>
                         <p className="mb-8 max-w-[440px] text-pretty text-[17px] leading-[1.55] text-[#A3B2C3]">
-                            Equipos que migran a CÁPSULA consolidan su operación en una sola vista y
-                            recuperan en promedio 6 horas administrativas por semana.
+                            Los equipos que migran a CÁPSULA unifican sus datos en una sola vista y
+                            reducen tiempos administrativos desde el primer trimestre.
                         </p>
                         <Link href="#clientes" className="inline-flex items-center gap-1.5 border-b border-white/20 pb-0.5 text-sm font-medium text-[#F7F5F0] transition-colors hover:border-capsula-coral">
                             Leer casos de estudio <ArrowRight className="h-3.5 w-3.5" />
@@ -190,8 +189,8 @@ export default function HomePage() {
             <section className="mx-auto max-w-[900px] px-10 py-28 text-center">
                 <div className="font-semibold mb-5 h-10 text-[120px] leading-[0.5] text-capsula-coral">"</div>
                 <blockquote className="font-semibold mb-10 text-balance text-[clamp(28px,3.5vw,40px)] leading-[1.25] tracking-[-0.015em] text-capsula-ink">
-                    Migramos de tres sistemas distintos a CÁPSULA en dos semanas. Por primera vez
-                    sabemos el costo real de cada plato el mismo día que se vende.
+                    Reemplazamos tres sistemas en dos semanas. Hoy conocemos el costo real de cada
+                    plato el mismo día que se vende.
                 </blockquote>
                 <div className="inline-flex items-center gap-3.5">
                     <div className="h-12 w-12 rounded-full border border-capsula-line bg-gradient-to-br from-capsula-navy-light to-capsula-navy-deep" />
@@ -206,11 +205,10 @@ export default function HomePage() {
             <section className="mx-auto max-w-[1280px] px-10 pb-28">
                 <div className="rounded-[20px] border border-capsula-line bg-capsula-ivory-alt px-10 py-20 text-center">
                     <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
-                        ¿Listo para operar con claridad?
+                        Pongamos tu operación en una sola vista.
                     </h2>
                     <p className="mx-auto mb-8 max-w-[560px] text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
-                        Agenda una demostración de 30 minutos con un especialista. Te mostramos cómo
-                        se vería CÁPSULA con los datos reales de tu restaurante.
+                        30 minutos con un especialista, sobre los datos reales de tu restaurante.
                     </p>
                     <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                         <Link href="/login" className="capsula-btn capsula-btn-primary">
@@ -229,7 +227,7 @@ export default function HomePage() {
                     <div>
                         <CapsulaLogo variant="full" size={22} />
                         <p className="mt-4 max-w-[280px] text-[14px] leading-[1.55] text-capsula-ink-muted">
-                            ERP operativo para restaurantes independientes y grupos gastronómicos.
+                            Plataforma de gestión para restaurantes independientes y grupos gastronómicos.
                         </p>
                     </div>
                     <div className="grid grid-cols-3 gap-8">
