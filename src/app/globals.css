@@ -219,11 +219,21 @@
 
   .capsula-btn-primary {
     background: var(--capsula-navy-deep);
-    color: var(--capsula-ivory);
+    color: #F7F5F0;
   }
   .capsula-btn-primary:hover {
     background: var(--capsula-navy);
+    color: #F7F5F0;
     box-shadow: 0 10px 24px -8px rgba(11,23,39,0.4);
+  }
+  /* Dark: navy-deep (#0B1727) blends with page bg (#0F1A2A); use navy-light + line for definition */
+  .dark .capsula-btn-primary {
+    background: var(--capsula-navy-light);
+    border: 1px solid var(--capsula-line-strong);
+  }
+  .dark .capsula-btn-primary:hover {
+    background: var(--capsula-navy);
+    border-color: var(--capsula-coral);
   }
 
   .capsula-btn-secondary {
