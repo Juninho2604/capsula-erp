@@ -79,8 +79,14 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
  * Iconos para sub-grupos de Sidebar (no tienen id en MODULE_REGISTRY).
  */
 export const SUBGROUP_ICONS: Record<string, LucideIcon> = {
-    'sg-inventario': Package,
-    'sg-produccion': Factory,
-    'sg-costos':     DollarSign,
-    'sg-catalogo':   ClipboardList,
+    'sg-inventario':   Package,
+    'sg-produccion':   Factory,
+    'sg-costos':       DollarSign,
+    'sg-catalogo':     ClipboardList,
+    'sg-pos':          ShoppingCart,
+    'sg-ventas':       TrendingUp,
+    'sg-pantallas':    Monitor,
+    'sg-equipo':       Users,
+    'sg-config-admin': Settings2,
+    'sg-gestion':      Building2,
 };

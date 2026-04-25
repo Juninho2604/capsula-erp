@@ -13,7 +13,7 @@ import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 import { getVisibleModules, type ModuleDefinition } from '@/lib/constants/modules-registry';
 import { MODULE_ICONS, SUBGROUP_ICONS } from '@/lib/module-icons';
 import { CapsulaNavbarLogo } from '@/components/ui/CapsulaLogo';
-import { X, User, LogOut } from 'lucide-react';
+import { X, User, LogOut, Search } from 'lucide-react';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -63,20 +63,23 @@ const SIDEBAR_TREE: SectionDef[] = [
                 kind: 'subgroup', id: 'sg-catalogo', label: 'Catálogo', icon: '🗂️',
                 items: ['menu', 'modifiers', 'sku_studio'],
             },
-            { kind: 'link', moduleId: 'purchases' },
         ],
     },
     {
         id: 'sales', label: 'Ventas & POS', scheme: 'green',
         items: [
-            { kind: 'link', moduleId: 'pos_restaurant' },
-            { kind: 'link', moduleId: 'pos_waiter' },
-            { kind: 'link', moduleId: 'pos_delivery' },
-            { kind: 'link', moduleId: 'pedidosya' },
-            { kind: 'link', moduleId: 'sales_entry' },
-            { kind: 'link', moduleId: 'sales_history' },
-            { kind: 'link', moduleId: 'kitchen_display' },
-            { kind: 'link', moduleId: 'barra_display' },
+            {
+                kind: 'subgroup', id: 'sg-pos', label: 'POS', icon: '🖥️',
+                items: ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
+            },
+            {
+                kind: 'subgroup', id: 'sg-ventas', label: 'Ventas', icon: '📊',
+                items: ['sales_entry', 'sales_history'],
+            },
+            {
+                kind: 'subgroup', id: 'sg-pantallas', label: 'Pantallas', icon: '🖥️',
+                items: ['kitchen_display', 'barra_display'],
+            },
             { kind: 'link', moduleId: 'pos_config' },
         ],
     },
@@ -105,17 +108,20 @@ const SIDEBAR_TREE: SectionDef[] = [
     {
         id: 'admin', label: 'Administración', scheme: 'blue',
         items: [
-            { kind: 'link', moduleId: 'users' },
-            { kind: 'link', moduleId: 'mesoneros' },
-            { kind: 'link', moduleId: 'roles_config' },
-            // D3: en capsula figuraba 'modulos' (typo); corregido a 'module_config'
-            { kind: 'link', moduleId: 'module_config' },
-            // D3: agregados explícitamente para que no dependan de la red de seguridad
-            { kind: 'link', moduleId: 'modulos_usuario' },
+            {
+                kind: 'subgroup', id: 'sg-equipo', label: 'Equipo', icon: '👥',
+                items: ['users', 'mesoneros'],
+            },
+            {
+                // D3: 'modulos' (typo legacy) corregido a 'module_config'; 'modulos_usuario' explícito
+                kind: 'subgroup', id: 'sg-config-admin', label: 'Configuración', icon: '⚙️',
+                items: ['roles_config', 'module_config', 'modulos_usuario'],
+            },
+            {
+                kind: 'subgroup', id: 'sg-gestion', label: 'Gestión', icon: '🏢',
+                items: ['almacenes', 'metas', 'anuncios'],
+            },
             { kind: 'link', moduleId: 'asistente' },
-            { kind: 'link', moduleId: 'almacenes' },
-            { kind: 'link', moduleId: 'metas' },
-            { kind: 'link', moduleId: 'anuncios' },
         ],
     },
 ];
@@ -177,16 +183,16 @@ const TREE_MODULE_IDS: Set<string> = (() => {
 
 function defaultSectionsState(): Record<string, boolean> {
     const base: Record<string, boolean> = Object.fromEntries(
-        SIDEBAR_TREE.map(s => [s.id, true]),
+        SIDEBAR_TREE.map(s => [s.id, false]),
     );
-    base[ORPHAN_SECTION_ID] = true;
+    base[ORPHAN_SECTION_ID] = false;
     return base;
 }
 
 function defaultSubGroupsState(): Record<string, boolean> {
     const acc: Record<string, boolean> = {};
     SIDEBAR_TREE.forEach(s =>
-        s.items.forEach(item => { if (item.kind === 'subgroup') acc[item.id] = true; })
+        s.items.forEach(item => { if (item.kind === 'subgroup') acc[item.id] = false; })
     );
     return acc;
 }
@@ -438,6 +444,53 @@ function Section({
     );
 }
 
+// ── Search results (flat filtered list) ───────────────────────────────────────
+
+function SearchResults({
+    query,
+    visibleMap,
+    pathname,
+    closeSidebar,
+}: {
+    query: string;
+    visibleMap: Map<string, ModuleDefinition>;
+    pathname: string;
+    closeSidebar: () => void;
+}) {
+    const q = query.toLowerCase().trim();
+    const results = Array.from(visibleMap.values()).filter(mod =>
+        mod.label.toLowerCase().includes(q) ||
+        mod.description.toLowerCase().includes(q) ||
+        (mod.tags?.some(t => t.toLowerCase().includes(q)) ?? false),
+    );
+
+    if (results.length === 0) {
+        return (
+            <div className="px-3 py-8 text-center text-[13px] text-capsula-ink-muted">
+                Sin resultados para &ldquo;<span className="font-medium text-capsula-ink">{query}</span>&rdquo;
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-0.5">
+            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                {results.length} resultado{results.length !== 1 ? 's' : ''}
+            </div>
+            {results.map(mod => (
+                <ModuleLink
+                    key={mod.id}
+                    mod={mod}
+                    pathname={pathname}
+                    scheme="coral"
+                    indent={false}
+                    closeSidebar={closeSidebar}
+                />
+            ))}
+        </div>
+    );
+}
+
 // ── Main Sidebar ───────────────────────────────────────────────────────────────
 
 export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: SidebarProps) {
@@ -492,7 +545,15 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
         return { id: ORPHAN_SECTION_ID, label: 'Otros', scheme: 'blue', items: orphans };
     }, [visibleMap]);
 
-    // Estado de colapso — todo abierto por default (SSR-safe, localStorage se carga después)
+    // Estado de búsqueda
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Limpiar búsqueda al cerrar sidebar (mobile)
+    useEffect(() => {
+        if (!sidebarOpen) setSearchQuery('');
+    }, [sidebarOpen]);
+
+    // Estado de colapso — cerrado por default, el auto-expand abre la sección activa
     const [sectionsState, setSectionsState]   = useState<Record<string, boolean>>(defaultSectionsState);
     const [subGroupsState, setSubGroupsState] = useState<Record<string, boolean>>(defaultSubGroupsState);
 
@@ -608,21 +669,44 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                     </button>
                 </div>
 
+                {/* Search */}
+                <div className="shrink-0 border-b border-capsula-line px-2 py-2">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" />
+                        <input
+                            type="search"
+                            placeholder="Buscar módulo…"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="pos-input w-full py-1.5 pl-8 pr-3 text-[13px]"
+                        />
+                    </div>
+                </div>
+
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto px-2 py-3">
-                    {sectionsToRender.map(section => (
-                        <Section
-                            key={section.id}
-                            def={section}
+                    {searchQuery.trim() ? (
+                        <SearchResults
+                            query={searchQuery}
                             visibleMap={visibleMap}
                             pathname={pathname}
-                            isOpen={sectionsState[section.id] ?? true}
-                            openSubGroups={openSubGroupsSet}
-                            onToggle={() => toggleSection(section.id)}
-                            onToggleSubGroup={toggleSubGroup}
-                            closeSidebar={closeSidebar}
+                            closeSidebar={() => { setSearchQuery(''); closeSidebar(); }}
                         />
-                    ))}
+                    ) : (
+                        sectionsToRender.map(section => (
+                            <Section
+                                key={section.id}
+                                def={section}
+                                visibleMap={visibleMap}
+                                pathname={pathname}
+                                isOpen={sectionsState[section.id] ?? false}
+                                openSubGroups={openSubGroupsSet}
+                                onToggle={() => toggleSection(section.id)}
+                                onToggleSubGroup={toggleSubGroup}
+                                closeSidebar={closeSidebar}
+                            />
+                        ))
+                    )}
                 </nav>
 
                 {/* User footer — preservado de shanklish (ChangePasswordDialog + logout) */}
