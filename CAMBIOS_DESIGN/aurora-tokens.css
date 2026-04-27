@@ -1,0 +1,324 @@
+/* ============================================================
+   CÁPSULA — EDITORIAL AURORA · Design Tokens
+   Drop these variables into your existing stylesheet and apply
+   the utility classes / shadow recipes where indicated.
+   No copy or layout changes — visual layer only.
+   ============================================================ */
+
+:root {
+  /* ---------- Color ---------- */
+  --cap-bg:           #0A111E;   /* base */
+  --cap-bg-deep:      #070C16;   /* vignette edge */
+  --cap-ink:          #F4F1EA;   /* warm off-white text */
+  --cap-ink-dim:      rgba(244, 241, 234, 0.62);
+  --cap-ink-soft:     rgba(244, 241, 234, 0.42);
+
+  --cap-accent:       #E8714A;   /* warm capsule orange */
+  --cap-accent-soft:  rgba(232, 113, 74, 0.18);
+  --cap-accent-text:  #F2C7B3;   /* eyebrow text on accent pill */
+
+  --cap-blue:         #7AA7FF;   /* secondary accent (subcopy + CTA) */
+  --cap-blue-1:       #6E94EE;
+  --cap-blue-2:       #3B5BDB;
+
+  --cap-hair:         rgba(244, 241, 234, 0.08);   /* hairline border */
+  --cap-hair-bright:  rgba(244, 241, 234, 0.14);   /* brighter hairline */
+
+  /* ---------- Radius ---------- */
+  --cap-r-pill:   999px;
+  --cap-r-card:   18px;
+  --cap-r-cta:    28px;
+  --cap-r-icon:   12px;
+
+  /* ---------- Shadows (recipes) ---------- */
+  --cap-shadow-glass:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 24px 50px -30px rgba(0,0,0,0.7);
+
+  --cap-shadow-glass-hover:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 40px 60px -20px rgba(0,0,0,0.75);
+
+  --cap-shadow-cta-blue:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    0 10px 30px rgba(59, 91, 219, 0.45),
+    0 1px 0 rgba(0,0,0,0.4);
+
+  --cap-shadow-cta-blue-hover:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    0 14px 36px rgba(59, 91, 219, 0.55),
+    0 1px 0 rgba(0,0,0,0.4);
+
+  --cap-shadow-mark:
+    0 18px 50px rgba(232, 113, 74, 0.45),
+    inset 0 -6px 14px rgba(0,0,0,0.35),
+    inset 0 2px 4px rgba(255,255,255,0.5);
+
+  --cap-shadow-cta-panel:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    0 40px 80px -40px rgba(0,0,0,0.8);
+
+  /* ---------- Motion ---------- */
+  --cap-ease: cubic-bezier(.2,.8,.2,1);
+  --cap-dur:  220ms;
+}
+
+/* ============================================================
+   1 · ATMOSPHERIC BACKDROP
+   Apply on <body> or any large section that should "glow".
+   Place real content above with z-index >= 1.
+   ============================================================ */
+.cap-backdrop {
+  position: relative;
+  background: var(--cap-bg);
+  isolation: isolate;
+}
+.cap-backdrop::before,
+.cap-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Warm aurora top + cool aurora upper-right + vignette */
+.cap-backdrop::before {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, var(--cap-accent-soft) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 20%, rgba(122,167,255,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, transparent 50%, var(--cap-bg-deep) 100%);
+}
+/* Film grain — uses inline SVG */
+.cap-backdrop::after {
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Floating decorative blob — place inside .cap-backdrop */
+.cap-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+.cap-blob--warm { background: var(--cap-accent); }
+.cap-blob--cool { background: #3B5BDB; }
+
+/* Soft dot pattern (used in feature section) */
+.cap-dotgrid {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.4;
+  background-image: radial-gradient(rgba(244,241,234,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+          mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+}
+
+/* ============================================================
+   2 · TYPOGRAPHY
+   Apply gradient ONLY on the italic display line.
+   ============================================================ */
+.cap-display {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.0;
+  color: var(--cap-ink);
+}
+.cap-display--italic {
+  font-style: italic;
+  font-weight: 600;
+  background: linear-gradient(180deg, #FFFFFF 30%, var(--cap-accent) 130%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================================
+   3 · EYEBROW PILL (e.g. "SOFTWARE DE GESTIÓN GASTRONÓMICA")
+   ============================================================ */
+.cap-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: var(--cap-r-pill);
+  background: linear-gradient(180deg, rgba(232,113,74,0.14), rgba(232,113,74,0.04));
+  border: 1px solid rgba(232,113,74,0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+  color: var(--cap-accent-text);
+  text-transform: uppercase;
+}
+.cap-eyebrow__dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cap-accent);
+  box-shadow: 0 0 8px var(--cap-accent);
+  animation: capPulse 2.4s ease-in-out infinite;
+}
+@keyframes capPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--cap-accent); }
+  50%      { opacity: .6; box-shadow: 0 0 14px var(--cap-accent); }
+}
+
+/* ============================================================
+   4 · GLASS FEATURE CARD (Inventario / Recetas / Costos / Analítica)
+   ============================================================ */
+.cap-card {
+  position: relative;
+  padding: 28px 24px;
+  border-radius: var(--cap-r-card);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  border: 1px solid var(--cap-hair);
+  box-shadow: var(--cap-shadow-glass);
+  -webkit-backdrop-filter: blur(12px);
+          backdrop-filter: blur(12px);
+  overflow: hidden;
+  transition: transform var(--cap-dur) var(--cap-ease),
+              border-color var(--cap-dur) var(--cap-ease),
+              box-shadow var(--cap-dur) var(--cap-ease);
+}
+.cap-card::before {
+  content: "";
+  position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232,113,74,0.5), transparent);
+}
+.cap-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cap-hair-bright);
+  box-shadow: var(--cap-shadow-glass-hover);
+}
+
+/* Duotone icon tile inside the card */
+.cap-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--cap-r-icon);
+  background: linear-gradient(180deg, rgba(232,113,74,0.16), rgba(232,113,74,0.04));
+  border: 1px solid rgba(232,113,74,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* Use stroke="var(--cap-accent)" + fillOpacity 0.18 on icon SVGs to get duotone */
+
+/* ============================================================
+   5 · BUTTONS
+   ============================================================ */
+.cap-btn {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 13px 22px;
+  border-radius: var(--cap-r-pill);
+  display: inline-flex; align-items: center; gap: 9px;
+  cursor: pointer;
+  transition: transform var(--cap-dur) var(--cap-ease),
+              box-shadow var(--cap-dur) var(--cap-ease),
+              filter var(--cap-dur) var(--cap-ease);
+}
+.cap-btn--primary {
+  color: var(--cap-ink);
+  border: none;
+  background: linear-gradient(180deg, var(--cap-blue-1), var(--cap-blue-2));
+  box-shadow: var(--cap-shadow-cta-blue);
+}
+.cap-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--cap-shadow-cta-blue-hover);
+  filter: brightness(1.05);
+}
+.cap-btn--primary:active { transform: translateY(0); filter: brightness(0.98); }
+
+.cap-btn--ghost {
+  color: var(--cap-ink);
+  border: 1px solid var(--cap-hair-bright);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+.cap-btn--ghost:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(244,241,234,0.22);
+}
+
+/* ============================================================
+   6 · CAPSULE LOGO MARK (the bowl)
+   ============================================================ */
+.cap-mark {
+  position: relative;
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FFE4D2, var(--cap-accent) 50%, #5A1C0E);
+  box-shadow: var(--cap-shadow-mark);
+  animation: capBreathe 6s ease-in-out infinite;
+}
+.cap-mark::before {  /* halo */
+  content: "";
+  position: absolute; inset: -22px; border-radius: 50%;
+  background: radial-gradient(circle, var(--cap-accent-soft), transparent 70%);
+  z-index: -1;
+}
+.cap-mark::after {   /* highlight */
+  content: "";
+  position: absolute; left: 22px; top: 18px;
+  width: 14px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  filter: blur(2px);
+}
+@keyframes capBreathe {
+  0%, 100% { filter: brightness(0.95); }
+  50%      { filter: brightness(1.06); }
+}
+
+/* ============================================================
+   7 · CTA PANEL (the boxed "Pongamos tu operación..." block)
+   ============================================================ */
+.cap-cta-panel {
+  position: relative;
+  padding: 70px 40px;
+  border-radius: var(--cap-r-cta);
+  background:
+    radial-gradient(ellipse 60% 80% at 0% 0%, rgba(232,113,74,0.22), transparent 60%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(122,167,255,0.20), transparent 60%),
+    linear-gradient(180deg, #0E1828, var(--cap-bg));
+  border: 1px solid var(--cap-hair-bright);
+  box-shadow: var(--cap-shadow-cta-panel);
+  overflow: hidden;
+}
+
+/* ============================================================
+   8 · DIVIDERS
+   Replace flat 1px lines with fading hairlines.
+   ============================================================ */
+.cap-divider {
+  height: 1px; border: 0; margin: 0 56px;
+  background: linear-gradient(90deg, transparent, var(--cap-hair-bright), transparent);
+}
+
+/* ============================================================
+   9 · LAYOUT BREATHING
+   Apply to your existing section wrappers.
+   ============================================================ */
+.cap-section { padding: 100px 56px; position: relative; overflow: hidden; }
+.cap-hero    { padding: 80px 56px 110px; }
+
+/* ============================================================
+   IMPLEMENTATION NOTES
+   ------------------------------------------------------------
+   · Wrap <body> (or your top app shell) in class="cap-backdrop"
+     and drop two <div class="cap-blob cap-blob--warm"> /
+     <div class="cap-blob cap-blob--cool"> with absolute positions
+     near the hero corners.
+   · Replace existing card class with .cap-card; nest the icon in
+     <span class="cap-icon"> and pass duotone SVG inside.
+   · Replace primary CTA class with .cap-btn.cap-btn--primary,
+     secondary with .cap-btn.cap-btn--ghost.
+   · Replace the round logo bowl with <div class="cap-mark"></div>.
+   · Wrap the lower CTA box in .cap-cta-panel.
+   · Replace <hr> dividers with <hr class="cap-divider">.
+   · No HTML structure changes required beyond these wrappers.
+   ============================================================ */
