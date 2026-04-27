@@ -3803,13 +3803,21 @@ src/app/(marketing)/
   layout.tsx                  ← <div class="cap-backdrop"> + <AuroraNav> + {children} + <AuroraFooter>
   page.tsx                    ← landing /
   legal/{terminos,privacidad,seguridad}/page.tsx
-  (futuras: producto/{slug}, empresa, contacto, ayuda, estado)
+  empresa/page.tsx            ← Sobre nosotros (historia + valores + equipo + CTA)
+  contacto/page.tsx           ← 3 canales + 3 rutas por intención + ubicación/horarios
+  producto/{inventario,recetas,costos,analitica}/page.tsx
+  ayuda/page.tsx              ← 8 categorías de doc + canales de soporte
+  estado/page.tsx             ← status global + 4 servicios + uptime 90 días + incidentes
 
 src/components/marketing/
   AuroraNav.tsx               ← Logo + Iniciar sesión + CTA Solicitar demo
   AuroraFooter.tsx            ← 4 columnas + fila legal con links a /legal/*
   LegalShell.tsx              ← reusable: hero (eyebrow + título + last-updated + intro)
                                 + body grid 260px_1fr (TOC sticky lateral + secciones numeradas)
+  ProductoShell.tsx           ← reusable para los 4 módulos: hero (icono grande + eyebrow +
+                                título + intro + CTAs) → sub-features (4 cards) → "por qué
+                                importa" (paragraph block) → conexiones (auto-genera 3 cards
+                                a los OTROS módulos vía slug) → CTA panel
 ```
 
 **Reglas críticas del route group**:
@@ -3825,9 +3833,29 @@ src/components/marketing/
   1. Comentario inline `// TODO: ...` para el agente futuro.
   2. Bloque visible `<p className="cap-text-soft text-[13px]">[Pendiente — ...]</p>` para que el equipo legal lo localice al hacer review en preview.
 
+**Páginas Empresa, Producto, Recursos** (Fases 3+4+5):
+- **`/empresa`** — hero + sección "historia" en grid 2 columnas (kicker + body) + valores en grid 2x2 (`Compass`, `Eye`, `Heart`, `Users`) + sección equipo (placeholder pendiente de fotos y bios reales) + CTA. Sin testimonios.
+- **`/contacto`** — 3 canales (`Mail`, `MessageCircle` para WhatsApp, `Linkedin`) en grid + 3 rutas por intención (`Briefcase` demo, `LifeBuoy` soporte, `Megaphone` prensa) + 2 cards finales: ubicación y horarios. Sin formulario funcional; los CTAs son `mailto:` o `https://wa.me/`. Decisión deliberada: forms requieren proveedor (Resend/SES) — diferido hasta confirmación.
+- **`/producto/<slug>`** (4 módulos) — todas usan `ProductoShell`. Sub-features específicas por módulo, copy operativo (no marketing), conexiones auto-generadas vía `slug`. CTA cierra con "Pongamos {módulo} bajo control."
+- **`/ayuda`** — 8 categorías en grid `md:grid-cols-2 lg:grid-cols-3` (Primeros pasos, Inventario, Recetas, Costos, Analítica, POS, Compras, Facturación). Cada categoría lista 3 artículos como bullets pero **los slugs no llevan a páginas todavía** (placeholder explícito). Buscador marcado como pendiente.
+- **`/estado`** — patrón de status page minimal: badge global con icono `CheckCircle2` + 4 servicios con pill de estado (operational/degraded/outage usando los hex de §18 de CLAUDE.md) + grilla de uptime de 90 días (90 barras de 1.5px) + sección de incidentes recientes. Mock estático, marcado para reemplazo cuando exista monitoreo real (`/api/health`, Better Stack, Statuspage).
+
 **SEO**:
-- `src/app/sitemap.ts` lista las 12 rutas públicas planificadas (landing + 4 producto + empresa + contacto + ayuda + estado + 3 legal). Usa `process.env.NEXT_PUBLIC_SITE_URL` con fallback `https://capsula.app`.
+- `src/app/sitemap.ts` lista las 12 rutas públicas (landing + 4 producto + empresa + contacto + ayuda + estado + 3 legal). Usa `process.env.NEXT_PUBLIC_SITE_URL` con fallback `https://capsula.app`. Tras Fase 5 todas las rutas existen — no hay 404 navegando desde el footer.
 - `src/app/robots.ts` permite todo y bloquea explícitamente `/dashboard/`, `/api/`, `/login`, `/kitchen/`.
+
+**Convención global de placeholders**:
+1. Comentario inline `// TODO: ...` para el agente futuro.
+2. Bloque visible `<p className="cap-text-soft text-[13px]">[Pendiente — ...]</p>` para que el equipo localice qué falta al hacer preview.
+
+Items pendientes documentados en placeholder a fecha de cierre (Fase 5):
+- Términos: alcance exacto de licencia + política reembolsos + jurisdicción definitiva.
+- Privacidad: región/proveedor cloud específico + listado público de subprocesadores.
+- Seguridad: proveedor cloud + región + política formal de bug bounty.
+- Empresa: año de fundación + métricas cobertura + perfiles de equipo.
+- Contacto: número WhatsApp definitivo + handle LinkedIn + decisión de publicar dirección física.
+- Ayuda: buscador de artículos + páginas individuales `/ayuda/[slug]`.
+- Estado: integración con monitoreo real + feed de incidentes con post-mortems.
 
 ### 19.9 Fase 2.C.3.b — Layouts compartidos restantes (no-op, sin commit)
 
