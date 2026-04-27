@@ -3770,14 +3770,26 @@ Infraestructura establecida colateralmente: se fijó `Set-ExecutionPolicy Remote
 
 **`src/components/layout/HelpPanel.tsx`**: no-op efectivo. Diff byte a byte con `diff -u` contra la versión de capsula reveló que los dos archivos son idénticos excepto por 2 strings en la guía de `/dashboard/ventas/cargar`: shanklish dice `"PedidosYA"` (tanto en `description` como en `tips`), capsula dice `"Canales Externos"`. Por la excepción definida en §19.2, se preserva `"PedidosYA"`. Portar la versión de capsula y revertir esos 2 strings daría un archivo byte-idéntico al existente, así que no se escribe. Cero cambios al archivo.
 
-**`src/app/page.tsx`**: landing pública reestructurada (CRO, Minimal Navy). Secciones activas:
-- **Nav**: solo `CapsulaLogo variant="full"` + "Iniciar sesión" + CTA "Solicitar demo". Sin ítems de menú (Producto/Soluciones/Precios/Clientes fueron removidos).
-- **Hero**: `CapsulaAnimatedMark`, badge pulsante "Software de gestión gastronómica", H1 `"Tu negocio, una cápsula."`, subtítulo, CTAs `/login` (primario) y `/dashboard` (secundario). Sin línea de trial ("15 días / sin tarjeta / onboarding guiado" — eliminada).
-- **Producto**: 4 tarjetas en grid `md:grid-cols-2 lg:grid-cols-4`: Inventario (`Box`), Recetas (`BookOpen`), Costos (`Coins`), Analítica (`BarChart3`). Los módulos "Cuentas y meseros" y "Compras y proveedores" fueron removidos del grid para alinear con la arquitectura de submódulos públicos.
-- **CTA final**: card ivory con headline y dos botones (Solicitar demo / Hablar con ventas).
-- **Footer (3 columnas)**: Producto (Inventario · Recetas · Costos · Analítica), Empresa (Sobre nosotros · Contacto), Recursos (Centro de ayuda · Estado del sistema).
-- **Footer inferior**: © + Legal y Seguridad (Términos y condiciones · Privacidad · Seguridad).
-- **Eliminadas permanentemente**: sección logo strip "Operando hoy en …", sección dark "Impacto verificado" con métricas de clientes, quote/testimonial de Mariana Restrepo.
+**`src/app/page.tsx`**: landing pública. Sistema visual **Editorial Aurora** (dark cinematográfico) sobre la arquitectura de información CRO. Estilos en `src/app/aurora-landing.css` (scoped con clase `.cap-backdrop`, no contamina el resto de la app). Excepción consciente al sistema `capsula-*` global: la landing usa una paleta dark dedicada (`--cap-*`) por ser superficie pública con identidad propia.
+
+Secciones:
+- **Nav** (`.cap-nav`): backdrop-blur sobre `rgba(10,17,30,0.55)`. Solo `CapsulaLogo variant="full"` + "Iniciar sesión" + CTA "Solicitar demo" (ghost azul con shadow azul suave). Sin ítems de menú.
+- **Hero**: aurora warm-orange + cool-blue + grain SVG + dos `.cap-blob` decorativos (warm/cool, blur 120px). Centro: `CapsulaAnimatedMark size={96}` envuelto en `.cap-mark-halo` (pseudo-elemento radial cálido — **no toca el SVG**). Eyebrow pill naranja con dot pulsante (`capPulse 2.4s`). H1 con gradient italic blanco→naranja en "una cápsula." (Inter Tight inherit). Subtítulo en `--cap-blue`. CTAs: `cap-btn--primary` (gradient azul `#3B5BDB → #6E94EE` con shadow azul) + `cap-btn--ghost` (translúcido con backdrop-blur).
+- **Producto**: dotgrid masked + radial naranja sutil al tope. Eyebrow "PRODUCTO". H2 "Cuatro módulos. Una sola operación." (segunda línea italic semibold). Grid `md:grid-cols-2 lg:grid-cols-4` con 4 `.cap-card` (Inventario `Box`, Recetas `BookOpen`, Costos `Coins`, Analítica `BarChart3`). Cada card: backdrop-blur 12px, hairline accent superior naranja, hover lift `-2px`. Iconos lucide coloreados con `var(--cap-accent)` dentro de `.cap-icon` (tile cuadrado naranja translúcido).
+- **CTA panel** (`.cap-cta-panel`): radial-gradients de esquinas (warm top-left, cool bottom-right) + linear navy + corner glow blobs. H2 + subtítulo blue + dos CTAs (primary + ghost).
+- **Footer**: 4 columnas (Logo + Producto + Empresa + Recursos), links en `--cap-blue` opacity 0.9. Divider con fade. Fila inferior: © + Legal y Seguridad (Términos y condiciones · Privacidad · Seguridad).
+
+Tokens nuevos en `aurora-landing.css`:
+- **Color**: `--cap-bg #0A111E`, `--cap-bg-deep #070C16`, `--cap-ink #F4F1EA`, `--cap-accent #E8714A`, `--cap-blue #7AA7FF`, `--cap-hair`/`--cap-hair-bright` para hairlines.
+- **Radius**: pill 999px, card 18px, cta 28px, icon 12px.
+- **Sombras**: `--cap-shadow-glass`, `--cap-shadow-glass-hover`, `--cap-shadow-cta-blue`, `--cap-shadow-cta-blue-hover`, `--cap-shadow-cta-panel`.
+- **Motion**: `--cap-ease cubic-bezier(.2,.8,.2,1)`, `--cap-dur 220ms`.
+
+Reglas de preservación (críticas, no negociar):
+- `CapsulaLogo` (nav y footer) **no se reemplaza** por la propuesta `cap-mark` con texto.
+- `CapsulaAnimatedMark` (hero center) **no se mueve ni se reemplaza** por el bowl naranja proposed. Solo se le añade halo externo via pseudo-elemento.
+
+Eliminadas permanentemente (CRO previo): logo strip "Operando hoy en …", sección "Impacto verificado" con métricas de clientes, quote/testimonial.
 
 No hay lógica que preservar: la versión shanklish del root page era 100% presentacional (gradient amber/orange con emoji placeholder), sin `redirect()`, sin `getSession()`, sin guards. Es la única ruta completamente pública del sistema antes del login. Portación limpia.
 
