@@ -3770,7 +3770,14 @@ Infraestructura establecida colateralmente: se fijó `Set-ExecutionPolicy Remote
 
 **`src/components/layout/HelpPanel.tsx`**: no-op efectivo. Diff byte a byte con `diff -u` contra la versión de capsula reveló que los dos archivos son idénticos excepto por 2 strings en la guía de `/dashboard/ventas/cargar`: shanklish dice `"PedidosYA"` (tanto en `description` como en `tips`), capsula dice `"Canales Externos"`. Por la excepción definida en §19.2, se preserva `"PedidosYA"`. Portar la versión de capsula y revertir esos 2 strings daría un archivo byte-idéntico al existente, así que no se escribe. Cero cambios al archivo.
 
-**`src/app/page.tsx`**: reescritura presentacional completa desde capsula. Nav superior con `CapsulaLogo variant="full"` y link `Iniciar Sesión → /login`, hero con badge coral pulsante (`ERP para Restaurantes`), título Nunito `"Tu negocio, una cápsula."` con tamaños responsive `5xl → 7xl`, párrafo de subtítulo, doble CTA (primario coral `/login`, secundario outline `/dashboard`), sección de features con tres cards de fondos sólidos por rol (azul `#EFF6FF` para Inventario, verde `#ECFDF5` para Recetas, coral `#FFF0EC` para Costos), footer con `CapsulaLogo variant="favicon"` y copyright.
+**`src/app/page.tsx`**: landing pública reestructurada (CRO, Minimal Navy). Secciones activas:
+- **Nav**: solo `CapsulaLogo variant="full"` + "Iniciar sesión" + CTA "Solicitar demo". Sin ítems de menú (Producto/Soluciones/Precios/Clientes fueron removidos).
+- **Hero**: `CapsulaAnimatedMark`, badge pulsante "Software de gestión gastronómica", H1 `"Tu negocio, una cápsula."`, subtítulo, CTAs `/login` (primario) y `/dashboard` (secundario). Sin línea de trial ("15 días / sin tarjeta / onboarding guiado" — eliminada).
+- **Producto**: 4 tarjetas en grid `md:grid-cols-2 lg:grid-cols-4`: Inventario (`Box`), Recetas (`BookOpen`), Costos (`Coins`), Analítica (`BarChart3`). Los módulos "Cuentas y meseros" y "Compras y proveedores" fueron removidos del grid para alinear con la arquitectura de submódulos públicos.
+- **CTA final**: card ivory con headline y dos botones (Solicitar demo / Hablar con ventas).
+- **Footer (3 columnas)**: Producto (Inventario · Recetas · Costos · Analítica), Empresa (Sobre nosotros · Contacto), Recursos (Centro de ayuda · Estado del sistema).
+- **Footer inferior**: © + Legal y Seguridad (Términos y condiciones · Privacidad · Seguridad).
+- **Eliminadas permanentemente**: sección logo strip "Operando hoy en …", sección dark "Impacto verificado" con métricas de clientes, quote/testimonial de Mariana Restrepo.
 
 No hay lógica que preservar: la versión shanklish del root page era 100% presentacional (gradient amber/orange con emoji placeholder), sin `redirect()`, sin `getSession()`, sin guards. Es la única ruta completamente pública del sistema antes del login. Portación limpia.
 
