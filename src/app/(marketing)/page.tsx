@@ -1,5 +1,3 @@
-import './aurora-landing.css';
-
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -8,47 +6,20 @@ import {
     Coins,
     BarChart3,
 } from 'lucide-react';
-import CapsulaLogo from '@/components/ui/CapsulaLogo';
 import CapsulaAnimatedMark from '@/components/brand/CapsulaAnimatedMark';
 
 export default function HomePage() {
     const features = [
-        { icon: Box,       title: 'Inventario', desc: 'Gestión y control de stock en tiempo real, multi-ubicación y alertas de reabastecimiento.' },
-        { icon: BookOpen,  title: 'Recetas',    desc: 'Estandarización y preparación con sub-recetas recursivas y control de mermas.' },
-        { icon: Coins,     title: 'Costos',     desc: 'Análisis de márgenes y gastos: COGS automático y costo real por plato el mismo día.' },
-        { icon: BarChart3, title: 'Analítica',  desc: 'Reportes y datos clave: ventas, ticket promedio y utilidad operativa por jornada.' },
+        { icon: Box,       title: 'Inventario', slug: 'inventario', desc: 'Gestión y control de stock en tiempo real, multi-ubicación y alertas de reabastecimiento.' },
+        { icon: BookOpen,  title: 'Recetas',    slug: 'recetas',    desc: 'Estandarización y preparación con sub-recetas recursivas y control de mermas.' },
+        { icon: Coins,     title: 'Costos',     slug: 'costos',     desc: 'Análisis de márgenes y gastos: COGS automático y costo real por plato el mismo día.' },
+        { icon: BarChart3, title: 'Analítica',  slug: 'analitica',  desc: 'Reportes y datos clave: ventas, ticket promedio y utilidad operativa por jornada.' },
     ];
 
     return (
-        <div className="cap-backdrop">
-            {/* ── NAV ───────────────────────────────────────────── */}
-            <nav className="cap-nav">
-                <div className="relative z-[1] mx-auto flex max-w-[1280px] items-center justify-between px-10 py-5">
-                    <CapsulaLogo variant="full" size={22} />
-                    <div className="flex items-center gap-5">
-                        <Link href="/login" className="cap-link text-[13px]">
-                            Iniciar sesión
-                        </Link>
-                        <Link
-                            href="/login"
-                            className="cap-btn cap-btn--ghost !py-[9px] !px-4 text-[13px]"
-                            style={{
-                                borderColor: 'rgba(122, 167, 255, 0.35)',
-                                background:
-                                    'linear-gradient(180deg, rgba(122, 167, 255, 0.22), rgba(122, 167, 255, 0.08))',
-                                boxShadow:
-                                    'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 14px rgba(122, 167, 255, 0.18)',
-                            }}
-                        >
-                            Solicitar demo <ArrowRight className="h-3.5 w-3.5 opacity-85" />
-                        </Link>
-                    </div>
-                </div>
-            </nav>
-
+        <>
             {/* ── HERO ──────────────────────────────────────────── */}
             <section className="relative overflow-hidden px-10 pb-[110px] pt-20">
-                {/* decorative blobs */}
                 <span className="cap-blob cap-blob--warm" style={{ left: -120, top: 120, width: 360, height: 360 }} />
                 <span className="cap-blob cap-blob--cool" style={{ left: '70%', top: -60, width: 280, height: 280 }} />
 
@@ -60,7 +31,6 @@ export default function HomePage() {
                         </span>
                     </div>
 
-                    {/* Eyebrow pill */}
                     <div className="cap-eyebrow mb-8">
                         <span className="cap-eyebrow__dot" />
                         <span>Software de gestión gastronómica</span>
@@ -86,7 +56,6 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── DIVIDER ───────────────────────────────────────── */}
             <hr className="cap-divider mx-14" />
 
             {/* ── PRODUCTO ──────────────────────────────────────── */}
@@ -118,7 +87,11 @@ export default function HomePage() {
 
                 <div className="relative z-[1] mx-auto grid max-w-[1100px] gap-[18px] md:grid-cols-2 lg:grid-cols-4">
                     {features.map((f) => (
-                        <div key={f.title} className="cap-card">
+                        <Link
+                            key={f.slug}
+                            href={`/producto/${f.slug}`}
+                            className="cap-card block"
+                        >
                             <span className="cap-icon">
                                 <f.icon
                                     className="h-[22px] w-[22px]"
@@ -130,7 +103,7 @@ export default function HomePage() {
                                 {f.title}
                             </div>
                             <p className="cap-text-dim m-0 text-[13px] leading-[1.6]">{f.desc}</p>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </section>
@@ -153,73 +126,12 @@ export default function HomePage() {
                         <Link href="/login" className="cap-btn cap-btn--primary">
                             Solicitar demo <ArrowRight className="h-4 w-4" />
                         </Link>
-                        <Link href="#contacto" className="cap-btn cap-btn--ghost">
+                        <Link href="/contacto" className="cap-btn cap-btn--ghost">
                             Hablar con ventas
                         </Link>
                     </div>
                 </div>
             </section>
-
-            {/* ── FOOTER ───────────────────────────────────────── */}
-            <footer
-                className="relative px-10 pb-12 pt-14"
-                style={{ borderTop: '1px solid var(--cap-hair)' }}
-            >
-                <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-                    <div>
-                        <CapsulaLogo variant="full" size={22} />
-                        <p className="cap-text-dim mt-4 max-w-[280px] text-[13px] leading-[1.6]">
-                            Plataforma de gestión para restaurantes{' '}
-                            <span className="cap-text-blue">independientes y grupos gastronómicos.</span>
-                        </p>
-                    </div>
-                    {[
-                        { h: 'Producto', items: [
-                            { label: 'Inventario',         href: '#producto' },
-                            { label: 'Recetas',            href: '#producto' },
-                            { label: 'Costos',             href: '#producto' },
-                            { label: 'Analítica',          href: '#producto' },
-                        ]},
-                        { h: 'Empresa', items: [
-                            { label: 'Sobre nosotros',     href: '#empresa' },
-                            { label: 'Contacto',           href: '#contacto' },
-                        ]},
-                        { h: 'Recursos', items: [
-                            { label: 'Centro de ayuda',    href: '#ayuda' },
-                            { label: 'Estado del sistema', href: '#estado' },
-                        ]},
-                    ].map((col) => (
-                        <div key={col.h}>
-                            <div
-                                className="cap-text-soft mb-[18px] text-[11px] font-semibold uppercase"
-                                style={{ letterSpacing: '0.16em' }}
-                            >
-                                {col.h}
-                            </div>
-                            {col.items.map((i) => (
-                                <Link
-                                    key={i.label}
-                                    href={i.href}
-                                    className="cap-text-blue mb-2.5 block text-[13px] opacity-90 transition-opacity hover:opacity-100"
-                                >
-                                    {i.label}
-                                </Link>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-
-                <hr className="cap-divider mx-0 mt-12" />
-
-                <div className="mx-auto mt-6 flex max-w-[1280px] flex-col items-start justify-between gap-3 text-[12px] sm:flex-row sm:items-center">
-                    <div className="cap-text-soft">© 2026 CÁPSULA · Todos los derechos reservados</div>
-                    <div className="flex gap-6">
-                        <Link href="#terminos"   className="cap-link">Términos y condiciones</Link>
-                        <Link href="#privacidad" className="cap-link">Privacidad</Link>
-                        <Link href="#seguridad"  className="cap-link">Seguridad</Link>
-                    </div>
-                </div>
-            </footer>
-        </div>
+        </>
     );
 }
