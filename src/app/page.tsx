@@ -5,44 +5,25 @@ import {
     BookOpen,
     Coins,
     BarChart3,
-    Users,
-    Truck,
 } from 'lucide-react';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
 import CapsulaAnimatedMark from '@/components/brand/CapsulaAnimatedMark';
 
 export default function HomePage() {
     const features = [
-        { icon: Box,      title: 'Control de Inventario',  desc: 'Stock en tiempo real, alertas de reabastecimiento y gestión multi-ubicación.' },
-        { icon: BookOpen, title: 'Recetas y sub-recetas',  desc: 'Gestión recursiva con cálculo automático de costos y control de mermas.' },
-        { icon: Coins,    title: 'Costos en tiempo real',  desc: 'COGS automático, histórico de costos y márgenes por plato.' },
-        { icon: BarChart3,title: 'Analítica operativa',    desc: 'Ventas, ticket promedio y utilidad operativa consolidados por día.' },
-        { icon: Users,    title: 'Cuentas y meseros',      desc: 'Control de cuentas abiertas, propinas y cierres por turno.' },
-        { icon: Truck,    title: 'Compras y proveedores',  desc: 'Órdenes de compra, recepción y trazabilidad de lotes.' },
-    ];
-
-    const logos = ['LA BARRA', 'OSTERÍA NOVE', 'CASA MILA', 'TERRAZA 14', 'ALMA', 'FOGÓN'];
-
-    const metrics = [
-        { k: '−18%',     l: 'merma de inventario',  d: 'mediana entre clientes activos' },
-        { k: '+4.6 pts', l: 'de margen operativo',  d: 'medido contra período base' },
-        { k: '6 h',      l: 'ahorradas por semana', d: 'en reportería y conciliación' },
-        { k: '99.9%',    l: 'de uptime',            d: 'SLA garantizado' },
+        { icon: Box,       title: 'Inventario', desc: 'Gestión y control de stock en tiempo real, multi-ubicación y alertas de reabastecimiento.' },
+        { icon: BookOpen,  title: 'Recetas',    desc: 'Estandarización y preparación con sub-recetas recursivas y control de mermas.' },
+        { icon: Coins,     title: 'Costos',     desc: 'Análisis de márgenes y gastos: COGS automático y costo real por plato el mismo día.' },
+        { icon: BarChart3, title: 'Analítica',  desc: 'Reportes y datos clave: ventas, ticket promedio y utilidad operativa por jornada.' },
     ];
 
     return (
         <div className="min-h-screen bg-capsula-ivory text-capsula-ink">
             {/* ── NAV ───────────────────────────────────────────── */}
             <nav className="sticky top-0 z-50 border-b border-capsula-line bg-capsula-ivory/85 backdrop-blur-md">
-                <div className="mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-10 py-4">
+                <div className="mx-auto flex max-w-[1280px] items-center justify-between px-10 py-4">
                     <CapsulaLogo variant="full" size={22} />
-                    <div className="hidden gap-7 text-sm text-capsula-ink-soft md:flex">
-                        <Link href="#producto"  className="transition-colors hover:text-capsula-ink">Producto</Link>
-                        <Link href="#soluciones" className="transition-colors hover:text-capsula-ink">Soluciones</Link>
-                        <Link href="#precios"   className="transition-colors hover:text-capsula-ink">Precios</Link>
-                        <Link href="#clientes"  className="transition-colors hover:text-capsula-ink">Clientes</Link>
-                    </div>
-                    <div className="flex items-center justify-end gap-4">
+                    <div className="flex items-center gap-4">
                         <Link href="/login" className="text-sm text-capsula-ink-soft transition-colors hover:text-capsula-ink">
                             Iniciar sesión
                         </Link>
@@ -57,7 +38,7 @@ export default function HomePage() {
             </nav>
 
             {/* ── HERO ──────────────────────────────────────────── */}
-            <section className="mx-auto max-w-[1280px] px-10 pb-16 pt-24 text-center">
+            <section className="mx-auto max-w-[1280px] px-10 pb-24 pt-24 text-center">
                 <div className="mb-8 flex justify-center">
                     <CapsulaAnimatedMark size={96} />
                 </div>
@@ -79,7 +60,7 @@ export default function HomePage() {
                     Una sola plataforma, del salón a la dirección.
                 </p>
 
-                <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                     <Link href="/login" className="capsula-btn capsula-btn-primary">
                         Entrar al sistema <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -87,48 +68,23 @@ export default function HomePage() {
                         Ver dashboard
                     </Link>
                 </div>
-
-                <div className="flex items-center justify-center gap-4 text-[13px] text-capsula-ink-muted">
-                    <span><strong className="font-medium text-capsula-ink">15 días</strong> de prueba</span>
-                    <span className="h-1 w-1 rounded-full bg-capsula-line-strong" />
-                    <span>Sin tarjeta de crédito</span>
-                    <span className="h-1 w-1 rounded-full bg-capsula-line-strong" />
-                    <span>Onboarding guiado</span>
-                </div>
             </section>
 
-            {/* ── LOGO STRIP ────────────────────────────────────── */}
-            <section className="mx-auto max-w-[1280px] border-y border-capsula-line px-10">
-                <div className="py-7 text-center text-[11px] uppercase tracking-[0.14em] text-capsula-ink-muted">
-                    Operando hoy en
-                </div>
-                <div className="grid grid-cols-3 pb-8 md:grid-cols-6">
-                    {logos.map((l) => (
-                        <div
-                            key={l}
-                            className="font-semibold text-center text-lg tracking-[0.08em] text-capsula-ink-soft opacity-70"
-                        >
-                            {l}
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ── FEATURES ──────────────────────────────────────── */}
-            <section id="producto" className="mx-auto max-w-[1280px] px-10 py-24">
+            {/* ── PRODUCTO ──────────────────────────────────────── */}
+            <section id="producto" className="mx-auto max-w-[1280px] border-t border-capsula-line px-10 py-24">
                 <div className="mx-auto mb-16 max-w-[680px] text-center">
                     <div className="mb-5 inline-block rounded-full border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-capsula-ink-soft">
                         Producto
                     </div>
-                    <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
-                        Toda la operación, en módulos que conversan.
+                    <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] tracking-[-0.02em] text-capsula-ink">
+                        Cuatro módulos. Una sola operación.
                     </h2>
                     <p className="text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
                         Implementación por fases. Adopta solo lo que necesitas, cuando lo necesitas.
                     </p>
                 </div>
 
-                <div className="grid gap-px overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-line md:grid-cols-3">
+                <div className="grid gap-px overflow-hidden rounded-[var(--radius)] border border-capsula-line bg-capsula-line md:grid-cols-2 lg:grid-cols-4">
                     {features.map((f) => (
                         <div
                             key={f.title}
@@ -137,7 +93,7 @@ export default function HomePage() {
                             <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-capsula-line-strong text-capsula-ink">
                                 <f.icon className="h-[22px] w-[22px]" strokeWidth={1.5} />
                             </div>
-                            <h3 className="mb-2 text-base font-medium tracking-[-0.01em] text-capsula-ink">
+                            <h3 className="mb-2 text-base font-semibold tracking-[-0.01em] text-capsula-ink">
                                 {f.title}
                             </h3>
                             <p className="text-pretty text-[14px] leading-[1.55] text-capsula-ink-muted">
@@ -148,63 +104,10 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── SPLIT (dark) ──────────────────────────────────── */}
-            <section className="bg-capsula-navy-deep text-[#F2EFE8]">
-                <div className="mx-auto grid max-w-[1280px] grid-cols-1 items-center gap-20 px-10 py-28 lg:grid-cols-[1.1fr_1fr]">
-                    <div>
-                        <div className="mb-5 inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#E7D6CF]">
-                            Impacto verificado
-                        </div>
-                        <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-[#F7F5F0]">
-                            Menos mermas.
-                            <br />
-                            Más margen.
-                            <br />
-                            <span className="text-capsula-ink-faint">Decisiones con evidencia.</span>
-                        </h2>
-                        <p className="mb-8 max-w-[440px] text-pretty text-[17px] leading-[1.55] text-[#A3B2C3]">
-                            Los equipos que migran a CÁPSULA unifican sus datos en una sola vista y
-                            reducen tiempos administrativos desde el primer trimestre.
-                        </p>
-                        <Link href="#clientes" className="inline-flex items-center gap-1.5 border-b border-white/20 pb-0.5 text-sm font-medium text-[#F7F5F0] transition-colors hover:border-capsula-coral">
-                            Leer casos de estudio <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius)] border border-white/10 bg-white/10">
-                        {metrics.map((m) => (
-                            <div key={m.l} className="bg-capsula-navy-deep p-7">
-                                <div className="mb-3 font-medium text-[48px] leading-none tracking-[-0.02em] text-[#F7F5F0]">
-                                    {m.k}
-                                </div>
-                                <div className="mb-1 text-sm text-[#E7D6CF]">{m.l}</div>
-                                <div className="text-[12px] text-[#73889F]">{m.d}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── QUOTE ─────────────────────────────────────────── */}
-            <section className="mx-auto max-w-[900px] px-10 py-28 text-center">
-                <div className="font-semibold mb-5 h-10 text-[120px] leading-[0.5] text-capsula-coral">"</div>
-                <blockquote className="font-semibold mb-10 text-balance text-[clamp(28px,3.5vw,40px)] leading-[1.25] tracking-[-0.015em] text-capsula-ink">
-                    Reemplazamos tres sistemas en dos semanas. Hoy conocemos el costo real de cada
-                    plato el mismo día que se vende.
-                </blockquote>
-                <div className="inline-flex items-center gap-3.5">
-                    <div className="h-12 w-12 rounded-full border border-capsula-line bg-gradient-to-br from-capsula-navy-light to-capsula-navy-deep" />
-                    <div className="text-left">
-                        <div className="text-sm font-medium">Mariana Restrepo</div>
-                        <div className="text-[13px] text-capsula-ink-muted">Gerente operativa · Grupo La Barra</div>
-                    </div>
-                </div>
-            </section>
-
             {/* ── CTA ──────────────────────────────────────────── */}
             <section className="mx-auto max-w-[1280px] px-10 pb-28">
                 <div className="rounded-[20px] border border-capsula-line bg-capsula-ivory-alt px-10 py-20 text-center">
-                    <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] text-capsula-ink">
+                    <h2 className="font-semibold mb-5 text-balance text-[clamp(40px,5vw,64px)] leading-[1.02] tracking-[-0.02em] text-capsula-ink">
                         Pongamos tu operación en una sola vista.
                     </h2>
                     <p className="mx-auto mb-8 max-w-[560px] text-pretty text-[17px] leading-[1.55] text-capsula-ink-soft">
@@ -230,31 +133,42 @@ export default function HomePage() {
                             Plataforma de gestión para restaurantes independientes y grupos gastronómicos.
                         </p>
                     </div>
-                    <div className="grid grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
                         {[
-                            { h: 'Producto', items: ['Inventario', 'Recetas', 'Costos', 'Analítica'] },
-                            { h: 'Empresa',  items: ['Sobre nosotros', 'Clientes', 'Contacto'] },
-                            { h: 'Recursos', items: ['Centro de ayuda', 'Estado del sistema', 'API'] },
+                            { h: 'Producto', items: [
+                                { label: 'Inventario',         href: '#producto' },
+                                { label: 'Recetas',            href: '#producto' },
+                                { label: 'Costos',             href: '#producto' },
+                                { label: 'Analítica',          href: '#producto' },
+                            ]},
+                            { h: 'Empresa', items: [
+                                { label: 'Sobre nosotros',     href: '#empresa' },
+                                { label: 'Contacto',           href: '#contacto' },
+                            ]},
+                            { h: 'Recursos', items: [
+                                { label: 'Centro de ayuda',    href: '#ayuda' },
+                                { label: 'Estado del sistema', href: '#estado' },
+                            ]},
                         ].map((col) => (
                             <div key={col.h}>
-                                <div className="mb-4 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink">
+                                <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     {col.h}
                                 </div>
                                 {col.items.map((i) => (
-                                    <Link key={i} href="#" className="block py-1.5 text-[14px] text-capsula-ink-soft transition-colors hover:text-capsula-ink">
-                                        {i}
+                                    <Link key={i.label} href={i.href} className="block py-1.5 text-[14px] text-capsula-ink-soft transition-colors hover:text-capsula-ink">
+                                        {i.label}
                                     </Link>
                                 ))}
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="mx-auto flex max-w-[1280px] items-center justify-between border-t border-capsula-line px-10 py-6 text-[13px] text-capsula-ink-muted">
+                <div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-3 border-t border-capsula-line px-10 py-6 text-[13px] text-capsula-ink-muted sm:flex-row sm:items-center">
                     <div>© 2026 CÁPSULA · Todos los derechos reservados</div>
                     <div className="flex gap-6">
-                        <Link href="#">Términos</Link>
-                        <Link href="#">Privacidad</Link>
-                        <Link href="#">Seguridad</Link>
+                        <Link href="#terminos"  className="transition-colors hover:text-capsula-ink">Términos y condiciones</Link>
+                        <Link href="#privacidad" className="transition-colors hover:text-capsula-ink">Privacidad</Link>
+                        <Link href="#seguridad"  className="transition-colors hover:text-capsula-ink">Seguridad</Link>
                     </div>
                 </div>
             </footer>
