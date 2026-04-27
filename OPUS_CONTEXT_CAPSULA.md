@@ -3793,6 +3793,42 @@ Eliminadas permanentemente (CRO previo): logo strip "Operando hoy en …", secci
 
 No hay lógica que preservar: la versión shanklish del root page era 100% presentacional (gradient amber/orange con emoji placeholder), sin `redirect()`, sin `getSession()`, sin guards. Es la única ruta completamente pública del sistema antes del login. Portación limpia.
 
+### 19.8.1 Marketing route group `(marketing)` — shell público compartido
+
+Tras la aplicación de Aurora se extrajo el shell público en un route group dedicado. Cualquier nueva página pública (Producto, Empresa, Recursos, Legal) hereda backdrop, nav y footer sin duplicar código.
+
+```
+src/app/(marketing)/
+  aurora.css                  ← tokens --cap-* + utilidades cap-*, scope .cap-backdrop
+  layout.tsx                  ← <div class="cap-backdrop"> + <AuroraNav> + {children} + <AuroraFooter>
+  page.tsx                    ← landing /
+  legal/{terminos,privacidad,seguridad}/page.tsx
+  (futuras: producto/{slug}, empresa, contacto, ayuda, estado)
+
+src/components/marketing/
+  AuroraNav.tsx               ← Logo + Iniciar sesión + CTA Solicitar demo
+  AuroraFooter.tsx            ← 4 columnas + fila legal con links a /legal/*
+  LegalShell.tsx              ← reusable: hero (eyebrow + título + last-updated + intro)
+                                + body grid 260px_1fr (TOC sticky lateral + secciones numeradas)
+```
+
+**Reglas críticas del route group**:
+- `(marketing)` es route group de Next.js: paréntesis no afectan la URL. `app/(marketing)/page.tsx` resuelve a `/`.
+- El layout de marketing **NO** debe contener `<html>` ni `<body>` — esos viven en `app/layout.tsx` (root). Solo envuelve children con `.cap-backdrop`.
+- `aurora.css` se importa **únicamente** en `(marketing)/layout.tsx`. Los `:root` que define son globales pero las clases `.cap-*` solo aplican dentro de `.cap-backdrop`. No contamina `/dashboard`, `/login` ni `/kitchen`.
+- `/login`, `/dashboard`, `/kitchen` viven fuera del route group y mantienen su diseño propio (login premium coral, dashboard Minimal Navy capsula-*).
+
+**Páginas Legal** (Fase 2 — placeholders):
+- `LegalShell` recibe `eyebrow`, `title`, `lastUpdated`, `intro` opcional, y `sections: { id, title, body }[]`. Cada sección renderiza con un kicker numerado (`01 · Sección`), `h2` y body con `space-y-4 cap-text-dim text-[15px] leading-[1.7]`.
+- El TOC lateral usa `<a href="#id">` directo (anchor scroll nativo) con `scroll-mt-24` en cada sección para compensar el nav sticky.
+- Texto pendiente de revisión legal está marcado con dos señales:
+  1. Comentario inline `// TODO: ...` para el agente futuro.
+  2. Bloque visible `<p className="cap-text-soft text-[13px]">[Pendiente — ...]</p>` para que el equipo legal lo localice al hacer review en preview.
+
+**SEO**:
+- `src/app/sitemap.ts` lista las 12 rutas públicas planificadas (landing + 4 producto + empresa + contacto + ayuda + estado + 3 legal). Usa `process.env.NEXT_PUBLIC_SITE_URL` con fallback `https://capsula.app`.
+- `src/app/robots.ts` permite todo y bloquea explícitamente `/dashboard/`, `/api/`, `/login`, `/kitchen/`.
+
 ### 19.9 Fase 2.C.3.b — Layouts compartidos restantes (no-op, sin commit)
 
 Exploración de `src/components/layout/` y `src/app/**/layout.tsx` para cerrar el bloque 2.C. Resultado: cero escritura requerida.
