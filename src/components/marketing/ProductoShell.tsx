@@ -1,24 +1,18 @@
-import type { ReactNode, ComponentType, CSSProperties } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Box, BookOpen, Coins, BarChart3 } from 'lucide-react';
-
-interface IconProps {
-    className?: string;
-    strokeWidth?: number;
-    style?: CSSProperties;
-}
+import { ArrowRight, Box, BookOpen, Coins, BarChart3, type LucideIcon } from 'lucide-react';
 
 type ModuleSlug = 'inventario' | 'recetas' | 'costos' | 'analitica';
 
 interface SubFeature {
-    icon: ComponentType<IconProps>;
+    icon: LucideIcon;
     title: string;
     desc: string;
 }
 
 interface Props {
     slug: ModuleSlug;
-    Icon: ComponentType<IconProps>;
+    Icon: LucideIcon;
     title: string;
     tagline: string;
     intro: ReactNode;
@@ -26,7 +20,7 @@ interface Props {
     whyMatters: ReactNode;
 }
 
-const ALL_MODULES: { slug: ModuleSlug; Icon: ComponentType<IconProps>; title: string; teaser: string }[] = [
+const ALL_MODULES: { slug: ModuleSlug; Icon: LucideIcon; title: string; teaser: string }[] = [
     { slug: 'inventario', Icon: Box,       title: 'Inventario', teaser: 'Stock en tiempo real, multi-ubicación y alertas de reabastecimiento.' },
     { slug: 'recetas',    Icon: BookOpen,  title: 'Recetas',    teaser: 'Sub-recetas recursivas, mermas y costo recalculado en cada cambio.' },
     { slug: 'costos',     Icon: Coins,     title: 'Costos',     teaser: 'COGS automático y margen real por plato el mismo día de la venta.' },
