@@ -268,7 +268,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const isProduction = selectedAreaName.toLowerCase().includes('producci');
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
+        <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-xl">
 
             {/* Panel Reporte por Rango */}
             {showRangeReport && (
@@ -280,14 +280,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 type="date"
                                 value={rangeStart}
                                 onChange={e => setRangeStart(e.target.value)}
-                                className="rounded-lg border border-blue-300 bg-white dark:bg-gray-700 text-sm px-3 py-1.5 font-bold"
+                                className="rounded-lg border border-blue-300 bg-capsula-ivory text-sm px-3 py-1.5 font-bold text-capsula-ink"
                             />
                             <span className="text-blue-600 font-bold">→</span>
                             <input
                                 type="date"
                                 value={rangeEnd}
                                 onChange={e => setRangeEnd(e.target.value)}
-                                className="rounded-lg border border-blue-300 bg-white dark:bg-gray-700 text-sm px-3 py-1.5 font-bold"
+                                className="rounded-lg border border-blue-300 bg-capsula-ivory text-sm px-3 py-1.5 font-bold text-capsula-ink"
                             />
                             <button
                                 onClick={loadRangeReport}
@@ -321,7 +321,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             </thead>
                             <tbody>
                                 {rangeSummary.length === 0 ? (
-                                    <tr><td colSpan={5} className="py-4 text-center text-gray-500">Consulta un rango para ver el reporte</td></tr>
+                                    <tr><td colSpan={5} className="py-4 text-center text-capsula-ink-muted">Consulta un rango para ver el reporte</td></tr>
                                 ) : (
                                     rangeSummary.map((d: any) => (
                                         <tr key={d.date} className="border-t border-blue-200 dark:border-blue-800 hover:bg-blue-100/30">
@@ -339,14 +339,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                                     {d.status === 'CLOSED' ? 'Cerrado' : 'Borrador'}
                                                 </span>
                                             </td>
-                                            <td className={cn("py-2 text-right font-mono font-bold", d.totalVariance < -0.01 ? 'text-red-600' : d.totalVariance > 0.01 ? 'text-blue-600' : 'text-gray-400')}>
+                                            <td className={cn("py-2 text-right font-mono font-bold tabular-nums", d.totalVariance < -0.01 ? 'text-red-600 dark:text-red-400' : d.totalVariance > 0.01 ? 'text-blue-600 dark:text-blue-400' : 'text-capsula-ink-muted')}>
                                                 {d.totalVariance >= 0 ? '+' : ''}{d.totalVariance?.toFixed(2) || '0'}
                                             </td>
-                                            <td className="py-2 text-right font-mono text-orange-600">
+                                            <td className="py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400">
                                                 {d.totalWaste > 0 ? d.totalWaste.toFixed(2) : '-'}
                                             </td>
-                                            <td className="py-2 text-right">
-                                                {d.negativeCount > 0 ? <span className="text-red-600 font-black">{d.negativeCount}</span> : <span className="text-gray-400">-</span>}
+                                            <td className="py-2 text-right tabular-nums">
+                                                {d.negativeCount > 0 ? <span className="font-black text-red-600 dark:text-red-400">{d.negativeCount}</span> : <span className="text-capsula-ink-muted">-</span>}
                                             </td>
                                         </tr>
                                     ))
@@ -390,39 +390,39 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             )}
 
             {/* Controles Superiores */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-wrap gap-4 justify-between items-center">
-                <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-capsula-line bg-capsula-ivory-alt p-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="flex flex-col">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Fecha de Auditoría</label>
+                        <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Fecha de Auditoría</label>
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={e => setSelectedDate(e.target.value)}
-                            className="rounded-xl border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 py-2.5 px-4 text-sm font-bold shadow-sm"
+                            className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-sm font-bold text-capsula-ink shadow-sm"
                         />
                     </div>
                     <div className="flex flex-col">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Área / Ubicación</label>
+                        <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Área / Ubicación</label>
                         <select
                             value={selectedArea}
                             onChange={e => setSelectedArea(e.target.value)}
-                            className="rounded-xl border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 py-2.5 px-4 text-sm font-bold min-w-[200px] shadow-sm appearance-none"
+                            className="min-w-[200px] appearance-none rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-sm font-bold text-capsula-ink shadow-sm"
                         >
                             {initialAreas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                     </div>
 
-                    <div className="flex gap-2 self-end pb-0.5 flex-wrap">
+                    <div className="flex flex-wrap gap-2 self-end pb-0.5">
                         <button
                             onClick={() => {
                                 setShowRangeReport(!showRangeReport);
                                 if (!showRangeReport && rangeSummary.length === 0) loadRangeReport();
                             }}
                             className={cn(
-                                "px-4 py-2 text-sm font-bold rounded-xl border shadow-sm transition-all",
+                                "rounded-xl border px-4 py-2 text-sm font-bold shadow-sm transition-all",
                                 showRangeReport
-                                    ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:border-blue-700'
-                                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
+                                    ? 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-200'
+                                    : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-surface'
                             )}
                         >
                             <BarChart3 className="mr-1 inline h-4 w-4" /> Reporte por Rango
@@ -430,14 +430,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                         <button
                             onClick={exportToExcel}
                             disabled={!items.length}
-                            className="flex items-center gap-1.5 rounded-xl border border-green-300 bg-green-50 px-4 py-2 text-sm font-bold text-green-700 shadow-sm transition-all hover:bg-green-100 disabled:opacity-40"
+                            className="flex items-center gap-1.5 rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/60 px-4 py-2 text-sm font-bold text-[#2F6B4E] shadow-sm transition-all hover:bg-[#E5EDE7] disabled:opacity-40 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40 dark:text-[#6FB88F] dark:hover:bg-[#1E3B2C]/70"
                             title="Descargar inventario del día como Excel"
                         >
                             <Download className="h-4 w-4" /> Exportar Excel
                         </button>
                         <button
                             onClick={() => setShowConfig(true)}
-                            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                            className="flex items-center gap-1.5 rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-2 text-sm font-bold text-capsula-ink-soft shadow-sm transition-all hover:bg-capsula-ivory-surface"
                         >
                             <Settings className="h-4 w-4" /> Configurar Items
                         </button>
@@ -490,10 +490,10 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 onClick={handleSave}
                                 disabled={loading || !hasChanges}
                                 className={cn(
-                                    "px-6 py-2.5 rounded-xl font-bold transition shadow-lg",
+                                    "rounded-xl px-6 py-2.5 font-bold shadow-lg transition",
                                     hasChanges
-                                        ? "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
-                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                        ? "bg-blue-600 text-white shadow-blue-500/20 hover:bg-blue-700"
+                                        : "cursor-not-allowed bg-capsula-line text-capsula-ink-muted"
                                 )}
                             >
                                 {loading
@@ -523,12 +523,12 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
 
             {/* Leyenda de colores de columnas */}
             {!loading && items.length > 0 && (
-                <div className="flex flex-wrap gap-4 border-b border-gray-100 bg-gray-50 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:border-gray-700 dark:bg-gray-900/30">
+                <div className="flex flex-wrap gap-4 border-b border-capsula-line bg-capsula-ivory-alt px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">
                     <span className="inline-flex items-center gap-1.5 text-blue-600"><span className="h-2 w-2 rounded-full bg-blue-600" /> Apertura</span>
                     <span className="inline-flex items-center gap-1.5 text-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Entradas (+)</span>
                     <span className="inline-flex items-center gap-1.5 text-rose-600"><span className="h-2 w-2 rounded-full bg-rose-600" /> Ventas/Consumo (−)</span>
                     <span className="inline-flex items-center gap-1.5 text-orange-500"><span className="h-2 w-2 rounded-full bg-orange-500" /> Merma (−)</span>
-                    <span className="inline-flex items-center gap-1.5 text-gray-500"><span className="h-2 w-2 rounded-sm border border-gray-400" /> Teórico = Apertura + Entradas − Ventas − Merma</span>
+                    <span className="inline-flex items-center gap-1.5 text-capsula-ink-muted"><span className="h-2 w-2 rounded-sm border border-capsula-line-strong" /> Teórico = Apertura + Entradas − Ventas − Merma</span>
                     <span className="inline-flex items-center gap-1.5 text-green-600"><span className="h-2 w-2 rounded-full bg-green-600" /> Cierre real</span>
                     {Object.values(autoSuggestions).some(s => s.autoEntries > 0 || s.autoSales > 0) && (
                         <span className="inline-flex items-center gap-1.5 text-cyan-600"><Zap className="h-3 w-3" /> Sugerencia automática (click para aplicar)</span>
@@ -537,9 +537,9 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             )}
 
             {/* TABLA */}
-            <div className="flex-1 overflow-auto bg-white dark:bg-gray-800 relative">
+            <div className="relative flex-1 overflow-auto bg-capsula-ivory">
                 {loading && !items.length ? (
-                    <div className="flex flex-col items-center gap-3 p-10 text-center text-gray-500">
+                    <div className="flex flex-col items-center gap-3 p-10 text-center text-capsula-ink-muted">
                         <Loader2 className="h-8 w-8 animate-spin" />
                         Cargando planilla de inventario...
                     </div>
@@ -565,12 +565,12 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 <th className="px-6 py-2 text-right bg-blue-800 font-extrabold underline decoration-blue-300 min-w-[100px]">Variación</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        <tbody className="divide-y divide-capsula-line">
                             {items.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center text-gray-500 bg-gray-50/50">
+                                    <td colSpan={8} className="bg-capsula-ivory-alt px-4 py-12 text-center text-capsula-ink-muted">
                                         No hay productos críticos asignados a este reporte.<br />
-                                        <button onClick={() => setShowConfig(true)} className="mt-2 text-blue-600 underline text-sm">
+                                        <button onClick={() => setShowConfig(true)} className="mt-2 text-sm text-capsula-coral underline">
                                             Configurar lista de items críticos →
                                         </button>
                                     </td>
@@ -584,41 +584,41 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 const hasSalesHint = suggestion && suggestion.autoSales > 0;
 
                                 return (
-                                    <tr key={item.id} className="hover:bg-blue-50/30 dark:hover:bg-gray-700 transition-all group">
+                                    <tr key={item.id} className="group transition-all hover:bg-capsula-ivory-surface">
                                         {/* PRODUCTO */}
-                                        <td className="px-6 py-3 border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-6 py-3">
                                             <div className="flex flex-col">
-                                                <span className="font-black text-gray-900 dark:text-gray-100 text-sm group-hover:text-blue-700 transition-colors uppercase tracking-tight">
+                                                <span className="text-sm font-black uppercase tracking-tight text-capsula-ink transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-400">
                                                     {item.inventoryItem.name}
                                                 </span>
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                                                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">
                                                     {item.inventoryItem.sku} • {item.unit}
                                                 </span>
                                             </div>
                                         </td>
 
                                         {/* APERTURA */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
                                             <input
                                                 type="number"
                                                 disabled={isClosed}
                                                 value={item.initialCount || 0}
                                                 onChange={e => handleInputChange(item.id, 'initialCount', e.target.value)}
-                                                className="w-20 text-center bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg py-1.5 focus:ring-2 focus:ring-blue-500 font-bold text-sm disabled:opacity-60"
+                                                className="w-20 rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-center text-sm font-bold tabular-nums text-capsula-ink focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
                                                 onFocus={e => e.target.select()}
                                                 step="0.01"
                                             />
                                         </td>
 
                                         {/* ENTRADAS */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
                                             <div className="flex items-center justify-center gap-1">
                                                 <input
                                                     type="number"
                                                     disabled={isClosed}
                                                     value={item.entries || 0}
                                                     onChange={e => handleInputChange(item.id, 'entries', e.target.value)}
-                                                    className="w-20 text-center bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg py-1.5 focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300 text-sm disabled:opacity-60"
+                                                    className="w-20 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-center text-sm font-bold tabular-nums text-indigo-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300"
                                                     onFocus={e => e.target.select()}
                                                     step="0.01"
                                                 />
@@ -636,14 +636,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                         </td>
 
                                         {/* VENTAS */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
                                             <div className="flex items-center justify-center gap-1">
                                                 <input
                                                     type="number"
                                                     disabled={isClosed}
                                                     value={item.sales || 0}
                                                     onChange={e => handleInputChange(item.id, 'sales', e.target.value)}
-                                                    className="w-20 text-center bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 focus:ring-2 focus:ring-rose-500 font-bold text-rose-700 dark:text-rose-300 text-sm disabled:opacity-60"
+                                                    className="w-20 rounded-lg border border-rose-200 bg-rose-50 py-1.5 text-center text-sm font-bold tabular-nums text-rose-700 focus:ring-2 focus:ring-rose-500 disabled:opacity-60 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300"
                                                     onFocus={e => e.target.select()}
                                                     step="0.01"
                                                 />
@@ -661,46 +661,46 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                         </td>
 
                                         {/* MERMA */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
                                             <input
                                                 type="number"
                                                 disabled={isClosed}
                                                 value={item.waste || 0}
                                                 onChange={e => handleInputChange(item.id, 'waste', e.target.value)}
-                                                className="w-20 text-center bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg py-1.5 focus:ring-2 focus:ring-orange-500 font-bold text-orange-700 dark:text-orange-300 text-sm disabled:opacity-60"
+                                                className="w-20 rounded-lg border border-orange-200 bg-orange-50 py-1.5 text-center text-sm font-bold tabular-nums text-orange-700 focus:ring-2 focus:ring-orange-500 disabled:opacity-60 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300"
                                                 onFocus={e => e.target.select()}
                                                 step="0.01"
                                             />
                                         </td>
 
                                         {/* TEÓRICO */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700 font-mono text-gray-500 bg-gray-50/50 dark:bg-gray-900/20">
-                                            <span className="text-sm font-bold">{theoretical.toFixed(2)}</span>
+                                        <td className="border-r border-capsula-line bg-capsula-ivory-alt px-3 py-3 text-center font-mono text-capsula-ink-muted">
+                                            <span className="text-sm font-bold tabular-nums">{theoretical.toFixed(2)}</span>
                                         </td>
 
                                         {/* FINAL */}
-                                        <td className="px-3 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
                                             <input
                                                 type="number"
                                                 disabled={isClosed}
                                                 value={item.finalCount || 0}
                                                 onChange={e => handleInputChange(item.id, 'finalCount', e.target.value)}
-                                                className="w-20 text-center bg-white dark:bg-gray-700 border-2 border-green-200 dark:border-green-900 rounded-lg py-1.5 focus:ring-2 focus:ring-green-500 font-black text-gray-800 dark:text-white text-sm disabled:opacity-60"
+                                                className="w-20 rounded-lg border-2 border-green-200 bg-capsula-ivory py-1.5 text-center text-sm font-black tabular-nums text-capsula-ink focus:ring-2 focus:ring-green-500 disabled:opacity-60 dark:border-green-900"
                                                 onFocus={e => e.target.select()}
                                                 step="0.01"
                                             />
                                         </td>
 
                                         {/* VARIACIÓN */}
-                                        <td className="px-6 py-3 text-right border-l border-gray-100 dark:border-gray-700">
+                                        <td className="border-l border-capsula-line px-6 py-3 text-right">
                                             <div className="flex flex-col items-end">
                                                 <span className={cn(
-                                                    "text-lg font-black tracking-tighter",
-                                                    isNegativeVariance ? "text-red-600" : (variance > 0.01 ? "text-blue-600" : "text-gray-400")
+                                                    "text-lg font-black tracking-tighter tabular-nums",
+                                                    isNegativeVariance ? "text-red-600 dark:text-red-400" : (variance > 0.01 ? "text-blue-600 dark:text-blue-400" : "text-capsula-ink-muted")
                                                 )}>
                                                     {variance > 0 ? '+' : ''}{variance.toFixed(2)}
                                                 </span>
-                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-tighter text-gray-400">
+                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-tighter text-capsula-ink-muted">
                                                     {isNegativeVariance
                                                         ? <><AlertTriangle className="h-3 w-3" /> Faltante</>
                                                         : variance > 0.01
@@ -714,29 +714,29 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             })}
                         </tbody>
                         {items.length > 0 && (
-                            <tfoot className="sticky bottom-0 bg-gray-800 dark:bg-gray-900 text-white">
+                            <tfoot className="sticky bottom-0 bg-capsula-navy-deep text-capsula-ivory">
                                 <tr className="text-xs font-black uppercase tracking-widest">
-                                    <td className="px-6 py-2 text-gray-300">TOTALES ({items.length} items)</td>
-                                    <td className="px-3 py-2 text-center text-blue-300 font-mono">
+                                    <td className="px-6 py-2 text-capsula-ivory/80">TOTALES ({items.length} items)</td>
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-blue-300">
                                         {items.reduce((s, i) => s + (i.initialCount || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center text-indigo-300 font-mono">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-indigo-300">
                                         +{items.reduce((s, i) => s + (i.entries || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center text-rose-300 font-mono">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-rose-300">
                                         −{items.reduce((s, i) => s + (i.sales || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center text-orange-300 font-mono">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-orange-300">
                                         −{items.reduce((s, i) => s + (i.waste || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center text-gray-300 font-mono">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-capsula-ivory/80">
                                         {items.reduce((s, i) => s + (i.theoreticalStock || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center text-green-300 font-mono">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-green-300">
                                         {items.reduce((s, i) => s + (i.finalCount || 0), 0).toFixed(2)}
                                     </td>
                                     <td className={cn(
-                                        "px-6 py-2 text-right font-mono text-lg",
+                                        "px-6 py-2 text-right font-mono text-lg tabular-nums",
                                         items.reduce((s, i) => s + (i.variance || 0), 0) < -0.01 ? 'text-red-400' : 'text-blue-300'
                                     )}>
                                         {(() => { const t = items.reduce((s, i) => s + (i.variance || 0), 0); return (t >= 0 ? '+' : '') + t.toFixed(2); })()}
@@ -748,7 +748,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                 )}
             </div>
 
-            <div className="p-3 bg-blue-50 dark:bg-gray-900 text-[10px] font-bold text-blue-800 dark:text-blue-400 border-t border-gray-200 dark:border-gray-700 flex justify-between px-6 flex-wrap gap-2">
+            <div className="flex flex-wrap justify-between gap-2 border-t border-capsula-line bg-[#E6ECF4] px-6 py-3 text-[10px] font-bold text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]">
                 <span className="inline-flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> LISTA CRÍTICA DE: <strong>{selectedAreaName.toUpperCase()}</strong> (Cada área tiene su propia lista)</span>
                 <span className="flex gap-4">
                     <span>APERTURA + ENTRADAS − VENTAS − MERMA = TEÓRICO</span>
