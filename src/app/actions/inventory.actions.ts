@@ -295,3 +295,103 @@ export async function getPendingDeductionSummaryAction(opts?: {
         }> };
     }
 }
+
+// ============================================================================
+// PRINT (read-only — datos enriquecidos para listas imprimibles)
+// ============================================================================
+//
+// Se usa desde /dashboard/inventario/imprimir. Retorna items con: stock por
+// área (con nombre del área), proveedor preferido (si lo hay), familia,
+// areas donde el item está marcado como crítico, y costo vigente. Una sola
+// query Prisma, sin writes.
+//
+export async function getInventoryForPrintAction() {
+    try {
+        const [items, areas] = await Promise.all([
+            prisma.inventoryItem.findMany({
+                where: { isActive: true, deletedAt: null },
+                include: {
+                    stockLevels: {
+                        include: { area: { select: { id: true, name: true } } },
+                    },
+                    costHistory: {
+                        where: { effectiveTo: null },
+                        orderBy: { effectiveFrom: 'desc' },
+                        take: 1,
+                    },
+                    supplierItems: {
+                        where: { isPreferred: true },
+                        include: { supplier: { select: { id: true, name: true, code: true } } },
+                        take: 1,
+                    },
+                    areaCriticalItems: {
+                        select: { areaId: true },
+                    },
+                    productFamily: {
+                        select: { id: true, code: true, name: true },
+                    },
+                },
+                orderBy: [{ category: 'asc' }, { name: 'asc' }],
+            }),
+            prisma.area.findMany({
+                where: { isActive: true },
+                select: { id: true, name: true },
+                orderBy: { name: 'asc' },
+            }),
+        ]);
+
+        return {
+            items: items.map(item => {
+                const totalStock = item.stockLevels.reduce(
+                    (acc, level) => acc + Number(level.currentStock),
+                    0,
+                );
+                const preferredSupplier = item.supplierItems[0]?.supplier ?? null;
+                const preferredUnitPrice = item.supplierItems[0]?.unitPrice ?? null;
+
+                return {
+                    id: item.id,
+                    sku: item.sku,
+                    name: item.name,
+                    type: item.type,
+                    category: item.category ?? null,
+                    baseUnit: item.baseUnit,
+                    minimumStock: Number(item.minimumStock),
+                    reorderPoint: Number(item.reorderPoint),
+                    isCritical: item.isCritical,
+                    isBeverage: item.isBeverage,
+                    family: item.productFamily,
+                    currentCost: item.costHistory[0] ? Number(item.costHistory[0].costPerUnit) : 0,
+                    totalStock,
+                    stockByArea: item.stockLevels.map(sl => ({
+                        areaId: sl.areaId,
+                        areaName: sl.area.name,
+                        quantity: Number(sl.currentStock),
+                    })),
+                    criticalAreaIds: item.areaCriticalItems.map(c => c.areaId),
+                    preferredSupplier: preferredSupplier
+                        ? { id: preferredSupplier.id, name: preferredSupplier.name, code: preferredSupplier.code ?? null }
+                        : null,
+                    preferredUnitPrice: preferredUnitPrice ? Number(preferredUnitPrice) : null,
+                };
+            }),
+            areas,
+        };
+    } catch (error) {
+        console.error('Error fetching inventory for print:', error);
+        return {
+            items: [] as Array<{
+                id: string; sku: string; name: string; type: string; category: string | null;
+                baseUnit: string; minimumStock: number; reorderPoint: number;
+                isCritical: boolean; isBeverage: boolean;
+                family: { id: string; code: string; name: string } | null;
+                currentCost: number; totalStock: number;
+                stockByArea: Array<{ areaId: string; areaName: string; quantity: number }>;
+                criticalAreaIds: string[];
+                preferredSupplier: { id: string; name: string; code: string | null } | null;
+                preferredUnitPrice: number | null;
+            }>,
+            areas: [] as Array<{ id: string; name: string }>,
+        };
+    }
+}
