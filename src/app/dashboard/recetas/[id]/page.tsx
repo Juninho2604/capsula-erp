@@ -1,6 +1,7 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeft, Pencil, Layers, UtensilsCrossed, Info, Coins } from 'lucide-react';
 import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import { getRecipeByIdAction } from '@/app/actions/recipe.actions';
 import { UNIT_INFO } from '@/lib/constants/units';
@@ -20,6 +21,8 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
 
     const effectiveOutput = recipe.outputQuantity * (recipe.yieldPercentage / 100);
     const totalCost = recipe.outputItem.currentCost * effectiveOutput;
+    const TypeIcon = recipe.outputItem.type === 'SUB_RECIPE' ? Layers : UtensilsCrossed;
+    const typeLabel = recipe.outputItem.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto Final';
 
     return (
         <div className="space-y-6 animate-in">
@@ -28,23 +31,20 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard/recetas"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                        aria-label="Volver a recetas"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
                         <div className="flex items-center gap-3">
                             <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{recipe.name}</h1>
-                            <span className={cn(
-                                'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                                recipe.outputItem.type === 'SUB_RECIPE'
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            )}>
-                                {recipe.outputItem.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto Final'}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-soft">
+                                <TypeIcon className="h-3 w-3" />
+                                {typeLabel}
                             </span>
                         </div>
-                        <p className="text-gray-500">
+                        <p className="text-capsula-ink-muted">
                             {recipe.description || 'Sin descripción'}
                         </p>
                     </div>
@@ -53,69 +53,70 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                 <div className="flex gap-2">
                     <Link
                         href={`/dashboard/recetas/${params.id}/editar`}
-                        className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm"
                     >
-                        🖊️ Editar
+                        <Pencil className="h-4 w-4" /> Editar
                     </Link>
-                    {/* Placeholder for future actions like 'Print' or 'Export' */}
                 </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
-                {/* Main Content - Ingredients & Instructions */}
+                {/* Main Content - Ingredients */}
                 <div className="lg:col-span-2 space-y-6">
-
-                    {/* Ingredients Table */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Ingredientes ({recipe.ingredients.length})</h3>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="border-b border-capsula-line px-6 py-4">
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                                Ingredientes ({recipe.ingredients.length})
+                            </h3>
                         </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
+                                <thead className="bg-capsula-ivory-alt text-[11px] uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     <tr>
-                                        <th className="px-6 py-3 font-medium">Ingrediente</th>
-                                        <th className="px-6 py-3 font-medium text-right">Cant. Neta</th>
-                                        <th className="px-6 py-3 font-medium text-right">Merma</th>
-                                        <th className="px-6 py-3 font-medium text-right">Cant. Bruta</th>
+                                        <th className="px-6 py-3 font-semibold">Ingrediente</th>
+                                        <th className="px-6 py-3 font-semibold text-right">Cant. Neta</th>
+                                        <th className="px-6 py-3 font-semibold text-right">Merma</th>
+                                        <th className="px-6 py-3 font-semibold text-right">Cant. Bruta</th>
                                         {showCosts && (
                                             <>
-                                                <th className="px-6 py-3 font-medium text-right">Costo Unit.</th>
-                                                <th className="px-6 py-3 font-medium text-right">Total</th>
+                                                <th className="px-6 py-3 font-semibold text-right">Costo Unit.</th>
+                                                <th className="px-6 py-3 font-semibold text-right">Total</th>
                                             </>
                                         )}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="divide-y divide-capsula-line">
                                     {recipe.ingredients.map((ing) => {
                                         const grossQty = ing.quantity / (1 - ing.wastePercentage / 100);
-                                        const totalIngCost = grossQty * ing.currentCost; // Approximate if units match
+                                        const totalIngCost = grossQty * ing.currentCost;
 
                                         return (
-                                            <tr key={ing.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                            <tr key={ing.id} className="hover:bg-capsula-ivory-surface">
+                                                <td className="px-6 py-4 font-medium text-capsula-ink">
                                                     {ing.ingredientItem.name}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">
+                                                <td className="px-6 py-4 text-right text-capsula-ink-soft tabular-nums">
                                                     {formatNumber(ing.quantity)} {ing.unit}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-500">
+                                                <td className="px-6 py-4 text-right tabular-nums">
                                                     {ing.wastePercentage > 0 ? (
-                                                        <span className="text-red-600 dark:text-red-400">
+                                                        <span className="text-capsula-coral">
                                                             {ing.wastePercentage}%
                                                         </span>
-                                                    ) : '-'}
+                                                    ) : (
+                                                        <span className="text-capsula-ink-muted">-</span>
+                                                    )}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">
+                                                <td className="px-6 py-4 text-right text-capsula-ink-soft tabular-nums">
                                                     {formatNumber(grossQty, 3)} {ing.unit}
                                                 </td>
                                                 {showCosts && (
                                                     <>
-                                                        <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">
+                                                        <td className="px-6 py-4 text-right text-capsula-ink-soft tabular-nums">
                                                             {formatCurrency(ing.currentCost)}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
+                                                        <td className="px-6 py-4 text-right font-medium text-capsula-ink tabular-nums">
                                                             ~{formatCurrency(totalIngCost)}
                                                         </td>
                                                     </>
@@ -129,34 +130,36 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                     </div>
                 </div>
 
-                {/* Sidebar - Stats & Costs */}
+                {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Production Info */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <h3 className="mb-4 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Detalles de Producción</h3>
                         <div className="space-y-4">
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Cantidad Base</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-sm text-capsula-ink-muted">Cantidad Base</span>
+                                <span className="text-sm font-medium text-capsula-ink tabular-nums">
                                     {formatNumber(recipe.outputQuantity)} {recipe.outputUnit}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Rendimiento (Yield)</span>
-                                <span className={`text-sm font-medium ${recipe.yieldPercentage < 100 ? 'text-amber-600' : 'text-green-600'
-                                    }`}>
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-sm text-capsula-ink-muted">Rendimiento (Yield)</span>
+                                <span className={cn(
+                                    'text-sm font-medium tabular-nums',
+                                    recipe.yieldPercentage < 100 ? 'text-[#946A1C] dark:text-[#E8D9B8]' : 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                )}>
                                     {recipe.yieldPercentage}%
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-700">
-                                <span className="text-sm text-gray-500">Producción Efectiva</span>
-                                <span className="text-sm font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                            <div className="flex justify-between border-b border-capsula-line pb-2">
+                                <span className="text-sm text-capsula-ink-muted">Producción Efectiva</span>
+                                <span className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink tabular-nums">
                                     {formatNumber(effectiveOutput)} {recipe.outputUnit}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-sm text-gray-500">Tiempo Total</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                <span className="text-sm text-capsula-ink-muted">Tiempo Total</span>
+                                <span className="text-sm font-medium text-capsula-ink tabular-nums">
                                     {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
                                 </span>
                             </div>
@@ -165,26 +168,26 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
 
                     {/* Cost Summary */}
                     {showCosts && (
-                        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                        <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                             <div className="mb-4 flex items-center gap-2">
-                                <span className="text-2xl"></span>
+                                <Coins className="h-5 w-5 text-capsula-ink-soft" />
                                 <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Análisis de Costos</h3>
                             </div>
 
                             <div className="space-y-1">
-                                <p className="text-xs text-gray-500 uppercase tracking-wider">Costo Unitario</p>
-                                <p className="font-semibold text-3xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Costo Unitario</p>
+                                <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink tabular-nums">
                                     {formatCurrency(recipe.outputItem.currentCost)}
                                 </p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-capsula-ink-muted">
                                     por {UNIT_INFO[recipe.outputUnit as keyof typeof UNIT_INFO]?.labelEs || recipe.outputUnit}
                                 </p>
                             </div>
 
-                            <div className="mt-6 space-y-3 border-t border-amber-200 pt-4 dark:border-amber-700">
+                            <div className="mt-6 space-y-3 border-t border-capsula-line pt-4">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Costo Total Lote:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="text-capsula-ink-muted">Costo Total Lote:</span>
+                                    <span className="font-medium text-capsula-ink tabular-nums">
                                         {formatCurrency(totalCost)}
                                     </span>
                                 </div>
@@ -192,10 +195,13 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
                         </div>
                     )}
 
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-blue-800 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
-                        <p className="text-xs">
-                            <span className="font-bold">Info:</span> Los costos mostrados son calculados automáticamente basados en el precio actual de inventario (FIFO/Promedio) de cada ingrediente.
-                        </p>
+                    <div className="rounded-xl border border-[#D1DCE9] bg-[#E6ECF4] p-4 text-[#2A4060] dark:border-[#2a3a52] dark:bg-[#1A2636] dark:text-[#D1DCE9]">
+                        <div className="flex items-start gap-2">
+                            <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                            <p className="text-xs leading-relaxed">
+                                Los costos mostrados son calculados automáticamente basados en el precio actual de inventario (FIFO/Promedio) de cada ingrediente.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
