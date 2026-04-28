@@ -2,6 +2,24 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
+import {
+    ClipboardList,
+    Sparkles,
+    Plus,
+    MessageCircle,
+    Settings,
+    Inbox,
+    Pencil,
+    Send,
+    Package,
+    Check,
+    Ban,
+    Bell,
+    Loader2,
+    Save,
+    X as XIcon,
+    type LucideIcon,
+} from 'lucide-react';
 import { formatNumber, cn } from '@/lib/utils';
 import {
     getLowStockItemsAction, getAllItemsForPurchaseAction, getAllItemsWithStockConfigAction,
@@ -223,9 +241,20 @@ export default function PurchaseOrderView() {
     }, [filteredConfigItems]);
 
     const getStatusBadge = (status: string) => {
-        const s: Record<string, string> = { 'DRAFT': 'bg-gray-100 text-gray-700', 'SENT': 'bg-blue-100 text-blue-700', 'PARTIAL': 'bg-amber-100 text-amber-700', 'RECEIVED': 'bg-green-100 text-green-700', 'CANCELLED': 'bg-red-100 text-red-700' };
-        const l: Record<string, string> = { 'DRAFT': '📝 Borrador', 'SENT': '📤 Enviada', 'PARTIAL': '📦 Parcial', 'RECEIVED': '✅ Recibida', 'CANCELLED': '❌ Cancelada' };
-        return <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', s[status] || s['DRAFT'])}>{l[status] || status}</span>;
+        const meta: Record<string, { tone: string; Icon: LucideIcon; label: string }> = {
+            DRAFT: { tone: 'bg-capsula-ivory-alt text-capsula-ink-soft', Icon: Pencil, label: 'Borrador' },
+            SENT: { tone: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', Icon: Send, label: 'Enviada' },
+            PARTIAL: { tone: 'bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]', Icon: Package, label: 'Parcial' },
+            RECEIVED: { tone: 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]', Icon: Check, label: 'Recibida' },
+            CANCELLED: { tone: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]', Icon: Ban, label: 'Cancelada' },
+        };
+        const m = meta[status] || meta.DRAFT;
+        const Icon = m.Icon;
+        return (
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium', m.tone)}>
+                <Icon className="h-3 w-3" /> {m.label}
+            </span>
+        );
     };
 
     const lowStockByCategory = useMemo(() => {
@@ -246,9 +275,35 @@ export default function PurchaseOrderView() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {(['orders', 'auto', 'create', 'whatsapp', 'config', 'receive'] as ViewMode[]).map(mode => {
-                        const labels: Record<ViewMode, string> = { orders: '📋 Órdenes', auto: '✨ Auto-Generar', create: '➕ Manual', whatsapp: '💬 WhatsApp', config: '⚙️ Stock Mín.', receive: '📥 Recibir' };
-                        return <button key={mode} onClick={() => { setViewMode(mode); if (mode === 'orders') loadData(); if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems); }}
-                            className={cn('px-3 py-2 rounded-lg text-xs font-medium transition-all', viewMode === mode ? (mode === 'whatsapp' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg') : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300')}>{labels[mode]}</button>;
+                        const meta: Record<ViewMode, { Icon: LucideIcon; label: string }> = {
+                            orders: { Icon: ClipboardList, label: 'Órdenes' },
+                            auto: { Icon: Sparkles, label: 'Auto-Generar' },
+                            create: { Icon: Plus, label: 'Manual' },
+                            whatsapp: { Icon: MessageCircle, label: 'WhatsApp' },
+                            config: { Icon: Settings, label: 'Stock Mín.' },
+                            receive: { Icon: Inbox, label: 'Recibir' },
+                        };
+                        const Icon = meta[mode].Icon;
+                        return (
+                            <button
+                                key={mode}
+                                onClick={() => {
+                                    setViewMode(mode);
+                                    if (mode === 'orders') loadData();
+                                    if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems);
+                                }}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                                    viewMode === mode
+                                        ? (mode === 'whatsapp'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                                            : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg')
+                                        : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                )}
+                            >
+                                <Icon className="h-3.5 w-3.5" /> {meta[mode].label}
+                            </button>
+                        );
                     })}
                 </div>
             </div>
@@ -263,8 +318,14 @@ export default function PurchaseOrderView() {
                         </div>
                         <div className="flex gap-2">
                             <input type="text" value={configFilter} onChange={e => setConfigFilter(e.target.value)} placeholder="Filtrar..." className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                            <button onClick={handleSaveConfig} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                {isSubmitting ? '⏳...' : '💾 Guardar Todo'}
+                            <button
+                                onClick={handleSaveConfig}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-lg disabled:opacity-50"
+                            >
+                                {isSubmitting
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</>
+                                    : <><Save className="h-4 w-4" /> Guardar Todo</>}
                             </button>
                         </div>
                     </div>
@@ -315,9 +376,9 @@ export default function PurchaseOrderView() {
                                 <button
                                     onClick={handleCreateReorderAlerts}
                                     disabled={isSubmitting}
-                                    className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 font-medium transition-colors disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-50"
                                 >
-                                    🔔 Enviar alertas
+                                    <Bell className="h-3.5 w-3.5" /> Enviar alertas
                                 </button>
                                 <button onClick={addAllSuggestions} className="text-sm text-amber-600 hover:text-amber-700 font-medium">Agregar todos →</button>
                             </div>
@@ -343,9 +404,14 @@ export default function PurchaseOrderView() {
                                                 </div>
                                                 <div className="flex items-center gap-2 ml-4">
                                                     <span className="text-sm font-mono text-amber-600">+{formatNumber(item.suggestedQuantity)}</span>
-                                                    <button onClick={() => addFromSuggestion(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
-                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
+                                                    <button
+                                                        onClick={() => addFromSuggestion(item)}
+                                                        disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
+                                                        className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        {orderItems.some(oi => oi.inventoryItemId === item.id)
+                                                            ? <Check className="h-3.5 w-3.5" />
+                                                            : 'Agregar'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -395,8 +461,14 @@ export default function PurchaseOrderView() {
                                     {filteredItems.map(item => (
                                         <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <div><p className="font-medium text-gray-900 dark:text-white">{item.name}</p><p className="text-xs text-gray-500">Stock: {formatNumber(item.currentStock)} {item.baseUnit} · {item.category || 'Sin cat.'}</p></div>
-                                            <button onClick={() => addManualItem(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)} className="px-3 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50">
-                                                {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
+                                            <button
+                                                onClick={() => addManualItem(item)}
+                                                disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 disabled:opacity-50"
+                                            >
+                                                {orderItems.some(oi => oi.inventoryItemId === item.id)
+                                                    ? <Check className="h-3.5 w-3.5" />
+                                                    : 'Agregar'}
                                             </button>
                                         </div>
                                     ))}
@@ -462,9 +534,14 @@ export default function PurchaseOrderView() {
                                     </div>
                                 ))}
                                 <div className="p-4 bg-gray-50 dark:bg-gray-800 flex justify-end">
-                                    <button onClick={handleReceiveItems} disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
-                                        className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                        {isSubmitting ? '⏳ Procesando...' : '📥 Dar Entrada a Mercancía'}
+                                    <button
+                                        onClick={handleReceiveItems}
+                                        disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
+                                        className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-2.5 font-medium text-white transition-all hover:shadow-lg disabled:opacity-50"
+                                    >
+                                        {isSubmitting
+                                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</>
+                                            : <><Inbox className="h-4 w-4" /> Dar Entrada a Mercancía</>}
                                     </button>
                                 </div>
                             </div>
@@ -505,7 +582,14 @@ export default function PurchaseOrderView() {
                                                 <span className="flex-1 text-sm truncate">{item.name}</span>
                                                 <input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.rowId, parseFloat(e.target.value) || 0)} className="w-16 px-1.5 py-1 text-sm rounded border border-gray-200 text-center" min="0" step="0.1" />
                                                 <span className="text-xs text-gray-500 w-8">{item.unit}</span>
-                                                <button type="button" onClick={() => removeItem(item.rowId)} className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"></button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(item.rowId)}
+                                                    className="flex-shrink-0 rounded p-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                                                    aria-label={`Quitar ${item.name}`}
+                                                >
+                                                    <XIcon className="h-3.5 w-3.5" />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
@@ -553,20 +637,48 @@ export default function PurchaseOrderView() {
                                     <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center gap-1">
-                                            <button onClick={() => handleExportWhatsApp(order.id)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 min-h-[44px] min-w-[44px]" title="Copiar para WhatsApp"></button>
+                                            <button
+                                                onClick={() => handleExportWhatsApp(order.id)}
+                                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-green-50 hover:text-green-600"
+                                                title="Copiar para WhatsApp"
+                                                aria-label="Copiar para WhatsApp"
+                                            >
+                                                <MessageCircle className="h-4 w-4" />
+                                            </button>
                                             {['SENT', 'PARTIAL'].includes(order.status) && (
                                                 <button
                                                     onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-colors min-h-[44px]"
+                                                    className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-600"
                                                     title="Recibir mercancía"
                                                 >
-                                                    📦 Recibir
+                                                    <Inbox className="h-4 w-4" /> Recibir
                                                 </button>
                                             )}
                                             {order.status === 'DRAFT' && (<>
-                                                <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 min-h-[44px] min-w-[44px]" title="Recibir mercancía"></button>
-                                                <button onClick={() => handleSendOrder(order.id)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 min-h-[44px] min-w-[44px]" title="Marcar como enviada"></button>
-                                                <button onClick={() => handleCancelOrder(order.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 min-h-[44px] min-w-[44px]" title="Cancelar"></button>
+                                                <button
+                                                    onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
+                                                    title="Recibir mercancía"
+                                                    aria-label="Recibir mercancía"
+                                                >
+                                                    <Inbox className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSendOrder(order.id)}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                                                    title="Marcar como enviada"
+                                                    aria-label="Marcar como enviada"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleCancelOrder(order.id)}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                                    title="Cancelar"
+                                                    aria-label="Cancelar"
+                                                >
+                                                    <Ban className="h-4 w-4" />
+                                                </button>
                                             </>)}
                                         </div>
                                     </td>
