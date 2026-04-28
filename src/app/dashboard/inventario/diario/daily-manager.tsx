@@ -12,6 +12,24 @@ import {
     reopenDailyInventoryAction,
 } from '@/app/actions/inventory-daily.actions';
 import { toast } from 'react-hot-toast';
+import {
+    Search,
+    X as XIcon,
+    Check,
+    Pencil,
+    BarChart3,
+    Download,
+    Settings,
+    Inbox,
+    CreditCard,
+    Save,
+    CheckCircle2,
+    Unlock,
+    Loader2,
+    Package,
+    AlertTriangle,
+    Zap,
+} from 'lucide-react';
 import CriticalListManager from './critical-list-manager';
 import SalesEntryModal from './sales-entry-modal';
 
@@ -242,7 +260,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         // ── File name ──
         const fileName = `inventario_${selectedAreaName.replace(/\s+/g, '_').toLowerCase()}_${selectedDate}.xlsx`;
         XLSX.writeFile(wb, fileName);
-        toast.success(`📥 Descargado: ${fileName}`);
+        toast.success(`Descargado: ${fileName}`);
     };
 
     const isClosed = data?.status === 'CLOSED';
@@ -274,11 +292,20 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             <button
                                 onClick={loadRangeReport}
                                 disabled={loadingRange}
-                                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                             >
-                                {loadingRange ? '...' : '🔍 Consultar'}
+                                {loadingRange
+                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    : <Search className="h-3.5 w-3.5" />}
+                                Consultar
                             </button>
-                            <button onClick={() => setShowRangeReport(false)} className="text-blue-600 hover:text-blue-800 font-bold text-lg px-2">✕</button>
+                            <button
+                                onClick={() => setShowRangeReport(false)}
+                                className="rounded-full p-1 text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                                aria-label="Cerrar reporte por rango"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -300,8 +327,16 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                         <tr key={d.date} className="border-t border-blue-200 dark:border-blue-800 hover:bg-blue-100/30">
                                             <td className="py-2 font-bold">{new Date(d.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', weekday: 'short' })}</td>
                                             <td className="py-2">
-                                                <span className={d.status === 'CLOSED' ? 'text-green-600 font-bold' : 'text-amber-600'}>
-                                                    {d.status === 'CLOSED' ? '✓ Cerrado' : '✏ Borrador'}
+                                                <span className={cn(
+                                                    'inline-flex items-center gap-1 font-semibold',
+                                                    d.status === 'CLOSED'
+                                                        ? 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                                        : 'text-[#946A1C] dark:text-[#E8D9B8]',
+                                                )}>
+                                                    {d.status === 'CLOSED'
+                                                        ? <Check className="h-3.5 w-3.5" />
+                                                        : <Pencil className="h-3.5 w-3.5" />}
+                                                    {d.status === 'CLOSED' ? 'Cerrado' : 'Borrador'}
                                                 </span>
                                             </td>
                                             <td className={cn("py-2 text-right font-mono font-bold", d.totalVariance < -0.01 ? 'text-red-600' : d.totalVariance > 0.01 ? 'text-blue-600' : 'text-gray-400')}>
@@ -390,21 +425,21 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
                             )}
                         >
-                            📊 Reporte por Rango
+                            <BarChart3 className="mr-1 inline h-4 w-4" /> Reporte por Rango
                         </button>
                         <button
                             onClick={exportToExcel}
                             disabled={!items.length}
-                            className="px-4 py-2 text-sm font-bold text-green-700 bg-green-50 border border-green-300 rounded-xl hover:bg-green-100 shadow-sm transition-all disabled:opacity-40 flex items-center gap-1.5"
+                            className="flex items-center gap-1.5 rounded-xl border border-green-300 bg-green-50 px-4 py-2 text-sm font-bold text-green-700 shadow-sm transition-all hover:bg-green-100 disabled:opacity-40"
                             title="Descargar inventario del día como Excel"
                         >
-                            📥 Exportar Excel
+                            <Download className="h-4 w-4" /> Exportar Excel
                         </button>
                         <button
                             onClick={() => setShowConfig(true)}
-                            className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 shadow-sm transition-all"
+                            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
                         >
-                            ⚙️ Configurar Items
+                            <Settings className="h-4 w-4" /> Configurar Items
                         </button>
                         {!isClosed && data && !isProduction && (
                             <>
@@ -421,13 +456,16 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     disabled={syncingSales || loading}
                                     className="px-4 py-2 text-sm font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-xl hover:bg-emerald-200 transition-all flex items-center gap-2 disabled:opacity-50"
                                 >
-                                    {syncingSales ? '...' : '📥'} Importar desde POS
+                                    {syncingSales
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : <Inbox className="h-4 w-4" />}
+                                    Importar desde POS
                                 </button>
                                 <button
                                     onClick={() => setShowSalesModal(true)}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
+                                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-700"
                                 >
-                                    💳 Cargar Ventas Manual
+                                    <CreditCard className="h-4 w-4" /> Cargar Ventas Manual
                                 </button>
                             </>
                         )}
@@ -458,14 +496,16 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                                 )}
                             >
-                                {loading ? '...' : '💾 Guardar'}
+                                {loading
+                                    ? <span className="inline-flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</span>
+                                    : <span className="inline-flex items-center gap-1.5"><Save className="h-4 w-4" /> Guardar</span>}
                             </button>
                             <button
                                 onClick={handleCloseDay}
                                 disabled={loading}
-                                className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-green-700 transition shadow-lg shadow-green-500/20"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-6 py-2.5 font-bold text-white shadow-lg shadow-green-500/20 transition hover:bg-green-700 disabled:opacity-50"
                             >
-                                ✔ Finalizar Día
+                                <CheckCircle2 className="h-4 w-4" /> Finalizar Día
                             </button>
                         </div>
                     )}
@@ -473,9 +513,9 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                         <button
                             onClick={handleReopen}
                             disabled={loading}
-                            className="px-4 py-2 text-sm font-bold text-orange-700 bg-orange-100 border border-orange-300 rounded-xl hover:bg-orange-200 transition-all disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-orange-300 bg-orange-100 px-4 py-2 text-sm font-bold text-orange-700 transition-all hover:bg-orange-200 disabled:opacity-50"
                         >
-                            🔓 Reabrir
+                            <Unlock className="h-4 w-4" /> Reabrir
                         </button>
                     )}
                 </div>
@@ -483,15 +523,15 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
 
             {/* Leyenda de colores de columnas */}
             {!loading && items.length > 0 && (
-                <div className="px-6 py-2 bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-700 flex gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 flex-wrap">
-                    <span className="text-blue-600">🔵 Apertura</span>
-                    <span className="text-indigo-600">🟣 Entradas (+)</span>
-                    <span className="text-rose-600">🔴 Ventas/Consumo (−)</span>
-                    <span className="text-orange-500">🟠 Merma (−)</span>
-                    <span className="text-gray-500">⬜ Teórico = Apertura + Entradas − Ventas − Merma</span>
-                    <span className="text-green-600">🟢 Cierre real</span>
+                <div className="flex flex-wrap gap-4 border-b border-gray-100 bg-gray-50 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:border-gray-700 dark:bg-gray-900/30">
+                    <span className="inline-flex items-center gap-1.5 text-blue-600"><span className="h-2 w-2 rounded-full bg-blue-600" /> Apertura</span>
+                    <span className="inline-flex items-center gap-1.5 text-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Entradas (+)</span>
+                    <span className="inline-flex items-center gap-1.5 text-rose-600"><span className="h-2 w-2 rounded-full bg-rose-600" /> Ventas/Consumo (−)</span>
+                    <span className="inline-flex items-center gap-1.5 text-orange-500"><span className="h-2 w-2 rounded-full bg-orange-500" /> Merma (−)</span>
+                    <span className="inline-flex items-center gap-1.5 text-gray-500"><span className="h-2 w-2 rounded-sm border border-gray-400" /> Teórico = Apertura + Entradas − Ventas − Merma</span>
+                    <span className="inline-flex items-center gap-1.5 text-green-600"><span className="h-2 w-2 rounded-full bg-green-600" /> Cierre real</span>
                     {Object.values(autoSuggestions).some(s => s.autoEntries > 0 || s.autoSales > 0) && (
-                        <span className="text-cyan-600">⚡ = Sugerencia automática (click para aplicar)</span>
+                        <span className="inline-flex items-center gap-1.5 text-cyan-600"><Zap className="h-3 w-3" /> Sugerencia automática (click para aplicar)</span>
                     )}
                 </div>
             )}
@@ -499,20 +539,22 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             {/* TABLA */}
             <div className="flex-1 overflow-auto bg-white dark:bg-gray-800 relative">
                 {loading && !items.length ? (
-                    <div className="p-10 text-center text-gray-500">
-                        <div className="animate-spin text-4xl mb-4">🌀</div>
+                    <div className="flex flex-col items-center gap-3 p-10 text-center text-gray-500">
+                        <Loader2 className="h-8 w-8 animate-spin" />
                         Cargando planilla de inventario...
                     </div>
                 ) : (
                     <table className="w-full text-sm text-left border-collapse">
                         <thead className="bg-blue-600 dark:bg-gray-900 sticky top-0 z-10 shadow-md">
                             <tr className="text-white text-[10px] h-12 uppercase tracking-widest font-black">
-                                <th className="px-6 py-2 min-w-[220px] border-r border-blue-500/30">📦 Producto Crítico</th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-blue-700/50 min-w-[90px]">Apertura</th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-indigo-700/50 min-w-[100px]" title="Editable. ⚡ = hay sugerencia automática">
+                                <th className="min-w-[220px] border-r border-blue-500/30 px-6 py-2">
+                                    <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5" /> Producto Crítico</span>
+                                </th>
+                                <th className="min-w-[90px] border-r border-blue-500/30 bg-blue-700/50 px-3 py-2 text-center">Apertura</th>
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-indigo-700/50 px-3 py-2 text-center" title="Editable. Hay sugerencia automática indicada con icono Zap.">
                                     {isProduction ? 'Producción (+)' : 'Entradas (+)'}
                                 </th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-rose-700/40 min-w-[100px]" title="Editable. ⚡ = hay sugerencia automática">
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-rose-700/40 px-3 py-2 text-center" title="Editable. Hay sugerencia automática indicada con icono Zap.">
                                     {isProduction ? 'Transf. Salida (−)' : 'Ventas (−)'}
                                 </th>
                                 <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-orange-700/40 min-w-[90px]" title="Merma / desperdicio">
@@ -584,9 +626,10 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                                     <button
                                                         onClick={() => applyAutoSuggestion(item.id, item.inventoryItemId, 'entries')}
                                                         title={`Aplicar sugerencia automática: ${suggestion.autoEntries}`}
-                                                        className="text-cyan-600 hover:text-cyan-800 text-xs font-black leading-none"
+                                                        className="rounded-full p-1 text-cyan-600 transition-colors hover:bg-cyan-100 hover:text-cyan-800 dark:hover:bg-cyan-900/30"
+                                                        aria-label="Aplicar sugerencia automática"
                                                     >
-                                                        ⚡
+                                                        <Zap className="h-3.5 w-3.5" />
                                                     </button>
                                                 )}
                                             </div>
@@ -608,9 +651,10 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                                     <button
                                                         onClick={() => applyAutoSuggestion(item.id, item.inventoryItemId, 'sales')}
                                                         title={`Aplicar sugerencia automática: ${suggestion.autoSales}`}
-                                                        className="text-cyan-600 hover:text-cyan-800 text-xs font-black leading-none"
+                                                        className="rounded-full p-1 text-cyan-600 transition-colors hover:bg-cyan-100 hover:text-cyan-800 dark:hover:bg-cyan-900/30"
+                                                        aria-label="Aplicar sugerencia automática"
                                                     >
-                                                        ⚡
+                                                        <Zap className="h-3.5 w-3.5" />
                                                     </button>
                                                 )}
                                             </div>
@@ -656,8 +700,12 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                                 )}>
                                                     {variance > 0 ? '+' : ''}{variance.toFixed(2)}
                                                 </span>
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                                                    {isNegativeVariance ? "⚠ Faltante" : (variance > 0.01 ? "Sobrante" : "✓ OK")}
+                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-tighter text-gray-400">
+                                                    {isNegativeVariance
+                                                        ? <><AlertTriangle className="h-3 w-3" /> Faltante</>
+                                                        : variance > 0.01
+                                                            ? 'Sobrante'
+                                                            : <><Check className="h-3 w-3" /> OK</>}
                                                 </span>
                                             </div>
                                         </td>
@@ -701,7 +749,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             </div>
 
             <div className="p-3 bg-blue-50 dark:bg-gray-900 text-[10px] font-bold text-blue-800 dark:text-blue-400 border-t border-gray-200 dark:border-gray-700 flex justify-between px-6 flex-wrap gap-2">
-                <span>⚠ LISTA CRÍTICA DE: <strong>{selectedAreaName.toUpperCase()}</strong> (Cada área tiene su propia lista)</span>
+                <span className="inline-flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> LISTA CRÍTICA DE: <strong>{selectedAreaName.toUpperCase()}</strong> (Cada área tiene su propia lista)</span>
                 <span className="flex gap-4">
                     <span>APERTURA + ENTRADAS − VENTAS − MERMA = TEÓRICO</span>
                     <span>CIERRE − TEÓRICO = VARIACIÓN</span>
