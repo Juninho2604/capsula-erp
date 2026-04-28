@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Check, Loader2, Search, X as XIcon } from 'lucide-react';
 import { searchItemsForCriticalListAction, toggleItemCriticalStatusAction } from '@/app/actions/inventory-daily.actions';
 import { toast } from 'react-hot-toast';
 
@@ -16,17 +17,17 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Buscar al escribir (debounce)
     useEffect(() => {
         const timer = setTimeout(() => {
             searchItems();
         }, 500);
         return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [query]);
 
-    // Buscar inicial
     useEffect(() => {
         searchItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     async function searchItems() {
@@ -40,78 +41,96 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
 
     async function handleToggle(item: any) {
         const newValue = !item.isCriticalForArea;
-        // Optimistic update
         setItems(prev => prev.map(i => i.id === item.id ? { ...i, isCriticalForArea: newValue } : i));
 
         const res = await toggleItemCriticalStatusAction(item.id, newValue, areaId);
         if (!res.success) {
-            // Revert
             setItems(prev => prev.map(i => i.id === item.id ? { ...i, isCriticalForArea: item.isCriticalForArea } : i));
             toast.error(res.message || 'Error actualizando item');
         }
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-t-2xl flex justify-between items-center">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-ink/60 p-4 backdrop-blur-sm">
+            <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-capsula-line bg-capsula-ivory shadow-2xl">
+                <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-navy-deep p-6 text-capsula-ivory">
                     <div>
                         <h2 className="font-semibold text-xl tracking-[-0.02em]">Productos Críticos</h2>
-                        <p className="text-amber-100 text-sm mt-1">Configurando para: <strong>{areaName}</strong></p>
+                        <p className="mt-1 text-sm text-capsula-ivory/80">
+                            Configurando para: <strong>{areaName}</strong>
+                        </p>
                     </div>
-                    <button onClick={() => { onUpdate(); onClose(); }} className="text-white hover:text-gray-200 text-2xl">×</button>
+                    <button
+                        onClick={() => { onUpdate(); onClose(); }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-capsula-ivory/80 transition-colors hover:bg-capsula-ivory/10 hover:text-capsula-ivory"
+                        aria-label="Cerrar"
+                    >
+                        <XIcon className="h-4 w-4" />
+                    </button>
                 </div>
 
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                    <input
-                        type="text"
-                        placeholder="Buscar producto por nombre o SKU..."
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-medium"
-                        autoFocus
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
+                <div className="border-b border-capsula-line bg-capsula-ivory-alt p-4">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                        <input
+                            type="text"
+                            placeholder="Buscar producto por nombre o SKU..."
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            className="pos-input w-full pl-10"
+                            autoFocus
+                        />
+                    </div>
+                    <p className="mt-2 text-xs text-capsula-ink-muted">
                         Los productos marcados como críticos aparecerán en el reporte diario de <strong>{areaName}</strong>. Cada área tiene su propia lista.
                     </p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
                     {loading && items.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">Cargando...</div>
+                        <div className="flex items-center justify-center gap-2 py-8 text-capsula-ink-muted">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+                        </div>
                     ) : (
                         <div className="space-y-2">
                             {items.map(item => (
-                                <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border transition ${item.isCriticalForArea ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50'}`}>
+                                <div
+                                    key={item.id}
+                                    className={`flex items-center justify-between rounded-xl border p-3 transition ${
+                                        item.isCriticalForArea
+                                            ? 'border-[#E8D9B8] bg-[#F3EAD6]/40 dark:border-[#5a4a22] dark:bg-[#3B2F15]/40'
+                                            : 'border-capsula-line hover:bg-capsula-ivory-alt'
+                                    }`}
+                                >
                                     <div>
-                                        <p className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-sm">{item.name}</p>
-                                        <p className="text-[10px] text-gray-500 font-mono">{item.sku} • {item.category || 'Sin categoría'} • {item.baseUnit}</p>
+                                        <p className="text-sm font-semibold tracking-[-0.01em] text-capsula-ink">{item.name}</p>
+                                        <p className="font-mono text-[10px] text-capsula-ink-muted">{item.sku} • {item.category || 'Sin categoría'} • {item.baseUnit}</p>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
+                                    <label className="relative inline-flex cursor-pointer items-center">
                                         <input
                                             type="checkbox"
-                                            className="sr-only peer"
+                                            className="peer sr-only"
                                             checked={item.isCriticalForArea}
                                             onChange={() => handleToggle(item)}
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
-                                        <span className="ml-3 text-sm font-bold text-gray-900 dark:text-gray-300">
-                                            {item.isCriticalForArea ? '✔ Crítico' : 'No'}
+                                        <div className="peer h-6 w-11 rounded-full bg-capsula-line after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-capsula-line-strong after:bg-capsula-ivory after:transition-all after:content-[''] peer-checked:bg-capsula-navy-deep peer-checked:after:translate-x-full peer-checked:after:border-capsula-ivory peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-capsula-navy-deep/30"></div>
+                                        <span className="ml-3 inline-flex items-center gap-1 text-sm font-semibold text-capsula-ink">
+                                            {item.isCriticalForArea ? <><Check className="h-3.5 w-3.5" /> Crítico</> : 'No'}
                                         </span>
                                     </label>
                                 </div>
                             ))}
                             {items.length === 0 && !loading && (
-                                <div className="text-center py-8 text-gray-500">No se encontraron productos</div>
+                                <div className="py-8 text-center text-capsula-ink-muted">No se encontraron productos</div>
                             )}
                         </div>
                     )}
                 </div>
 
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end rounded-b-2xl">
+                <div className="flex justify-end border-t border-capsula-line bg-capsula-ivory-alt p-4">
                     <button
                         onClick={() => { onUpdate(); onClose(); }}
-                        className="px-8 py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition shadow-lg shadow-amber-500/20"
+                        className="pos-btn px-8 py-2.5"
                     >
                         Listo, volver al reporte
                     </button>
