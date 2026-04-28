@@ -1,6 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+    Brush,
+    Soup,
+    Package,
+    Settings,
+    Plus,
+    X as XIcon,
+    Trash2,
+    Link2,
+    Lightbulb,
+    Loader2,
+    Save,
+    Beef,
+    Check,
+    type LucideIcon,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import {
     getProcessingTemplatesAction,
@@ -36,11 +53,11 @@ interface Template {
     }[];
 }
 
-const STEP_CONFIG: Record<string, { label: string; emoji: string; color: string; bgColor: string; borderColor: string; description: string }> = {
-    'LIMPIEZA': { label: 'Limpieza', emoji: '🧹', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', description: 'Limpiar y separar la proteína cruda' },
-    'MASERADO': { label: 'Maserado', emoji: '🥘', color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', description: 'Agregar condimentos/marinado (peso puede aumentar)' },
-    'DISTRIBUCION': { label: 'Distribución', emoji: '📦', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', description: 'Repartir en productos finales para venta' },
-    'CUSTOM': { label: 'Personalizado', emoji: '⚙️', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', description: 'Paso personalizado' },
+const STEP_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: string; bgColor: string; borderColor: string; description: string }> = {
+    'LIMPIEZA': { label: 'Limpieza', Icon: Brush, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', description: 'Limpiar y separar la proteína cruda' },
+    'MASERADO': { label: 'Maserado', Icon: Soup, color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', description: 'Agregar condimentos/marinado (peso puede aumentar)' },
+    'DISTRIBUCION': { label: 'Distribución', Icon: Package, color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', description: 'Repartir en productos finales para venta' },
+    'CUSTOM': { label: 'Personalizado', Icon: Settings, color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', description: 'Paso personalizado' },
 };
 
 export default function ProcessingTemplates() {
@@ -136,7 +153,7 @@ export default function ProcessingTemplates() {
         });
 
         if (res.success) {
-            setMsg({ type: 'success', text: '✅ Plantilla creada exitosamente' });
+            setMsg({ type: 'success', text: 'Plantilla creada exitosamente' });
             setShowCreate(false);
             resetForm();
             loadData();
@@ -162,7 +179,7 @@ export default function ProcessingTemplates() {
         if (res.success) {
             loadData();
         } else {
-            alert('Error: ' + res.message);
+            toast.error(res.message);
         }
     };
 
@@ -199,9 +216,9 @@ export default function ProcessingTemplates() {
                 </div>
                 <button
                     onClick={() => { setShowCreate(!showCreate); if (showCreate) resetForm(); }}
-                    className="min-h-[44px] rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:shadow-md transition-all"
+                    className="pos-btn inline-flex min-h-[44px] items-center gap-2 px-5 py-2 text-sm"
                 >
-                    {showCreate ? '✕ Cancelar' : '+ Nueva Plantilla'}
+                    {showCreate ? <><XIcon className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nueva Plantilla</>}
                 </button>
             </div>
 
@@ -239,9 +256,9 @@ export default function ProcessingTemplates() {
                                             : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400'
                                     )}
                                 >
-                                    <div className="text-lg mb-1">{config.emoji}</div>
+                                    {(() => { const StepIcon = config.Icon; return <StepIcon className="mb-1 h-5 w-5" />; })()}
                                     <div className="font-semibold">{config.label}</div>
-                                    <div className="text-[10px] opacity-70 mt-0.5 leading-tight">{config.description}</div>
+                                    <div className="mt-0.5 text-[10px] leading-tight opacity-70">{config.description}</div>
                                 </button>
                             ))}
                         </div>
@@ -380,22 +397,23 @@ export default function ProcessingTemplates() {
                                                 />
                                                 <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 dark:bg-gray-700"></div>
                                             </label>
-                                            <span className="text-[10px] text-gray-500 leading-tight w-12">
-                                                {output.isIntermediate ? '🔗 Inter.' : 'Final'}
+                                            <span className="inline-flex w-12 items-center gap-0.5 text-[10px] leading-tight text-gray-500">
+                                                {output.isIntermediate ? <><Link2 className="h-2.5 w-2.5" /> Inter.</> : 'Final'}
                                             </span>
                                         </div>
                                         <button
                                             onClick={() => removeOutput(idx)}
-                                            className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 min-h-[44px] min-w-[44px]"
+                                            className="flex h-9 min-h-[44px] w-9 min-w-[44px] items-center justify-center rounded-lg text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                            aria-label={`Quitar output ${output.outputItemName}`}
                                         >
-                                            🗑️
+                                            <Trash2 className="h-4 w-4" />
                                         </button>
                                     </div>
                                 ))}
                             </div>
                         )}
-                        <p className="text-[10px] text-gray-400 mt-2">
-                            💡 Marca como &quot;Intermedio&quot; los productos que serán input del siguiente paso (ej: Lomito Limpio → Maserado).
+                        <p className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-gray-400">
+                            <Lightbulb className="h-3 w-3" /> Marca como &quot;Intermedio&quot; los productos que serán input del siguiente paso (ej: Lomito Limpio → Maserado).
                             Los productos finales se agregan directamente al inventario.
                         </p>
                     </div>
@@ -405,9 +423,11 @@ export default function ProcessingTemplates() {
                         <button
                             onClick={handleCreate}
                             disabled={isSubmitting}
-                            className="min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-2.5 font-medium text-white shadow-sm hover:shadow-md disabled:opacity-50 transition-all"
+                            className="pos-btn inline-flex min-h-[44px] items-center gap-2 px-6 py-2.5 disabled:opacity-50"
                         >
-                            {isSubmitting ? '⏳ Guardando...' : '💾 Crear Plantilla'}
+                            {isSubmitting
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</>
+                                : <><Save className="h-4 w-4" /> Crear Plantilla</>}
                         </button>
                     </div>
                 </div>
@@ -426,9 +446,9 @@ export default function ProcessingTemplates() {
                         <div key={sourceId} className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
                             {/* Header del grupo */}
                             <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
-                                <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink flex items-center gap-2">
-                                    🥩 {group.sourceItem.name}
-                                    <span className="text-xs font-normal text-gray-500">
+                                <h3 className="flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                                    <Beef className="h-5 w-5 text-capsula-ink-soft" /> {group.sourceItem.name}
+                                    <span className="text-xs font-normal text-capsula-ink-muted">
                                         ({group.templates.length} {group.templates.length === 1 ? 'paso' : 'pasos'})
                                     </span>
                                 </h3>
@@ -451,10 +471,10 @@ export default function ProcessingTemplates() {
                                                     <div key={template.id} className="relative flex gap-4">
                                                         {/* Step indicator */}
                                                         <div className={cn(
-                                                            'relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border-2 text-lg flex-shrink-0',
-                                                            stepConfig.bgColor, stepConfig.borderColor
+                                                            'relative z-10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2',
+                                                            stepConfig.bgColor, stepConfig.borderColor, stepConfig.color
                                                         )}>
-                                                            {stepConfig.emoji}
+                                                            {(() => { const StepIcon = stepConfig.Icon; return <StepIcon className="h-5 w-5" />; })()}
                                                         </div>
 
                                                         {/* Content */}
@@ -468,7 +488,7 @@ export default function ProcessingTemplates() {
                                                                         <span className="text-xs text-gray-400">Paso {template.chainOrder + 1}</span>
                                                                         {template.canGainWeight && (
                                                                             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                                                                ⬆️ Peso puede aumentar
+                                                                                ↑ Peso puede aumentar
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -476,10 +496,11 @@ export default function ProcessingTemplates() {
                                                                 </div>
                                                                 <button
                                                                     onClick={() => handleDelete(template.id)}
-                                                                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all dark:hover:bg-red-900/20"
+                                                                    className="rounded-lg p-1.5 text-capsula-ink-muted opacity-0 transition-all hover:bg-capsula-coral/10 hover:text-capsula-coral group-hover:opacity-100"
                                                                     title="Eliminar"
+                                                                    aria-label="Eliminar plantilla"
                                                                 >
-                                                                    🗑️
+                                                                    <Trash2 className="h-4 w-4" />
                                                                 </button>
                                                             </div>
 
@@ -495,7 +516,7 @@ export default function ProcessingTemplates() {
                                                                                 : 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-700/50 dark:text-gray-300'
                                                                         )}
                                                                     >
-                                                                        {out.isIntermediate && '🔗 '}
+                                                                        {out.isIntermediate && <Link2 className="h-3 w-3" />}
                                                                         {out.outputItem.name}
                                                                         {out.expectedWeight && (
                                                                             <span className="font-mono text-[10px] opacity-60">~{out.expectedWeight}kg</span>
