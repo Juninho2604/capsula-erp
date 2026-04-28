@@ -24,6 +24,35 @@
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+// ─── Zod schemas (boundary validation) ───────────────────────────────────────
+const ProductFamilyInputSchema = z.object({
+    code: z.string().trim().min(2, 'código mínimo 2 chars').max(20, 'código máximo 20 chars').regex(/^[A-Z0-9_-]+$/i, 'solo A-Z, 0-9, _ o -'),
+    name: z.string().trim().min(2, 'nombre mínimo 2 chars').max(80, 'nombre máximo 80 chars'),
+    description: z.string().trim().max(500).optional(),
+    icon: z.string().trim().max(8).optional(),
+});
+
+const SkuTemplateInputSchema = z.object({
+    name: z.string().trim().min(2, 'nombre mínimo 2 chars').max(80),
+    description: z.string().trim().max(500).optional(),
+    productFamilyId: z.string().min(1).optional(),
+    defaultFields: z.record(z.unknown()), // se serializa a JSON
+});
+
+const SkuItemInputSchema = z.object({
+    name: z.string().trim().min(2, 'nombre mínimo 2 chars').max(120),
+    skuPrefix: z.string().trim().max(8).regex(/^[A-Z0-9-]*$/i, 'solo A-Z, 0-9 o -').optional(),
+    type: z.enum(['RAW_MATERIAL', 'SUB_RECIPE', 'FINISHED_GOOD']),
+    baseUnit: z.string().trim().min(1, 'unidad base requerida').max(20),
+    category: z.string().trim().max(80).optional(),
+    productFamilyId: z.string().min(1).optional(),
+    operativeRole: z.string().trim().max(40).optional(),
+    trackingMode: z.string().trim().max(40).optional(),
+    isBeverage: z.boolean().optional(),
+    initialCost: z.number().min(0, 'costo no puede ser negativo').optional(),
+});
 
 // ─── Product Families ─────────────────────────────────────────────────────────
 
@@ -38,17 +67,20 @@ export async function getProductFamilies() {
     });
 }
 
-export async function createProductFamily(data: {
-    code: string;
-    name: string;
-    description?: string;
-    icon?: string;
-}) {
+export async function createProductFamily(rawData: z.input<typeof ProductFamilyInputSchema>) {
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
     if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
         throw new Error('Sin permiso para crear familias de producto');
     }
+
+    const parsed = ProductFamilyInputSchema.safeParse(rawData);
+    if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        throw new Error(first ? `${first.path.join('.')}: ${first.message}` : 'Input inválido');
+    }
+    // Normaliza el código a uppercase
+    const data = { ...parsed.data, code: parsed.data.code.toUpperCase() };
 
     const family = await prisma.productFamily.create({ data });
     revalidatePath('/dashboard/config/sku-studio');
@@ -71,17 +103,19 @@ export async function getSkuTemplates(productFamilyId?: string) {
     });
 }
 
-export async function createSkuTemplate(data: {
-    name: string;
-    description?: string;
-    productFamilyId?: string;
-    defaultFields: Record<string, unknown>; // se serializa a JSON
-}) {
+export async function createSkuTemplate(rawData: z.input<typeof SkuTemplateInputSchema>) {
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
     if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
         throw new Error('Sin permiso para crear plantillas SKU');
     }
+
+    const parsed = SkuTemplateInputSchema.safeParse(rawData);
+    if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        throw new Error(first ? `${first.path.join('.')}: ${first.message}` : 'Input inválido');
+    }
+    const data = parsed.data;
 
     const template = await prisma.skuCreationTemplate.create({
         data: {
@@ -156,23 +190,19 @@ export async function createProductFromTemplate(
 
 // ─── Crear ítem directo desde SKU Studio (UI con chips) ───────────────────
 
-export async function createSkuItemAction(input: {
-    name: string;
-    skuPrefix?: string;
-    type: 'RAW_MATERIAL' | 'SUB_RECIPE' | 'FINISHED_GOOD';
-    baseUnit: string;
-    category?: string;
-    productFamilyId?: string;
-    operativeRole?: string;
-    trackingMode?: string;
-    isBeverage?: boolean;
-    initialCost?: number;
-}): Promise<{ success: boolean; message: string; data?: { id: string; sku: string; name: string } }> {
+export async function createSkuItemAction(
+    rawInput: z.input<typeof SkuItemInputSchema>
+): Promise<{ success: boolean; message: string; data?: { id: string; sku: string; name: string } }> {
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        if (!input.name?.trim()) return { success: false, message: 'El nombre es obligatorio' };
-        if (!input.baseUnit) return { success: false, message: 'La unidad base es obligatoria' };
+
+        const parsed = SkuItemInputSchema.safeParse(rawInput);
+        if (!parsed.success) {
+            const first = parsed.error.errors[0];
+            return { success: false, message: first ? `${first.path.join('.')}: ${first.message}` : 'Input inválido' };
+        }
+        const input = parsed.data;
 
         // Generar SKU
         const prefix = input.skuPrefix?.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'SKU';
