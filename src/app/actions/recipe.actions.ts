@@ -522,3 +522,123 @@ export async function getOrphanRecipesSummaryAction(opts?: { recentLimit?: numbe
     }
 }
 
+/**
+ * Recetas activas cuyo CostHistory snapshot está desactualizado respecto al
+ * costo actual de los ingredientes. Heurística:
+ *
+ *   "Costo de receta desactualizado" =
+ *      MAX(effectiveFrom de CostHistory de cualquier ingrediente)
+ *      > effectiveFrom del CostHistory más reciente de la receta (output)
+ *
+ * Es decir: algún ingrediente tiene un costo más reciente que el snapshot
+ * que se persistió para la receta. El operativo debería re-correr
+ * "Recalcular costos" en esas recetas para que el margen y el descargo
+ * usen valores correctos.
+ *
+ * Solo lectura — no recalcula nada, no escribe a BD.
+ */
+export async function getRecipesWithOutdatedCostAction(opts?: { limit?: number }) {
+    const limit = opts?.limit ?? 25;
+
+    try {
+        // Cargamos recetas activas con su costHistory más reciente (snapshot)
+        // y los costHistory más recientes de cada ingrediente. Una sola query
+        // de Prisma; in-memory comparison para evitar SQL crudo.
+        const recipes = await prisma.recipe.findMany({
+            where: { isActive: true },
+            select: {
+                id: true,
+                name: true,
+                outputItem: {
+                    select: {
+                        id: true,
+                        sku: true,
+                        costHistory: {
+                            orderBy: { effectiveFrom: 'desc' },
+                            take: 1,
+                            select: { effectiveFrom: true, costPerUnit: true },
+                        },
+                    },
+                },
+                ingredients: {
+                    select: {
+                        ingredientItem: {
+                            select: {
+                                id: true,
+                                name: true,
+                                costHistory: {
+                                    orderBy: { effectiveFrom: 'desc' },
+                                    take: 1,
+                                    select: { effectiveFrom: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        const drifted = recipes
+            .map(r => {
+                const recipeSnapshotAt = r.outputItem.costHistory[0]?.effectiveFrom ?? null;
+                let latestIngredientAt: Date | null = null;
+                let latestIngredientName = '';
+                for (const ing of r.ingredients) {
+                    const at = ing.ingredientItem.costHistory[0]?.effectiveFrom ?? null;
+                    if (at && (!latestIngredientAt || at > latestIngredientAt)) {
+                        latestIngredientAt = at;
+                        latestIngredientName = ing.ingredientItem.name;
+                    }
+                }
+                if (!latestIngredientAt) return null; // sin costos de ingredientes — nada que comparar
+                if (!recipeSnapshotAt) {
+                    // La receta nunca tuvo cost snapshot → reportable como "sin costo".
+                    return {
+                        id: r.id,
+                        name: r.name,
+                        outputSku: r.outputItem.sku,
+                        recipeSnapshotAt: null,
+                        latestIngredientAt,
+                        latestIngredientName,
+                        driftDays: null,
+                        kind: 'NO_SNAPSHOT' as const,
+                    };
+                }
+                const driftMs = latestIngredientAt.getTime() - recipeSnapshotAt.getTime();
+                if (driftMs <= 0) return null; // snapshot al día
+                return {
+                    id: r.id,
+                    name: r.name,
+                    outputSku: r.outputItem.sku,
+                    recipeSnapshotAt,
+                    latestIngredientAt,
+                    latestIngredientName,
+                    driftDays: Math.round(driftMs / 86400_000),
+                    kind: 'OUTDATED' as const,
+                };
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null)
+            .sort((a, b) => (b.driftDays ?? Number.MAX_SAFE_INTEGER) - (a.driftDays ?? Number.MAX_SAFE_INTEGER));
+
+        return {
+            count: drifted.length,
+            outdated: drifted.filter(d => d.kind === 'OUTDATED').length,
+            withoutSnapshot: drifted.filter(d => d.kind === 'NO_SNAPSHOT').length,
+            top: drifted.slice(0, limit),
+        };
+    } catch (error) {
+        console.error('Error fetching outdated recipe costs:', error);
+        return {
+            count: 0,
+            outdated: 0,
+            withoutSnapshot: 0,
+            top: [] as Array<{
+                id: string; name: string; outputSku: string;
+                recipeSnapshotAt: Date | null; latestIngredientAt: Date;
+                latestIngredientName: string; driftDays: number | null;
+                kind: 'NO_SNAPSHOT' | 'OUTDATED';
+            }>,
+        };
+    }
+}
+
