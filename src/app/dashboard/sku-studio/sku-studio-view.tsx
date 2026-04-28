@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { CheckCircle2, ClipboardList, Package } from 'lucide-react';
+import { useMemo, useState, useTransition } from 'react';
+import { CheckCircle2, ClipboardList, Package, Wand2 } from 'lucide-react';
 import { createSkuItemAction, createProductFamily, getProductFamilies } from '@/app/actions/sku-studio.actions';
+import { sanitizeSegment } from '@/lib/sku';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 
@@ -48,6 +49,12 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
   // ── Nuevo SKU state ──────────────────────────────────────────────────────
   const [name, setName] = useState('');
   const [skuPrefix, setSkuPrefix] = useState('');
+  // Patrón canónico FAM-SUB-FMT-NNN (opt-in, opcional). Cuando está activo,
+  // construimos el prefijo a partir del code de la familia + subCode + fmtCode.
+  // El secuencial NNN se asigna ya por createSkuItemAction (count + zero-pad).
+  const [useCanonicalSku, setUseCanonicalSku] = useState(false);
+  const [subCode, setSubCode] = useState('');
+  const [fmtCode, setFmtCode] = useState('');
   const [itemType, setItemType] = useState<ItemType>('RAW_MATERIAL');
   const [operRole, setOperRole] = useState('Ninguno');
   const [unit, setUnit] = useState('KG');
@@ -65,12 +72,34 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
   const [famIcon, setFamIcon] = useState('');
   const [famFeedback, setFamFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Construye el prefijo canónico FAM-SUB-FMT a partir del estado actual.
+  // Devuelve null si la familia/subCode/fmtCode no son válidos para el patrón.
+  // El secuencial NNN no se incluye aquí — lo añade createSkuItemAction.
+  const canonicalPrefix = useMemo(() => {
+    if (!useCanonicalSku) return null;
+    const family = families.find(f => f.id === familyId);
+    if (!family) return null;
+    const fam = sanitizeSegment(family.code);
+    if (!fam) return null;
+    const sub = sanitizeSegment(subCode);
+    const fmt = sanitizeSegment(fmtCode);
+    const segs = [fam];
+    if (sub) segs.push(sub);
+    if (fmt) segs.push(fmt);
+    return segs.join('-');
+  }, [useCanonicalSku, familyId, families, subCode, fmtCode]);
+
   const handleCreate = () => {
     if (!name.trim()) { setFeedback({ ok: false, msg: 'El nombre es obligatorio' }); return; }
+    if (useCanonicalSku && !canonicalPrefix) {
+      setFeedback({ ok: false, msg: 'Patrón canónico activo: selecciona una familia con código válido' });
+      return;
+    }
+    const finalPrefix = useCanonicalSku ? canonicalPrefix! : (skuPrefix || undefined);
     startTransition(async () => {
       const r = await createSkuItemAction({
         name,
-        skuPrefix: skuPrefix || undefined,
+        skuPrefix: finalPrefix,
         type: itemType,
         baseUnit: unit,
         productFamilyId: familyId || undefined,
@@ -85,6 +114,7 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
         setName(''); setSkuPrefix(''); setItemType('RAW_MATERIAL');
         setOperRole('Ninguno'); setUnit('KG'); setTracking('Por unidad');
         setIsBeverage(false); setFamilyId(''); setInitialCost('');
+        setSubCode(''); setFmtCode('');
       }
     });
   };
@@ -230,7 +260,67 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
               Bebida (marca para reportes de bar)
             </label>
 
-            {/* Prefijo SKU + Costo inicial */}
+            {/* Toggle patrón canónico FAM-SUB-FMT-NNN — opcional, NO afecta SKUs existentes */}
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={useCanonicalSku}
+                  onChange={e => setUseCanonicalSku(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-capsula-line accent-capsula-navy-deep"
+                />
+                <div className="flex-1">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-capsula-ink">
+                    <Wand2 className="h-3.5 w-3.5" /> Usar patrón canónico FAM-SUB-FMT-NNN
+                  </span>
+                  <p className="mt-0.5 text-xs text-capsula-ink-muted">
+                    Construye el SKU con código de familia + subcategoría + formato + secuencial.
+                    Solo aplica a este nuevo SKU. Los existentes no se tocan.
+                  </p>
+                </div>
+              </label>
+
+              {useCanonicalSku && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={FIELD_LABEL}>Subcategoría (opcional)</label>
+                    <input
+                      type="text"
+                      value={subCode}
+                      onChange={e => setSubCode(e.target.value.toUpperCase())}
+                      placeholder="Ej. CER, RES, LEC"
+                      maxLength={5}
+                      className={FIELD_INPUT + ' font-mono uppercase'}
+                    />
+                  </div>
+                  <div>
+                    <label className={FIELD_LABEL}>Formato / tamaño (opcional)</label>
+                    <input
+                      type="text"
+                      value={fmtCode}
+                      onChange={e => setFmtCode(e.target.value.toUpperCase())}
+                      placeholder="Ej. KG, LT, 330, UND"
+                      maxLength={5}
+                      className={FIELD_INPUT + ' font-mono uppercase'}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-[11px] text-capsula-ink-muted">
+                      Vista previa del SKU resultante:{' '}
+                      <span className="font-mono font-semibold text-capsula-ink">
+                        {canonicalPrefix
+                          ? `${canonicalPrefix}-NNN`
+                          : familyId
+                            ? '(código de familia inválido)'
+                            : '(selecciona una familia arriba)'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Prefijo SKU libre + Costo inicial */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className={FIELD_LABEL}>
@@ -242,7 +332,8 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
                   onChange={e => setSkuPrefix(e.target.value.toUpperCase())}
                   placeholder="Ej. CARN"
                   maxLength={8}
-                  className={FIELD_INPUT + ' font-mono uppercase'}
+                  disabled={useCanonicalSku}
+                  className={FIELD_INPUT + ' font-mono uppercase' + (useCanonicalSku ? ' opacity-40' : '')}
                 />
               </div>
               <div>
