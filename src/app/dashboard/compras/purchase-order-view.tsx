@@ -1,6 +1,25 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
+import {
+    ClipboardList,
+    Sparkles,
+    Plus,
+    MessageCircle,
+    Settings,
+    Inbox,
+    Pencil,
+    Send,
+    Package,
+    Check,
+    Ban,
+    Bell,
+    Loader2,
+    Save,
+    X as XIcon,
+    type LucideIcon,
+} from 'lucide-react';
 import { formatNumber, cn } from '@/lib/utils';
 import {
     getLowStockItemsAction, getAllItemsForPurchaseAction, getAllItemsWithStockConfigAction,
@@ -135,32 +154,54 @@ export default function PurchaseOrderView() {
             supplierId: selectedSupplier || undefined, expectedDate: expectedDate ? new Date(expectedDate) : undefined,
             notes: notes || undefined, items: orderItems.map(item => ({ inventoryItemId: item.inventoryItemId, quantityOrdered: item.quantity, unit: item.unit, unitPrice: item.unitPrice }))
         });
-        if (result.success) { alert(`${result.message}`); setOrderItems([]); setOrderName(''); setSelectedSupplier(''); setExpectedDate(''); setNotes(''); setViewMode('orders'); loadData(); }
-        else alert(`${result.message}`);
+        if (result.success) {
+            toast.success(result.message);
+            setOrderItems([]); setOrderName(''); setSelectedSupplier(''); setExpectedDate(''); setNotes('');
+            setViewMode('orders'); loadData();
+        } else {
+            toast.error(result.message);
+        }
         setIsSubmitting(false);
     }
 
-    async function handleSendOrder(orderId: string) { const r = await sendPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
-    async function handleCancelOrder(orderId: string) { if (!confirm('¿Cancelar esta orden?')) return; const r = await cancelPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
-    async function handleExportWhatsApp(orderId: string) { const text = await exportPurchaseOrderTextAction(orderId); if (text) { navigator.clipboard.writeText(text); alert('📋 Orden copiada al portapapeles'); } }
+    async function handleSendOrder(orderId: string) {
+        const r = await sendPurchaseOrderAction(orderId);
+        if (r.success) { loadData(); toast.success(r.message); } else { toast.error(r.message); }
+    }
+    async function handleCancelOrder(orderId: string) {
+        if (!confirm('¿Cancelar esta orden?')) return;
+        const r = await cancelPurchaseOrderAction(orderId);
+        if (r.success) { loadData(); toast.success(r.message); } else { toast.error(r.message); }
+    }
+    async function handleExportWhatsApp(orderId: string) {
+        const text = await exportPurchaseOrderTextAction(orderId);
+        if (text) {
+            navigator.clipboard.writeText(text);
+            toast.success('Orden copiada al portapapeles');
+        }
+    }
 
     async function handleReceiveItems() {
         if (!selectedOrderId || !selectedAreaId) return;
         const items = Object.entries(receiveQuantities).filter(([, qty]) => qty > 0).map(([id, qty]) => ({ purchaseOrderItemId: id, quantityReceived: qty }));
-        if (items.length === 0) { alert('Ingresa cantidades a recibir'); return; }
+        if (items.length === 0) { toast.error('Ingresa cantidades a recibir'); return; }
         setIsSubmitting(true);
         const r = await receivePurchaseOrderItemsAction(selectedOrderId, items, selectedAreaId);
-        alert(r.success ? `${r.message}` : `${r.message}`);
-        if (r.success) { setReceiveQuantities({}); setSelectedOrderId(''); loadData(); setViewMode('orders'); }
+        if (r.success) {
+            toast.success(r.message);
+            setReceiveQuantities({}); setSelectedOrderId(''); loadData(); setViewMode('orders');
+        } else {
+            toast.error(r.message);
+        }
         setIsSubmitting(false);
     }
 
     async function handleCreateReorderAlerts() {
         setIsSubmitting(true);
         const r = await createReorderBroadcastsAction();
-        if (r.created > 0) alert(`${r.created} alerta(s) de reorden enviadas a la campana `);
-        else if (r.skipped > 0) alert(`ℹTodas las alertas ya existen (${r.skipped} en curso). Revisa la campana `);
-        else alert('ℹ️ No hay items bajo punto de reorden en este momento');
+        if (r.created > 0) toast.success(`${r.created} alerta(s) de reorden enviadas a la campana`);
+        else if (r.skipped > 0) toast(`Todas las alertas ya existen (${r.skipped} en curso). Revisa la campana`);
+        else toast('No hay items bajo punto de reorden en este momento');
         setIsSubmitting(false);
     }
 
@@ -168,7 +209,7 @@ export default function PurchaseOrderView() {
         const items: StockConfigItem[] = Object.entries(configEdits).map(([id, vals]) => ({ id, minimumStock: vals.min, reorderPoint: vals.reorder }));
         setIsSubmitting(true);
         const r = await updateStockLevelsAction(items);
-        alert(r.success ? `${r.message}` : `${r.message}`);
+        if (r.success) toast.success(r.message); else toast.error(r.message);
         setIsSubmitting(false);
     }
 
@@ -200,9 +241,20 @@ export default function PurchaseOrderView() {
     }, [filteredConfigItems]);
 
     const getStatusBadge = (status: string) => {
-        const s: Record<string, string> = { 'DRAFT': 'bg-gray-100 text-gray-700', 'SENT': 'bg-blue-100 text-blue-700', 'PARTIAL': 'bg-amber-100 text-amber-700', 'RECEIVED': 'bg-green-100 text-green-700', 'CANCELLED': 'bg-red-100 text-red-700' };
-        const l: Record<string, string> = { 'DRAFT': '📝 Borrador', 'SENT': '📤 Enviada', 'PARTIAL': '📦 Parcial', 'RECEIVED': '✅ Recibida', 'CANCELLED': '❌ Cancelada' };
-        return <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', s[status] || s['DRAFT'])}>{l[status] || status}</span>;
+        const meta: Record<string, { tone: string; Icon: LucideIcon; label: string }> = {
+            DRAFT: { tone: 'bg-capsula-ivory-alt text-capsula-ink-soft', Icon: Pencil, label: 'Borrador' },
+            SENT: { tone: 'bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]', Icon: Send, label: 'Enviada' },
+            PARTIAL: { tone: 'bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]', Icon: Package, label: 'Parcial' },
+            RECEIVED: { tone: 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]', Icon: Check, label: 'Recibida' },
+            CANCELLED: { tone: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]', Icon: Ban, label: 'Cancelada' },
+        };
+        const m = meta[status] || meta.DRAFT;
+        const Icon = m.Icon;
+        return (
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium', m.tone)}>
+                <Icon className="h-3 w-3" /> {m.label}
+            </span>
+        );
     };
 
     const lowStockByCategory = useMemo(() => {
@@ -211,7 +263,14 @@ export default function PurchaseOrderView() {
         return groups;
     }, [lowStockItems]);
 
-    if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div><p className="mt-4 text-gray-500">Cargando...</p></div></div>;
+    if (isLoading) return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-capsula-ink-muted">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-sm">Cargando…</p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in">
@@ -219,65 +278,118 @@ export default function PurchaseOrderView() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Módulo de compras</h1>
-                    <p className="text-gray-500">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
+                    <p className="text-capsula-ink-muted">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {(['orders', 'auto', 'create', 'whatsapp', 'config', 'receive'] as ViewMode[]).map(mode => {
-                        const labels: Record<ViewMode, string> = { orders: '📋 Órdenes', auto: '✨ Auto-Generar', create: '➕ Manual', whatsapp: '💬 WhatsApp', config: '⚙️ Stock Mín.', receive: '📥 Recibir' };
-                        return <button key={mode} onClick={() => { setViewMode(mode); if (mode === 'orders') loadData(); if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems); }}
-                            className={cn('px-3 py-2 rounded-lg text-xs font-medium transition-all', viewMode === mode ? (mode === 'whatsapp' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg') : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300')}>{labels[mode]}</button>;
+                        const meta: Record<ViewMode, { Icon: LucideIcon; label: string }> = {
+                            orders: { Icon: ClipboardList, label: 'Órdenes' },
+                            auto: { Icon: Sparkles, label: 'Auto-Generar' },
+                            create: { Icon: Plus, label: 'Manual' },
+                            whatsapp: { Icon: MessageCircle, label: 'WhatsApp' },
+                            config: { Icon: Settings, label: 'Stock Mín.' },
+                            receive: { Icon: Inbox, label: 'Recibir' },
+                        };
+                        const Icon = meta[mode].Icon;
+                        return (
+                            <button
+                                key={mode}
+                                onClick={() => {
+                                    setViewMode(mode);
+                                    if (mode === 'orders') loadData();
+                                    if (mode === 'create' || mode === 'whatsapp') getAllItemsForPurchaseAction().then(setAllItems);
+                                }}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                                    viewMode === mode
+                                        ? (mode === 'whatsapp'
+                                            ? 'bg-[#2F6B4E] text-capsula-ivory shadow-cap-soft dark:bg-[#1E3B2C]'
+                                            : 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft')
+                                        : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
+                                )}
+                            >
+                                <Icon className="h-3.5 w-3.5" /> {meta[mode].label}
+                            </button>
+                        );
                     })}
                 </div>
             </div>
 
             {/* ===== CONFIG: Stock Mínimo ===== */}
             {viewMode === 'config' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                    <div className="flex flex-col gap-3 border-b border-capsula-line px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Configurar Stock Mínimo y Punto de Reorden</h2>
-                            <p className="text-sm text-gray-500 mt-1">Define las cantidades mínimas para que el sistema detecte productos con stock bajo</p>
+                            <p className="mt-1 text-sm text-capsula-ink-muted">Define las cantidades mínimas para que el sistema detecte productos con stock bajo</p>
                         </div>
                         <div className="flex gap-2">
-                            <input type="text" value={configFilter} onChange={e => setConfigFilter(e.target.value)} placeholder="Filtrar..." className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                            <button onClick={handleSaveConfig} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                {isSubmitting ? '⏳...' : '💾 Guardar Todo'}
+                            <input
+                                type="text"
+                                value={configFilter}
+                                onChange={e => setConfigFilter(e.target.value)}
+                                placeholder="Filtrar…"
+                                className="pos-input px-3 py-2 text-sm"
+                            />
+                            <button
+                                onClick={handleSaveConfig}
+                                disabled={isSubmitting}
+                                className="pos-btn inline-flex items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-50"
+                            >
+                                {isSubmitting
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</>
+                                    : <><Save className="h-4 w-4" /> Guardar Todo</>}
                             </button>
                         </div>
                     </div>
                     <div className="max-h-[65vh] overflow-y-auto">
                         {Object.entries(configByCategory).map(([category, items]) => (
                             <div key={category}>
-                                <div className="sticky top-0 bg-amber-50 dark:bg-amber-900/20 px-6 py-2 border-b border-amber-200 dark:border-amber-800">
-                                    <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{category}</span>
+                                <div className="sticky top-0 border-b border-capsula-line bg-capsula-ivory-alt px-6 py-2">
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">{category}</span>
                                 </div>
                                 {items.map((item: any) => (
-                                    <div key={item.id} className="grid grid-cols-[1fr_100px_100px_100px] gap-3 items-center px-6 py-2.5 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <div key={item.id} className="grid grid-cols-[1fr_100px_100px_100px] items-center gap-3 border-b border-capsula-line px-6 py-2.5 hover:bg-capsula-ivory-surface">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
-                                            <p className="text-xs text-gray-400">{item.sku} · {item.baseUnit}</p>
+                                            <p className="text-sm font-medium text-capsula-ink">{item.name}</p>
+                                            <p className="font-mono text-xs text-capsula-ink-muted">{item.sku} · {item.baseUnit}</p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-400 mb-0.5">Stock</p>
-                                            <p className={cn('text-sm font-mono font-medium', item.currentStock <= (configEdits[item.id]?.min || 0) ? 'text-red-600' : 'text-gray-700 dark:text-gray-300')}>{formatNumber(item.currentStock)}</p>
+                                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Stock</p>
+                                            <p className={cn(
+                                                'font-mono text-sm font-medium tabular-nums',
+                                                item.currentStock <= (configEdits[item.id]?.min || 0)
+                                                    ? 'text-capsula-coral'
+                                                    : 'text-capsula-ink-soft'
+                                            )}>
+                                                {formatNumber(item.currentStock)}
+                                            </p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400 mb-0.5 text-center">Mínimo</p>
-                                            <input type="number" min="0" step="0.5" value={configEdits[item.id]?.min ?? 0}
+                                            <p className="mb-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Mínimo</p>
+                                            <input
+                                                type="number" min="0" step="0.5"
+                                                value={configEdits[item.id]?.min ?? 0}
                                                 onChange={e => setConfigEdits({ ...configEdits, [item.id]: { ...configEdits[item.id], min: parseFloat(e.target.value) || 0 } })}
-                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                                                className="pos-input w-full px-2 py-1 text-center text-sm tabular-nums"
+                                            />
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400 mb-0.5 text-center">Reorden</p>
-                                            <input type="number" min="0" step="0.5" value={configEdits[item.id]?.reorder ?? 0}
+                                            <p className="mb-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Reorden</p>
+                                            <input
+                                                type="number" min="0" step="0.5"
+                                                value={configEdits[item.id]?.reorder ?? 0}
                                                 onChange={e => setConfigEdits({ ...configEdits, [item.id]: { ...configEdits[item.id], reorder: parseFloat(e.target.value) || 0 } })}
-                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                                                className="pos-input w-full px-2 py-1 text-center text-sm tabular-nums"
+                                            />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ))}
-                        {filteredConfigItems.length === 0 && <div className="p-8 text-center text-gray-500">No hay items que configurar</div>}
+                        {filteredConfigItems.length === 0 && (
+                            <div className="p-8 text-center text-capsula-ink-muted">No hay items que configurar</div>
+                        )}
                     </div>
                 </div>
             )}
@@ -285,44 +397,65 @@ export default function PurchaseOrderView() {
             {/* ===== AUTO: Generar Automática ===== */}
             {viewMode === 'auto' && (
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-capsula-line px-6 py-4">
                             <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Items con Stock Bajo</h2>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleCreateReorderAlerts}
                                     disabled={isSubmitting}
-                                    className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 font-medium transition-colors disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#E8D9B8] bg-[#F3EAD6]/40 px-3 py-1.5 text-xs font-medium text-[#946A1C] transition-colors hover:bg-[#F3EAD6] dark:border-[#5a4a22] dark:bg-[#3B2F15]/40 dark:text-[#E8D9B8] dark:hover:bg-[#3B2F15] disabled:opacity-50"
                                 >
-                                    🔔 Enviar alertas
+                                    <Bell className="h-3.5 w-3.5" /> Enviar alertas
                                 </button>
-                                <button onClick={addAllSuggestions} className="text-sm text-amber-600 hover:text-amber-700 font-medium">Agregar todos →</button>
+                                <button
+                                    onClick={addAllSuggestions}
+                                    className="text-sm font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
+                                >
+                                    Agregar todos →
+                                </button>
                             </div>
                         </div>
                         <div className="max-h-[60vh] overflow-y-auto">
                             {lowStockItems.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500">
-                                    <span className="text-4xl"></span>
-                                    <p className="mt-2">¡No hay items con stock bajo!</p>
-                                    <p className="text-sm mt-1">¿Ya configuraste los mínimos? Ve a <button onClick={() => setViewMode('config')} className="text-amber-600 underline">Stock Mín.</button></p>
+                                <div className="p-8 text-center text-capsula-ink-muted">
+                                    <Check className="mx-auto h-10 w-10 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                                    <p className="mt-2 text-capsula-ink">¡No hay items con stock bajo!</p>
+                                    <p className="mt-1 text-sm">
+                                        ¿Ya configuraste los mínimos? Ve a{' '}
+                                        <button onClick={() => setViewMode('config')} className="text-capsula-coral underline hover:text-capsula-coral-hover">Stock Mín.</button>
+                                    </p>
                                 </div>
                             ) : (
                                 Object.entries(lowStockByCategory).map(([cat, items]) => (
                                     <div key={cat}>
-                                        <div className="sticky top-0 bg-red-50 dark:bg-red-900/20 px-6 py-1.5 border-b border-red-200 dark:border-red-800">
-                                            <span className="text-xs font-semibold text-red-700 dark:text-red-400">{cat} ({items.length})</span>
+                                        <div className="sticky top-0 border-b border-[#E8C2B7] bg-[#F7E3DB]/50 px-6 py-1.5 dark:border-[#5b3328] dark:bg-[#3B1F14]/50">
+                                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#B04A2E] dark:text-[#EFD2C8]">{cat} ({items.length})</span>
                                         </div>
                                         {items.map(item => (
-                                            <div key={item.id} className={cn("flex items-center justify-between px-6 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700", item.isCritical && 'bg-red-50/50 dark:bg-red-900/10')}>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-sm text-gray-900 dark:text-white truncate">{item.isCritical && ''}{item.name}</p>
-                                                    <p className="text-xs text-gray-500">Stock: <span className="text-red-600 font-medium">{formatNumber(item.currentStock)}</span> / Mín: {formatNumber(item.minimumStock)} {item.baseUnit}</p>
+                                            <div
+                                                key={item.id}
+                                                className={cn(
+                                                    "flex items-center justify-between border-b border-capsula-line px-6 py-2.5 hover:bg-capsula-ivory-surface",
+                                                    item.isCritical && 'bg-[#F7E3DB]/30 dark:bg-[#3B1F14]/30'
+                                                )}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-medium text-capsula-ink">{item.name}</p>
+                                                    <p className="text-xs text-capsula-ink-muted">
+                                                        Stock: <span className="font-medium text-capsula-coral tabular-nums">{formatNumber(item.currentStock)}</span> / Mín: <span className="tabular-nums">{formatNumber(item.minimumStock)}</span> {item.baseUnit}
+                                                    </p>
                                                 </div>
-                                                <div className="flex items-center gap-2 ml-4">
-                                                    <span className="text-sm font-mono text-amber-600">+{formatNumber(item.suggestedQuantity)}</span>
-                                                    <button onClick={() => addFromSuggestion(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
-                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
+                                                <div className="ml-4 flex items-center gap-2">
+                                                    <span className="font-mono text-sm tabular-nums text-capsula-ink-soft">+{formatNumber(item.suggestedQuantity)}</span>
+                                                    <button
+                                                        onClick={() => addFromSuggestion(item)}
+                                                        disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
+                                                        className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-2.5 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        {orderItems.some(oi => oi.inventoryItemId === item.id)
+                                                            ? <Check className="h-3.5 w-3.5" />
+                                                            : 'Agregar'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -332,7 +465,6 @@ export default function PurchaseOrderView() {
                             )}
                         </div>
                     </div>
-                    {/* Order form panel */}
                     {renderOrderForm()}
                 </div>
             )}
@@ -343,9 +475,9 @@ export default function PurchaseOrderView() {
                     <div className="lg:col-span-2">
                         <WhatsAppPurchaseOrderParser onOrderReady={handleWhatsAppOrderReady} />
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-amber-50/50 dark:bg-gray-800 dark:border-gray-700 p-6">
-                        <h3 className="font-semibold text-base tracking-[-0.01em] text-[#946A1C] mb-2">Cómo usar</h3>
-                        <ol className="text-sm text-amber-900 dark:text-amber-100 space-y-2 list-decimal list-inside">
+                    <div className="rounded-xl border border-[#E8D9B8] bg-[#F3EAD6]/40 p-6 dark:border-[#5a4a22] dark:bg-[#3B2F15]/40">
+                        <h3 className="mb-2 font-semibold tracking-[-0.01em] text-[#946A1C] dark:text-[#E8D9B8]">Cómo usar</h3>
+                        <ol className="list-inside list-decimal space-y-2 text-sm text-[#946A1C]/90 dark:text-[#E8D9B8]/90">
                             <li>Exporta o copia el chat de WhatsApp con tu proveedor</li>
                             <li>Pega el texto en el área de la izquierda</li>
                             <li>Haz clic en &quot;Analizar Orden&quot;</li>
@@ -353,7 +485,7 @@ export default function PurchaseOrderView() {
                             <li>Haz clic en &quot;Cargar items a la orden&quot;</li>
                             <li>Completa proveedor, fecha y crea la orden</li>
                         </ol>
-                        <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">
+                        <p className="mt-4 text-xs text-[#946A1C]/80 dark:text-[#E8D9B8]/80">
                             Formatos soportados: 2 kg Arroz, 5x Aceite, 10 unidades Harina, etc.
                         </p>
                     </div>
@@ -363,17 +495,36 @@ export default function PurchaseOrderView() {
             {/* ===== CREATE: Manual ===== */}
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Buscar Items</h2></div>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="border-b border-capsula-line px-6 py-4">
+                            <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Buscar Items</h2>
+                        </div>
                         <div className="p-6">
-                            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Escriba para buscar..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Escriba para buscar…"
+                                className="pos-input w-full"
+                            />
                             {filteredItems.length > 0 && (
-                                <div className="mt-3 border rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
+                                <div className="mt-3 divide-y divide-capsula-line rounded-lg border border-capsula-line">
                                     {filteredItems.map(item => (
-                                        <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <div><p className="font-medium text-gray-900 dark:text-white">{item.name}</p><p className="text-xs text-gray-500">Stock: {formatNumber(item.currentStock)} {item.baseUnit} · {item.category || 'Sin cat.'}</p></div>
-                                            <button onClick={() => addManualItem(item)} disabled={orderItems.some(oi => oi.inventoryItemId === item.id)} className="px-3 py-1 text-xs font-medium rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50">
-                                                {orderItems.some(oi => oi.inventoryItemId === item.id) ? '✓' : 'Agregar'}
+                                        <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-capsula-ivory-surface">
+                                            <div>
+                                                <p className="font-medium text-capsula-ink">{item.name}</p>
+                                                <p className="text-xs text-capsula-ink-muted tabular-nums">
+                                                    Stock: {formatNumber(item.currentStock)} {item.baseUnit} · {item.category || 'Sin cat.'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => addManualItem(item)}
+                                                disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-3 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory disabled:opacity-50"
+                                            >
+                                                {orderItems.some(oi => oi.inventoryItemId === item.id)
+                                                    ? <Check className="h-3.5 w-3.5" />
+                                                    : 'Agregar'}
                                             </button>
                                         </div>
                                     ))}
@@ -387,66 +538,108 @@ export default function PurchaseOrderView() {
 
             {/* ===== RECEIVE: Recibir Mercancía ===== */}
             {viewMode === 'receive' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                    <div className="border-b border-capsula-line px-6 py-4">
                         <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Recibir Mercancía desde Orden de Compra</h2>
-                        <p className="text-sm text-gray-500 mt-1">Selecciona una orden activa y registra lo que va llegando de los proveedores</p>
+                        <p className="mt-1 text-sm text-capsula-ink-muted">Selecciona una orden activa y registra lo que va llegando de los proveedores</p>
                     </div>
-                    <div className="p-6 space-y-4">
+                    <div className="space-y-4 p-6">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Orden de Compra</label>
-                                <select value={selectedOrderId} onChange={e => { setSelectedOrderId(e.target.value); setReceiveQuantities({}); }}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                    <option value="">Seleccionar orden...</option>
+                                <label className="pos-label">Orden de Compra</label>
+                                <select
+                                    value={selectedOrderId}
+                                    onChange={e => { setSelectedOrderId(e.target.value); setReceiveQuantities({}); }}
+                                    className="pos-input mt-1 w-full"
+                                >
+                                    <option value="">Seleccionar orden…</option>
                                     {orders.filter(o => ['DRAFT', 'SENT', 'PARTIAL'].includes(o.status)).map(o => (
                                         <option key={o.id} value={o.id}>{o.orderNumber}{o.orderName ? ` (${o.orderName})` : ''} - {o.supplierName} ({o.itemCount} items) {getStatusLabel(o.status)}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Área de Almacenamiento</label>
-                                <select value={selectedAreaId} onChange={e => setSelectedAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <label className="pos-label">Área de Almacenamiento</label>
+                                <select
+                                    value={selectedAreaId}
+                                    onChange={e => setSelectedAreaId(e.target.value)}
+                                    className="pos-input mt-1 w-full"
+                                >
                                     {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                 </select>
                             </div>
                         </div>
                         {selectedOrder && (
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border border-capsula-line">
                                 {Object.entries(selectedOrderItemsByCategory).map(([cat, items]) => (
                                     <div key={cat}>
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-2 border-b border-amber-200 dark:border-amber-800">
-                                            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{cat}</span>
+                                        <div className="border-b border-capsula-line bg-capsula-ivory-alt px-4 py-2">
+                                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">{cat}</span>
                                         </div>
                                         {(items as any[]).map((item: any) => {
                                             const remaining = item.quantityOrdered - item.quantityReceived;
                                             const isComplete = remaining <= 0;
                                             return (
-                                                <div key={item.id} className={cn("grid grid-cols-[1fr_80px_80px_80px_100px] gap-2 items-center px-4 py-2.5 border-b border-gray-100 dark:border-gray-700", isComplete && 'bg-green-50/50 dark:bg-green-900/10')}>
-                                                    <div><p className="text-sm font-medium text-gray-900 dark:text-white">{item.itemName}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Pedido</p><p className="text-sm font-mono">{formatNumber(item.quantityOrdered)}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Recibido</p><p className="text-sm font-mono text-green-600">{formatNumber(item.quantityReceived)}</p></div>
-                                                    <div className="text-center"><p className="text-xs text-gray-400">Falta</p><p className={cn("text-sm font-mono", remaining > 0 ? 'text-red-600' : 'text-green-600')}>{formatNumber(remaining)}</p></div>
-                                                    <div>{!isComplete && (
-                                                        <input type="number" min="0" max={remaining} step="0.1" placeholder="0" value={receiveQuantities[item.id] || ''}
-                                                            onChange={e => setReceiveQuantities({ ...receiveQuantities, [item.id]: parseFloat(e.target.value) || 0 })}
-                                                            className="w-full rounded border border-gray-200 px-2 py-1 text-sm text-center dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                                                    )}{isComplete && <span className="text-xs text-green-600 font-medium">Completo</span>}</div>
+                                                <div
+                                                    key={item.id}
+                                                    className={cn(
+                                                        "grid grid-cols-[1fr_80px_80px_80px_100px] items-center gap-2 border-b border-capsula-line px-4 py-2.5",
+                                                        isComplete && 'bg-[#E5EDE7]/40 dark:bg-[#1E3B2C]/40'
+                                                    )}
+                                                >
+                                                    <div><p className="text-sm font-medium text-capsula-ink">{item.itemName}</p></div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Pedido</p>
+                                                        <p className="font-mono text-sm tabular-nums text-capsula-ink">{formatNumber(item.quantityOrdered)}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Recibido</p>
+                                                        <p className="font-mono text-sm tabular-nums text-[#2F6B4E] dark:text-[#6FB88F]">{formatNumber(item.quantityReceived)}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Falta</p>
+                                                        <p className={cn(
+                                                            "font-mono text-sm tabular-nums",
+                                                            remaining > 0 ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                                        )}>
+                                                            {formatNumber(remaining)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        {!isComplete && (
+                                                            <input
+                                                                type="number" min="0" max={remaining} step="0.1" placeholder="0"
+                                                                value={receiveQuantities[item.id] || ''}
+                                                                onChange={e => setReceiveQuantities({ ...receiveQuantities, [item.id]: parseFloat(e.target.value) || 0 })}
+                                                                className="pos-input w-full px-2 py-1 text-center text-sm tabular-nums"
+                                                            />
+                                                        )}
+                                                        {isComplete && <span className="inline-flex items-center gap-1 text-xs font-medium text-[#2F6B4E] dark:text-[#6FB88F]"><Check className="h-3 w-3" /> Completo</span>}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 ))}
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 flex justify-end">
-                                    <button onClick={handleReceiveItems} disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
-                                        className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium disabled:opacity-50 hover:shadow-lg transition-all">
-                                        {isSubmitting ? '⏳ Procesando...' : '📥 Dar Entrada a Mercancía'}
+                                <div className="flex justify-end bg-capsula-ivory-alt p-4">
+                                    <button
+                                        onClick={handleReceiveItems}
+                                        disabled={isSubmitting || Object.values(receiveQuantities).every(v => !v)}
+                                        className="pos-btn inline-flex items-center gap-2 px-6 py-2.5 disabled:opacity-50"
+                                    >
+                                        {isSubmitting
+                                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</>
+                                            : <><Inbox className="h-4 w-4" /> Dar Entrada a Mercancía</>}
                                     </button>
                                 </div>
                             </div>
                         )}
-                        {!selectedOrderId && <div className="text-center py-8 text-gray-500"><span className="text-4xl"></span><p className="mt-2">Selecciona una orden de compra para comenzar a recibir mercancía</p></div>}
+                        {!selectedOrderId && (
+                            <div className="py-8 text-center text-capsula-ink-muted">
+                                <Inbox className="mx-auto h-10 w-10 text-capsula-ink-faint" />
+                                <p className="mt-2">Selecciona una orden de compra para comenzar a recibir mercancía</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -460,39 +653,93 @@ export default function PurchaseOrderView() {
 
     function renderOrderForm() {
         return (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700"><h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Nueva Orden de Compra</h2></div>
-                <div className="p-6 space-y-4">
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de orden (opcional)</label>
-                        <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proveedor (opcional)</label>
-                        <select value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                            <option value="">Sin proveedor específico</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de entrega esperada</label>
-                        <input type="date" value={expectedDate} onChange={e => setExpectedDate(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items a comprar ({orderItems.length})</label>
-                        {orderItems.length === 0 ? <p className="text-sm text-gray-500 italic">Agrega items desde el panel izquierdo</p> : (
-                            <div className="border rounded-lg max-h-72 overflow-y-auto">
-                                {Object.entries(orderItemsByCategory).map(([cat, items]) => (
-                                    <div key={cat}>
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1 border-b border-amber-200 dark:border-amber-800"><span className="text-xs font-semibold text-amber-700">{cat}</span></div>
-                                        {items.map(item => (
-                                            <div key={item.rowId} className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
-                                                <span className="flex-1 text-sm truncate">{item.name}</span>
-                                                <input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.rowId, parseFloat(e.target.value) || 0)} className="w-16 px-1.5 py-1 text-sm rounded border border-gray-200 text-center" min="0" step="0.1" />
-                                                <span className="text-xs text-gray-500 w-8">{item.unit}</span>
-                                                <button type="button" onClick={() => removeItem(item.rowId)} className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"></button>
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                <div className="border-b border-capsula-line px-6 py-4">
+                    <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Nueva Orden de Compra</h2>
+                </div>
+                <div className="space-y-4 p-6">
+                    <div>
+                        <label className="pos-label">Nombre de orden (opcional)</label>
+                        <input
+                            type="text"
+                            value={orderName}
+                            onChange={e => setOrderName(e.target.value)}
+                            placeholder="Ej: VEGETALES, COCHE, PROVEEDOR X…"
+                            className="pos-input mt-1 w-full"
+                        />
+                    </div>
+                    <div>
+                        <label className="pos-label">Proveedor (opcional)</label>
+                        <select
+                            value={selectedSupplier}
+                            onChange={e => setSelectedSupplier(e.target.value)}
+                            className="pos-input mt-1 w-full"
+                        >
+                            <option value="">Sin proveedor específico</option>
+                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="pos-label">Fecha de entrega esperada</label>
+                        <input
+                            type="date"
+                            value={expectedDate}
+                            onChange={e => setExpectedDate(e.target.value)}
+                            className="pos-input mt-1 w-full"
+                        />
+                    </div>
+                    <div>
+                        <label className="pos-label mb-2">Items a comprar ({orderItems.length})</label>
+                        {orderItems.length === 0
+                            ? <p className="text-sm italic text-capsula-ink-muted">Agrega items desde el panel izquierdo</p>
+                            : (
+                                <div className="max-h-72 overflow-y-auto rounded-lg border border-capsula-line">
+                                    {Object.entries(orderItemsByCategory).map(([cat, items]) => (
+                                        <div key={cat}>
+                                            <div className="border-b border-capsula-line bg-capsula-ivory-alt px-3 py-1">
+                                                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">{cat}</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        )}</div>
-                    <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas (opcional)</label>
-                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Instrucciones especiales..." className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white" /></div>
-                    <button onClick={handleCreateOrder} disabled={orderItems.length === 0 || isSubmitting} className="w-full py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all">
-                        {isSubmitting ? 'Creando...' : `Crear Orden (${orderItems.length} items)`}
+                                            {items.map(item => (
+                                                <div key={item.rowId} className="flex items-center gap-2 border-b border-capsula-line px-3 py-1.5">
+                                                    <span className="flex-1 truncate text-sm text-capsula-ink">{item.name}</span>
+                                                    <input
+                                                        type="number" min="0" step="0.1"
+                                                        value={item.quantity}
+                                                        onChange={e => updateItemQuantity(item.rowId, parseFloat(e.target.value) || 0)}
+                                                        className="pos-input w-16 px-1.5 py-1 text-center text-sm tabular-nums"
+                                                    />
+                                                    <span className="w-8 text-xs text-capsula-ink-muted">{item.unit}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeItem(item.rowId)}
+                                                        className="flex-shrink-0 rounded p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                        aria-label={`Quitar ${item.name}`}
+                                                    >
+                                                        <XIcon className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                    </div>
+                    <div>
+                        <label className="pos-label">Notas (opcional)</label>
+                        <textarea
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                            rows={2}
+                            placeholder="Instrucciones especiales…"
+                            className="pos-input mt-1 w-full"
+                        />
+                    </div>
+                    <button
+                        onClick={handleCreateOrder}
+                        disabled={orderItems.length === 0 || isSubmitting}
+                        className="pos-btn w-full py-3 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isSubmitting ? 'Creando…' : `Crear Orden (${orderItems.length} items)`}
                     </button>
                 </div>
             </div>
@@ -501,49 +748,82 @@ export default function PurchaseOrderView() {
 
     function renderOrdersList() {
         return (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                        <thead className="border-b border-capsula-line bg-capsula-ivory-alt">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Orden</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Proveedor</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Fecha</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Items</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Estado</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Orden</th>
+                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Proveedor</th>
+                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Fecha</th>
+                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Items</th>
+                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Estado</th>
+                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody className="divide-y divide-capsula-line">
                             {orders.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><span className="text-4xl"></span><p className="mt-2">No hay órdenes de compra</p></td></tr>
-                            ) : orders.map(order => (
-                                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                    <td className="px-6 py-4">
-                                        <p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p>
-                                        {order.orderName && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{order.orderName}</p>}
-                                        <p className="text-xs text-gray-500">{order.createdBy}</p>
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-capsula-ink-muted">
+                                        <ClipboardList className="mx-auto h-10 w-10 text-capsula-ink-faint" />
+                                        <p className="mt-2">No hay órdenes de compra</p>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{order.supplierName}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{new Date(order.orderDate).toLocaleDateString('es-VE')}</td>
-                                    <td className="px-6 py-4 text-center"><span className="font-mono">{order.itemCount}</span></td>
+                                </tr>
+                            ) : orders.map(order => (
+                                <tr key={order.id} className="hover:bg-capsula-ivory-surface">
+                                    <td className="px-6 py-4">
+                                        <p className="font-medium text-capsula-ink">{order.orderNumber}</p>
+                                        {order.orderName && <p className="text-xs font-semibold text-capsula-coral">{order.orderName}</p>}
+                                        <p className="text-xs text-capsula-ink-muted">{order.createdBy}</p>
+                                    </td>
+                                    <td className="px-6 py-4 text-capsula-ink-soft">{order.supplierName}</td>
+                                    <td className="px-6 py-4 text-sm text-capsula-ink-muted tabular-nums">{new Date(order.orderDate).toLocaleDateString('es-VE')}</td>
+                                    <td className="px-6 py-4 text-center"><span className="font-mono tabular-nums text-capsula-ink">{order.itemCount}</span></td>
                                     <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center gap-1">
-                                            <button onClick={() => handleExportWhatsApp(order.id)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 min-h-[44px] min-w-[44px]" title="Copiar para WhatsApp"></button>
+                                            <button
+                                                onClick={() => handleExportWhatsApp(order.id)}
+                                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-[#E5EDE7] hover:text-[#2F6B4E] dark:hover:bg-[#1E3B2C] dark:hover:text-[#6FB88F]"
+                                                title="Copiar para WhatsApp"
+                                                aria-label="Copiar para WhatsApp"
+                                            >
+                                                <MessageCircle className="h-4 w-4" />
+                                            </button>
                                             {['SENT', 'PARTIAL'].includes(order.status) && (
                                                 <button
                                                     onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-colors min-h-[44px]"
+                                                    className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[#2F6B4E] px-3 py-1.5 text-sm font-medium text-capsula-ivory shadow-sm transition-colors hover:bg-[#1f4a37] dark:bg-[#1E3B2C] dark:hover:bg-[#264a39]"
                                                     title="Recibir mercancía"
                                                 >
-                                                    📦 Recibir
+                                                    <Inbox className="h-4 w-4" /> Recibir
                                                 </button>
                                             )}
                                             {order.status === 'DRAFT' && (<>
-                                                <button onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 min-h-[44px] min-w-[44px]" title="Recibir mercancía"></button>
-                                                <button onClick={() => handleSendOrder(order.id)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 min-h-[44px] min-w-[44px]" title="Marcar como enviada"></button>
-                                                <button onClick={() => handleCancelOrder(order.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 min-h-[44px] min-w-[44px]" title="Cancelar"></button>
+                                                <button
+                                                    onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-[#E5EDE7] hover:text-[#2F6B4E] dark:hover:bg-[#1E3B2C] dark:hover:text-[#6FB88F]"
+                                                    title="Recibir mercancía"
+                                                    aria-label="Recibir mercancía"
+                                                >
+                                                    <Inbox className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSendOrder(order.id)}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink"
+                                                    title="Marcar como enviada"
+                                                    aria-label="Marcar como enviada"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleCancelOrder(order.id)}
+                                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                    title="Cancelar"
+                                                    aria-label="Cancelar"
+                                                >
+                                                    <Ban className="h-4 w-4" />
+                                                </button>
                                             </>)}
                                         </div>
                                     </td>

@@ -105,7 +105,11 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
   };
 
   const feedbackClass = (ok: boolean) =>
-    `rounded-lg px-3 py-2 text-xs ${ok ? 'bg-[#E5EDE7]/60 text-[#2F6B4E]' : 'bg-[#F7E3DB]/60 text-[#B04A2E]'}`;
+    `rounded-lg px-3 py-2 text-xs ${
+      ok
+        ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]'
+        : 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]'
+    }`;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -137,10 +141,10 @@ export default function SkuStudioView({ families: initFamilies, templates }: { f
         {tab === 'nuevo' && (
           <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-5 shadow-cap-soft space-y-5">
             {lastCreated && (
-              <div className="flex items-center gap-3 rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-3">
-                <CheckCircle2 className="h-4 w-4 text-[#2F6B4E]" />
+              <div className="flex items-center gap-3 rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 px-4 py-3 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40">
+                <CheckCircle2 className="h-4 w-4 text-[#2F6B4E] dark:text-[#6FB88F]" />
                 <div>
-                  <p className="text-sm font-medium text-[#2F6B4E]">{lastCreated.name}</p>
+                  <p className="text-sm font-medium text-[#2F6B4E] dark:text-[#6FB88F]">{lastCreated.name}</p>
                   <p className="font-mono text-xs text-capsula-ink-soft">SKU: {lastCreated.sku}</p>
                 </div>
               </div>

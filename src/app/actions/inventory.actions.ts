@@ -235,3 +235,63 @@ export async function getInventoryHistoryAction(filters?: {
         return [];
     }
 }
+
+// ============================================================================
+// PENDING DEDUCTION (read-only telemetry — no DB writes)
+// ============================================================================
+//
+// Cuando registerInventoryForCartItems falla en el POS, la venta se persiste
+// igual con un marcador en notes ("[DESCARGO INVENTARIO PENDIENTE — Revisar
+// manualmente]"). Esta action lee ese marcador y devuelve un agregado para
+// que el dashboard de inventario muestre alerta gerencial.
+//
+// IMPORTANTE: solo lectura. No modifica BD. No reintenta el descargo.
+//
+export async function getPendingDeductionSummaryAction(opts?: {
+    days?: number; // ventana de revisión, default 30
+    limit?: number; // ejemplos a devolver, default 5
+}) {
+    const days = opts?.days ?? 30;
+    const limit = opts?.limit ?? 5;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    try {
+        const where = {
+            createdAt: { gte: since },
+            notes: { contains: 'DESCARGO INVENTARIO PENDIENTE' as const },
+        };
+
+        const [count, recent] = await Promise.all([
+            prisma.salesOrder.count({ where }),
+            prisma.salesOrder.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                select: {
+                    id: true,
+                    orderNumber: true,
+                    createdAt: true,
+                    total: true,
+                    notes: true,
+                },
+            }),
+        ]);
+
+        return {
+            count,
+            windowDays: days,
+            recent: recent.map(r => ({
+                id: r.id,
+                orderNumber: r.orderNumber,
+                createdAt: r.createdAt,
+                total: Number(r.total),
+            })),
+        };
+    } catch (error) {
+        console.error('Error fetching pending deductions:', error);
+        return { count: 0, windowDays: days, recent: [] as Array<{
+            id: string; orderNumber: string; createdAt: Date; total: number;
+        }> };
+    }
+}

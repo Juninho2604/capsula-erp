@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import prisma from '@/server/db';
 import { calculateRecipeCost } from '@/server/services/cost.service';
 import { UnitOfMeasure } from '@/types'; // Assuming this exists, otherwise we use string
@@ -17,25 +18,35 @@ export interface ActionResult {
     data?: any;
 }
 
-export interface CreateRecipeInput {
-    name: string;
-    description?: string;
-    outputQuantity: number;
-    outputUnit: string;
-    yieldPercentage: number;
-    prepTime?: number;
-    cookTime?: number;
-    ingredients: {
-        itemId: string; // The ingredient's InventoryItem ID
-        quantity: number;
-        unit: string;
-        wastePercentage: number;
-        notes?: string;
-    }[];
-    userId: string;
-    type?: 'SUB_RECIPE' | 'FINISHED_GOOD';
-    category?: string;
-}
+// Zod schemas — validación de boundary input. La forma exportada como tipo
+// (CreateRecipeInput) se mantiene compatible con consumidores existentes.
+const RecipeIngredientInputSchema = z.object({
+    itemId: z.string().min(1, 'ingrediente sin id'),
+    quantity: z.number().positive('cantidad debe ser > 0'),
+    unit: z.string().min(1, 'unidad requerida'),
+    wastePercentage: z.number().min(0).max(100, 'merma fuera de rango (0-100)'),
+    notes: z.string().optional(),
+});
+
+const CreateRecipeInputSchema = z.object({
+    name: z.string().trim().min(2, 'nombre demasiado corto').max(120, 'nombre demasiado largo'),
+    description: z.string().max(500).optional(),
+    outputQuantity: z.number().positive('outputQuantity debe ser > 0'),
+    outputUnit: z.string().min(1, 'outputUnit requerida'),
+    yieldPercentage: z.number().min(1, 'rendimiento mínimo 1%').max(200, 'rendimiento máximo 200%'),
+    prepTime: z.number().int().min(0).optional(),
+    cookTime: z.number().int().min(0).optional(),
+    ingredients: z.array(RecipeIngredientInputSchema).min(1, 'al menos un ingrediente'),
+    userId: z.string().min(1, 'userId requerido'),
+    type: z.enum(['SUB_RECIPE', 'FINISHED_GOOD']).optional(),
+    category: z.string().max(80).optional(),
+});
+
+export type CreateRecipeInput = z.infer<typeof CreateRecipeInputSchema>;
+
+const UpdateRecipeInputSchema = CreateRecipeInputSchema.extend({
+    id: z.string().min(1, 'id requerido'),
+});
 
 // ============================================================================
 // READ ACTIONS
@@ -62,7 +73,11 @@ export async function getRecipesAction() {
         });
 
         return recipes.map(recipe => {
-            const currentCost = recipe.outputItem.costHistory[0]?.costPerUnit || 0;
+            const currentCost = Number(recipe.outputItem.costHistory[0]?.costPerUnit || 0);
+            const outputQuantity = Number(recipe.outputQuantity);
+            // costPerServing: costo derivado por unidad de salida real (porción / pieza / kg)
+            // Si outputQuantity es 0 o falta, cae a costPerUnit como fallback razonable.
+            const costPerServing = outputQuantity > 0 ? currentCost / outputQuantity : currentCost;
 
             return {
                 id: recipe.id,
@@ -71,10 +86,11 @@ export async function getRecipesAction() {
                 type: recipe.outputItem.type, // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
                 category: recipe.outputItem.category || 'GENERAL',
                 baseUnit: recipe.outputItem.baseUnit,
-                outputQuantity: Number(recipe.outputQuantity),
+                outputQuantity,
                 outputUnit: recipe.outputUnit,
                 yieldPercentage: Number(recipe.yieldPercentage),
-                costPerUnit: Number(currentCost),
+                costPerUnit: currentCost,
+                costPerServing,
                 isApproved: recipe.isApproved,
                 createdBy: 'Sistema',
                 updatedAt: recipe.updatedAt,
@@ -187,12 +203,16 @@ export async function getIngredientOptionsAction() {
 /**
  * Creates a new recipe and its corresponding Output InventoryItem (if needed)
  */
-export async function createRecipeAction(input: CreateRecipeInput): Promise<ActionResult> {
+export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<ActionResult> {
+    // Validación Zod en boundary
+    const parsed = CreateRecipeInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        return { success: false, message: first ? `${first.path.join('.')}: ${first.message}` : 'Input inválido' };
+    }
+    const input = parsed.data;
+
     try {
-        // Validation
-        if (!input.name || input.ingredients.length === 0) {
-            return { success: false, message: 'Faltan datos requeridos (nombre o ingredientes)' };
-        }
 
         // Generate SKU roughly
         const sku = `REC-${input.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
@@ -271,15 +291,18 @@ export async function createRecipeAction(input: CreateRecipeInput): Promise<Acti
     }
 }
 
-export interface UpdateRecipeInput extends CreateRecipeInput {
-    id: string;
-}
+export type UpdateRecipeInput = z.infer<typeof UpdateRecipeInputSchema>;
 
-export async function updateRecipeAction(input: UpdateRecipeInput): Promise<ActionResult> {
+export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<ActionResult> {
+    // Validación Zod en boundary
+    const parsed = UpdateRecipeInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        return { success: false, message: first ? `${first.path.join('.')}: ${first.message}` : 'Input inválido' };
+    }
+    const input = parsed.data;
+
     try {
-        if (!input.id || !input.name || input.ingredients.length === 0) {
-            return { success: false, message: 'Faltan datos requeridos' };
-        }
 
         const result = await prisma.$transaction(async (tx) => {
             // 1. Get existing recipe to know output item

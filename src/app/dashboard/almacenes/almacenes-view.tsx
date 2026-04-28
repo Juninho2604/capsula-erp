@@ -72,14 +72,20 @@ export default function AlmacenesView({ initialData }: { initialData: AreaItem[]
       <div className="space-y-5">
         {/* Resultado duplicados */}
         {duplicates !== null && (
-          <div className={`rounded-2xl border p-4 ${duplicates.length === 0 ? 'border-[#D3E2D8] bg-[#E5EDE7]/40' : 'border-[#E8D9B8] bg-[#F3EAD6]/40'}`}>
+          <div
+            className={`rounded-2xl border p-4 ${
+              duplicates.length === 0
+                ? 'border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40'
+                : 'border-[#E8D9B8] bg-[#F3EAD6]/40 dark:border-[#5a4a22] dark:bg-[#3B2F15]/40'
+            }`}
+          >
             {duplicates.length === 0 ? (
-              <p className="flex items-center gap-2 text-sm font-medium text-[#2F6B4E]">
+              <p className="flex items-center gap-2 text-sm font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
                 <CheckCircle2 className="h-4 w-4" /> No se encontraron duplicados
               </p>
             ) : (
               <>
-                <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#946A1C]">
+                <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#946A1C] dark:text-[#E8D9B8]">
                   <AlertTriangle className="h-4 w-4" /> {duplicates.length} grupo(s) con nombres similares:
                 </p>
                 {duplicates.map((group, i) => (
@@ -187,7 +193,11 @@ export default function AlmacenesView({ initialData }: { initialData: AreaItem[]
                       <button
                         onClick={() => handleToggle(area.id, area.isActive)}
                         disabled={isPending}
-                        className={`text-xs font-medium transition-colors disabled:opacity-50 ${area.isActive ? 'text-capsula-coral hover:text-capsula-coral-hover' : 'text-[#2F6B4E] hover:text-[#1f4a37]'}`}
+                        className={`text-xs font-medium transition-colors disabled:opacity-50 ${
+                          area.isActive
+                            ? 'text-capsula-coral hover:text-capsula-coral-hover'
+                            : 'text-[#2F6B4E] hover:text-[#1f4a37] dark:text-[#6FB88F] dark:hover:text-[#9CD4B5]'
+                        }`}
                       >
                         {area.isActive ? 'Desactivar' : 'Activar'}
                       </button>

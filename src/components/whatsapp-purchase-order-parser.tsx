@@ -1,6 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+    MessageCircle,
+    Search,
+    Loader2,
+    Trash2,
+    Check,
+    HelpCircle,
+    Plus,
+    Minus,
+    Upload,
+    X as XIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAllItemsForPurchaseAction } from '@/app/actions/purchase.actions';
 import { Combobox } from '@/components/ui/combobox';
@@ -28,7 +40,7 @@ interface WhatsAppPurchaseParserProps {
 function normalize(text: string): string {
     return text
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
@@ -241,9 +253,9 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
     if (isLoading) {
         return (
             <div className="flex justify-center py-12">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto" />
-                    <p className="mt-2 text-sm text-gray-500">Cargando insumos...</p>
+                <div className="flex flex-col items-center gap-2 text-capsula-ink-muted">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="text-sm">Cargando insumos…</p>
                 </div>
             </div>
         );
@@ -251,12 +263,12 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
 
     return (
         <div className="space-y-5">
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="text-2xl"></span> Pegar Chat de WhatsApp
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-5 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 font-semibold text-capsula-ink">
+                        <MessageCircle className="h-5 w-5 text-capsula-ink-soft" /> Pegar Chat de WhatsApp
                     </h3>
-                    <span className="text-xs text-gray-400">{allItems.length} insumos disponibles</span>
+                    <span className="text-xs text-capsula-ink-muted tabular-nums">{allItems.length} insumos disponibles</span>
                 </div>
 
                 <textarea
@@ -264,23 +276,25 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                     onChange={e => setChatText(e.target.value)}
                     placeholder={`Pega aquí el chat del proveedor...\n\nEjemplo:\n2 kg Arroz\n5x Aceite de oliva\n10 unidades Harina\n3 Crema de ajo\nProveedor: Distribuidora Los Andes`}
                     rows={8}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-mono focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white resize-none"
+                    className="pos-input w-full resize-none px-4 py-3 text-sm font-mono"
                 />
 
-                <div className="flex gap-2 mt-3">
+                <div className="mt-3 flex gap-2">
                     <button
                         onClick={parseChat}
                         disabled={!chatText.trim() || isParsing}
-                        className="flex-1 min-h-[48px] rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 font-semibold text-white shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                        className="pos-btn inline-flex flex-1 min-h-[48px] items-center justify-center gap-2 px-6 py-3 disabled:opacity-50"
                     >
-                        {isParsing ? '⏳ Analizando...' : '🔍 Analizar Orden'}
+                        {isParsing
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Analizando…</>
+                            : <><Search className="h-4 w-4" /> Analizar Orden</>}
                     </button>
                     {parsedLines.length > 0 && (
                         <button
                             onClick={() => { setParsedLines([]); setChatText(''); setSupplierName(''); setExtractedNotes(''); }}
-                            className="min-h-[48px] rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                            className="pos-btn-secondary inline-flex min-h-[48px] items-center gap-2 px-4 py-3 text-sm"
                         >
-                            🗑️ Limpiar
+                            <Trash2 className="h-4 w-4" /> Limpiar
                         </button>
                     )}
                 </div>
@@ -288,54 +302,54 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
 
             {parsedLines.length > 0 && (
                 <div className="space-y-4">
-                    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3">Datos extraídos</h4>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-5 shadow-sm">
+                        <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Datos extraídos</h4>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <input
                                 type="text"
                                 value={supplierName}
                                 onChange={e => setSupplierName(e.target.value)}
                                 placeholder="Proveedor"
-                                className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[44px]"
+                                className="pos-input min-h-[44px] px-3 py-2.5 text-sm"
                             />
                             <input
                                 type="text"
                                 value={extractedNotes}
                                 onChange={e => setExtractedNotes(e.target.value)}
                                 placeholder="Notas / Instrucciones"
-                                className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[44px]"
+                                className="pos-input min-h-[44px] px-3 py-2.5 text-sm"
                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-3 text-white shadow-lg">
+                    <div className="flex items-center justify-between rounded-xl bg-capsula-navy-deep px-5 py-3 text-capsula-ivory shadow-cap-soft">
                         <div className="flex items-center gap-4">
                             <div>
                                 <span className="text-sm opacity-80">Reconocidos</span>
-                                <span className="ml-1.5 text-lg font-bold">{matchedLines.length}</span>
+                                <span className="ml-1.5 text-lg font-semibold tabular-nums">{matchedLines.length}</span>
                             </div>
                             {unmatchedLines.length > 0 && (
                                 <div>
                                     <span className="text-sm opacity-80">Sin match</span>
-                                    <span className="ml-1.5 text-lg font-bold text-amber-200">{unmatchedLines.length}</span>
+                                    <span className="ml-1.5 text-lg font-semibold tabular-nums text-[#E8D9B8]">{unmatchedLines.length}</span>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-                        <div className="border-b border-gray-200 px-5 py-3 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800 flex items-center justify-between">
-                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Items de la Orden ({parsedLines.length})</h4>
+                    <div className="overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
+                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Items de la Orden ({parsedLines.length})</h4>
                             <button
                                 onClick={() => setShowAddProduct(!showAddProduct)}
-                                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                className="pos-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
                             >
-                                + Agregar Item
+                                <Plus className="h-3.5 w-3.5" /> Agregar Item
                             </button>
                         </div>
 
                         {showAddProduct && (
-                            <div className="border-b border-gray-200 bg-amber-50/30 px-5 py-3 dark:border-gray-700 flex items-center gap-3">
+                            <div className="flex items-center gap-3 border-b border-capsula-line bg-capsula-ivory-alt px-5 py-3">
                                 <div className="flex-1">
                                     <Combobox
                                         items={allItems.map(i => ({ value: i.id, label: `${i.name} (${i.baseUnit})` }))}
@@ -351,82 +365,92 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                                     step={0.1}
                                     value={manualQuantity}
                                     onChange={e => setManualQuantity(parseFloat(e.target.value) || 1)}
-                                    className="w-20 rounded-lg border border-gray-200 px-2 py-2 text-center text-sm min-h-[40px]"
+                                    className="pos-input min-h-[40px] w-20 px-2 py-2 text-center text-sm tabular-nums"
                                 />
                                 <button
                                     onClick={addManualProduct}
                                     disabled={!manualProductId}
-                                    className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-40 min-h-[40px]"
+                                    className="pos-btn inline-flex min-h-[40px] items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-40"
                                 >
-                                    ✓ Agregar
+                                    <Check className="h-4 w-4" /> Agregar
                                 </button>
                             </div>
                         )}
 
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                        <div className="divide-y divide-capsula-line">
                             {parsedLines.map((line) => (
                                 <div
                                     key={line.id}
                                     className={cn(
                                         'px-5 py-3 transition-colors',
-                                        !line.matchedItem && 'bg-amber-50/50 dark:bg-amber-900/10',
+                                        !line.matchedItem && 'bg-[#F3EAD6]/40 dark:bg-[#3B2F15]/40',
                                     )}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
-                                            'flex h-8 w-8 items-center justify-center rounded-full text-sm flex-shrink-0',
-                                            line.matchedItem ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                                            'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full',
+                                            line.matchedItem
+                                                ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]'
+                                                : 'bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]'
                                         )}>
-                                            {line.matchedItem ? '✓' : '?'}
+                                            {line.matchedItem
+                                                ? <Check className="h-4 w-4" />
+                                                : <HelpCircle className="h-4 w-4" />}
                                         </div>
 
-                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                        <div className="flex flex-shrink-0 items-center gap-1">
                                             <button
                                                 onClick={() => updateQuantity(line.id, line.quantity - 0.1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 text-sm font-bold"
-                                            >−</button>
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-capsula-ivory-alt text-capsula-ink-soft transition-colors hover:bg-capsula-line-strong hover:text-capsula-ink"
+                                                aria-label="Disminuir cantidad"
+                                            >
+                                                <Minus className="h-3.5 w-3.5" />
+                                            </button>
                                             <input
                                                 type="number"
                                                 min={0.1}
                                                 step={0.1}
                                                 value={line.quantity}
                                                 onChange={e => updateQuantity(line.id, parseFloat(e.target.value) || 1)}
-                                                className="w-14 text-center font-mono font-bold text-sm rounded border border-gray-200 py-1 dark:border-gray-600 dark:bg-gray-700"
+                                                className="pos-input w-14 px-1 py-1 text-center text-sm font-mono tabular-nums"
                                             />
                                             <button
                                                 onClick={() => updateQuantity(line.id, line.quantity + 0.1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 text-sm font-bold"
-                                            >+</button>
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-capsula-navy-soft text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory"
+                                                aria-label="Aumentar cantidad"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                            </button>
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             {line.matchedItem ? (
                                                 <div>
-                                                    <p className="font-medium text-gray-900 dark:text-white truncate">{line.matchedItem.name}</p>
-                                                    <p className="text-[11px] text-gray-400 truncate">&quot;{line.raw}&quot;</p>
+                                                    <p className="truncate font-medium text-capsula-ink">{line.matchedItem.name}</p>
+                                                    <p className="truncate text-[11px] text-capsula-ink-muted">&quot;{line.raw}&quot;</p>
                                                 </div>
                                             ) : (
                                                 <div>
-                                                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                        <span className="font-mono text-amber-600"></span> &quot;{line.productName}&quot;
+                                                    <p className="text-sm text-capsula-ink-soft">
+                                                        <span className="font-mono text-[#946A1C] dark:text-[#E8D9B8]">?</span> &quot;{line.productName}&quot;
                                                     </p>
-                                                    <p className="text-[11px] text-gray-400">No se encontró en insumos</p>
+                                                    <p className="text-[11px] text-capsula-ink-muted">No se encontró en insumos</p>
                                                 </div>
                                             )}
                                         </div>
 
                                         {line.matchedItem && (
-                                            <span className="text-xs text-gray-500 flex-shrink-0">{line.matchedItem.baseUnit}</span>
+                                            <span className="flex-shrink-0 text-xs text-capsula-ink-muted">{line.matchedItem.baseUnit}</span>
                                         )}
 
-                                        <div className="flex gap-1 flex-shrink-0">
+                                        <div className="flex flex-shrink-0 gap-1">
                                             {!line.matchedItem && line.alternatives.length > 0 && (
                                                 <>
                                                     {line.alternatives.slice(0, 3).map(alt => (
                                                         <button
                                                             key={alt.id}
                                                             onClick={() => updateMatch(line.id, alt)}
-                                                            className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                                            className="rounded-full border border-capsula-line bg-capsula-ivory px-2.5 py-1 text-[11px] font-medium text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-ink"
                                                         >
                                                             {alt.name}
                                                         </button>
@@ -435,8 +459,11 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                                             )}
                                             <button
                                                 onClick={() => removeLine(line.id)}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 text-sm"
-                                            ></button>
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                aria-label={`Quitar ${line.matchedItem?.name || line.productName}`}
+                                            >
+                                                <XIcon className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -447,9 +474,9 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                     {matchedLines.length > 0 && (
                         <button
                             onClick={handleConfirm}
-                            className="w-full min-h-[56px] rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
+                            className="pos-btn flex min-h-[56px] w-full items-center justify-center gap-3 px-6 py-4"
                         >
-                            <span className="text-lg"></span>
+                            <Upload className="h-5 w-5" />
                             <span>Cargar {matchedLines.length} items a la orden</span>
                         </button>
                     )}

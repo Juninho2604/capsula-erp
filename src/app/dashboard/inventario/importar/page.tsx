@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, Check, Ban, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { createAuditAction } from '@/app/actions/audit.actions';
 import { parseUploadAction, processImportAction, type ImportPreviewResult } from '@/app/actions/import.actions';
@@ -10,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function ImportPage() {
+    const router = useRouter();
     const { user } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,8 +80,7 @@ export default function ImportPage() {
             setIsProcessing(false);
             if (res.success) {
                 toast.success('Auditoría borrador creada');
-                // Redirect
-                window.location.href = `/dashboard/inventario/auditorias/${res.auditId}`;
+                router.push(`/dashboard/inventario/auditorias/${res.auditId}`);
                 return;
             } else {
                 toast.error(res.message);
@@ -226,52 +228,46 @@ export default function ImportPage() {
                 <CardContent className="pt-6">
                     <div className="mb-6 grid gap-6 md:grid-cols-3">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                1. Selecciona el Tipo de Planilla
-                            </label>
+                            <label className="pos-label">1. Selecciona el Tipo de Planilla</label>
                             <select
                                 value={importType}
                                 onChange={(e) => setImportType(e.target.value as any)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className="pos-input mt-1"
                             >
                                 <option value="INVENTARIO_INICIAL">Inventario Inicial (Planilla Orden de Compra)</option>
                                 <option value="ENTRADA_ALMACEN">Entrada de Almacén (Planilla Diaria)</option>
                                 <option value="MERMA">Registro de Mermas</option>
                             </select>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Formatos soportados: "ORDEN DE COMPRA NO TOCAR", "ENTRADA ALMACEN", "REGISTRO DE MERMA".
+                            <p className="mt-1 text-xs text-capsula-ink-muted">
+                                Formatos soportados: &quot;ORDEN DE COMPRA NO TOCAR&quot;, &quot;ENTRADA ALMACEN&quot;, &quot;REGISTRO DE MERMA&quot;.
                             </p>
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                2. Área Destino
-                            </label>
+                            <label className="pos-label">2. Área Destino</label>
                             <select
                                 value={selectedAreaId}
                                 onChange={(e) => setSelectedAreaId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className="pos-input mt-1"
                             >
                                 <option value="">Seleccionar área...</option>
                                 {areas.map(area => (
                                     <option key={area.id} value={area.id}>{area.name}</option>
                                 ))}
                             </select>
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-capsula-ink-muted">
                                 Donde se registrará el inventario importado
                             </p>
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                3. Sube tu archivo
-                            </label>
+                            <label className="pos-label">3. Sube tu archivo</label>
                             <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept=".xlsx, .xls"
                                 onChange={handleFileChange}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-amber-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/30 dark:file:text-amber-400"
+                                className="mt-1 block w-full text-sm text-capsula-ink-soft file:mr-4 file:rounded-full file:border-0 file:bg-capsula-navy-deep file:px-4 file:py-2 file:text-sm file:font-semibold file:text-capsula-ivory hover:file:bg-capsula-navy"
                             />
                         </div>
                     </div>
@@ -290,16 +286,18 @@ export default function ImportPage() {
             {/* Preview Section */}
             {preview && preview.items && (
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 py-4">
-                        <div className="flex items-center justify-between w-full">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-capsula-line py-4">
+                        <div className="flex w-full items-center justify-between">
                             <CardTitle className="text-lg">
                                 Vista Previa ({preview.items.length} filas detectadas)
                             </CardTitle>
-                            <div className="text-sm font-normal">
-                                <span className="mr-4 text-green-600">
+                            <div className="flex items-center gap-4 text-sm font-normal">
+                                <span className="inline-flex items-center gap-1 text-[#2F6B4E] dark:text-[#6FB88F]">
+                                    <Check className="h-3.5 w-3.5" />
                                     {preview.items.filter(i => i.status === 'MATCHED').length} Validados
                                 </span>
-                                <span className="text-red-500">
+                                <span className="inline-flex items-center gap-1 text-capsula-coral">
+                                    <Ban className="h-3.5 w-3.5" />
                                     {preview.items.filter(i => i.status !== 'MATCHED').length} Errores
                                 </span>
                             </div>
@@ -308,27 +306,27 @@ export default function ImportPage() {
 
                     <div className="max-h-96 overflow-y-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
+                            <thead className="bg-capsula-ivory-alt text-[11px] uppercase tracking-[0.14em] text-capsula-ink-muted">
                                 <tr>
-                                    <th className="px-6 py-3">Fila</th>
-                                    <th className="px-6 py-3">Item (Excel)</th>
-                                    <th className="px-6 py-3">Link Sistema</th>
-                                    <th className="px-6 py-3">Cantidad</th>
-                                    <th className="px-6 py-3">Unidad</th>
-                                    <th className="px-6 py-3">Estado</th>
+                                    <th className="px-6 py-3 font-semibold">Fila</th>
+                                    <th className="px-6 py-3 font-semibold">Item (Excel)</th>
+                                    <th className="px-6 py-3 font-semibold">Link Sistema</th>
+                                    <th className="px-6 py-3 font-semibold">Cantidad</th>
+                                    <th className="px-6 py-3 font-semibold">Unidad</th>
+                                    <th className="px-6 py-3 font-semibold">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-capsula-line">
                                 {preview.items.map((item, idx) => (
-                                    <tr key={idx} className={item.status !== 'MATCHED' ? 'bg-red-50 dark:bg-red-900/10' : ''}>
-                                        <td className="px-6 py-3 text-gray-500">{item.row}</td>
-                                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">
+                                    <tr key={idx} className={item.status !== 'MATCHED' ? 'bg-[#F7E3DB]/30 dark:bg-[#3B1F14]/30' : ''}>
+                                        <td className="px-6 py-3 text-capsula-ink-muted tabular-nums">{item.row}</td>
+                                        <td className="px-6 py-3 font-medium text-capsula-ink">
                                             {item.itemName}
                                         </td>
                                         <td className="px-6 py-3">
                                             <div className="flex flex-col gap-1">
                                                 <select
-                                                    className="w-48 rounded border border-gray-300 px-2 py-1 text-xs dark:bg-gray-700"
+                                                    className="pos-input w-48 px-2 py-1 text-xs"
                                                     value={item.matchedItemId || ''}
                                                     onChange={(e) => handleMatchChange(idx, e.target.value)}
                                                 >
@@ -339,12 +337,12 @@ export default function ImportPage() {
                                                 </select>
 
                                                 {item.matchedItemId && (
-                                                    <label className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <label className="flex items-center gap-2 text-xs text-capsula-ink-muted">
                                                         <input
                                                             type="checkbox"
                                                             checked={!!item.shouldRename}
                                                             onChange={() => handleRenameToggle(idx)}
-                                                            className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                                            className="rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
                                                         />
                                                         Renombrar en Sistema
                                                     </label>
@@ -357,14 +355,14 @@ export default function ImportPage() {
                                                 step="any"
                                                 value={item.quantity}
                                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                                                className="w-24 rounded border border-gray-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="pos-input w-24 px-2 py-1 text-sm tabular-nums"
                                             />
                                         </td>
                                         <td className="px-6 py-3">
                                             <select
                                                 value={item.unit || 'KG'}
                                                 onChange={(e) => handleUnitChange(idx, e.target.value)}
-                                                className="rounded border border-gray-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="pos-input px-2 py-1 text-sm"
                                             >
                                                 <option value="KG">KG</option>
                                                 <option value="UNI">UND</option>
@@ -376,27 +374,27 @@ export default function ImportPage() {
                                         <td className="px-6 py-3">
                                             {item.status === 'MATCHED' ? (
                                                 item.isFuzzyMatch ? (
-                                                    <span className="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#F3EAD6] px-2 text-xs font-semibold leading-5 text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
                                                         Coincidencia 80%
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                        Exacta
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#E5EDE7] px-2 text-xs font-semibold leading-5 text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
+                                                        <Check className="h-3 w-3" /> Exacta
                                                     </span>
                                                 )
                                             ) : item.status === 'NOT_FOUND' ? (
                                                 importType === 'INVENTARIO_INICIAL' ? (
-                                                    <span className="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                                        ✨ SE CREARÁ
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#E6ECF4] px-2 text-xs font-semibold leading-5 text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]">
+                                                        <Sparkles className="h-3 w-3" /> Se creará
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                                        No encontrado
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#F7E3DB] px-2 text-xs font-semibold leading-5 text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]">
+                                                        <Ban className="h-3 w-3" /> No encontrado
                                                     </span>
                                                 )
                                             ) : (
-                                                <span className="inline-flex rounded-full bg-yellow-100 px-2 text-xs font-semibold leading-5 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                    Cant. Inválida
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-[#F3EAD6] px-2 text-xs font-semibold leading-5 text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
+                                                    <AlertTriangle className="h-3 w-3" /> Cant. Inválida
                                                 </span>
                                             )}
                                         </td>
@@ -406,29 +404,29 @@ export default function ImportPage() {
                         </table>
                     </div>
 
-                    <div className="flex items-center justify-between bg-gray-50 px-6 py-4 dark:bg-gray-800/50 rounded-b-xl">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex items-center justify-between rounded-b-xl bg-capsula-ivory-alt px-6 py-4">
+                        <label className="flex cursor-pointer items-center gap-2">
                             <input
                                 type="checkbox"
                                 checked={isDraft}
                                 onChange={(e) => setIsDraft(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                className="h-4 w-4 rounded border-capsula-line text-capsula-navy-deep focus:ring-capsula-navy-deep"
                             />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span className="text-sm font-medium text-capsula-ink">
                                 Cargar como Borrador (Auditoría)
                             </span>
                         </label>
 
                         {isDraft && (
-                            <div className="flex items-center gap-2 ml-4">
-                                <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Fecha efectiva:</label>
+                            <div className="ml-4 flex items-center gap-2">
+                                <label className="whitespace-nowrap text-sm text-capsula-ink-soft">Fecha efectiva:</label>
                                 <input
                                     type="date"
                                     value={effectiveDate}
                                     onChange={e => setEffectiveDate(e.target.value)}
-                                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input px-3 py-1.5 text-sm"
                                 />
-                                <span className="text-xs text-gray-400">(dejar vacío = hoy)</span>
+                                <span className="text-xs text-capsula-ink-faint">(dejar vacío = hoy)</span>
                             </div>
                         )}
 
@@ -442,7 +440,6 @@ export default function ImportPage() {
                             <Button
                                 onClick={handleImport}
                                 disabled={isProcessing || preview.items.filter(i => i.status === 'MATCHED').length === 0}
-                                className="bg-green-600 hover:bg-green-700 text-white"
                                 isLoading={isProcessing}
                             >
                                 {isProcessing ? 'Importando...' : 'Confirmar Importación'}

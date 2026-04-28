@@ -7,7 +7,25 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
-import { Plus } from 'lucide-react';
+import {
+    Plus,
+    ArrowLeft,
+    FileText,
+    Camera,
+    Upload,
+    Loader2,
+    Check,
+    Eye,
+    Trash2,
+    Package,
+    TrendingUp,
+    TrendingDown,
+    Save,
+    Lightbulb,
+    AlertTriangle,
+    X as XIcon,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import QuickItemModal from './QuickItemModal';
 
@@ -107,13 +125,13 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
         // Validar tipo
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
         if (!allowedTypes.includes(file.type)) {
-            alert('Tipo de archivo no permitido. Use JPG, PNG, WebP o PDF.');
+            toast.error('Tipo de archivo no permitido. Use JPG, PNG, WebP o PDF.');
             return;
         }
 
         // Validar tamaño (5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('El archivo excede el tamaño máximo de 5MB');
+            toast.error('El archivo excede el tamaño máximo de 5MB');
             return;
         }
 
@@ -133,12 +151,13 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
             if (data.success) {
                 setUploadedFile(data.data);
+                toast.success('Archivo subido');
             } else {
-                alert(data.error || 'Error al subir archivo');
+                toast.error(data.error || 'Error al subir archivo');
             }
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert('Error al subir archivo');
+            toast.error('Error al subir archivo');
         } finally {
             setIsUploading(false);
         }
@@ -146,11 +165,11 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
     const handleOCRProcess = async () => {
         if (!uploadedFile) {
-            alert('Primero sube una imagen');
+            toast.error('Primero sube una imagen');
             return;
         }
         if (!uploadedFile.type.startsWith('image/')) {
-            alert('Solo se pueden procesar imágenes (JPG, PNG) con IA, no PDFs.');
+            toast.error('Solo se pueden procesar imágenes (JPG, PNG) con IA, no PDFs.');
             return;
         }
 
@@ -174,14 +193,14 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     setOcrSuggestions(result.suggestions ?? []);
                     setShowOcrModal(true);
                 } else {
-                    alert('Error OCR: ' + result.message);
+                    toast.error('Error OCR: ' + result.message);
                 }
                 setIsProcessingOCR(false);
             };
 
         } catch (error) {
             console.error('Error procesando OCR', error);
-            alert('Error al procesar la imagen con IA');
+            toast.error('Error al procesar la imagen con IA');
             setIsProcessingOCR(false);
         }
     };
@@ -218,7 +237,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
         // Verificar si ya existe
         if (entradaItems.some(e => e.itemId === selectedItem)) {
-            alert('Este insumo ya está en la lista');
+            toast.error('Este insumo ya está en la lista');
             return;
         }
 
@@ -251,7 +270,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
     // Enviar entrada
     const handleSubmit = async () => {
         if (entradaItems.length === 0) {
-            alert('Agrega al menos un insumo');
+            toast.error('Agrega al menos un insumo');
             return;
         }
 
@@ -320,13 +339,14 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard/inventario"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                        aria-label="Volver a Inventario"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Entrada de Mercancía</h1>
-                        <p className="text-gray-500">
+                        <p className="text-capsula-ink-muted">
                             Registro de llegada de insumos de proveedores
                         </p>
                     </div>
@@ -337,14 +357,14 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 {/* Formulario Principal */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Información del Documento */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-2xl text-white shadow-lg">
-                                📄
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                                <FileText className="h-5 w-5" />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Datos de la Nota de Entrega</h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-capsula-ink-muted">
                                     Información del documento de Profit
                                 </p>
                             </div>
@@ -353,27 +373,23 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                         <div className="grid gap-4 sm:grid-cols-2">
                             {/* Número de Referencia */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    N° Nota de Entrega *
-                                </label>
+                                <label className="pos-label">N° Nota de Entrega *</label>
                                 <input
                                     type="text"
                                     value={referenceNumber}
                                     onChange={(e) => setReferenceNumber(e.target.value)}
                                     placeholder="Ej: NE-2026-00123"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input mt-1"
                                 />
                             </div>
 
                             {/* Área de Almacenamiento */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Área de Almacenamiento
-                                </label>
+                                <label className="pos-label">Área de Almacenamiento</label>
                                 <select
                                     value={areaId}
                                     onChange={(e) => setAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input mt-1"
                                 >
                                     {areasList.map(area => (
                                         <option key={area.id} value={area.id}>
@@ -385,8 +401,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
                             {/* Upload de Imagen */}
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    📷 Imagen de la Nota de Entrega
+                                <label className="mb-1.5 flex items-center gap-1.5 pos-label">
+                                    <Camera className="h-4 w-4" /> Imagen de la Nota de Entrega
                                 </label>
 
                                 <div className="relative">
@@ -396,31 +412,31 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                             className={cn(
                                                 'cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors',
                                                 isUploading
-                                                    ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20'
-                                                    : 'border-gray-300 hover:border-amber-400 hover:bg-amber-50/50 dark:border-gray-600 dark:hover:border-amber-600'
+                                                    ? 'border-capsula-line-strong bg-capsula-ivory-alt'
+                                                    : 'border-capsula-line hover:border-capsula-line-strong hover:bg-capsula-ivory-alt/60'
                                             )}
                                         >
                                             {isUploading ? (
                                                 <div className="flex flex-col items-center">
-                                                    <span className="animate-spin text-4xl">⏳</span>
-                                                    <p className="mt-2 text-sm text-amber-600">Subiendo archivo...</p>
+                                                    <Loader2 className="h-8 w-8 animate-spin text-capsula-ink-muted" />
+                                                    <p className="mt-2 text-sm text-capsula-ink-soft">Subiendo archivo…</p>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <span className="text-4xl"></span>
-                                                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                                    <Upload className="mx-auto h-8 w-8 text-capsula-ink-muted" />
+                                                    <p className="mt-2 text-sm text-capsula-ink-soft">
                                                         Haz clic para subir o arrastra la imagen aquí
                                                     </p>
-                                                    <p className="text-xs text-gray-400">
+                                                    <p className="text-xs text-capsula-ink-faint">
                                                         JPG, PNG, WebP o PDF (máx. 5MB)
                                                     </p>
                                                 </>
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-700 dark:bg-emerald-900/20">
+                                        <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 p-4 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40">
                                             <div className="flex items-center gap-4">
-                                                <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200 bg-white">
+                                                <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-capsula-line bg-capsula-ivory">
                                                     {uploadedFile.type.startsWith('image/') ? (
                                                         <Image
                                                             src={uploadedFile.url}
@@ -429,36 +445,38 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                             className="object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="flex h-full items-center justify-center text-3xl">
-                                                            📄
+                                                        <div className="flex h-full items-center justify-center text-capsula-ink-soft">
+                                                            <FileText className="h-8 w-8" />
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-emerald-800 dark:text-emerald-400">
-                                                        ✓ Documento adjunto
+                                                    <p className="flex items-center gap-1.5 font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
+                                                        <Check className="h-4 w-4" /> Documento adjunto
                                                     </p>
-                                                    <p className="text-sm text-emerald-600 dark:text-emerald-500">
+                                                    <p className="text-sm text-[#2F6B4E]/80 dark:text-[#6FB88F]/80">
                                                         {uploadedFile.fileName}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">
+                                                    <p className="text-xs text-capsula-ink-muted">
                                                         {(uploadedFile.size / 1024).toFixed(1)} KB
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-1">
                                                     <button
                                                         onClick={() => setShowPreview(true)}
-                                                        className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                                                        className="rounded-lg p-2 text-[#2F6B4E] transition-colors hover:bg-[#E5EDE7] dark:text-[#6FB88F] dark:hover:bg-[#1E3B2C]"
                                                         title="Ver documento"
+                                                        aria-label="Ver documento"
                                                     >
-                                                        👁️
+                                                        <Eye className="h-4 w-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => setUploadedFile(null)}
-                                                        className="rounded-lg p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20"
+                                                        className="rounded-lg p-2 text-capsula-coral transition-colors hover:bg-capsula-coral/10"
                                                         title="Eliminar"
+                                                        aria-label="Eliminar adjunto"
                                                     >
-                                                        🗑️
+                                                        <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -477,42 +495,38 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
                             {/* Notas */}
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Notas (opcional)
-                                </label>
+                                <label className="pos-label">Notas (opcional)</label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="Observaciones sobre la entrega..."
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input mt-1 w-full"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Agregar Insumos */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl text-white shadow-lg">
-                                📦
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                                <Package className="h-5 w-5" />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Insumos Recibidos</h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-capsula-ink-muted">
                                     Agrega los items de la nota de entrega
                                 </p>
                             </div>
                         </div>
 
                         {/* Formulario para agregar item */}
-                        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">
+                        <div className="mb-4 rounded-lg border border-capsula-line bg-capsula-ivory-alt p-4">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                                 <div className="lg:col-span-2">
-                                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                                        Insumo
-                                    </label>
-                                    <div className="flex gap-2">
+                                    <label className="pos-label">Insumo</label>
+                                    <div className="mt-1 flex gap-2">
                                         <div className="flex-1">
                                             <Combobox
                                                 items={localItems.map(item => ({ value: item.id, label: `${item.name} (${item.baseUnit})` }))}
@@ -528,8 +542,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => setIsQuickItemModalOpen(true)}
-                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-capsula-line bg-capsula-ivory text-capsula-ink-soft transition-colors hover:border-capsula-navy-deep hover:bg-capsula-navy-soft hover:text-capsula-ink"
                                             title="Crear nuevo insumo"
+                                            aria-label="Crear nuevo insumo"
                                         >
                                             <Plus className="h-4 w-4" />
                                         </button>
@@ -537,10 +552,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                                        Cantidad
-                                    </label>
-                                    <div className="flex gap-1">
+                                    <label className="pos-label">Cantidad</label>
+                                    <div className="mt-1 flex gap-1">
                                         <input
                                             type="number"
                                             value={quantity || ''}
@@ -548,12 +561,12 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                             min="0"
                                             step="0.1"
                                             placeholder="0"
-                                            className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                                            className="pos-input w-16 px-2 py-2 text-sm tabular-nums"
                                         />
                                         <select
                                             value={unit}
                                             onChange={(e) => setUnit(e.target.value)}
-                                            className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                                            className="pos-input flex-1 px-2 py-2 text-sm"
                                         >
                                             <option value={selectedItemData?.baseUnit || 'UNIT'}>
                                                 {selectedItemData?.baseUnit || 'UNIT'}
@@ -563,11 +576,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                                        Costo Unit. (USD)
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                    <label className="pos-label">Costo Unit. (USD)</label>
+                                    <div className="relative mt-1">
+                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-capsula-ink-muted">$</span>
                                         <input
                                             type="number"
                                             value={unitCost || ''}
@@ -575,7 +586,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                             min="0"
                                             step="0.01"
                                             placeholder="0.00"
-                                            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-6 pr-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                                            className="pos-input w-full py-2 pl-6 pr-2 text-sm tabular-nums"
                                         />
                                     </div>
                                 </div>
@@ -584,9 +595,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                     <button
                                         onClick={addItem}
                                         disabled={!selectedItem || quantity <= 0}
-                                        className="w-full rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="pos-btn inline-flex w-full items-center justify-center gap-1.5 px-4 py-2 text-sm disabled:opacity-50"
                                     >
-                                        + Agregar
+                                        <Plus className="h-3.5 w-3.5" /> Agregar
                                     </button>
                                 </div>
                             </div>
@@ -595,48 +606,49 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             {selectedItemData && unitCost > 0 && selectedItemData.currentCost > 0 &&
                                 Math.abs(unitCost - selectedItemData.currentCost) > 0.01 && (
                                     <p className={cn(
-                                        'mt-2 text-xs',
-                                        unitCost > selectedItemData.currentCost ? 'text-red-500' : 'text-emerald-500'
+                                        'mt-2 inline-flex items-center gap-1.5 text-xs tabular-nums',
+                                        unitCost > selectedItemData.currentCost ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'
                                     )}>
-                                        {unitCost > selectedItemData.currentCost ? '📈' : '📉'}
-                                        Costo anterior: ${selectedItemData.currentCost.toFixed(2)} →
-                                        Nuevo: ${unitCost.toFixed(2)}
+                                        {unitCost > selectedItemData.currentCost
+                                            ? <TrendingUp className="h-3.5 w-3.5" />
+                                            : <TrendingDown className="h-3.5 w-3.5" />}
+                                        Costo anterior: ${selectedItemData.currentCost.toFixed(2)} → Nuevo: ${unitCost.toFixed(2)}
                                     </p>
                                 )}
                         </div>
 
                         {/* Lista de items agregados */}
                         {entradaItems.length > 0 ? (
-                            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="overflow-hidden rounded-lg border border-capsula-line">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-                                            <th className="px-4 py-2 text-left font-medium text-gray-500">Insumo</th>
-                                            <th className="px-4 py-2 text-right font-medium text-gray-500">Cantidad</th>
+                                        <tr className="border-b border-capsula-line bg-capsula-ivory-alt">
+                                            <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Insumo</th>
+                                            <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Cantidad</th>
                                             {showCosts && (
                                                 <>
-                                                    <th className="px-4 py-2 text-right font-medium text-gray-500">Costo Unit.</th>
-                                                    <th className="px-4 py-2 text-right font-medium text-gray-500">Total</th>
+                                                    <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Costo Unit.</th>
+                                                    <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Total</th>
                                                 </>
                                             )}
-                                            <th className="px-4 py-2 text-center font-medium text-gray-500"></th>
+                                            <th className="px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted"></th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tbody className="divide-y divide-capsula-line">
                                         {entradaItems.map(item => (
-                                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                            <tr key={item.id} className="hover:bg-capsula-ivory-surface">
+                                                <td className="px-4 py-3 font-medium text-capsula-ink">
                                                     {item.itemName}
                                                 </td>
-                                                <td className="px-4 py-3 text-right">
+                                                <td className="px-4 py-3 text-right text-capsula-ink-soft tabular-nums">
                                                     {formatNumber(item.quantity)} {item.unit}
                                                 </td>
                                                 {showCosts && (
                                                     <>
-                                                        <td className="px-4 py-3 text-right font-mono">
+                                                        <td className="px-4 py-3 text-right font-mono tabular-nums text-capsula-ink-soft">
                                                             {formatCurrency(item.unitCost)}
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-mono font-semibold">
+                                                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-capsula-ink">
                                                             {formatCurrency(item.totalCost)}
                                                         </td>
                                                     </>
@@ -644,9 +656,10 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                 <td className="px-4 py-3 text-center">
                                                     <button
                                                         onClick={() => removeItem(item.id)}
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                        aria-label={`Eliminar ${item.itemName}`}
                                                     >
-                                                        🗑️
+                                                        <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -654,11 +667,11 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                     </tbody>
                                     {showCosts && (
                                         <tfoot>
-                                            <tr className="border-t-2 border-gray-300 bg-gray-100 dark:border-gray-600 dark:bg-gray-800">
-                                                <td colSpan={3} className="px-4 py-3 text-right font-semibold">
-                                                    TOTAL:
+                                            <tr className="border-t-2 border-capsula-line-strong bg-capsula-ivory-alt">
+                                                <td colSpan={3} className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                                    Total:
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-mono text-lg font-bold text-amber-600">
+                                                <td className="px-4 py-3 text-right font-mono text-lg font-semibold tabular-nums text-capsula-ink">
                                                     {formatCurrency(totalEntrada)}
                                                 </td>
                                                 <td></td>
@@ -668,9 +681,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 </table>
                             </div>
                         ) : (
-                            <div className="rounded-lg border-2 border-dashed border-gray-300 py-8 text-center dark:border-gray-600">
-                                <span className="text-4xl"></span>
-                                <p className="mt-2 text-gray-500">
+                            <div className="rounded-lg border-2 border-dashed border-capsula-line py-8 text-center">
+                                <Package className="mx-auto h-8 w-8 text-capsula-ink-faint" />
+                                <p className="mt-2 text-capsula-ink-muted">
                                     Agrega los insumos de la nota de entrega
                                 </p>
                             </div>
@@ -680,16 +693,20 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Resultado */}
                     {result && (
                         <div className={cn(
-                            'rounded-xl p-4',
+                            'rounded-xl border p-4',
                             result.success
-                                ? 'border border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
-                                : 'border border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
+                                ? 'border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40'
+                                : 'border-[#E8C2B7] bg-[#F7E3DB]/40 dark:border-[#5b3328] dark:bg-[#3B1F14]/40'
                         )}>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl">{result.success ? '' : ''}</span>
+                                {result.success
+                                    ? <Check className="h-5 w-5 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                                    : <AlertTriangle className="h-5 w-5 text-[#B04A2E] dark:text-[#EFD2C8]" />}
                                 <p className={cn(
                                     'font-medium',
-                                    result.success ? 'text-emerald-800 dark:text-emerald-400' : 'text-red-800 dark:text-red-400'
+                                    result.success
+                                        ? 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                        : 'text-[#B04A2E] dark:text-[#EFD2C8]'
                                 )}>
                                     {result.message}
                                 </p>
@@ -701,37 +718,38 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                 {/* Panel lateral */}
                 <div className="space-y-4">
                     {/* Resumen y botón guardar */}
-                    <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-cap-soft">
                         <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
-                            <span></span> Resumen de Entrada
+                            <FileText className="h-5 w-5 text-capsula-ink-soft" /> Resumen de Entrada
                         </h3>
 
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-400">N° Referencia:</span>
-                                <span className="font-medium text-gray-900 dark:text-white">
+                                <span className="text-capsula-ink-muted">N° Referencia:</span>
+                                <span className="font-medium text-capsula-ink tabular-nums">
                                     {referenceNumber || '-'}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-400">Items:</span>
-                                <span className="font-medium text-gray-900 dark:text-white">
+                                <span className="text-capsula-ink-muted">Items:</span>
+                                <span className="font-medium text-capsula-ink tabular-nums">
                                     {entradaItems.length}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-400">Documento:</span>
+                                <span className="text-capsula-ink-muted">Documento:</span>
                                 <span className={cn(
-                                    'font-medium',
-                                    uploadedFile ? 'text-emerald-600' : 'text-gray-400'
+                                    'inline-flex items-center gap-1 font-medium',
+                                    uploadedFile ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-ink-faint'
                                 )}>
-                                    {uploadedFile ? '✓ Adjunto' : 'Sin adjuntar'}
+                                    {uploadedFile && <Check className="h-3.5 w-3.5" />}
+                                    {uploadedFile ? 'Adjunto' : 'Sin adjuntar'}
                                 </span>
                             </div>
                             {showCosts && (
-                                <div className="flex justify-between border-t border-amber-200 pt-3 dark:border-amber-700">
+                                <div className="flex justify-between border-t border-capsula-line pt-3">
                                     <span className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Total:</span>
-                                    <span className="font-semibold text-xl tracking-[-0.02em] text-amber-600">
+                                    <span className="font-semibold text-xl tracking-[-0.02em] tabular-nums text-capsula-ink">
                                         {formatCurrency(totalEntrada)}
                                     </span>
                                 </div>
@@ -741,37 +759,38 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                         <button
                             onClick={handleSubmit}
                             disabled={isSubmitting || entradaItems.length === 0}
-                            className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                            className="pos-btn mt-6 w-full py-3 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <span className="animate-spin">⏳</span>
-                                    Guardando...
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Guardando…
                                 </span>
                             ) : (
-                                '💾 Guardar Entrada'
+                                <span className="flex items-center justify-center gap-2">
+                                    <Save className="h-4 w-4" /> Guardar Entrada
+                                </span>
                             )}
                         </button>
                     </div>
 
                     {/* Info de costo promedio */}
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                        <h4 className="mb-2 flex items-center gap-2 font-medium text-blue-800 dark:text-blue-400">
-                            💡 Costo Promedio Ponderado
+                    <div className="rounded-xl border border-[#D1DCE9] bg-[#E6ECF4] p-4 dark:border-[#2a3a52] dark:bg-[#1A2636]">
+                        <h4 className="mb-2 flex items-center gap-2 font-medium text-[#2A4060] dark:text-[#D1DCE9]">
+                            <Lightbulb className="h-4 w-4" /> Costo Promedio Ponderado
                         </h4>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <p className="text-sm text-[#2A4060]/85 dark:text-[#D1DCE9]/85">
                             Si el precio de un insumo cambia, el sistema recalcula automáticamente
                             el costo promedio basado en el stock existente y la nueva entrada.
                         </p>
                     </div>
 
                     {/* Info del usuario */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-xs text-gray-500">Registrado por:</p>
-                        <p className="font-medium text-gray-900 dark:text-white">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Registrado por</p>
+                        <p className="mt-1 font-medium text-capsula-ink">
                             {user?.firstName} {user?.lastName}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-capsula-ink-faint">
                             {displayDate}
                         </p>
                     </div>
@@ -781,15 +800,16 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
             {/* Modal de preview de imagen */}
             {showPreview && uploadedFile && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-ink/60 p-4 backdrop-blur-sm"
                     onClick={() => setShowPreview(false)}
                 >
-                    <div className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+                    <div className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-2xl">
                         <button
                             onClick={() => setShowPreview(false)}
-                            className="absolute right-2 top-2 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+                            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-capsula-ink/70 text-capsula-ivory transition-colors hover:bg-capsula-ink"
+                            aria-label="Cerrar preview"
                         >
-                            ✕
+                            <XIcon className="h-4 w-4" />
                         </button>
                         {uploadedFile.type.startsWith('image/') ? (
                             <Image
@@ -812,41 +832,41 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
             {/* Modal de Resultados OCR */}
             {showOcrModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                    <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
-                        <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-                            <h3 className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resultados del Análisis IA</h3>
-                            <p className="text-sm text-gray-500">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-ink/60 p-4 backdrop-blur-sm">
+                    <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-capsula-line bg-capsula-ivory shadow-2xl">
+                        <div className="border-b border-capsula-line bg-capsula-ivory-alt p-4">
+                            <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resultados del Análisis IA</h3>
+                            <p className="text-sm text-capsula-ink-muted">
                                 Revisa los items detectados. La IA puede equivocarse con la caligrafía difícil.
                             </p>
                         </div>
 
                         <div className="max-h-[60vh] overflow-y-auto p-4">
                             {ocrSuggestions.length === 0 ? (
-                                <p className="text-center text-gray-500">No se detectaron items legibles.</p>
+                                <p className="text-center text-capsula-ink-muted">No se detectaron items legibles.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {ocrSuggestions.map((sugg, idx) => (
-                                        <div key={idx} className="flex items-center justify-between rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-700/50">
+                                        <div key={idx} className="flex items-center justify-between rounded-lg border border-capsula-line bg-capsula-ivory p-3 shadow-sm">
                                             <div>
-                                                <p className="font-mono text-xs text-gray-400">
-                                                    Detectado: "{sugg.originalText}"
+                                                <p className="font-mono text-xs text-capsula-ink-muted">
+                                                    Detectado: &quot;{sugg.originalText}&quot;
                                                 </p>
                                                 <div className="flex items-center gap-2">
                                                     {sugg.match ? (
                                                         <>
-                                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            <span className="font-semibold text-[#2F6B4E] dark:text-[#6FB88F]">
                                                                 {sugg.match.item.name}
                                                             </span>
-                                                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800">
+                                                            <span className="rounded bg-capsula-ivory-alt px-1.5 py-0.5 text-xs text-capsula-ink-muted tabular-nums">
                                                                 {sugg.detectedQuantity} {sugg.match.item.baseUnit}
                                                             </span>
                                                             {sugg.match.score > 0.3 && (
-                                                                <span className="text-xs text-amber-500" title="Confianza baja"></span>
+                                                                <AlertTriangle className="h-3.5 w-3.5 text-[#946A1C] dark:text-[#E8D9B8]" aria-label="Confianza baja" />
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="text-red-400">No encontrado en inventario</span>
+                                                        <span className="text-capsula-coral">No encontrado en inventario</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -855,10 +875,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                 <button
                                                     onClick={() => {
                                                         acceptOcrItem(sugg);
-                                                        // Eliminar de la lista visual temporalmente o marcar como agregado
                                                         setOcrSuggestions(prev => prev.filter((_, i) => i !== idx));
                                                     }}
-                                                    className="rounded-lg bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                                    className="rounded-lg bg-[#E5EDE7] px-3 py-1.5 text-sm font-medium text-[#2F6B4E] transition-colors hover:bg-[#D3E2D8] dark:bg-[#1E3B2C] dark:text-[#6FB88F] dark:hover:bg-[#264a39]"
                                                 >
                                                     Agregar
                                                 </button>
@@ -869,10 +888,10 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-3 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+                        <div className="flex justify-end gap-3 border-t border-capsula-line bg-capsula-ivory-alt p-4">
                             <button
                                 onClick={() => setShowOcrModal(false)}
-                                className="rounded-lg bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
+                                className="pos-btn-secondary px-4 py-2"
                             >
                                 Cerrar
                             </button>

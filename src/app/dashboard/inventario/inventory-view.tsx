@@ -2,12 +2,32 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+    Package,
+    Layers,
+    UtensilsCrossed,
+    Pencil,
+    FileText,
+    ShoppingCart,
+    Upload,
+    Calendar,
+    History,
+    Search,
+    ChevronsUpDown,
+    ChevronUp,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Trash2,
+    Loader2,
+} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency, getStockStatus, cn } from '@/lib/utils';
+import { fuzzySearch, paginate } from '@/lib/fuzzy-search';
 import { InventoryItemType } from '@/types';
 import { ItemEditDialog } from './edit-item-dialog';
 import { deleteInventoryItemAction } from '@/app/actions/inventory.actions';
-import { Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type FilterType = 'ALL' | InventoryItemType;
@@ -18,7 +38,26 @@ interface InventoryViewProps {
     initialAreas?: { id: string; name: string }[];
 }
 
+const TYPE_META: Record<InventoryItemType, { label: string; Icon: typeof Package }> = {
+    RAW_MATERIAL: { label: 'Insumo', Icon: Package },
+    SUB_RECIPE: { label: 'Sub-receta', Icon: Layers },
+    FINISHED_GOOD: { label: 'Producto', Icon: UtensilsCrossed },
+};
+
+const STATUS_TONE: Record<'critical' | 'warning' | 'ok', string> = {
+    critical: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]',
+    warning: 'bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]',
+    ok: 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]',
+};
+
+const STATUS_DOT: Record<'critical' | 'warning' | 'ok', string> = {
+    critical: 'bg-[#B04A2E] dark:bg-[#EFD2C8]',
+    warning: 'bg-[#946A1C] dark:bg-[#E8D9B8]',
+    ok: 'bg-[#2F6B4E] dark:bg-[#6FB88F]',
+};
+
 export default function InventoryView({ initialItems, initialAreas = [] }: InventoryViewProps) {
+    const router = useRouter();
     const { canViewCosts, hasRole } = useAuthStore();
     // Defer showCosts to client-side to avoid hydration mismatch
     // (Zustand store has no user during SSR, so canViewCosts() returns false on server but true on client)
@@ -35,7 +74,18 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [categoryFilter, setCategoryFilter] = useState('ALL');
 
-    // Estado para edición
+    // Paginación in-memory: con catálogos grandes (>500 ítems) renderizar
+    // todas las filas a la vez degrada el sort y el scroll. 50 es suficiente
+    // para una vista densa y mantiene el feel de tabla "infinita".
+    const PAGE_SIZE = 50;
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Reset de página cuando cambia cualquier filtro/búsqueda — evita quedar
+    // en una página vacía tras un cambio que reduce el resultado.
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [typeFilter, stockFilter, searchQuery, selectedArea, categoryFilter]);
+
     const [editingItem, setEditingItem] = useState<any | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
@@ -47,8 +97,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
             const res = await deleteInventoryItemAction(item.id);
             if (res.success) {
                 toast.success('Producto eliminado correctamente');
-                // Optimistically update UI or wait for revalidate
-                window.location.reload();
+                router.refresh();
             } else {
                 toast.error(res.message);
             }
@@ -60,19 +109,16 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
         }
     };
 
-    // Obtener categorías únicas
     const uniqueCategories = useMemo(() => {
         const cats = new Set(initialItems.map(i => i.category).filter(Boolean));
         return Array.from(cats).sort();
     }, [initialItems]);
 
-    // Items filtrados
     const filteredItems = useMemo(() => {
+        // 1) Pre-filtros estructurados (tipo / stock / categoría) — sin fuzzy.
         let items = initialItems.filter(item => {
-            // Filtro por tipo
             if (typeFilter !== 'ALL' && item.type !== typeFilter) return false;
 
-            // Filtro por stock
             if (stockFilter !== 'ALL') {
                 const stockToCheck = selectedArea
                     ? (item.stockByArea?.find((s: any) => s.areaId === selectedArea)?.quantity || 0)
@@ -83,29 +129,22 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                 if (stockFilter === 'OK' && status.status !== 'ok') return false;
             }
 
-            // Filtro por categoría (Columna)
             if (categoryFilter !== 'ALL' && item.category !== categoryFilter) return false;
-
-            // Filtro por búsqueda
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                return (
-                    item.name.toLowerCase().includes(query) ||
-                    item.sku.toLowerCase().includes(query) ||
-                    item.category?.toLowerCase().includes(query)
-                );
-            }
 
             return true;
         });
 
-        // Lógica de Ordenamiento
+        // 2) Búsqueda fuzzy con tolerancia a typos y diacríticos sobre el
+        //    subconjunto pre-filtrado. Si la query es vacía, devuelve todo.
+        if (searchQuery.trim()) {
+            items = fuzzySearch(items, searchQuery, { keys: ['name', 'sku', 'category'] });
+        }
+
         if (sortConfig) {
             items.sort((a, b) => {
                 let aValue = a[sortConfig.key];
                 let bValue = b[sortConfig.key];
 
-                // Casos especiales para campos anidados o calculados
                 if (sortConfig.key === 'currentStock') {
                     aValue = selectedArea
                         ? (a.stockByArea?.find((s: any) => s.areaId === selectedArea)?.quantity || 0)
@@ -116,8 +155,6 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                 }
 
                 if (aValue === bValue) return 0;
-
-                // Manejo de nulos
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
 
@@ -130,6 +167,9 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
         return items;
     }, [initialItems, typeFilter, stockFilter, searchQuery, selectedArea, categoryFilter, sortConfig]);
 
+    // Slice paginado del listado filtrado.
+    const paged = useMemo(() => paginate(filteredItems, currentPage, PAGE_SIZE), [filteredItems, currentPage]);
+
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -139,11 +179,14 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
     };
 
     const SortIcon = ({ columnKey }: { columnKey: string }) => {
-        if (sortConfig?.key !== columnKey) return <span className="ml-1 text-gray-300 opacity-0 group-hover:opacity-50 transition-opacity">↕</span>;
-        return <span className="ml-1 text-amber-600 font-bold">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
+        if (sortConfig?.key !== columnKey) {
+            return <ChevronsUpDown className="ml-1 h-3 w-3 text-capsula-ink-faint opacity-0 transition-opacity group-hover:opacity-60" />;
+        }
+        return sortConfig.direction === 'asc'
+            ? <ChevronUp className="ml-1 h-3 w-3 text-capsula-coral" />
+            : <ChevronDown className="ml-1 h-3 w-3 text-capsula-coral" />;
     };
 
-    // Stats dinámicos
     const stats = useMemo(() => ({
         total: initialItems.length,
         rawMaterials: initialItems.filter(i => i.type === 'RAW_MATERIAL').length,
@@ -152,7 +195,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
         lowStock: initialItems.filter(i =>
             getStockStatus(i.currentStock, i.minimumStock, i.reorderPoint).status !== 'ok'
         ).length,
-    }), [initialItems]); // Stats globales siempre
+    }), [initialItems]);
 
     return (
         <div className="space-y-6 animate-in">
@@ -160,18 +203,17 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Inventario</h1>
-                    <p className="text-gray-500">
+                    <p className="text-capsula-ink-muted">
                         {filteredItems.length} de {stats.total} items
                     </p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {/* Selector de Almacén */}
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="relative">
                         <select
                             value={selectedArea}
                             onChange={(e) => setSelectedArea(e.target.value)}
-                            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-smfont-medium text-gray-700 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            className="pos-input min-w-[180px]"
                         >
                             <option value="">Todos los Almacenes</option>
                             {initialAreas.map(area => (
@@ -180,36 +222,36 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                         </select>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Link
                             href="/dashboard/inventario/entrada"
-                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl"
+                            className="pos-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
-                            📄 Entrada de Mercancía
+                            <FileText className="h-4 w-4" /> Entrada de Mercancía
                         </Link>
                         <Link
                             href="/dashboard/inventario/compras"
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                            className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
-                            📦 Compra Rápida
+                            <ShoppingCart className="h-4 w-4" /> Compra Rápida
                         </Link>
                         <Link
                             href="/dashboard/inventario/importar"
-                            className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700 transition-all hover:bg-green-100 dark:border-green-900 dark:bg-green-900/20 dark:text-green-300"
+                            className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
-                            📥 Importar Excel
+                            <Upload className="h-4 w-4" /> Importar Excel
                         </Link>
                         <Link
                             href="/dashboard/inventario/diario"
-                            className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-700 transition-all hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-900/20 dark:text-purple-300"
+                            className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
-                            📅 Cierre Diario
+                            <Calendar className="h-4 w-4" /> Cierre Diario
                         </Link>
                         <Link
                             href="/dashboard/inventario/historial"
-                            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-300"
+                            className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
-                            📜 Historial
+                            <History className="h-4 w-4" /> Historial
                         </Link>
                     </div>
                 </div>
@@ -222,12 +264,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     className={cn(
                         'rounded-lg border p-4 text-left transition-all',
                         typeFilter === 'ALL' && stockFilter === 'ALL'
-                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                            : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
+                            ? 'border-capsula-navy bg-capsula-ivory-alt'
+                            : 'border-capsula-line bg-capsula-ivory hover:border-capsula-line-strong'
                     )}
                 >
-                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.total}</p>
-                    <p className="text-sm text-gray-500">Total Items</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink tabular-nums">{stats.total}</p>
+                    <p className="text-sm text-capsula-ink-muted">Total Items</p>
                 </button>
 
                 <button
@@ -235,12 +277,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     className={cn(
                         'rounded-lg border p-4 text-left transition-all',
                         typeFilter === 'RAW_MATERIAL'
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
+                            ? 'border-capsula-navy bg-capsula-ivory-alt'
+                            : 'border-capsula-line bg-capsula-ivory hover:border-capsula-line-strong'
                     )}
                 >
-                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.rawMaterials}</p>
-                    <p className="text-sm text-gray-500">Insumos</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink tabular-nums">{stats.rawMaterials}</p>
+                    <p className="text-sm text-capsula-ink-muted">Insumos</p>
                 </button>
 
                 <button
@@ -248,12 +290,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     className={cn(
                         'rounded-lg border p-4 text-left transition-all',
                         typeFilter === 'SUB_RECIPE'
-                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                            : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
+                            ? 'border-capsula-navy bg-capsula-ivory-alt'
+                            : 'border-capsula-line bg-capsula-ivory hover:border-capsula-line-strong'
                     )}
                 >
-                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.subRecipes}</p>
-                    <p className="text-sm text-gray-500">Sub-recetas</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink tabular-nums">{stats.subRecipes}</p>
+                    <p className="text-sm text-capsula-ink-muted">Sub-recetas</p>
                 </button>
 
                 <button
@@ -261,12 +303,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     className={cn(
                         'rounded-lg border p-4 text-left transition-all',
                         typeFilter === 'FINISHED_GOOD'
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                            : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
+                            ? 'border-capsula-navy bg-capsula-ivory-alt'
+                            : 'border-capsula-line bg-capsula-ivory hover:border-capsula-line-strong'
                     )}
                 >
-                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.finished}</p>
-                    <p className="text-sm text-gray-500">Productos</p>
+                    <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink tabular-nums">{stats.finished}</p>
+                    <p className="text-sm text-capsula-ink-muted">Productos</p>
                 </button>
 
                 <button
@@ -274,37 +316,37 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     className={cn(
                         'rounded-lg border p-4 text-left transition-all',
                         stockFilter === 'LOW'
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                            : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800'
+                            ? 'border-capsula-coral bg-capsula-coral/10'
+                            : 'border-capsula-line bg-capsula-ivory hover:border-capsula-line-strong'
                     )}
                 >
-                    <p className="font-semibold text-2xl tracking-[-0.02em] text-red-600 dark:text-red-400">{stats.lowStock}</p>
-                    <p className="text-sm text-gray-500">Stock Bajo</p>
+                    <p className="font-semibold text-2xl tracking-[-0.02em] text-capsula-coral tabular-nums">{stats.lowStock}</p>
+                    <p className="text-sm text-capsula-ink-muted">Stock Bajo</p>
                 </button>
             </div>
 
-            {/* Search and Filters */}
+            {/* Search */}
             <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></span>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Buscar por nombre, SKU o categoría..."
-                        className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                        className="pos-input w-full pl-10"
                     />
                 </div>
             </div>
 
             {/* Table */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
                 <div className="overflow-x-auto max-h-[70vh]">
                     <table className="w-full relative">
                         <thead className="sticky top-0 z-10 shadow-sm">
-                            <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                            <tr className="border-b border-capsula-line bg-capsula-ivory-alt">
                                 <th
-                                    className="group cursor-pointer px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                                    className="group cursor-pointer px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
                                     onClick={() => handleSort('name')}
                                 >
                                     <div className="flex items-center">
@@ -312,17 +354,17 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                     </div>
                                 </th>
                                 <th
-                                    className="group cursor-pointer px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                                    className="group cursor-pointer px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
                                     onClick={() => handleSort('type')}
                                 >
                                     <div className="flex items-center">
                                         Tipo <SortIcon columnKey="type" />
                                     </div>
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="group flex cursor-pointer items-center hover:text-gray-700 dark:hover:text-gray-300"
+                                            className="group flex cursor-pointer items-center hover:text-capsula-ink"
                                             onClick={() => handleSort('category')}
                                         >
                                             Categoría <SortIcon columnKey="category" />
@@ -330,7 +372,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                         <select
                                             value={categoryFilter}
                                             onChange={(e) => setCategoryFilter(e.target.value)}
-                                            className="ml-1 rounded border-gray-200 py-0.5 px-1 text-xs font-normal text-gray-600 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                                            className="ml-1 rounded border border-capsula-line bg-capsula-ivory px-1 py-0.5 text-xs font-normal text-capsula-ink-soft focus:border-capsula-navy focus:outline-none"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <option value="ALL">Todas</option>
@@ -339,118 +381,111 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                     </div>
                                 </th>
                                 <th
-                                    className="group cursor-pointer px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                                    className="group cursor-pointer px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
                                     onClick={() => handleSort('currentStock')}
                                 >
                                     <div className="flex items-center justify-end">
                                         {selectedArea ? 'Stock Local' : 'Stock Global'} <SortIcon columnKey="currentStock" />
                                     </div>
                                 </th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     Estado
                                 </th>
                                 {showCosts && (
-                                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                         Costo/Unidad
                                     </th>
                                 )}
-                                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     Acciones
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {filteredItems.map((item) => {
-                                // CALCULAR STOCK A MOSTRAR
+                        <tbody className="divide-y divide-capsula-line">
+                            {paged.items.map((item) => {
                                 const displayStock = selectedArea
                                     ? (item.stockByArea?.find((s: any) => s.areaId === selectedArea)?.quantity || 0)
                                     : item.currentStock;
 
                                 const stockStatus = getStockStatus(displayStock, item.minimumStock, item.reorderPoint);
+                                const TypeIcon = TYPE_META[item.type as InventoryItemType]?.Icon ?? Package;
+                                const typeLabel = TYPE_META[item.type as InventoryItemType]?.label ?? item.type;
+                                const tone = (stockStatus.status as 'critical' | 'warning' | 'ok') ?? 'ok';
+
                                 return (
-                                    <tr key={item.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <tr key={item.id} className="transition-colors hover:bg-capsula-ivory-surface">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-lg dark:bg-gray-700">
-                                                    {item.type === 'RAW_MATERIAL' ? '📦' :
-                                                        item.type === 'SUB_RECIPE' ? '🧀' : '🍽️'}
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-capsula-ivory-alt text-capsula-ink-soft">
+                                                    <TypeIcon className="h-4 w-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-gray-900 dark:text-white">
-                                                        {item.name}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">{item.sku}</p>
+                                                    <p className="font-medium text-capsula-ink">{item.name}</p>
+                                                    <p className="text-xs text-capsula-ink-muted font-mono">{item.sku}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={cn(
-                                                'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
-                                                item.type === 'RAW_MATERIAL'
-                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                                    : item.type === 'SUB_RECIPE'
-                                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                            )}>
-                                                {item.type === 'RAW_MATERIAL' ? 'Insumo' :
-                                                    item.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto'}
+                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-capsula-ivory-alt px-2.5 py-0.5 text-xs font-medium text-capsula-ink-soft">
+                                                <TypeIcon className="h-3 w-3" />
+                                                {typeLabel}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-6 py-4 text-sm text-capsula-ink-muted">
                                             {item.category || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div>
                                                 <span className={cn(
-                                                    "font-mono text-sm font-semibold",
-                                                    displayStock === 0 ? "text-gray-400" : "text-gray-900 dark:text-white"
+                                                    "font-mono text-sm font-semibold tabular-nums",
+                                                    displayStock === 0 ? "text-capsula-ink-faint" : "text-capsula-ink"
                                                 )}>
                                                     {formatNumber(displayStock)}
                                                 </span>
-                                                <span className="ml-1 text-xs text-gray-500">{item.baseUnit}</span>
+                                                <span className="ml-1 text-xs text-capsula-ink-muted">{item.baseUnit}</span>
                                             </div>
-                                            <p className="text-xs text-gray-400">
+                                            <p className="text-xs text-capsula-ink-faint">
                                                 Mín: {formatNumber(item.minimumStock)}
                                             </p>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`alert-badge ${stockStatus.status === 'critical' ? 'alert-badge-critical' :
-                                                stockStatus.status === 'warning' ? 'alert-badge-warning' :
-                                                    'alert-badge-success'
-                                                }`}>
-                                                {stockStatus.status === 'critical' && '🔴 '}
-                                                {stockStatus.status === 'warning' && '🟡 '}
-                                                {stockStatus.status === 'ok' && '🟢 '}
+                                            <span className={cn(
+                                                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                                STATUS_TONE[tone]
+                                            )}>
+                                                <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_DOT[tone])} />
                                                 {stockStatus.label}
                                             </span>
                                         </td>
                                         {showCosts && (
-                                            <td className="px-6 py-4 text-right font-mono text-sm text-gray-900 dark:text-white">
+                                            <td className="px-6 py-4 text-right font-mono text-sm text-capsula-ink tabular-nums">
                                                 {item.costPerUnit ? formatCurrency(item.costPerUnit) : '-'}
                                             </td>
                                         )}
                                         <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => setEditingItem(item)}
-                                                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-gray-700"
-                                                title="Editar ítem"
-                                            >
-                                                ✏️
-                                            </button>
-                                            {hasRole(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER']) && (
+                                            <div className="inline-flex items-center gap-1">
                                                 <button
-                                                    onClick={() => handleDelete(item)}
-                                                    disabled={isDeleting === item.id}
-                                                    className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 disabled:opacity-50"
-                                                    title="Eliminar ítem (Solo Gerentes)"
+                                                    onClick={() => setEditingItem(item)}
+                                                    className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink"
+                                                    title="Editar ítem"
                                                 >
-                                                    {isDeleting === item.id ? (
-                                                        <span className="animate-spin">⏳</span>
-                                                    ) : (
-                                                        <Trash2 className="h-4 w-4" />
-                                                    )}
+                                                    <Pencil className="h-4 w-4" />
                                                 </button>
-                                            )}
+                                                {hasRole(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER']) && (
+                                                    <button
+                                                        onClick={() => handleDelete(item)}
+                                                        disabled={isDeleting === item.id}
+                                                        className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral disabled:opacity-50"
+                                                        title="Eliminar ítem (Solo Gerentes)"
+                                                    >
+                                                        {isDeleting === item.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -461,13 +496,47 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
                 {filteredItems.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <span className="text-4xl"></span>
-                        <p className="mt-2 font-medium text-gray-900 dark:text-white">
+                        <Package className="h-10 w-10 text-capsula-ink-faint" />
+                        <p className="mt-2 font-medium text-capsula-ink">
                             No se encontraron items
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-capsula-ink-muted">
                             Intenta con otros filtros
                         </p>
+                    </div>
+                )}
+
+                {/* Paginador (oculto si todo cabe en una página) */}
+                {paged.totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-3 border-t border-capsula-line bg-capsula-ivory-alt px-4 py-3 text-sm">
+                        <p className="text-capsula-ink-muted tabular-nums">
+                            Mostrando <span className="font-medium text-capsula-ink">{(paged.page - 1) * paged.pageSize + 1}</span>
+                            {' – '}
+                            <span className="font-medium text-capsula-ink">{Math.min(paged.page * paged.pageSize, paged.total)}</span>
+                            {' de '}
+                            <span className="font-medium text-capsula-ink">{paged.total}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={paged.page <= 1}
+                                className="inline-flex items-center gap-1 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-1.5 text-xs font-medium text-capsula-ink-soft transition-colors hover:bg-capsula-ivory-surface disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Página anterior"
+                            >
+                                <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                            </button>
+                            <span className="text-xs font-medium text-capsula-ink tabular-nums">
+                                Pág. {paged.page} / {paged.totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(paged.totalPages, p + 1))}
+                                disabled={paged.page >= paged.totalPages}
+                                className="inline-flex items-center gap-1 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-1.5 text-xs font-medium text-capsula-ink-soft transition-colors hover:bg-capsula-ivory-surface disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Página siguiente"
+                            >
+                                Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

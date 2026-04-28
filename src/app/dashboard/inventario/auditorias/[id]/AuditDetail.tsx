@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import { Printer, Ban, Check, Loader2 } from 'lucide-react';
 import { updateAuditItemAction, approveAuditAction, voidAuditAction } from '@/app/actions/audit.actions';
 import { cn, formatNumber } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -30,10 +31,16 @@ interface Audit {
     notes?: string | null;
 }
 
+const STATUS_TONE: Record<string, string> = {
+    DRAFT: 'bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]',
+    APPROVED: 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]',
+    REJECTED: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]',
+    VOIDED: 'bg-capsula-ivory-alt text-capsula-ink-muted',
+};
+
 export function AuditDetail({ audit }: { audit: Audit }) {
     const router = useRouter();
-    const { user } = useAuthStore();
-    const userId = user?.id || 'unknown';
+    useAuthStore();
     const [isApproving, setIsApproving] = useState(false);
     const [items, setItems] = useState(audit.items);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -54,7 +61,6 @@ export function AuditDetail({ audit }: { audit: Audit }) {
             return;
         }
 
-        // Optimistic update
         setItems(items.map(i => i.id === id ? { ...i, countedStock: val, difference: val - i.systemStock } : i));
         setEditingId(null);
 
@@ -83,7 +89,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
     };
 
     const handleVoid = async () => {
-        if (!confirm('⚠️ ¿Estás seguro de ANULAR esta auditoría?\n\nEsto revertirá todos los movimientos de stock generados.\nEsta acción no se puede deshacer.')) return;
+        if (!confirm('¿Estás seguro de ANULAR esta auditoría?\n\nEsto revertirá todos los movimientos de stock generados.\nEsta acción no se puede deshacer.')) return;
 
         const res = await voidAuditAction(audit.id);
         if (res.success) {
@@ -101,42 +107,41 @@ export function AuditDetail({ audit }: { audit: Audit }) {
     return (
         <div className="space-y-6">
             {/* Header / Actions - Hidden on Print */}
-            <div className="flex flex-col justify-between gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 print:hidden sm:flex-row sm:items-center">
+            <div className="flex flex-col justify-between gap-4 rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm print:hidden sm:flex-row sm:items-center">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{audit.name || 'Auditoría sin nombre'}</h1>
+                        <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">
+                            {audit.name || 'Auditoría sin nombre'}
+                        </h1>
                         <span className={cn(
                             "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                            audit.status === 'DRAFT' ? "bg-yellow-100 text-yellow-800" :
-                                audit.status === 'APPROVED' ? "bg-green-100 text-green-800" :
-                                    audit.status === 'VOIDED' ? "bg-gray-100 text-gray-800" :
-                                        "bg-red-100 text-red-800"
+                            STATUS_TONE[audit.status] ?? STATUS_TONE.VOIDED,
                         )}>
                             {audit.status}
                         </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-capsula-ink-muted">
                         Creado por {audit.createdBy.firstName} el {format(new Date(audit.createdAt), 'dd/MM/yyyy HH:mm')}
                     </p>
                     {audit.notes && (
-                        <p className="mt-1 text-xs text-gray-400 max-w-md whitespace-pre-wrap">{audit.notes}</p>
+                        <p className="mt-1 max-w-md whitespace-pre-wrap text-xs text-capsula-ink-faint">{audit.notes}</p>
                     )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                        className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm"
                     >
-                        🖨️ Imprimir
+                        <Printer className="h-4 w-4" /> Imprimir
                     </button>
 
                     {audit.status === 'APPROVED' && (
                         <button
                             onClick={handleVoid}
-                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 shadow-sm hover:bg-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
+                            className="inline-flex items-center gap-2 rounded-lg border border-capsula-line bg-capsula-coral/10 px-4 py-2 text-sm font-medium text-capsula-coral transition-colors hover:bg-capsula-coral/20"
                         >
-                            🚫 Anular Auditoría
+                            <Ban className="h-4 w-4" /> Anular Auditoría
                         </button>
                     )}
 
@@ -144,15 +149,19 @@ export function AuditDetail({ audit }: { audit: Audit }) {
                         <button
                             onClick={handleApprove}
                             disabled={isApproving}
-                            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+                            className="pos-btn inline-flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-50"
                         >
-                            {isApproving ? 'Procesando...' : '✅ Aprobar y Ajustar Inventario'}
+                            {isApproving ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</>
+                            ) : (
+                                <><Check className="h-4 w-4" /> Aprobar y Ajustar Inventario</>
+                            )}
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Print Header (Visible only on print) */}
+            {/* Print Header */}
             <div className="hidden print:block mb-8">
                 <h1 className="font-semibold text-2xl tracking-[-0.02em]">Reporte de auditoría de inventario</h1>
                 <p className="text-sm">Ref: {audit.id}</p>
@@ -170,9 +179,9 @@ export function AuditDetail({ audit }: { audit: Audit }) {
             </div>
 
             {/* Content */}
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 print:border-0 print:shadow-none">
+            <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm print:border-0 print:shadow-none">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700/50 print:bg-gray-100">
+                    <thead className="bg-capsula-ivory-alt print:bg-capsula-ivory-alt">
                         <tr>
                             <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Item</th>
                             <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-right">Sistema</th>
@@ -180,14 +189,14 @@ export function AuditDetail({ audit }: { audit: Audit }) {
                             <th className="px-4 py-3 font-semibold text-lg tracking-[-0.01em] text-capsula-ink text-right">Diferencia</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-capsula-line">
                         {items.map((item) => (
                             <tr key={item.id} className="group">
                                 <td className="px-4 py-3">
-                                    <div className="font-medium text-gray-900 dark:text-white">{item.inventoryItem.name}</div>
-                                    <div className="text-xs text-gray-500">{item.inventoryItem.sku}</div>
+                                    <div className="font-medium text-capsula-ink">{item.inventoryItem.name}</div>
+                                    <div className="font-mono text-xs text-capsula-ink-muted">{item.inventoryItem.sku}</div>
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-500">
+                                <td className="px-4 py-3 text-right text-capsula-ink-muted tabular-nums">
                                     {formatNumber(item.systemStock)} {item.inventoryItem.baseUnit}
                                 </td>
                                 <td className="px-4 py-3 text-right">
@@ -199,25 +208,25 @@ export function AuditDetail({ audit }: { audit: Audit }) {
                                             onBlur={() => handleSaveEdit(item.id, item.countedStock)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(item.id, item.countedStock)}
                                             autoFocus
-                                            className="w-24 rounded border border-blue-500 bg-white px-2 py-1 text-right outline-none dark:bg-gray-700"
+                                            className="pos-input w-24 px-2 py-1 text-right tabular-nums"
                                         />
                                     ) : (
                                         <div
                                             onClick={() => handleStartEdit(item)}
                                             className={cn(
-                                                "cursor-pointer rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700",
+                                                "cursor-pointer rounded px-2 py-1 transition-colors hover:bg-capsula-ivory-alt tabular-nums",
                                                 audit.status !== 'DRAFT' && "cursor-default hover:bg-transparent"
                                             )}
                                         >
-                                            <span className="font-bold">{formatNumber(item.countedStock)}</span>
+                                            <span className="font-semibold">{formatNumber(item.countedStock)}</span>
                                         </div>
                                     )}
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                     <span className={cn(
-                                        "font-medium",
-                                        item.difference > 0 ? "text-green-600" :
-                                            item.difference < 0 ? "text-red-600" : "text-gray-400"
+                                        "font-medium tabular-nums",
+                                        item.difference > 0 ? "text-[#2F6B4E] dark:text-[#6FB88F]" :
+                                            item.difference < 0 ? "text-capsula-coral" : "text-capsula-ink-muted"
                                     )}>
                                         {item.difference > 0 ? '+' : ''}{formatNumber(item.difference)}
                                     </span>
@@ -228,7 +237,7 @@ export function AuditDetail({ audit }: { audit: Audit }) {
                 </table>
             </div>
 
-            {/* Footer Signature (Print Only) */}
+            {/* Print signature */}
             <div className="hidden print:flex mt-12 justify-between px-8">
                 <div className="border-t border-black px-8 pt-2 text-center">
                     <p>Contado Por</p>
