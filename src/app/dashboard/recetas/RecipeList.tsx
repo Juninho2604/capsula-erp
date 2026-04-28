@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, cn } from '@/lib/utils';
+import { fuzzySearch } from '@/lib/fuzzy-search';
 import { updateRecipeCostAction } from '@/app/actions/recipe.actions';
 import { toast } from 'react-hot-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     RefreshCcw,
     Soup,
@@ -16,6 +17,7 @@ import {
     UtensilsCrossed,
     Check,
     ArrowRight,
+    Search,
 } from 'lucide-react';
 
 interface Recipe {
@@ -49,6 +51,14 @@ export default function RecipeList({ recipes }: RecipeListProps) {
     const [showCosts, setShowCosts] = useState(false);
     useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Búsqueda fuzzy sobre nombre, categoría y unidad — tolerante a typos
+    // y diacríticos. Si la query es vacía, devuelve todas las recetas.
+    const filteredRecipes = useMemo(
+        () => fuzzySearch(recipes, searchQuery, { keys: ['name', 'category', 'baseUnit'] }),
+        [recipes, searchQuery],
+    );
 
     const handleCalculateCost = async (e: React.MouseEvent, recipe: Recipe) => {
         e.preventDefault();
@@ -75,7 +85,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
         }
     };
 
-    const groupedRecipes = recipes.reduce((acc, recipe) => {
+    const groupedRecipes = filteredRecipes.reduce((acc, recipe) => {
         const cat = recipe.category || 'Sin Categoría';
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(recipe);
@@ -85,7 +95,32 @@ export default function RecipeList({ recipes }: RecipeListProps) {
     const sortedCategories = Object.keys(groupedRecipes).sort();
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
+            {/* Búsqueda fuzzy sobre nombre, categoría o unidad */}
+            <div className="relative max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar receta por nombre, categoría o unidad..."
+                    className="pos-input w-full pl-10"
+                />
+            </div>
+
+            {/* Empty state cuando hay query y nada coincide */}
+            {searchQuery.trim() && filteredRecipes.length === 0 && (
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory py-12 text-center">
+                    <ClipboardList className="mx-auto h-10 w-10 text-capsula-ink-faint" />
+                    <p className="mt-2 font-medium text-capsula-ink">
+                        Ninguna receta coincide con &quot;{searchQuery}&quot;
+                    </p>
+                    <p className="text-sm text-capsula-ink-muted">
+                        Prueba con otro nombre o limpia el filtro
+                    </p>
+                </div>
+            )}
+
             {sortedCategories.map(category => {
                 const CategoryIcon = categoryIcon(category);
                 return (
