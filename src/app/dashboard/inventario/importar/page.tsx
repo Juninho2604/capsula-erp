@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sparkles, Check, Ban, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { createAuditAction } from '@/app/actions/audit.actions';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function ImportPage() {
+    const router = useRouter();
     const { user } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,8 +80,7 @@ export default function ImportPage() {
             setIsProcessing(false);
             if (res.success) {
                 toast.success('Auditoría borrador creada');
-                // Redirect
-                window.location.href = `/dashboard/inventario/auditorias/${res.auditId}`;
+                router.push(`/dashboard/inventario/auditorias/${res.auditId}`);
                 return;
             } else {
                 toast.error(res.message);
