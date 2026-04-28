@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { formatNumber, cn } from '@/lib/utils';
 import {
     getLowStockItemsAction, getAllItemsForPurchaseAction, getAllItemsWithStockConfigAction,
@@ -135,32 +136,54 @@ export default function PurchaseOrderView() {
             supplierId: selectedSupplier || undefined, expectedDate: expectedDate ? new Date(expectedDate) : undefined,
             notes: notes || undefined, items: orderItems.map(item => ({ inventoryItemId: item.inventoryItemId, quantityOrdered: item.quantity, unit: item.unit, unitPrice: item.unitPrice }))
         });
-        if (result.success) { alert(`${result.message}`); setOrderItems([]); setOrderName(''); setSelectedSupplier(''); setExpectedDate(''); setNotes(''); setViewMode('orders'); loadData(); }
-        else alert(`${result.message}`);
+        if (result.success) {
+            toast.success(result.message);
+            setOrderItems([]); setOrderName(''); setSelectedSupplier(''); setExpectedDate(''); setNotes('');
+            setViewMode('orders'); loadData();
+        } else {
+            toast.error(result.message);
+        }
         setIsSubmitting(false);
     }
 
-    async function handleSendOrder(orderId: string) { const r = await sendPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
-    async function handleCancelOrder(orderId: string) { if (!confirm('¿Cancelar esta orden?')) return; const r = await cancelPurchaseOrderAction(orderId); if (r.success) loadData(); alert(r.message); }
-    async function handleExportWhatsApp(orderId: string) { const text = await exportPurchaseOrderTextAction(orderId); if (text) { navigator.clipboard.writeText(text); alert('📋 Orden copiada al portapapeles'); } }
+    async function handleSendOrder(orderId: string) {
+        const r = await sendPurchaseOrderAction(orderId);
+        if (r.success) { loadData(); toast.success(r.message); } else { toast.error(r.message); }
+    }
+    async function handleCancelOrder(orderId: string) {
+        if (!confirm('¿Cancelar esta orden?')) return;
+        const r = await cancelPurchaseOrderAction(orderId);
+        if (r.success) { loadData(); toast.success(r.message); } else { toast.error(r.message); }
+    }
+    async function handleExportWhatsApp(orderId: string) {
+        const text = await exportPurchaseOrderTextAction(orderId);
+        if (text) {
+            navigator.clipboard.writeText(text);
+            toast.success('Orden copiada al portapapeles');
+        }
+    }
 
     async function handleReceiveItems() {
         if (!selectedOrderId || !selectedAreaId) return;
         const items = Object.entries(receiveQuantities).filter(([, qty]) => qty > 0).map(([id, qty]) => ({ purchaseOrderItemId: id, quantityReceived: qty }));
-        if (items.length === 0) { alert('Ingresa cantidades a recibir'); return; }
+        if (items.length === 0) { toast.error('Ingresa cantidades a recibir'); return; }
         setIsSubmitting(true);
         const r = await receivePurchaseOrderItemsAction(selectedOrderId, items, selectedAreaId);
-        alert(r.success ? `${r.message}` : `${r.message}`);
-        if (r.success) { setReceiveQuantities({}); setSelectedOrderId(''); loadData(); setViewMode('orders'); }
+        if (r.success) {
+            toast.success(r.message);
+            setReceiveQuantities({}); setSelectedOrderId(''); loadData(); setViewMode('orders');
+        } else {
+            toast.error(r.message);
+        }
         setIsSubmitting(false);
     }
 
     async function handleCreateReorderAlerts() {
         setIsSubmitting(true);
         const r = await createReorderBroadcastsAction();
-        if (r.created > 0) alert(`${r.created} alerta(s) de reorden enviadas a la campana `);
-        else if (r.skipped > 0) alert(`ℹTodas las alertas ya existen (${r.skipped} en curso). Revisa la campana `);
-        else alert('ℹ️ No hay items bajo punto de reorden en este momento');
+        if (r.created > 0) toast.success(`${r.created} alerta(s) de reorden enviadas a la campana`);
+        else if (r.skipped > 0) toast(`Todas las alertas ya existen (${r.skipped} en curso). Revisa la campana`);
+        else toast('No hay items bajo punto de reorden en este momento');
         setIsSubmitting(false);
     }
 
@@ -168,7 +191,7 @@ export default function PurchaseOrderView() {
         const items: StockConfigItem[] = Object.entries(configEdits).map(([id, vals]) => ({ id, minimumStock: vals.min, reorderPoint: vals.reorder }));
         setIsSubmitting(true);
         const r = await updateStockLevelsAction(items);
-        alert(r.success ? `${r.message}` : `${r.message}`);
+        if (r.success) toast.success(r.message); else toast.error(r.message);
         setIsSubmitting(false);
     }
 
