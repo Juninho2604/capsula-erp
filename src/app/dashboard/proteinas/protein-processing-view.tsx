@@ -1,6 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+    Brush,
+    Soup,
+    Package,
+    Settings,
+    ClipboardList,
+    Plus,
+    Eye,
+    CheckCircle2,
+    Ban,
+    Pencil,
+    RefreshCw,
+    Link2,
+    Droplets,
+    Save,
+    Check,
+    X as XIcon,
+    type LucideIcon,
+} from 'lucide-react';
 import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import {
     getProteinItemsAction,
@@ -22,11 +41,11 @@ import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import ProcessingTemplates from './processing-templates';
 
-const STEP_CONFIG: Record<string, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
-    'LIMPIEZA': { label: 'Limpieza', emoji: '🧹', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
-    'MASERADO': { label: 'Maserado', emoji: '🥘', color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
-    'DISTRIBUCION': { label: 'Distribución', emoji: '📦', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
-    'CUSTOM': { label: 'Personalizado', emoji: '⚙️', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
+const STEP_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: string; bgColor: string; borderColor: string }> = {
+    'LIMPIEZA': { label: 'Limpieza', Icon: Brush as LucideIcon, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
+    'MASERADO': { label: 'Maserado', Icon: Soup as LucideIcon, color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
+    'DISTRIBUCION': { label: 'Distribución', Icon: Package as LucideIcon, color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
+    'CUSTOM': { label: 'Personalizado', Icon: Settings as LucideIcon, color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
 };
 
 interface SubProduct extends SubProductInput {
@@ -96,11 +115,11 @@ export default function ProteinProcessingView() {
                     toast.success(`Plantilla "${template.name}" cargada (${(template as any).processingStep || 'LIMPIEZA'})`);
                     // Auto-detect if this step can gain weight
                     if ((template as any).canGainWeight) {
-                        toast(`⬆En este paso el peso puede AUMENTAR (ej: condimentos)`, { icon: '🥘' });
+                        toast(`↑ En este paso el peso puede AUMENTAR (ej: condimentos)`);
                     }
                 }
                 if (chain.length > 1) {
-                    toast(`Cadena de ${chain.length} pasos disponible para esta proteína`, { icon: '📋' });
+                    toast(`Cadena de ${chain.length} pasos disponible para esta proteína`);
                 }
             });
         } else {
@@ -320,21 +339,17 @@ export default function ProteinProcessingView() {
 
     // Status badges
     function getStatusBadge(status: string) {
-        const styles: Record<string, string> = {
-            'DRAFT': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-blue-100 text-blue-700',
-            'COMPLETED': 'bg-emerald-100 text-emerald-700',
-            'CANCELLED': 'bg-red-100 text-red-700'
+        const meta: Record<string, { tone: string; Icon: LucideIcon; label: string }> = {
+            DRAFT: { tone: 'bg-capsula-ivory-alt text-capsula-ink-soft', Icon: Pencil, label: 'Borrador' },
+            IN_PROGRESS: { tone: 'bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]', Icon: RefreshCw, label: 'En Proceso' },
+            COMPLETED: { tone: 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]', Icon: CheckCircle2, label: 'Completado' },
+            CANCELLED: { tone: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]', Icon: Ban, label: 'Cancelado' },
         };
-        const labels: Record<string, string> = {
-            'DRAFT': '📝 Borrador',
-            'IN_PROGRESS': '🔄 En Proceso',
-            'COMPLETED': '✅ Completado',
-            'CANCELLED': '❌ Cancelado'
-        };
+        const m = meta[status] || meta.DRAFT;
+        const SIcon = m.Icon;
         return (
-            <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', styles[status] || 'bg-gray-100')}>
-                {labels[status] || status}
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium', m.tone)}>
+                <SIcon className="h-3 w-3" /> {m.label}
             </span>
         );
     }
@@ -361,39 +376,39 @@ export default function ProteinProcessingView() {
                     </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => { setViewMode('list'); setSelectedProcessing(null); }}
                         className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'list'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >
-                        📋 Ver Registros
+                        <ClipboardList className="h-4 w-4" /> Ver Registros
                     </button>
                     <button
                         onClick={() => { setViewMode('create'); resetForm(); }}
                         className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'create'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >
-                        ➕ Nuevo Procesamiento
+                        <Plus className="h-4 w-4" /> Nuevo Procesamiento
                     </button>
                     <button
                         onClick={() => setViewMode('templates')}
                         className={cn(
-                            'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'templates'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >
-                        📋 Plantillas
+                        <ClipboardList className="h-4 w-4" /> Plantillas
                     </button>
                 </div>
             </div>
@@ -485,29 +500,32 @@ export default function ProteinProcessingView() {
                                                 {getStatusBadge(p.status)}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className="flex justify-center gap-2">
+                                                <div className="flex justify-center gap-1">
                                                     <button
                                                         onClick={() => viewDetail(p.id)}
-                                                        className="text-blue-500 hover:text-blue-700 text-sm"
+                                                        className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink"
                                                         title="Ver detalle"
+                                                        aria-label="Ver detalle"
                                                     >
-                                                        👁️
+                                                        <Eye className="h-4 w-4" />
                                                     </button>
                                                     {p.status === 'DRAFT' && (
                                                         <>
                                                             <button
                                                                 onClick={() => handleComplete(p.id)}
-                                                                className="text-emerald-500 hover:text-emerald-700 text-sm"
+                                                                className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-[#E5EDE7] hover:text-[#2F6B4E] dark:hover:bg-[#1E3B2C] dark:hover:text-[#6FB88F]"
                                                                 title="Completar"
+                                                                aria-label="Completar"
                                                             >
-                                                                ✅
+                                                                <CheckCircle2 className="h-4 w-4" />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleCancel(p.id)}
-                                                                className="text-red-500 hover:text-red-700 text-sm"
+                                                                className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
                                                                 title="Cancelar"
+                                                                aria-label="Cancelar"
                                                             >
-                                                                ❌
+                                                                <Ban className="h-4 w-4" />
                                                             </button>
                                                         </>
                                                     )}
@@ -561,8 +579,8 @@ export default function ProteinProcessingView() {
                                                         : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                                                 )}
                                             >
-                                                <span className="text-lg">{config.emoji}</span>
-                                                <span className="block mt-0.5">{config.label}</span>
+                                                {(() => { const StepIcon = config.Icon; return <StepIcon className="mx-auto h-5 w-5" />; })()}
+                                                <span className="mt-0.5 block">{config.label}</span>
                                                 {hasTemplate && (
                                                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Tiene plantilla"></span>
                                                 )}
@@ -582,10 +600,10 @@ export default function ProteinProcessingView() {
                                                     <span key={t.id} className="flex items-center gap-0.5">
                                                         {i > 0 && <span className="text-gray-300">→</span>}
                                                         <span className={cn(
-                                                            'rounded px-1.5 py-0.5 font-medium',
+                                                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium',
                                                             t.processingStep === processingStep ? `${sc.bgColor} ${sc.color}` : 'text-gray-400'
                                                         )}>
-                                                            {sc.emoji} {sc.label}
+                                                            <sc.Icon className="h-3 w-3" /> {sc.label}
                                                         </span>
                                                     </span>
                                                 );
@@ -597,8 +615,8 @@ export default function ProteinProcessingView() {
                             {/* Encadenar con procesamiento previo (P5) */}
                             {processingStep !== 'LIMPIEZA' && completedProcessings.length > 0 && (
                                 <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 dark:border-purple-800 dark:bg-purple-900/10">
-                                    <label className="block text-sm font-medium text-purple-800 dark:text-purple-300 mb-1">
-                                        🔗 Encadenar con procesamiento anterior
+                                    <label className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-purple-800 dark:text-purple-300">
+                                        <Link2 className="h-4 w-4" /> Encadenar con procesamiento anterior
                                     </label>
                                     <select
                                         value={parentProcessingId}
@@ -736,12 +754,13 @@ export default function ProteinProcessingView() {
                                 )}>
                                     {drainedWeight > frozenWeight ? (
                                         <span className="text-purple-700">
-                                            ⬆️ Ganancia de peso: <strong>{formatNumber(drainedWeight - frozenWeight)} kg</strong> ({formatNumber(((drainedWeight - frozenWeight) / frozenWeight) * 100)}%)
-                                            <span className="block text-xs mt-0.5 opacity-70">Se agregaron condimentos/marinado</span>
+                                            ↑ Ganancia de peso: <strong>{formatNumber(drainedWeight - frozenWeight)} kg</strong> ({formatNumber(((drainedWeight - frozenWeight) / frozenWeight) * 100)}%)
+                                            <span className="mt-0.5 block text-xs opacity-70">Se agregaron condimentos/marinado</span>
                                         </span>
                                     ) : (
-                                        <span className="text-blue-700">
-                                            💧 Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
+                                        <span className="inline-flex items-center gap-1.5 text-blue-700">
+                                            <Droplets className="h-3.5 w-3.5" />
+                                            Pérdida por escurrido: <strong>{formatNumber(frozenWeight - drainedWeight)} kg</strong> ({formatNumber(drainLoss)}%)
                                         </span>
                                     )}
                                 </div>
@@ -832,16 +851,19 @@ export default function ProteinProcessingView() {
                                                 STEP_CONFIG[activeTemplate.processingStep]?.color || 'text-amber-700'
                                             )}>
                                                 <div className="flex items-center gap-1.5">
-                                                    {STEP_CONFIG[activeTemplate.processingStep]?.emoji || '📋'}
+                                                    {(() => {
+                                                        const TplIcon = STEP_CONFIG[activeTemplate.processingStep]?.Icon ?? ClipboardList;
+                                                        return <TplIcon className="h-3.5 w-3.5" />;
+                                                    })()}
                                                     <strong>{activeTemplate.name}</strong>
                                                     <span className="opacity-70">({activeTemplate.allowedOutputs.length} subproductos)</span>
                                                     {activeTemplate.canGainWeight && (
-                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">⬆Peso puede aumentar</span>
+                                                        <span className="ml-1 rounded-full bg-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">↑ Peso puede aumentar</span>
                                                     )}
                                                 </div>
                                                 {activeTemplate.allowedOutputs.some((o: any) => o.isIntermediate) && (
-                                                    <p className="mt-1 text-[10px] opacity-70">
-                                                        🔗 Algunos productos son intermedios y pasarán al siguiente paso de la cadena.
+                                                    <p className="mt-1 inline-flex items-center gap-1 text-[10px] opacity-70">
+                                                        <Link2 className="h-3 w-3" /> Algunos productos son intermedios y pasarán al siguiente paso de la cadena.
                                                     </p>
                                                 )}
                                             </div>
@@ -932,9 +954,10 @@ export default function ProteinProcessingView() {
                                                     <span className="text-xs text-gray-500">({sp.units} pza)</span>
                                                     <button
                                                         onClick={() => removeSubProduct(sp.id)}
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="rounded p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                        aria-label={`Quitar ${sp.name}`}
                                                     >
-                                                        ✕
+                                                        <XIcon className="h-3.5 w-3.5" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -970,9 +993,9 @@ export default function ProteinProcessingView() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={!sourceItemId || frozenWeight <= 0 || subProducts.length === 0 || isSubmitting}
-                                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+                                className="pos-btn inline-flex w-full items-center justify-center gap-2 py-3 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {isSubmitting ? 'Guardando...' : '💾 Guardar Procesamiento'}
+                                <Save className="h-4 w-4" /> {isSubmitting ? 'Guardando…' : 'Guardar Procesamiento'}
                             </button>
                         </div>
                     </div>
@@ -1074,18 +1097,18 @@ export default function ProteinProcessingView() {
 
                     {/* Acciones */}
                     {selectedProcessing.status === 'DRAFT' && (
-                        <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
+                        <div className="flex justify-end gap-3 border-t border-capsula-line px-6 py-4">
                             <button
                                 onClick={() => handleCancel(selectedProcessing.id)}
-                                className="px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                                className="inline-flex items-center gap-2 rounded-lg border border-capsula-line bg-capsula-coral/10 px-4 py-2 font-medium text-capsula-coral transition-colors hover:bg-capsula-coral/20"
                             >
-                                ❌ Cancelar
+                                <Ban className="h-4 w-4" /> Cancelar
                             </button>
                             <button
                                 onClick={() => handleComplete(selectedProcessing.id)}
-                                className="px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600"
+                                className="pos-btn inline-flex items-center gap-2 px-4 py-2"
                             >
-                                ✅ Completar y Actualizar Inventario
+                                <CheckCircle2 className="h-4 w-4" /> Completar y Actualizar Inventario
                             </button>
                         </div>
                     )}
