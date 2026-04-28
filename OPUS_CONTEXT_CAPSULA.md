@@ -4336,6 +4336,68 @@ Antes de avanzar a Fase 2 (refactor N+1, FK MenuItem.recipe, outbox descargos, e
 
 ---
 
+### 18.40 Fase 2 micro — Modelos additive-only sin auto-aplicación (2026-04-28)
+
+> Después de cerrar Fase 1 (28 commits + Sub-Fase 1.F + Fase 3.1 imprimible), se introducen los **modelos** de las dos primeras migraciones approved sin aplicarlas automáticamente. La aplicación física a la BD es **manual y controlada** vía script.
+
+#### Por qué no auto-aplicar
+
+El proyecto **no tiene `prisma/migrations/migration_lock.toml`** ni la tabla `_prisma_migrations` en la BD productiva (probablemente se usó `prisma db push` históricamente). Si `prisma migrate deploy` se ejecutara, intentaría aplicar las 27 migraciones existentes desde cero y fallaría porque las tablas ya existen.
+
+Decisión: **NO modificar `render.yaml`**. Se mantiene `buildCommand: npm install && npx prisma generate && npm run build` (sin `migrate deploy`).
+
+#### Qué entra en `schema.prisma`
+
+Los dos modelos nuevos (`InventoryDeductionRetry`, `SupplierItemPriceHistory`) + relaciones inversas en `User`, `SalesOrder`, `Supplier`, `InventoryItem`, `PurchaseOrder`. El cliente Prisma generado tiene los tipos disponibles aunque las tablas no existan todavía en BD.
+
+**Restricción operativa**: hasta que se apliquen las migraciones, **no usar estas relaciones en queries de runtime**. Cualquier `prisma.inventoryDeductionRetry.*` o `include: { deductionRetries: true }` fallaría con "table does not exist". Por eso los servicios (cron worker outbox, hook en `receivePurchaseOrderItems`) entran en commits posteriores, después de aplicar.
+
+#### Procedimiento de aplicación
+
+Cuando se decida aplicar, ejecutar desde un entorno con `DATABASE_URL` válida (Render shell o Cloud SQL Proxy):
+
+```bash
+# 1. Asegurar que Render tiene snapshot reciente del PostgreSQL (panel de Render)
+# 2. Aplicar las migraciones additive en transacción (idempotente)
+DATABASE_URL=... npx tsx scripts/apply-phase2-migrations.ts
+
+# 3. Verificar que las tablas e índices quedaron creados
+DATABASE_URL=... npx tsx scripts/verify-phase2-migrations.ts
+```
+
+El script `apply-phase2-migrations.ts` verifica primero si cada tabla existe; si ya existe, la salta. Si no, ejecuta el SQL en transacción todo-o-nada. Soporta `--dry-run` para reportar qué haría sin aplicar.
+
+El script `verify-phase2-migrations.ts` confirma:
+- Que ambas tablas existen.
+- Que los 4 + 5 índices fueron creados.
+- Que el cliente Prisma puede contar registros sin error.
+
+#### Archivos relevantes
+
+| Archivo | Propósito |
+|---|---|
+| `prisma/schema.prisma` (líneas finales) | Modelos `InventoryDeductionRetry` y `SupplierItemPriceHistory` + relaciones inversas |
+| `prisma/migrations-proposed/001_inventory_deduction_retry.sql` | SQL canónico de la outbox (revisable) |
+| `prisma/migrations-proposed/002_supplier_item_price_history.sql` | SQL canónico del histórico de precios |
+| `scripts/apply-phase2-migrations.ts` | Aplicador idempotente y transaccional |
+| `scripts/verify-phase2-migrations.ts` | Smoke test post-aplicación |
+
+#### Garantías
+
+- El SQL es **strict additive**: solo `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` + `ALTER TABLE … ADD CONSTRAINT`. Cero `DROP`, `TRUNCATE`, `ALTER COLUMN`.
+- Cero pérdida de datos posible: las tablas son nuevas, no tocan las existentes.
+- Si el cliente prefiere revisar el SQL más línea por línea antes de aplicar, puede hacerlo en `prisma/migrations-proposed/`.
+- Render mantiene snapshots automáticos diarios del PostgreSQL como safety net adicional.
+
+#### Próximos pasos (después de aplicar)
+
+1. Conectar `registerInventoryForCartItems` (en `pos.actions.ts`) al outbox: cuando falla, en lugar de solo dejar el flag en `SalesOrder.notes`, también insertar fila en `InventoryDeductionRetry`.
+2. Implementar cron/worker que consuma `InventoryDeductionRetry WHERE status='PENDING' AND nextRetryAt <= NOW()`.
+3. Extender `receivePurchaseOrderItemsAction` para escribir en `SupplierItemPriceHistory` cuando el `unitPrice` cambia.
+4. Vista `/dashboard/compras/proveedor/[id]` con el histórico graficado.
+
+---
+
 ## 20. Correcciones de Agregación de Ventas (2026-04-24)
 
 Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.

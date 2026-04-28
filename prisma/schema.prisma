@@ -90,6 +90,10 @@ model User {
   createdAccountsPayable  AccountPayable[]  @relation("AccountPayableCreator")
   createdAccountPayments  AccountPayment[]  @relation("AccountPaymentCreator")
 
+  // Fase 2 — propuestas 001/002 (audit trail)
+  cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
+  registeredSupplierPrices  SupplierItemPriceHistory[] @relation("SupplierPriceRegisteredBy")
+
   @@index([email])
   @@index([role])
 }
@@ -209,6 +213,9 @@ model InventoryItem {
 
   // Conteos Físicos (InventoryCycle)
   cycleSnapshots     InventoryCycleSnapshot[]
+
+  // Histórico de precios por proveedor (Fase 2 — propuesta 002)
+  supplierPriceHistory SupplierItemPriceHistory[]
 
   @@index([sku])
   @@index([type])
@@ -888,6 +895,8 @@ model SalesOrder {
   paymentSplits      PaymentSplit[]
   orderPayments      SalesOrderPayment[]
   gameSessions       GameSession[]       @relation("GameSessions")
+  // Outbox de descargo de inventario (Fase 2 — propuesta 001)
+  deductionRetries   InventoryDeductionRetry[]
 
   // Soft Delete
   deletedAt       DateTime?
@@ -1162,6 +1171,8 @@ model Supplier {
   proteinProcessings ProteinProcessing[]
   // Módulo Financiero
   accountsPayable AccountPayable[]
+  // Histórico de precios (Fase 2 — propuesta 002)
+  priceHistory   SupplierItemPriceHistory[]
 
   @@index([name])
 }
@@ -1221,6 +1232,8 @@ model PurchaseOrder {
   // Items de la orden
   items           PurchaseOrderItem[]
   accountsPayable AccountPayable[]
+  // Fase 2 — propuesta 002: cambios de precio que dispararon esta OC
+  triggeredPriceChanges SupplierItemPriceHistory[]
 
   // Soft Delete
   deletedAt       DateTime?
@@ -2124,4 +2137,74 @@ model InventoryCycleSnapshot {
   @@unique([cycleId, inventoryItemId, areaId])
   @@index([cycleId])
   @@index([inventoryItemId])
+}
+
+// ============================================================================
+// FASE 2 — Modelos additive-only (Sub-Fase 2 micro, 2026-04-28)
+// ----------------------------------------------------------------------------
+// Estos modelos NO se han aplicado a la BD productiva todavía. El schema los
+// declara para que el cliente Prisma generado tenga tipos disponibles y los
+// servicios futuros puedan usarlos. La aplicación física de las tablas se
+// hace con scripts/apply-phase2-migrations.ts ejecutado manualmente.
+//
+// Hasta que se apliquen, NO usar estas relaciones en queries de runtime
+// (los include / where fallarían porque las tablas no existen).
+// ============================================================================
+
+/// Outbox para reintentar el descargo de inventario fallido (Fase 2 propuesta 001).
+/// Ver prisma/migrations-proposed/001_inventory_deduction_retry.sql
+model InventoryDeductionRetry {
+  id             String       @id @default(cuid())
+  salesOrderId   String?
+  salesOrder     SalesOrder?  @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+
+  payload        String       // JSON serializado del cart snapshot
+  status         String       @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | FAILED | CANCELLED
+  attempts       Int          @default(0)
+  maxAttempts    Int          @default(5)
+  lastError      String?
+  nextRetryAt    DateTime
+  lastAttemptAt  DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelledById  String?
+  cancelledBy    User?        @relation("DeductionRetryCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status])
+  @@index([nextRetryAt])
+  @@index([status, nextRetryAt])
+  @@index([salesOrderId])
+}
+
+/// Histórico de precios por par (Supplier, InventoryItem) — Fase 2 propuesta 002.
+/// Ver prisma/migrations-proposed/002_supplier_item_price_history.sql
+/// El índice único parcial WHERE effectiveTo IS NULL se crea en la migración SQL
+/// (Prisma no soporta filtered unique indexes nativamente todavía).
+model SupplierItemPriceHistory {
+  id              String         @id @default(cuid())
+  supplierId      String
+  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  unitPrice       Float
+  currency        String         @default("USD")
+  effectiveFrom   DateTime       @default(now())
+  effectiveTo     DateTime?
+
+  registeredFromPurchaseOrderId String?
+  registeredFromPurchaseOrder   PurchaseOrder? @relation(fields: [registeredFromPurchaseOrderId], references: [id], onDelete: SetNull)
+
+  registeredById  String?
+  registeredBy    User?          @relation("SupplierPriceRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  @@index([supplierId])
+  @@index([inventoryItemId])
+  @@index([effectiveFrom])
+  @@index([supplierId, inventoryItemId])
 }
