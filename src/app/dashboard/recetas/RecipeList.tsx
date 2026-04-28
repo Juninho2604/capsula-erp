@@ -25,7 +25,10 @@ interface Recipe {
     type: string;
     category: string;
     baseUnit: string;
+    outputQuantity?: number;
+    outputUnit?: string;
     costPerUnit: number;
+    costPerServing?: number;
     isApproved: boolean;
     createdBy: string;
 }
@@ -150,7 +153,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
 
                                         {/* Cost (if visible) */}
                                         {showCosts && (
-                                            <div className="mb-4 rounded-lg bg-capsula-navy-soft p-3">
+                                            <div className="mb-4 rounded-lg bg-capsula-navy-soft p-3 space-y-1">
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-sm text-capsula-ink-soft">
                                                         Costo unitario:
@@ -169,6 +172,17 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                                                         </button>
                                                     </div>
                                                 </div>
+                                                {/* costPerServing: solo visible cuando rinde > 1 unidad y es distinto del costPerUnit */}
+                                                {recipe.outputQuantity && recipe.outputQuantity > 1 && recipe.costPerServing != null && (
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-capsula-ink-muted">
+                                                            Por {recipe.outputUnit ?? recipe.baseUnit} (rinde {recipe.outputQuantity}):
+                                                        </span>
+                                                        <span className="font-mono tabular-nums text-capsula-ink-soft">
+                                                            {formatCurrency(recipe.costPerServing)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 

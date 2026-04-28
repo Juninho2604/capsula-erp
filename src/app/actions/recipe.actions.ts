@@ -62,7 +62,11 @@ export async function getRecipesAction() {
         });
 
         return recipes.map(recipe => {
-            const currentCost = recipe.outputItem.costHistory[0]?.costPerUnit || 0;
+            const currentCost = Number(recipe.outputItem.costHistory[0]?.costPerUnit || 0);
+            const outputQuantity = Number(recipe.outputQuantity);
+            // costPerServing: costo derivado por unidad de salida real (porción / pieza / kg)
+            // Si outputQuantity es 0 o falta, cae a costPerUnit como fallback razonable.
+            const costPerServing = outputQuantity > 0 ? currentCost / outputQuantity : currentCost;
 
             return {
                 id: recipe.id,
@@ -71,10 +75,11 @@ export async function getRecipesAction() {
                 type: recipe.outputItem.type, // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
                 category: recipe.outputItem.category || 'GENERAL',
                 baseUnit: recipe.outputItem.baseUnit,
-                outputQuantity: Number(recipe.outputQuantity),
+                outputQuantity,
                 outputUnit: recipe.outputUnit,
                 yieldPercentage: Number(recipe.yieldPercentage),
-                costPerUnit: Number(currentCost),
+                costPerUnit: currentCost,
+                costPerServing,
                 isApproved: recipe.isApproved,
                 createdBy: 'Sistema',
                 updatedAt: recipe.updatedAt,
