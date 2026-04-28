@@ -17,11 +17,14 @@ import {
     ChevronsUpDown,
     ChevronUp,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Trash2,
     Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency, getStockStatus, cn } from '@/lib/utils';
+import { fuzzySearch, paginate } from '@/lib/fuzzy-search';
 import { InventoryItemType } from '@/types';
 import { ItemEditDialog } from './edit-item-dialog';
 import { deleteInventoryItemAction } from '@/app/actions/inventory.actions';
@@ -71,6 +74,18 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [categoryFilter, setCategoryFilter] = useState('ALL');
 
+    // Paginación in-memory: con catálogos grandes (>500 ítems) renderizar
+    // todas las filas a la vez degrada el sort y el scroll. 50 es suficiente
+    // para una vista densa y mantiene el feel de tabla "infinita".
+    const PAGE_SIZE = 50;
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Reset de página cuando cambia cualquier filtro/búsqueda — evita quedar
+    // en una página vacía tras un cambio que reduce el resultado.
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [typeFilter, stockFilter, searchQuery, selectedArea, categoryFilter]);
+
     const [editingItem, setEditingItem] = useState<any | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
@@ -100,6 +115,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
     }, [initialItems]);
 
     const filteredItems = useMemo(() => {
+        // 1) Pre-filtros estructurados (tipo / stock / categoría) — sin fuzzy.
         let items = initialItems.filter(item => {
             if (typeFilter !== 'ALL' && item.type !== typeFilter) return false;
 
@@ -115,17 +131,14 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
             if (categoryFilter !== 'ALL' && item.category !== categoryFilter) return false;
 
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                return (
-                    item.name.toLowerCase().includes(query) ||
-                    item.sku.toLowerCase().includes(query) ||
-                    item.category?.toLowerCase().includes(query)
-                );
-            }
-
             return true;
         });
+
+        // 2) Búsqueda fuzzy con tolerancia a typos y diacríticos sobre el
+        //    subconjunto pre-filtrado. Si la query es vacía, devuelve todo.
+        if (searchQuery.trim()) {
+            items = fuzzySearch(items, searchQuery, { keys: ['name', 'sku', 'category'] });
+        }
 
         if (sortConfig) {
             items.sort((a, b) => {
@@ -153,6 +166,9 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
         return items;
     }, [initialItems, typeFilter, stockFilter, searchQuery, selectedArea, categoryFilter, sortConfig]);
+
+    // Slice paginado del listado filtrado.
+    const paged = useMemo(() => paginate(filteredItems, currentPage, PAGE_SIZE), [filteredItems, currentPage]);
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -386,7 +402,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-capsula-line">
-                            {filteredItems.map((item) => {
+                            {paged.items.map((item) => {
                                 const displayStock = selectedArea
                                     ? (item.stockByArea?.find((s: any) => s.areaId === selectedArea)?.quantity || 0)
                                     : item.currentStock;
@@ -487,6 +503,40 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                         <p className="text-sm text-capsula-ink-muted">
                             Intenta con otros filtros
                         </p>
+                    </div>
+                )}
+
+                {/* Paginador (oculto si todo cabe en una página) */}
+                {paged.totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-3 border-t border-capsula-line bg-capsula-ivory-alt px-4 py-3 text-sm">
+                        <p className="text-capsula-ink-muted tabular-nums">
+                            Mostrando <span className="font-medium text-capsula-ink">{(paged.page - 1) * paged.pageSize + 1}</span>
+                            {' – '}
+                            <span className="font-medium text-capsula-ink">{Math.min(paged.page * paged.pageSize, paged.total)}</span>
+                            {' de '}
+                            <span className="font-medium text-capsula-ink">{paged.total}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={paged.page <= 1}
+                                className="inline-flex items-center gap-1 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-1.5 text-xs font-medium text-capsula-ink-soft transition-colors hover:bg-capsula-ivory-surface disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Página anterior"
+                            >
+                                <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                            </button>
+                            <span className="text-xs font-medium text-capsula-ink tabular-nums">
+                                Pág. {paged.page} / {paged.totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(paged.totalPages, p + 1))}
+                                disabled={paged.page >= paged.totalPages}
+                                className="inline-flex items-center gap-1 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-1.5 text-xs font-medium text-capsula-ink-soft transition-colors hover:bg-capsula-ivory-surface disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Página siguiente"
+                            >
+                                Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
