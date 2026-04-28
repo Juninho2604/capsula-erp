@@ -447,3 +447,198 @@ export async function updateRecipeCostAction(
         };
     }
 }
+
+// ============================================================================
+// AUDIT (read-only, no DB writes)
+// ============================================================================
+
+/**
+ * Resumen de orfandades en la relación MenuItem ↔ Recipe.
+ * Solo lectura — replica la lógica del script scripts/audit-orphan-recipes.ts
+ * pero como Server Action para que el dashboard pueda consumirla.
+ *
+ *   - menuItemsToGhostRecipe: MenuItem activo cuyo recipeId apunta a una
+ *     receta que ya no existe. Causa silenciosa de descargos fallidos.
+ *   - menuItemsToInactiveRecipe: MenuItem activo apuntando a Recipe con
+ *     isActive = false (archivada). Igual rompe el descargo.
+ *   - recipesUnused: Recetas activas sin ningún MenuItem que las
+ *     referencie. No es bloqueante pero indica posible mantenimiento ocioso.
+ */
+export async function getOrphanRecipesSummaryAction(opts?: { recentLimit?: number }) {
+    const limit = opts?.recentLimit ?? 5;
+
+    try {
+        // 1) MenuItems activos con recipeId no nulo
+        const menuItemsWithRecipe = await prisma.menuItem.findMany({
+            where: { isActive: true, recipeId: { not: null } },
+            select: { id: true, name: true, sku: true, recipeId: true },
+        });
+
+        const referencedRecipeIds = Array.from(
+            new Set(menuItemsWithRecipe.map(m => m.recipeId!).filter(Boolean)),
+        );
+
+        // 2) Recetas que efectivamente existen entre las referenciadas
+        const existingRecipes = await prisma.recipe.findMany({
+            where: { id: { in: referencedRecipeIds } },
+            select: { id: true, isActive: true, name: true },
+        });
+        const recipeMap = new Map(existingRecipes.map(r => [r.id, r] as const));
+
+        // 3) Particionar
+        const ghosts = menuItemsWithRecipe.filter(m => !recipeMap.has(m.recipeId!));
+        const inactive = menuItemsWithRecipe.filter(m => {
+            const r = recipeMap.get(m.recipeId!);
+            return r && !r.isActive;
+        });
+
+        // 4) Recetas activas no referenciadas (huérfanas inversas)
+        const referencedSet = new Set(referencedRecipeIds);
+        const allActiveRecipes = await prisma.recipe.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true },
+        });
+        const recipesUnused = allActiveRecipes.filter(r => !referencedSet.has(r.id));
+
+        return {
+            menuItemsToGhostRecipe: ghosts.length,
+            menuItemsToInactiveRecipe: inactive.length,
+            recipesUnused: recipesUnused.length,
+            recentGhosts: ghosts.slice(0, limit).map(m => ({ id: m.id, name: m.name, sku: m.sku })),
+            recentInactive: inactive.slice(0, limit).map(m => ({
+                id: m.id, name: m.name, sku: m.sku,
+                recipeName: recipeMap.get(m.recipeId!)?.name ?? null,
+            })),
+        };
+    } catch (error) {
+        console.error('Error fetching orphan recipes summary:', error);
+        return {
+            menuItemsToGhostRecipe: 0,
+            menuItemsToInactiveRecipe: 0,
+            recipesUnused: 0,
+            recentGhosts: [] as Array<{ id: string; name: string; sku: string }>,
+            recentInactive: [] as Array<{ id: string; name: string; sku: string; recipeName: string | null }>,
+        };
+    }
+}
+
+/**
+ * Recetas activas cuyo CostHistory snapshot está desactualizado respecto al
+ * costo actual de los ingredientes. Heurística:
+ *
+ *   "Costo de receta desactualizado" =
+ *      MAX(effectiveFrom de CostHistory de cualquier ingrediente)
+ *      > effectiveFrom del CostHistory más reciente de la receta (output)
+ *
+ * Es decir: algún ingrediente tiene un costo más reciente que el snapshot
+ * que se persistió para la receta. El operativo debería re-correr
+ * "Recalcular costos" en esas recetas para que el margen y el descargo
+ * usen valores correctos.
+ *
+ * Solo lectura — no recalcula nada, no escribe a BD.
+ */
+export async function getRecipesWithOutdatedCostAction(opts?: { limit?: number }) {
+    const limit = opts?.limit ?? 25;
+
+    try {
+        // Cargamos recetas activas con su costHistory más reciente (snapshot)
+        // y los costHistory más recientes de cada ingrediente. Una sola query
+        // de Prisma; in-memory comparison para evitar SQL crudo.
+        const recipes = await prisma.recipe.findMany({
+            where: { isActive: true },
+            select: {
+                id: true,
+                name: true,
+                outputItem: {
+                    select: {
+                        id: true,
+                        sku: true,
+                        costHistory: {
+                            orderBy: { effectiveFrom: 'desc' },
+                            take: 1,
+                            select: { effectiveFrom: true, costPerUnit: true },
+                        },
+                    },
+                },
+                ingredients: {
+                    select: {
+                        ingredientItem: {
+                            select: {
+                                id: true,
+                                name: true,
+                                costHistory: {
+                                    orderBy: { effectiveFrom: 'desc' },
+                                    take: 1,
+                                    select: { effectiveFrom: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        const drifted = recipes
+            .map(r => {
+                const recipeSnapshotAt = r.outputItem.costHistory[0]?.effectiveFrom ?? null;
+                let latestIngredientAt: Date | null = null;
+                let latestIngredientName = '';
+                for (const ing of r.ingredients) {
+                    const at = ing.ingredientItem.costHistory[0]?.effectiveFrom ?? null;
+                    if (at && (!latestIngredientAt || at > latestIngredientAt)) {
+                        latestIngredientAt = at;
+                        latestIngredientName = ing.ingredientItem.name;
+                    }
+                }
+                if (!latestIngredientAt) return null; // sin costos de ingredientes — nada que comparar
+                if (!recipeSnapshotAt) {
+                    // La receta nunca tuvo cost snapshot → reportable como "sin costo".
+                    return {
+                        id: r.id,
+                        name: r.name,
+                        outputSku: r.outputItem.sku,
+                        recipeSnapshotAt: null,
+                        latestIngredientAt,
+                        latestIngredientName,
+                        driftDays: null,
+                        kind: 'NO_SNAPSHOT' as const,
+                    };
+                }
+                const driftMs = latestIngredientAt.getTime() - recipeSnapshotAt.getTime();
+                if (driftMs <= 0) return null; // snapshot al día
+                return {
+                    id: r.id,
+                    name: r.name,
+                    outputSku: r.outputItem.sku,
+                    recipeSnapshotAt,
+                    latestIngredientAt,
+                    latestIngredientName,
+                    driftDays: Math.round(driftMs / 86400_000),
+                    kind: 'OUTDATED' as const,
+                };
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null)
+            .sort((a, b) => (b.driftDays ?? Number.MAX_SAFE_INTEGER) - (a.driftDays ?? Number.MAX_SAFE_INTEGER));
+
+        return {
+            count: drifted.length,
+            outdated: drifted.filter(d => d.kind === 'OUTDATED').length,
+            withoutSnapshot: drifted.filter(d => d.kind === 'NO_SNAPSHOT').length,
+            top: drifted.slice(0, limit),
+        };
+    } catch (error) {
+        console.error('Error fetching outdated recipe costs:', error);
+        return {
+            count: 0,
+            outdated: 0,
+            withoutSnapshot: 0,
+            top: [] as Array<{
+                id: string; name: string; outputSku: string;
+                recipeSnapshotAt: Date | null; latestIngredientAt: Date;
+                latestIngredientName: string; driftDays: number | null;
+                kind: 'NO_SNAPSHOT' | 'OUTDATED';
+            }>,
+        };
+    }
+}
+
