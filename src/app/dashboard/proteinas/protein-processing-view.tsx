@@ -228,19 +228,19 @@ export default function ProteinProcessingView() {
     // Guardar procesamiento
     async function handleSubmit() {
         if (!sourceItemId) {
-            alert('Selecciona el producto a procesar');
+            toast.error('Selecciona el producto a procesar');
             return;
         }
         if (frozenWeight <= 0) {
-            alert('Ingresa el peso congelado');
+            toast.error('Ingresa el peso congelado');
             return;
         }
         if (drainedWeight <= 0) {
-            alert('Ingresa el peso escurrido');
+            toast.error('Ingresa el peso escurrido');
             return;
         }
         if (subProducts.length === 0) {
-            alert('Agrega al menos un subproducto');
+            toast.error('Agrega al menos un subproducto');
             return;
         }
 
@@ -267,12 +267,12 @@ export default function ProteinProcessingView() {
         });
 
         if (result.success) {
-            alert(`${result.message}`);
+            toast.success(result.message);
             resetForm();
             setViewMode('list');
             loadData();
         } else {
-            alert(`${result.message}`);
+            toast.error(result.message);
         }
         setIsSubmitting(false);
     }
@@ -304,11 +304,8 @@ export default function ProteinProcessingView() {
         if (!confirm('¿Completar este procesamiento? Se actualizará el inventario.')) return;
 
         const result = await completeProteinProcessingAction(id);
-        alert(result.message);
-        if (result.success) {
-            loadData();
-            setViewMode('list');
-        }
+        if (result.success) { toast.success(result.message); loadData(); setViewMode('list'); }
+        else toast.error(result.message);
     }
 
     // Cancelar procesamiento
@@ -317,11 +314,8 @@ export default function ProteinProcessingView() {
         if (!reason) return;
 
         const result = await cancelProteinProcessingAction(id, reason);
-        alert(result.message);
-        if (result.success) {
-            loadData();
-            setViewMode('list');
-        }
+        if (result.success) { toast.success(result.message); loadData(); setViewMode('list'); }
+        else toast.error(result.message);
     }
 
     // Status badges
