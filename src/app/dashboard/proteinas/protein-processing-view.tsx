@@ -17,6 +17,7 @@ import {
     Droplets,
     Save,
     Check,
+    Loader2,
     X as XIcon,
     type LucideIcon,
 } from 'lucide-react';
@@ -45,7 +46,7 @@ const STEP_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: stri
     'LIMPIEZA': { label: 'Limpieza', Icon: Brush as LucideIcon, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
     'MASERADO': { label: 'Maserado', Icon: Soup as LucideIcon, color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
     'DISTRIBUCION': { label: 'Distribución', Icon: Package as LucideIcon, color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
-    'CUSTOM': { label: 'Personalizado', Icon: Settings as LucideIcon, color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
+    'CUSTOM': { label: 'Personalizado', Icon: Settings as LucideIcon, color: 'text-capsula-ink-soft', bgColor: 'bg-capsula-ivory-alt', borderColor: 'border-capsula-line-strong' },
 };
 
 interface SubProduct extends SubProductInput {
@@ -356,10 +357,10 @@ export default function ProteinProcessingView() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Cargando...</p>
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="flex flex-col items-center gap-3 text-capsula-ink-muted">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="text-sm">Cargando…</p>
                 </div>
             </div>
         );
@@ -416,24 +417,24 @@ export default function ProteinProcessingView() {
             {/* Estadísticas */}
             {stats && viewMode === 'list' && (
                 <div className="grid gap-4 sm:grid-cols-5">
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Total Procesamientos</p>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-sm text-capsula-ink-muted">Total Procesamientos</p>
                         <p className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{stats.totalProcessings}</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Peso Total Procesado</p>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-sm text-capsula-ink-muted">Peso Total Procesado</p>
                         <p className="font-semibold text-2xl tracking-[-0.02em] text-blue-600">{formatNumber(stats.totalFrozenWeight)} kg</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Subproductos Obtenidos</p>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-sm text-capsula-ink-muted">Subproductos Obtenidos</p>
                         <p className="font-semibold text-2xl tracking-[-0.02em] text-emerald-600">{formatNumber(stats.totalSubProducts)} kg</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Rendimiento Promedio</p>
-                        <p className="font-semibold text-2xl tracking-[-0.02em] text-amber-600">{formatNumber(stats.avgYield)}%</p>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-sm text-capsula-ink-muted">Rendimiento Promedio</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] tabular-nums text-amber-600 dark:text-amber-400">{formatNumber(stats.avgYield)}%</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm text-gray-500">Desperdicio Promedio</p>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4">
+                        <p className="text-sm text-capsula-ink-muted">Desperdicio Promedio</p>
                         <p className="font-semibold text-2xl tracking-[-0.02em] text-red-600">{formatNumber(stats.avgWaste)}%</p>
                     </div>
                 </div>
@@ -441,57 +442,57 @@ export default function ProteinProcessingView() {
 
             {/* Vista: Lista de procesamientos */}
             {viewMode === 'list' && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="border-b border-gray-200 bg-gray-50">
+                            <thead className="border-b border-capsula-line bg-capsula-ivory-alt">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Código</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Fecha</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Producto</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Proveedor</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Peso Inicial</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Rendimiento</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Estado</th>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-gray-500">Acciones</th>
+                                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Código</th>
+                                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Fecha</th>
+                                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Producto</th>
+                                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Proveedor</th>
+                                    <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Peso Inicial</th>
+                                    <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Rendimiento</th>
+                                    <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Estado</th>
+                                    <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-capsula-line">
                                 {processings.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                            <span className="text-4xl"></span>
+                                        <td colSpan={8} className="px-6 py-12 text-center text-capsula-ink-muted">
+                                            <ClipboardList className="mx-auto h-10 w-10 text-capsula-ink-faint" />
                                             <p className="mt-2">No hay procesamientos registrados</p>
                                             <button
                                                 onClick={() => setViewMode('create')}
-                                                className="mt-4 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm hover:bg-amber-600"
+                                                className="pos-btn mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm"
                                             >
-                                                Crear primer procesamiento
+                                                <Plus className="h-4 w-4" /> Crear primer procesamiento
                                             </button>
                                         </td>
                                     </tr>
                                 ) : (
                                     processings.map((p: any) => (
-                                        <tr key={p.id} className="hover:bg-gray-50">
+                                        <tr key={p.id} className="hover:bg-capsula-ivory-surface">
                                             <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => viewDetail(p.id)}
-                                                    className="font-medium text-amber-600 hover:underline"
+                                                    className="font-medium text-capsula-coral hover:underline"
                                                 >
                                                     {p.code}
                                                 </button>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                            <td className="px-6 py-4 text-sm tabular-nums text-capsula-ink-muted">
                                                 {new Date(p.processDate).toLocaleDateString('es-VE')}
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-gray-900">{p.sourceItem}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">{p.supplier}</td>
-                                            <td className="px-6 py-4 text-center font-mono">{formatNumber(p.frozenWeight)} kg</td>
+                                            <td className="px-6 py-4 font-medium text-capsula-ink">{p.sourceItem}</td>
+                                            <td className="px-6 py-4 text-sm text-capsula-ink-muted">{p.supplier}</td>
+                                            <td className="px-6 py-4 text-center font-mono tabular-nums text-capsula-ink">{formatNumber(p.frozenWeight)} kg</td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={cn(
-                                                    'font-semibold',
-                                                    p.yieldPercentage >= 70 ? 'text-emerald-600' :
-                                                        p.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                    'font-semibold tabular-nums',
+                                                    p.yieldPercentage >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                                                        p.yieldPercentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                                                 )}>
                                                     {formatNumber(p.yieldPercentage)}%
                                                 </span>
@@ -544,27 +545,27 @@ export default function ProteinProcessingView() {
             {viewMode === 'create' && (
                 <div className="grid gap-6 lg:grid-cols-2">
                     {/* Formulario principal */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="border-b border-capsula-line px-6 py-4">
                             <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Datos del Procesamiento</h2>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="space-y-4 p-6">
                             {/* Fecha */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                                <label className="pos-label">Fecha</label>
                                 <input
                                     type="date"
                                     value={processDate}
                                     onChange={(e) => setProcessDate(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    className="pos-input mt-1 w-full"
                                 />
                             </div>
 
                             {/* Paso del Procesamiento */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Paso del Procesamiento</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <label className="pos-label mb-2">Paso del Procesamiento</label>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                     {Object.entries(STEP_CONFIG).map(([value, config]) => {
                                         const hasTemplate = templateChain.some((t: any) => t.processingStep === value);
                                         return (
@@ -573,16 +574,16 @@ export default function ProteinProcessingView() {
                                                 type="button"
                                                 onClick={() => setProcessingStep(value)}
                                                 className={cn(
-                                                    'rounded-xl px-3 py-3 text-xs font-medium border-2 transition-all relative',
+                                                    'relative rounded-xl border-2 px-3 py-3 text-xs font-medium transition-all',
                                                     processingStep === value
                                                         ? `${config.bgColor} ${config.borderColor} ${config.color} ring-2 ring-offset-1`
-                                                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        : 'border-capsula-line text-capsula-ink-muted hover:bg-capsula-ivory-alt'
                                                 )}
                                             >
                                                 {(() => { const StepIcon = config.Icon; return <StepIcon className="mx-auto h-5 w-5" />; })()}
                                                 <span className="mt-0.5 block">{config.label}</span>
                                                 {hasTemplate && (
-                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Tiene plantilla"></span>
+                                                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-capsula-ivory bg-capsula-coral" title="Tiene plantilla"></span>
                                                 )}
                                             </button>
                                         );
@@ -590,7 +591,7 @@ export default function ProteinProcessingView() {
                                 </div>
                                 {/* Template chain indicator */}
                                 {templateChain.length > 0 && (
-                                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                                    <div className="mt-2 flex items-center gap-1 text-xs text-capsula-ink-muted">
                                         <span>Cadena disponible:</span>
                                         {templateChain
                                             .sort((a: any, b: any) => a.chainOrder - b.chainOrder)
@@ -598,10 +599,10 @@ export default function ProteinProcessingView() {
                                                 const sc = STEP_CONFIG[t.processingStep] || STEP_CONFIG['CUSTOM'];
                                                 return (
                                                     <span key={t.id} className="flex items-center gap-0.5">
-                                                        {i > 0 && <span className="text-gray-300">→</span>}
+                                                        {i > 0 && <span className="text-capsula-ink-faint">→</span>}
                                                         <span className={cn(
                                                             'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium',
-                                                            t.processingStep === processingStep ? `${sc.bgColor} ${sc.color}` : 'text-gray-400'
+                                                            t.processingStep === processingStep ? `${sc.bgColor} ${sc.color}` : 'text-capsula-ink-faint'
                                                         )}>
                                                             <sc.Icon className="h-3 w-3" /> {sc.label}
                                                         </span>
@@ -634,7 +635,7 @@ export default function ProteinProcessingView() {
                                                 }
                                             }
                                         }}
-                                        className="w-full rounded-lg border border-purple-200 bg-white px-4 py-2.5 text-sm dark:border-purple-700 dark:bg-gray-800"
+                                        className="w-full rounded-lg border border-purple-200 bg-capsula-ivory px-4 py-2.5 text-sm text-capsula-ink dark:border-purple-700"
                                     >
                                         <option value="">Sin encadenar (nuevo procesamiento)</option>
                                         {completedProcessings.map(p => (
@@ -651,7 +652,7 @@ export default function ProteinProcessingView() {
 
                             {/* Producto a procesar */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Producto a Procesar*</label>
+                                <label className="pos-label">Producto a Procesar *</label>
                                 <Combobox
                                     items={proteinItems.map(item => ({
                                         value: item.id,
@@ -667,7 +668,7 @@ export default function ProteinProcessingView() {
 
                             {/* Proveedor */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                                <label className="pos-label">Proveedor</label>
                                 <Combobox
                                     items={suppliers.map(s => ({
                                         value: s.id,
@@ -685,14 +686,14 @@ export default function ProteinProcessingView() {
                                         value={supplierName}
                                         onChange={(e) => setSupplierName(e.target.value)}
                                         placeholder="O escribir nombre del proveedor..."
-                                        className="w-full mt-2 rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        className="pos-input mt-2 w-full"
                                     />
                                 )}
                             </div>
 
                             {/* Área */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Área de Procesamiento</label>
+                                <label className="pos-label">Área de Procesamiento</label>
                                 <Combobox
                                     items={areas.map(area => ({
                                         value: area.id,
@@ -709,38 +710,38 @@ export default function ProteinProcessingView() {
                             {/* Pesos */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Congelado (kg)*</label>
+                                    <label className="pos-label">Peso Congelado (kg) *</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={frozenWeight || ''}
                                         onChange={(e) => setFrozenWeight(parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        className="pos-input mt-1 w-full tabular-nums"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso Escurrido (kg)*</label>
+                                    <label className="pos-label">Peso Escurrido (kg) *</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={drainedWeight || ''}
                                         onChange={(e) => setDrainedWeight(parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                        className="pos-input mt-1 w-full tabular-nums"
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Desperdicio Reportado (kg) - Entrada Manual</label>
+                                    <label className="pos-label">Desperdicio Reportado (kg) — Entrada Manual</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={reportedWaste || ''}
                                         onChange={(e) => setReportedWaste(parseFloat(e.target.value) || 0)}
-                                        placeholder="Ingresa el desperdicio real segun Excel..."
-                                        className="w-full rounded-lg border border-red-200 bg-red-50/30 px-4 py-2.5 focus:border-red-500 focus:outline-none"
+                                        placeholder="Ingresa el desperdicio real según Excel..."
+                                        className="mt-1 w-full rounded-lg border border-red-200 bg-red-50/30 px-4 py-2.5 tabular-nums text-capsula-ink focus:border-red-500 focus:outline-none dark:border-red-900 dark:bg-red-950/30"
                                     />
-                                    <p className="text-[10px] text-gray-500 mt-1">
+                                    <p className="mt-1 text-[10px] text-capsula-ink-muted">
                                         * Este valor se usará para tus reportes de merma real.
                                     </p>
                                 </div>
@@ -749,8 +750,10 @@ export default function ProteinProcessingView() {
                             {/* Pérdida por escurrido / Ganancia de peso */}
                             {frozenWeight > 0 && drainedWeight > 0 && (
                                 <div className={cn(
-                                    'p-3 rounded-lg text-sm',
-                                    drainedWeight > frozenWeight ? 'bg-purple-50' : 'bg-blue-50'
+                                    'rounded-lg p-3 text-sm',
+                                    drainedWeight > frozenWeight
+                                        ? 'bg-purple-50 dark:bg-purple-950/30'
+                                        : 'bg-blue-50 dark:bg-blue-950/30'
                                 )}>
                                     {drainedWeight > frozenWeight ? (
                                         <span className="text-purple-700">
@@ -768,33 +771,33 @@ export default function ProteinProcessingView() {
 
                             {/* Notas */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                                <label className="pos-label">Notas</label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="Observaciones del procesamiento..."
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 focus:border-amber-500 focus:outline-none"
+                                    className="pos-input mt-1 w-full"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Subproductos */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                        <div className="border-b border-capsula-line px-6 py-4">
                             <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Subproductos ({subProducts.length})</h2>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="space-y-4 p-6">
                             {/* Agregar subproducto */}
-                            <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-sm font-medium text-gray-700">Nuevo corte / subproducto</label>
+                            <div className="space-y-4 rounded-lg border border-capsula-line bg-capsula-ivory-alt p-4">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <label className="text-sm font-medium text-capsula-ink-soft">Nuevo corte / subproducto</label>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
-                                        className="text-xs text-emerald-600 font-medium hover:text-emerald-700 underline"
+                                        className="text-xs font-medium text-emerald-600 underline transition-colors hover:text-emerald-700 dark:text-emerald-400"
                                     >
                                         {showCreateItem ? 'Cancelar creación' : '+ Crear nuevo item en inventario'}
                                     </button>
@@ -802,20 +805,20 @@ export default function ProteinProcessingView() {
 
                                 {/* Mini form crear item */}
                                 {showCreateItem && (
-                                    <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 animate-in fade-in slide-in-from-top-2">
-                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="animate-in fade-in slide-in-from-top-2 mb-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                                        <div className="mb-3 grid grid-cols-2 gap-3">
                                             <input
                                                 type="text"
                                                 value={newItemName}
                                                 onChange={(e) => setNewItemName(e.target.value)}
                                                 placeholder="Nombre (ej: Huesos de Pollo)"
-                                                className="col-span-2 rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                className="col-span-2 rounded border border-emerald-200 bg-capsula-ivory px-3 py-1.5 text-sm text-capsula-ink dark:border-emerald-800"
                                                 autoFocus
                                             />
                                             <select
                                                 value={newItemUnit}
                                                 onChange={(e) => setNewItemUnit(e.target.value)}
-                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                className="rounded border border-emerald-200 bg-capsula-ivory px-3 py-1.5 text-sm text-capsula-ink dark:border-emerald-800"
                                             >
                                                 <option value="KG">Kilogramos</option>
                                                 <option value="G">Gramos</option>
@@ -824,7 +827,7 @@ export default function ProteinProcessingView() {
                                             <select
                                                 value={newItemType}
                                                 onChange={(e) => setNewItemType(e.target.value)}
-                                                className="rounded border border-emerald-200 px-3 py-1.5 text-sm"
+                                                className="rounded border border-emerald-200 bg-capsula-ivory px-3 py-1.5 text-sm text-capsula-ink dark:border-emerald-800"
                                             >
                                                 <option value="RAW_MATERIAL">Materia Prima</option>
                                                 <option value="SUB_RECIPE">Sub-receta</option>
@@ -834,9 +837,9 @@ export default function ProteinProcessingView() {
                                         <button
                                             onClick={handleCreateItem}
                                             disabled={!newItemName.trim() || isCreatingItem}
-                                            className="w-full rounded bg-emerald-600 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                            className="w-full rounded bg-emerald-600 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                                         >
-                                            {isCreatingItem ? 'Creando...' : 'Guardar Item'}
+                                            {isCreatingItem ? 'Creando…' : 'Guardar Item'}
                                         </button>
                                     </div>
                                 )}
@@ -902,9 +905,9 @@ export default function ProteinProcessingView() {
                                                 value={newSubProductWeight || ''}
                                                 onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
                                                 placeholder="Peso"
-                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                                className="pos-input w-full px-3 py-2 text-sm tabular-nums"
                                             />
-                                            <span className="absolute right-2 top-2 text-xs text-gray-400">{newSubProductUnitType}</span>
+                                            <span className="absolute right-2 top-2 text-xs text-capsula-ink-muted">{newSubProductUnitType}</span>
                                         </div>
                                         <div className="relative w-20">
                                             <input
@@ -912,46 +915,46 @@ export default function ProteinProcessingView() {
                                                 value={newSubProductUnits || ''}
                                                 onChange={(e) => setNewSubProductUnits(parseInt(e.target.value) || 1)}
                                                 placeholder="Uds"
-                                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                                                className="pos-input w-full px-3 py-2 text-sm tabular-nums"
                                             />
-                                            <span className="absolute right-2 top-2 text-xs text-gray-400">pza</span>
+                                            <span className="absolute right-2 top-2 text-xs text-capsula-ink-muted">pza</span>
                                         </div>
                                         <button
                                             onClick={addSubProduct}
-                                            className="px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                                            className="pos-btn inline-flex items-center justify-center px-4 py-2"
+                                            aria-label="Agregar subproducto"
                                         >
-                                            +
+                                            <Plus className="h-4 w-4" />
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Lista de subproductos */}
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            <div className="max-h-[300px] space-y-2 overflow-y-auto">
                                 {subProducts.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">
+                                    <p className="py-8 text-center text-capsula-ink-muted">
                                         Agrega los cortes/subproductos obtenidos
                                     </p>
                                 ) : (
                                     subProducts.map((sp, index) => {
-                                        // Check if this subproduct is intermediate
                                         const templateOutput = activeTemplate?.allowedOutputs?.find((o: any) => o.outputItem?.id === sp.outputItemId);
                                         const isIntermediate = templateOutput?.isIntermediate || false;
                                         return (
                                             <div key={sp.id} className={cn(
-                                                'flex items-center justify-between p-3 rounded-lg',
-                                                isIntermediate ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
+                                                'flex items-center justify-between rounded-lg p-3',
+                                                isIntermediate ? 'border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30' : 'bg-capsula-ivory-alt'
                                             )}>
                                                 <div className="flex-1">
-                                                    <span className="text-gray-400 mr-2">{index + 1}.</span>
-                                                    <span className="font-medium">{sp.name}</span>
+                                                    <span className="mr-2 text-capsula-ink-muted tabular-nums">{index + 1}.</span>
+                                                    <span className="font-medium text-capsula-ink">{sp.name}</span>
                                                     {isIntermediate && (
-                                                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-200 text-orange-700 font-medium">Intermedio</span>
+                                                        <span className="ml-2 rounded bg-orange-200 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Intermedio</span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-mono text-sm">{formatNumber(sp.weight)} kg</span>
-                                                    <span className="text-xs text-gray-500">({sp.units} pza)</span>
+                                                    <span className="font-mono text-sm tabular-nums text-capsula-ink">{formatNumber(sp.weight)} kg</span>
+                                                    <span className="text-xs text-capsula-ink-muted tabular-nums">({sp.units} pza)</span>
                                                     <button
                                                         onClick={() => removeSubProduct(sp.id)}
                                                         className="rounded p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
@@ -967,22 +970,23 @@ export default function ProteinProcessingView() {
                             </div>
 
                             {/* Resumen */}
-                            <div className="border-t pt-4 space-y-2">
+                            <div className="space-y-2 border-t border-capsula-line pt-4">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Total Subproductos:</span>
-                                    <span className="font-semibold">{formatNumber(totalSubProductsWeight)} kg</span>
+                                    <span className="text-capsula-ink-muted">Total Subproductos:</span>
+                                    <span className="font-semibold tabular-nums text-capsula-ink">{formatNumber(totalSubProductsWeight)} kg</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Desperdicio:</span>
-                                    <span className={cn('font-semibold', wasteWeight > 0 ? 'text-red-600' : 'text-gray-600')}>
+                                    <span className="text-capsula-ink-muted">Desperdicio:</span>
+                                    <span className={cn('font-semibold tabular-nums', wasteWeight > 0 ? 'text-red-600 dark:text-red-400' : 'text-capsula-ink-soft')}>
                                         {formatNumber(wasteWeight)} kg ({formatNumber(wastePercentage)}%)
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold">
-                                    <span>Rendimiento:</span>
+                                    <span className="text-capsula-ink">Rendimiento:</span>
                                     <span className={cn(
-                                        yieldPercentage >= 70 ? 'text-emerald-600' :
-                                            yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                        'tabular-nums',
+                                        yieldPercentage >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                                            yieldPercentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                                     )}>
                                         {formatNumber(yieldPercentage)}%
                                     </span>
@@ -1004,11 +1008,11 @@ export default function ProteinProcessingView() {
 
             {/* Vista: Detalle */}
             {viewMode === 'detail' && selectedProcessing && (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700 flex justify-between items-center">
+                <div className="rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                    <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
                         <div>
                             <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{selectedProcessing.code}</h2>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-capsula-ink-muted">
                                 {new Date(selectedProcessing.processDate).toLocaleDateString('es-VE', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                                 })}
@@ -1017,52 +1021,53 @@ export default function ProteinProcessingView() {
                         {getStatusBadge(selectedProcessing.status)}
                     </div>
 
-                    <div className="p-6 grid gap-6 lg:grid-cols-2">
+                    <div className="grid gap-6 p-6 lg:grid-cols-2">
                         {/* Info general */}
                         <div className="space-y-4">
-                            <h3 className="font-medium text-gray-900">Información General</h3>
+                            <h3 className="font-medium text-capsula-ink">Información General</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Producto:</span>
-                                    <span className="font-medium">{selectedProcessing.sourceItem.name}</span>
+                                    <span className="text-capsula-ink-muted">Producto:</span>
+                                    <span className="font-medium text-capsula-ink">{selectedProcessing.sourceItem.name}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Proveedor:</span>
-                                    <span>{selectedProcessing.supplier?.name || selectedProcessing.supplierName || '-'}</span>
+                                    <span className="text-capsula-ink-muted">Proveedor:</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.supplier?.name || selectedProcessing.supplierName || '-'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Área:</span>
-                                    <span>{selectedProcessing.area.name}</span>
+                                    <span className="text-capsula-ink-muted">Área:</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.area.name}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Creado por:</span>
-                                    <span>{selectedProcessing.createdBy.firstName} {selectedProcessing.createdBy.lastName}</span>
+                                    <span className="text-capsula-ink-muted">Creado por:</span>
+                                    <span className="text-capsula-ink">{selectedProcessing.createdBy.firstName} {selectedProcessing.createdBy.lastName}</span>
                                 </div>
                             </div>
 
-                            <h3 className="font-medium text-gray-900 pt-4">Pesos y Rendimiento</h3>
+                            <h3 className="pt-4 font-medium text-capsula-ink">Pesos y Rendimiento</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Peso Congelado:</span>
-                                    <span className="font-mono">{formatNumber(selectedProcessing.frozenWeight)} kg</span>
+                                    <span className="text-capsula-ink-muted">Peso Congelado:</span>
+                                    <span className="font-mono tabular-nums text-capsula-ink">{formatNumber(selectedProcessing.frozenWeight)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Peso Escurrido:</span>
-                                    <span className="font-mono">{formatNumber(selectedProcessing.drainedWeight)} kg</span>
+                                    <span className="text-capsula-ink-muted">Peso Escurrido:</span>
+                                    <span className="font-mono tabular-nums text-capsula-ink">{formatNumber(selectedProcessing.drainedWeight)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Total Subproductos:</span>
-                                    <span className="font-mono text-emerald-600">{formatNumber(selectedProcessing.totalSubProducts)} kg</span>
+                                    <span className="text-capsula-ink-muted">Total Subproductos:</span>
+                                    <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatNumber(selectedProcessing.totalSubProducts)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500">Desperdicio:</span>
-                                    <span className="font-mono text-red-600">{formatNumber(selectedProcessing.wasteWeight)} kg ({formatNumber(selectedProcessing.wastePercentage)}%)</span>
+                                    <span className="text-capsula-ink-muted">Desperdicio:</span>
+                                    <span className="font-mono tabular-nums text-red-600 dark:text-red-400">{formatNumber(selectedProcessing.wasteWeight)} kg ({formatNumber(selectedProcessing.wastePercentage)}%)</span>
                                 </div>
-                                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                                    <span>Rendimiento:</span>
+                                <div className="flex justify-between border-t border-capsula-line pt-2 text-lg font-bold">
+                                    <span className="text-capsula-ink">Rendimiento:</span>
                                     <span className={cn(
-                                        selectedProcessing.yieldPercentage >= 70 ? 'text-emerald-600' :
-                                            selectedProcessing.yieldPercentage >= 50 ? 'text-amber-600' : 'text-red-600'
+                                        'tabular-nums',
+                                        selectedProcessing.yieldPercentage >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                                            selectedProcessing.yieldPercentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                                     )}>
                                         {formatNumber(selectedProcessing.yieldPercentage)}%
                                     </span>
@@ -1072,22 +1077,22 @@ export default function ProteinProcessingView() {
 
                         {/* Subproductos */}
                         <div>
-                            <h3 className="font-medium text-gray-900 mb-4">Subproductos Obtenidos</h3>
+                            <h3 className="mb-4 font-medium text-capsula-ink">Subproductos Obtenidos</h3>
                             <div className="space-y-2">
                                 {selectedProcessing.subProducts.map((sp: any, index: number) => (
-                                    <div key={sp.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                                    <div key={sp.id} className="flex items-center justify-between rounded-lg bg-capsula-ivory-alt p-3">
                                         <div>
-                                            <span className="text-gray-400 mr-2">{index + 1}.</span>
-                                            <span className="font-medium">{sp.name}</span>
+                                            <span className="mr-2 text-capsula-ink-muted tabular-nums">{index + 1}.</span>
+                                            <span className="font-medium text-capsula-ink">{sp.name}</span>
                                             {sp.outputItem && (
-                                                <span className="ml-2 text-xs text-amber-600">
+                                                <span className="ml-2 text-xs text-capsula-coral">
                                                     → {sp.outputItem.name}
                                                 </span>
                                             )}
                                         </div>
                                         <div className="text-right">
-                                            <span className="font-mono">{formatNumber(sp.weight)} kg</span>
-                                            <span className="text-xs text-gray-500 ml-2">({sp.units} pza)</span>
+                                            <span className="font-mono tabular-nums text-capsula-ink">{formatNumber(sp.weight)} kg</span>
+                                            <span className="ml-2 text-xs text-capsula-ink-muted tabular-nums">({sp.units} pza)</span>
                                         </div>
                                     </div>
                                 ))}
