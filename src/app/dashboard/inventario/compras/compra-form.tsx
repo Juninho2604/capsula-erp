@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+    ArrowLeft,
+    Package,
+    Loader2,
+    Check,
+    AlertTriangle,
+    History,
+    Lightbulb,
+} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
@@ -17,7 +26,6 @@ export default function CompraForm({ itemsList, areasList }: Props) {
     const [showCosts, setShowCosts] = useState(false);
     useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
 
-    // Estado del formulario
     const [selectedItem, setSelectedItem] = useState('');
     const [quantity, setQuantity] = useState<number>(0);
     const [unit, setUnit] = useState('UNIT');
@@ -25,7 +33,6 @@ export default function CompraForm({ itemsList, areasList }: Props) {
     const [areaId, setAreaId] = useState(areasList[0]?.id || '');
     const [notes, setNotes] = useState('');
 
-    // Estado de UI
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
     const [recentPurchases, setRecentPurchases] = useState<{
@@ -36,10 +43,8 @@ export default function CompraForm({ itemsList, areasList }: Props) {
         timestamp: Date;
     }[]>([]);
 
-    // Obtener item seleccionado
     const selectedItemData = itemsList.find(i => i.id === selectedItem);
 
-    // Manejar envío
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedItem || quantity <= 0) return;
@@ -48,7 +53,6 @@ export default function CompraForm({ itemsList, areasList }: Props) {
         setResult(null);
 
         try {
-            // Usamos la misma action que Entrada de Mercancía, porque ambos son InventoryMovement type PURCHASE
             const response = await registrarEntradaMercancia({
                 inventoryItemId: selectedItem,
                 quantity,
@@ -56,13 +60,12 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                 unitCost,
                 areaId,
                 notes,
-                userId: user?.id || 'cmkvq94uo0000ua0ns6g844yr', // Fallback ID desarrollo
+                userId: user?.id || 'cmkvq94uo0000ua0ns6g844yr',
             });
 
             if (response.success) {
                 setResult({ success: true, message: response.message });
 
-                // Agregar a compras recientes localmente
                 setRecentPurchases(prev => [{
                     item: selectedItemData?.name || selectedItem,
                     quantity,
@@ -71,7 +74,6 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                     timestamp: new Date(),
                 }, ...prev.slice(0, 4)]);
 
-                // Limpiar formulario
                 setSelectedItem('');
                 setQuantity(0);
                 setUnitCost(0);
@@ -93,13 +95,14 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard/inventario"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                        aria-label="Volver a Inventario"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Compra Rápida</h1>
-                        <p className="text-gray-500">
+                        <p className="text-capsula-ink-muted">
                             Ingreso simple sin nota de entrega
                         </p>
                     </div>
@@ -109,14 +112,14 @@ export default function CompraForm({ itemsList, areasList }: Props) {
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Formulario */}
                 <div className="lg:col-span-2">
-                    <form onSubmit={handleSubmit} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <form onSubmit={handleSubmit} className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl text-white shadow-lg">
-                                📦
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                                <Package className="h-5 w-5" />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Nueva Entrada de Inventario</h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-capsula-ink-muted">
                                     Registrado por: {user?.firstName || 'Usuario'}
                                 </p>
                             </div>
@@ -125,35 +128,33 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                         <div className="grid gap-4 sm:grid-cols-2">
                             {/* Insumo */}
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Insumo *
-                                </label>
-                                <Combobox
-                                    items={itemsList.map(item => ({
-                                        value: item.id,
-                                        label: `${item.name} (${item.baseUnit})`
-                                    }))}
-                                    value={selectedItem || ''}
-                                    onChange={(val) => {
-                                        setSelectedItem(val);
-                                        const item = itemsList.find(i => i.id === val);
-                                        if (item) {
-                                            setUnit(item.baseUnit);
-                                            setUnitCost(item.currentCost || 0);
-                                        }
-                                    }}
-                                    placeholder="Seleccionar insumo..."
-                                    searchPlaceholder="Buscar insumo..."
-                                    emptyMessage="No se encontró el insumo."
-                                />
+                                <label className="pos-label">Insumo *</label>
+                                <div className="mt-1">
+                                    <Combobox
+                                        items={itemsList.map(item => ({
+                                            value: item.id,
+                                            label: `${item.name} (${item.baseUnit})`
+                                        }))}
+                                        value={selectedItem || ''}
+                                        onChange={(val) => {
+                                            setSelectedItem(val);
+                                            const item = itemsList.find(i => i.id === val);
+                                            if (item) {
+                                                setUnit(item.baseUnit);
+                                                setUnitCost(item.currentCost || 0);
+                                            }
+                                        }}
+                                        placeholder="Seleccionar insumo..."
+                                        searchPlaceholder="Buscar insumo..."
+                                        emptyMessage="No se encontró el insumo."
+                                    />
+                                </div>
                             </div>
 
                             {/* Cantidad */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Cantidad *
-                                </label>
-                                <div className="flex gap-2">
+                                <label className="pos-label">Cantidad *</label>
+                                <div className="mt-1 flex gap-2">
                                     <input
                                         type="number"
                                         value={quantity || ''}
@@ -162,12 +163,12 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                         step="0.01"
                                         required
                                         placeholder="0"
-                                        className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="pos-input w-24 tabular-nums"
                                     />
                                     <select
                                         value={unit}
                                         onChange={(e) => setUnit(e.target.value)}
-                                        className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="pos-input flex-1"
                                     >
                                         <option value={selectedItemData?.baseUnit || 'UNIT'}>
                                             {selectedItemData?.baseUnit || 'UNIT'}
@@ -178,11 +179,9 @@ export default function CompraForm({ itemsList, areasList }: Props) {
 
                             {/* Costo Unitario */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Costo por Unidad (USD) *
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                <label className="pos-label">Costo por Unidad (USD) *</label>
+                                <div className="relative mt-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-capsula-ink-muted">$</span>
                                     <input
                                         type="number"
                                         value={unitCost || ''}
@@ -191,20 +190,18 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                         step="0.01"
                                         required
                                         placeholder="0.00"
-                                        className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-8 pr-4 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="pos-input w-full py-2.5 pl-8 pr-4 tabular-nums"
                                     />
                                 </div>
                             </div>
 
                             {/* Área destino */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Área de Almacenamiento
-                                </label>
+                                <label className="pos-label">Área de Almacenamiento</label>
                                 <select
                                     value={areaId}
                                     onChange={(e) => setAreaId(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input mt-1 w-full"
                                 >
                                     {areasList.map(area => (
                                         <option key={area.id} value={area.id}>
@@ -216,11 +213,9 @@ export default function CompraForm({ itemsList, areasList }: Props) {
 
                             {/* Costo Total */}
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Costo Total
-                                </label>
-                                <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-600 dark:bg-gray-700">
-                                    <span className="text-lg font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                                <label className="pos-label">Costo Total</label>
+                                <div className="mt-1 flex items-center rounded-lg border border-capsula-line bg-capsula-ivory-alt px-4 py-2.5">
+                                    <span className="font-semibold text-lg tracking-[-0.01em] tabular-nums text-capsula-ink">
                                         {formatCurrency(quantity * unitCost)}
                                     </span>
                                 </div>
@@ -228,15 +223,13 @@ export default function CompraForm({ itemsList, areasList }: Props) {
 
                             {/* Notas */}
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Notas (opcional)
-                                </label>
+                                <label className="pos-label">Notas (opcional)</label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="Ej: Compra de emergencia en mercado local"
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="pos-input mt-1 w-full"
                                 />
                             </div>
                         </div>
@@ -244,14 +237,23 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                         {/* Resultado */}
                         {result && (
                             <div className={cn(
-                                'mt-4 rounded-lg p-4',
+                                'mt-4 rounded-lg border p-4',
                                 result.success
-                                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
-                                    : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                    ? 'border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40'
+                                    : 'border-[#E8C2B7] bg-[#F7E3DB]/40 dark:border-[#5b3328] dark:bg-[#3B1F14]/40'
                             )}>
                                 <div className="flex items-center gap-2">
-                                    <span>{result.success ? '' : ''}</span>
-                                    <p className="font-medium">{result.message}</p>
+                                    {result.success
+                                        ? <Check className="h-4 w-4 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                                        : <AlertTriangle className="h-4 w-4 text-[#B04A2E] dark:text-[#EFD2C8]" />}
+                                    <p className={cn(
+                                        'font-medium',
+                                        result.success
+                                            ? 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                            : 'text-[#B04A2E] dark:text-[#EFD2C8]'
+                                    )}>
+                                        {result.message}
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -261,16 +263,15 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                             <button
                                 type="submit"
                                 disabled={isSubmitting || !selectedItem || quantity <= 0}
-                                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                                className="pos-btn inline-flex items-center gap-2 px-6 py-3 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <span className="animate-spin">⏳</span>
-                                        Procesando...
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Procesando…
                                     </>
                                 ) : (
                                     <>
-                                        📦 Registrar Entrada
+                                        <Package className="h-4 w-4" /> Registrar Entrada
                                     </>
                                 )}
                             </button>
@@ -280,13 +281,13 @@ export default function CompraForm({ itemsList, areasList }: Props) {
 
                 {/* Panel lateral - Compras recientes */}
                 <div className="space-y-4">
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
-                            <span></span> Compras Recientes
+                            <History className="h-5 w-5 text-capsula-ink-soft" /> Compras Recientes
                         </h3>
 
                         {recentPurchases.length === 0 ? (
-                            <p className="text-center text-sm text-gray-500">
+                            <p className="text-center text-sm text-capsula-ink-muted">
                                 Las compras registradas en esta sesión aparecerán aquí
                             </p>
                         ) : (
@@ -294,22 +295,22 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                 {recentPurchases.map((purchase, idx) => (
                                     <div
                                         key={idx}
-                                        className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50"
+                                        className="rounded-lg bg-capsula-ivory-alt p-3"
                                     >
-                                        <p className="font-medium text-gray-900 dark:text-white">
+                                        <p className="font-medium text-capsula-ink">
                                             {purchase.item}
                                         </p>
                                         <div className="mt-1 flex items-center justify-between text-sm">
-                                            <span className="text-gray-500">
+                                            <span className="text-capsula-ink-muted tabular-nums">
                                                 +{formatNumber(purchase.quantity)} {purchase.unit}
                                             </span>
                                             {showCosts && (
-                                                <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                                                <span className="font-mono text-capsula-ink tabular-nums">
                                                     {formatCurrency(purchase.cost)}
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="mt-1 text-xs text-gray-400">
+                                        <p className="mt-1 text-xs text-capsula-ink-faint">
                                             {purchase.timestamp.toLocaleTimeString('es-VE')}
                                         </p>
                                     </div>
@@ -319,11 +320,11 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                     </div>
 
                     {/* Info de conversión */}
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                        <h4 className="mb-2 flex items-center gap-2 font-medium text-blue-800 dark:text-blue-400">
-                            💡 Conversiones Automáticas
+                    <div className="rounded-xl border border-[#D1DCE9] bg-[#E6ECF4] p-4 dark:border-[#2a3a52] dark:bg-[#1A2636]">
+                        <h4 className="mb-2 flex items-center gap-2 font-medium text-[#2A4060] dark:text-[#D1DCE9]">
+                            <Lightbulb className="h-4 w-4" /> Conversiones Automáticas
                         </h4>
-                        <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
+                        <ul className="space-y-1 text-sm text-[#2A4060]/85 dark:text-[#D1DCE9]/85">
                             <li>• Leche: 1 saco = 20 litros</li>
                             <li>• El sistema convierte a unidad base</li>
                             <li>• Costo promedio ponderado</li>
