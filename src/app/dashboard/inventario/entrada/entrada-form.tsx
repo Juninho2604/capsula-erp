@@ -8,6 +8,7 @@ import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
 import { Plus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import QuickItemModal from './QuickItemModal';
 
@@ -107,13 +108,13 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
         // Validar tipo
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
         if (!allowedTypes.includes(file.type)) {
-            alert('Tipo de archivo no permitido. Use JPG, PNG, WebP o PDF.');
+            toast.error('Tipo de archivo no permitido. Use JPG, PNG, WebP o PDF.');
             return;
         }
 
         // Validar tamaño (5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('El archivo excede el tamaño máximo de 5MB');
+            toast.error('El archivo excede el tamaño máximo de 5MB');
             return;
         }
 
@@ -133,12 +134,13 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
             if (data.success) {
                 setUploadedFile(data.data);
+                toast.success('Archivo subido');
             } else {
-                alert(data.error || 'Error al subir archivo');
+                toast.error(data.error || 'Error al subir archivo');
             }
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert('Error al subir archivo');
+            toast.error('Error al subir archivo');
         } finally {
             setIsUploading(false);
         }
@@ -146,11 +148,11 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
     const handleOCRProcess = async () => {
         if (!uploadedFile) {
-            alert('Primero sube una imagen');
+            toast.error('Primero sube una imagen');
             return;
         }
         if (!uploadedFile.type.startsWith('image/')) {
-            alert('Solo se pueden procesar imágenes (JPG, PNG) con IA, no PDFs.');
+            toast.error('Solo se pueden procesar imágenes (JPG, PNG) con IA, no PDFs.');
             return;
         }
 
@@ -174,14 +176,14 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     setOcrSuggestions(result.suggestions ?? []);
                     setShowOcrModal(true);
                 } else {
-                    alert('Error OCR: ' + result.message);
+                    toast.error('Error OCR: ' + result.message);
                 }
                 setIsProcessingOCR(false);
             };
 
         } catch (error) {
             console.error('Error procesando OCR', error);
-            alert('Error al procesar la imagen con IA');
+            toast.error('Error al procesar la imagen con IA');
             setIsProcessingOCR(false);
         }
     };
@@ -218,7 +220,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
         // Verificar si ya existe
         if (entradaItems.some(e => e.itemId === selectedItem)) {
-            alert('Este insumo ya está en la lista');
+            toast.error('Este insumo ya está en la lista');
             return;
         }
 
@@ -251,7 +253,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
     // Enviar entrada
     const handleSubmit = async () => {
         if (entradaItems.length === 0) {
-            alert('Agrega al menos un insumo');
+            toast.error('Agrega al menos un insumo');
             return;
         }
 
