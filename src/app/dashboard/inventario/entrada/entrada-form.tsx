@@ -7,7 +7,24 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
-import { Plus } from 'lucide-react';
+import {
+    Plus,
+    ArrowLeft,
+    FileText,
+    Camera,
+    Upload,
+    Loader2,
+    Check,
+    Eye,
+    Trash2,
+    Package,
+    TrendingUp,
+    TrendingDown,
+    Save,
+    Lightbulb,
+    AlertTriangle,
+    X as XIcon,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import QuickItemModal from './QuickItemModal';
@@ -323,8 +340,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     <Link
                         href="/dashboard/inventario"
                         className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700"
+                        aria-label="Volver a Inventario"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Entrada de Mercancía</h1>
@@ -341,8 +359,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Información del Documento */}
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-2xl text-white shadow-lg">
-                                📄
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                                <FileText className="h-5 w-5" />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Datos de la Nota de Entrega</h2>
@@ -387,8 +405,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
 
                             {/* Upload de Imagen */}
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    📷 Imagen de la Nota de Entrega
+                                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <Camera className="h-4 w-4" /> Imagen de la Nota de Entrega
                                 </label>
 
                                 <div className="relative">
@@ -404,12 +422,12 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                         >
                                             {isUploading ? (
                                                 <div className="flex flex-col items-center">
-                                                    <span className="animate-spin text-4xl">⏳</span>
-                                                    <p className="mt-2 text-sm text-amber-600">Subiendo archivo...</p>
+                                                    <Loader2 className="h-8 w-8 animate-spin text-capsula-ink-muted" />
+                                                    <p className="mt-2 text-sm text-capsula-ink-soft">Subiendo archivo…</p>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <span className="text-4xl"></span>
+                                                    <Upload className="mx-auto h-8 w-8 text-capsula-ink-muted" />
                                                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                                         Haz clic para subir o arrastra la imagen aquí
                                                     </p>
@@ -431,14 +449,14 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                             className="object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="flex h-full items-center justify-center text-3xl">
-                                                            📄
+                                                        <div className="flex h-full items-center justify-center text-capsula-ink-soft">
+                                                            <FileText className="h-8 w-8" />
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-emerald-800 dark:text-emerald-400">
-                                                        ✓ Documento adjunto
+                                                    <p className="flex items-center gap-1.5 font-medium text-emerald-800 dark:text-emerald-400">
+                                                        <Check className="h-4 w-4" /> Documento adjunto
                                                     </p>
                                                     <p className="text-sm text-emerald-600 dark:text-emerald-500">
                                                         {uploadedFile.fileName}
@@ -447,20 +465,22 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                         {(uploadedFile.size / 1024).toFixed(1)} KB
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-1">
                                                     <button
                                                         onClick={() => setShowPreview(true)}
-                                                        className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                                                        className="rounded-lg p-2 text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                                                         title="Ver documento"
+                                                        aria-label="Ver documento"
                                                     >
-                                                        👁️
+                                                        <Eye className="h-4 w-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => setUploadedFile(null)}
-                                                        className="rounded-lg p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20"
+                                                        className="rounded-lg p-2 text-capsula-coral transition-colors hover:bg-capsula-coral/10"
                                                         title="Eliminar"
+                                                        aria-label="Eliminar adjunto"
                                                     >
-                                                        🗑️
+                                                        <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -496,8 +516,8 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Agregar Insumos */}
                     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl text-white shadow-lg">
-                                📦
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                                <Package className="h-5 w-5" />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Insumos Recibidos</h2>
@@ -597,12 +617,13 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             {selectedItemData && unitCost > 0 && selectedItemData.currentCost > 0 &&
                                 Math.abs(unitCost - selectedItemData.currentCost) > 0.01 && (
                                     <p className={cn(
-                                        'mt-2 text-xs',
-                                        unitCost > selectedItemData.currentCost ? 'text-red-500' : 'text-emerald-500'
+                                        'mt-2 inline-flex items-center gap-1.5 text-xs tabular-nums',
+                                        unitCost > selectedItemData.currentCost ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'
                                     )}>
-                                        {unitCost > selectedItemData.currentCost ? '📈' : '📉'}
-                                        Costo anterior: ${selectedItemData.currentCost.toFixed(2)} →
-                                        Nuevo: ${unitCost.toFixed(2)}
+                                        {unitCost > selectedItemData.currentCost
+                                            ? <TrendingUp className="h-3.5 w-3.5" />
+                                            : <TrendingDown className="h-3.5 w-3.5" />}
+                                        Costo anterior: ${selectedItemData.currentCost.toFixed(2)} → Nuevo: ${unitCost.toFixed(2)}
                                     </p>
                                 )}
                         </div>
@@ -646,9 +667,10 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                 <td className="px-4 py-3 text-center">
                                                     <button
                                                         onClick={() => removeItem(item.id)}
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="rounded-lg p-1.5 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                                        aria-label={`Eliminar ${item.itemName}`}
                                                     >
-                                                        🗑️
+                                                        <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -682,16 +704,20 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Resultado */}
                     {result && (
                         <div className={cn(
-                            'rounded-xl p-4',
+                            'rounded-xl border p-4',
                             result.success
-                                ? 'border border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
-                                : 'border border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
+                                ? 'border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#3a5b48] dark:bg-[#1E3B2C]/40'
+                                : 'border-[#E8C2B7] bg-[#F7E3DB]/40 dark:border-[#5b3328] dark:bg-[#3B1F14]/40'
                         )}>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl">{result.success ? '' : ''}</span>
+                                {result.success
+                                    ? <Check className="h-5 w-5 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                                    : <AlertTriangle className="h-5 w-5 text-[#B04A2E] dark:text-[#EFD2C8]" />}
                                 <p className={cn(
                                     'font-medium',
-                                    result.success ? 'text-emerald-800 dark:text-emerald-400' : 'text-red-800 dark:text-red-400'
+                                    result.success
+                                        ? 'text-[#2F6B4E] dark:text-[#6FB88F]'
+                                        : 'text-[#B04A2E] dark:text-[#EFD2C8]'
                                 )}>
                                     {result.message}
                                 </p>
@@ -705,7 +731,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Resumen y botón guardar */}
                     <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
                         <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
-                            <span></span> Resumen de Entrada
+                            <FileText className="h-5 w-5 text-capsula-ink-soft" /> Resumen de Entrada
                         </h3>
 
                         <div className="space-y-3 text-sm">
@@ -724,10 +750,11 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                             <div className="flex justify-between">
                                 <span className="text-gray-600 dark:text-gray-400">Documento:</span>
                                 <span className={cn(
-                                    'font-medium',
-                                    uploadedFile ? 'text-emerald-600' : 'text-gray-400'
+                                    'inline-flex items-center gap-1 font-medium',
+                                    uploadedFile ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-ink-faint'
                                 )}>
-                                    {uploadedFile ? '✓ Adjunto' : 'Sin adjuntar'}
+                                    {uploadedFile && <Check className="h-3.5 w-3.5" />}
+                                    {uploadedFile ? 'Adjunto' : 'Sin adjuntar'}
                                 </span>
                             </div>
                             {showCosts && (
@@ -747,11 +774,12 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                         >
                             {isSubmitting ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <span className="animate-spin">⏳</span>
-                                    Guardando...
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Guardando…
                                 </span>
                             ) : (
-                                '💾 Guardar Entrada'
+                                <span className="flex items-center justify-center gap-2">
+                                    <Save className="h-4 w-4" /> Guardar Entrada
+                                </span>
                             )}
                         </button>
                     </div>
@@ -759,7 +787,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Info de costo promedio */}
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
                         <h4 className="mb-2 flex items-center gap-2 font-medium text-blue-800 dark:text-blue-400">
-                            💡 Costo Promedio Ponderado
+                            <Lightbulb className="h-4 w-4" /> Costo Promedio Ponderado
                         </h4>
                         <p className="text-sm text-blue-700 dark:text-blue-300">
                             Si el precio de un insumo cambia, el sistema recalcula automáticamente
@@ -789,9 +817,10 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     <div className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
                         <button
                             onClick={() => setShowPreview(false)}
-                            className="absolute right-2 top-2 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+                            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+                            aria-label="Cerrar preview"
                         >
-                            ✕
+                            <XIcon className="h-4 w-4" />
                         </button>
                         {uploadedFile.type.startsWith('image/') ? (
                             <Image
@@ -844,7 +873,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                                                 {sugg.detectedQuantity} {sugg.match.item.baseUnit}
                                                             </span>
                                                             {sugg.match.score > 0.3 && (
-                                                                <span className="text-xs text-amber-500" title="Confianza baja"></span>
+                                                                <AlertTriangle className="h-3.5 w-3.5 text-[#946A1C] dark:text-[#E8D9B8]" aria-label="Confianza baja" />
                                                             )}
                                                         </>
                                                     ) : (
