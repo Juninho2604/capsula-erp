@@ -4251,6 +4251,91 @@ Render desde `main` auto-despliega; los feature branches se mergean vía PR solo
 
 ---
 
+### 18.39 Auditoría módulos restaurante — Fase 1 (2026-04-28)
+
+> Auditoría técnica de los módulos **Inventario · Recetas · SKUs · Artículos · Compras · Proteínas · Almacenes**. Fase 1 = **cero cambios en BD**, solo UI, lógica derivada (read-only), búsqueda fuzzy, scripts auditores. Rama: `claude/audit-restaurant-modules-fKYTr` (28 commits).
+
+#### Política de preservación de datos (regla permanente)
+
+La BD de producción es intocable. Operaciones prohibidas (no las ejecuta nadie sin OK escrito):
+
+- `prisma db push --accept-data-loss`, `prisma db push` contra prod, `prisma migrate reset`.
+- `DROP TABLE` / `DROP COLUMN` / `RENAME` sin doble escritura previa.
+- `ALTER COLUMN ... TYPE` con cast no seguro.
+- Hard-delete en datos transaccionales (`InventoryMovement`, `SalesOrder`, `Recipe`, `InventoryItem`).
+- Cambiar valores de un `enum` existente.
+- Disparar `resetAllWarehouseStockAction` desde el agente.
+
+Operaciones permitidas en migraciones futuras: `CREATE TABLE` aislado, `ADD COLUMN` nullable o con default determinista, `CREATE INDEX CONCURRENTLY`, `ADD CONSTRAINT NOT VALID` en dos pasos, soft-delete (`deletedAt = NOW()`).
+
+#### Sub-Fase 1.A — Chrome de módulos auditados (UI)
+
+Migración a Minimal Navy (CLAUDE.md §2/§3) en archivos del scope:
+
+- **Hubs**: `inventario/inventory-view`, `inventario/edit-item-dialog`, `recetas/RecipeList`, `recetas/MissingRecipesPanel`, `recetas/[id]/page`, `sku-studio/sku-studio-view`, `almacenes/almacenes-view`, `inventario/diario/page`.
+- **Auditorías + historial**: `inventario/auditorias/AuditList`, `inventario/auditorias/[id]/AuditDetail`, `inventario/historial-mensual/movement-history-view`.
+- **Submódulos**: `inventario/entrada/entrada-form` (α toasts → β emojis → γ paleta), `inventario/importar/page`, `inventario/diario/daily-manager` (α emojis), `inventario/diario/critical-list-manager`, `inventario/compras/compra-form` (Compra Rápida), `compras/purchase-order-view` (αβγ), `components/whatsapp-purchase-order-parser`, `proteinas/page`, `proteinas/protein-processing-view` (β toasts + γ emojis), `proteinas/processing-templates` (ε emojis).
+
+Reglas aplicadas:
+
+- **Cero `alert()` blocking** en chrome — todos pasaron a `toast.error/success/neutral` (react-hot-toast).
+- **Cero emojis en chrome de UI** — reemplazados por iconos `lucide-react`. Las únicas excepciones autorizadas (CLAUDE.md §2): contenido dinámico del usuario, traces de debug, payloads de impresoras térmicas.
+- **Cero hex sueltos sin `dark:` override** salvo los 4 tonos sutiles canónicos (ok/warn/danger/info) documentados en CLAUDE.md §3.
+- **Helpers `pos-btn` / `pos-input` / `pos-label`** en CTAs/inputs/etiquetas.
+- **Z-stack**: modales POS en `z-[60]` con `bg-capsula-ink/60 backdrop-blur-sm`.
+
+#### Sub-Fase 1.E — Paletas con identidad cromática funcional
+
+Tres archivos que codifican estado/columna/paso con color (operativamente útil) recibieron pase quirúrgico que **preserva los hues funcionales** y solo migra el chrome neutro:
+
+- `inventario/diario/daily-manager`: blue=apertura, indigo=entradas, rose=ventas, orange=merma, green=cierre, cyan=sugerencia automática.
+- `proteinas/protein-processing-view` y `proteinas/processing-templates`: blue=limpieza, purple=maserado, green=distribución, gris/capsula=personalizado.
+
+#### Sub-Fase 1.B — Lógica derivada (sin BD)
+
+| Cambio | Archivos | Notas |
+|---|---|---|
+| `costPerServing` derivado | `recipe.actions.ts` + `RecipeList.tsx` | `currentCost / outputQuantity`, fallback a `costPerUnit` cuando `outputQuantity = 0`. Solo lectura. |
+| Banner gerencial "ventas con descargo pendiente" | `inventory.actions.ts` + `pending-deduction-banner.tsx` + `inventario/page.tsx` | Detecta `SalesOrder.notes contains 'DESCARGO INVENTARIO PENDIENTE'`. Server Component que se monta sobre `InventoryView`; renderiza solo si `count > 0`. Tono danger dark-aware. |
+| Validación Zod | `recipe.actions.ts` (createRecipe/updateRecipe), `sku-studio.actions.ts` (createProductFamily/createSkuTemplate/createSkuItem) | `safeParse` al inicio; mensaje en español con ruta del campo si falla. Tipos derivan con `z.infer`. |
+| Helper SKU canónico | `lib/sku.ts` + `lib/sku.test.ts` | `generateSkuCode` / `parseSkuCode` / `skuPrefix` / `sanitizeSegment`. Patrón `FAM-SUB-FMT-NNN` con secuencial zero-padded. **Solo helpers** — no integrado todavía con SKU Studio (espera aprobación). 19 tests vitest. |
+| `router.push()` en lugar de `window.location.href` | `inventario/importar/page.tsx` | Preserva estado de cliente y habilita prefetch. |
+
+#### Sub-Fase 1.C — UX búsqueda + paginación
+
+- `lib/fuzzy-search.ts` + `lib/fuzzy-search.test.ts` — wrapper sobre Fuse.js con defaults del ERP (threshold 0.35, ignoreLocation, ignoreDiacritics) y `paginate<T>(items, page, pageSize)` con clamps. 16 tests.
+- `inventory-view.tsx` — búsqueda fuzzy (tolera "aciete" → "Aceite") y paginación de 50 ítems con paginador inferior (capsula-line + ChevronLeft/Right). Reset de página al cambiar filtros.
+- `RecipeList.tsx` — búsqueda fuzzy sobre nombre/categoría/unidad. No se añadió paginación porque el agrupamiento por categoría ya da estructura visual.
+
+#### Sub-Fase 1.D — Scripts auditores read-only
+
+Solo `SELECT` — preparan diagnóstico para futuras migraciones:
+
+- `scripts/audit-orphan-recipes.ts` — detecta `MenuItem.recipeId` rotos (FK fantasma), inactivos, y recetas activas sin `MenuItem` que las use. **Gate previo** a la migración futura que añada `@relation MenuItem.recipe → Recipe`.
+- `scripts/audit-deduction-failures.ts` — diagnóstico profundo de `SalesOrder` con descargo pendiente: distribución por canal, heatmap por día, top 15 `MenuItem` involucrados, identificación de items SIN receta vinculada (root cause estructural). Soporta `--days N` y `--csv`.
+- `scripts/audit-supplier-without-history.ts` — cobertura de precios por proveedor: `SupplierItem` sin precio, items con varios proveedores sin preferido, precios obsoletos vs `CostHistory` (proxy hasta que exista `SupplierItemPriceHistory`), suppliers sin items. Soporta `--csv`.
+
+#### Estado de validación al cierre
+
+- `tsc --noEmit` clean.
+- `vitest run` → **62/62 tests passing** (27 originales + 19 SKU + 16 fuzzy).
+- 28 commits temáticos, todos pusheados a `claude/audit-restaurant-modules-fKYTr`.
+- **Cero modificaciones a `prisma/schema.prisma` ni a tablas de la BD.**
+
+#### Pendiente de aprobación gerencial (Fase 2 = toca BD)
+
+Antes de avanzar a Fase 2 (refactor N+1, FK MenuItem.recipe, outbox descargos, etc.), se requiere confirmación explícita del cliente sobre 7 puntos:
+
+1. Patrón de SKU `FAM-SUB-FMT-NNN`.
+2. Estrategia ante descargo fallido: outbox + reintento (recomendado) vs rollback duro.
+3. Aplicar mermas en descargo: todos los ítems o solo `RAW_MATERIAL` el primer mes.
+4. Stack de impresión: `react-to-print` (sin nuevas deps) vs `pdfmake` (+150 KB).
+5. Orden de fases: 3.1 (impresión, valor inmediato) antes que 2.1 (refactor N+1).
+6. Acceso a `pg_dump` para snapshot pre-migración.
+7. Revisión humana del SQL como gate obligatorio.
+
+---
+
 ## 20. Correcciones de Agregación de Ventas (2026-04-24)
 
 Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.
