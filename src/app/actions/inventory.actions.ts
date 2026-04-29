@@ -296,6 +296,83 @@ export async function getPendingDeductionSummaryAction(opts?: {
     }
 }
 
+/**
+ * Resumen del outbox `InventoryDeductionRetry` (Fase 2.A).
+ *
+ * Lee la tabla introducida por la migración 20260428120000 y devuelve
+ * un agregado por status. Solo SELECT — no escribe nada.
+ *
+ * - PENDING / IN_PROGRESS: requieren atención del worker (futuro 2.C).
+ * - FAILED: agotaron maxAttempts → necesitan revisión manual.
+ * - COMPLETED: descargo finalmente aplicado, no se muestra.
+ * - CANCELLED: archivado por el operador.
+ */
+export async function getOutboxSummaryAction(opts?: { recentLimit?: number }) {
+    const limit = opts?.recentLimit ?? 5;
+    try {
+        const [pendingCount, inProgressCount, failedCount, recent] = await Promise.all([
+            prisma.inventoryDeductionRetry.count({ where: { status: 'PENDING' } }),
+            prisma.inventoryDeductionRetry.count({ where: { status: 'IN_PROGRESS' } }),
+            prisma.inventoryDeductionRetry.count({ where: { status: 'FAILED' } }),
+            prisma.inventoryDeductionRetry.findMany({
+                where: { status: { in: ['PENDING', 'IN_PROGRESS', 'FAILED'] } },
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                select: {
+                    id: true,
+                    salesOrderId: true,
+                    status: true,
+                    attempts: true,
+                    maxAttempts: true,
+                    nextRetryAt: true,
+                    lastError: true,
+                    createdAt: true,
+                    salesOrder: { select: { orderNumber: true, total: true } },
+                },
+            }),
+        ]);
+
+        return {
+            actionable: pendingCount + inProgressCount + failedCount,
+            pending: pendingCount,
+            inProgress: inProgressCount,
+            failed: failedCount,
+            recent: recent.map(r => ({
+                id: r.id,
+                salesOrderId: r.salesOrderId,
+                orderNumber: r.salesOrder?.orderNumber ?? null,
+                orderTotal: r.salesOrder ? Number(r.salesOrder.total) : null,
+                status: r.status,
+                attempts: r.attempts,
+                maxAttempts: r.maxAttempts,
+                nextRetryAt: r.nextRetryAt,
+                lastError: r.lastError,
+                createdAt: r.createdAt,
+            })),
+        };
+    } catch (error) {
+        console.error('Error fetching outbox summary:', error);
+        return {
+            actionable: 0,
+            pending: 0,
+            inProgress: 0,
+            failed: 0,
+            recent: [] as Array<{
+                id: string;
+                salesOrderId: string | null;
+                orderNumber: string | null;
+                orderTotal: number | null;
+                status: string;
+                attempts: number;
+                maxAttempts: number;
+                nextRetryAt: Date;
+                lastError: string | null;
+                createdAt: Date;
+            }>,
+        };
+    }
+}
+
 // ============================================================================
 // PRINT (read-only — datos enriquecidos para listas imprimibles)
 // ============================================================================

@@ -484,6 +484,56 @@ async function assertOpenTabVersionUpdate(params: {
  * Esto elimina el problema de deducción parcial donde algunos ingredientes bajaban
  * y otros no al producirse un error a mitad del proceso.
  */
+
+/**
+ * Registra un fallo de descargo de inventario en la tabla outbox
+ * `InventoryDeductionRetry` para que un cron/worker posterior pueda
+ * reintentar el descargo automáticamente.
+ *
+ * **No falla nunca** desde el punto de vista del caller: si el insert al
+ * outbox a su vez falla, se loggea y se ignora (best-effort), garantizando
+ * que el flujo de venta del POS no se rompa por un fallo de telemetría.
+ *
+ * El payload guarda los items del cart (con menuItemId, quantity, etc.)
+ * + areaId + userId, suficiente para que el worker re-arme la llamada a
+ * `registerInventoryForCartItems`.
+ *
+ * Política de reintento por default: 5 intentos con backoff de 5 minutos.
+ */
+async function recordDeductionFailure(params: {
+    items: CartItem[];
+    areaId: string;
+    orderId: string;
+    userId: string;
+    error: unknown;
+}): Promise<void> {
+    try {
+        const errMessage = params.error instanceof Error
+            ? `${params.error.name}: ${params.error.message}`
+            : String(params.error ?? 'unknown error');
+        await prisma.inventoryDeductionRetry.create({
+            data: {
+                salesOrderId: params.orderId,
+                payload: JSON.stringify({
+                    items: params.items,
+                    areaId: params.areaId,
+                    userId: params.userId,
+                }),
+                status: 'PENDING',
+                attempts: 0,
+                maxAttempts: 5,
+                lastError: errMessage.slice(0, 2000), // safety limit por si hay stack largo
+                nextRetryAt: new Date(Date.now() + 5 * 60_000), // primer reintento en 5 min
+            },
+        });
+    } catch (outboxErr) {
+        // Best-effort: si el outbox a su vez falla (ej. tabla no existe en
+        // un entorno de desarrollo, error transitorio de red), no rompemos
+        // el flujo de venta. Solo loggeamos.
+        console.error('[OUTBOX] No se pudo registrar fallo de descargo:', outboxErr);
+    }
+}
+
 async function registerInventoryForCartItems(params: {
     items: CartItem[];
     areaId: string;
@@ -862,6 +912,17 @@ export async function createSalesOrderAction(
             // Pero marcamos la orden con un flag visible para auditoría
             // para que el gerente pueda aplicar el descuento manualmente.
             console.error('[INVENTORY] Descargo falló para orden', newOrder.id, invError);
+
+            // 1. Outbox estructurado para reintento automático posterior (Fase 2.A)
+            await recordDeductionFailure({
+                items: data.items,
+                areaId,
+                orderId: newOrder.id,
+                userId: session.id,
+                error: invError,
+            });
+
+            // 2. Flag visible en notas (compat histórica para reportes existentes)
             try {
                 await prisma.salesOrder.update({
                     where: { id: newOrder.id },
@@ -1210,6 +1271,17 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
             });
         } catch (invError) {
             console.error('[INVENTORY] Descargo falló para tab order', createdOrder.id, invError);
+
+            // 1. Outbox estructurado para reintento automático posterior (Fase 2.A)
+            await recordDeductionFailure({
+                items: data.items,
+                areaId: salesArea.id,
+                orderId: createdOrder.id,
+                userId: session.id,
+                error: invError,
+            });
+
+            // 2. Flag visible en notas (compat histórica)
             try {
                 await prisma.salesOrder.update({
                     where: { id: createdOrder.id },
