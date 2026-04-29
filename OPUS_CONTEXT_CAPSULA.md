@@ -4336,65 +4336,102 @@ Antes de avanzar a Fase 2 (refactor N+1, FK MenuItem.recipe, outbox descargos, e
 
 ---
 
-### 18.40 Fase 2 micro — Modelos additive-only sin auto-aplicación (2026-04-28)
+### 18.40 Fase 2 — Migraciones outbox + supplier-history vía Vercel (2026-04-28)
 
-> Después de cerrar Fase 1 (28 commits + Sub-Fase 1.F + Fase 3.1 imprimible), se introducen los **modelos** de las dos primeras migraciones approved sin aplicarlas automáticamente. La aplicación física a la BD es **manual y controlada** vía script.
+> Aplicación additive-only de las dos primeras migraciones approved
+> (`InventoryDeductionRetry` + `SupplierItemPriceHistory`). El despliegue
+> real del proyecto es **Vercel + AWS RDS** (no Render), y `vercel-build`
+> ya corre `prisma migrate deploy` en cada deploy. Por eso aplicamos vía
+> el flujo natural del proyecto.
 
-#### Por qué no auto-aplicar
+#### Descubrimiento clave
 
-El proyecto **no tiene `prisma/migrations/migration_lock.toml`** ni la tabla `_prisma_migrations` en la BD productiva (probablemente se usó `prisma db push` históricamente). Si `prisma migrate deploy` se ejecutara, intentaría aplicar las 27 migraciones existentes desde cero y fallaría porque las tablas ya existen.
+Hasta este punto se asumió que el proyecto no tenía `_prisma_migrations`
+en la BD (porque no había `migration_lock.toml` en el repo). En realidad:
 
-Decisión: **NO modificar `render.yaml`**. Se mantiene `buildCommand: npm install && npx prisma generate && npm run build` (sin `migrate deploy`).
+- **Producción real**: Vercel + AWS RDS. `render.yaml` existe pero no es
+  el deploy productivo.
+- **`vercel-build`** (`package.json`):
+  ```
+  "vercel-build": "prisma generate && prisma migrate deploy && next build"
+  ```
+  Esto significa que cada deploy ejecuta `prisma migrate deploy` desde
+  hace tiempo, así que `_prisma_migrations` está poblada con las 27
+  migraciones existentes. Solo faltaba `migration_lock.toml` en el repo
+  (y está intencionalmente en `.gitignore` línea 25).
 
-#### Qué entra en `schema.prisma`
-
-Los dos modelos nuevos (`InventoryDeductionRetry`, `SupplierItemPriceHistory`) + relaciones inversas en `User`, `SalesOrder`, `Supplier`, `InventoryItem`, `PurchaseOrder`. El cliente Prisma generado tiene los tipos disponibles aunque las tablas no existan todavía en BD.
-
-**Restricción operativa**: hasta que se apliquen las migraciones, **no usar estas relaciones en queries de runtime**. Cualquier `prisma.inventoryDeductionRetry.*` o `include: { deductionRetries: true }` fallaría con "table does not exist". Por eso los servicios (cron worker outbox, hook en `receivePurchaseOrderItems`) entran en commits posteriores, después de aplicar.
-
-#### Procedimiento de aplicación
-
-Cuando se decida aplicar, ejecutar desde un entorno con `DATABASE_URL` válida (Render shell o Cloud SQL Proxy):
-
-```bash
-# 1. Asegurar que Render tiene snapshot reciente del PostgreSQL (panel de Render)
-# 2. Aplicar las migraciones additive en transacción (idempotente)
-DATABASE_URL=... npx tsx scripts/apply-phase2-migrations.ts
-
-# 3. Verificar que las tablas e índices quedaron creados
-DATABASE_URL=... npx tsx scripts/verify-phase2-migrations.ts
-```
-
-El script `apply-phase2-migrations.ts` verifica primero si cada tabla existe; si ya existe, la salta. Si no, ejecuta el SQL en transacción todo-o-nada. Soporta `--dry-run` para reportar qué haría sin aplicar.
-
-El script `verify-phase2-migrations.ts` confirma:
-- Que ambas tablas existen.
-- Que los 4 + 5 índices fueron creados.
-- Que el cliente Prisma puede contar registros sin error.
-
-#### Archivos relevantes
+#### Qué se entrega en este commit
 
 | Archivo | Propósito |
 |---|---|
-| `prisma/schema.prisma` (líneas finales) | Modelos `InventoryDeductionRetry` y `SupplierItemPriceHistory` + relaciones inversas |
-| `prisma/migrations-proposed/001_inventory_deduction_retry.sql` | SQL canónico de la outbox (revisable) |
-| `prisma/migrations-proposed/002_supplier_item_price_history.sql` | SQL canónico del histórico de precios |
-| `scripts/apply-phase2-migrations.ts` | Aplicador idempotente y transaccional |
-| `scripts/verify-phase2-migrations.ts` | Smoke test post-aplicación |
+| `prisma/migrations/20260428120000_inventory_deduction_retry/migration.sql` | Outbox table — copia canónica de la propuesta 001 |
+| `prisma/migrations/20260428120100_supplier_item_price_history/migration.sql` | Histórico de precios — copia canónica de la propuesta 002 |
+| `prisma/migrations-proposed/001_*.sql` y `002_*.sql` | **Eliminados** (ya están como migraciones reales) |
+| `prisma/migrations-proposed/README.md` | Actualizado con flujo Vercel + RDS |
+| `scripts/apply-phase2-migrations.ts` | **Eliminado** (redundante con `migrate deploy`) |
+| `scripts/verify-phase2-migrations.ts` | Mantenido — smoke test post-deploy |
 
-#### Garantías
+`prisma/schema.prisma` mantiene los modelos `InventoryDeductionRetry` y
+`SupplierItemPriceHistory` + relaciones inversas introducidos en el
+commit anterior (ya en main).
 
-- El SQL es **strict additive**: solo `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` + `ALTER TABLE … ADD CONSTRAINT`. Cero `DROP`, `TRUNCATE`, `ALTER COLUMN`.
-- Cero pérdida de datos posible: las tablas son nuevas, no tocan las existentes.
-- Si el cliente prefiere revisar el SQL más línea por línea antes de aplicar, puede hacerlo en `prisma/migrations-proposed/`.
-- Render mantiene snapshots automáticos diarios del PostgreSQL como safety net adicional.
+#### Procedimiento de aplicación
 
-#### Próximos pasos (después de aplicar)
+1. **Antes de mergear** el PR:
+   - AWS Console → RDS → instancia productiva → Actions → **Take snapshot**.
+   - Nombre sugerido: `pre-phase2-2026-04-28`.
+   - Esperar status `available` (1-3 minutos).
+2. **Mergear el PR a main**.
+3. **Vercel auto-deploy**:
+   - Ejecuta `prisma generate` (regenera cliente).
+   - Ejecuta `prisma migrate deploy` → detecta las 2 migraciones nuevas
+     y las aplica en orden, registrándolas en `_prisma_migrations`.
+   - Ejecuta `next build` y publica.
+4. **Smoke test post-deploy** (opcional pero recomendado):
+   ```bash
+   DATABASE_URL=... npx tsx scripts/verify-phase2-migrations.ts
+   ```
+   Confirma que ambas tablas existen, los 9 índices están creados, y el
+   cliente Prisma puede contar registros sin error.
 
-1. Conectar `registerInventoryForCartItems` (en `pos.actions.ts`) al outbox: cuando falla, en lugar de solo dejar el flag en `SalesOrder.notes`, también insertar fila en `InventoryDeductionRetry`.
-2. Implementar cron/worker que consuma `InventoryDeductionRetry WHERE status='PENDING' AND nextRetryAt <= NOW()`.
-3. Extender `receivePurchaseOrderItemsAction` para escribir en `SupplierItemPriceHistory` cuando el `unitPrice` cambia.
-4. Vista `/dashboard/compras/proveedor/[id]` con el histórico graficado.
+#### Garantías de no pérdida de datos
+
+- El SQL es **strict additive**: solo `CREATE TABLE IF NOT EXISTS`,
+  `CREATE INDEX IF NOT EXISTS`, `ALTER TABLE … ADD CONSTRAINT`.
+- Cero `DROP`, `TRUNCATE`, `ALTER COLUMN`, `RENAME`.
+- Las tablas nuevas no tocan las existentes.
+- Snapshot RDS pre-merge funciona como safety net.
+
+#### Rollback (si algo falla)
+
+Probabilidad: bajísima dado el SQL additive con `IF NOT EXISTS`. Pero si
+ocurre:
+
+1. **Si Vercel deploy falla** durante `migrate deploy`: el sitio sigue
+   en el deploy estable previo. La BD puede haber quedado con una
+   migración a medio aplicar (ej. tabla creada pero índices no). En tal
+   caso:
+   ```sql
+   -- desde AWS Console o psql (queries seguras de rollback)
+   DROP TABLE IF EXISTS "InventoryDeductionRetry";
+   DROP TABLE IF EXISTS "SupplierItemPriceHistory";
+   DELETE FROM "_prisma_migrations" WHERE migration_name IN
+     ('20260428120000_inventory_deduction_retry',
+      '20260428120100_supplier_item_price_history');
+   ```
+2. **Si todo va peor**: AWS Console → snapshot pre-phase2 → Actions →
+   Restore snapshot a nueva instancia → cambiar `DATABASE_URL` en Vercel.
+
+#### Próximos pasos (después de aplicar exitosamente)
+
+1. Conectar `registerInventoryForCartItems` (en `pos.actions.ts`) al
+   outbox: cuando el descargo falla, además del flag silencioso en
+   `SalesOrder.notes`, insertar fila en `InventoryDeductionRetry`.
+2. Implementar cron/worker que consuma
+   `InventoryDeductionRetry WHERE status='PENDING' AND nextRetryAt <= NOW()`.
+3. Extender `receivePurchaseOrderItemsAction` para insertar en
+   `SupplierItemPriceHistory` cuando el `unitPrice` cambia.
+4. Vista `/dashboard/compras/proveedor/[id]` con histórico graficado.
 
 ---
 
