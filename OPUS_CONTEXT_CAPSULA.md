@@ -4435,6 +4435,170 @@ ocurre:
 
 ---
 
+### 18.41 Fase 2 cierre — outbox cron + histórico precios proveedor (2026-04-29)
+
+> Cierre completo de Fase 2 del audit de módulos restaurante. Sub-fases
+> A/B/D/E/C entregadas en 4 PRs squash-mergeados a `main`. Cero pérdida o
+> modificación de datos existentes.
+
+#### Mapeo sub-fase → PR → commit
+
+| Sub-fase | Descripción | PR | Commit en main |
+|---|---|---|---|
+| 2.A | Outbox writer en POS al fallar descargo | #45 | `22545d3` |
+| 2.B | Banner gerencial dual (outbox + legacy) | #45 | `22545d3` |
+| 2.D | Hook precio en `receivePurchaseOrderItemsAction` | #46 | `a8869b3` |
+| 2.E | Vistas read-only `/dashboard/compras/proveedor[/id]` | #46 | `a8869b3` |
+| 2.C | Cron worker `/api/cron/retry-inventory-deductions` | #47 | (este commit) |
+
+#### 2.A — Outbox writer (commit `22545d3`)
+
+`src/app/actions/pos.actions.ts`:
+- Helper privado `recordDeductionFailure({ items, areaId, orderId, userId, error })`
+  → inserta fila `InventoryDeductionRetry` con payload JSON, status `PENDING`,
+  `attempts=0`, `maxAttempts=5`, `nextRetryAt = NOW + 5min`. **Best-effort**:
+  si el insert falla, sólo loggea — no rompe el flujo de venta.
+- Llamado desde los 2 `catch` blocks donde `registerInventoryForCartItems`
+  podía fallar (`createSalesOrderAction` ~líneas 904-917, `addToOpenTabAction`
+  ~líneas 1266-1276). El flag legado en `SalesOrder.notes` se mantiene por
+  compat — el banner consulta ambos y muestra solo el delta.
+
+#### 2.B — Banner gerencial (commit `22545d3`)
+
+`src/app/dashboard/inventario/pending-deduction-banner.tsx`:
+- Server Component dual-source. Lee `getOutboxSummaryAction` (Fase 2)
+  + `getPendingDeductionSummaryAction` (legacy `notes`).
+- Muestra `pending`, `inProgress`, `failed` separados con iconos
+  `Loader2`, `Loader2 animate-spin`, `Ban`. Tono `danger` dark-aware.
+- Lista de los 3 outbox-items más recientes con `formatRelativeFromNow`
+  (próximo intento `en N min` / `atrasado N min`).
+- `legacyOnly = max(0, legacy.count - outbox.actionable)` para evitar
+  doble-conteo: el outbox es la fuente de verdad post-Fase 2; lo
+  legado es histórico anterior al outbox.
+
+#### 2.D — Hook precio en recepción de OC (commit `a8869b3`)
+
+`src/app/actions/purchase.actions.ts`:
+- Helper privado `registerSupplierPriceChange({ supplierId,
+  inventoryItemId, newUnitPrice, purchaseOrderId, registeredById })`:
+  - Lee `SupplierItem.unitPrice` actual.
+  - Si `|currentPrice - newUnitPrice| < 0.0001` → no-op (idempotente).
+  - En `prisma.$transaction`:
+    1. `UPDATE SupplierItemPriceHistory SET effectiveTo=NOW WHERE
+       (supplierId,inventoryItemId)=? AND effectiveTo IS NULL`
+    2. `INSERT SupplierItemPriceHistory` con `effectiveFrom=NOW`,
+       `effectiveTo=NULL`, `registeredFromPurchaseOrderId`.
+    3. `UPDATE SupplierItem SET unitPrice=? WHERE id=?` (o `INSERT` si
+       el par no existía aún).
+- En `receivePurchaseOrderItemsAction`: pre-carga `orderForSupplier.supplierId`
+  una sola vez. En el loop por línea, si `supplierId && unitCost > 0`,
+  invoca el helper en `try/catch` best-effort.
+
+#### 2.E — Vistas read-only (commit `a8869b3`)
+
+Pages (Server Components con `Suspense` + `notFound()`):
+- `src/app/dashboard/compras/proveedor/page.tsx` — grid de proveedores
+  activos con `itemsCount` + último cambio (relativo).
+- `src/app/dashboard/compras/proveedor/[id]/page.tsx` — header de
+  proveedor + delega al chart client component.
+- `src/app/dashboard/compras/proveedor/[id]/price-history-chart.tsx` —
+  Client Component con `recharts` `LineChart`. Tokens aplicados via
+  `rgb(var(--capsula-coral-rgb))`, `rgb(var(--capsula-line-rgb))`, etc.
+  para soporte dark-mode nativo. Trend indicator (`TrendingUp/Down/Minus`)
+  con tonos `ok`/`danger` autorizados. Tabla cronológica con Δ% entre
+  puntos consecutivos.
+
+Actions read-only en `purchase.actions.ts`:
+- `getSupplierListForHistoryAction()` → `[{ id, name, code, contactName,
+   itemsCount, lastPriceChangeAt }]`.
+- `getSupplierPriceHistoryAction(supplierId)` → `{ supplier, items:
+   [{ ..., currentPrice, history: HistoryPoint[] }] }`. Limita 50 puntos
+  por item para evitar over-fetch.
+
+Link "Histórico de precios" añadido en el header del módulo de compras
+(`purchase-order-view.tsx`).
+
+#### 2.C — Cron worker (este commit)
+
+`src/app/api/cron/retry-inventory-deductions/route.ts`:
+- `GET` y `POST` ambos invocan el mismo handler (Vercel Cron usa GET por
+  default; POST queda para debugging manual).
+- **Auth**: si `process.env.CRON_SECRET` está seteado, requiere header
+  `Authorization: Bearer ${CRON_SECRET}`. En dev sin secret se permite
+  acceso libre.
+- Lee hasta `BATCH_SIZE = 25` registros con `status='PENDING' AND
+  nextRetryAt <= NOW`, ordenados FIFO por `nextRetryAt asc`.
+- Procesa **en serie** (evita hammering) llamando a
+  `retryInventoryDeductionFromOutbox(id)` por cada uno.
+- Devuelve JSON con counts `{ completed, pending, failed, cancelled,
+  skipped, durationMs, errors[10] }`. Log estructurado para Vercel logs.
+- `maxDuration = 60` (segundos) — cap por invocación.
+
+`src/app/actions/pos.actions.ts` — `retryInventoryDeductionFromOutbox(retryId)`:
+1. **Claim optimista**: `updateMany` con WHERE `id+status=PENDING+
+   nextRetryAt<=NOW` → `status=IN_PROGRESS`, `attempts: { increment: 1 }`,
+   `lastAttemptAt=NOW`. Si 0 filas → otro worker la tomó, return SKIPPED.
+2. Carga el row claimeado, valida `SalesOrder` asociado: si fue
+   `CANCELLED` o no existe → marca `CANCELLED` y termina.
+3. Parsea `payload` JSON; si está corrupto → `FAILED` inmediato (no
+   reintenta payload roto).
+4. Llama a `registerInventoryForCartItems(items, areaId, orderId, userId)`.
+5. **Éxito** → `status=COMPLETED, completedAt=NOW, lastError=null`.
+6. **Fallo** + `attempts >= maxAttempts` → `FAILED`.
+7. **Fallo** + `attempts < maxAttempts` → `PENDING` + `nextRetryAt =
+   computeNextRetryAt(attempts)` con backoff exponencial:
+   - intent 1 → +15 min
+   - intent 2 → +1 h
+   - intent 3 → +4 h
+   - intent 4+ → +24 h (cap)
+   `lastError` truncado a 2000 chars.
+
+**Nunca lanza** — siempre retorna `{ id, status, error? }` para que el
+cron procese el lote completo sin romperse.
+
+`vercel.json` (nuevo):
+```json
+{
+  "crons": [
+    { "path": "/api/cron/retry-inventory-deductions", "schedule": "*/5 * * * *" }
+  ]
+}
+```
+Cada 5 minutos. El throughput máximo es 25 items × 12 ejecuciones/h =
+300 items/h, suficiente para escala actual.
+
+#### Garantías de no pérdida ni modificación de datos
+
+- Outbox es **append-only** desde el POS. Las únicas mutaciones provienen
+  del cron (sus propios registros) o de cancelación manual (no implementada
+  todavía — futura fase).
+- `registerSupplierPriceChange` modifica `SupplierItem.unitPrice` (que ya
+  era write desde el flujo previo de recepción) + crea fila nueva en
+  `SupplierItemPriceHistory`. Cero update destructivo en datos existentes
+  fuera del campo precio del proveedor.
+- El cron mismo es idempotente por el claim optimista: dos workers no
+  pueden procesar el mismo `retryId` simultáneamente.
+- Backoff progresivo evita storms en caso de problemas persistentes en BD.
+- Transacciones atómicas en `registerInventoryForCartItems` y en
+  `registerSupplierPriceChange`: rollback completo si cualquier paso falla.
+
+#### Test plan post-deploy
+
+1. **Outbox e2e**:
+   - Provocar fallo de descargo (apagar BD inventario / patch temporal).
+   - Verificar fila en `InventoryDeductionRetry` con `status=PENDING`.
+   - Esperar al cron (≤5 min) → fila debe pasar a `COMPLETED`.
+2. **Cron auth**: `curl /api/cron/retry-inventory-deductions` sin Bearer
+   debe devolver 401.
+3. **Histórico de precios**: recibir una OC con precio diferente al
+   vigente → nueva fila en `SupplierItemPriceHistory` y `SupplierItem.
+   unitPrice` actualizado. Visitar `/dashboard/compras/proveedor/<id>`
+   y comprobar que el punto aparece en el `LineChart`.
+4. **Idempotencia**: recibir OC con el mismo precio dos veces → no se
+   duplica fila en histórico (helper se short-circuit en tolerancia).
+
+---
+
 ## 20. Correcciones de Agregación de Ventas (2026-04-24)
 
 Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.
