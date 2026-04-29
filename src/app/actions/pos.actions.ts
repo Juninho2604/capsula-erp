@@ -623,6 +623,159 @@ async function registerInventoryForCartItems(params: {
 }
 
 // ============================================================================
+// HELPERS DE REINTENTO DE OUTBOX (Fase 2.C)
+// ============================================================================
+
+/**
+ * Backoff exponencial para reintentos del outbox de descargos.
+ * `attempts` es el número de intentos ya realizados (>= 1 cuando entra aquí).
+ *  1 → +15 min
+ *  2 → +1 h
+ *  3 → +4 h
+ *  4 → +24 h
+ *  >=5 → +24 h (cap)
+ */
+function computeNextRetryAt(attempts: number): Date {
+    const minutes = attempts >= 4 ? 24 * 60
+        : attempts === 3 ? 4 * 60
+        : attempts === 2 ? 60
+        : 15;
+    return new Date(Date.now() + minutes * 60_000);
+}
+
+/**
+ * Toma un registro del outbox `InventoryDeductionRetry` y reintenta el
+ * descargo de inventario asociado. Diseñada para ser invocada desde el
+ * cron `/api/cron/retry-inventory-deductions`.
+ *
+ * Flujo:
+ *  1. **Claim optimista**: `updateMany` con WHERE id+status=PENDING. Si
+ *     0 filas afectadas, otro worker ya tomó este registro → return.
+ *  2. Parse del payload (items, areaId, userId).
+ *  3. Validación del SalesOrder asociado (si fue cancelado → CANCELLED).
+ *  4. Llamada a `registerInventoryForCartItems` (la misma lógica que el
+ *     POS usa de primer intento).
+ *  5. Update final: COMPLETED si OK, PENDING (con nextRetryAt) o FAILED
+ *     según attempts vs maxAttempts.
+ *
+ * **Nunca lanza** — siempre retorna un objeto resultado para que el cron
+ * pueda procesar el lote completo sin romperse.
+ */
+export async function retryInventoryDeductionFromOutbox(retryId: string): Promise<{
+    id: string;
+    status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'SKIPPED';
+    error?: string;
+}> {
+    // 1. CLAIM optimista: solo si todavía está PENDING y nextRetryAt <= NOW
+    const claim = await prisma.inventoryDeductionRetry.updateMany({
+        where: {
+            id: retryId,
+            status: 'PENDING',
+            nextRetryAt: { lte: new Date() },
+        },
+        data: {
+            status: 'IN_PROGRESS',
+            lastAttemptAt: new Date(),
+            attempts: { increment: 1 },
+        },
+    });
+
+    if (claim.count === 0) {
+        return { id: retryId, status: 'SKIPPED' };
+    }
+
+    // 2. Cargar el registro ya claimeado para conocer attempts/maxAttempts/payload
+    const row = await prisma.inventoryDeductionRetry.findUnique({
+        where: { id: retryId },
+        select: {
+            id: true,
+            salesOrderId: true,
+            payload: true,
+            attempts: true,
+            maxAttempts: true,
+        },
+    });
+
+    if (!row) {
+        // Race extremo: lo borraron entre updateMany y findUnique. Nada que hacer.
+        return { id: retryId, status: 'SKIPPED' };
+    }
+
+    // 3. Validación: si el SalesOrder fue cancelado o no existe, no descargar.
+    if (row.salesOrderId) {
+        const order = await prisma.salesOrder.findUnique({
+            where: { id: row.salesOrderId },
+            select: { status: true },
+        });
+        if (!order || order.status === 'CANCELLED') {
+            await prisma.inventoryDeductionRetry.update({
+                where: { id: row.id },
+                data: {
+                    status: 'CANCELLED',
+                    cancelledAt: new Date(),
+                    notes: 'SalesOrder no existe o fue cancelado antes del reintento',
+                },
+            });
+            return { id: row.id, status: 'CANCELLED' };
+        }
+    }
+
+    // 4. Parse del payload + ejecutar deducción
+    let parsed: { items: CartItem[]; areaId: string; userId: string };
+    try {
+        parsed = JSON.parse(row.payload);
+        if (!parsed.items || !Array.isArray(parsed.items) || !parsed.areaId || !parsed.userId) {
+            throw new Error('Payload incompleto');
+        }
+    } catch (parseErr) {
+        // Payload corrupto → marcar FAILED inmediatamente, no tiene sentido reintentar
+        const msg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+        await prisma.inventoryDeductionRetry.update({
+            where: { id: row.id },
+            data: {
+                status: 'FAILED',
+                lastError: `Payload inválido: ${msg}`.slice(0, 2000),
+            },
+        });
+        return { id: row.id, status: 'FAILED', error: msg };
+    }
+
+    try {
+        await registerInventoryForCartItems({
+            items: parsed.items,
+            areaId: parsed.areaId,
+            orderId: row.salesOrderId ?? '',
+            userId: parsed.userId,
+        });
+
+        await prisma.inventoryDeductionRetry.update({
+            where: { id: row.id },
+            data: {
+                status: 'COMPLETED',
+                completedAt: new Date(),
+                lastError: null,
+            },
+        });
+        return { id: row.id, status: 'COMPLETED' };
+    } catch (err) {
+        const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        const attemptsDone = row.attempts; // ya fue incrementado por el claim
+        const exhausted = attemptsDone >= row.maxAttempts;
+
+        await prisma.inventoryDeductionRetry.update({
+            where: { id: row.id },
+            data: {
+                status: exhausted ? 'FAILED' : 'PENDING',
+                lastError: msg.slice(0, 2000),
+                nextRetryAt: exhausted ? new Date() : computeNextRetryAt(attemptsDone),
+            },
+        });
+
+        return { id: row.id, status: exhausted ? 'FAILED' : 'PENDING', error: msg };
+    }
+}
+
+// ============================================================================
 // LECTURA DE MENÚ PARA POS
 // ============================================================================
 
