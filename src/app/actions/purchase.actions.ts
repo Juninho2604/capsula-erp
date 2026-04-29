@@ -58,6 +58,93 @@ export interface StockConfigItem {
 }
 
 // ============================================================================
+// HELPER: SUPPLIER PRICE HISTORY (Fase 2.D)
+// ============================================================================
+
+/**
+ * Registra un cambio de precio para el par (supplierId, inventoryItemId).
+ *
+ * Comportamiento:
+ *  1. Lee el SupplierItem actual y el último registro vigente del histórico.
+ *  2. Si el `newUnitPrice` es igual al actual (con tolerancia 0.0001), no
+ *     hace nada (idempotente).
+ *  3. Si difiere o no había registro previo:
+ *     a. Cierra el registro vigente del histórico (effectiveTo = NOW()).
+ *     b. Inserta uno nuevo (effectiveFrom = NOW(), effectiveTo = null,
+ *        registeredFromPurchaseOrderId, registeredById).
+ *     c. Actualiza SupplierItem.unitPrice con el nuevo precio (mantiene
+ *        caché de "último precio vigente"). Si el SupplierItem no existe
+ *        para ese par, lo crea.
+ *
+ * Toda la operación está envuelta en `prisma.$transaction` para garantizar
+ * atomicidad (o se aplica todo, o nada).
+ */
+async function registerSupplierPriceChange(params: {
+    supplierId: string;
+    inventoryItemId: string;
+    newUnitPrice: number;
+    purchaseOrderId?: string;
+    registeredById: string;
+}): Promise<void> {
+    const { supplierId, inventoryItemId, newUnitPrice, purchaseOrderId, registeredById } = params;
+
+    // Tolerancia para comparar floats (centavos)
+    const PRICE_TOLERANCE = 0.0001;
+
+    const existingSupplierItem = await prisma.supplierItem.findUnique({
+        where: { supplierId_inventoryItemId: { supplierId, inventoryItemId } },
+        select: { id: true, unitPrice: true },
+    });
+
+    const currentPrice = existingSupplierItem?.unitPrice ?? null;
+
+    // Si el precio es idéntico al cacheado, no hacemos nada
+    if (currentPrice !== null && Math.abs(currentPrice - newUnitPrice) < PRICE_TOLERANCE) {
+        return;
+    }
+
+    const now = new Date();
+
+    await prisma.$transaction(async tx => {
+        // 1. Cerrar registro vigente (si lo hay)
+        await tx.supplierItemPriceHistory.updateMany({
+            where: { supplierId, inventoryItemId, effectiveTo: null },
+            data: { effectiveTo: now },
+        });
+
+        // 2. Insertar nuevo registro vigente
+        await tx.supplierItemPriceHistory.create({
+            data: {
+                supplierId,
+                inventoryItemId,
+                unitPrice: newUnitPrice,
+                effectiveFrom: now,
+                effectiveTo: null,
+                registeredFromPurchaseOrderId: purchaseOrderId ?? null,
+                registeredById,
+            },
+        });
+
+        // 3. Actualizar (o crear) el SupplierItem con el nuevo precio
+        if (existingSupplierItem) {
+            await tx.supplierItem.update({
+                where: { id: existingSupplierItem.id },
+                data: { unitPrice: newUnitPrice },
+            });
+        } else {
+            await tx.supplierItem.create({
+                data: {
+                    supplierId,
+                    inventoryItemId,
+                    unitPrice: newUnitPrice,
+                    isPreferred: false,
+                },
+            });
+        }
+    });
+}
+
+// ============================================================================
 // ACTION: CONFIGURAR STOCK MÍNIMO EN LOTE
 // ============================================================================
 
@@ -463,6 +550,15 @@ export async function receivePurchaseOrderItemsAction(
     try {
         let receivedCount = 0;
 
+        // Pre-cargar la orden completa para conocer el proveedor — necesario
+        // para registrar el histórico de precios por par (supplier, item)
+        // en SupplierItemPriceHistory (Fase 2.D).
+        const orderForSupplier = await prisma.purchaseOrder.findUnique({
+            where: { id: orderId },
+            select: { supplierId: true },
+        });
+        const supplierId = orderForSupplier?.supplierId ?? null;
+
         // Procesar item por item (sin transacción interactiva para evitar timeout en BD remota)
         for (const item of items) {
             if (item.quantityReceived <= 0) continue;
@@ -530,6 +626,32 @@ export async function receivePurchaseOrderItemsAction(
                         createdById: session.id
                     }
                 });
+            }
+
+            // ────────────────────────────────────────────────────────────
+            // Histórico de precios por par (supplier, item) — Fase 2.D
+            // ────────────────────────────────────────────────────────────
+            // Solo si la OC tiene proveedor asociado y el costo unitario
+            // recibido es > 0. Si difiere del último precio vigente, cerramos
+            // ese registro (effectiveTo = NOW) e insertamos el nuevo. También
+            // actualizamos SupplierItem.unitPrice para mantener el caché.
+            //
+            // Best-effort: si esta sección falla (ej. tabla recién creada,
+            // race condition), NO rompe el flujo de recepción. Solo se
+            // loggea. La operación principal (recibir mercancía) ya quedó
+            // hecha arriba.
+            if (supplierId && unitCost > 0) {
+                try {
+                    await registerSupplierPriceChange({
+                        supplierId,
+                        inventoryItemId: orderItem.inventoryItemId,
+                        newUnitPrice: unitCost,
+                        purchaseOrderId: orderId,
+                        registeredById: session.id,
+                    });
+                } catch (priceErr) {
+                    console.error('[SUPPLIER_PRICE] No se pudo registrar histórico:', priceErr);
+                }
             }
         }
 
@@ -833,3 +955,152 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
         return '';
     }
 }
+
+// ============================================================================
+// ACTIONS: SUPPLIER PRICE HISTORY (Fase 2.E — read-only)
+// ============================================================================
+
+/**
+ * Lista de proveedores activos con resumen de items que provee y fecha del
+ * último cambio de precio registrado en SupplierItemPriceHistory. Read-only.
+ *
+ * Se usa en el listado /dashboard/compras/proveedor para que el usuario
+ * elija qué proveedor inspeccionar.
+ */
+export async function getSupplierListForHistoryAction() {
+    try {
+        const suppliers = await prisma.supplier.findMany({
+            where: { isActive: true, deletedAt: null },
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                code: true,
+                contactName: true,
+                _count: { select: { suppliedItems: true } },
+                priceHistory: {
+                    orderBy: { effectiveFrom: 'desc' },
+                    take: 1,
+                    select: { effectiveFrom: true },
+                },
+            },
+        });
+
+        return suppliers.map(s => ({
+            id: s.id,
+            name: s.name,
+            code: s.code,
+            contactName: s.contactName,
+            itemsCount: s._count.suppliedItems,
+            lastPriceChangeAt: s.priceHistory[0]?.effectiveFrom ?? null,
+        }));
+    } catch (e) {
+        console.error('Error fetching supplier list for history:', e);
+        return [];
+    }
+}
+
+/**
+ * Detalle de un proveedor + histórico de precios de cada uno de sus items.
+ *
+ * Para cada InventoryItem que el proveedor provee, devuelve:
+ *  - precio vigente (SupplierItem.unitPrice)
+ *  - histórico cronológico (SupplierItemPriceHistory ordenado por
+ *    effectiveFrom desc, máximo 50 puntos por item para evitar over-fetch)
+ *
+ * Read-only.
+ */
+export async function getSupplierPriceHistoryAction(supplierId: string) {
+    try {
+        const supplier = await prisma.supplier.findUnique({
+            where: { id: supplierId },
+            select: {
+                id: true,
+                name: true,
+                code: true,
+                contactName: true,
+                phone: true,
+                email: true,
+                suppliedItems: {
+                    include: {
+                        inventoryItem: {
+                            select: {
+                                id: true,
+                                sku: true,
+                                name: true,
+                                baseUnit: true,
+                                category: true,
+                            },
+                        },
+                    },
+                    orderBy: { inventoryItem: { name: 'asc' } },
+                },
+            },
+        });
+
+        if (!supplier) return null;
+
+        // Histórico de precios para todos los items que provee este supplier,
+        // en una sola query batch
+        const itemIds = supplier.suppliedItems.map(si => si.inventoryItemId);
+        const history = itemIds.length
+            ? await prisma.supplierItemPriceHistory.findMany({
+                where: { supplierId, inventoryItemId: { in: itemIds } },
+                orderBy: { effectiveFrom: 'desc' },
+                select: {
+                    id: true,
+                    inventoryItemId: true,
+                    unitPrice: true,
+                    currency: true,
+                    effectiveFrom: true,
+                    effectiveTo: true,
+                    notes: true,
+                    registeredFromPurchaseOrderId: true,
+                },
+            })
+            : [];
+
+        // Agrupar histórico por item (limitando a 50 puntos por item)
+        const historyByItem = new Map<string, typeof history>();
+        for (const h of history) {
+            const arr = historyByItem.get(h.inventoryItemId) ?? [];
+            if (arr.length < 50) arr.push(h);
+            historyByItem.set(h.inventoryItemId, arr);
+        }
+
+        return {
+            supplier: {
+                id: supplier.id,
+                name: supplier.name,
+                code: supplier.code,
+                contactName: supplier.contactName,
+                phone: supplier.phone,
+                email: supplier.email,
+            },
+            items: supplier.suppliedItems.map(si => ({
+                supplierItemId: si.id,
+                inventoryItemId: si.inventoryItemId,
+                sku: si.inventoryItem.sku,
+                name: si.inventoryItem.name,
+                category: si.inventoryItem.category,
+                baseUnit: si.inventoryItem.baseUnit,
+                currentPrice: si.unitPrice,
+                isPreferred: si.isPreferred,
+                leadTimeDays: si.leadTimeDays,
+                history: (historyByItem.get(si.inventoryItemId) ?? []).map(h => ({
+                    id: h.id,
+                    unitPrice: Number(h.unitPrice),
+                    currency: h.currency,
+                    effectiveFrom: h.effectiveFrom,
+                    effectiveTo: h.effectiveTo,
+                    notes: h.notes,
+                    purchaseOrderId: h.registeredFromPurchaseOrderId,
+                })),
+            })),
+        };
+    } catch (e) {
+        console.error('Error fetching supplier price history:', e);
+        return null;
+    }
+}
+

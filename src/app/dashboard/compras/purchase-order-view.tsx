@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -17,6 +18,7 @@ import {
     Bell,
     Loader2,
     Save,
+    TrendingUp,
     X as XIcon,
     type LucideIcon,
 } from 'lucide-react';
@@ -281,6 +283,12 @@ export default function PurchaseOrderView() {
                     <p className="text-capsula-ink-muted">Gestiona órdenes de compra, stock mínimo y recepción de mercancía</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    <Link
+                        href="/dashboard/compras/proveedor"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-xs font-medium text-capsula-ink-soft transition-all hover:bg-capsula-ivory-alt"
+                    >
+                        <TrendingUp className="h-3.5 w-3.5" /> Histórico de precios
+                    </Link>
                     {(['orders', 'auto', 'create', 'whatsapp', 'config', 'receive'] as ViewMode[]).map(mode => {
                         const meta: Record<ViewMode, { Icon: LucideIcon; label: string }> = {
                             orders: { Icon: ClipboardList, label: 'Órdenes' },
