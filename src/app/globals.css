@@ -80,7 +80,8 @@
     --capsula-info:          #3B82F6;
 
     /* Type */
-    --font-heading: 'Instrument Serif', Georgia, serif;
+    /* `--font-heading` queda como alias de body por backwards-compat — Instrument Serif eliminado (CLAUDE.md §1) */
+    --font-heading: 'Inter Tight', 'Inter', system-ui, sans-serif;
     --font-body:    'Inter Tight', 'Inter', system-ui, sans-serif;
     --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 

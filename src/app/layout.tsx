@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter_Tight, Instrument_Serif, JetBrains_Mono, Inter, Nunito } from 'next/font/google';
+import { Inter_Tight, JetBrains_Mono, Inter, Nunito } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -9,13 +9,6 @@ const interTight = Inter_Tight({
     subsets: ['latin'],
     weight: ['400', '500', '600', '700'],
     variable: '--font-body',
-    display: 'swap',
-});
-const instrumentSerif = Instrument_Serif({
-    subsets: ['latin'],
-    weight: '400',
-    style: ['normal', 'italic'],
-    variable: '--font-heading',
     display: 'swap',
 });
 const jetbrainsMono = JetBrains_Mono({
@@ -48,7 +41,6 @@ export default function RootLayout({
 }) {
     const fontVars = [
         interTight.variable,
-        instrumentSerif.variable,
         jetbrainsMono.variable,
         inter.variable,
         nunito.variable,
