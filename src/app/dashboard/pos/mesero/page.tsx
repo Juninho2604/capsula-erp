@@ -1340,7 +1340,8 @@ export default function POSMeseroPage() {
                   ))}
                 </div>
 
-                {/* Acciones rápidas */}
+                {/* Acciones rápidas — botón "Imprimir precuenta" SOLO para
+                    capitanes o gerentes; los mesoneros regulares solo copian. */}
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => {
@@ -1365,6 +1366,7 @@ export default function POSMeseroPage() {
                     <Receipt className="h-3.5 w-3.5" />
                     Copiar
                   </button>
+                  {canUseCaptainFeatures && (
                   <button
                     onClick={() => {
                       const items = activeTab.orders.flatMap(o => o.items).map(it => ({
@@ -1394,6 +1396,7 @@ export default function POSMeseroPage() {
                     <Printer className="h-3.5 w-3.5" />
                     Imprimir
                   </button>
+                  )}
                 </div>
               </div>
             </div>
