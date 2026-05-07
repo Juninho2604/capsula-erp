@@ -2590,6 +2590,143 @@ export async function paySubAccountAction(data: {
 }
 
 /**
+ * Anula una subcuenta (OPEN o PAID).
+ *
+ * - Si está OPEN: marca status=VOID. Sus SubAccountItem permanecen
+ *   referenciados pero por la lógica de "qty disponible" los ítems
+ *   vuelven a estar disponibles para reasignar (ya que filtramos por
+ *   subcuentas activas en el cómputo de pool).
+ * - Si está PAID: además devuelve el monto al balanceDue del OpenTab,
+ *   marca el PaymentSplit asociado como VOID con notes que contiene
+ *   la razón, descuenta el service charge cobrado del totalServiceCharge,
+ *   y reabre la mesa si ya estaba CLOSED.
+ *
+ * Requiere autorización de gerente: el caller debe haber validado
+ * el PIN antes de invocar esta action y pasar authorizedById/Name.
+ */
+export async function voidSubAccountAction(params: {
+    subAccountId: string;
+    voidReason: string;
+    authorizedById: string;
+    authorizedByName: string;
+}): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+        if (!params.voidReason?.trim()) {
+            return { success: false, message: 'Debes indicar el motivo de anulación' };
+        }
+
+        const sub = await prisma.tabSubAccount.findUnique({
+            where: { id: params.subAccountId },
+            include: {
+                openTab: { include: { subAccounts: true } },
+                paymentSplits: true,
+            },
+        });
+        if (!sub) return { success: false, message: 'Subcuenta no encontrada' };
+        if (sub.status === 'VOID') {
+            return { success: false, message: 'Esta subcuenta ya está anulada' };
+        }
+
+        const wasPaid = sub.status === 'PAID';
+        const auditNote = `[${params.authorizedByName}] ${params.voidReason}`;
+
+        const updatedTab = await prisma.$transaction(async (tx) => {
+            // 1. Marcar la subcuenta como VOID. Limpia paidAt/paidAmount/method
+            //    para que la UI muestre claramente que no está pagada.
+            await tx.tabSubAccount.update({
+                where: { id: params.subAccountId },
+                data: {
+                    status: 'VOID',
+                    paidAmount: 0,
+                    paymentMethod: null,
+                    paidAt: null,
+                },
+            });
+
+            if (wasPaid) {
+                // 2. Anular los PaymentSplits asociados (preserva el registro
+                //    para auditoría con notes que indica quién y por qué).
+                let totalServiceChargeReversed = 0;
+                for (const ps of sub.paymentSplits) {
+                    if (ps.status === 'VOID') continue;
+                    totalServiceChargeReversed += ps.serviceChargeAmount ?? 0;
+                    await tx.paymentSplit.update({
+                        where: { id: ps.id },
+                        data: {
+                            status: 'VOID',
+                            notes: ps.notes
+                                ? `${ps.notes} | ANULADO ${auditNote}`
+                                : `ANULADO ${auditNote}`,
+                        },
+                    });
+                }
+
+                // 3. Restaurar balanceDue del OpenTab y descontar el service
+                //    charge ya acumulado.
+                const tab = sub.openTab;
+                const newBalance = tab.balanceDue + sub.subtotal;
+                const newTotalService = Math.max(0, tab.totalServiceCharge - totalServiceChargeReversed);
+
+                // 4. Si la mesa estaba CLOSED por este pago, reabrirla.
+                const newStatus = tab.status === 'CLOSED' ? 'PARTIALLY_PAID' : tab.status;
+
+                await tx.openTab.update({
+                    where: { id: tab.id },
+                    data: {
+                        balanceDue: newBalance,
+                        totalServiceCharge: newTotalService,
+                        status: newStatus,
+                        closedAt: tab.status === 'CLOSED' ? null : tab.closedAt,
+                        closedById: tab.status === 'CLOSED' ? null : tab.closedById,
+                        version: { increment: 1 },
+                    },
+                });
+
+                // 5. Si la mesa se reabre, liberar la TableOrStation si estaba AVAILABLE.
+                if (tab.status === 'CLOSED' && tab.tableOrStationId) {
+                    await tx.tableOrStation.update({
+                        where: { id: tab.tableOrStationId },
+                        data: { currentStatus: 'OCCUPIED' },
+                    });
+                    await tx.salesOrder.updateMany({
+                        where: { openTabId: tab.id },
+                        data: { paymentStatus: 'PARTIAL', closedAt: null },
+                    });
+                }
+            }
+
+            return await tx.openTab.findUniqueOrThrow({
+                where: { id: sub.openTabId },
+                include: {
+                    subAccounts: {
+                        orderBy: { sortOrder: 'asc' },
+                        include: { items: { include: { salesOrderItem: { include: { modifiers: true } } } } },
+                    },
+                    paymentSplits: { orderBy: { createdAt: 'asc' } },
+                    orders: { include: { items: { include: { modifiers: true, subAccountItems: true } } } },
+                },
+            });
+        });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+        revalidatePath('/dashboard/sales');
+        return {
+            success: true,
+            message: wasPaid
+                ? `Subcuenta "${sub.label}" anulada. Saldo restaurado.`
+                : `Subcuenta "${sub.label}" anulada. Los ítems vuelven al pool.`,
+            data: updatedTab,
+        };
+    } catch (error) {
+        console.error('Error voiding sub account:', error);
+        return { success: false, message: 'Error anulando la subcuenta' };
+    }
+}
+
+/**
  * Carga una mesa completa con todas sus subcuentas, ítems y splits.
  * Usado para sincronizar el estado del panel de subcuentas en el frontend.
  */
