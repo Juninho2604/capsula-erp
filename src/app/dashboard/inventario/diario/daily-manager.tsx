@@ -714,9 +714,9 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             })}
                         </tbody>
                         {items.length > 0 && (
-                            <tfoot className="sticky bottom-0 bg-capsula-navy-deep text-capsula-ivory">
+                            <tfoot className="sticky bottom-0 bg-capsula-navy-deep text-capsula-cream">
                                 <tr className="text-xs font-black uppercase tracking-widest">
-                                    <td className="px-6 py-2 text-capsula-ivory/80">TOTALES ({items.length} items)</td>
+                                    <td className="px-6 py-2 text-capsula-cream/80">TOTALES ({items.length} items)</td>
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-blue-300">
                                         {items.reduce((s, i) => s + (i.initialCount || 0), 0).toFixed(2)}
                                     </td>
@@ -729,7 +729,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-orange-300">
                                         −{items.reduce((s, i) => s + (i.waste || 0), 0).toFixed(2)}
                                     </td>
-                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-capsula-ivory/80">
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-capsula-cream/80">
                                         {items.reduce((s, i) => s + (i.theoreticalStock || 0), 0).toFixed(2)}
                                     </td>
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-green-300">

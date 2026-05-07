@@ -185,7 +185,7 @@ export function NotificationBell() {
         <BellIcon className="h-5 w-5" strokeWidth={1.75} />
         {unreadCount > 0 && (
           <span
-            className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold text-capsula-ivory ${
+            className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold text-capsula-cream ${
               criticalCount > 0 ? 'bg-capsula-coral animate-pulse' : 'bg-amber-500'
             }`}
           >
@@ -251,7 +251,7 @@ export function NotificationBell() {
                 <Package className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Stock
                 {visibleStockAlerts.length > 0 && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-capsula-ivory ${criticalCount > 0 ? 'bg-capsula-coral' : 'bg-amber-500'}`}>
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-capsula-cream ${criticalCount > 0 ? 'bg-capsula-coral' : 'bg-amber-500'}`}>
                     {visibleStockAlerts.length}
                   </span>
                 )}
@@ -267,7 +267,7 @@ export function NotificationBell() {
                 <Megaphone className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Sistema
                 {systemMessages.length > 0 && (
-                  <span className="rounded-full bg-capsula-navy px-1.5 py-0.5 text-[9px] font-semibold text-capsula-ivory">
+                  <span className="rounded-full bg-capsula-navy px-1.5 py-0.5 text-[9px] font-semibold text-capsula-cream">
                     {systemMessages.length}
                   </span>
                 )}
@@ -463,7 +463,7 @@ export function NotificationBell() {
                       <button
                         onClick={handleCreateBroadcast}
                         disabled={isSaving || !newMsg.title.trim() || !newMsg.body.trim()}
-                        className="flex-1 rounded-lg bg-capsula-navy-deep py-1.5 text-xs font-semibold text-capsula-ivory transition-colors hover:bg-capsula-navy disabled:opacity-50"
+                        className="flex-1 rounded-lg bg-capsula-navy-deep py-1.5 text-xs font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:opacity-50"
                       >
                         {isSaving ? '...' : 'Publicar'}
                       </button>

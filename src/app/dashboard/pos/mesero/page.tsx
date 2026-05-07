@@ -678,7 +678,7 @@ export default function POSMeseroPage() {
                   onClick={() => { setSelectedZoneId(z.id); setSelectedTableId(""); }}
                   className={`min-w-0 flex-1 rounded-xl border py-3 text-xs font-semibold transition-colors active:scale-95 ${
                     selectedZoneId === z.id
-                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream"
                       : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep"
                   }`}
                 >
@@ -822,7 +822,7 @@ export default function POSMeseroPage() {
                   }}
                   className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
                     selectedCategory === cat.id
-                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory"
+                      ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream"
                       : "border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep"
                   }`}
                 >
@@ -933,7 +933,7 @@ export default function POSMeseroPage() {
                     <div className="text-xl font-semibold tabular-nums text-capsula-ink">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:opacity-0 lg:group-hover:translate-y-[-4px] lg:group-hover:opacity-100">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-deep text-capsula-cream opacity-100 transition-all lg:opacity-0 lg:group-hover:translate-y-[-4px] lg:group-hover:opacity-100">
                       <PlusIcon className="h-4 w-4" />
                     </div>
                   </div>
@@ -961,7 +961,7 @@ export default function POSMeseroPage() {
                 <h2 className="font-semibold text-xs text-capsula-ink uppercase tracking-[0.14em] flex items-center gap-2">
                   <ShoppingCart className="h-3.5 w-3.5" />
                   Nuevo pedido
-                  <span className="bg-capsula-navy-deep text-capsula-ivory text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="bg-capsula-navy-deep text-capsula-cream text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center">
                     {cart.length}
                   </span>
                 </h2>
@@ -992,7 +992,7 @@ export default function POSMeseroPage() {
                 className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                   sendSuccess
                     ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
-                    : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory disabled:opacity-40 disabled:cursor-not-allowed"
+                    : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream disabled:opacity-40 disabled:cursor-not-allowed"
                 }`}
               >
                 {sendSuccess ? (
@@ -1098,7 +1098,7 @@ export default function POSMeseroPage() {
                   {/* Mostrar cuenta al cliente */}
                   <button
                     onClick={() => setShowBillModal(true)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory transition inline-flex items-center justify-center gap-2"
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream transition inline-flex items-center justify-center gap-2"
                   >
                     <Receipt className="h-3.5 w-3.5" />
                     Mostrar cuenta al cliente
@@ -1146,7 +1146,7 @@ export default function POSMeseroPage() {
               <Icon className="h-5 w-5" />
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-ivory text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
+                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-cream text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
                   {cartBadgeCount}
                 </span>
               )}
@@ -1280,7 +1280,7 @@ export default function POSMeseroPage() {
                               onClick={() => handleSetTip(pct)}
                               className={`py-2 rounded-lg text-[11px] font-semibold transition active:scale-95 ${
                                 isActive
-                                  ? 'bg-capsula-navy-deep text-capsula-ivory'
+                                  ? 'bg-capsula-navy-deep text-capsula-cream'
                                   : 'bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40'
                               }`}
                             >
@@ -1389,7 +1389,7 @@ export default function POSMeseroPage() {
                         isPrecuenta: true,
                       });
                     }}
-                    className="flex-1 py-2.5 rounded-xl bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-ivory text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
+                    className="flex-1 py-2.5 rounded-xl bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
                   >
                     <Printer className="h-3.5 w-3.5" />
                     Imprimir
@@ -1429,12 +1429,12 @@ export default function POSMeseroPage() {
                 <div className="flex items-center gap-3 bg-capsula-ivory-surface rounded-xl p-1 border border-capsula-line">
                   <button onClick={() => setOpenTabGuests(Math.max(1, openTabGuests - 1))} className="h-9 w-9 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink transition hover:bg-capsula-coral/10 hover:text-capsula-coral hover:border-capsula-coral/40">−</button>
                   <span className="w-8 text-center font-semibold text-lg text-capsula-ink tabular-nums">{openTabGuests}</span>
-                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold transition hover:bg-capsula-navy-deep/90">+</button>
+                  <button onClick={() => setOpenTabGuests(openTabGuests + 1)} className="h-9 w-9 rounded-lg bg-capsula-navy-deep text-capsula-cream font-semibold transition hover:bg-capsula-navy-deep/90">+</button>
                 </div>
               </div>
               {activeWaiter && (
                 <div className="flex items-center gap-2 px-4 py-3 bg-capsula-navy-soft border border-capsula-line rounded-xl text-xs">
-                  <span className="h-7 w-7 rounded-full bg-capsula-navy-deep text-capsula-ivory flex items-center justify-center font-semibold">
+                  <span className="h-7 w-7 rounded-full bg-capsula-navy-deep text-capsula-cream flex items-center justify-center font-semibold">
                     {activeWaiter.firstName.charAt(0)}{activeWaiter.lastName.charAt(0)}
                   </span>
                   <div>
@@ -1482,7 +1482,7 @@ export default function POSMeseroPage() {
                   <div key={group.id} className={`p-4 rounded-2xl border transition-colors ${isValid ? "border-capsula-line bg-capsula-ivory-surface" : "border-capsula-coral bg-capsula-coral/5"}`}>
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-semibold text-sm uppercase tracking-[0.14em] text-capsula-ink-soft">{group.name}</h4>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-ivory"}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-cream"}`}>
                         {totalSelected}/{group.maxSelections}{group.isRequired ? " · Req." : ""}
                       </span>
                     </div>
@@ -1498,7 +1498,7 @@ export default function POSMeseroPage() {
                             {isRadio ? (
                               <button
                                 onClick={() => updateModifierQuantity(group, mod, 1)}
-                                className={`h-8 w-8 rounded-full border flex justify-center items-center transition-all ${qty > 0 ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory scale-110" : "border-capsula-line hover:border-capsula-navy-deep"}`}
+                                className={`h-8 w-8 rounded-full border flex justify-center items-center transition-all ${qty > 0 ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream scale-110" : "border-capsula-line hover:border-capsula-navy-deep"}`}
                               >
                                 {qty > 0 && <Check className="h-4 w-4" />}
                               </button>
@@ -1506,7 +1506,7 @@ export default function POSMeseroPage() {
                               <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
                                 <button onClick={() => updateModifierQuantity(group, mod, -1)} disabled={qty === 0} className={`h-7 w-7 rounded-lg font-semibold transition ${qty === 0 ? "text-capsula-ink-faint opacity-40" : "bg-capsula-ivory-alt hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink"}`}>−</button>
                                 <span className="font-semibold text-base w-5 text-center text-capsula-ink tabular-nums">{qty}</span>
-                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-semibold transition ${isMax ? "text-capsula-ink-faint opacity-40" : "bg-capsula-navy-deep text-capsula-ivory hover:bg-capsula-navy-deep/90"}`}>+</button>
+                                <button onClick={() => updateModifierQuantity(group, mod, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-semibold transition ${isMax ? "text-capsula-ink-faint opacity-40" : "bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90"}`}>+</button>
                               </div>
                             )}
                           </div>
@@ -1530,7 +1530,7 @@ export default function POSMeseroPage() {
                 <div className="flex items-center gap-2 bg-capsula-ivory p-1 rounded-xl border border-capsula-line">
                   <button onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))} className="h-12 w-12 rounded-lg font-semibold text-xl text-capsula-ink hover:bg-capsula-ivory-alt transition active:scale-90">−</button>
                   <span className="w-12 text-center font-semibold text-2xl text-capsula-ink tabular-nums">{itemQuantity}</span>
-                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-capsula-ivory font-semibold text-xl hover:bg-capsula-navy-deep/90 active:scale-95">+</button>
+                  <button onClick={() => setItemQuantity(itemQuantity + 1)} className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-capsula-cream font-semibold text-xl hover:bg-capsula-navy-deep/90 active:scale-95">+</button>
                 </div>
               </div>
             </div>
@@ -1602,12 +1602,12 @@ export default function POSMeseroPage() {
                         onClick={() => setTransferToTableId(t.id)}
                         className={`rounded-xl py-3 px-2 text-xs font-semibold transition border flex flex-col items-center gap-0.5 ${
                           transferToTableId === t.id
-                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream"
                             : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/50"
                         }`}
                       >
                         <span className="text-sm">{t.name}</span>
-                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-capsula-ivory/70" : "text-capsula-ink-muted"}`}>
+                        <span className={`text-[9px] font-normal ${transferToTableId === t.id ? "text-capsula-cream/70" : "text-capsula-ink-muted"}`}>
                           {t.zoneName}
                         </span>
                       </button>
@@ -1707,7 +1707,7 @@ export default function POSMeseroPage() {
                       onClick={() => setRemoveModType(t)}
                       className={`py-2.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center gap-1.5 ${
                         removeModType === t
-                          ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                          ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream"
                           : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                       }`}
                     >
@@ -1760,7 +1760,7 @@ export default function POSMeseroPage() {
                         onClick={() => setRemoveReplaceItemId(m.id)}
                         className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition border ${
                           removeReplaceItemId === m.id
-                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream"
                             : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                         }`}
                       >
@@ -1816,7 +1816,7 @@ export default function POSMeseroPage() {
                 <button
                   onClick={handleRemoveItem}
                   disabled={isProcessing || !removeJustification.trim() || !removePin.trim()}
-                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-cream hover:bg-capsula-coral-hover transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {isProcessing ? "Procesando..." : (
                     removeModType === "VOID"       ? (<><Ban className="h-4 w-4" />Confirmar anulación</>) :

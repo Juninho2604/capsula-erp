@@ -606,7 +606,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
             <button
               onClick={() => handleOperatorUpdate(operatorMode)}
               disabled={!operatorInput.trim() || isPending}
-              className="w-full rounded-xl bg-primary text-white font-bold py-3 text-sm hover:bg-primary/90 disabled:opacity-40 transition-colors">
+              className="w-full rounded-xl bg-capsula-navy-deep text-capsula-cream font-semibold py-3 text-sm hover:bg-capsula-navy-deep/90 disabled:opacity-40 transition-colors">
               {operatorMode === 'add' ? 'Agregar' : 'Confirmar cambio de turno'}
             </button>
           </div>

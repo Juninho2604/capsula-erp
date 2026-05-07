@@ -231,7 +231,7 @@ export default function SalesEntryView() {
                             'px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
                             viewMode === 'entry'
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream dark:hover:bg-capsula-navy'
                         )}
                     >
                         <Plus className="h-4 w-4 inline-block mr-1" /> Nueva Venta
@@ -242,7 +242,7 @@ export default function SalesEntryView() {
                             'px-4 py-2.5 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5',
                             viewMode === 'history'
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream dark:hover:bg-capsula-navy'
                         )}
                     >
                         <ClipboardList className="h-4 w-4" /> Ventas Hoy ({todaySales.summary.totalSales})
@@ -253,14 +253,14 @@ export default function SalesEntryView() {
                             'px-4 py-2.5 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5',
                             viewMode === 'whatsapp'
                                 ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream dark:hover:bg-capsula-navy'
                         )}
                     >
                         <MessageCircle className="h-4 w-4" /> WhatsApp
                     </button>
                     <Link
                         href="/dashboard/ventas"
-                        className="px-4 py-2.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory dark:hover:bg-capsula-navy inline-flex items-center gap-1.5"
+                        className="px-4 py-2.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream dark:hover:bg-capsula-navy inline-flex items-center gap-1.5"
                     >
                         <BarChart3 className="h-4 w-4" /> Reportes
                     </Link>
@@ -300,7 +300,7 @@ export default function SalesEntryView() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Buscar producto..."
-                                    className="w-full sm:w-64 rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-amber-500 focus:outline-none dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory dark:placeholder:text-capsula-ink-muted"
+                                    className="w-full sm:w-64 rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-amber-500 focus:outline-none dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream dark:placeholder:text-capsula-ink-muted"
                                 />
                             </div>
 
@@ -312,7 +312,7 @@ export default function SalesEntryView() {
                                         'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                                         selectedCategory === ''
                                             ? 'bg-amber-100 text-amber-700 dark:bg-[#3B2F15] dark:text-[#E8D9B8]'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-cream dark:hover:bg-capsula-navy'
                                     )}
                                 >
                                     Todos
@@ -325,7 +325,7 @@ export default function SalesEntryView() {
                                             'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                                             selectedCategory === cat.id
                                                 ? 'bg-amber-100 text-amber-700 dark:bg-[#3B2F15] dark:text-[#E8D9B8]'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-cream dark:hover:bg-capsula-navy'
                                         )}
                                     >
                                         {cat.name}
@@ -347,7 +347,7 @@ export default function SalesEntryView() {
                                         className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-amber-300 hover:bg-amber-50 transition-all text-left"
                                     >
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-gray-900 dark:text-capsula-ivory truncate">{item.name}</p>
+                                            <p className="font-medium text-gray-900 dark:text-capsula-cream truncate">{item.name}</p>
                                             <p className="text-xs text-gray-500">{item.categoryName}</p>
                                         </div>
                                         <span className="ml-2 font-semibold text-amber-600">
@@ -380,14 +380,14 @@ export default function SalesEntryView() {
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => updateQuantity(item.menuItemId, item.quantity - 1)}
-                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-ivory dark:hover:bg-capsula-navy"
+                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-cream dark:hover:bg-capsula-navy"
                                             >
                                                 -
                                             </button>
                                             <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                                             <button
                                                 onClick={() => updateQuantity(item.menuItemId, item.quantity + 1)}
-                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-ivory dark:hover:bg-capsula-navy"
+                                                className="w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-cream dark:hover:bg-capsula-navy"
                                             >
                                                 +
                                             </button>
@@ -414,7 +414,7 @@ export default function SalesEntryView() {
                                             'py-2 rounded-lg text-xs font-medium transition-all',
                                             orderType === type
                                                 ? 'bg-amber-500 text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-ivory dark:hover:bg-capsula-navy'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-capsula-navy-soft dark:text-capsula-cream dark:hover:bg-capsula-navy'
                                         )}
                                     >
                                         {type === 'RESTAURANT' ? <><UtensilsCrossed className="h-3.5 w-3.5 inline-block mr-1" />Mesa</> : type === 'DELIVERY' ? <><Bike className="h-3.5 w-3.5 inline-block mr-1" />Delivery</> : <><Package className="h-3.5 w-3.5 inline-block mr-1" />Para llevar</>}
@@ -430,21 +430,21 @@ export default function SalesEntryView() {
                                         value={customerName}
                                         onChange={(e) => setCustomerName(e.target.value)}
                                         placeholder="Nombre del cliente"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                                     />
                                     <input
                                         type="text"
                                         value={customerPhone}
                                         onChange={(e) => setCustomerPhone(e.target.value)}
                                         placeholder="Teléfono"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                                     />
                                     <input
                                         type="text"
                                         value={deliveryAddress}
                                         onChange={(e) => setDeliveryAddress(e.target.value)}
                                         placeholder="Dirección de entrega"
-                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                                     />
                                 </div>
                             )}
@@ -453,7 +453,7 @@ export default function SalesEntryView() {
                             <select
                                 value={areaId}
                                 onChange={(e) => setAreaId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                             >
                                 {areas.map(area => (
                                     <option key={area.id} value={area.id}>{area.name}</option>
@@ -464,7 +464,7 @@ export default function SalesEntryView() {
                             <select
                                 value={paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                             >
                                 {paymentMethods.map(pm => (
                                     <option key={pm.id} value={pm.id}>{pm.label}</option>
@@ -481,7 +481,7 @@ export default function SalesEntryView() {
                                         setDiscountAmount(subtotal * (dt.percent / 100));
                                     }
                                 }}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-ivory"
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:bg-capsula-navy-soft dark:border-capsula-line dark:text-capsula-cream"
                             >
                                 {discountTypes.map(dt => (
                                     <option key={dt.id} value={dt.id}>{dt.label}</option>
@@ -610,7 +610,7 @@ export default function SalesEntryView() {
                                             sale.status === 'VOIDED' && 'opacity-50 bg-red-50'
                                         )}>
                                             <td className="px-6 py-4">
-                                                <p className="font-medium text-gray-900 dark:text-capsula-ivory">{sale.orderNumber}</p>
+                                                <p className="font-medium text-gray-900 dark:text-capsula-cream">{sale.orderNumber}</p>
                                                 <p className="text-xs text-gray-500">{sale.createdBy}</p>
                                             </td>
                                             <td className="px-6 py-4">

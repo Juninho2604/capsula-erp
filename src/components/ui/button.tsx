@@ -16,9 +16,9 @@ const buttonVariants = cva(
         variants: {
             variant: {
                 default:
-                    "bg-capsula-navy-deep text-capsula-ivory hover:shadow-cap-deep",
+                    "bg-capsula-navy-deep text-capsula-cream hover:shadow-cap-deep",
                 primary:
-                    "bg-capsula-navy-deep text-capsula-ivory hover:shadow-cap-deep",
+                    "bg-capsula-navy-deep text-capsula-cream hover:shadow-cap-deep",
                 destructive:
                     "bg-capsula-coral text-white hover:shadow-cap-deep",
                 outline:
@@ -30,7 +30,7 @@ const buttonVariants = cva(
                 link:
                     "text-capsula-ink underline-offset-4 hover:underline hover:scale-100 hover:translate-y-0",
                 pill:
-                    "bg-capsula-navy-soft text-capsula-ink hover:bg-capsula-navy-deep hover:text-capsula-ivory",
+                    "bg-capsula-navy-soft text-capsula-ink hover:bg-capsula-navy-deep hover:text-capsula-cream",
             },
             size: {
                 default: "h-10 px-5 py-2",

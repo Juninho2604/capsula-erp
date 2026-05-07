@@ -114,7 +114,7 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                 <div className="lg:col-span-2">
                     <form onSubmit={handleSubmit} className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-cream shadow-cap-soft">
                                 <Package className="h-5 w-5" />
                             </div>
                             <div>

@@ -311,8 +311,8 @@ export default function PurchaseOrderView() {
                                     'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all',
                                     viewMode === mode
                                         ? (mode === 'whatsapp'
-                                            ? 'bg-[#2F6B4E] text-capsula-ivory shadow-cap-soft dark:bg-[#1E3B2C]'
-                                            : 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft')
+                                            ? 'bg-[#2F6B4E] text-capsula-cream shadow-cap-soft dark:bg-[#1E3B2C]'
+                                            : 'bg-capsula-navy-deep text-capsula-cream shadow-cap-soft')
                                         : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                                 )}
                             >
@@ -459,7 +459,7 @@ export default function PurchaseOrderView() {
                                                     <button
                                                         onClick={() => addFromSuggestion(item)}
                                                         disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
-                                                        className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-2.5 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory disabled:cursor-not-allowed disabled:opacity-50"
+                                                        className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-2.5 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-cream disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         {orderItems.some(oi => oi.inventoryItemId === item.id)
                                                             ? <Check className="h-3.5 w-3.5" />
@@ -528,7 +528,7 @@ export default function PurchaseOrderView() {
                                             <button
                                                 onClick={() => addManualItem(item)}
                                                 disabled={orderItems.some(oi => oi.inventoryItemId === item.id)}
-                                                className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-3 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory disabled:opacity-50"
+                                                className="inline-flex items-center gap-1 rounded-lg bg-capsula-navy-soft px-3 py-1 text-xs font-medium text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-cream disabled:opacity-50"
                                             >
                                                 {orderItems.some(oi => oi.inventoryItemId === item.id)
                                                     ? <Check className="h-3.5 w-3.5" />
@@ -801,7 +801,7 @@ export default function PurchaseOrderView() {
                                             {['SENT', 'PARTIAL'].includes(order.status) && (
                                                 <button
                                                     onClick={() => { setSelectedOrderId(order.id); setReceiveQuantities({}); setViewMode('receive'); }}
-                                                    className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[#2F6B4E] px-3 py-1.5 text-sm font-medium text-capsula-ivory shadow-sm transition-colors hover:bg-[#1f4a37] dark:bg-[#1E3B2C] dark:hover:bg-[#264a39]"
+                                                    className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[#2F6B4E] px-3 py-1.5 text-sm font-medium text-capsula-cream shadow-sm transition-colors hover:bg-[#1f4a37] dark:bg-[#1E3B2C] dark:hover:bg-[#264a39]"
                                                     title="Recibir mercancía"
                                                 >
                                                     <Inbox className="h-4 w-4" /> Recibir

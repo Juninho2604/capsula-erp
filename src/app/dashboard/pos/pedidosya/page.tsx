@@ -277,7 +277,7 @@ export default function POSPedidosYAPage() {
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition-colors active:scale-95 ${
                                         selectedCategory === cat.id
-                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                             : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
                                     }`}
                                 >
@@ -509,7 +509,7 @@ export default function POSPedidosYAPage() {
                                                                 onClick={() => updateModifierQuantity(group, mod, 1)}
                                                                 className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs transition-colors ${
                                                                     qty > 0
-                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                                                         : 'border-capsula-line text-transparent'
                                                                 }`}
                                                                 aria-label="Seleccionar"
@@ -575,7 +575,7 @@ export default function POSPedidosYAPage() {
                                     </span>
                                     <button
                                         onClick={() => setItemQuantity(itemQuantity + 1)}
-                                        className="h-10 w-12 bg-capsula-navy-deep font-medium text-capsula-ivory transition-colors hover:bg-capsula-navy"
+                                        className="h-10 w-12 bg-capsula-navy-deep font-medium text-capsula-cream transition-colors hover:bg-capsula-navy"
                                     >
                                         +
                                     </button>

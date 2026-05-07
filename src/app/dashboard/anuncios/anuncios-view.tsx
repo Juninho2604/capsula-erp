@@ -113,7 +113,7 @@ export default function AnunciosView({ initialData }: { initialData: BroadcastRe
                       key={t}
                       onClick={() => setType(t)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active
-                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                         : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
                         }`}
                     >

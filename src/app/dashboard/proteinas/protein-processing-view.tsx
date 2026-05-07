@@ -383,7 +383,7 @@ export default function ProteinProcessingView() {
                         className={cn(
                             'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'list'
-                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                ? 'bg-capsula-navy-deep text-capsula-cream shadow-cap-soft'
                                 : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >
@@ -394,7 +394,7 @@ export default function ProteinProcessingView() {
                         className={cn(
                             'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'create'
-                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                ? 'bg-capsula-navy-deep text-capsula-cream shadow-cap-soft'
                                 : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >
@@ -405,7 +405,7 @@ export default function ProteinProcessingView() {
                         className={cn(
                             'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
                             viewMode === 'templates'
-                                ? 'bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft'
+                                ? 'bg-capsula-navy-deep text-capsula-cream shadow-cap-soft'
                                 : 'border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt'
                         )}
                     >

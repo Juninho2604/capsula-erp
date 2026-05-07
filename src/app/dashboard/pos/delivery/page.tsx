@@ -526,7 +526,7 @@ export default function POSDeliveryPage() {
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`group inline-flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors active:scale-95 ${
                                         selectedCategory === cat.id
-                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                             : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
                                     }`}
                                 >
@@ -556,7 +556,7 @@ export default function POSDeliveryPage() {
                                         <div className="font-semibold text-2xl tabular-nums tracking-[-0.02em] text-capsula-ink">
                                             <PriceDisplay usd={item.price} rate={exchangeRate} size="lg" showBs={false} />
                                         </div>
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory opacity-100 transition-all lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-cream opacity-100 transition-all lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100">
                                             <PlusIcon className="h-4 w-4" />
                                         </div>
                                     </div>
@@ -703,7 +703,7 @@ export default function POSDeliveryPage() {
                                     onClick={() => handleDiscountSelect('NONE')}
                                     className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
                                         discountType === 'NONE'
-                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                             : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
                                     }`}
                                 >
@@ -746,7 +746,7 @@ export default function POSDeliveryPage() {
                                     onClick={() => { setIsMixedMode(false); setMixedPayments([]); }}
                                     className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
                                         !isMixedMode
-                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                             : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
                                     }`}
                                 >
@@ -757,7 +757,7 @@ export default function POSDeliveryPage() {
                                     onClick={() => { setIsMixedMode(true); setAmountReceived(''); }}
                                     className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
                                         isMixedMode
-                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                             : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
                                     }`}
                                 >
@@ -785,7 +785,7 @@ export default function POSDeliveryPage() {
                                                 onClick={() => { setPaymentMethod(m.id); setAmountReceived(''); }}
                                                 className={`inline-flex items-center justify-center gap-1 rounded-xl border px-1 py-2.5 text-[11px] font-medium uppercase tracking-[0.04em] transition-colors active:scale-95 ${
                                                     paymentMethod === m.id
-                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                                         : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink'
                                                 }`}
                                             >
@@ -969,7 +969,7 @@ export default function POSDeliveryPage() {
                                                                 onClick={() => updateModifierQuantity(group, mod, 1)}
                                                                 className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
                                                                     qty > 0
-                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                                                         : 'border-capsula-line text-transparent hover:border-capsula-navy-deep'
                                                                 }`}
                                                                 aria-label="Seleccionar"
@@ -996,7 +996,7 @@ export default function POSDeliveryPage() {
                                                                     className={`h-8 w-8 rounded-lg font-medium transition-colors ${
                                                                         isMax
                                                                             ? 'text-capsula-ink-faint'
-                                                                            : 'bg-capsula-navy-deep text-capsula-ivory hover:bg-capsula-navy'
+                                                                            : 'bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy'
                                                                     }`}
                                                                 >
                                                                     +
@@ -1035,7 +1035,7 @@ export default function POSDeliveryPage() {
                                     </span>
                                     <button
                                         onClick={() => setItemQuantity(itemQuantity + 1)}
-                                        className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-2xl font-medium text-capsula-ivory transition-colors hover:bg-capsula-navy active:scale-95"
+                                        className="h-12 w-12 rounded-lg bg-capsula-navy-deep text-2xl font-medium text-capsula-cream transition-colors hover:bg-capsula-navy active:scale-95"
                                     >
                                         +
                                     </button>

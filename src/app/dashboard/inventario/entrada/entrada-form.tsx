@@ -359,7 +359,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Información del Documento */}
                     <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-cream shadow-cap-soft">
                                 <FileText className="h-5 w-5" />
                             </div>
                             <div>
@@ -510,7 +510,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     {/* Agregar Insumos */}
                     <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-6 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-ivory shadow-cap-soft">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-navy-deep text-capsula-cream shadow-cap-soft">
                                 <Package className="h-5 w-5" />
                             </div>
                             <div>
@@ -806,7 +806,7 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                     <div className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-2xl">
                         <button
                             onClick={() => setShowPreview(false)}
-                            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-capsula-ink/70 text-capsula-ivory transition-colors hover:bg-capsula-ink"
+                            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-capsula-ink/70 text-capsula-cream transition-colors hover:bg-capsula-ink"
                             aria-label="Cerrar preview"
                         >
                             <XIcon className="h-4 w-4" />

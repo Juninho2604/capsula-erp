@@ -327,7 +327,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                     className={cn(
                         "px-6 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all duration-300 rounded-xl",
                         activeTab === 'NEW'
-                            ? "bg-capsula-navy-deep text-capsula-ivory scale-105"
+                            ? "bg-capsula-navy-deep text-capsula-cream scale-105"
                             : "text-capsula-ink-muted hover:text-capsula-ink"
                     )}
                 >
@@ -367,7 +367,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                 <h3 className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink">Nueva requisición</h3>
                                 <p className="mt-1 text-xs font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">Gestión de transferencias CAPSULA</p>
                             </div>
-                            <div className="h-12 w-12 bg-capsula-navy-soft/10 rounded-2xl flex items-center justify-center text-capsula-navy-deep dark:text-capsula-ivory">
+                            <div className="h-12 w-12 bg-capsula-navy-soft/10 rounded-2xl flex items-center justify-center text-capsula-navy-deep dark:text-capsula-cream">
                                 <ArrowLeftRight className="h-6 w-6" />
                             </div>
                         </div>
@@ -451,7 +451,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
 
                             <button
                                 onClick={() => setRequestItems([...requestItems, { id: '', name: '', quantity: 0, unit: '-' }])}
-                                className="flex w-full items-center justify-center gap-2 bg-capsula-ivory-alt py-5 text-xs font-semibold uppercase tracking-widest text-capsula-navy-deep dark:text-capsula-ivory hover:bg-capsula-ivory-surface transition-all active:scale-[0.99]"
+                                className="flex w-full items-center justify-center gap-2 bg-capsula-ivory-alt py-5 text-xs font-semibold uppercase tracking-widest text-capsula-navy-deep dark:text-capsula-cream hover:bg-capsula-ivory-surface transition-all active:scale-[0.99]"
                             >
                                 <span className="font-semibold text-xl tracking-[-0.02em]">+</span> Agregar otra fila
                             </button>
@@ -511,7 +511,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                                 </div>
                                                                 <span className="text-capsula-ink-muted">→</span>
                                                                 <div className="bg-capsula-navy-soft/10 px-3 py-1.5 rounded-xl border border-capsula-navy-soft/20">
-                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-ivory uppercase mb-0.5">Destino</span>
+                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-cream uppercase mb-0.5">Destino</span>
                                                                     {req.targetArea.name}
                                                                 </div>
                                                             </div>
@@ -581,7 +581,7 @@ export default function TransferenciasView({ itemsList: initialItemsList, areasL
                                                                 </div>
                                                                 <span className="text-capsula-ink-muted">→</span>
                                                                 <div className="bg-capsula-navy-soft/10 px-3 py-1.5 rounded-xl border border-capsula-navy-soft/20">
-                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-ivory uppercase mb-0.5">Hacia</span>
+                                                                    <span className="text-[10px] block text-capsula-navy-deep dark:text-capsula-cream uppercase mb-0.5">Hacia</span>
                                                                     {req.targetArea.name}
                                                                 </div>
                                                             </div>
