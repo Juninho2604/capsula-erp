@@ -247,10 +247,14 @@ interface SubAccountCardProps {
     isProcessing: boolean;
     onRename: (subId: string, label: string) => void;
     onDelete: (subId: string) => void;
-    onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean) => void;
+    onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') => void;
     onUnassign: (itemId: string, subId: string) => void;
     onPrint: (sub: SubAccount, includeService: boolean) => void;
 }
+
+// Cash USD/EUR/Zelle aplican descuento de 33% automático ("divisas").
+const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
+    m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
 
 function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
@@ -261,7 +265,20 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     const [amountInput, setAmountInput] = useState('');
 
     const isPaid = sub.status === 'PAID';
-    const totalWithService = sub.subtotal + (serviceIncluded ? sub.serviceCharge : 0);
+    // Si el método es divisas (cash USD/EUR/Zelle) → aplica 33% descuento automático.
+    const applyDivisasDiscount = isDivisasPayMethod(payMethod);
+    const discountAmount = applyDivisasDiscount ? sub.subtotal * (1 / 3) : 0;
+    const subtotalAfterDiscount = sub.subtotal - discountAmount;
+    const serviceChargeAfterDiscount = serviceIncluded ? subtotalAfterDiscount * 0.1 : 0;
+    const totalWithService = subtotalAfterDiscount + serviceChargeAfterDiscount;
+
+    // Auto-rellenar el monto cuando cambia el método o el toggle de servicio,
+    // pero no si el cajero ya tipeó un monto distinto manualmente.
+    useEffect(() => {
+        if (!showPayForm) return;
+        setAmountInput(totalWithService.toFixed(2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [payMethod, serviceIncluded, showPayForm]);
 
     function handleRename() {
         if (labelInput.trim()) { onRename(sub.id, labelInput.trim()); }
@@ -271,7 +288,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     function handlePayConfirm() {
         const amt = parseFloat(amountInput);
         if (isNaN(amt) || amt <= 0) { toast.error('Monto inválido'); return; }
-        onPay(sub.id, payMethod, amt, serviceIncluded);
+        onPay(sub.id, payMethod, amt, serviceIncluded, applyDivisasDiscount ? 'DIVISAS_33' : 'NONE');
         setShowPayForm(false);
     }
 
@@ -422,15 +439,20 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         </button>
                     ) : (
                         <div className="space-y-2 border-t border-capsula-line pt-2">
+                            {/* Aviso 33% descuento por divisas (cash USD/EUR/Zelle) */}
+                            {applyDivisasDiscount && (
+                                <div className="rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-2 py-1.5 text-[11px] font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
+                                    <span className="font-semibold">−33% Pago en Divisas:</span>{' '}
+                                    <span className="tabular-nums">−${discountAmount.toFixed(2)}</span>{' '}
+                                    <span className="opacity-80">(automático por método de pago)</span>
+                                </div>
+                            )}
                             {/* Service fee toggle */}
                             <label className="flex cursor-pointer items-center gap-2">
                                 <input
                                     type="checkbox"
                                     checked={serviceIncluded}
-                                    onChange={(e) => {
-                                        setServiceIncluded(e.target.checked);
-                                        setAmountInput((sub.subtotal + (e.target.checked ? sub.serviceCharge : 0)).toFixed(2));
-                                    }}
+                                    onChange={(e) => setServiceIncluded(e.target.checked)}
                                     className="rounded border-capsula-line accent-capsula-navy-deep"
                                 />
                                 <span className="text-[11px] text-capsula-ink-soft">+10% servicio</span>
@@ -573,13 +595,14 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
         setIsProcessing(false);
     }
 
-    async function handlePay(subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean) {
+    async function handlePay(subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') {
         setIsProcessing(true);
         const res = await paySubAccountAction({
             subAccountId: subId,
             paymentMethod: method,
             amount,
             serviceFeeIncluded: serviceIncluded,
+            discountType,
         });
         if (res.success) {
             toast.success(res.message);

@@ -388,8 +388,17 @@ export default function POSSportBarPage() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isDivisasMethod(paymentMethod) && discountType === "DIVISAS_33") {
-      setDiscountType("NONE");
+    // Auto-aplicar / quitar el descuento del 33% según el método de pago.
+    // - Si el método pasa a ser efectivo o Zelle (divisas) → aplica DIVISAS_33
+    //   automáticamente (regla de negocio: cash siempre tiene 33% off).
+    // - Si el método pasa a no-divisas → quita DIVISAS_33 (no aplica).
+    // Sólo cambiamos cuando el discountType actual es NONE o DIVISAS_33;
+    // si el cajero eligió CORTESIA, lo respetamos.
+    if (discountType !== 'NONE' && discountType !== 'DIVISAS_33') return;
+    if (isDivisasMethod(paymentMethod)) {
+      if (discountType !== 'DIVISAS_33') setDiscountType('DIVISAS_33');
+    } else {
+      if (discountType === 'DIVISAS_33') setDiscountType('NONE');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentMethod, discountType]);
