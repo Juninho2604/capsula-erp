@@ -131,9 +131,16 @@ export default function POSDeliveryPage() {
     }, [selectedCategory, categories]);
 
     useEffect(() => {
-        // Auto-clear Divisas in single mode when method switches away from USD
-        if (!isMixedMode && !isDivisasMethod(paymentMethod) && discountType === 'DIVISAS_33') {
-            setDiscountType('NONE');
+        // Auto-aplicar / quitar el descuento del 33% según el método de pago
+        // (single mode). Regla de negocio: cash siempre tiene 33% off.
+        // Sólo cambiamos cuando el discountType actual es NONE o DIVISAS_33;
+        // si el cajero eligió CORTESIA, lo respetamos.
+        if (isMixedMode) return; // mixed mode tiene su propia lógica
+        if (discountType !== 'NONE' && discountType !== 'DIVISAS_33') return;
+        if (isDivisasMethod(paymentMethod)) {
+            if (discountType !== 'DIVISAS_33') setDiscountType('DIVISAS_33');
+        } else {
+            if (discountType === 'DIVISAS_33') setDiscountType('NONE');
         }
     }, [isMixedMode, paymentMethod, discountType]);
 

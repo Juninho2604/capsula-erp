@@ -2445,6 +2445,13 @@ export async function paySubAccountAction(data: {
     amount: number;
     serviceFeeIncluded?: boolean;
     splitLabel?: string;
+    /**
+     * Tipo de descuento aplicado a la subcuenta. Default: NONE.
+     * - 'DIVISAS_33': descuento 33% sobre el subtotal (regla de negocio
+     *   para pagos en cash USD/EUR/Zelle). Se aplica automáticamente
+     *   desde el frontend cuando el método es divisas.
+     */
+    discountType?: 'NONE' | 'DIVISAS_33';
 }): Promise<ActionResult> {
     try {
         const session = await getSession();
@@ -2473,8 +2480,21 @@ export async function paySubAccountAction(data: {
         // TABLE_SERVICE tabs always include 10% service charge
         const isTableService = openTab.serviceType === 'TABLE_SERVICE';
         const applyServiceFee = isTableService || (data.serviceFeeIncluded ?? false);
+        // Discount: 33% off subtotal cuando se paga en divisas (cash USD/EUR/Zelle).
+        const discountType = data.discountType ?? 'NONE';
+        const discountAmount = discountType === 'DIVISAS_33'
+            ? sub.subtotal * (1 / 3)
+            : 0;
+        const subtotalAfterDiscount = sub.subtotal - discountAmount;
+        const serviceChargeApplied = applyServiceFee
+            ? subtotalAfterDiscount * 0.1
+            : 0;
+        const totalApplied = subtotalAfterDiscount + serviceChargeApplied;
         const baseLabel = data.splitLabel || sub.label;
-        const splitLabel = applyServiceFee ? `${baseLabel} | +10% serv` : baseLabel;
+        const labelParts: string[] = [baseLabel];
+        if (discountType === 'DIVISAS_33') labelParts.push('-33% divisas');
+        if (applyServiceFee) labelParts.push('+10% serv');
+        const splitLabel = labelParts.join(' | ');
 
         const updatedTab = await prisma.$transaction(async (tx) => {
             // Mark subcuenta as PAID
@@ -2498,10 +2518,12 @@ export async function paySubAccountAction(data: {
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
                     subtotal: sub.subtotal,
-                    serviceChargeAmount: applyServiceFee ? sub.serviceCharge : 0,
-                    total: sub.total,
+                    discount: discountAmount,
+                    serviceChargeAmount: serviceChargeApplied,
+                    total: totalApplied,
                     paidAmount: data.amount,
                     paidAt: new Date(),
+                    notes: discountType === 'DIVISAS_33' ? 'Pago en Divisas (33.33%)' : undefined,
                 },
             });
 
@@ -2523,9 +2545,9 @@ export async function paySubAccountAction(data: {
                     status: tabClosed ? 'CLOSED' : 'PARTIALLY_PAID',
                     closedAt: tabClosed ? new Date() : undefined,
                     closedById: tabClosed ? session.id : undefined,
-                    totalServiceCharge: applyServiceFee
-                        ? openTab.totalServiceCharge + sub.serviceCharge
-                        : openTab.totalServiceCharge,
+                    // Service charge cobrado se acumula con el realmente aplicado
+                    // (sobre el subtotal post-descuento), no el pre-computado.
+                    totalServiceCharge: openTab.totalServiceCharge + serviceChargeApplied,
                     version: { increment: 1 },
                 },
             });
