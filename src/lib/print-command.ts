@@ -66,7 +66,9 @@ export function printReceipt(data: ReceiptData) {
     const total = data.total;
     const serviceFee = data.serviceFee ?? 0;
     const tipAmount = data.tipAmount ?? 0;
-    const totalSuggested = total + serviceFee;
+    // Total a pagar = base total (post-discount) + servicio + propina.
+    // Propina se incluye en el total impreso para que el cliente pague el monto exacto.
+    const totalSuggested = total + serviceFee + tipAmount;
 
     // Deduplicar items: combinar entradas con mismo nombre + mismos modificadores
     const deduped: (ReceiptItem & { _key: string })[] = [];
@@ -220,22 +222,17 @@ export function printReceipt(data: ReceiptData) {
             <span>10% Servicio:</span>
             <span>$${serviceFee.toFixed(2)}</span>
         </div>
-        <div class="total-row total-final">
-            <span>TOTAL A PAGAR:</span>
-            <span>$${totalSuggested.toFixed(2)}</span>
-        </div>
-        ` : `
-        <div class="total-row total-final">
-            <span>TOTAL:</span>
-            <span>$${total.toFixed(2)}</span>
-        </div>
-        `}
+        ` : ''}
         ${tipAmount > 0 ? `
-        <div class="total-row" style="margin-top: 6px; font-size: 11px; color: #555;">
+        <div class="total-row">
             <span>Propina:</span>
             <span>$${tipAmount.toFixed(2)}</span>
         </div>
         ` : ''}
+        <div class="total-row total-final">
+            <span>${serviceFee > 0 || tipAmount > 0 ? 'TOTAL A PAGAR:' : 'TOTAL:'}</span>
+            <span>$${totalSuggested.toFixed(2)}</span>
+        </div>
     </div>
     
     <div class="footer">GRACIAS POR SU COMPRA</div>
