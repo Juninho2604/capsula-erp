@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus, Printer } from 'lucide-react';
+import { DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus, Printer, Ban, Lock } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -18,6 +18,8 @@ import {
     paySubAccountAction,
     renameSubAccountAction,
     unassignItemFromSubAccountAction,
+    validateManagerPinAction,
+    voidSubAccountAction,
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
 import { printReceipt } from '@/lib/print-command';
@@ -250,13 +252,14 @@ interface SubAccountCardProps {
     onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') => void;
     onUnassign: (itemId: string, subId: string) => void;
     onPrint: (sub: SubAccount, includeService: boolean) => void;
+    onVoid: (sub: SubAccount) => void;
 }
 
 // Cash USD/EUR/Zelle aplican descuento de 33% automático ("divisas").
 const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
     m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -369,8 +372,26 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         </button>
                     )}
                     {isPaid && (
-                        <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E]">
-                            PAGADA ${sub.paidAmount.toFixed(2)}
+                        <>
+                            <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E] dark:border-[#244935] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
+                                PAGADA ${sub.paidAmount.toFixed(2)}
+                            </span>
+                            {/* Anular subcuenta cobrada — restaura el saldo a la mesa */}
+                            <button
+                                disabled={isProcessing}
+                                onClick={() => onVoid(sub)}
+                                className="inline-flex items-center gap-1 rounded-full border border-[#E8C2B7] bg-[#F7E3DB] px-2 py-0.5 text-[11px] font-semibold text-[#B04A2E] hover:bg-[#F4D2C2] dark:border-[#5b3328] dark:bg-[#3B1F14] dark:text-[#EFD2C8] disabled:opacity-40"
+                                title="Anular subcuenta — requiere PIN"
+                                aria-label="Anular subcuenta"
+                            >
+                                <Ban className="h-3 w-3" />
+                                Anular
+                            </button>
+                        </>
+                    )}
+                    {sub.status === 'VOID' && (
+                        <span className="rounded-full border border-[#E8C2B7] bg-[#F7E3DB] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#B04A2E] dark:border-[#5b3328] dark:bg-[#3B1F14] dark:text-[#EFD2C8]">
+                            ANULADA
                         </span>
                     )}
                 </div>
@@ -518,6 +539,63 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
     // New subcuenta form
     const [newLabel, setNewLabel] = useState('');
+
+    // ── Anulación de subcuenta (requiere PIN de gerente) ─────────────────────
+    const [voidTarget, setVoidTarget] = useState<SubAccount | null>(null);
+    const [voidReason, setVoidReason] = useState('');
+    const [voidPin, setVoidPin] = useState('');
+    const [voidPinError, setVoidPinError] = useState('');
+    const [voidStep, setVoidStep] = useState<'reason' | 'pin'>('reason');
+    const [voidLoading, setVoidLoading] = useState(false);
+
+    function openVoidModal(sub: SubAccount) {
+        setVoidTarget(sub);
+        setVoidReason('');
+        setVoidPin('');
+        setVoidPinError('');
+        setVoidStep('reason');
+    }
+
+    function closeVoidModal() {
+        setVoidTarget(null);
+        setVoidReason('');
+        setVoidPin('');
+        setVoidPinError('');
+        setVoidStep('reason');
+    }
+
+    async function confirmVoid() {
+        if (!voidTarget) return;
+        setVoidLoading(true);
+        const pinRes = await validateManagerPinAction(voidPin);
+        if (!pinRes.success) {
+            setVoidPinError(pinRes.message || 'PIN incorrecto');
+            setVoidLoading(false);
+            return;
+        }
+        const managerName = (pinRes.data as { managerName?: string })?.managerName ?? 'Gerente';
+        const managerId = (pinRes.data as { managerId?: string })?.managerId ?? 'manager-pin';
+        const res = await voidSubAccountAction({
+            subAccountId: voidTarget.id,
+            voidReason: voidReason.trim(),
+            authorizedById: managerId,
+            authorizedByName: managerName,
+        });
+        if (res.success) {
+            toast.success(res.message);
+            if (res.data) {
+                setTab(res.data as TabWithSubs);
+                onTabUpdatedRef.current(res.data);
+            } else {
+                await loadTab();
+            }
+            closeVoidModal();
+        } else {
+            toast.error(res.message);
+            setVoidPinError(res.message);
+        }
+        setVoidLoading(false);
+    }
 
     // ── Stable ref for onTabUpdated — prevents infinite loop from unstable parent fn ──
     // onTabUpdated changes identity on every parent render; putting it in a ref means
@@ -752,6 +830,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onPay={handlePay}
                         onUnassign={handleUnassign}
                         onPrint={handlePrintSubAccount}
+                        onVoid={openVoidModal}
                     />
                 ))}
 
@@ -795,6 +874,124 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                     </div>
                 )}
             </div>
+
+            {/* ── MODAL: Anular subcuenta ────────────────────────────────────── */}
+            {voidTarget && (
+                <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">
+                                    Anular subcuenta
+                                </h3>
+                                <p className="mt-0.5 text-xs text-capsula-ink-muted">
+                                    {voidTarget.label} · ${voidTarget.subtotal.toFixed(2)}
+                                    {voidTarget.status === 'PAID' && ' · ya cobrada'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeVoidModal}
+                                disabled={voidLoading}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center disabled:opacity-40"
+                                aria-label="Cerrar"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {voidStep === 'reason' ? (
+                                <>
+                                    {voidTarget.status === 'PAID' && (
+                                        <div className="rounded-lg bg-[#F7E3DB] dark:bg-[#3B1F14] border border-[#E8C2B7] dark:border-[#5b3328] p-3 text-xs text-[#B04A2E] dark:text-[#EFD2C8]">
+                                            ⚠️ Esta subcuenta ya fue cobrada. Anular restaurará el
+                                            saldo a la mesa, marcará el pago como VOID en auditoría
+                                            y reabrirá la cuenta si estaba cerrada.
+                                        </div>
+                                    )}
+                                    <label className="block">
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                            Motivo de anulación
+                                        </span>
+                                        <textarea
+                                            autoFocus
+                                            value={voidReason}
+                                            onChange={(e) => setVoidReason(e.target.value)}
+                                            placeholder="Ej. error de cobro, cliente rechaza el ítem, doble facturación…"
+                                            rows={3}
+                                            className="pos-input mt-1.5 w-full resize-none text-sm"
+                                        />
+                                    </label>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-capsula-ink-soft">
+                                        Ingresa el PIN de un gerente autorizado para confirmar la anulación.
+                                    </p>
+                                    <label className="block">
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                            <Lock className="inline-block h-3 w-3 mr-1" />
+                                            PIN de gerente
+                                        </span>
+                                        <input
+                                            autoFocus
+                                            type="password"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            value={voidPin}
+                                            onChange={(e) => { setVoidPin(e.target.value); setVoidPinError(''); }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && voidPin.length >= 4) confirmVoid();
+                                            }}
+                                            className="pos-input mt-1.5 w-full text-center text-2xl tabular-nums tracking-widest"
+                                            placeholder="••••"
+                                        />
+                                    </label>
+                                    {voidPinError && (
+                                        <p className="text-xs text-capsula-coral font-semibold">{voidPinError}</p>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
+                            <button
+                                onClick={closeVoidModal}
+                                disabled={voidLoading}
+                                className="pos-btn-secondary flex-1 py-3 disabled:opacity-40"
+                            >
+                                Cancelar
+                            </button>
+                            {voidStep === 'reason' ? (
+                                <button
+                                    onClick={() => {
+                                        if (!voidReason.trim()) {
+                                            toast.error('Indica el motivo');
+                                            return;
+                                        }
+                                        setVoidStep('pin');
+                                    }}
+                                    disabled={!voidReason.trim()}
+                                    className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                                >
+                                    Continuar
+                                    <Lock className="h-3.5 w-3.5" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={confirmVoid}
+                                    disabled={voidLoading || voidPin.length < 4}
+                                    className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                                    style={{ background: '#B04A2E' }}
+                                >
+                                    <Ban className="h-4 w-4" />
+                                    {voidLoading ? 'Anulando…' : 'Confirmar anulación'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
