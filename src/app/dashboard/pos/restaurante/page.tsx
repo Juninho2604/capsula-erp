@@ -14,6 +14,7 @@ import {
   modifyTabItemAction,
   validateManagerPinAction,
   getDailyPickupCountAction,
+  getOpenTabWithSubAccountsAction,
   type CartItem,
   type PaymentLine,
   type ModifyTabItemModification,
@@ -300,6 +301,7 @@ export default function POSSportBarPage() {
 
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
+  const [subAccountsCount, setSubAccountsCount] = useState(0);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
   const [checkoutTip, setCheckoutTip] = useState(''); // propina en el momento del cobro
 
@@ -415,6 +417,27 @@ export default function POSSportBarPage() {
   );
 
   const activeTab = useMemo(() => selectedTable?.openTabs[0] || null, [selectedTable]);
+
+  // ── Auto-detección de subcuentas existentes ──────────────────────────────
+  // Cuando el cajero abre una mesa con subcuentas creadas (típicamente por el
+  // mesonero desde POS Mesero), entramos automáticamente al modo subcuentas
+  // para que las vea sin tener que hacer click en "Dividir cuenta".
+  // Si no hay subcuentas, permanece en cobro normal.
+  useEffect(() => {
+    if (!activeTab?.id) {
+      setSubAccountsCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await getOpenTabWithSubAccountsAction(activeTab.id);
+      if (cancelled) return;
+      const subs = (res.data as any)?.subAccounts ?? [];
+      setSubAccountsCount(subs.length);
+      if (subs.length > 0) setSubAccountMode(true);
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab?.id]);
 
   const activePickupTab = useMemo(
     () => pickupTabs.find((t) => t.id === activePickupTabId) ?? null,
@@ -2041,7 +2064,9 @@ export default function POSSportBarPage() {
                     </span>
                   </div>
                 </div>
-                {/* Subcuentas toggle */}
+                {/* Subcuentas toggle. Si la cuenta ya tiene subcuentas
+                    creadas (típicamente por el mesonero), entramos
+                    automáticamente al modo subcuentas — ver useEffect arriba. */}
                 <button
                   onClick={() => setSubAccountMode((p) => !p)}
                   className={`w-full py-2 rounded-xl text-xs font-semibold transition inline-flex items-center justify-center gap-2 ${
@@ -2051,7 +2076,13 @@ export default function POSSportBarPage() {
                   }`}
                 >
                   <Divide className="h-3.5 w-3.5" />
-                  {subAccountMode ? "Viendo subcuentas — volver a cobro normal" : "Dividir cuenta (subcuentas)"}
+                  {subAccountMode ? (
+                    <>Viendo subcuentas{subAccountsCount > 0 ? ` (${subAccountsCount})` : ''} — volver a cobro normal</>
+                  ) : subAccountsCount > 0 ? (
+                    <>Ver subcuentas existentes ({subAccountsCount})</>
+                  ) : (
+                    <>Dividir cuenta (subcuentas)</>
+                  )}
                 </button>
               </div>
 
@@ -2061,6 +2092,10 @@ export default function POSSportBarPage() {
                   exchangeRate={exchangeRate}
                   onClose={() => setSubAccountMode(false)}
                   onTabUpdated={() => loadData(false)}
+                  tabCode={activeTab.tabCode}
+                  customerLabel={activeTab.customerLabel ?? undefined}
+                  tableLabel={selectedTable?.name}
+                  cashierName={cashierName || undefined}
                 />
               ) : (
               <div className="flex-1 overflow-y-auto p-3 space-y-3">

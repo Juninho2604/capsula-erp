@@ -1013,6 +1013,10 @@ export default function POSMeseroPage() {
               exchangeRate={exchangeRate}
               onClose={() => setSubAccountMode(false)}
               onTabUpdated={() => loadData(false)}
+              tabCode={activeTab.tabCode}
+              customerLabel={activeTab.customerLabel ?? undefined}
+              tableLabel={selectedTable?.name}
+              cashierName={activeTab.openedBy?.firstName}
             />
           ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
