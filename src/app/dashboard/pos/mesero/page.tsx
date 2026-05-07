@@ -1165,7 +1165,8 @@ export default function POSMeseroPage() {
         const subtotal      = activeTab.runningSubtotal;
         const discount      = activeTab.runningDiscount;
         const serviceCharge = activeTab.totalServiceCharge ?? 0;
-        const grandTotal    = activeTab.runningTotal + serviceCharge;
+        const tipAmount     = activeTab.tipAmount ?? 0;
+        const grandTotal    = activeTab.runningTotal + serviceCharge + tipAmount;
         const paidSplits    = (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
         const saldo         = activeTab.balanceDue;
         const amountToShow  = saldo > 0.01 ? saldo : grandTotal;
@@ -1243,6 +1244,14 @@ export default function POSMeseroPage() {
                     <div className="flex justify-between text-xs text-capsula-ink-muted">
                       <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
                       <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {tipAmount > 0.001 && (
+                    <div className="flex justify-between text-xs text-capsula-ink-muted">
+                      <span className="font-semibold uppercase tracking-wider">
+                        Propina{activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` (${activeTab.tipPercent}%)` : ''}
+                      </span>
+                      <span className="font-semibold text-capsula-ink tabular-nums">${tipAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-baseline border-t border-capsula-line pt-2">
@@ -1354,9 +1363,9 @@ export default function POSMeseroPage() {
                         `Subtotal:       $${subtotal.toFixed(2)}`,
                         ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
                         ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
+                        ...(tipAmount > 0.001 ? [`Propina${activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` ${activeTab.tipPercent}%` : ''}:  $${tipAmount.toFixed(2)}`] : []),
                         `TOTAL USD:      $${grandTotal.toFixed(2)}`,
-                        ...(saldoBs !== null ? [`Bs equiv.:      Bs ${(grandTotal * (exchangeRate ?? 1)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
-                        ...(activeTab.tipPercent != null && activeTab.tipPercent > 0 && activeTab.tipAmount != null ? [`Propina ${activeTab.tipPercent}%:  $${activeTab.tipAmount.toFixed(2)}`] : []),
+                        ...(totalBs !== null ? [`Bs equiv.:      Bs ${totalBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
                         ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldo.toFixed(2)}`] : []),
                       ];
                       navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));
@@ -1386,8 +1395,11 @@ export default function POSMeseroPage() {
                         items,
                         subtotal,
                         discount: discount > 0.001 ? discount : 0,
-                        total: grandTotal,
+                        // print-command espera `total` como base (post-discount, pre-service,
+                        // pre-tip); luego suma serviceFee + tipAmount internamente.
+                        total: activeTab.runningTotal,
                         serviceFee: serviceCharge > 0.001 ? serviceCharge : undefined,
+                        tipAmount: tipAmount > 0.001 ? tipAmount : undefined,
                         isPrecuenta: true,
                       });
                     }}
