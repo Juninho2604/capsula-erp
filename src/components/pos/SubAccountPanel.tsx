@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { DollarSign, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus } from 'lucide-react';
+import { DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, X as XIcon, CheckCircle2, Trash2, Pencil, Check, SplitSquareHorizontal, ArrowLeft, Plus, Printer } from 'lucide-react';
 import {
     assignItemToSubAccountAction,
     autoSplitEqualAction,
@@ -20,6 +20,7 @@ import {
     unassignItemFromSubAccountAction,
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
+import { printReceipt } from '@/lib/print-command';
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
 
@@ -73,6 +74,12 @@ interface SubAccountPanelProps {
     exchangeRate: number | null;
     onClose: () => void;
     onTabUpdated: (tab: any) => void; // Sync back to parent
+    // Contexto opcional para impresión de recibos individuales por subcuenta.
+    // Si se proveen, los recibos térmicos incluirán mesa/cliente/código de tab.
+    tabCode?: string;
+    customerLabel?: string;
+    tableLabel?: string;
+    cashierName?: string;
 }
 
 // ─── Payment method labels ────────────────────────────────────────────────────
@@ -85,6 +92,7 @@ type PayMethodDef = {
 
 const PAY_METHODS: PayMethodDef[] = [
     { id: 'CASH_USD',       label: 'Cash $',       Icon: DollarSign },
+    { id: 'CASH_EUR',       label: 'Cash €',       Icon: Euro },
     { id: 'ZELLE',          label: 'Zelle',        Icon: Zap },
     { id: 'PDV_SHANKLISH',  label: 'PDV Shan.',    Icon: CreditCard },
     { id: 'PDV_SUPERFERRO', label: 'PDV Super.',   Icon: CreditCard },
@@ -241,9 +249,10 @@ interface SubAccountCardProps {
     onDelete: (subId: string) => void;
     onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean) => void;
     onUnassign: (itemId: string, subId: string) => void;
+    onPrint: (sub: SubAccount, includeService: boolean) => void;
 }
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -317,22 +326,37 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         )}
                     </div>
                 )}
-                {!isPaid && (
-                    <button
-                        disabled={isProcessing}
-                        onClick={() => onDelete(sub.id)}
-                        className="ml-2 rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
-                        title="Eliminar subcuenta"
-                        aria-label="Eliminar subcuenta"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                )}
-                {isPaid && (
-                    <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E]">
-                        PAGADA ${sub.paidAmount.toFixed(2)}
-                    </span>
-                )}
+                <div className="ml-auto flex items-center gap-1">
+                    {/* Imprimir recibo individual de esta subcuenta. Funciona
+                        antes (pre-cuenta) y después (recibo de pago) del cobro. */}
+                    {sub.items.length > 0 && (
+                        <button
+                            disabled={isProcessing}
+                            onClick={() => onPrint(sub, true)}
+                            className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink disabled:opacity-40"
+                            title={isPaid ? 'Reimprimir recibo' : 'Imprimir pre-cuenta'}
+                            aria-label="Imprimir recibo de subcuenta"
+                        >
+                            <Printer className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    {!isPaid && (
+                        <button
+                            disabled={isProcessing}
+                            onClick={() => onDelete(sub.id)}
+                            className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral-subtle hover:text-capsula-coral disabled:opacity-40"
+                            title="Eliminar subcuenta"
+                            aria-label="Eliminar subcuenta"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    {isPaid && (
+                        <span className="rounded-full border border-[#D3E2D8] bg-[#E5EDE7] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[#2F6B4E]">
+                            PAGADA ${sub.paidAmount.toFixed(2)}
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Items */}
@@ -465,7 +489,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
 
 // ─── Panel principal ──────────────────────────────────────────────────────────
 
-export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated }: SubAccountPanelProps) {
+export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated, tabCode, customerLabel, tableLabel, cashierName }: SubAccountPanelProps) {
     const [tab, setTab] = useState<TabWithSubs | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -561,9 +585,13 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             toast.success(res.message);
             // Use the updated tab returned by the action — avoids an extra round-trip
             // and prevents triggering the loadTab → onTabUpdated cycle an extra time.
-            if (res.data) {
-                setTab(res.data as TabWithSubs);
-                onTabUpdatedRef.current(res.data);
+            const updatedTab = (res.data as TabWithSubs | undefined);
+            if (updatedTab) {
+                setTab(updatedTab);
+                onTabUpdatedRef.current(updatedTab);
+                // Auto-impresión del recibo individual de la subcuenta tras el cobro.
+                const paidSub = updatedTab.subAccounts.find(s => s.id === subId);
+                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded);
             } else {
                 await loadTab(); // fallback if action didn't return data
             }
@@ -571,6 +599,40 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             toast.error(res.message);
         }
         setIsProcessing(false);
+    }
+
+    /**
+     * Imprime un recibo térmico individual para una subcuenta. Cumple
+     * el requisito: "que esta genere un recibo de pago individual para
+     * cada subcuenta y no una sola global". Se invoca automáticamente
+     * tras un cobro exitoso, y manualmente desde el botón "Imprimir"
+     * en cada subcuenta.
+     */
+    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true) {
+        const items = sub.items.map(it => ({
+            name: it.salesOrderItem.itemName,
+            quantity: it.quantity,
+            unitPrice: it.salesOrderItem.unitPrice,
+            total: it.lineTotal,
+            modifiers: (it.salesOrderItem.modifiers ?? []).map(m =>
+                typeof m === 'string' ? m : m?.name ?? ''
+            ).filter(Boolean),
+        }));
+        const serviceFee = includeService ? sub.serviceCharge : 0;
+        const subAccountLabel = sub.label || `Subcuenta ${sub.sortOrder + 1}`;
+        printReceipt({
+            orderNumber: tabCode ? `${tabCode} · ${subAccountLabel}` : subAccountLabel,
+            orderType: 'RESTAURANT',
+            date: new Date(),
+            cashierName: cashierName || 'Cajera',
+            customerName: customerLabel,
+            tableLabel,
+            items,
+            subtotal: sub.subtotal,
+            total: sub.subtotal,
+            serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
+            isPrecuenta: sub.status !== 'PAID',
+        });
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -666,6 +728,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onDelete={handleDelete}
                         onPay={handlePay}
                         onUnassign={handleUnassign}
+                        onPrint={handlePrintSubAccount}
                     />
                 ))}
 
