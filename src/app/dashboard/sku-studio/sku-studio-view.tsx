@@ -15,7 +15,7 @@ function Chip({ label, selected, onClick }: { label: string; selected: boolean; 
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
         selected
-          ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+          ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
           : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
       }`}
     >

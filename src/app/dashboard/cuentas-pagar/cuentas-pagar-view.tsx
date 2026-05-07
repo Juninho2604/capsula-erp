@@ -322,7 +322,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
             onClick={() => setFilter(f.key)}
             className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
               filter === f.key
-                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                 : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
             }`}
           >
@@ -388,7 +388,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
                           <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                             {!['PAID', 'VOID'].includes(a.status) && (
                               <button onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
-                                className="rounded-lg bg-capsula-navy-deep text-capsula-ivory text-xs font-semibold px-3 py-1.5 hover:bg-capsula-navy-deep/90 transition">
+                                className="rounded-lg bg-capsula-navy-deep text-capsula-cream text-xs font-semibold px-3 py-1.5 hover:bg-capsula-navy-deep/90 transition">
                                 Registrar pago
                               </button>
                             )}
@@ -475,7 +475,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
               <button type="button" onClick={() => setShowForm(false)}
                 className="rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2 text-sm font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-surface transition">Cancelar</button>
               <button type="submit" disabled={isPending}
-                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
+                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
                 {isPending ? 'Guardando…' : 'Registrar cuenta'}
               </button>
             </div>
@@ -526,7 +526,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
               <button type="button" onClick={() => setPayTarget(null)}
                 className="rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2 text-sm font-semibold text-capsula-ink-soft hover:bg-capsula-ivory-surface transition">Cancelar</button>
               <button type="submit" disabled={isPending}
-                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
+                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream hover:bg-capsula-navy-deep/90 transition disabled:opacity-50">
                 {isPending ? 'Registrando…' : 'Confirmar pago'}
               </button>
             </div>

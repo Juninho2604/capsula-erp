@@ -91,7 +91,7 @@ export function CurrencyCalculator({
                         type="button"
                         onClick={handleUpdateRate}
                         disabled={isSavingRate}
-                        className="shrink-0 rounded-lg border border-capsula-navy-deep bg-capsula-navy-deep px-3 py-2 text-xs font-medium text-capsula-ivory transition-colors hover:bg-capsula-navy disabled:opacity-50"
+                        className="shrink-0 rounded-lg border border-capsula-navy-deep bg-capsula-navy-deep px-3 py-2 text-xs font-medium text-capsula-cream transition-colors hover:bg-capsula-navy disabled:opacity-50"
                     >
                         {isSavingRate ? '…' : 'Actualizar'}
                     </button>

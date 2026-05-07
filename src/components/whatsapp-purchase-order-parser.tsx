@@ -322,7 +322,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-xl bg-capsula-navy-deep px-5 py-3 text-capsula-ivory shadow-cap-soft">
+                    <div className="flex items-center justify-between rounded-xl bg-capsula-navy-deep px-5 py-3 text-capsula-cream shadow-cap-soft">
                         <div className="flex items-center gap-4">
                             <div>
                                 <span className="text-sm opacity-80">Reconocidos</span>
@@ -416,7 +416,7 @@ export default function WhatsAppPurchaseOrderParser({ onOrderReady }: WhatsAppPu
                                             />
                                             <button
                                                 onClick={() => updateQuantity(line.id, line.quantity + 0.1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-capsula-navy-soft text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-ivory"
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-capsula-navy-soft text-capsula-ink transition-colors hover:bg-capsula-navy-deep hover:text-capsula-cream"
                                                 aria-label="Aumentar cantidad"
                                             >
                                                 <Plus className="h-3.5 w-3.5" />

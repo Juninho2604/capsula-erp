@@ -53,16 +53,16 @@ export default function CriticalListManager({ areaId, areaName, onClose, onUpdat
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-ink/60 p-4 backdrop-blur-sm">
             <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-capsula-line bg-capsula-ivory shadow-2xl">
-                <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-navy-deep p-6 text-capsula-ivory">
+                <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-navy-deep p-6 text-capsula-cream">
                     <div>
                         <h2 className="font-semibold text-xl tracking-[-0.02em]">Productos Críticos</h2>
-                        <p className="mt-1 text-sm text-capsula-ivory/80">
+                        <p className="mt-1 text-sm text-capsula-cream/80">
                             Configurando para: <strong>{areaName}</strong>
                         </p>
                     </div>
                     <button
                         onClick={() => { onUpdate(); onClose(); }}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-capsula-ivory/80 transition-colors hover:bg-capsula-ivory/10 hover:text-capsula-ivory"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-capsula-cream/80 transition-colors hover:bg-capsula-ivory/10 hover:text-capsula-cream"
                         aria-label="Cerrar"
                     >
                         <XIcon className="h-4 w-4" />

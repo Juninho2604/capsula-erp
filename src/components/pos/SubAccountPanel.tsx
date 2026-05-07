@@ -193,7 +193,7 @@ function PoolItemRow({ item, subAccounts, isProcessing, onAssign, onUnassign }: 
                                 onClick={() => setPickedSub(s.id)}
                                 className={`rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${
                                     pickedSub === s.id
-                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                         : 'border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep'
                                 }`}
                             >
@@ -422,7 +422,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                         onClick={() => setPayMethod(m.id)}
                                         className={`inline-flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-colors ${
                                             payMethod === m.id
-                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory'
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                                 : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
                                         }`}
                                     >

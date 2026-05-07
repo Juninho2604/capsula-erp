@@ -378,9 +378,9 @@ export default function AsistentePage() {
         <div className="flex items-center gap-3 mb-6">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-black transition-all ${
-                step === s ? 'bg-primary text-white shadow-lg shadow-primary/20' :
-                step > s ? 'bg-emerald-500 text-white' : 'bg-secondary text-muted-foreground'
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                step === s ? 'bg-capsula-navy-deep text-capsula-cream shadow-cap-soft' :
+                step > s ? 'bg-[#2F6B4E] text-capsula-cream dark:bg-[#1E3B2C] dark:text-[#6FB88F]' : 'bg-capsula-ivory-alt text-capsula-ink-muted'
               }`}>
                 {step > s ? '✓' : s}
               </div>

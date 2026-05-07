@@ -1281,7 +1281,7 @@ export default function POSSportBarPage() {
                 { id: 'CASH_BS',        label: 'Efectivo Bs',Icon: Banknote },
               ].map(({ id, label, Icon }) => (
                 <button key={id} type="button" onClick={() => setTipMethod(id)}
-                  className={`py-2 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition inline-flex flex-col items-center gap-1 ${tipMethod === id ? 'bg-capsula-navy-deep text-capsula-ivory' : 'bg-capsula-ivory-surface border border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40'}`}>
+                  className={`py-2 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition inline-flex flex-col items-center gap-1 ${tipMethod === id ? 'bg-capsula-navy-deep text-capsula-cream' : 'bg-capsula-ivory-surface border border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40'}`}>
                   <Icon className="h-3.5 w-3.5" />
                   {label}
                 </button>
@@ -1421,7 +1421,7 @@ export default function POSSportBarPage() {
                         setSelectedZoneId(z.id);
                         setSelectedTableId("");
                       }}
-                      className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${active ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/50 hover:text-capsula-ink"}`}
+                      className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${active ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/50 hover:text-capsula-ink"}`}
                     >
                       <ZoneIcon className="h-3.5 w-3.5" />
                       {z.name}
@@ -1582,7 +1582,7 @@ export default function POSSportBarPage() {
                     setSelectedGroup("");
                     setProductSearch("");
                   }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${selectedCategory === cat.id ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${selectedCategory === cat.id ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
                 >
                   {cat.name}
                 </button>
@@ -1683,7 +1683,7 @@ export default function POSSportBarPage() {
                     <div className="text-xl font-semibold text-capsula-ink tabular-nums">
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-capsula-navy-deep text-capsula-ivory flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
+                    <div className="h-8 w-8 rounded-full bg-capsula-navy-deep text-capsula-cream flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">
                       <PlusIcon className="h-4 w-4" />
                     </div>
                   </div>
@@ -1782,7 +1782,7 @@ export default function POSSportBarPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={clearDiscount}
-                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "NONE" ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
+                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "NONE" ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
                   >
                     Normal
                   </button>
@@ -1790,13 +1790,13 @@ export default function POSSportBarPage() {
                     onClick={() => isPagoDivisasPickup ? setDiscountType("DIVISAS_33") : undefined}
                     disabled={!isPagoDivisasPickup}
                     title={!isPagoDivisasPickup ? "Solo con Efectivo o Zelle" : ""}
-                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-ivory" : isPagoDivisasPickup ? "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
+                    className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-cream" : isPagoDivisasPickup ? "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
                   >
                     Divisas −33%
                   </button>
                   <button
                     onClick={openCortesiaModal}
-                    className={`col-span-2 py-3 text-sm font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-capsula-coral text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}
+                    className={`col-span-2 py-3 text-sm font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-capsula-coral text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}
                   >
                     <Gift className="h-4 w-4" />
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
@@ -1822,11 +1822,11 @@ export default function POSSportBarPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(false); setMixedPaymentsPickup([]); }}
-                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all ${!isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all ${!isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
                         >Pago único</button>
                         <button type="button"
                           onClick={() => { setIsPickupMixedMode(true); setAmountReceived(""); }}
-                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2 ${isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                          className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2 ${isPickupMixedMode ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
                         >
                           <Wallet className="h-4 w-4" />
                           Pago mixto
@@ -1839,7 +1839,7 @@ export default function POSSportBarPage() {
                           <div className="grid grid-cols-2 gap-2">
                             {SINGLE_PAY_METHODS.map((m) => (
                               <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all active:scale-95 ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}>
+                                className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all active:scale-95 ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}>
                                 {PAYMENT_LABELS[m]}
                               </button>
                             ))}
@@ -2046,7 +2046,7 @@ export default function POSSportBarPage() {
                   onClick={() => setSubAccountMode((p) => !p)}
                   className={`w-full py-2 rounded-xl text-xs font-semibold transition inline-flex items-center justify-center gap-2 ${
                     subAccountMode
-                      ? "bg-capsula-navy-deep text-capsula-ivory"
+                      ? "bg-capsula-navy-deep text-capsula-cream"
                       : "bg-capsula-ivory-surface hover:bg-capsula-navy-soft border border-capsula-line text-capsula-ink-soft hover:text-capsula-ink"
                   }`}
                 >
@@ -2174,7 +2174,7 @@ export default function POSSportBarPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={clearDiscount}
-                        className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "NONE" ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
+                        className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "NONE" ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}
                       >
                         Normal
                       </button>
@@ -2182,13 +2182,13 @@ export default function POSSportBarPage() {
                         onClick={() => (isPagoDivisas || isTableMixedMode) && setDiscountType("DIVISAS_33")}
                         disabled={!isPagoDivisas && !isTableMixedMode}
                         title={(!isPagoDivisas && !isTableMixedMode) ? "Solo con Efectivo o Zelle" : "Descuento por pago en divisas"}
-                        className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-ivory" : (isPagoDivisas || isTableMixedMode) ? "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
+                        className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-cream" : (isPagoDivisas || isTableMixedMode) ? "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
                       >
                         Divisas −33%
                       </button>
                       <button
                         onClick={openCortesiaModal}
-                        className={`col-span-2 py-3 text-sm font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-capsula-coral text-capsula-ivory" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}
+                        className={`col-span-2 py-3 text-sm font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 ${(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") ? "bg-capsula-coral text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}
                       >
                         <Gift className="h-4 w-4" />
                         {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT")
@@ -2216,11 +2216,11 @@ export default function POSSportBarPage() {
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <button type="button"
                         onClick={() => { setIsTableMixedMode(false); setMixedPaymentsTable([]); }}
-                        className={`py-3 rounded-xl text-sm font-semibold transition ${!isTableMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                        className={`py-3 rounded-xl text-sm font-semibold transition ${!isTableMixedMode ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
                       >Pago único</button>
                       <button type="button"
                         onClick={() => { setIsTableMixedMode(true); setAmountReceived(""); }}
-                        className={`py-3 rounded-xl text-sm font-semibold transition inline-flex items-center justify-center gap-2 ${isTableMixedMode ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
+                        className={`py-3 rounded-xl text-sm font-semibold transition inline-flex items-center justify-center gap-2 ${isTableMixedMode ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}
                       >
                         <Wallet className="h-4 w-4" />
                         Pago mixto
@@ -2230,7 +2230,7 @@ export default function POSSportBarPage() {
                       <div className="grid grid-cols-2 gap-2">
                         {SINGLE_PAY_METHODS.map((m) => (
                           <button key={m} onClick={() => setPaymentMethod(m)}
-                            className={`py-3 rounded-xl text-sm font-semibold transition ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-ivory" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}>
+                            className={`py-3 rounded-xl text-sm font-semibold transition ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}>
                             {PAYMENT_LABELS[m]}
                           </button>
                         ))}
@@ -2618,7 +2618,7 @@ export default function POSSportBarPage() {
                     <span className="flex-1 text-center font-semibold text-lg text-capsula-ink tabular-nums">{openTabGuests}</span>
                     <button
                       onClick={() => setOpenTabGuests(openTabGuests + 1)}
-                      className="w-9 h-9 bg-capsula-navy-deep text-capsula-ivory rounded-lg font-semibold text-lg hover:bg-capsula-navy-deep/90 transition"
+                      className="w-9 h-9 bg-capsula-navy-deep text-capsula-cream rounded-lg font-semibold text-lg hover:bg-capsula-navy-deep/90 transition"
                     >
                       +
                     </button>
@@ -2758,7 +2758,7 @@ export default function POSSportBarPage() {
                 <div className="flex gap-2 mb-2">
                   {["25", "50", "75", "100"].map(v => (
                     <button key={v} onClick={() => setCortesiaPercent(v)}
-                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${cortesiaPercent === v ? "bg-capsula-coral text-capsula-ivory" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}>
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${cortesiaPercent === v ? "bg-capsula-coral text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-coral/40"}`}>
                       {v}%
                     </button>
                   ))}
@@ -2789,7 +2789,7 @@ export default function POSSportBarPage() {
             </div>
             <div className="border-t border-capsula-line p-4 flex gap-3">
               <button onClick={() => setShowCortesiaModal(false)} className="pos-btn-secondary flex-1 py-3 text-sm">Cancelar</button>
-              <button onClick={handleCortesiaPinConfirm} disabled={!cortesiaPin} className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2">
+              <button onClick={handleCortesiaPinConfirm} disabled={!cortesiaPin} className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-cream hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2">
                 <Gift className="h-4 w-4" />
                 Aplicar cortesía
               </button>
@@ -2840,7 +2840,7 @@ export default function POSSportBarPage() {
                         onClick={() => setRemoveModType(t)}
                         className={`py-2.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center gap-1.5 ${
                           removeModType === t
-                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                            ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream"
                             : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                         }`}
                       >
@@ -2891,7 +2891,7 @@ export default function POSSportBarPage() {
                           onClick={() => setRemoveReplaceItemId(m.id)}
                           className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-xs font-semibold transition border ${
                             removeReplaceItemId === m.id
-                              ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-ivory"
+                              ? "bg-capsula-navy-deep border-capsula-navy-deep text-capsula-cream"
                               : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink hover:border-capsula-navy-deep/40"
                           }`}
                         >
@@ -2945,7 +2945,7 @@ export default function POSSportBarPage() {
                 <button
                   onClick={handleRemoveItem}
                   disabled={!removePin.trim() || !removeJustification.trim() || isProcessing}
-                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-ivory hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                  className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-cream hover:bg-capsula-coral-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                   {isProcessing ? "Procesando…" : (
                     removeModType === "VOID"       ? (<><Ban className="h-4 w-4" />Anular ítem</>) :
@@ -2989,7 +2989,7 @@ export default function POSSportBarPage() {
                         {group.name}
                         {group.isRequired && <span className="text-capsula-coral ml-1">*</span>}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-ivory"}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${isValid ? "bg-capsula-navy-soft text-capsula-ink" : "bg-capsula-coral text-capsula-cream"}`}>
                         {totalSel}/{group.maxSelections}
                       </span>
                     </div>
@@ -3014,7 +3014,7 @@ export default function POSSportBarPage() {
                               {isRadio ? (
                                 <button
                                   onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                  className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${qty > 0 ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-ivory" : "border-capsula-line hover:border-capsula-navy-deep"}`}
+                                  className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${qty > 0 ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream" : "border-capsula-line hover:border-capsula-navy-deep"}`}
                                 >
                                   {qty > 0 && <Check className="h-3.5 w-3.5" />}
                                 </button>
@@ -3029,7 +3029,7 @@ export default function POSSportBarPage() {
                                     <span className="w-5 text-center font-semibold text-capsula-ink tabular-nums">{qty}</span>
                                     <button
                                       onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                      className="h-8 w-8 rounded-lg bg-capsula-navy-deep font-semibold text-capsula-ivory hover:bg-capsula-navy-deep/90 transition"
+                                      className="h-8 w-8 rounded-lg bg-capsula-navy-deep font-semibold text-capsula-cream hover:bg-capsula-navy-deep/90 transition"
                                     >
                                       +
                                     </button>
@@ -3065,7 +3065,7 @@ export default function POSSportBarPage() {
                   <span className="w-8 text-center text-xl font-semibold text-capsula-ink tabular-nums">{itemQuantity}</span>
                   <button
                     onClick={() => setItemQuantity(itemQuantity + 1)}
-                    className="h-10 w-10 rounded-full bg-capsula-navy-deep font-semibold text-xl text-capsula-ivory hover:bg-capsula-navy-deep/90 transition"
+                    className="h-10 w-10 rounded-full bg-capsula-navy-deep font-semibold text-xl text-capsula-cream hover:bg-capsula-navy-deep/90 transition"
                   >
                     +
                   </button>
@@ -3127,7 +3127,7 @@ export default function POSSportBarPage() {
               <Icon className="h-5 w-5" />
               {labels[tab]}
               {tab === "account" && cartBadgeCount > 0 && (
-                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-ivory text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
+                <span className="absolute top-1 right-6 bg-capsula-coral text-capsula-cream text-[9px] rounded-full min-w-[16px] h-4 flex items-center justify-center font-semibold px-1">
                   {cartBadgeCount}
                 </span>
               )}

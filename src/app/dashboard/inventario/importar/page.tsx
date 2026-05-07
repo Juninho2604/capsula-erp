@@ -267,7 +267,7 @@ export default function ImportPage() {
                                 type="file"
                                 accept=".xlsx, .xls"
                                 onChange={handleFileChange}
-                                className="mt-1 block w-full text-sm text-capsula-ink-soft file:mr-4 file:rounded-full file:border-0 file:bg-capsula-navy-deep file:px-4 file:py-2 file:text-sm file:font-semibold file:text-capsula-ivory hover:file:bg-capsula-navy"
+                                className="mt-1 block w-full text-sm text-capsula-ink-soft file:mr-4 file:rounded-full file:border-0 file:bg-capsula-navy-deep file:px-4 file:py-2 file:text-sm file:font-semibold file:text-capsula-cream hover:file:bg-capsula-navy"
                             />
                         </div>
                     </div>

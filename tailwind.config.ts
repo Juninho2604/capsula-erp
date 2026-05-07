@@ -67,6 +67,10 @@ const config: Config = {
                         surface: 'rgb(var(--capsula-ivory-surface-rgb) / <alpha-value>)',
                         alt:     'rgb(var(--capsula-ivory-alt-rgb) / <alpha-value>)',
                     },
+                    // Cream FIJO (no se invierte en dark mode). Se usa como
+                    // text color sobre fondos siempre-oscuros como bg-capsula-navy-deep.
+                    // No usar text-capsula-ivory para esto — ese token invierte.
+                    cream: '#F7F5F0',
                     line: {
                         DEFAULT: 'rgb(var(--capsula-line-rgb) / <alpha-value>)',
                         strong:  'rgb(var(--capsula-line-strong-rgb) / <alpha-value>)',

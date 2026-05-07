@@ -68,17 +68,20 @@ bg-capsula-gold               bg-capsula-gold-subtle
 
 text-capsula-ink              text-capsula-ink-soft
 text-capsula-ink-muted        text-capsula-ink-faint
-text-capsula-ivory            text-capsula-coral
+text-capsula-cream            text-capsula-coral
 text-capsula-navy-deep
 
 border-capsula-line           border-capsula-line-strong
 ```
 
+**`text-capsula-cream`** (`#F7F5F0` fijo, NO se invierte en dark mode) es el token correcto para texto sobre fondos siempre-oscuros como `bg-capsula-navy-deep`. **No usar `text-capsula-ivory`** — ese token comparte CSS var con `bg-capsula-ivory` (fondo de página) y se invierte a oscuro en dark mode → texto invisible. Si ves `text-capsula-ivory` en código existente, migra a `text-capsula-cream` en el mismo commit.
+
 **Prohibido** en código nuevo:
+- `text-capsula-ivory` — bug sutil, se invierte en dark mode. Usa `text-capsula-cream` (fijo) o `text-capsula-ink` (adaptativo).
 - `text-emerald-*` / `text-amber-*` / `text-sky-*` / `text-red-*` / `text-blue-*` / `text-purple-*` / `text-indigo-*` como **foreground**. Usa `text-capsula-ink` o `text-capsula-coral`.
 - `bg-emerald-*` / `bg-amber-*` / `bg-red-*` / etc. Usa `bg-capsula-navy-soft`, `bg-capsula-ivory-alt`, `bg-capsula-coral/10`.
 - `text-capsula-navy-deep` / `text-capsula-navy` para texto largo — se pierde en dark mode. Usa `text-capsula-ink`.
-- `bg-primary text-white` — en dark el botón desaparece. Usa `bg-capsula-navy-deep text-capsula-ivory`.
+- `bg-primary text-white` — en dark el botón desaparece. Usa `bg-capsula-navy-deep text-capsula-cream`.
 - `bg-card`, `bg-secondary`, `bg-muted`, `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border` en componentes nuevos del ERP. Estos siguen funcionando (shadcn tokens) pero preferimos capsula-* porque tenemos control total del dark mode.
 - `font-black`, `font-bold`, `font-heading`, `capsula-btn`, `capsula-card` en UI nueva — usa `font-semibold`, `pos-btn`, `pos-card`.
 - `glass-panel` en código nuevo — usa `bg-capsula-ivory border border-capsula-line`.

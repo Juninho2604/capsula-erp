@@ -273,7 +273,7 @@ export default async function DashboardPage() {
             <div className="capsula-card overflow-hidden p-0">
                 <div className="flex items-center justify-between border-b border-capsula-line bg-capsula-ivory-alt px-8 py-5">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-capsula-coral text-capsula-ivory shadow-lg shadow-capsula-coral/25">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-capsula-coral text-capsula-cream shadow-lg shadow-capsula-coral/25">
                             <AlertOctagon className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div>
