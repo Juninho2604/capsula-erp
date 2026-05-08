@@ -866,7 +866,16 @@ export default function POSSportBarPage() {
       }
       let discountAmount = 0;
       let discountLabel = "";
-      if (discountType === "DIVISAS_33") {
+      // SAFEGUARD: DIVISAS_33 SOLO aplica si el método realmente es divisas
+      // (cash USD/EUR/Zelle). Sin esto, un cambio rápido de método de pago
+      // (USD → Bs) puede dejar el discountType en DIVISAS_33 antes que el
+      // useEffect lo resetee, y el cobro aplicaría el 33% a un pago en Bs.
+      // Bug reportado por cajera: cuenta en Bs cobrada con -33%.
+      const divisasQualifies =
+        isTableMixedMode
+          ? mixedPaymentsTable.some(p => isDivisasMethod(p.method))
+          : isDivisasMethod(paymentMethod);
+      if (discountType === "DIVISAS_33" && divisasQualifies) {
         if (isTableMixedMode) {
           discountAmount = divisasUsdAmountTable / 3;
           discountLabel = ` · Divisas sobre $${divisasUsdAmountTable.toFixed(2)}`;
@@ -887,26 +896,31 @@ export default function POSSportBarPage() {
       const effectiveLabel = isTableMixedMode
         ? `Pago Mixto${discountLabel} – ${pinResult.data?.managerName || ""}`
         : `${PAYMENT_LABELS[paymentMethod] || paymentMethod}${discountLabel} – ${pinResult.data?.managerName || ""}`;
-      // Razón del descuento — se persiste en SalesOrder.discountReason +
-      // PaymentSplit.notes para que la reimpresión desde sales-history y los
-      // reportes Z muestren texto auditable consistente.
-      const discountReasonText =
-        discountType === "DIVISAS_33"
-          ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < activeTab.balanceDue - 0.01
-              ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
-              : 'Pago en Divisas (33.33%)')
-          : discountType === "CORTESIA_100"
-            ? "Cortesía Autorizada (100%)"
-            : discountType === "CORTESIA_PERCENT"
-              ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
-              : undefined;
+      // Razón del descuento — sólo se setea cuando discountAmount > 0 (es
+      // decir, cuando el descuento realmente aplica tras el safeguard
+      // divisasQualifies). Esto evita que un DIVISAS_33 "fantasma" llegue al
+      // backend cuando el método es Bs.
+      const discountReasonText = discountAmount > 0
+        ? (discountType === "DIVISAS_33"
+            ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < activeTab.balanceDue - 0.01
+                ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
+                : 'Pago en Divisas (33.33%)')
+            : discountType === "CORTESIA_100"
+              ? "Cortesía Autorizada (100%)"
+              : discountType === "CORTESIA_PERCENT"
+                ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
+                : undefined)
+        : undefined;
+      const effectiveDiscountType = discountAmount > 0 && discountType !== "NONE"
+        ? discountType
+        : undefined;
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
         amount: effectiveAmount,
         paymentMethod: effectiveMethod,
         splitLabel: effectiveLabel,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
-        discountType: discountType !== "NONE" ? discountType : undefined,
+        discountType: effectiveDiscountType,
         discountReason: discountReasonText,
         serviceFeeIncluded,
       });
