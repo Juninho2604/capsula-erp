@@ -4599,6 +4599,154 @@ Cada 5 minutos. El throughput máximo es 25 items × 12 ejecuciones/h =
 
 ---
 
+### 18.42 Sprint POS + Finanzas + Auth — UX y reglas de negocio (2026-05-08)
+
+> Sprint de mejoras reportadas por operación. **13 PRs squash-mergeados a `main`**
+> (#46–#58) que cierran Fase 2 del audit de restaurante, arreglan bugs de
+> visibilidad, agregan reglas de negocio y mejoran flujo de cobranza.
+
+#### Mapa de PRs
+
+| PR | Tema | Commit |
+|---|---|---|
+| #46 | Fase 2.D + 2.E — histórico de precios por proveedor (read-only + hook OC) | `a8869b3` |
+| #47 | Fase 2.C — cron worker outbox + cierre Fase 2 completa | `8987ecd` |
+| #48 | Fix fonts — eliminar Instrument Serif (warning Vercel) | `329d0e1` |
+| #49 | Maintenance mode + endpoint de health (preparación cutover BD) | `650f431` |
+| #50 | Fix botón "+" invisible en dark mode + token cream no-invertido | `fa31b73` |
+| #51 | POS Mesero — solo capitanes/gerentes imprimen precuenta | `a436c2a` |
+| #52 | POS Mesero — propina se incluye en el total | `948f2f0` |
+| #53 | Subcuentas en POS Restaurante + cash EUR + recibo individual | `adb5927` |
+| #54 | 33% cash discount automático en cuentas y subcuentas | `4080806` |
+| #55 | Historial de ventas — cliente real + UI Minimal Navy | `3fe2cb2` |
+| #56 | Anular subcuentas (OPEN o cobradas) con autorización gerente | `59f16fd` |
+| #57 | Finanzas — resumen diario con toggle Mensual/Diario | `cfa2d09` |
+| #58 | Auth — login case-insensitive en email | `5b9c7a8` |
+
+#### Cambios destacados
+
+**1. Token `text-capsula-cream` (PR #50) — token nuevo en design system**
+
+Bug crítico de contraste: `text-capsula-ivory` se invertía en dark mode porque comparte CSS variable con `bg-capsula-ivory` (fondo de página). Resultado: navy-deep + ivory = invisible.
+
+- Agregado `capsula.cream: '#F7F5F0'` (literal hex, NO se invierte) en `tailwind.config.ts`.
+- Bulk replace 121 ocurrencias `text-capsula-ivory` → `text-capsula-cream` en 26 archivos.
+- CLAUDE.md §3 actualizado: `text-capsula-ivory` ahora prohibido en código nuevo, regla derivada documentada.
+
+**2. POS Mesero — RBAC en impresión (PR #51)**
+
+Botón "Imprimir" precuenta ahora está gateado por `canUseCaptainFeatures` (capitán o gerente). Mesoneros regulares solo ven "Copiar" (clipboard).
+
+**3. Propina en total visible y cobrado (PR #52)**
+
+`grandTotal = runningTotal + serviceCharge + tipAmount` en modal de Cuenta. Línea "Propina" agregada al breakdown. `print-command.ts` actualizado: `totalSuggested = total + serviceFee + tipAmount`. Compatibilidad: callers que no pasan `tipAmount` no se afectan.
+
+**4. Subcuentas auto-detectadas en POS Restaurante (PR #53)**
+
+useEffect en `restaurante/page.tsx`: cuando `activeTab` cambia, llama `getOpenTabWithSubAccountsAction` y si hay subcuentas existentes auto-entra a `subAccountMode`. Botón "Dividir cuenta" muestra "Ver subcuentas existentes (N)".
+
+**5. Cash EUR en subcuentas (PR #53)**
+
+`PAY_METHODS` en `SubAccountPanel.tsx` incluye `CASH_EUR` con icono `Euro`. Backend ya soportaba el método; faltaba exposición UI.
+
+**6. Recibo individual por subcuenta (PR #53)**
+
+- Helper `handlePrintSubAccount(sub)` en SubAccountPanel.
+- Auto-impresión tras `paySubAccountAction` exitoso.
+- Botón manual "Imprimir" en cada `SubAccountCard` (pre-cuenta o reimpresión).
+- Recibo lleva `tabCode · Subcuenta X` en el header.
+
+**7. 33% cash discount automático (PR #54)**
+
+Regla de negocio: cash = 33% off siempre. Antes era manual.
+
+- `restaurante/page.tsx` y `delivery/page.tsx`: useEffect bidireccional (auto-aplica DIVISAS_33 cuando paymentMethod es cash; lo quita cuando deja de serlo). Respeta CORTESIA si fue elegido manualmente.
+- `paySubAccountAction` extendida con parámetro `discountType: 'NONE' | 'DIVISAS_33'`.
+  - 33% off subtotal **antes** de calcular service charge (10% sobre el descontado).
+  - `PaymentSplit` guarda `discount` + `notes='Pago en Divisas (33.33%)'` para auditoría.
+  - `splitLabel` incluye `-33% divisas`.
+  - `balanceDue` resta subtotal completo (la diferencia es absorbida por el restaurante).
+  - `totalServiceCharge` acumula el realmente aplicado.
+- `SubAccountPanel`: helper `isDivisasPayMethod` + banner verde "−33% Pago en Divisas: −$X (automático)" + auto-update del monto.
+
+**8. Historial de ventas — cliente real (PR #55)**
+
+Detección inteligente del valor `customerName` crudo:
+
+| Caso | Render |
+|---|---|
+| Vacío | "Cliente general" italic + UserCircle2 |
+| `Mesa 5` / `Bar 1` (sin `—`) | Tag mesa + "sin nombre de cliente" |
+| `Mesa 5 — Juan` | "Juan" principal + "Mesa 5" contexto + teléfono |
+
+Migración Minimal Navy completa de la página: header, filtros, 5 stats cards, tabla. Eliminados emojis 📥 🖨️ 📊 ✕ → iconos lucide. Tonos `ok` (cobrado), `danger` (anuladas), `warn` (propinas).
+
+**9. Anular subcuentas con autorización (PR #56)**
+
+Action nueva `voidSubAccountAction({ subAccountId, voidReason, authorizedById, authorizedByName })`:
+
+- Atómica (`prisma.$transaction`).
+- OPEN → status='VOID'; items vuelven al pool.
+- PAID → además marca PaymentSplits como VOID con notes `[gerente] motivo`, restaura `balanceDue`, decrementa `totalServiceCharge`, reabre la mesa si estaba CLOSED (status='PARTIALLY_PAID', TableOrStation a OCCUPIED, SalesOrder.paymentStatus a PARTIAL).
+- UI: modal 2 pasos (motivo → PIN gerente vía `validateManagerPinAction`). Botón rojo "Anular" en cada subcuenta PAID. Badge "ANULADA" en tono danger.
+
+**10. Resumen diario en Finanzas (PR #57)**
+
+Nueva interface `DailyFinancialSummary` (similar a `FinancialSummary` pero período = un día, `dailySales` → `hourlySales` 24 buckets, `mom` → `dod` día anterior).
+
+`getDailyFinancialSummaryAction(dateStr?)`:
+
+- Default: hoy en Caracas si no se pasa fecha.
+- Filtra ventas por `revenueWhere()` con boundaries Caracas (04:00 UTC del día → 03:59:59.999 UTC del siguiente).
+- Filtra gastos por `paidAt` en el rango (no por `periodMonth/Year` que son agregados mensuales).
+- Computa P&L, cash flow, top 5 gastos, byCategory, byType, byPaymentMethod, hourlySales (0..23), DOD.
+- Label: "Lunes 12 Mayo 2026".
+
+UI `finanzas-view.tsx`:
+
+- Toggle Mensual/Diario al inicio (Calendar / CalendarDays icons).
+- Modo Diario: datepicker + flechas, 4 cards P&L con DOD, BarChart 24 horas, listas tipo/método, 3 cards cash flow.
+- Carga lazy (no bloquea render inicial).
+- Mensual queda intacto.
+
+**11. Login case-insensitive en email (PR #58)**
+
+Bug: `findUnique({ where: { email } })` con valor crudo del input → `Admin@…` ≠ `admin@…` por VARCHAR case-sensitive.
+
+Fix triple capa:
+
+- Server: trim + toLowerCase del input + cambio a `findFirst({ where: { email: { equals, mode: 'insensitive' } } })`. Cubre usuarios viejos guardados con mixed-case sin migrar datos.
+- Client: input email con `autoCapitalize="off"`, `autoCorrect="off"`, `spellCheck={false}` para evitar capitalización automática del teclado móvil.
+- `createUserAction` y `updateUserNameAction` ya normalizaban — sin cambios.
+
+#### Estado actual del proyecto (snapshot 2026-05-08)
+
+| Métrica | Valor |
+|---|---|
+| **Modelos Prisma** | 69 |
+| **Migraciones aplicadas** | 30 (incluye Fase 2 outbox + supplier-history) |
+| **Módulos del dashboard** | 31 |
+| **Variantes POS** | 4 (mesero · restaurante · delivery · pedidosya) |
+| **Server actions (archivos)** | 44 |
+| **Componentes (archivos)** | 41 |
+| **API routes** | 6 (auth, arqueo, kitchen, upload, cron retry, health) |
+| **Tests vitest** | 62/62 ✓ |
+| **TypeScript** | 0 errores |
+| **Stack** | Next.js 14 · TS · Prisma 5.22 · Tailwind · Recharts · React 18 |
+| **DB** | PostgreSQL 18.2 (RDS us-east-2 actualmente; migración a Contabo PG 18.3 preparada) |
+| **Hosting app** | Vercel · cron `*/5 min` (`/api/cron/retry-inventory-deductions`) |
+
+#### Pendientes / próximos pasos sugeridos
+
+1. **Migración BD AWS RDS → Contabo**: el setup en Contabo está completo (PG 18.3 en :5433, swap 3GB, SSL self-signed, firewall ufw, role + DB `capsula_erp_prod`, dump + restore validado con row counts). Falta solo el **cutover** durante ventana de mantenimiento (estimado 5-15 min downtime). Maintenance mode + health endpoint listos (PR #49).
+2. **Rotar password de RDS** tras la migración (fue compartido en chat por error).
+3. **Cerrar `capsula_db` legacy** en Contabo PG 16: dev/test setup abandonado del 19-abril, 12 MB, SalesOrder=0. Decisión actual: dejar intacto.
+4. **Configurar `CRON_SECRET`** en Vercel para autenticar el cron de outbox (`/api/cron/retry-inventory-deductions`).
+5. **Audit dark mode segunda pasada** (243 líneas con `text-blue/emerald/amber/etc` sin variante `dark:` detectadas en PR #50; estilo, no contraste crítico).
+6. **Backups automáticos** Contabo `pg_dump` cron diario a S3 alterno o BorgBackup remoto (Paso 10 del plan migración).
+
+---
+
 ## 20. Correcciones de Agregación de Ventas (2026-04-24)
 
 Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.
