@@ -1489,7 +1489,17 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             return { success: false, message: 'La cuenta no está disponible para pago' };
         }
 
-        const discountAmount = data.discountAmount || 0;
+        // SAFEGUARD: el descuento DIVISAS_33 (33%) sólo aplica si el pago es
+        // realmente en divisas (CASH/CASH_USD/CASH_EUR/ZELLE). Si el caller
+        // pasa discountType='DIVISAS_33' pero paymentMethod es Bs (CASH_BS),
+        // ignoramos el descuento. Bug reportado: cuenta en Bs cobrada con -33%.
+        const isDivisasPay =
+            data.paymentMethod === 'CASH' ||
+            data.paymentMethod === 'CASH_USD' ||
+            data.paymentMethod === 'CASH_EUR' ||
+            data.paymentMethod === 'ZELLE';
+        const blockDivisasDiscount = data.discountType === 'DIVISAS_33' && !isDivisasPay;
+        const discountAmount = blockDivisasDiscount ? 0 : (data.discountAmount || 0);
         const newRunningDiscount = openTab.runningDiscount + discountAmount;
         const newRunningTotal = Math.max(0, openTab.runningTotal - discountAmount);
         const effectiveBalance = Math.max(0, openTab.balanceDue - discountAmount);
@@ -1558,11 +1568,14 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     paymentMethod: nextPaymentMethod,
                     amountPaid: newBalance === 0 ? newRunningTotal : undefined,
                     closedAt: newBalance === 0 ? new Date() : undefined,
+                    // Si el safeguard divisas bloqueó el descuento, no
+                    // contaminamos SalesOrder con un discountType/Reason
+                    // que no aplica.
                     discount: discountAmount > 0
                         ? { increment: discountAmount }
                         : undefined,
-                    discountType: data.discountType ?? undefined,
-                    discountReason: data.discountReason ?? undefined,
+                    discountType: !blockDivisasDiscount && data.discountType ? data.discountType : undefined,
+                    discountReason: !blockDivisasDiscount && data.discountReason ? data.discountReason : undefined,
                 }
             });
 
@@ -2503,7 +2516,18 @@ export async function paySubAccountAction(data: {
         const isTableService = openTab.serviceType === 'TABLE_SERVICE';
         const applyServiceFee = isTableService || (data.serviceFeeIncluded ?? false);
         // Discount: 33% off subtotal cuando se paga en divisas (cash USD/EUR/Zelle).
-        const discountType = data.discountType ?? 'NONE';
+        // SAFEGUARD: validar que el método realmente sea divisas. Sin esto,
+        // un DIVISAS_33 "fantasma" en el frontend (por race condition al
+        // cambiar de USD a Bs rápido) aplicaría 33% a un pago en Bs.
+        // Bug reportado: cuenta en Bs cobrada con -33%.
+        const isDivisasPayment =
+            data.paymentMethod === 'CASH' ||
+            data.paymentMethod === 'CASH_USD' ||
+            data.paymentMethod === 'CASH_EUR' ||
+            data.paymentMethod === 'ZELLE';
+        const discountType = (data.discountType === 'DIVISAS_33' && isDivisasPayment)
+            ? 'DIVISAS_33'
+            : 'NONE';
         const discountAmount = discountType === 'DIVISAS_33'
             ? sub.subtotal * (1 / 3)
             : 0;
