@@ -1002,8 +1002,14 @@ export default function POSSportBarPage() {
     // Use runningTotal as base — balanceDue decrements with partial payments, causing
     // a false "discount" line when items sum doesn't match the printed subtotal.
     const base = activeTab.runningTotal;
+    // SAFEGUARD: pre-cuenta debe reflejar lo que SE COBRARÁ con el método
+    // actual. Si el método no es divisas, no mostramos el descuento del 33%
+    // aunque discountType=DIVISAS_33 esté en state (race condition).
+    const precuentaDivisasQualifies = isTableMixedMode
+      ? mixedPaymentsTable.some(p => isDivisasMethod(p.method))
+      : isDivisasMethod(paymentMethod);
     const discountAmt =
-      discountType === "DIVISAS_33"
+      (discountType === "DIVISAS_33" && precuentaDivisasQualifies)
         ? (isTableMixedMode ? divisasUsdAmountTable / 3 : base / 3)  // partial vs full
         : discountType === "CORTESIA_100" ? base
         : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
@@ -1011,14 +1017,15 @@ export default function POSSportBarPage() {
     const afterDiscount = base - discountAmt;
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
     const precuentaTotal = afterDiscount + svcFee;
-    const discountReason =
-      discountType === "DIVISAS_33"
-        ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < base - 0.01
-            ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
-            : 'Pago en Divisas (33.33%)')
-        : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
-        : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
-        : undefined;
+    const discountReason = discountAmt > 0
+      ? (discountType === "DIVISAS_33"
+          ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < base - 0.01
+              ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
+              : 'Pago en Divisas (33.33%)')
+          : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
+          : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
+          : undefined)
+      : undefined;
     printReceipt({
       orderNumber: activeTab.tabCode,
       orderType: "RESTAURANT",
@@ -1101,7 +1108,14 @@ export default function POSSportBarPage() {
       const activeTabSnap = pickupTabs.find((t) => t.id === activePickupTabId);
 
       const rc = (n: number) => Math.round(n * 100) / 100;
-      const pickupDiscount = discountType === "DIVISAS_33"
+      // SAFEGUARD: igual que el handlePayment de table — DIVISAS_33 sólo
+      // aplica si el método ACTUAL al click es divisas. Bloquea race
+      // condition al cambiar rápido USD → Bs antes que useEffect resetee
+      // discountType. Bug reportado: pickup en Bs cobrado con -33%.
+      const pickupDivisasQualifies = isPickupMixedMode
+        ? mixedPaymentsPickup.some(p => isDivisasMethod(p.method))
+        : isDivisasMethod(paymentMethod);
+      const pickupDiscount = (discountType === "DIVISAS_33" && pickupDivisasQualifies)
         ? rc(isPickupMixedMode && divisasUsdAmountPickup != null
             ? divisasUsdAmountPickup / 3            // partial: only divisas portion gets -33%
             : cartTotal / 3)                        // full: entire order in USD

@@ -691,8 +691,12 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 setTab(updatedTab);
                 onTabUpdatedRef.current(updatedTab);
                 // Auto-impresión del recibo individual de la subcuenta tras el cobro.
+                // Pasamos paidWithDivisas explícitamente — el método ya pasó por
+                // los safeguards de paySubAccountAction. Esto garantiza que el
+                // recibo refleje exactamente lo cobrado, no inferido.
                 const paidSub = updatedTab.subAccounts.find(s => s.id === subId);
-                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded);
+                const paidWithDivisas = discountType === 'DIVISAS_33';
+                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded, paidWithDivisas);
             } else {
                 await loadTab(); // fallback if action didn't return data
             }
@@ -708,8 +712,15 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
      * cada subcuenta y no una sola global". Se invoca automáticamente
      * tras un cobro exitoso, y manualmente desde el botón "Imprimir"
      * en cada subcuenta.
+     *
+     * @param sub             La subcuenta a imprimir.
+     * @param includeService  Si incluir el 10% de servicio.
+     * @param paidWithDivisas Cuando se llama tras un cobro exitoso, indica
+     *                       si el método fue divisas (CASH_USD/EUR/Zelle).
+     *                       Si la subcuenta ya está PAID y no se pasa,
+     *                       se infiere desde sub.paymentMethod.
      */
-    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true) {
+    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true, paidWithDivisas?: boolean) {
         const items = sub.items.map(it => ({
             name: it.salesOrderItem.itemName,
             quantity: it.quantity,
@@ -719,7 +730,21 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 typeof m === 'string' ? m : m?.name ?? ''
             ).filter(Boolean),
         }));
-        const serviceFee = includeService ? sub.serviceCharge : 0;
+        // Determinar si se aplicó descuento del 33% por divisas.
+        // - Tras cobro: usar el flag explícito paidWithDivisas (autoritativo).
+        // - Reimpresión manual de PAGADA: inferir desde sub.paymentMethod.
+        // - Pre-cuenta (sub.status='OPEN'): NO aplicar descuento (todavía no
+        //   hay método de pago confirmado, mostrar precio normal).
+        const inferredDivisas = sub.status === 'PAID' && (
+            sub.paymentMethod === 'CASH' ||
+            sub.paymentMethod === 'CASH_USD' ||
+            sub.paymentMethod === 'CASH_EUR' ||
+            sub.paymentMethod === 'ZELLE'
+        );
+        const applyDivisasDiscount = paidWithDivisas ?? inferredDivisas;
+        const discountAmount = applyDivisasDiscount ? sub.subtotal * (1 / 3) : 0;
+        const subtotalAfterDiscount = sub.subtotal - discountAmount;
+        const serviceFee = includeService ? subtotalAfterDiscount * 0.1 : 0;
         const subAccountLabel = sub.label || `Subcuenta ${sub.sortOrder + 1}`;
         printReceipt({
             orderNumber: tabCode ? `${tabCode} · ${subAccountLabel}` : subAccountLabel,
@@ -730,7 +755,10 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             tableLabel,
             items,
             subtotal: sub.subtotal,
-            total: sub.subtotal,
+            discount: discountAmount > 0 ? discountAmount : undefined,
+            discountReason: applyDivisasDiscount ? 'Pago en Divisas (33.33%)' : undefined,
+            hideDiscount: applyDivisasDiscount,
+            total: subtotalAfterDiscount,
             serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
             isPrecuenta: sub.status !== 'PAID',
         });

@@ -106,10 +106,23 @@ export default function SalesHistoryPage() {
     // ---- REIMPRESIÓN ----
     const handleReprint = (sale: any, e: React.MouseEvent) => {
         e.stopPropagation();
-        const serviceFee = sale.orderType === 'RESTAURANT' && sale.serviceFeeIncluded ? (sale.total || 0) * 0.1 : 0;
         const itemsSubtotal = (sale.items || []).reduce((s: number, i: any) => s + (i.lineTotal || 0), 0);
         const deliveryFee = sale.orderType === 'DELIVERY' && sale.subtotal != null ? Math.max(0, sale.subtotal - itemsSubtotal) : undefined;
-        const discountReason = (sale.discount || 0) > 0 ? 'Descuento aplicado' : undefined;
+        // serviceFee: se computa sobre el subtotal post-descuento (consistente
+        // con cómo lo calcula el cobro en pos/restaurante). 10% sólo si el
+        // cliente lo pagó (sale.serviceFeeIncluded).
+        const saleDiscount = sale.discount ?? 0;
+        const subtotalForService = (sale.subtotal ?? itemsSubtotal) - saleDiscount;
+        const serviceFee = sale.orderType === 'RESTAURANT' && sale.serviceFeeIncluded
+          ? subtotalForService * 0.1
+          : 0;
+        // discountReason auditable: prefiere el reason real guardado en
+        // SalesOrder.discountReason (post-PR #63). Para sales viejas sin ese
+        // campo, fallback a "Descuento aplicado".
+        const discountReason = saleDiscount > 0
+          ? (sale.discountReason || 'Descuento aplicado')
+          : undefined;
+        const isDivisasDiscount = sale.discountType === 'DIVISAS_33';
         printReceipt({
             orderNumber: sale.orderNumber,
             orderType: (sale.orderType || 'RESTAURANT') as 'RESTAURANT' | 'DELIVERY',
@@ -119,8 +132,9 @@ export default function SalesHistoryPage() {
             customerPhone: sale.customerPhone || undefined,
             customerAddress: sale.customerAddress || undefined,
             subtotal: sale.orderType === 'DELIVERY' && deliveryFee ? itemsSubtotal : (sale.subtotal ?? itemsSubtotal),
-            discount: sale.discount ?? 0,
+            discount: saleDiscount,
             discountReason,
+            hideDiscount: isDivisasDiscount,
             deliveryFee,
             total: sale.total,
             serviceFee,
