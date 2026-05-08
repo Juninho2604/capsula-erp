@@ -17,17 +17,6 @@ function uint8ArrayToHex(bytes: Uint8Array): string {
         .join('');
 }
 
-// Comparación constant-time: evita que un atacante deduzca cuántos caracteres
-// del hash coincidieron midiendo el tiempo de respuesta.
-function timingSafeEqualString(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
-    let result = 0;
-    for (let i = 0; i < a.length; i++) {
-        result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    }
-    return result === 0;
-}
-
 async function pbkdf2Hex(input: string, saltHex: string): Promise<string> {
     const salt = hexToUint8Array(saltHex);
     const keyMaterial = await globalThis.crypto.subtle.importKey(
@@ -61,11 +50,10 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
     if (!stored.includes(':')) {
-        // Legacy: plain-text (usuarios creados antes del hashing).
-        // Pendiente: migrar y eliminar este branch en PR 7 (audit + force reset).
-        return timingSafeEqualString(stored, password);
+        // Legacy: plain-text (usuarios creados antes del hashing)
+        return stored === password;
     }
     const [saltHex] = stored.split(':');
     const computed = await pbkdf2Hex(password, saltHex);
-    return timingSafeEqualString(`${saltHex}:${computed}`, stored);
+    return `${saltHex}:${computed}` === stored;
 }
