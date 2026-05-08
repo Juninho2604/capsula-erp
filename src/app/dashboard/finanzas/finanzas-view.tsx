@@ -4,9 +4,14 @@ import { useState, useTransition } from 'react';
 import {
   ChevronLeft, ChevronRight, Download, TrendingUp, TrendingDown,
   Ticket, Wallet, AlertOctagon, AlertTriangle,
-  Receipt, ArrowRight,
+  Receipt, ArrowRight, Calendar, CalendarDays,
 } from 'lucide-react';
-import { getFinancialSummaryAction, type FinancialSummary } from '@/app/actions/finance.actions';
+import {
+  getFinancialSummaryAction,
+  getDailyFinancialSummaryAction,
+  type FinancialSummary,
+  type DailyFinancialSummary,
+} from '@/app/actions/finance.actions';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ExcelJS from 'exceljs';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -65,6 +70,18 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [isPending, startTransition] = useTransition();
 
+  // ── Modo de vista (mensual o diario) ─────────────────────────────────────
+  const [viewMode, setViewMode] = useState<'monthly' | 'daily'>('monthly');
+  const today = new Date();
+  // YYYY-MM-DD en Caracas (UTC-4): el dashboard arranca con hoy.
+  const initialDateStr = (() => {
+    const t = new Date(today.getTime() - 4 * 3600 * 1000);
+    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+  })();
+  const [selectedDate, setSelectedDate] = useState(initialDateStr);
+  const [dailySummary, setDailySummary] = useState<DailyFinancialSummary | null>(null);
+  const [hasLoadedDaily, setHasLoadedDaily] = useState(false);
+
   const handleMonthChange = (delta: number) => {
     let m = selectedMonth + delta;
     let y = selectedYear;
@@ -77,7 +94,33 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
     });
   };
 
+  const loadDaily = (date: string) => {
+    startTransition(async () => {
+      const result = await getDailyFinancialSummaryAction(date);
+      if (result.success && result.data) {
+        setDailySummary(result.data);
+        setHasLoadedDaily(true);
+      }
+    });
+  };
+
+  const handleDateChange = (delta: number) => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + delta, 12));
+    const newDate = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+    setSelectedDate(newDate);
+    loadDaily(newDate);
+  };
+
+  const handleViewModeChange = (mode: 'monthly' | 'daily') => {
+    setViewMode(mode);
+    if (mode === 'daily' && !hasLoadedDaily) {
+      loadDaily(selectedDate);
+    }
+  };
+
   const s = summary;
+  const ds = dailySummary;
 
   const exportPnLExcel = async () => {
     if (!s) return;
@@ -150,29 +193,233 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
       />
 
       <div className="space-y-6">
-        {/* Navegador período */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleMonthChange(-1)}
-            className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
-            aria-label="Mes anterior"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="min-w-[160px] text-center font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
-            {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
-          </span>
-          <button
-            onClick={() => handleMonthChange(1)}
-            className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
-            aria-label="Mes siguiente"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          {isPending && <span className="animate-pulse text-xs text-capsula-ink-muted">Calculando…</span>}
+        {/* Toggle modo + navegador período */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Toggle Mensual / Diario */}
+          <div className="inline-flex rounded-xl border border-capsula-line bg-capsula-ivory-surface p-1">
+            <button
+              onClick={() => handleViewModeChange('monthly')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === 'monthly'
+                  ? 'bg-capsula-navy-deep text-capsula-cream'
+                  : 'text-capsula-ink-muted hover:text-capsula-ink'
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Mensual
+            </button>
+            <button
+              onClick={() => handleViewModeChange('daily')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === 'daily'
+                  ? 'bg-capsula-navy-deep text-capsula-cream'
+                  : 'text-capsula-ink-muted hover:text-capsula-ink'
+              }`}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Diario
+            </button>
+          </div>
+
+          {/* Navegador período (mes o día según modo) */}
+          {viewMode === 'monthly' ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleMonthChange(-1)}
+                className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+                aria-label="Mes anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-[160px] text-center font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
+                {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+              </span>
+              <button
+                onClick={() => handleMonthChange(1)}
+                className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+                aria-label="Mes siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              {isPending && <span className="animate-pulse text-xs text-capsula-ink-muted">Calculando…</span>}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleDateChange(-1)}
+                className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+                aria-label="Día anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  loadDaily(e.target.value);
+                }}
+                className="rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-sm font-semibold tabular-nums text-capsula-ink focus:outline-none focus:border-capsula-navy-deep"
+              />
+              <button
+                onClick={() => handleDateChange(1)}
+                className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-2 text-capsula-ink transition-colors hover:border-capsula-navy-deep hover:bg-capsula-ivory-alt"
+                aria-label="Día siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              {ds && (
+                <span className="text-sm font-semibold text-capsula-ink-soft">{ds.period.label}</span>
+              )}
+              {isPending && <span className="animate-pulse text-xs text-capsula-ink-muted">Calculando…</span>}
+            </div>
+          )}
         </div>
 
-        {!s ? (
+        {viewMode === 'daily' ? (
+          !ds ? (
+            <div className="py-20 text-center text-capsula-ink-muted">
+              {isPending ? 'Cargando…' : 'Sin datos para este día'}
+            </div>
+          ) : (
+            <>
+              {/* P&L Summary diario */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <PnLCard
+                  label="Ventas del día"
+                  value={`$${fmt(ds.income.totalSalesUsd)}`}
+                  sub={`${ds.income.ordersCount} órdenes`}
+                  Icon={Wallet}
+                  tone="ok"
+                  change={ds.dod?.salesChange ?? null}
+                />
+                <PnLCard
+                  label="Ticket promedio"
+                  value={`$${fmt(ds.income.avgTicket ?? 0)}`}
+                  sub="Por orden"
+                  Icon={Ticket}
+                  tone="warn"
+                />
+                <PnLCard
+                  label="Gastos del día"
+                  value={`$${fmt(ds.expenses.totalExpensesUsd)}`}
+                  sub={`${ds.expenses.count} gastos`}
+                  Icon={Receipt}
+                  tone="danger"
+                  change={ds.dod?.expensesChange ?? null}
+                  invertChange
+                />
+                <PnLCard
+                  label="Utilidad operativa"
+                  value={`$${fmt(ds.profitLoss.operatingProfit)}`}
+                  sub={`Margen: ${ds.profitLoss.operatingMarginPct}%`}
+                  Icon={ds.profitLoss.operatingProfit >= 0 ? TrendingUp : TrendingDown}
+                  tone={ds.profitLoss.operatingProfit >= 0 ? 'info' : 'danger'}
+                  negative={ds.profitLoss.operatingProfit < 0}
+                  change={ds.dod?.profitChange ?? null}
+                />
+              </div>
+
+              {/* Ventas por hora */}
+              <div className={CARD_BASE + ' border-capsula-line'}>
+                <h3 className={SECTION_TITLE}>Ventas por hora · {ds.period.label}</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={ds.income.hourlySales} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="hour"
+                        tick={{ fontSize: 10, fill: 'rgb(var(--capsula-ink-muted-rgb))' }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(h) => `${h}h`}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: 'rgb(var(--capsula-ink-muted-rgb))' }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={50}
+                        tickFormatter={fmtK}
+                      />
+                      <Tooltip
+                        formatter={(v: number) => `$${fmt(v)}`}
+                        labelFormatter={(h) => `${h}:00`}
+                        contentStyle={{
+                          background: 'rgb(var(--capsula-ivory-rgb))',
+                          border: '1px solid rgb(var(--capsula-line-rgb))',
+                          borderRadius: 12,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar dataKey="total" fill="rgb(var(--capsula-coral-rgb))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Detalles del día — pagos y tipos */}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className={CARD_BASE + ' border-capsula-line'}>
+                  <h3 className={SECTION_TITLE}>Ventas por tipo</h3>
+                  {ds.income.byType.length === 0 ? (
+                    <p className="text-sm text-capsula-ink-muted">Sin ventas en este día.</p>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {ds.income.byType.map(t => (
+                        <li key={t.type} className="flex justify-between border-b border-capsula-line pb-2 last:border-0">
+                          <span className="text-capsula-ink-soft">
+                            {ORDER_TYPE_LABELS[t.type] ?? t.type}
+                            <span className="ml-2 text-xs text-capsula-ink-muted">({t.count})</span>
+                          </span>
+                          <span className="font-semibold tabular-nums text-capsula-ink">${fmt(t.total)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className={CARD_BASE + ' border-capsula-line'}>
+                  <h3 className={SECTION_TITLE}>Ventas por método de pago</h3>
+                  {ds.income.byPaymentMethod.length === 0 ? (
+                    <p className="text-sm text-capsula-ink-muted">Sin pagos registrados.</p>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {ds.income.byPaymentMethod.map(p => (
+                        <li key={p.method} className="flex justify-between border-b border-capsula-line pb-2 last:border-0">
+                          <span className="text-capsula-ink-soft">
+                            {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+                            <span className="ml-2 text-xs text-capsula-ink-muted">({p.count})</span>
+                          </span>
+                          <span className="font-semibold tabular-nums text-capsula-ink">${fmt(p.total)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Cash flow del día */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className={CARD_BASE + ' border-capsula-line'}>
+                  <p className={KICKER}>Ingresos</p>
+                  <p className="mt-1 font-semibold text-2xl tracking-[-0.02em] tabular-nums text-[#2F6B4E] dark:text-[#6FB88F]">
+                    ${fmt(ds.cashFlow.inflows)}
+                  </p>
+                </div>
+                <div className={CARD_BASE + ' border-capsula-line'}>
+                  <p className={KICKER}>Egresos</p>
+                  <p className="mt-1 font-semibold text-2xl tracking-[-0.02em] tabular-nums text-capsula-coral">
+                    ${fmt(ds.cashFlow.outflows)}
+                  </p>
+                </div>
+                <div className={CARD_BASE + ' border-capsula-line'}>
+                  <p className={KICKER}>Flujo neto</p>
+                  <p className={`mt-1 font-semibold text-2xl tracking-[-0.02em] tabular-nums ${ds.cashFlow.net >= 0 ? 'text-capsula-ink' : 'text-capsula-coral'}`}>
+                    {ds.cashFlow.net >= 0 ? '' : '−'}${fmt(Math.abs(ds.cashFlow.net))}
+                  </p>
+                </div>
+              </div>
+            </>
+          )
+        ) : !s ? (
           <div className="py-20 text-center text-capsula-ink-muted">
             {isPending ? 'Cargando…' : 'Sin datos para este período'}
           </div>
