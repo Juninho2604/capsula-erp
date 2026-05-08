@@ -94,6 +94,8 @@ export interface RegisterOpenTabPaymentInput {
     splitLabel?: string;
     notes?: string;
     discountAmount?: number;
+    discountType?: string;   // 'DIVISAS_33', 'CORTESIA_100', 'CORTESIA_PERCENT', 'NONE'
+    discountReason?: string; // texto auditable: "Pago en Divisas (33.33%)", etc.
     serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal)
 }
 
@@ -1518,6 +1520,16 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
 
             const baseLabel = data.splitLabel || `Pago ${openTab.paymentSplits.length + 1}`;
             const splitLabel = isTableService ? `${baseLabel} | +10% serv` : baseLabel;
+            // PaymentSplit conserva el desglose completo del cobro para auditoría +
+            // reimpresión correcta del recibo desde sales-history.
+            //  · subtotal       = monto de items aplicados (post-descuento)
+            //  · discount       = monto descontado en este cobro (ej. 33% divisas)
+            //  · serviceCharge  = 10% sobre el subtotal post-descuento (si aplica)
+            //  · total          = subtotal + serviceCharge (lo que el cliente pagó)
+            //  · paidAmount     = efectivo entregado (puede ser mayor; cambio aparte)
+            const splitNotes = data.notes
+                ? `${data.notes}${data.discountReason ? ` | ${data.discountReason}` : ''}`
+                : data.discountReason;
             await tx.paymentSplit.create({
                 data: {
                     openTabId: openTab.id,
@@ -1526,21 +1538,31 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
                     subtotal: appliedAmount,
+                    discount: discountAmount,
                     serviceChargeAmount: serviceCharge,
-                    total: appliedAmount,
+                    total: appliedAmount + serviceCharge,
                     paidAmount: data.amount,
                     paidAt: new Date(),
-                    notes: data.notes
+                    notes: splitNotes,
                 }
             });
 
+            // Actualizar SalesOrder(s) con el descuento + razón aplicados al cobro.
+            // Esto garantiza que la reimpresión desde sales-history (que lee
+            // sale.discount, sale.discountReason) muestre los mismos valores que
+            // el recibo original.
             await tx.salesOrder.updateMany({
                 where: { openTabId: openTab.id },
                 data: {
                     paymentStatus: nextOrderPaymentStatus,
                     paymentMethod: nextPaymentMethod,
                     amountPaid: newBalance === 0 ? newRunningTotal : undefined,
-                    closedAt: newBalance === 0 ? new Date() : undefined
+                    closedAt: newBalance === 0 ? new Date() : undefined,
+                    discount: discountAmount > 0
+                        ? { increment: discountAmount }
+                        : undefined,
+                    discountType: data.discountType ?? undefined,
+                    discountReason: data.discountReason ?? undefined,
                 }
             });
 

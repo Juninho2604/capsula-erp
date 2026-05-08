@@ -887,12 +887,27 @@ export default function POSSportBarPage() {
       const effectiveLabel = isTableMixedMode
         ? `Pago Mixto${discountLabel} – ${pinResult.data?.managerName || ""}`
         : `${PAYMENT_LABELS[paymentMethod] || paymentMethod}${discountLabel} – ${pinResult.data?.managerName || ""}`;
+      // Razón del descuento — se persiste en SalesOrder.discountReason +
+      // PaymentSplit.notes para que la reimpresión desde sales-history y los
+      // reportes Z muestren texto auditable consistente.
+      const discountReasonText =
+        discountType === "DIVISAS_33"
+          ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < activeTab.balanceDue - 0.01
+              ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
+              : 'Pago en Divisas (33.33%)')
+          : discountType === "CORTESIA_100"
+            ? "Cortesía Autorizada (100%)"
+            : discountType === "CORTESIA_PERCENT"
+              ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
+              : undefined;
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
         amount: effectiveAmount,
         paymentMethod: effectiveMethod,
         splitLabel: effectiveLabel,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        discountType: discountType !== "NONE" ? discountType : undefined,
+        discountReason: discountReasonText,
         serviceFeeIncluded,
       });
       if (!result.success) {
