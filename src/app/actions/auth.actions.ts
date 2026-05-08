@@ -5,12 +5,6 @@ import { createSession, deleteSession } from '@/lib/auth';
 import { verifyPassword } from '@/lib/password';
 import { redirect } from 'next/navigation';
 
-// Hash con formato válido (saltHex:hashHex) que nunca matchea ningún password
-// real. Se usa cuando el email no existe para que el PBKDF2 corra igual y el
-// tiempo de respuesta no revele si el usuario está registrado.
-const DUMMY_HASH = '00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000';
-const GENERIC_LOGIN_ERROR = 'Credenciales inválidas';
-
 export async function loginAction(prevState: any, formData: FormData) {
     // Normalizar email: trim + lowercase. Los emails son case-insensitive en
     // la práctica (estándar de la industria); solo el password mantiene case.
@@ -32,13 +26,13 @@ export async function loginAction(prevState: any, formData: FormData) {
             select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true },
         });
 
-        // Comparar SIEMPRE contra un hash (real o dummy) para evitar enumeración
-        // por timing. Si el usuario no existe el PBKDF2 corre igual y el atacante
-        // no puede deducir si el email está registrado por la latencia.
-        const valid = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+        if (!user) {
+            return { success: false, message: 'Credenciales inválidas (usuario no existe)' };
+        }
 
-        if (!user || !valid) {
-            return { success: false, message: GENERIC_LOGIN_ERROR };
+        const valid = await verifyPassword(password, user.passwordHash ?? '');
+        if (!valid) {
+            return { success: false, message: 'Contraseña incorrecta' };
         }
 
         if (!user.isActive) {

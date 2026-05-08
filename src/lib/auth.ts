@@ -2,20 +2,8 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-let cachedKey: Uint8Array | null = null;
-
-function getSecretKey(): Uint8Array {
-    if (cachedKey) return cachedKey;
-    const secret = process.env.JWT_SECRET;
-    if (!secret || secret.length < 32) {
-        throw new Error(
-            'JWT_SECRET must be set as an environment variable and be at least 32 characters long. ' +
-            'Generate one with: openssl rand -base64 48',
-        );
-    }
-    cachedKey = new TextEncoder().encode(secret);
-    return cachedKey;
-}
+const SECRET_KEY = process.env.JWT_SECRET || 'shanklish-super-secret-key-2024';
+const key = new TextEncoder().encode(SECRET_KEY);
 
 export interface SessionPayload {
     id: string;
@@ -38,13 +26,12 @@ export async function encrypt(payload: SessionPayload) {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('24h') // Sesiones de 24 horas
-        .sign(getSecretKey());
+        .sign(key);
 }
 
 export async function decrypt(input: string): Promise<SessionPayload | null> {
-    if (!input) return null;
     try {
-        const { payload } = await jwtVerify(input, getSecretKey(), {
+        const { payload } = await jwtVerify(input, key, {
             algorithms: ['HS256'],
         });
         return payload as unknown as SessionPayload;
