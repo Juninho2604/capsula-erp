@@ -6,7 +6,10 @@ import { verifyPassword } from '@/lib/password';
 import { redirect } from 'next/navigation';
 
 export async function loginAction(prevState: any, formData: FormData) {
-    const email = formData.get('email') as string;
+    // Normalizar email: trim + lowercase. Los emails son case-insensitive en
+    // la práctica (estándar de la industria); solo el password mantiene case.
+    const rawEmail = formData.get('email') as string;
+    const email = (rawEmail ?? '').trim().toLowerCase();
     const password = formData.get('password') as string;
 
     if (!email || !password) {
@@ -14,8 +17,12 @@ export async function loginAction(prevState: any, formData: FormData) {
     }
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { email },
+        // Búsqueda case-insensitive: cubre tanto emails ya normalizados a
+        // lowercase como usuarios viejos guardados con mixed-case en BD.
+        // findFirst en lugar de findUnique porque el unique constraint de
+        // Prisma no soporta mode:'insensitive' (es a nivel DB).
+        const user = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } },
             select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true },
         });
 
