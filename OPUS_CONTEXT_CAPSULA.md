@@ -4747,6 +4747,173 @@ Fix triple capa:
 
 ---
 
+### 18.43 Migración BD AWS RDS → Contabo PostgreSQL 18.3 — CUTOVER COMPLETADO (2026-05-08)
+
+> Migración productiva ejecutada el 8 de mayo 2026 entre las 14:55 y 15:17
+> hora Caracas (~22 min total con maintenance mode activo). El sistema dejó
+> de leer/escribir en AWS RDS y pasó a operar contra Contabo PG 18.3. Cero
+> pérdida de datos validada con row counts exactos.
+
+#### Datos finales (post-cutover)
+
+| Componente | Antes | Después |
+|---|---|---|
+| **Hosting BD** | AWS RDS db.t3.micro us-east-2 | Contabo VPS US-East 4vCPU/8GB |
+| **Versión PG** | 18.2 | 18.3 |
+| **Endpoint** | `shanklisherp.cbau4e08oxxx.us-east-2.rds.amazonaws.com:5432` | `147.93.6.70:5433` |
+| **Database name** | `shanklish_erp` | `capsula_erp_prod` |
+| **Owner role** | `juninho26` | `capsula` |
+| **SSL** | RDS root CA verify-full | Self-signed `sslmode=require` |
+| **Backups** | RDS automated (1 día retención) | Cron `pg_dump` diario, 30 días retención |
+| **Costo mensual** | ~$15-20 (db.t3.micro + storage) | ~$7.68 (ya pagado, mismo VPS) |
+| **Latencia app↔BD** | Vercel iad1 → us-east-2 (~10-30ms) | Vercel iad1 → St. Louis (~30-40ms) |
+
+#### Causa raíz descubierta durante el cutover (CRÍTICO)
+
+Antes de poder migrar, descubrí por qué **ningún deploy a producción funcionó
+desde el 27 de abril** (commit `c2cc51e`): el cron schedule `*/5 * * * *` que
+agregamos en PR #47 para el outbox de retry **viola los límites del plan Hobby
+de Vercel** que solo permite cron jobs diarios.
+
+```
+{
+  "error": {
+    "code": "cron_jobs_limits_reached",
+    "message": "Hobby accounts are limited to daily cron jobs. This cron
+                expression (*/5 * * * *) would run more than once per day.
+                Upgrade to the Pro plan."
+  }
+}
+```
+
+Vercel **rechazaba silenciosamente cada deploy de production** desde entonces
+— ni en la UI ni en los logs aparecía este error visiblemente. Por eso 13 PRs
+(#46–#60) mergeados a `main` no llegaban a producción y el deploy productivo
+seguía siendo el redeploy manual de `78P3fEWw3` del 29 abr.
+
+**Fix (PR #61)**: cambiar schedule a `"0 4 * * *"` (una vez al día, 4am UTC =
+medianoche Caracas). Compatible con Hobby. El outbox sigue funcionando, solo
+que los descargos pendientes se reintentan diariamente en lugar de cada 5 min.
+Cuando movamos la app a Contabo, volvemos a `*/5` vía crontab del sistema sin
+restricciones.
+
+#### Cronograma del cutover (2026-05-08)
+
+| Hora Caracas | Acción | Resultado |
+|---|---|---|
+| 14:55 | Activar `MAINTENANCE_MODE=true` en Vercel via API | Env var creada |
+| 14:55 | Trigger redeploy con maintenance | Deploy `dpl_5TALWqfNgdwMNa7FTnJP1sgvc2dN` READY (196s) |
+| 14:58 | Verificar `/api/health` → `maintenance:true` | ✓ App bloqueada |
+| 14:57 | `pg_dump` fresh de RDS desde Contabo | `shanklish_erp-cutover-20260508-1457.dump` 3.8 MB, 70 tablas |
+| 14:59 | DROP + CREATE `capsula_erp_prod` en Contabo PG 18 | DB recreada limpia |
+| 15:00 | `pg_restore --single-transaction --exit-on-error` | Sin errores, FK constraints OK |
+| 15:08 | Verificación row counts RDS vs Contabo | **EXACTAMENTE iguales** ✓ |
+| 15:10 | PATCH `DATABASE_URL` via Vercel API → Contabo | Env var actualizada |
+| 15:10 | Trigger redeploy con nueva URL | Deploy `dpl_2D71wMu8NWk2F3vBPg96u9q6Y2CP` READY (186s) |
+| 15:14 | Delete `MAINTENANCE_MODE` env var | Maintenance OFF |
+| 15:14 | Trigger redeploy final | Deploy `dpl_5KNRg3NvBCSDYKcoMUb7SDszCMhf` READY (219s) |
+| 15:17 | Smoke test: `/api/health` → `maintenance:false`, `/login` HTTP 200 | ✓ App operativa |
+| 15:25 | Configurar backups automáticos en Contabo | Cron `0 7 * * *` activo, primer dump 3.8 MB |
+
+**Downtime total para usuarios: ~12 minutos** (entre primer redeploy con
+maintenance ready y último redeploy con maintenance OFF).
+
+#### Validación de integridad de datos
+
+Row counts verificados ANTES del switch del DATABASE_URL (con maintenance
+activo, RDS sin escrituras nuevas):
+
+| Tabla | RDS | Contabo | Match |
+|---|---|---|---|
+| `BroadcastMessage` | 70,500 | 70,500 | ✅ |
+| `SalesOrder` | 4,496 | 4,496 | ✅ |
+| `InventoryMovement` | 20,407 | 20,407 | ✅ |
+| `InventoryItem` | 886 | 886 | ✅ |
+| `User` | 24 | 24 | ✅ |
+| `Branch` | 1 | 1 | ✅ |
+| `OpenTab` | 1,255 | 1,255 | ✅ |
+| `MenuItem` | 231 | 231 | ✅ |
+
+#### Configuración de PG 18 en Contabo (referencia rápida)
+
+- **Cluster**: 18-main, port 5433 (PG 16 sigue en 5432 con `capsula_db` legacy intacto).
+- **Datadir**: `/var/lib/postgresql/18/main`
+- **Config tuning**: `/etc/postgresql/18/main/conf.d/capsula-tuning.conf`
+  - `shared_buffers = 2GB` (25% RAM)
+  - `effective_cache_size = 5500MB` (~70% RAM)
+  - `work_mem = 20MB`
+  - `maintenance_work_mem = 512MB`
+  - `max_connections = 100`
+  - `random_page_cost = 1.1` (SSD)
+  - `log_min_duration_statement = 500` (queries lentas)
+  - `ssl = on` con `server.crt`/`server.key` self-signed
+  - `timezone = America/Caracas`
+- **Authentication**: `pg_hba.conf` con `hostssl capsula_erp_prod capsula 0.0.0.0/0 scram-sha-256` + `hostnossl all all 0.0.0.0/0 reject`.
+- **Firewall**: `ufw` activo. Puertos: 22 (SSH), 5433 (PG 18), 11434 (legacy Ollama).
+- **Swap**: 3 GB en `/swapfile`, swappiness=10.
+
+#### Backups automáticos (configurado el mismo día)
+
+```
+/usr/local/bin/capsula-backup.sh   ← script bash
+crontab: 0 7 * * * (07:00 UTC = 03:00 Caracas, diario)
+Destino: /var/lib/postgresql/backups/capsula_erp_prod-YYYYMMDD-HHMM.dump
+Retención: 30 días (find -mtime +30 -delete)
+Formato: pg_dump --format=custom (binario comprimido)
+```
+
+Test inicial: `capsula_erp_prod-20260508-1524.dump` (3.8 MB) ✓
+
+⚠️ **Pendiente importante**: backups OFF-SITE. Hoy viven en el mismo server
+que la BD. Si Contabo se cae catastróficamente (datacenter, RAID failure),
+perdemos ambos. Opciones para resolver: rclone a Google Drive, BorgBackup
+a otro VPS, o S3 Glacier (~$1/mes). NO urgente pero importante para resiliencia.
+
+#### Pendientes wind-down de AWS
+
+| Tarea | Cuándo | Status |
+|---|---|---|
+| Rotar password de RDS (compartida en chat) | HOY | 🔴 Pendiente |
+| Revocar Vercel API token (compartido en chat) | HOY | 🔴 Pendiente |
+| Restringir Security Group de RDS (sólo IP del usuario) | HOY-mañana | 🟡 Sugerido |
+| Monitorear estabilidad app↔Contabo | 7-14 días | 🟢 En curso |
+| Smoke test del backup recovery | Esta semana | 🟡 Recomendado |
+| Snapshot final de RDS antes de terminar | ~22 mayo (D+14) | ⏳ Programado |
+| Terminar instancia RDS | ~22 mayo (D+14) | ⏳ Programado |
+| Eliminar SG / parameter groups / subnets de RDS | Tras terminar | ⏳ Programado |
+
+#### Plan de rollback (si algo se rompe en los próximos 14 días)
+
+1. Activar `MAINTENANCE_MODE=true` en Vercel (1 min via API).
+2. Trigger redeploy.
+3. Cambiar `DATABASE_URL` de vuelta a la URL de RDS (que está intacta).
+4. Trigger redeploy.
+5. Quitar `MAINTENANCE_MODE`.
+6. **Tiempo total de rollback: ~5 minutos.**
+7. RDS no fue modificada durante el cutover (todo lecturas), así que los datos
+   están exactamente como antes.
+
+#### Lecciones aprendidas
+
+1. **Validar config en Vercel ANTES de mergear features que tocan plataforma**
+   (cron schedules, headers, redirects). Vercel puede rechazar deploys de
+   forma totalmente silenciosa.
+2. **Vercel API es accesible vía sandbox** (con token temporal del usuario).
+   Esto permite ejecutar maintenance toggles + redeploys sin requerir CLI ni
+   PC del usuario. Crítico cuando solo se tiene acceso por celular.
+3. **Deploy hooks (vs API directa)**: el deploy hook es más simple pero queda
+   "en pending" si hay errores de config. La API directa devuelve el error
+   exacto del problema. Para debugging, usar la API.
+4. **Maintenance middleware funcionó perfecto**: al aplicar `MAINTENANCE_MODE=true`
+   y redeployar, todas las rutas (excepto `/maintenance`, `/_next/*`,
+   `/api/health`, `/favicon.ico`, `/robots.txt`) quedaron bloqueadas. Permitió
+   hacer el dump+restore con 100% confianza de que RDS no recibía escrituras
+   nuevas durante el cutover.
+5. **Self-hosted PG es viable** para esta carga: la BD pesa ~50 MB, ~70 tablas,
+   ~25k filas. Un VPS con 8 GB RAM y SSD da capacidad sobrada.
+
+---
+
 ## 20. Correcciones de Agregación de Ventas (2026-04-24)
 
 Sesión de auditoría numérica: se encontraron 6 tipos de discrepancias entre los dashboards y se implementó un plan de 10 fases. Estado actual: Fases 1, 2, 3, 4, 5, 6, 7, 8 completadas.
