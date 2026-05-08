@@ -5,6 +5,14 @@ import { getSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { revalidatePath } from 'next/cache';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
+import {
+    assertCanModifyOwner,
+    assertNotSelfRoleChange,
+    assertNotSelfDeactivate,
+    assertNotLastOwnerDegrade,
+    assertNotLastOwnerDeactivate,
+    loadTargetRole,
+} from '@/lib/permissions/owner-invariants';
 import { PERM } from '@/lib/constants/permissions-registry';
 
 // ============================================================================
@@ -79,14 +87,30 @@ export async function getUsers() {
 }
 
 /**
- * Actualiza el rol de un usuario
+ * Actualiza el rol de un usuario.
+ * Invariantes:
+ *  - No puedes cambiar tu propio rol.
+ *  - Solo un OWNER puede modificar a otro OWNER.
+ *  - No se puede degradar al último OWNER activo del sistema.
  */
 export async function updateUserRole(userId: string, newRole: string) {
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
-    // Evitar que se cambie su propio rol para no quedarse fuera inadvertidamente,
-    // o al menos advertir (aquí lo permitimos pero el frontend podría validarlo)
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const actor = { actorId: guard.user.id, actorRole: guard.user.role };
+    const target = { targetId: userId, targetRole };
+
+    const selfCheck = assertNotSelfRoleChange(actor, target);
+    if (!selfCheck.ok) return { success: false, message: selfCheck.message };
+
+    const ownerCheck = assertCanModifyOwner(actor, target);
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
+
+    const degradeCheck = await assertNotLastOwnerDegrade(target, newRole);
+    if (!degradeCheck.ok) return { success: false, message: degradeCheck.message };
 
     try {
         await prisma.user.update({
@@ -103,11 +127,30 @@ export async function updateUserRole(userId: string, newRole: string) {
 }
 
 /**
- * Activar/Desactivar usuarios (Bonus)
+ * Activar/Desactivar usuarios.
+ * Invariantes:
+ *  - No puedes desactivar tu propia cuenta.
+ *  - Solo un OWNER puede modificar a otro OWNER.
+ *  - No se puede desactivar al último OWNER activo del sistema.
  */
 export async function toggleUserStatus(userId: string, isActive: boolean) {
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
+
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const actor = { actorId: guard.user.id, actorRole: guard.user.role };
+    const target = { targetId: userId, targetRole };
+
+    const selfCheck = assertNotSelfDeactivate(actor, target, isActive);
+    if (!selfCheck.ok) return { success: false, message: selfCheck.message };
+
+    const ownerCheck = assertCanModifyOwner(actor, target);
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
+
+    const lastOwnerCheck = await assertNotLastOwnerDeactivate(target, isActive);
+    if (!lastOwnerCheck.ok) return { success: false, message: lastOwnerCheck.message };
 
     try {
         await prisma.user.update({
@@ -178,6 +221,15 @@ export async function updateUserModules(userId: string, allowedModules: string[]
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const ownerCheck = assertCanModifyOwner(
+        { actorId: guard.user.id, actorRole: guard.user.role },
+        { targetId: userId, targetRole },
+    );
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
+
     try {
         await prisma.user.update({
             where: { id: userId },
@@ -205,6 +257,15 @@ export async function updateUserPin(userId: string, rawPin: string) {
     if (guard.user.id === userId) {
         return { success: false, message: 'No puedes modificar tu propio PIN desde aquí' };
     }
+
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const ownerCheck = assertCanModifyOwner(
+        { actorId: guard.user.id, actorRole: guard.user.role },
+        { targetId: userId, targetRole },
+    );
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     const trimmed = rawPin.trim();
     if (!/^\d{4,6}$/.test(trimmed)) {
@@ -237,6 +298,15 @@ export async function updateUserPerms(
 ) {
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
+
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const ownerCheck = assertCanModifyOwner(
+        { actorId: guard.user.id, actorRole: guard.user.role },
+        { targetId: userId, targetRole },
+    );
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     try {
         await prisma.user.update({
@@ -285,6 +355,12 @@ export async function createUserAction(data: {
     // Validar email básico
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return { success: false, message: 'Correo electrónico inválido' };
+    }
+
+    // Solo un OWNER puede crear otro OWNER. Cierra el vector de escalada
+    // donde un ADMIN_MANAGER se promueve creando un OWNER títere.
+    if (data.role === 'OWNER' && guard.user.role !== 'OWNER') {
+        return { success: false, message: 'Solo un OWNER puede crear otro OWNER.' };
     }
 
     try {
@@ -352,6 +428,15 @@ export async function updateUserNameAction(
         return { success: false, message: 'Correo electrónico inválido' };
     }
 
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const ownerCheck = assertCanModifyOwner(
+        { actorId: guard.user.id, actorRole: guard.user.role },
+        { targetId: userId, targetRole },
+    );
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
+
     try {
         const conflict = await prisma.user.findUnique({ where: { email } });
         if (conflict && conflict.id !== userId) {
@@ -376,6 +461,15 @@ export async function adminResetPasswordAction(userId: string, newPassword: stri
     if (guard.user.id === userId) {
         return { success: false, message: 'Para cambiar tu propia contraseña usa la sección de perfil' };
     }
+
+    const targetRole = await loadTargetRole(userId);
+    if (!targetRole) return { success: false, message: 'Usuario no encontrado' };
+
+    const ownerCheck = assertCanModifyOwner(
+        { actorId: guard.user.id, actorRole: guard.user.role },
+        { targetId: userId, targetRole },
+    );
+    if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     if (!newPassword || newPassword.length < 6) {
         return { success: false, message: 'La contraseña debe tener al menos 6 caracteres' };
