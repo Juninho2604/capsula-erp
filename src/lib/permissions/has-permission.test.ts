@@ -3,6 +3,7 @@ import {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    assertPermission,
     visibleModules,
     serializePerms,
     type PermUser,
@@ -148,6 +149,60 @@ describe('Capa 4 — revokedPerms siempre gana', () => {
         // El resto sigue
         expect(hasPermission(u, PERM.MANAGE_USERS)).toBe(true);
     });
+
+    it('revokedPerms con JSON malformado: se ignora silenciosamente', () => {
+        const u = user({
+            role: 'CASHIER',
+            revokedPerms: '{not json',
+        });
+        // Si el revoke se ignora, APPLY_DISCOUNT del rol base sigue activo.
+        expect(hasPermission(u, PERM.APPLY_DISCOUNT)).toBe(true);
+    });
+
+    it('revokedPerms con valores no-string se filtran', () => {
+        const u = user({
+            role: 'CASHIER',
+            revokedPerms: JSON.stringify([PERM.APPLY_DISCOUNT, 42, null, 'GHOST_PERM']),
+        });
+        // APPLY_DISCOUNT (válido) sí queda revocado; los basura no afectan.
+        expect(hasPermission(u, PERM.APPLY_DISCOUNT)).toBe(false);
+    });
+});
+
+// ─── ESCENARIOS COMBINADOS (real-world) ───────────────────────────────────────
+
+describe('Escenarios combinados — granted + revoked + allowedModules', () => {
+    it('Cajera con override quirúrgico: solo VOID_ORDER, sin tocar lo demás', () => {
+        // Caso real: el OWNER quiere que UNA cajera pueda anular órdenes pero
+        // no expandirle el resto del rol. grantedPerms=[VOID_ORDER] hace eso.
+        const u = user({
+            role: 'CASHIER',
+            grantedPerms: JSON.stringify([PERM.VOID_ORDER]),
+        });
+        expect(hasPermission(u, PERM.VOID_ORDER)).toBe(true);
+        expect(hasPermission(u, PERM.MANAGE_USERS)).toBe(false);
+        expect(hasPermission(u, PERM.CONFIGURE_SYSTEM)).toBe(false);
+    });
+
+    it('Auditor restringido a módulo de ventas: ve sales pero no inventario', () => {
+        const u = user({
+            role: 'AUDITOR',
+            allowedModules: JSON.stringify(['sales_history']),
+        });
+        // VIEW_ALL_ORDERS mapea a sales_history → permitido
+        expect(hasPermission(u, PERM.VIEW_ALL_ORDERS)).toBe(true);
+    });
+
+    it('Conflicto granted+revoked: revoked siempre gana', () => {
+        // Si por error humano alguien deja un perm en ambos lados, el sistema
+        // debe ser conservador y denegar.
+        const u = user({
+            role: 'OWNER',
+            grantedPerms: JSON.stringify([PERM.VOID_ORDER]),
+            revokedPerms: JSON.stringify([PERM.VOID_ORDER]),
+        });
+        expect(hasPermission(u, PERM.VOID_ORDER)).toBe(false);
+    });
 });
 
 // ─── helpers hasAny / hasAll ──────────────────────────────────────────────────
@@ -210,6 +265,35 @@ describe('visibleModules', () => {
 });
 
 // ─── serializePerms ───────────────────────────────────────────────────────────
+
+// ─── assertPermission — lanza Error con status=403 ────────────────────────────
+
+describe('assertPermission', () => {
+    it('No lanza si el usuario tiene el permiso', () => {
+        expect(() => assertPermission(user({ role: 'OWNER' }), PERM.MANAGE_USERS)).not.toThrow();
+    });
+
+    it('Lanza Error con status=403 si no tiene el permiso', () => {
+        const u = user({ role: 'CASHIER' });
+        try {
+            assertPermission(u, PERM.MANAGE_USERS);
+            // Si no lanzó, el test debe fallar explícitamente.
+            expect.fail('assertPermission debió lanzar pero no lo hizo');
+        } catch (err) {
+            expect(err).toBeInstanceOf(Error);
+            expect((err as Error & { status?: number }).status).toBe(403);
+            expect((err as Error).message).toContain('MANAGE_USERS');
+        }
+    });
+
+    it('Respeta revokedPerms y lanza aunque el rol base tenga el permiso', () => {
+        const u = user({
+            role: 'OWNER',
+            revokedPerms: JSON.stringify([PERM.CONFIGURE_SYSTEM]),
+        });
+        expect(() => assertPermission(u, PERM.CONFIGURE_SYSTEM)).toThrow();
+    });
+});
 
 describe('serializePerms', () => {
     it('Retorna null para array vacío', () => {
