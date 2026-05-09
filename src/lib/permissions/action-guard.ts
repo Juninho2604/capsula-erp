@@ -30,11 +30,22 @@ export async function checkActionPermission(permission: PermKey): Promise<Action
 
     const dbUser = await prisma.user.findUnique({
         where: { id: session.id },
-        select: { id: true, email: true, role: true, allowedModules: true, isActive: true },
+        select: { id: true, email: true, role: true, allowedModules: true, isActive: true, tokenVersion: true },
     });
 
     if (!dbUser || !dbUser.isActive) {
         return { ok: false, message: 'Usuario no válido' };
+    }
+
+    // Validar tokenVersion: si el JWT trae una versión menor a la de BD, fue
+    // invalidado deliberadamente (cambio de rol/permisos/password). `undefined`
+    // se acepta por compatibilidad con sesiones emitidas antes de PR 4 — la
+    // próxima vez que el usuario se loguee recibirá un JWT con versión actual.
+    if (
+        session.tokenVersion !== undefined &&
+        session.tokenVersion < dbUser.tokenVersion
+    ) {
+        return { ok: false, message: 'Sesión expirada. Vuelve a iniciar sesión.' };
     }
 
     const permUser: PermUser = {
