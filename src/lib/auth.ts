@@ -2,8 +2,28 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'shanklish-super-secret-key-2024';
-const key = new TextEncoder().encode(SECRET_KEY);
+// Fallback degradado: si JWT_SECRET no existe o es débil, logueamos warning
+// pero NO tiramos excepción (eso rompería el sitio si la env var falla en
+// deploy). Producción debería SIEMPRE tener JWT_SECRET ≥ 32 chars configurado.
+const FALLBACK_SECRET = 'shanklish-super-secret-key-2024';
+let secretWarningEmitted = false;
+
+function getSecretKey(): Uint8Array {
+    const envSecret = process.env.JWT_SECRET;
+    if (envSecret && envSecret.length >= 32) {
+        return new TextEncoder().encode(envSecret);
+    }
+    // Path degradado — solo loguear UNA vez para no llenar logs.
+    if (!secretWarningEmitted) {
+        secretWarningEmitted = true;
+        console.warn(
+            '[auth] WARNING: JWT_SECRET missing or shorter than 32 chars. ' +
+            'Falling back to hardcoded secret. Configure JWT_SECRET in Vercel ' +
+            'env vars (≥32 chars) to enable production-grade signing.',
+        );
+    }
+    return new TextEncoder().encode(FALLBACK_SECRET);
+}
 
 export interface SessionPayload {
     id: string;
@@ -26,12 +46,13 @@ export async function encrypt(payload: SessionPayload) {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('24h') // Sesiones de 24 horas
-        .sign(key);
+        .sign(getSecretKey());
 }
 
 export async function decrypt(input: string): Promise<SessionPayload | null> {
+    if (!input) return null;
     try {
-        const { payload } = await jwtVerify(input, key, {
+        const { payload } = await jwtVerify(input, getSecretKey(), {
             algorithms: ['HS256'],
         });
         return payload as unknown as SessionPayload;
