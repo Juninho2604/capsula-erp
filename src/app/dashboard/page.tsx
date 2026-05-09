@@ -1,11 +1,13 @@
 import { getSession, hasPermission, PERMISSIONS } from '@/lib/auth';
 import { getDashboardStatsAction } from '@/app/actions/dashboard.actions';
 import { getFinancialSummaryAction } from '@/app/actions/finance.actions';
+import { getEstadisticasAction } from '@/app/actions/estadisticas.actions';
 import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 import { getVisibleModules } from '@/lib/constants/modules-registry';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import ExecutiveSummary from '@/components/dashboard/ExecutiveSummary';
 import FinancialSummaryWidget from '@/components/dashboard/FinancialSummaryWidget';
+import RoleBasedSections from '@/components/dashboard/RoleBasedSections';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import prisma from '@/server/db';
@@ -48,11 +50,15 @@ export default async function DashboardPage() {
     }
     const showCosts = hasPermission(session?.role, PERMISSIONS.VIEW_COSTS);
 
-    const [{ stats, salesKPIs, lowStockItems }, financeSummary] = await Promise.all([
-      getDashboardStatsAction(),
-      showCosts ? getFinancialSummaryAction() : Promise.resolve({ success: false } as any),
+    const [{ stats, salesKPIs, lowStockItems }, financeSummary, estadisticas] = await Promise.all([
+        getDashboardStatsAction(),
+        showCosts ? getFinancialSummaryAction() : Promise.resolve({ success: false } as any),
+        // Datos role-based provenientes de la antigua /dashboard/estadisticas
+        // (absorbida por el dashboard unificado).
+        getEstadisticasAction(),
     ]);
     const finance = financeSummary?.data ?? null;
+    const estadisticasData = estadisticas?.success && estadisticas.data ? estadisticas.data : null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -268,6 +274,9 @@ export default async function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Vistas role-based (absorbidas de /dashboard/estadisticas) */}
+            {estadisticasData && <RoleBasedSections data={estadisticasData} />}
 
             {/* Low Stock Alert Table */}
             <div className="capsula-card overflow-hidden p-0">
