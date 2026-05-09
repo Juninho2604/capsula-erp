@@ -48,6 +48,19 @@ model Tenant {
   wristbandPlans      WristbandPlan[]
   skuCreationTemplates SkuCreationTemplate[]
   queueTickets        QueueTicket[]
+  // Lote 1.D-β (riesgo medio)
+  expenses            Expense[]
+  accountsPayable     AccountPayable[]
+  accountPayments     AccountPayment[]
+  purchaseOrders      PurchaseOrder[]
+  productionOrders    ProductionOrder[]
+  proteinProcessings  ProteinProcessing[]
+  requisitions        Requisition[]
+  inventoryAudits     InventoryAudit[]
+  inventoryLoans      InventoryLoan[]
+  inventoryCycles     InventoryCycle[]
+  dailyInventories    DailyInventory[]
+  cashRegisters       CashRegister[]
 }
 
 model User {
@@ -478,8 +491,13 @@ model ProductionOrder {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([scheduledDate])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -545,11 +563,16 @@ model ProteinProcessing {
   // Soft Delete
   deletedAt       DateTime?
   deletedById     String?
-  
+
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([processDate])
   @@index([status])
   @@index([sourceItemId])
   @@index([parentProcessingId])
+  @@index([tenantId])
 }
 
 model ProteinSubProduct {
@@ -681,9 +704,14 @@ model Requisition {
   deletedAt   DateTime?
   deletedById String?
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([requestedById])
   @@index([targetAreaId])
+  @@index([tenantId])
 }
 
 model RequisitionItem {
@@ -1071,8 +1099,13 @@ model DailyInventory {
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
-  
+
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@unique([date, areaId])
+  @@index([tenantId])
 }
 
 model DailyInventoryItem {
@@ -1139,9 +1172,14 @@ model InventoryLoan {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([loaneeName])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -1179,9 +1217,14 @@ model InventoryAudit {
   deletedAt   DateTime?
   deletedById String?
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([createdAt])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model InventoryAuditItem {
@@ -1308,9 +1351,14 @@ model PurchaseOrder {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([orderDate])
   @@index([supplierId])
+  @@index([tenantId])
 }
 
 model PurchaseOrderItem {
@@ -1453,11 +1501,16 @@ model Expense {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([categoryId])
   @@index([paidAt])
   @@index([periodYear, periodMonth])
   @@index([status])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 /// Apertura y cierre de caja (para cuadre de efectivo al inicio/fin del turno)
@@ -1506,9 +1559,14 @@ model CashRegister {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([shiftDate])
   @@index([status])
   @@index([openedById])
+  @@index([tenantId])
 }
 
 /// Cuentas por pagar — facturas/deudas pendientes con proveedores u otros acreedores
@@ -1550,11 +1608,16 @@ model AccountPayable {
 
   payments        AccountPayment[]
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([dueDate])
   @@index([supplierId])
   @@index([purchaseOrderId])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 /// Pagos individuales aplicados a una cuenta por pagar
@@ -1576,8 +1639,13 @@ model AccountPayment {
   createdBy        User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
   createdAt        DateTime @default(now())
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId         String?
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([accountPayableId])
   @@index([paidAt])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -2227,9 +2295,14 @@ model InventoryCycle {
 
   snapshots   InventoryCycleSnapshot[]
 
+  // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status])
   @@index([cycleType])
   @@index([startedAt])
+  @@index([tenantId])
 }
 
 model InventoryCycleSnapshot {
