@@ -51,7 +51,9 @@ export default function LoginForm() {
         } else if (result?.success && result.user) {
             // Sincronizar Zustand con el usuario real del JWT antes de navegar
             login(result.user);
-            router.push('/dashboard');
+            // Aterriza en el "Inicio" (launchpad role-based). Para CASHIER/WAITER
+            // el propio home detecta el rol y redirige automáticamente al POS.
+            router.push('/dashboard/home');
         }
     };
 
