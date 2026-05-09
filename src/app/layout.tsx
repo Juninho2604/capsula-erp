@@ -29,9 +29,9 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-    title: 'CÁPSULA',
+    title: 'KPSULA',
     description: 'El ERP operativo para tu restaurante',
-    keywords: ['CÁPSULA', 'ERP', 'restaurante', 'inventario', 'recetas', 'Caracas'],
+    keywords: ['KPSULA', 'ERP', 'restaurante', 'inventario', 'recetas', 'Caracas'],
 };
 
 export default function RootLayout({

@@ -1,9 +1,9 @@
 // ============================================================================
-// CÁPSULA — useBranding Hook
+// KPSULA — useBranding Hook
 // ============================================================================
 // Hook React para acceder al branding del tenant actual.
 // En multitenant, lee el branding del SystemConfig.
-// Fallback: usa CAPSULA_BRAND defaults.
+// Fallback: usa CAPSULA_BRAND defaults (identificador legacy, marca KPSULA).
 // ============================================================================
 
 'use client';
@@ -13,7 +13,7 @@ import type { CSSProperties } from 'react';
 import { CAPSULA_BRAND, getTenantBranding, type BrandColors } from '@/config/branding';
 
 // En futuro multitenant, esto vendrá de un context provider
-const CURRENT_TENANT_SLUG = process.env.NEXT_PUBLIC_TENANT_ID || 'capsula';
+const CURRENT_TENANT_SLUG = process.env.NEXT_PUBLIC_TENANT_ID || 'kpsula';
 
 interface BrandingHook {
   /** Nombre del negocio/marca */
@@ -30,7 +30,7 @@ interface BrandingHook {
   social: typeof CAPSULA_BRAND.social;
   /** Slug del tenant actual */
   tenantSlug: string;
-  /** ¿Es la marca CÁPSULA por defecto o un tenant custom? */
+  /** ¿Es la marca KPSULA por defecto o un tenant custom? */
   isDefault: boolean;
   /** Helper: obtener color primario del tenant */
   primaryColor: string;
@@ -63,7 +63,7 @@ export function useBranding(): BrandingHook {
       fonts: brand.fonts,
       social: brand.social,
       tenantSlug: CURRENT_TENANT_SLUG,
-      isDefault: CURRENT_TENANT_SLUG === 'capsula',
+      isDefault: CURRENT_TENANT_SLUG === 'kpsula',
       primaryColor: brand.colors.primary,
       secondaryColor: brand.colors.secondary,
       accentColor: brand.colors.accent,

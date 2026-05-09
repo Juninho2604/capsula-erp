@@ -13,7 +13,7 @@ interface CapsulaLogoProps {
 }
 
 /**
- * CÁPSULA logo — bicolor circle (navy top / coral bottom) + wordmark.
+ * KPSULA logo — bicolor circle (navy top / coral bottom) + wordmark.
  * Minimal Navy direction.
  */
 export default function CapsulaLogo({
@@ -64,7 +64,7 @@ export default function CapsulaLogo({
                     color: wordColor,
                 }}
             >
-                CÁPSULA
+                KPSULA
             </span>
         );
     }
@@ -82,7 +82,7 @@ export default function CapsulaLogo({
                     lineHeight: 1,
                 }}
             >
-                CÁPSULA
+                KPSULA
             </span>
         </span>
     );

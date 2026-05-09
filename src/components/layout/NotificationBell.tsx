@@ -475,7 +475,7 @@ export function NotificationBell() {
 
             <div className="border-t border-capsula-line bg-capsula-ivory-alt px-4 py-3">
               <p className="text-center text-[9px] font-medium uppercase tracking-[0.18em] text-capsula-ink-muted">
-                CÁPSULA · Alertas en tiempo real · Actualiza cada 90 seg
+                KPSULA · Alertas en tiempo real · Actualiza cada 90 seg
               </p>
             </div>
           </div>

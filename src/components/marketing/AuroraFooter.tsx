@@ -35,7 +35,7 @@ export default function AuroraFooter() {
         >
             <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
                 <div>
-                    <Link href="/" className="inline-flex items-center" aria-label="CÁPSULA — inicio">
+                    <Link href="/" className="inline-flex items-center" aria-label="KPSULA — inicio">
                         <CapsulaLogo variant="full" size={22} />
                     </Link>
                     <p className="cap-text-dim mt-4 max-w-[280px] text-[13px] leading-[1.6]">
@@ -67,7 +67,7 @@ export default function AuroraFooter() {
             <hr className="cap-divider mx-0 mt-12" />
 
             <div className="mx-auto mt-6 flex max-w-[1280px] flex-col items-start justify-between gap-3 text-[12px] sm:flex-row sm:items-center">
-                <div className="cap-text-soft">© 2026 CÁPSULA · Todos los derechos reservados</div>
+                <div className="cap-text-soft">© 2026 KPSULA · Todos los derechos reservados</div>
                 <div className="flex gap-6">
                     <Link href="/legal/terminos"   className="cap-link">Términos y condiciones</Link>
                     <Link href="/legal/privacidad" className="cap-link">Privacidad</Link>
