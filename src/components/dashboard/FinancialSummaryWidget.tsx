@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SparklineChart from './SparklineChart';
+import { Portal } from '@/components/ui/Portal';
 
 interface FinanceData {
   period: { month: number; year: number; label: string };
@@ -749,10 +750,12 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
         </button>
       </div>
 
-      {/* Modal backdrop */}
+      {/* Modal backdrop — Portal para escapar del stacking context del
+          .capsula-card padre (que tiene transform en hover y overflow-hidden). */}
       {openModal && (
+        <Portal>
         <div
-          className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-capsula-navy-deep/55 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setOpenModal(null)}
         >
           <div
@@ -776,6 +779,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
             )}
           </div>
         </div>
+        </Portal>
       )}
     </>
   );

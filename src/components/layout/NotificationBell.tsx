@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useTransition } from 'react';
 import { getNotificationsAction, dismissBroadcastAction, createBroadcastAction } from '@/app/actions/notifications.actions';
 import type { SystemNotification, StockAlert } from '@/app/actions/notifications.actions';
 import { useAuthStore } from '@/stores/auth.store';
+import { Portal } from '@/components/ui/Portal';
 import {
   Bell,
   BellRing,
@@ -194,8 +195,12 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* ── Modal centrado con backdrop oscuro ────────────────────────────── */}
+      {/* ── Modal centrado con backdrop oscuro ─────────────────────────────
+          Renderizado en Portal para escapar del stacking context creado por
+          el backdrop-blur del Navbar. Sin Portal, position:fixed se posiciona
+          relativo al Navbar (~64px alto) y el modal queda cortado arriba. */}
       {isOpen && (
+        <Portal>
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-capsula-navy-deep/55 p-4 backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
@@ -480,6 +485,7 @@ export function NotificationBell() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   );
