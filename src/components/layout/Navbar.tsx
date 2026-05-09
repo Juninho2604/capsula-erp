@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUIStore } from '@/stores/ui.store';
-import { Menu, Maximize2, Minimize2 } from 'lucide-react';
+import { Menu, Maximize2, Minimize2, Home } from 'lucide-react';
 import { HelpPanel } from './HelpPanel';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
@@ -13,8 +14,8 @@ export function Navbar() {
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-capsula-line bg-capsula-ivory/85 px-6 backdrop-blur-md">
-            {/* Left side - Hamburger + Breadcrumb */}
-            <div className="flex items-center gap-4">
+            {/* Left side - Hamburger + Home + Breadcrumb */}
+            <div className="flex items-center gap-3">
                 {/* Mobile hamburger */}
                 <button
                     onClick={toggleSidebar}
@@ -23,6 +24,15 @@ export function Navbar() {
                 >
                     <Menu className="h-5 w-5" strokeWidth={1.75} />
                 </button>
+                {/* Inicio — atajos personalizados por rol */}
+                <Link
+                    href="/dashboard/home"
+                    title="Inicio"
+                    aria-label="Inicio"
+                    className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt hover:text-capsula-ink"
+                >
+                    <Home className="h-5 w-5" strokeWidth={1.75} />
+                </Link>
                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                     {user?.firstName ? `${user.firstName}` : 'KPSULA'}
                 </h2>
