@@ -27,6 +27,16 @@ model Tenant {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relaciones inversas (multi-tenant Fase 1.B+).
+  // Todas opcionales por ahora; al completar la migración cada fila tendrá
+  // tenantId y se aplicará NOT NULL en una migration posterior.
+  menuCategories    MenuCategory[]
+  menuItems         MenuItem[]
+  recipes           Recipe[]
+  suppliers         Supplier[]
+  expenseCategories ExpenseCategory[]
+  productFamilies   ProductFamily[]
 }
 
 model User {
@@ -386,11 +396,16 @@ model Recipe {
   createdById     String?
   createdBy       User?    @relation(fields: [createdById], references: [id])
 
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   // Relaciones
   ingredients     RecipeIngredient[]
   productionOrders ProductionOrder[]
 
   @@index([outputItemId])
+  @@index([tenantId])
 }
 
 model RecipeIngredient {
@@ -689,11 +704,16 @@ model MenuCategory {
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
-  
+
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   // Relaciones
   items       MenuItem[]
-  
+
   @@index([sortOrder])
+  @@index([tenantId])
 }
 
 model MenuItem {
@@ -748,10 +768,15 @@ model MenuItem {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([categoryId])
   @@index([sku])
   @@index([serviceCategory])
   @@index([isIntercompanyItem])
+  @@index([tenantId])
 }
 
 model MenuModifierGroup {
@@ -1175,6 +1200,10 @@ model Supplier {
   deletedAt   DateTime?
   deletedById String?
 
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   // Relaciones
   purchaseOrders PurchaseOrder[]
   // Productos que suministra este proveedor
@@ -1187,6 +1216,7 @@ model Supplier {
   priceHistory   SupplierItemPriceHistory[]
 
   @@index([name])
+  @@index([tenantId])
 }
 
 // Relación entre Proveedor y los Items que puede suministrar
@@ -1340,9 +1370,14 @@ model ExpenseCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   expenses    Expense[]
 
   @@index([isActive])
+  @@index([tenantId])
 }
 
 /// Registro de gastos operativos (no de compras de inventario)
@@ -2068,10 +2103,15 @@ model ProductFamily {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   items       InventoryItem[]
   templates   SkuCreationTemplate[]
 
   @@index([code])
+  @@index([tenantId])
 }
 
 // Plantilla para crear SKUs rápidamente desde el SKU Studio
