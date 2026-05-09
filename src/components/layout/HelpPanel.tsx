@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { Portal } from '@/components/ui/Portal';
 import {
   HelpCircle,
   X,
@@ -264,8 +265,9 @@ export function HelpPanel() {
         <HelpCircle className="h-5 w-5" strokeWidth={1.75} />
       </button>
 
-      {/* Modal */}
+      {/* Modal — Portal para escapar del backdrop-blur del Navbar */}
       {isOpen && (
+        <Portal>
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-capsula-navy-deep/55 p-4 backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
@@ -399,6 +401,7 @@ export function HelpPanel() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   );
