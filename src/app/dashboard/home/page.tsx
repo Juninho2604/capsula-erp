@@ -1,6 +1,9 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import prisma from '@/server/db';
+import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
+import { getVisibleModules } from '@/lib/constants/modules-registry';
 import {
     LayoutDashboard, Package, BarChart2, Factory, Wine, BookOpen,
     UtensilsCrossed, Receipt, ChefHat, FileSearch, Coins, ChevronRight,
@@ -22,16 +25,18 @@ interface QuickLink {
 
 const SHORTCUTS_BY_ROLE: Record<string, QuickLink[]> = {
     OWNER: [
-        { href: '/dashboard',            label: 'Dashboard ejecutivo', sub: 'Resumen y métricas del negocio',           Icon: LayoutDashboard, primary: true },
-        { href: '/dashboard/inventario', label: 'Inventario',          sub: 'Stock, movimientos y auditorías',          Icon: Package },
-        { href: '/dashboard/finanzas',   label: 'Finanzas',            sub: 'P&L, gastos y cuentas por pagar',           Icon: BarChart2 },
-        { href: '/dashboard/produccion', label: 'Producción',          sub: 'Órdenes y procesamiento',                  Icon: Factory },
+        { href: '/dashboard',                 label: 'Dashboard ejecutivo', sub: 'Resumen y métricas del negocio',  Icon: LayoutDashboard, primary: true },
+        { href: '/dashboard/pos/restaurante', label: 'POS Restaurante',     sub: 'Tomar pedidos y cobrar',           Icon: Wine },
+        { href: '/dashboard/inventario',      label: 'Inventario',          sub: 'Stock, movimientos y auditorías',  Icon: Package },
+        { href: '/dashboard/finanzas',        label: 'Finanzas',            sub: 'P&L, gastos y cuentas por pagar',   Icon: BarChart2 },
+        { href: '/dashboard/produccion',      label: 'Producción',          sub: 'Órdenes y procesamiento',          Icon: Factory },
     ],
     ADMIN_MANAGER: [
-        { href: '/dashboard',            label: 'Dashboard ejecutivo', sub: 'Resumen y métricas del negocio',           Icon: LayoutDashboard, primary: true },
-        { href: '/dashboard/inventario', label: 'Inventario',          sub: 'Stock, movimientos y auditorías',          Icon: Package },
-        { href: '/dashboard/finanzas',   label: 'Finanzas',            sub: 'P&L, gastos y cuentas por pagar',           Icon: BarChart2 },
-        { href: '/dashboard/produccion', label: 'Producción',          sub: 'Órdenes y procesamiento',                  Icon: Factory },
+        { href: '/dashboard',                 label: 'Dashboard ejecutivo', sub: 'Resumen y métricas del negocio',  Icon: LayoutDashboard, primary: true },
+        { href: '/dashboard/pos/restaurante', label: 'POS Restaurante',     sub: 'Tomar pedidos y cobrar',           Icon: Wine },
+        { href: '/dashboard/inventario',      label: 'Inventario',          sub: 'Stock, movimientos y auditorías',  Icon: Package },
+        { href: '/dashboard/finanzas',        label: 'Finanzas',            sub: 'P&L, gastos y cuentas por pagar',   Icon: BarChart2 },
+        { href: '/dashboard/produccion',      label: 'Producción',          sub: 'Órdenes y procesamiento',          Icon: Factory },
     ],
     OPS_MANAGER: [
         { href: '/dashboard/pos/restaurante', label: 'POS Restaurante', sub: 'Venta directa y cuentas',              Icon: Wine, primary: true },
@@ -78,6 +83,27 @@ export default async function HomePage() {
     if (!session) redirect('/login');
 
     const role = session.role ?? 'OWNER';
+
+    // CASHIER y WAITER NO ven el home: se redirigen directo a su primer módulo
+    // (el POS típicamente). Mismo comportamiento que tenía /dashboard antes
+    // de que el home fuera el destino post-login.
+    if (role === 'CASHIER' || role === 'WAITER') {
+        let userAllowedModules: string[] | null = null;
+        if (session.id) {
+            const dbUser = await prisma.user.findUnique({
+                where: { id: session.id },
+                select: { allowedModules: true },
+            });
+            if (dbUser?.allowedModules) {
+                try { userAllowedModules = JSON.parse(dbUser.allowedModules); } catch { /* ignore */ }
+            }
+        }
+        const enabledIds = await getEnabledModulesFromDB();
+        const visible = getVisibleModules(role, enabledIds, userAllowedModules);
+        const first = visible[0];
+        redirect(first?.href ?? '/dashboard/pos/restaurante');
+    }
+
     const shortcuts: QuickLink[] = SHORTCUTS_BY_ROLE[role] ?? SHORTCUTS_BY_ROLE.OWNER ?? [];
 
     return (
