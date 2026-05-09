@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth';
 import prisma from '@/server/db';
 import { hashPin, pbkdf2Hex } from './user.actions';
+import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 
 async function getActiveBranch() {
     return prisma.branch.findFirst({ where: { isActive: true } });
@@ -167,6 +168,26 @@ export async function validateWaiterPinAction(pin: string): Promise<{
     try {
         if (!pin || !/^\d{4,6}$/.test(pin.trim())) {
             return { success: false, message: 'PIN inválido' };
+        }
+        // Rate limit por IP: 15 intentos cada 5 min. Conservador para no
+        // bloquear meseros legítimos que se equivocan al teclear, pero corta
+        // brute-force (un PIN de 4 dígitos = 10000 combinaciones, a 15/5min
+        // tomaría 55h en lugar de segundos).
+        try {
+            const ip = await getClientIp();
+            const rl = await consumeRateLimit({
+                key: `pin-waiter:${ip}`,
+                max: 15,
+                windowSeconds: 300,
+            });
+            if (!rl.allowed) {
+                return {
+                    success: false,
+                    message: `Demasiados intentos. Intenta en ${rl.retryAfterSeconds}s.`,
+                };
+            }
+        } catch (err) {
+            console.error('[rate-limit] waiter pin failed:', err);
         }
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
