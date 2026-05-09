@@ -5351,3 +5351,39 @@ Extendido 2026-04-25 — Dark mode audit módulos non-POS, patrones 7–8, icono
 Repo canónico: capsula-erp
 Branch: main (post-cutover)
 Commits de consolidación: eec5e92 · b310466 · 591d323 · 3798142 · 4f18704 · 19b85f6 · 089dee5 · 95ba60e · ec37b51
+
+---
+
+## 27. Cobro POS Restaurante — método de pago sin default + pre-cuenta sin descuento divisas (2026-05-09)
+
+### 27.1 Sin método pre-seleccionado en el cobro
+
+Antes el panel de cobro de mesa, pickup y subcuenta arrancaban con `paymentMethod = "CASH_USD"`, lo que producía dos efectos no deseados:
+- Visualmente el botón "Cash $" aparecía resaltado, sugiriendo a la cajera que ya estaba elegido.
+- El `useEffect` de auto-aplicación de DIVISAS_33 marcaba el descuento desde el primer render → la pre-cuenta y la grilla de cobro mostraban el monto descontado antes de que la cajera escogiera nada.
+
+**Fix:** se conserva `paymentMethod = "CASH_USD"` como sentinel interno (para no propagar `null` a 50+ usos del valor) y se introduce un flag separado `paymentMethodTouched: boolean`:
+- **`src/app/dashboard/pos/restaurante/page.tsx`** — `paymentMethodTouched` arranca en `false`. Cada botón de método (`SINGLE_PAY_METHODS.map`) hace `setPaymentMethod(m); setPaymentMethodTouched(true)` en su `onClick`. El highlight visual usa `paymentMethodTouched && paymentMethod === m`.
+  - El `useEffect` de auto-aplicación de DIVISAS_33 retorna temprano si `!paymentMethodTouched` y limpia DIVISAS_33 si quedó residual.
+  - Botón "Registrar pago" deshabilitado en pago único cuando `!paymentMethodTouched`. En pickup mode aparece aviso `Selecciona un método de pago` antes del botón.
+  - Reset del flag en: `resetTableState()`, `handleNewPickupTab()`, `handleSelectPickupTab()`, después de cobro exitoso (mesa y pickup).
+- **`src/components/pos/SubAccountPanel.tsx`** — mismo patrón con `payMethodTouched`. Adicionalmente:
+  - `applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod)` (antes era directo).
+  - `handlePayConfirm` valida `payMethodTouched` y muestra `toast.error('Selecciona un método de pago')` si no.
+  - Botón "Confirmar" deshabilitado y muestra label "Elige método" hasta que la cajera escoja.
+  - `useEffect` resetea `payMethodTouched` cuando se cierra el formulario de pago para que la próxima apertura vuelva a exigir elección.
+
+### 27.2 Pre-cuenta sin descuento divisas (jamás)
+
+La pre-cuenta es el documento informativo que el cliente ve **antes de pagar**. Su propósito ahora explícito: mostrar el monto pleno (sin descuento de divisas) para que el cliente lea el costo real del consumo. El descuento por divisas (33%) es un beneficio del método de cobro y se aplica en el recibo final, no en la pre-cuenta.
+
+- **`handlePrintPrecuenta` (`restaurante/page.tsx`)**: se eliminó la rama `discountType === "DIVISAS_33"` del cálculo de `discountAmt`. Sólo quedan `CORTESIA_100` y `CORTESIA_PERCENT` (cortesías sí son información que el cliente debe ver).
+- **SubAccountPanel `handlePrintSubAccount`**: ya estaba correcto — `inferredDivisas` requiere `sub.status === 'PAID'`, así que la reimpresión de pre-cuenta de una subcuenta OPEN nunca aplica descuento divisas. No hubo cambio.
+- El recibo final (`isPrecuenta: false`) sigue mostrando la línea de descuento divisas tal como antes — sólo se afectó el documento informativo previo al cobro.
+
+### 27.3 Archivos tocados
+
+- `src/app/dashboard/pos/restaurante/page.tsx`
+- `src/components/pos/SubAccountPanel.tsx`
+
+Tests: 81/81 ✓ — `tsc --noEmit` exit 0.
