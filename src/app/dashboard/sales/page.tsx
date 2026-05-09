@@ -197,19 +197,19 @@ export default function SalesHistoryPage() {
     const getPaymentBadge = (method: string) => {
         switch (method?.toUpperCase()) {
             case 'CASH':
-            case 'CASH_USD': return <span className="bg-green-900 text-green-300 px-2 py-0.5 rounded text-xs font-bold">Cash $</span>;
-            case 'CASH_EUR': return <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-bold">Cash €</span>;
+            case 'CASH_USD': return <span className="bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F] px-2 py-0.5 rounded text-xs font-semibold">Cash $</span>;
+            case 'CASH_EUR': return <span className="bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F] px-2 py-0.5 rounded text-xs font-semibold">Cash €</span>;
             case 'CARD':
             case 'BS_POS':
-            case 'PDV_SHANKLISH': return <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">PDV Shanklish</span>;
-            case 'PDV_SUPERFERRO': return <span className="bg-sky-900 text-sky-300 px-2 py-0.5 rounded text-xs font-bold">PDV Superferro</span>;
-            case 'ZELLE': return <span className="bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded text-xs font-bold">ZELLE</span>;
-            case 'MOBILE_PAY': return <span className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded text-xs font-bold">PAGO MÓVIL</span>;
-            case 'MOVIL_NG': return <span className="bg-violet-900 text-violet-300 px-2 py-0.5 rounded text-xs font-bold">MÓVIL NG</span>;
-            case 'TRANSFER': return <span className="bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded text-xs font-bold">TRANSFER</span>;
-            case 'CASH_BS': return <span className="bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded text-xs font-bold">Bs</span>;
-            case 'CORTESIA': return <span className="bg-purple-900 text-purple-200 px-2 py-0.5 rounded text-xs font-bold">CORTESÍA</span>;
-            default: return <span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs font-bold">{method || '-'}</span>;
+            case 'PDV_SHANKLISH': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">PDV Shanklish</span>;
+            case 'PDV_SUPERFERRO': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">PDV Superferro</span>;
+            case 'ZELLE': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">ZELLE</span>;
+            case 'MOBILE_PAY': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">PAGO MÓVIL</span>;
+            case 'MOVIL_NG': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">MÓVIL NG</span>;
+            case 'TRANSFER': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">TRANSFER</span>;
+            case 'CASH_BS': return <span className="bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] px-2 py-0.5 rounded text-xs font-semibold">Bs</span>;
+            case 'CORTESIA': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">CORTESÍA</span>;
+            default: return <span className="bg-capsula-navy-soft text-capsula-cream px-2 py-0.5 rounded text-xs font-semibold">{method || '-'}</span>;
         }
     };
 
@@ -630,18 +630,18 @@ export default function SalesHistoryPage() {
                                             )}
                                         </td>
                                         {/* TOTAL FACTURA */}
-                                        <td className="px-4 py-3 text-right text-gray-400 text-sm font-mono">
-                                            {isPropina ? <span className="text-gray-600">—</span> : formatMoney(totalFactura)}
+                                        <td className="px-4 py-3 text-right text-capsula-ink-muted text-sm font-mono">
+                                            {isPropina ? <span className="text-capsula-ink-soft">—</span> : formatMoney(totalFactura)}
                                         </td>
                                         {/* COBRADO */}
-                                        <td className="px-4 py-3 text-right font-bold font-mono">
+                                        <td className="px-4 py-3 text-right font-semibold font-mono">
                                             {isPropina ? (
-                                                <span className="text-amber-400">{formatMoney(totalCobrado)}</span>
+                                                <span className="text-[#946A1C] dark:text-[#E8D9B8]">{formatMoney(totalCobrado)}</span>
                                             ) : (
                                                 <>
-                                                    <span className="text-white">{formatMoney(totalCobrado)}</span>
+                                                    <span className="text-capsula-ink">{formatMoney(totalCobrado)}</span>
                                                     {propina > 0.01 && (
-                                                        <div className="text-[10px] text-amber-400 font-normal text-right">
+                                                        <div className="text-[10px] text-[#946A1C] dark:text-[#E8D9B8] font-normal text-right">
                                                             +{formatMoney(propina)} propina
                                                         </div>
                                                     )}
@@ -652,12 +652,12 @@ export default function SalesHistoryPage() {
                                         <td className="px-4 py-3 text-center">
                                             {sale.orderType === 'RESTAURANT' ? (
                                                 sale.serviceFeeIncluded ? (
-                                                    <span className="text-emerald-400 text-xs font-bold">Sí</span>
+                                                    <span className="text-[#2F6B4E] dark:text-[#6FB88F] text-xs font-semibold">Sí</span>
                                                 ) : (
-                                                    <span className="text-gray-600 text-xs">No</span>
+                                                    <span className="text-capsula-ink-soft text-xs">No</span>
                                                 )
                                             ) : (
-                                                <span className="text-gray-700">-</span>
+                                                <span className="text-capsula-ink-soft">-</span>
                                             )}
                                         </td>
                                         {/* DESCUENTO / AUTH */}
@@ -665,34 +665,34 @@ export default function SalesHistoryPage() {
                                             {sale.discount > 0 ? (
                                                 <div className="flex flex-col gap-0.5">
                                                     {sale.discountType === 'DIVISAS_33' && (
-                                                        <span className="text-blue-400 text-xs">-{formatMoney(sale.discount)}</span>
+                                                        <span className="text-[#2A4060] dark:text-[#D1DCE9] text-xs">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {(sale.discountType === 'CORTESIA_100' || sale.discountType === 'CORTESIA') && (
-                                                        <span className="text-purple-400 text-xs font-bold">-{formatMoney(sale.discount)}</span>
+                                                        <span className="text-[#2A4060] dark:text-[#D1DCE9] text-xs font-semibold">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {sale.discountType === 'CORTESIA_PERCENT' && (
-                                                        <span className="text-purple-400 text-xs font-bold">-{formatMoney(sale.discount)}</span>
+                                                        <span className="text-[#2A4060] dark:text-[#D1DCE9] text-xs font-semibold">-{formatMoney(sale.discount)}</span>
                                                     )}
                                                     {sale.authorizedById && (
-                                                        <span className="text-green-500 text-[10px] bg-green-900/30 px-1 rounded w-fit">
+                                                        <span className="text-[#2F6B4E] dark:text-[#6FB88F] text-[10px] bg-[#E5EDE7]/40 dark:bg-[#1E3B2C]/40 px-1 rounded w-fit">
                                                             ✓ {sale.authorizedBy?.firstName}
                                                         </span>
                                                     )}
                                                 </div>
-                                            ) : <span className="text-gray-700">-</span>}
+                                            ) : <span className="text-capsula-ink-soft">-</span>}
                                         </td>
                                         {/* ÍTEMS */}
                                         <td className="px-4 py-3 text-center">
                                             {itemCount > 0 ? (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleRow(sale.id); }}
-                                                    className="inline-flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded text-xs font-bold transition-colors"
+                                                    className="inline-flex items-center gap-1 bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream px-2 py-1 rounded text-xs font-semibold transition-colors"
                                                 >
                                                     {itemCount}
                                                     <span className={`transition-transform text-[10px] ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                                                 </button>
                                             ) : (
-                                                <span className="text-gray-600">-</span>
+                                                <span className="text-capsula-ink-soft">-</span>
                                             )}
                                         </td>
                                         {/* ACCIONES */}
@@ -701,7 +701,7 @@ export default function SalesHistoryPage() {
                                                 <button
                                                     onClick={(e) => handleReprint(sale, e)}
                                                     title="Reimprimir factura"
-                                                    className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                    className="bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                                                 >
                                                     🖨️ Imprimir
                                                 </button>
@@ -709,7 +709,7 @@ export default function SalesHistoryPage() {
                                                     <button
                                                         onClick={(e) => openVoidModal(sale, e)}
                                                         title="Anular venta"
-                                                        className="bg-red-900/40 hover:bg-red-800 text-red-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                        className="bg-[#F7E3DB] dark:bg-[#3B1F14]/40 hover:bg-[#F7E3DB] dark:hover:bg-[#3B1F14] text-[#B04A2E] dark:text-[#EFD2C8] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                                                     >
                                                         Anular
                                                     </button>
@@ -722,9 +722,9 @@ export default function SalesHistoryPage() {
                                         <tr key={`${sale.id}-expanded`} className="bg-gray-900/60">
                                             <td colSpan={11} className="px-6 py-4">
                                                 {/* Tabla de productos */}
-                                                <div className="rounded-lg overflow-hidden border border-gray-700 mb-3">
+                                                <div className="rounded-lg overflow-hidden border border-capsula-line mb-3">
                                                     <table className="w-full text-xs">
-                                                        <thead className="bg-gray-800 text-gray-400 uppercase text-[10px] font-bold">
+                                                        <thead className="bg-capsula-ivory-alt text-capsula-ink-muted uppercase text-[10px] font-semibold">
                                                             <tr>
                                                                 <th className="px-3 py-2 text-left">Producto</th>
                                                                 <th className="px-3 py-2 text-center">Cant.</th>
@@ -739,16 +739,16 @@ export default function SalesHistoryPage() {
                                                                     ? item.modifiers.map((m: any) => typeof m === 'string' ? m : m?.name).filter(Boolean)
                                                                     : [];
                                                                 return (
-                                                                    <tr key={idx} className="hover:bg-gray-800/40">
-                                                                        <td className="px-3 py-2 text-gray-200">
+                                                                    <tr key={idx} className="hover:bg-capsula-ivory-alt/40">
+                                                                        <td className="px-3 py-2 text-capsula-cream">
                                                                             {item.itemName || item.name}
                                                                             {modifiers.length > 0 && (
-                                                                                <div className="text-gray-500 text-[10px]">+ {modifiers.join(', ')}</div>
+                                                                                <div className="text-capsula-ink-muted text-[10px]">+ {modifiers.join(', ')}</div>
                                                                             )}
                                                                         </td>
-                                                                        <td className="px-3 py-2 text-center text-gray-300">×{item.quantity}</td>
-                                                                        <td className="px-3 py-2 text-right text-gray-400 font-mono">${unitPrice.toFixed(2)}</td>
-                                                                        <td className="px-3 py-2 text-right text-white font-bold font-mono">${(item.lineTotal || 0).toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-center text-capsula-cream">×{item.quantity}</td>
+                                                                        <td className="px-3 py-2 text-right text-capsula-ink-muted font-mono">${unitPrice.toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-right text-capsula-ink font-semibold font-mono">${(item.lineTotal || 0).toFixed(2)}</td>
                                                                     </tr>
                                                                 );
                                                             })}
@@ -757,32 +757,32 @@ export default function SalesHistoryPage() {
                                                 </div>
 
                                                 {/* Resumen de totales */}
-                                                <div className="flex flex-wrap gap-3 text-xs font-mono text-gray-400">
-                                                    <span>Productos: <span className="text-white">{formatMoney(itemsSubtotal)}</span></span>
+                                                <div className="flex flex-wrap gap-3 text-xs font-mono text-capsula-ink-muted">
+                                                    <span>Productos: <span className="text-capsula-ink">{formatMoney(itemsSubtotal)}</span></span>
                                                     {sale.orderType === 'RESTAURANT' && sale.serviceFeeIncluded && servicioAmount > 0 && (
-                                                        <span>10% Servicio: <span className="text-emerald-400">+{formatMoney(servicioAmount)}</span></span>
+                                                        <span>10% Servicio: <span className="text-[#2F6B4E] dark:text-[#6FB88F]">+{formatMoney(servicioAmount)}</span></span>
                                                     )}
                                                     {(sale.discount || 0) > 0 && (
-                                                        <span>Descuento: <span className="text-red-400">-{formatMoney(sale.discount)}</span></span>
+                                                        <span>Descuento: <span className="text-[#B04A2E] dark:text-[#EFD2C8]">-{formatMoney(sale.discount)}</span></span>
                                                     )}
-                                                    <span>Total factura: <span className="text-white">{formatMoney(totalFactura)}</span></span>
-                                                    <span>Cobrado: <span className="text-white font-bold">{formatMoney(totalCobrado)}</span></span>
+                                                    <span>Total factura: <span className="text-capsula-ink">{formatMoney(totalFactura)}</span></span>
+                                                    <span>Cobrado: <span className="text-capsula-ink font-semibold">{formatMoney(totalCobrado)}</span></span>
                                                     {propina > 0.01 && (
-                                                        <span>Propina/excedente: <span className="text-amber-400">+{formatMoney(propina)}</span></span>
+                                                        <span>Propina/excedente: <span className="text-[#946A1C] dark:text-[#E8D9B8]">+{formatMoney(propina)}</span></span>
                                                     )}
                                                 </div>
 
                                                 {/* Desglose de pagos */}
                                                 {(sale.paymentBreakdown || []).length > 0 && (
-                                                    <div className="mt-2 text-xs text-gray-500">
-                                                        <span className="font-bold uppercase text-gray-600">Desglose de pagos: </span>
+                                                    <div className="mt-2 text-xs text-capsula-ink-muted">
+                                                        <span className="font-semibold uppercase text-capsula-ink-soft">Desglose de pagos: </span>
                                                         {(sale.paymentBreakdown || []).map((p: { method: string; amount: number; amountBS?: number; exchangeRate?: number; label?: string }, i: number) => (
                                                             <span key={i} className="mr-3 inline-flex items-center gap-1">
                                                                 {getPaymentBadge(p.method)}
-                                                                {p.label && <span className="ml-1 text-gray-500">{p.label}</span>}
-                                                                <span className="text-white font-bold font-mono">{formatMoney(p.amount)}</span>
+                                                                {p.label && <span className="ml-1 text-capsula-ink-muted">{p.label}</span>}
+                                                                <span className="text-capsula-ink font-semibold font-mono">{formatMoney(p.amount)}</span>
                                                                 {p.amountBS != null && p.amountBS > 0 && (
-                                                                    <span className="text-yellow-400 font-mono text-[10px]">
+                                                                    <span className="text-[#946A1C] dark:text-[#E8D9B8] font-mono text-[10px]">
                                                                         · Bs{p.amountBS.toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                                                                         {p.exchangeRate ? ` @${p.exchangeRate.toFixed(0)}` : ''}
                                                                     </span>
@@ -794,24 +794,24 @@ export default function SalesHistoryPage() {
 
                                                 {/* Detalle de anulación */}
                                                 {isVoided && (sale.voidReason || sale.voidedBy || sale.voidedAt) && (
-                                                    <div className="mt-3 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2 text-xs space-y-1">
-                                                        <div className="font-bold text-red-400 uppercase tracking-wider text-[10px]">Detalle de Anulación</div>
+                                                    <div className="mt-3 bg-[#F7E3DB] dark:bg-[#3B1F14]/20 border border-[#F7E3DB] dark:border-[#3B1F14] rounded-lg px-3 py-2 text-xs space-y-1">
+                                                        <div className="font-semibold text-[#B04A2E] dark:text-[#EFD2C8] uppercase tracking-wider text-[10px]">Detalle de Anulación</div>
                                                         {sale.voidedBy && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500">Anulado por:</span>
-                                                                <span className="font-bold text-red-300">{sale.voidedBy.firstName} {sale.voidedBy.lastName}</span>
+                                                            <div className="flex gap-2 text-capsula-cream">
+                                                                <span className="text-capsula-ink-muted">Anulado por:</span>
+                                                                <span className="font-semibold text-[#B04A2E] dark:text-[#EFD2C8]">{sale.voidedBy.firstName} {sale.voidedBy.lastName}</span>
                                                             </div>
                                                         )}
                                                         {sale.voidedAt && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500">Fecha anulación:</span>
+                                                            <div className="flex gap-2 text-capsula-cream">
+                                                                <span className="text-capsula-ink-muted">Fecha anulación:</span>
                                                                 <span>{new Date(sale.voidedAt).toLocaleString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                             </div>
                                                         )}
                                                         {sale.voidReason && (
-                                                            <div className="flex gap-2 text-gray-300">
-                                                                <span className="text-gray-500 shrink-0">Motivo:</span>
-                                                                <span className="text-red-200">{sale.voidReason}</span>
+                                                            <div className="flex gap-2 text-capsula-cream">
+                                                                <span className="text-capsula-ink-muted shrink-0">Motivo:</span>
+                                                                <span className="text-[#B04A2E] dark:text-[#EFD2C8]">{sale.voidReason}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -832,60 +832,60 @@ export default function SalesHistoryPage() {
             {showZReport && zReport && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white text-black rounded-lg w-full max-w-sm p-8 font-mono shadow-2xl relative">
-                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 font-semibold text-2xl tracking-[-0.02em] no-print">×</button>
+                        <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-capsula-ink-muted hover:text-[#B04A2E] dark:text-[#EFD2C8] font-semibold text-2xl tracking-[-0.02em] no-print">×</button>
                         <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
                             <h2 className="font-semibold text-2xl tracking-[-0.02em]">REPORTE Z</h2>
                             <p className="text-sm">SHANKLISH CARACAS</p>
                             <p className="text-sm">{new Date().toLocaleString()}</p>
-                            <p className="text-sm mt-1 font-bold">CIERRE DE CAJA DIARIO</p>
+                            <p className="text-sm mt-1 font-semibold">CIERRE DE CAJA DIARIO</p>
                         </div>
                         {/* ── VENTAS ── */}
                         <div className="space-y-1 mb-4 border-b-2 border-dashed border-black pb-4">
                             <div className="flex justify-between"><span>VENTAS BRUTAS</span><span>{formatMoney(zReport.grossTotal)}</span></div>
                             {zReport.totalDiscounts > 0 && (<>
-                                <div className="flex justify-between text-red-600"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
+                                <div className="flex justify-between text-[#B04A2E] dark:text-[#EFD2C8]"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
                                 {zReport.discountBreakdown.divisas > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                                    <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.cortesias > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
+                                    <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.other > 0 && (
-                                    <div className="flex justify-between text-xs text-gray-500 pl-4"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
+                                    <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Otros</span><span>-{formatMoney(zReport.discountBreakdown.other)}</span></div>
                                 )}
                             </>)}
-                            <div className="flex justify-between font-bold text-base mt-1 pt-1 border-t border-gray-300"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
+                            <div className="flex justify-between font-semibold text-base mt-1 pt-1 border-t border-capsula-line"><span>VENTA NETA</span><span>{formatMoney(zReport.netTotal)}</span></div>
                             {zReport.totalServiceFee > 0 && (
-                                <div className="flex justify-between text-blue-700"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
+                                <div className="flex justify-between text-[#2A4060] dark:text-[#D1DCE9]"><span>(+) SERVICIO 10%</span><span>+{formatMoney(zReport.totalServiceFee)}</span></div>
                             )}
                             {zReport.totalTips > 0 && (
-                                <div className="flex justify-between text-green-700"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
+                                <div className="flex justify-between text-[#2F6B4E] dark:text-[#6FB88F]"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="flex justify-between font-semibold text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
                             {zReport.openTabsPending && zReport.openTabsPending.count > 0 && (
                                 <div className="mt-2 p-2 border border-dashed border-amber-600 rounded text-xs bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
-                                    <span className="font-bold">CUENTAS PENDIENTES ({zReport.openTabsPending.count})</span>{' — '}{formatMoney(zReport.openTabsPending.total)} no cobradas aún (excluidas del cierre)
+                                    <span className="font-semibold">CUENTAS PENDIENTES ({zReport.openTabsPending.count})</span>{' — '}{formatMoney(zReport.openTabsPending.total)} no cobradas aún (excluidas del cierre)
                                 </div>
                             )}
                         </div>
 
                         {/* ── ARQUEO DE CAJA ── */}
                         <div className="mb-4 border-b-2 border-dashed border-black pb-4">
-                            <h3 className="font-bold underline mb-2">ARQUEO DE CAJA</h3>
+                            <h3 className="font-semibold underline mb-2">ARQUEO DE CAJA</h3>
                             <div className="space-y-0.5 text-sm">
-                                {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
-                                {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
-                                {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
-                                {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
-                                {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
-                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-bold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
-                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-gray-500"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                                {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
+                                {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
+                                {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
+                                {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
+                                {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
+                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
+                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-muted"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                             </div>
                         </div>
 
                         {/* ── PEDIDOS POR CANAL ── */}
                         <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">
-                            <h3 className="font-bold underline mb-2">PEDIDOS POR CANAL</h3>
+                            <h3 className="font-semibold underline mb-2">PEDIDOS POR CANAL</h3>
                             <div className="space-y-0.5">
                                 {zReport.ordersByType.restaurant > 0 && <div className="flex justify-between"><span>Restaurante / Mesas</span><span>{zReport.ordersByType.restaurant}</span></div>}
                                 {zReport.ordersByType.pickup > 0 && <div className="flex justify-between"><span>Pickup / Mostrador</span><span>{zReport.ordersByType.pickup}</span></div>}
@@ -900,13 +900,13 @@ export default function SalesHistoryPage() {
                         {/* ── AUDITORÍA: ANULACIONES ── */}
                         {zReport.ordersByStatus['CANCELLED'] > 0 && (
                             <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">
-                                <h3 className="font-bold underline mb-2">AUDITORÍA — ANULACIONES</h3>
+                                <h3 className="font-semibold underline mb-2">AUDITORÍA — ANULACIONES</h3>
                                 <div className="space-y-0.5">
                                     <div className="flex justify-between">
                                         <span>Órdenes anuladas hoy</span>
-                                        <span className="font-bold">{zReport.ordersByStatus['CANCELLED']}</span>
+                                        <span className="font-semibold">{zReport.ordersByStatus['CANCELLED']}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600">
+                                    <div className="flex justify-between text-capsula-ink-soft">
                                         <span>Monto anulado</span>
                                         <span>-{formatMoney(zReport.cancelledTotal ?? 0)}</span>
                                     </div>
@@ -914,19 +914,19 @@ export default function SalesHistoryPage() {
                             </div>
                         )}
 
-                        <div className="text-center text-xs text-gray-500 pt-2">
-                            <p className="font-bold">Total transacciones: {zReport.totalOrders}</p>
+                        <div className="text-center text-xs text-capsula-ink-muted pt-2">
+                            <p className="font-semibold">Total transacciones: {zReport.totalOrders}</p>
                         </div>
                         <div className="flex gap-3 mt-6 no-print">
                             <button
                                 onClick={() => exportZReportToExcel(zReport)}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold transition flex items-center justify-center gap-2"
+                                className="flex-1 bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-ink py-3 rounded font-semibold transition flex items-center justify-center gap-2"
                             >
                                 📥 Exportar a Excel
                             </button>
                             <button
                                 onClick={() => window.print()}
-                                className="flex-1 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition"
+                                className="flex-1 bg-black text-capsula-ink py-3 rounded font-semibold hover:bg-capsula-ivory-alt transition"
                             >
                                 🖨️ Imprimir
                             </button>
@@ -940,18 +940,18 @@ export default function SalesHistoryPage() {
             {/* ================================================================ */}
             {showDaySummary && daySummary && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-amber-700/60 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-gray-900 border border-[#F3EAD6] dark:border-[#3B2F15] rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-amber-400">Resumen de Cierre del Día</h2>
-                                <p className="text-sm text-gray-400 font-mono mt-0.5">{daySummary.date}</p>
+                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-[#946A1C] dark:text-[#E8D9B8]">Resumen de Cierre del Día</h2>
+                                <p className="text-sm text-capsula-ink-muted font-mono mt-0.5">{daySummary.date}</p>
                             </div>
-                            <button onClick={() => setShowDaySummary(false)} className="text-gray-500 hover:text-white font-semibold text-2xl tracking-[-0.02em]">×</button>
+                            <button onClick={() => setShowDaySummary(false)} className="text-capsula-ink-muted hover:text-capsula-ink font-semibold text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
                         {/* Ventas por canal */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Ventas por Canal</h3>
+                        <div className="bg-capsula-ivory-alt rounded-xl p-4 mb-4">
+                            <h3 className="text-xs font-semibold uppercase text-capsula-ink-muted tracking-widest mb-3">Ventas por Canal</h3>
                             <div className="space-y-1.5">
                                 {([
                                     { key: 'restaurant', label: 'Restaurante / Mesas' },
@@ -965,8 +965,8 @@ export default function SalesHistoryPage() {
                                     .filter(r => daySummary.byChannel[r.key] > 0 || daySummary.countByChannel[r.key] > 0)
                                     .map(r => (
                                         <div key={r.key} className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-300">{r.label} <span className="text-gray-500 text-xs">({daySummary.countByChannel[r.key]})</span></span>
-                                            <span className="font-bold font-mono text-white">${daySummary.byChannel[r.key].toFixed(2)}</span>
+                                            <span className="text-capsula-cream">{r.label} <span className="text-capsula-ink-muted text-xs">({daySummary.countByChannel[r.key]})</span></span>
+                                            <span className="font-semibold font-mono text-capsula-ink">${daySummary.byChannel[r.key].toFixed(2)}</span>
                                         </div>
                                     ))
                                 }
@@ -974,48 +974,48 @@ export default function SalesHistoryPage() {
                         </div>
 
                         {/* Totales */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Totales</h3>
+                        <div className="bg-capsula-ivory-alt rounded-xl p-4 mb-4">
+                            <h3 className="text-xs font-semibold uppercase text-capsula-ink-muted tracking-widest mb-3">Totales</h3>
                             <div className="space-y-1.5 text-sm">
                                 {daySummary.totalDiscounts > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">Descuentos:</span><span className="text-red-400 font-mono">-${daySummary.totalDiscounts.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span className="text-capsula-ink-muted">Descuentos:</span><span className="text-[#B04A2E] dark:text-[#EFD2C8] font-mono">-${daySummary.totalDiscounts.toFixed(2)}</span></div>
                                 )}
                                 {daySummary.totalServiceFee > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">10% Servicio:</span><span className="text-emerald-400 font-mono">+${daySummary.totalServiceFee.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span className="text-capsula-ink-muted">10% Servicio:</span><span className="text-[#2F6B4E] dark:text-[#6FB88F] font-mono">+${daySummary.totalServiceFee.toFixed(2)}</span></div>
                                 )}
                                 {daySummary.propinas > 0 && (
-                                    <div className="flex justify-between"><span className="text-gray-400">Propinas{daySummary.propinaCount > 0 ? ` (${daySummary.propinaCount})` : ''}:</span><span className="text-amber-400 font-mono">+${daySummary.propinas.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span className="text-capsula-ink-muted">Propinas{daySummary.propinaCount > 0 ? ` (${daySummary.propinaCount})` : ''}:</span><span className="text-[#946A1C] dark:text-[#E8D9B8] font-mono">+${daySummary.propinas.toFixed(2)}</span></div>
                                 )}
-                                <div className="flex justify-between pt-2 border-t border-gray-700">
-                                    <span className="font-bold text-white">Total Cobrado:</span>
-                                    <span className="font-semibold text-xl tracking-[-0.02em] text-white font-mono">${daySummary.totalUSD.toFixed(2)}</span>
+                                <div className="flex justify-between pt-2 border-t border-capsula-line">
+                                    <span className="font-semibold text-capsula-ink">Total Cobrado:</span>
+                                    <span className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink font-mono">${daySummary.totalUSD.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Divisas vs Bs */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Desglose por Moneda</h3>
+                        <div className="bg-capsula-ivory-alt rounded-xl p-4 mb-4">
+                            <h3 className="text-xs font-semibold uppercase text-capsula-ink-muted tracking-widest mb-3">Desglose por Moneda</h3>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-300">Divisas (Cash / Zelle)</span>
+                                    <span className="text-capsula-cream">Divisas (Cash / Zelle)</span>
                                     <div className="text-right">
-                                        <span className="font-bold font-mono text-blue-300">${daySummary.receivedInDivisas.toFixed(2)}</span>
-                                        <span className="text-gray-500 text-xs ml-2">{daySummary.pctDivisas.toFixed(1)}%</span>
+                                        <span className="font-semibold font-mono text-[#2A4060] dark:text-[#D1DCE9]">${daySummary.receivedInDivisas.toFixed(2)}</span>
+                                        <span className="text-capsula-ink-muted text-xs ml-2">{daySummary.pctDivisas.toFixed(1)}%</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-300">Bolívares (PDV / Móvil)</span>
+                                    <span className="text-capsula-cream">Bolívares (PDV / Móvil)</span>
                                     <div className="text-right">
-                                        <span className="font-bold font-mono text-purple-300">${daySummary.receivedInBs.toFixed(2)}</span>
-                                        <span className="text-gray-500 text-xs ml-2">{daySummary.pctBs.toFixed(1)}%</span>
+                                        <span className="font-semibold font-mono text-[#2A4060] dark:text-[#D1DCE9]">${daySummary.receivedInBs.toFixed(2)}</span>
+                                        <span className="text-capsula-ink-muted text-xs ml-2">{daySummary.pctBs.toFixed(1)}%</span>
                                     </div>
                                 </div>
                                 {/* Progress bar */}
-                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden mt-1">
-                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${daySummary.pctDivisas}%` }} />
+                                <div className="h-2 bg-capsula-navy-soft rounded-full overflow-hidden mt-1">
+                                    <div className="h-full bg-capsula-navy-deep rounded-full" style={{ width: `${daySummary.pctDivisas}%` }} />
                                 </div>
-                                <div className="flex justify-between text-[10px] text-gray-500">
+                                <div className="flex justify-between text-[10px] text-capsula-ink-muted">
                                     <span>Divisas {daySummary.pctDivisas.toFixed(0)}%</span>
                                     <span>Bs {daySummary.pctBs.toFixed(0)}%</span>
                                 </div>
@@ -1023,19 +1023,19 @@ export default function SalesHistoryPage() {
                         </div>
 
                         {/* Facturas */}
-                        <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-2">Facturas</h3>
+                        <div className="bg-capsula-ivory-alt rounded-xl p-4 mb-4">
+                            <h3 className="text-xs font-semibold uppercase text-capsula-ink-muted tracking-widest mb-2">Facturas</h3>
                             <div className="flex gap-6 text-sm">
-                                <div><span className="text-gray-400">Procesadas: </span><span className="font-bold text-white">{daySummary.totalInvoices}</span></div>
+                                <div><span className="text-capsula-ink-muted">Procesadas: </span><span className="font-semibold text-capsula-ink">{daySummary.totalInvoices}</span></div>
                                 {daySummary.invoicesCancelled > 0 && (
-                                    <div><span className="text-gray-400">Anuladas: </span><span className="font-bold text-red-400">{daySummary.invoicesCancelled}</span></div>
+                                    <div><span className="text-capsula-ink-muted">Anuladas: </span><span className="font-semibold text-[#B04A2E] dark:text-[#EFD2C8]">{daySummary.invoicesCancelled}</span></div>
                                 )}
                             </div>
                         </div>
 
                         <button
                             onClick={() => printEndOfDaySummary(daySummary)}
-                            className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2"
+                            className="w-full bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-ink py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
                         >
                             🖨️ Imprimir Resumen
                         </button>
@@ -1048,55 +1048,55 @@ export default function SalesHistoryPage() {
             {/* ================================================================ */}
             {voidTarget && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-red-800/60 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                    <div className="bg-gray-900 border border-[#F7E3DB] dark:border-[#3B1F14] rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex items-center justify-between mb-5">
                             <div>
-                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-red-400">Anular Venta</h2>
-                                <p className="text-sm text-gray-400 font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
+                                <h2 className="font-semibold text-xl tracking-[-0.02em] text-[#B04A2E] dark:text-[#EFD2C8]">Anular Venta</h2>
+                                <p className="text-sm text-capsula-ink-muted font-mono mt-0.5">{voidTarget.orderNumber} — {formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</p>
                             </div>
-                            <button onClick={() => setVoidTarget(null)} className="text-gray-500 hover:text-white font-semibold text-2xl tracking-[-0.02em]">×</button>
+                            <button onClick={() => setVoidTarget(null)} className="text-capsula-ink-muted hover:text-capsula-ink font-semibold text-2xl tracking-[-0.02em]">×</button>
                         </div>
 
-                        <div className="bg-gray-800 rounded-xl p-4 mb-5 text-sm space-y-1">
-                            <div className="flex justify-between text-gray-300">
+                        <div className="bg-capsula-ivory-alt rounded-xl p-4 mb-5 text-sm space-y-1">
+                            <div className="flex justify-between text-capsula-cream">
                                 <span>Cliente:</span><span>{voidTarget.customerName || 'Cliente General'}</span>
                             </div>
-                            <div className="flex justify-between text-gray-300">
+                            <div className="flex justify-between text-capsula-cream">
                                 <span>Cajera:</span><span>{voidTarget.createdBy?.firstName || '-'}</span>
                             </div>
                             {voidTarget.authorizedById && (
-                                <div className="flex justify-between text-gray-300">
+                                <div className="flex justify-between text-capsula-cream">
                                     <span>Autorizado por:</span><span>{voidTarget.authorizedBy?.firstName || voidTarget.authorizedByName || '-'}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-gray-300">
+                            <div className="flex justify-between text-capsula-cream">
                                 <span>Items:</span><span>{(voidTarget.items || []).length} productos</span>
                             </div>
-                            <div className="flex justify-between font-bold text-white pt-1 border-t border-gray-700">
+                            <div className="flex justify-between font-semibold text-capsula-ink pt-1 border-t border-capsula-line">
                                 <span>Total cobrado:</span><span>{formatMoney(voidTarget.totalCobrado ?? voidTarget.total)}</span>
                             </div>
                         </div>
 
                         {voidStep === 'reason' && (
                             <>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Motivo de la anulación <span className="text-red-400">*</span>
+                                <label className="block text-sm font-medium text-capsula-cream mb-2">
+                                    Motivo de la anulación <span className="text-[#B04A2E] dark:text-[#EFD2C8]">*</span>
                                 </label>
                                 <textarea
                                     value={voidReason}
                                     onChange={e => setVoidReason(e.target.value)}
                                     placeholder="Ej: Error de facturación, cliente solicitó cambio de mesa..."
                                     rows={3}
-                                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:border-red-500 focus:outline-none resize-none mb-5"
+                                    className="w-full bg-capsula-ivory-alt border border-gray-600 rounded-xl px-4 py-3 text-capsula-ink text-sm focus:border-red-500 focus:outline-none resize-none mb-5"
                                 />
                                 <div className="flex gap-3">
-                                    <button onClick={() => setVoidTarget(null)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-semibold transition-colors">
+                                    <button onClick={() => setVoidTarget(null)} className="flex-1 bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream py-3 rounded-xl font-semibold transition-colors">
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={() => setVoidStep('pin')}
                                         disabled={!voidReason.trim()}
-                                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors"
+                                        className="flex-1 bg-capsula-coral hover:bg-capsula-coral-hover disabled:opacity-40 disabled:cursor-not-allowed text-capsula-ink py-3 rounded-xl font-semibold transition-colors"
                                     >
                                         Continuar →
                                     </button>
@@ -1106,10 +1106,10 @@ export default function SalesHistoryPage() {
 
                         {voidStep === 'pin' && (
                             <>
-                                <div className="mb-4 p-3 bg-amber-900/30 border border-amber-700/40 rounded-xl text-xs text-amber-300 leading-relaxed">
+                                <div className="mb-4 p-3 bg-[#F3EAD6]/40 dark:bg-[#3B2F15]/40 border border-[#F3EAD6] dark:border-[#3B2F15] rounded-xl text-xs text-[#946A1C] dark:text-[#E8D9B8] leading-relaxed">
                                     🔐 Requiere PIN de Gerente, Auditor o Dueño. El inventario se reintegrará automáticamente.
                                 </div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">PIN de Autorización</label>
+                                <label className="block text-sm font-medium text-capsula-cream mb-2">PIN de Autorización</label>
                                 <input
                                     type="password"
                                     value={voidPin}
@@ -1118,20 +1118,20 @@ export default function SalesHistoryPage() {
                                     placeholder="••••"
                                     maxLength={8}
                                     autoFocus
-                                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest focus:border-red-500 focus:outline-none mb-1"
+                                    className="w-full bg-capsula-ivory-alt border border-gray-600 rounded-xl px-4 py-3 text-capsula-ink text-center text-2xl tracking-widest focus:border-red-500 focus:outline-none mb-1"
                                 />
-                                {voidPinError && <p className="text-red-400 text-xs mb-3 text-center">{voidPinError}</p>}
+                                {voidPinError && <p className="text-[#B04A2E] dark:text-[#EFD2C8] text-xs mb-3 text-center">{voidPinError}</p>}
                                 <div className="flex gap-3 mt-4">
                                     <button
                                         onClick={() => { setVoidStep('reason'); setVoidPin(''); setVoidPinError(''); }}
-                                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-semibold transition-colors"
+                                        className="flex-1 bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream py-3 rounded-xl font-semibold transition-colors"
                                     >
                                         ← Volver
                                     </button>
                                     <button
                                         onClick={handleVoidPinConfirm}
                                         disabled={!voidPin || voidLoading}
-                                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition-colors"
+                                        className="flex-1 bg-capsula-coral hover:bg-capsula-coral-hover disabled:opacity-40 disabled:cursor-not-allowed text-capsula-ink py-3 rounded-xl font-semibold transition-colors"
                                     >
                                         {voidLoading ? '⏳ Procesando...' : 'Autorizar Anulación'}
                                     </button>
