@@ -29,7 +29,7 @@ export async function loginAction(prevState: any, formData: FormData) {
         // Prisma no soporta mode:'insensitive' (es a nivel DB).
         const user = await prisma.user.findFirst({
             where: { email: { equals: email, mode: 'insensitive' } },
-            select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true },
+            select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true, tokenVersion: true },
         });
 
         // Comparar SIEMPRE contra un hash (real o dummy) para evitar enumeración
@@ -45,7 +45,8 @@ export async function loginAction(prevState: any, formData: FormData) {
             return { success: false, message: 'Cuenta desactivada. Contacta al admin.' };
         }
 
-        // Crear sesión segura
+        // Crear sesión segura. tokenVersion permite invalidar JWTs vivos
+        // cuando se cambia rol/permisos/password en user.actions.
         await createSession({
             id: user.id,
             email: user.email,
@@ -55,6 +56,7 @@ export async function loginAction(prevState: any, formData: FormData) {
             allowedModules: user.allowedModules ?? null,
             grantedPerms: user.grantedPerms ?? null,
             revokedPerms: user.revokedPerms ?? null,
+            tokenVersion: user.tokenVersion,
         });
 
         // Retornar datos reales del usuario para que el cliente sincronice el store Zustand

@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/server/db'; // Correct path from previous files
-import { getSession } from '@/lib/auth';
+import { getSession, createSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { revalidatePath } from 'next/cache';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
@@ -115,7 +115,10 @@ export async function updateUserRole(userId: string, newRole: string) {
     try {
         await prisma.user.update({
             where: { id: userId },
-            data: { role: newRole as any }, // Cast as any or import UserRole enum if available
+            data: {
+                role: newRole as any, // Cast as any or import UserRole enum if available
+                tokenVersion: { increment: 1 }, // Invalida JWT vivos del target
+            },
         });
 
         revalidatePath('/dashboard/config/roles');
@@ -155,7 +158,13 @@ export async function toggleUserStatus(userId: string, isActive: boolean) {
     try {
         await prisma.user.update({
             where: { id: userId },
-            data: { isActive },
+            data: {
+                isActive,
+                // Bumpea siempre. Al desactivar invalida JWT vivos; al
+                // reactivar también suma 1, sin efecto sobre sesiones (no
+                // había ninguna activa porque la cuenta estaba inactiva).
+                tokenVersion: { increment: 1 },
+            },
         });
 
         revalidatePath('/dashboard/config/roles');
@@ -197,12 +206,22 @@ export async function changePasswordAction(currentPassword: string, newPassword:
             return { success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres' };
         }
 
-        // 4. Actualizar contraseña con hash PBKDF2-SHA256
+        // 4. Actualizar contraseña con hash PBKDF2-SHA256 + bumpear
+        // tokenVersion para invalidar JWTs vivos. Re-emitimos la cookie con
+        // la nueva versión para que el propio usuario que cambió su password
+        // NO sea expulsado. Otras sesiones del mismo user (otros dispositivos)
+        // sí quedan invalidadas porque conservan el tokenVersion antiguo.
         const hashed = await hashPassword(newPassword);
-        await prisma.user.update({
+        const updated = await prisma.user.update({
             where: { id: session.id },
-            data: { passwordHash: hashed },
+            data: {
+                passwordHash: hashed,
+                tokenVersion: { increment: 1 },
+            },
+            select: { tokenVersion: true },
         });
+
+        await createSession({ ...session, tokenVersion: updated.tokenVersion });
 
         return { success: true, message: 'Contraseña actualizada correctamente' };
 
@@ -235,6 +254,7 @@ export async function updateUserModules(userId: string, allowedModules: string[]
             where: { id: userId },
             data: {
                 allowedModules: allowedModules ? JSON.stringify(allowedModules) : null,
+                tokenVersion: { increment: 1 }, // Invalida JWT vivos del target
             },
         });
 
@@ -314,6 +334,7 @@ export async function updateUserPerms(
             data: {
                 grantedPerms: grantedPerms && grantedPerms.length > 0 ? JSON.stringify(grantedPerms) : null,
                 revokedPerms: revokedPerms && revokedPerms.length > 0 ? JSON.stringify(revokedPerms) : null,
+                tokenVersion: { increment: 1 }, // Invalida JWT vivos del target
             },
         });
 
@@ -480,7 +501,10 @@ export async function adminResetPasswordAction(userId: string, newPassword: stri
 
         await prisma.user.update({
             where: { id: userId },
-            data: { passwordHash },
+            data: {
+                passwordHash,
+                tokenVersion: { increment: 1 }, // Invalida JWT vivos del target
+            },
         });
 
         revalidatePath('/dashboard/usuarios');

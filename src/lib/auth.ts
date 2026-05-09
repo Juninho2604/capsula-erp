@@ -39,6 +39,13 @@ export interface SessionPayload {
     grantedPerms?: string | null;
     /** JSON array de PERM keys revocados del rol base del usuario */
     revokedPerms?: string | null;
+    /**
+     * Versión del token. Debe coincidir con User.tokenVersion en BD; al
+     * cambiar rol/permisos/password se incrementa el campo en BD y los JWT
+     * con versión vieja quedan inválidos. `undefined` se acepta por
+     * compatibilidad con sesiones emitidas antes de PR 4.
+     */
+    tokenVersion?: number;
 }
 
 export async function encrypt(payload: SessionPayload) {

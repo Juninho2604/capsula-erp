@@ -89,6 +89,7 @@ model User {
   allowedModules String?  // JSON array de módulos permitidos (null = acceso por rol)
   grantedPerms  String?   // JSON array de PERM keys que amplían el rol (ej: ["VOID_ORDER"])
   revokedPerms  String?   // JSON array de PERM keys revocados del rol base (ej: ["EXPORT_SALES"])
+  tokenVersion  Int       @default(0) // Se incrementa al cambiar rol/permisos/password para invalidar JWTs vivos
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
