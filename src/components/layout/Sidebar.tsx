@@ -214,13 +214,23 @@ function defaultSubGroupsState(): Record<string, boolean> {
     return acc;
 }
 
-// ── localStorage ───────────────────────────────────────────────────────────────
+// ── sessionStorage ─────────────────────────────────────────────────────────────
+// Usamos sessionStorage (no localStorage) deliberadamente: queremos que cada
+// nuevo login arranque con todos los subgrupos cerrados. sessionStorage se
+// limpia al cerrar la pestaña/navegador, así que la siguiente sesión empieza
+// fresca; pero durante la sesión activa el usuario conserva sus subgrupos
+// abiertos al navegar.
 
-const STORAGE_KEY = 'capsula-sidebar-v1';
+const STORAGE_KEY = 'kpsula-sidebar-v2';
 
 function loadState(): { sections: Record<string, boolean>; subgroups: Record<string, boolean> } | null {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        // Cleanup: la versión anterior persistía en localStorage con key
+        // 'capsula-sidebar-v1'. Eliminamos restos para no acumular basura.
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('capsula-sidebar-v1');
+        }
+        const raw = sessionStorage.getItem(STORAGE_KEY);
         return raw ? JSON.parse(raw) : null;
     } catch { return null; }
 }
@@ -229,7 +239,7 @@ function persistState(
     sections: Record<string, boolean>,
     subgroups: Record<string, boolean>,
 ) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sections, subgroups })); } catch {}
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ sections, subgroups })); } catch {}
 }
 
 // ── Chevron icon ───────────────────────────────────────────────────────────────
@@ -597,40 +607,10 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
         persistState(sectionsState, subGroupsState);
     }, [sectionsState, subGroupsState]);
 
-    // Auto-expandir únicamente la sección (y subgrupo) que contiene el módulo activo.
-    // Usa activeModuleId — ya es el único match, no puede abrir secciones extra por falso positivo.
-    useEffect(() => {
-        if (!activeModuleId) return;
-
-        let foundSection: string | null = null;
-        let foundSubGroup: string | null = null;
-
-        const allSections = orphanSection ? [...SIDEBAR_TREE, orphanSection] : SIDEBAR_TREE;
-        outer: for (const section of allSections) {
-            for (const item of section.items) {
-                if (item.kind === 'link' && item.moduleId === activeModuleId) {
-                    foundSection = section.id;
-                    break outer;
-                }
-                if (item.kind === 'subgroup' && item.items.includes(activeModuleId)) {
-                    foundSection = section.id;
-                    foundSubGroup = item.id;
-                    break outer;
-                }
-            }
-        }
-
-        if (foundSection) {
-            setSectionsState(prev =>
-                prev[foundSection!] ? prev : { ...prev, [foundSection!]: true },
-            );
-        }
-        if (foundSubGroup) {
-            setSubGroupsState(prev =>
-                prev[foundSubGroup!] ? prev : { ...prev, [foundSubGroup!]: true },
-            );
-        }
-    }, [activeModuleId, orphanSection]);
+    // (Eliminado en PR A) Antes había aquí un useEffect que auto-expandía la
+    // sección y subgrupo del módulo activo cada vez que cambiaba la ruta.
+    // Causaba que los subgrupos se abrieran solos al navegar — comportamiento
+    // no deseado: el usuario quiere control total sobre qué tiene abierto.
 
     const toggleSection  = (id: string) =>
         setSectionsState(prev => ({ ...prev, [id]: !prev[id] }));
