@@ -3,6 +3,7 @@
 import prisma from '@/server/db';
 import { createSession, deleteSession } from '@/lib/auth';
 import { verifyPassword } from '@/lib/password';
+import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { redirect } from 'next/navigation';
 
 // Hash con formato válido (saltHex:hashHex) que nunca matchea ningún password
@@ -20,6 +21,28 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     if (!email || !password) {
         return { success: false, message: 'Falta email o contraseña' };
+    }
+
+    // Rate limit: 5 intentos por (IP + email) cada 5 min. Usa la combo para
+    // evitar que un atacante bloquee la cuenta de un user legítimo solo
+    // martillando con el email del víctima desde otra IP.
+    try {
+        const ip = await getClientIp();
+        const rl = await consumeRateLimit({
+            key: `login:${ip}:${email}`,
+            max: 5,
+            windowSeconds: 300,
+        });
+        if (!rl.allowed) {
+            return {
+                success: false,
+                message: `Demasiados intentos. Intenta en ${rl.retryAfterSeconds}s.`,
+            };
+        }
+    } catch (err) {
+        // Si el rate-limit store falla, NO bloquear login (degradado seguro).
+        // Solo loguear para detectar el problema.
+        console.error('[rate-limit] consumeRateLimit failed:', err);
     }
 
     try {

@@ -2489,3 +2489,23 @@ model SupplierItemPriceHistory {
   @@index([effectiveFrom])
   @@index([supplierId, inventoryItemId])
 }
+
+// ============================================================================
+// RATE LIMITING (PR 2 — hardening de auth)
+// ============================================================================
+
+/// Buckets de rate limiting con sliding fixed-window.
+/// La key es un identificador del recurso/actor (ej. "login:ip:email", "pin-waiter:ip").
+/// windowStart es el inicio del intervalo redondeado al ancho de ventana.
+/// Cleanup periódico vía DELETE WHERE expiresAt < NOW (manual o cron).
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([key, windowStart])
+  @@index([expiresAt])
+}

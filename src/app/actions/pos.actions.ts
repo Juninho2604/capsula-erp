@@ -16,6 +16,7 @@ import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
 import { updateSessionCashier } from '@/lib/auth';
+import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 
 // ============================================================================
 // TIPOS
@@ -849,6 +850,25 @@ export async function validateManagerPinAction(pin: string): Promise<ActionResul
             return { success: false, message: 'PIN debe tener al menos 4 dígitos' };
         }
 
+        // Rate limit: 15 intentos por IP cada 5 min. Cubre brute-force del
+        // PIN de manager sin bloquear errores legítimos al teclear.
+        try {
+            const ip = await getClientIp();
+            const rl = await consumeRateLimit({
+                key: `pin-manager:${ip}`,
+                max: 15,
+                windowSeconds: 300,
+            });
+            if (!rl.allowed) {
+                return {
+                    success: false,
+                    message: `Demasiados intentos. Intenta en ${rl.retryAfterSeconds}s.`,
+                };
+            }
+        } catch (err) {
+            console.error('[rate-limit] manager pin failed:', err);
+        }
+
         const candidates = await prisma.user.findMany({
             where: {
                 role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
@@ -891,6 +911,24 @@ export async function validateCashierPinAction(pin: string): Promise<ActionResul
     try {
         if (!pin || pin.length < 4) {
             return { success: false, message: 'PIN debe tener al menos 4 dígitos' };
+        }
+
+        // Rate limit: 15 intentos por IP cada 5 min.
+        try {
+            const ip = await getClientIp();
+            const rl = await consumeRateLimit({
+                key: `pin-cashier:${ip}`,
+                max: 15,
+                windowSeconds: 300,
+            });
+            if (!rl.allowed) {
+                return {
+                    success: false,
+                    message: `Demasiados intentos. Intenta en ${rl.retryAfterSeconds}s.`,
+                };
+            }
+        } catch (err) {
+            console.error('[rate-limit] cashier pin failed:', err);
         }
 
         const candidates = await prisma.user.findMany({
