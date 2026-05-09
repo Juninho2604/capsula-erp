@@ -49,16 +49,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     enabledByDefault: true,
     sortOrder: 0,
   },
-  {
-    id: 'estadisticas',
-    label: 'Estadísticas',
-    description: 'Análisis en tiempo real personalizado por rol — ventas, cocina, inventario, auditoría',
-    icon: '📈',
-    href: '/dashboard/estadisticas',
-    section: 'operations',
-    enabledByDefault: true,
-    sortOrder: 5,
-  },
+  // Nota: el módulo 'estadisticas' fue absorbido por '/dashboard' (PR #87/#88).
+  // La entrada del registry se eliminó para evitar redirect loop:
+  // /dashboard/home → primer módulo visible (estadisticas) → /dashboard/estadisticas
+  // → redirect a /dashboard → primer módulo visible (estadisticas) → loop.
   {
     id: 'inventory_daily',
     label: 'Inventario Diario',
@@ -548,7 +542,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
  */
 export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   dashboard: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'CHEF', 'AREA_LEAD'],
-  estadisticas: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CHEF', 'KITCHEN_CHEF', 'CASHIER', 'WAITER'],
+  // 'estadisticas' eliminado: absorbido por '/dashboard' en PR #87/#88. La
+  // página redirect a /dashboard, dejarlo en este map causaba redirect loop
+  // para CASHIER/WAITER (su primer módulo visible era estadisticas).
   inventory_daily: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   inventory: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   inventory_count: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'],
