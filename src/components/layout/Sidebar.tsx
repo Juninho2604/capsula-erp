@@ -46,7 +46,6 @@ const SIDEBAR_TREE: SectionDef[] = [
         id: 'operations', label: 'Operaciones', scheme: 'coral',
         items: [
             { kind: 'link', moduleId: 'dashboard' },
-            { kind: 'link', moduleId: 'estadisticas' },
             {
                 kind: 'subgroup', id: 'sg-inventario', label: 'Inventario', icon: '📦',
                 items: ['inventory', 'inventory_daily', 'inventory_count', 'audits', 'transfers', 'inventory_history'],
