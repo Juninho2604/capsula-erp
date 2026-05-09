@@ -5393,3 +5393,605 @@ La pre-cuenta es el documento informativo que el cliente ve **antes de pagar**. 
 - `src/components/pos/SubAccountPanel.tsx`
 
 Tests: 81/81 ✓ — `tsc --noEmit` exit 0.
+
+## 28. Multi-tenant — Fase 1 schema + Fase 2.A + Fase 3 dormante (2026-05-09)
+
+Conversión de Capsula de single-tenant (Shanklish solo) a multi-tenant
+SaaS. Esta sesión cubrió **toda la fase de schema** y la
+**infraestructura preparatoria** de la Fase 3, sin activar todavía el
+routing por subdominio (eso espera al dominio kpsula.app).
+
+### 28.1 Modelo Tenant (PR #70)
+
+Nuevo modelo raíz multi-tenant. La tabla queda creada y sembrada con
+el primer tenant para Shanklish:
+
+```prisma
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // + relaciones inversas a los 42 modelos multi-tenant
+}
+```
+
+Seed inicial (id literal fijo para que backfills posteriores referencien sin SELECT):
+
+```sql
+INSERT INTO "Tenant" (id, slug, name, ...)
+VALUES ('tnt_shanklish_caracas', 'shanklish', 'Shanklish Caracas', ...);
+```
+
+### 28.2 Schema migrations en lotes (PRs #72-77)
+
+42 modelos recibieron columna `tenantId String NOT NULL DEFAULT 'tnt_shanklish_caracas'`,
+FK a `Tenant(id)` con `ON DELETE RESTRICT`, y un índice `@@index([tenantId])`.
+
+Los lotes se aplicaron en este orden por riesgo creciente:
+
+- **Lote 1 (PR #72)** — 6 modelos no críticos: MenuCategory, MenuItem,
+  Recipe, Supplier, ExpenseCategory, ProductFamily.
+- **Lote 1.C (PR #73)** — backfill UPDATE de las 6 anteriores.
+- **Lote 1.D-α (PR #74)** — 10 modelos bajo riesgo (catálogos
+  secundarios): InventoryItem, MenuModifierGroup, MenuModifier,
+  AuditLog, ExchangeRate, GameType, WristbandPlan, QueueTicket,
+  SkuCreationTemplate, BroadcastMessage. Patrón cambió: schema +
+  backfill juntos en una sola migration atómica.
+- **Lote 1.D-β (PR #75)** — 12 modelos riesgo medio
+  (administrativos/financieros): ProductionOrder, ProteinProcessing,
+  Requisition, DailyInventory, InventoryLoan, InventoryAudit,
+  PurchaseOrder, Expense, CashRegister, AccountPayable,
+  AccountPayment, InventoryCycle.
+- **Lote 1.D-γ (PR #76)** — 14 modelos POS crítico: User, Branch,
+  Area, ServiceZone, TableOrStation, OpenTab, SalesOrder,
+  SalesOrderItem, Waiter, GameStation, GameSession, InvoiceCounter,
+  SystemConfig, Reservation. Aplicado en ventana de restaurante
+  cerrado.
+
+Decisión sobre uniques globales: `SystemConfig.key`,
+`InvoiceCounter.channel`, `MenuItem.sku`, `User.email`, etc. **mantienen
+su unique GLOBAL** (no compuesto con tenantId). En Fase 2.B se cambiará
+a `@@unique([tenantId, key])` cuando entre el segundo tenant. Mientras
+solo Shanklish opera, no hay colisión.
+
+### 28.3 Fase 2.A — NOT NULL + DEFAULT (PR #77)
+
+Tras tener todas las filas pobladas, se aplicó `SET NOT NULL` y
+`SET DEFAULT 'tnt_shanklish_caracas'` en los 42 modelos. El DEFAULT es
+**clave**: el código actual no setea `tenantId` en sus `create/update`,
+pero Postgres lo aplica automático. Sin DEFAULT, todos los inserts
+fallarían.
+
+### 28.4 P3018 — recovery manual (incidente operativo)
+
+El primer intento de Fase 2.A falló con `Database error code: 23502`
+(Postgres null constraint violation): 2 filas en AuditLog y CashRegister
+se crearon DESPUÉS del backfill y antes del NOT NULL. Como Vercel
+ejecuta `prisma migrate deploy` y la migration falló mid-flight, el
+registro `_prisma_migrations` quedó marcado como fallido y bloqueó
+todos los deploys siguientes.
+
+Recovery manual aplicado vía `psql` directo al VPS:
+
+1. UPDATE de las 2 filas con NULL.
+2. Aplicación manual de los 84 ALTERs (SET DEFAULT + SET NOT NULL × 42).
+3. INSERT en `_prisma_migrations` marcando la migration como `finished`.
+
+Lección: en futuros pasos similares (especialmente Fase 2.B uniques),
+**combinar UPDATE + ALTER en una sola migration atómica** y verificar
+conteos NULL en TODAS las tablas (no solo las críticas) antes del
+NOT NULL.
+
+### 28.5 Fase 3 dormante (PRs #83, #84, #85)
+
+Tres PRs que añaden **infraestructura preparatoria** sin tocar
+runtime. Ningún archivo en `src/app/` ni `src/server/` los importa
+todavía. Se activan en el momento de entrar a multi-tenant pleno
+(post-compra de kpsula.app + DNS wildcard + restaurante cerrado).
+
+#### 28.5.1 Tenant context resolver (PR #83)
+
+`src/lib/tenant-context.ts` (puro, testable):
+- `extractTenantSlugFromHost(host)` → devuelve "shanklish" para
+  "shanklish.kpsula.app", null para "kpsula.app" o "www.kpsula.app".
+- Constantes `FALLBACK_TENANT_SLUG = 'shanklish'`,
+  `FALLBACK_TENANT_ID = 'tnt_shanklish_caracas'`.
+- ROOT_DOMAINS: `['kpsula.app', 'localhost', 'vercel.app']`.
+
+`src/lib/tenant-context.server.ts` (server-only):
+- `resolveTenantContext()` — orden: subdomain del host → JWT
+  `session.tenantId` → fallback Shanklish. Devuelve siempre un
+  TenantContext (nunca null).
+
+#### 28.5.2 defineAction wrapper (PR #84)
+
+`src/lib/define-action.ts` — wrapper para Server Actions que envuelve
+auth + permission check + tenant context en una sola declaración tipada:
+
+```typescript
+export const myAction = defineAction({
+  permission: PERM.MANAGE_USERS,
+  handler: async ({ user, tenant }, args) => {
+    // user.id y tenant.tenantId garantizados, tipados
+    return { success: true };
+  },
+});
+```
+
+Beneficios cuando se active Fase 3:
+- Imposible declarar action sin guard (no compila).
+- ActionContext { user, tenant } inyectado uniformemente.
+- Manejo uniforme de errores no controlados.
+
+7 tests cubren: sin sesión, permiso ok, permiso denegado, user
+inactivo, excepción capturada, args paso, sin permiso requerido.
+
+#### 28.5.3 Prisma client tenant extension (PR #85)
+
+`src/lib/prisma-tenant-client.ts` — `withTenant(tenantId)` devuelve un
+cliente Prisma extendido que inyecta automáticamente `tenantId`:
+
+- **Read ops** (findMany, findFirst, count, aggregate, groupBy,
+  updateMany, deleteMany): añade `where.tenantId = X`.
+- **Write ops** (create, createMany, createManyAndReturn): añade
+  `data.tenantId = X` (a menos que el caller lo pase explícitamente).
+- **upsert**: tenantId en where + create. update no se toca.
+- **NO se aplica a**: findUnique, update, delete específicos. Mientras
+  los uniques sean globales, Prisma no acepta where compuesto en estas
+  ops. Se cubrirán en Fase 2.B.
+
+42 modelos tenant-aware listados en `TENANT_MODELS` Set. Lógica de
+inyección extraída como función pura `injectTenantInArgs()` para tests
+sin instanciar Prisma (16 tests cubren todas las operaciones).
+
+### 28.6 Vercel build script (PR #71)
+
+`scripts/vercel-build.sh` — wrapper que ejecuta `prisma migrate deploy`
+SOLO si `VERCEL_ENV=production`. Razón: Vercel construye un Preview
+Deployment por cada PR y, sin esta protección, abrir un PR aplicaría
+migraciones a la BD productiva inmediatamente (porque Vercel-DATABASE_URL
+apunta a producción).
+
+Con este script, las migrations corren únicamente cuando hay merge a
+main. Los previews siguen sirviendo como QA visual del UI sin tocar BD.
+
+### 28.7 Estado al cierre de la sesión
+
+- 42 modelos con `tenantId NOT NULL DEFAULT 'tnt_shanklish_caracas'`.
+- Tabla `Tenant` con 1 fila (Shanklish).
+- Cliente Prisma principal sigue intacto (sin extensión).
+- Ningún server action importa los módulos Fase 3 todavía.
+- Sitio operó normal durante todos los merges (cero downtime).
+
+### 28.8 Pendientes Fase 2.B y activación de Fase 3
+
+- **Fase 2.B**: cambiar uniques globales a compuestos
+  `(tenantId, X)` en User.email, MenuItem.sku, Supplier.code,
+  ProductFamily.code, GameType.code, GameStation.code, WristbandPlan.code,
+  Branch.code, SystemConfig.key, InvoiceCounter.channel. Refactor
+  acompañante de `findUnique → findFirst` en código existente. Hacer
+  con restaurante cerrado.
+- **Activación Fase 3**: middleware que importa
+  `resolveTenantContext()`, migración gradual de actions al
+  `defineAction` wrapper, conexión del cliente extendido. Requiere
+  dominio kpsula.app + DNS wildcard configurado.
+
+---
+
+## 29. Hardening de auth — 5 críticos resueltos (2026-05-09)
+
+Audit inicial de auth identificó 6 bugs críticos. Esta sesión cerró
+los 5 que requerían cambios de código (#1, #2, #4, #5, #6); el #3
+(plain-text password fallback) se eliminará tras correr el script de
+auditoría contra la BD productiva (PR #67 ya creado).
+
+### 29.1 PR 1 v2 — JWT_SECRET hardening con fallback degradado (PR #78)
+
+Antes:
+```ts
+const SECRET_KEY = process.env.JWT_SECRET || 'shanklish-super-secret-key-2024';
+```
+
+El fallback hardcodeado era una llave maestra latente.
+
+Después:
+```ts
+function getSecretKey(): Uint8Array {
+    const envSecret = process.env.JWT_SECRET;
+    if (envSecret && envSecret.length >= 32) {
+        return new TextEncoder().encode(envSecret);
+    }
+    // Fallback DEGRADADO con warning, no throw (un throw rompería el
+    // sitio si la env var falla en deploy).
+    if (!secretWarningEmitted) {
+        secretWarningEmitted = true;
+        console.warn('[auth] WARNING: JWT_SECRET missing or shorter than 32 chars...');
+    }
+    return new TextEncoder().encode(FALLBACK_SECRET);
+}
+```
+
+**Lección operativa**: el primer intento (PR #66 original) tiraba `throw`
+si JWT_SECRET no existía. Eso rompió producción al desplegar. Hubo que
+hacer hotfix revert (#69). El v2 (#78) usa warning + fallback,
+imposible de romper sitio.
+
+### 29.2 Login sin enumeración de emails (PR #78)
+
+Antes:
+- "Credenciales inválidas (usuario no existe)" si email no existe.
+- "Contraseña incorrecta" si password mal.
+
+Después: mensaje único `"Credenciales inválidas"` en ambos casos +
+`DUMMY_HASH` que ejecuta PBKDF2 también cuando el user no existe →
+latencia idéntica → cierra enumeration por timing.
+
+### 29.3 Timing-safe hash compare (PR #78)
+
+`src/lib/password.ts` ahora usa `timingSafeEqualString()` en lugar de
+`===` para comparar hashes. Aplica tanto en la rama PBKDF2 como en el
+fallback plain-text legacy (este último se eliminará en script futuro).
+
+### 29.4 Invariantes OWNER (PR #68)
+
+Cierra 5 vectores de escalada/lockout en CRUD de usuarios.
+
+`src/lib/permissions/owner-invariants.ts` (nuevo) con helpers:
+- `assertCanModifyOwner(actor, target)`: solo OWNER puede modificar a
+  otro OWNER. Antes un ADMIN_MANAGER podía degradar al OWNER.
+- `assertNotSelfRoleChange(actor, target)`: nadie puede cambiarse su
+  propio rol.
+- `assertNotSelfDeactivate(actor, target, nextActive)`: nadie puede
+  desactivar su propia cuenta.
+- `assertNotLastOwnerDegrade(target, newRole)`: bloquea degradar al
+  último OWNER activo (countActiveOwners ≤ 1).
+- `assertNotLastOwnerDeactivate(target, nextActive)`: ídem para
+  desactivar.
+
+Aplicados en 8 mutations de `user.actions.ts`: updateUserRole,
+toggleUserStatus, updateUserModules, updateUserPerms, updateUserPin,
+updateUserNameAction, adminResetPasswordAction, createUserAction. La
+última también valida que solo OWNER pueda crear OWNER.
+
+### 29.5 tokenVersion — invalidación de JWT al cambiar rol (PR #81)
+
+Antes: si OWNER cambiaba el rol/permisos/password de un user, el JWT
+de ese user vivía hasta 24h con el rol viejo.
+
+Schema:
+```prisma
+model User {
+  // ...
+  tokenVersion Int @default(0)
+}
+```
+
+Migration trivial (1 ALTER con DEFAULT 0). Cero riesgo de NULL race.
+
+Lógica:
+- `SessionPayload.tokenVersion?: number` (opcional para compat con
+  sesiones pre-PR4).
+- `checkActionPermission` valida `session.tokenVersion < dbUser.tokenVersion`
+  → "Sesión expirada". `undefined` se acepta (compat).
+- `loginAction` emite el `tokenVersion` actual en el JWT.
+- 6 funciones bumpean `tokenVersion: { increment: 1 }` en sus updates:
+  updateUserRole, toggleUserStatus, updateUserModules, updateUserPerms,
+  adminResetPasswordAction. La sexta (`changePasswordAction`) re-emite
+  la cookie con la nueva versión para que el propio user que cambia su
+  clave NO sea expulsado.
+
+### 29.6 Rate limiting — login + PIN (PR #82)
+
+Schema:
+```prisma
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([key, windowStart])
+  @@index([expiresAt])
+}
+```
+
+Helper `src/lib/rate-limit.ts`:
+- `consumeRateLimit({ key, max, windowSeconds })` — UPSERT atómico,
+  devuelve `{ allowed, remaining, retryAfterSeconds }`. Sliding
+  fixed-window.
+- `getClientIp()` — extrae IP de `x-forwarded-for` (Vercel y nginx).
+- `cleanupExpiredRateLimitBuckets()` — para cron futuro.
+
+Aplicado en 4 puntos:
+- `loginAction`: 5 intentos por (IP, email) cada 5 min.
+- `validateWaiterPinAction`: 15 intentos por IP cada 5 min.
+- `validateManagerPinAction`: 15 por IP cada 5 min.
+- `validateCashierPinAction`: 15 por IP cada 5 min.
+
+Combo IP+email en login evita que atacante bloquee cuenta de víctima
+desde otra IP. A 15 intentos/5min, brute-forcear PIN de 4 dígitos
+toma ~55h en lugar de segundos.
+
+**Degradación segura**: si la BD falla al `consumeRateLimit`, el código
+LOGUEA pero NO bloquea login/PIN. Filosofía: mejor permitir auth con
+rate-limit caído que tirar todo el sitio.
+
+### 29.7 Tests adicionales y script de auditoría (PR #67)
+
+- `src/lib/permissions/has-permission.test.ts`: +8 tests cubriendo
+  `assertPermission` (lanza Error 403), `revokedPerms` malformado,
+  combinatorios reales (granted+revoked+allowedModules). Total 70 tests.
+- `scripts/audit-credentials.ts`: read-only audit que detecta
+  plain-text en `User.passwordHash`, `User.pin`, `Waiter.pin`. Flaggea
+  PINs <4 chars y duplicados por branch. NO imprime ningún valor, solo
+  conteos. Pendiente: ejecutarlo contra BD productiva.
+
+---
+
+## 30. Rebrand visible CÁPSULA → KPSULA (2026-05-09)
+
+PR #86. Cambio del texto visible al usuario en preparación para el
+dominio `kpsula.app` (no comprado todavía, pero decidido).
+
+### 30.1 Lo que SÍ se cambió
+
+10 archivos editados:
+
+| Archivo | Cambio |
+|---|---|
+| `src/components/ui/CapsulaLogo.tsx` | Wordmark "CÁPSULA" → "KPSULA" |
+| `src/components/layout/Navbar.tsx` | Texto del header |
+| `src/components/layout/HelpPanel.tsx` | Title + footer |
+| `src/components/layout/NotificationBell.tsx` | Footer "KPSULA · Alertas..." |
+| `src/components/marketing/AuroraNav.tsx` y `AuroraFooter.tsx` | aria-label + copyright |
+| `src/config/branding.ts` | name='KPSULA', taglineShort, domain='kpsula.app' |
+| `src/hooks/useBranding.ts` | Default tenant slug 'capsula' → 'kpsula' |
+| `src/app/layout.tsx` | Meta title + keywords |
+| `src/config/social-brand.ts` | Hashtags, handles, URLs, copy |
+
+### 30.2 Lo que NO se cambió (intencional)
+
+- **Tokens CSS** `bg-capsula-navy`, `text-capsula-ink`, `border-capsula-line`,
+  etc. (~500 referencias en todo el codebase). Refactor masivo sin valor
+  visible para el usuario. Son nombres internos del sistema de diseño.
+- **localStorage keys** `capsula-sidebar-v1`, `capsula_dismissed_stock_alerts`.
+  Cambiarlas haría que users pierdan estado de UI guardado.
+  (Nota: en PR #89 sí se migró a `kpsula-sidebar-v2` en sessionStorage,
+  pero por otra razón — ver §32.)
+- **Identificador exportado** `CAPSULA_BRAND` en `branding.ts`.
+  Importado en muchos archivos; renombrarlo no aporta nada visible.
+- **`package.json` name** `shanklish-erp`. No es 'capsula'.
+
+Filosofía: la marca visible cambia a KPSULA pero los tokens técnicos
+internos siguen siendo `capsula-*` (igual que Twitter mantiene clases
+`tw-*` aunque ahora sea X).
+
+---
+
+## 31. Dashboard unificado — absorbe /dashboard/estadisticas (2026-05-09)
+
+PRs #87 (additive) y #88 (destructivo). El usuario notó que Dashboard
+y Estadísticas tenían 40-50% de solapamiento en KPIs (ventas hoy,
+órdenes, ticket promedio, cuentas abiertas, top productos, stock bajo,
+anulaciones).
+
+### 31.1 Decisión arquitectónica
+
+Fusionar TODO en `/dashboard` (la URL raíz). Eliminar
+`/dashboard/estadisticas`. Razón: la URL `/dashboard` es el destino
+natural; el sidebar queda más limpio con un solo ítem "Inicio".
+
+### 31.2 PR #87 — additive
+
+Nuevo componente `src/components/dashboard/RoleBasedSections.tsx` con 4
+vistas según rol:
+
+- `AdminView` (OWNER, ADMIN_MANAGER): métodos de pago, top productos,
+  descuentos, anulaciones.
+- `OpsView` (OPS_MANAGER, AREA_LEAD): métodos pago + top productos
+  compactos.
+- `ChefView` (CHEF, KITCHEN_CHEF): KPIs cocina, pedidos pendientes,
+  producción del día.
+- `AuditorView` (AUDITOR): KPIs auditoría, descuentos, anulaciones,
+  ajustes.
+
+CASHIER y WAITER no ven el RoleBasedSections (siguen redirigidos al POS
+desde la page principal).
+
+`/dashboard/page.tsx` importa `getEstadisticasAction()` adicional y
+renderiza `<RoleBasedSections>` entre Stats Grid y Low Stock Alert
+Table.
+
+Estilo: Minimal Navy (tokens capsula-*, 4 tonos sutiles
+ok/warn/danger/info, sin emojis en chrome, font-semibold).
+
+### 31.3 PR #88 — destructivo
+
+- `src/app/dashboard/estadisticas/page.tsx` → 16 líneas con
+  `redirect('/dashboard')`. Bookmarks externos siguen funcionando.
+- `src/components/layout/Sidebar.tsx` → eliminado item
+  `'estadisticas'` del grupo Operations.
+- `src/app/dashboard/page.tsx` → eliminado QuickAction "Estadísticas"
+  + import TrendingUp.
+
+Stats neto: −666 líneas (page de estadísticas) + 14 líneas (redirect).
+Limpieza ~650 líneas.
+
+`modules-registry.ts` mantiene la entrada del módulo `estadisticas`
+como código muerto (no estorba; auditarlo en limpieza separada).
+
+---
+
+## 32. Sidebar + Home + Navbar icon (2026-05-09)
+
+Paquete de UX: launchpad role-based + sidebar siempre cerrado.
+
+### 32.1 Sidebar siempre cerrado al login (PR #89)
+
+Bug: los subgrupos del sidebar (sg-inventario, sg-produccion, etc.) se
+abrían solos al iniciar sesión y al navegar.
+
+Causa: un `useEffect` (líneas 600-633 antes) auto-expandía la sección
+y subgrupo del módulo activo cada vez que cambiaba la ruta.
+
+Solución:
+
+1. **Eliminado** el useEffect de auto-expand. El sidebar es 100%
+   manual: solo el usuario abre subgrupos.
+2. **localStorage → sessionStorage** para persistir state. Cada nuevo
+   login arranca con todo cerrado (sessionStorage se limpia al cerrar
+   navegador), pero durante la sesión activa conserva lo que el user
+   abrió manualmente.
+3. **Key migrada**: `'capsula-sidebar-v1'` → `'kpsula-sidebar-v2'`.
+   `loadState()` también limpia la key legacy en localStorage para no
+   acumular residuos.
+
+### 32.2 Página /dashboard/home con atajos por rol (PR #90)
+
+Nueva ruta tipo "launchpad" con 2-5 botones grandes según rol del
+user. Diseño Minimal Navy.
+
+Estructura:
+- Saludo: "Hola, [nombre]" con nombre en `capsula-coral`.
+- Subtítulo neutro: "Bienvenido a tu espacio" (sin nombrar el rol).
+- Grid responsive (1 col mobile, 2 cols desktop) con cards-link.
+
+Atajos por rol (matriz `SHORTCUTS_BY_ROLE`):
+
+| Rol | Primary (grande) | Secundarios |
+|---|---|---|
+| OWNER, ADMIN_MANAGER | Dashboard ejecutivo | POS Restaurante, Inventario, Finanzas, Producción |
+| OPS_MANAGER, AREA_LEAD | POS Restaurante | Inventario, Producción, Dashboard |
+| CHEF, KITCHEN_CHEF | Comandera Cocina | Producción, Recetas |
+| CASHIER | **Ir al POS** (gigante) | Control de Caja, Historial Ventas |
+| WAITER | **POS Mesero** (gigante) | Vista Mesas |
+| AUDITOR | Auditorías | Historial Ventas, Dashboard |
+
+Botones marcados como `primary` ocupan `col-span-2` y son ~40% más
+grandes (ícono 96px vs 56px, título text-3xl vs text-lg). Pensado para
+cajeros/meseros: su botón principal es enorme y fácil de tocar en
+tablet.
+
+### 32.3 Ícono Home en navbar (PR #91)
+
+Añadido `<Link href="/dashboard/home">` con ícono lucide `Home` en el
+navbar, lado IZQUIERDO (después del hamburger mobile, antes del nombre
+de usuario). Decisión de diseño: lado izquierdo comunica "navegación
+principal" (vs lado derecho que tiene herramientas como notif, tema,
+help).
+
+### 32.4 Login redirige a /dashboard/home + POS para OWNER/ADMIN (PR #92)
+
+Antes: tras login todos iban a `/dashboard` (Dashboard ejecutivo). El
+home `/dashboard/home` era inalcanzable salvo via ícono navbar.
+
+Ahora:
+
+1. `login-form-client.tsx` redirige a `/dashboard/home` post-login.
+2. `/dashboard/home/page.tsx` añadió guard CASHIER/WAITER → si llegan
+   al home, los redirige a su primer módulo permitido (típicamente el
+   POS). Comportamiento idéntico al de `/dashboard` antes — cajeros y
+   meseros NO ven el home.
+3. POS Restaurante añadido a los atajos de OWNER y ADMIN_MANAGER (5
+   botones total, layout: Dashboard primary arriba + 2x2 grid).
+
+Matriz post-login final:
+
+| Rol | Aterriza en |
+|---|---|
+| OWNER, ADMIN_MANAGER | `/dashboard/home` (5 atajos) |
+| OPS_MANAGER, AREA_LEAD | `/dashboard/home` (POS primary) |
+| CHEF, KITCHEN_CHEF | `/dashboard/home` (Comandera primary) |
+| AUDITOR | `/dashboard/home` (Auditorías primary) |
+| CASHIER | `/dashboard/pos/restaurante` (auto-redirect) |
+| WAITER | `/dashboard/pos/mesero` (auto-redirect) |
+
+---
+
+## 33. Fixes UI — contraste módulo Ventas + modales en Portal (2026-05-09)
+
+### 33.1 Contraste módulo Ventas (PR #93)
+
+Bug: el usuario reportó que los montos en `/dashboard/sales` no se
+leen en vista clara. Causa: el módulo entero usaba tokens prohibidos
+por el CLAUDE.md (`text-white`, `text-emerald-400`, `text-amber-400`,
+`bg-gray-700`, `font-bold`, etc.) que funcionan solo en dark mode y
+quedan invisibles o con bajo contraste en light.
+
+424 líneas modificadas en 2 archivos:
+- `src/app/dashboard/sales/page.tsx` (Historial Ventas + Z-Report).
+- `src/app/dashboard/ventas/cargar/sales-entry-view.tsx` (Cargar Ventas).
+
+Reemplazos sistemáticos aplicados con `sed`:
+
+- `text-white` → `text-capsula-ink`.
+- `text-gray-XXX` → `text-capsula-cream / ink-muted / ink-soft / ink`
+  según el valor original.
+- `text-emerald-XXX / green-XXX` → `text-[#2F6B4E] dark:text-[#6FB88F]` (tono ok).
+- `text-amber-XXX / yellow-XXX` → `text-[#946A1C] dark:text-[#E8D9B8]` (tono warn).
+- `text-red-XXX` → `text-[#B04A2E] dark:text-[#EFD2C8]` (tono danger).
+- `text-blue/purple/indigo/violet/sky/cyan-XXX` → `text-[#2A4060] dark:text-[#D1DCE9]` (tono info).
+- `text-pink/rose/orange-XXX` → `text-capsula-coral`.
+- Backgrounds `bg-X-900` (badges payment methods) → tonos sutiles
+  correspondientes con dark variant.
+- CTAs: `bg-emerald-600 / amber-600` → `bg-capsula-navy-deep`.
+  `bg-red-600` → `bg-capsula-coral`.
+- `font-bold / font-black` → `font-semibold`.
+
+Resultado: todos los montos y badges legibles en light y dark.
+
+### 33.2 Modales en Portal (PR #94)
+
+Dos bugs reportados:
+
+1. Notificaciones: en desktop el panel se ve "muy hacia arriba" y se
+   corta.
+2. Resumen Financiero del Mes: al abrir detalle de Ventas/Gastos/etc.,
+   la ventana emergente queda contenida dentro del recuadro padre y se
+   recorta.
+
+**Causa raíz común**: stacking context creado por padres con
+propiedades que afectan `position: fixed`:
+
+| Componente | Padre | Propiedad culpable |
+|---|---|---|
+| NotificationBell, HelpPanel | Navbar | `backdrop-blur-md` |
+| FinancialSummaryWidget | `.capsula-card` | `transform: translateY(-1px)` en hover + `overflow: hidden` |
+
+Cuando un ancestro tiene `transform`, `filter`, `backdrop-filter`,
+`perspective`, `will-change` o `contain`, los descendientes con
+`position: fixed` se posicionan **relativo a ese ancestro**, no al
+viewport.
+
+**Solución**: nuevo componente `<Portal>` (`src/components/ui/Portal.tsx`)
+que usa `createPortal` de `react-dom` para renderizar children como hijo
+directo de `document.body`, escapando de cualquier stacking context.
+
+```typescript
+'use client';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+
+export function Portal({ children }: { children: ReactNode }) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    if (!mounted || typeof document === 'undefined') return null;
+    return createPortal(children, document.body);
+}
+```
+
+Aplicado a `NotificationBell.tsx`, `HelpPanel.tsx`,
+`FinancialSummaryWidget.tsx`. El modal de FinancialSummaryWidget también
+migró su backdrop legacy `bg-black/70` → `bg-capsula-navy-deep/55
+backdrop-blur-sm` (mismo patrón que los otros dos).
+
+**Convención nueva**: cualquier modal o popover futuro que se renderice
+desde dentro del Navbar, una `.capsula-card`, o cualquier otro
+contenedor con backdrop-filter/transform/etc., DEBE envolverse con
+`<Portal>` para garantizar que `position: fixed` se posicione relativo
+al viewport.
+
