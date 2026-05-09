@@ -263,13 +263,19 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
+    // payMethod arranca con CASH_USD como sentinel pero NO se considera elegido
+    // hasta que la cajera presione un botón (payMethodTouched=true). Hasta
+    // entonces no se resalta visualmente, no se aplica el descuento divisas y
+    // el botón "Confirmar" queda deshabilitado.
     const [payMethod, setPayMethod] = useState<POSPaymentMethod>('CASH_USD');
+    const [payMethodTouched, setPayMethodTouched] = useState(false);
     const [serviceIncluded, setServiceIncluded] = useState(true);
     const [amountInput, setAmountInput] = useState('');
 
     const isPaid = sub.status === 'PAID';
     // Si el método es divisas (cash USD/EUR/Zelle) → aplica 33% descuento automático.
-    const applyDivisasDiscount = isDivisasPayMethod(payMethod);
+    // Sólo cuenta si la cajera HA ELEGIDO un método (payMethodTouched).
+    const applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod);
     const discountAmount = applyDivisasDiscount ? sub.subtotal * (1 / 3) : 0;
     const subtotalAfterDiscount = sub.subtotal - discountAmount;
     const serviceChargeAfterDiscount = serviceIncluded ? subtotalAfterDiscount * 0.1 : 0;
@@ -281,7 +287,13 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
         if (!showPayForm) return;
         setAmountInput(totalWithService.toFixed(2));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [payMethod, serviceIncluded, showPayForm]);
+    }, [payMethod, payMethodTouched, serviceIncluded, showPayForm]);
+
+    // Resetear el flag touched cuando se cierra el formulario de pago
+    // para que la próxima apertura vuelva a exigir elección activa.
+    useEffect(() => {
+        if (!showPayForm) setPayMethodTouched(false);
+    }, [showPayForm]);
 
     function handleRename() {
         if (labelInput.trim()) { onRename(sub.id, labelInput.trim()); }
@@ -289,6 +301,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     }
 
     function handlePayConfirm() {
+        if (!payMethodTouched) { toast.error('Selecciona un método de pago'); return; }
         const amt = parseFloat(amountInput);
         if (isNaN(amt) || amt <= 0) { toast.error('Monto inválido'); return; }
         onPay(sub.id, payMethod, amt, serviceIncluded, applyDivisasDiscount ? 'DIVISAS_33' : 'NONE');
@@ -486,9 +499,9 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                 {PAY_METHODS.map((m) => (
                                     <button
                                         key={m.id}
-                                        onClick={() => setPayMethod(m.id)}
+                                        onClick={() => { setPayMethod(m.id); setPayMethodTouched(true); }}
                                         className={`inline-flex items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-[11px] font-medium transition-colors ${
-                                            payMethod === m.id
+                                            payMethodTouched && payMethod === m.id
                                                 ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
                                                 : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
                                         }`}
@@ -514,12 +527,12 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     Cancelar
                                 </button>
                                 <button
-                                    disabled={isProcessing}
+                                    disabled={isProcessing || !payMethodTouched}
                                     onClick={handlePayConfirm}
                                     className="pos-btn flex-[2] !min-h-0 py-2 text-xs disabled:opacity-40"
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Confirmar
+                                    {payMethodTouched ? 'Confirmar' : 'Elige método'}
                                 </button>
                             </div>
                         </div>

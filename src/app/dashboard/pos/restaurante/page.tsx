@@ -227,7 +227,12 @@ export default function POSSportBarPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // ── Payment (table mode) ─────────────────────────────────────────────────
+  // El método arranca en CASH_USD como sentinel pero NO se considera elegido
+  // hasta que la cajera presione un botón (paymentMethodTouched=true). Hasta
+  // entonces no se resalta visualmente, no se auto-aplica DIVISAS_33 y el
+  // botón "Registrar pago" queda deshabilitado.
   const [paymentMethod, setPaymentMethod] = useState<SinglePayMethod>("CASH_USD");
+  const [paymentMethodTouched, setPaymentMethodTouched] = useState(false);
   const [amountReceived, setAmountReceived] = useState("");
   const [showPaymentPinModal, setShowPaymentPinModal] = useState(false);
   const [paymentPin, setPaymentPin] = useState("");
@@ -389,11 +394,18 @@ export default function POSSportBarPage() {
 
   useEffect(() => {
     // Auto-aplicar / quitar el descuento del 33% según el método de pago.
+    // - Sólo aplica cuando la cajera HA ELEGIDO un método (touched). De lo
+    //   contrario el sentinel CASH_USD activaría DIVISAS_33 fantasma y la
+    //   pre-cuenta saldría descontada antes de que la cajera escogiera nada.
     // - Si el método pasa a ser efectivo o Zelle (divisas) → aplica DIVISAS_33
     //   automáticamente (regla de negocio: cash siempre tiene 33% off).
     // - Si el método pasa a no-divisas → quita DIVISAS_33 (no aplica).
     // Sólo cambiamos cuando el discountType actual es NONE o DIVISAS_33;
     // si el cajero eligió CORTESIA, lo respetamos.
+    if (!paymentMethodTouched) {
+      if (discountType === 'DIVISAS_33') setDiscountType('NONE');
+      return;
+    }
     if (discountType !== 'NONE' && discountType !== 'DIVISAS_33') return;
     if (isDivisasMethod(paymentMethod)) {
       if (discountType !== 'DIVISAS_33') setDiscountType('DIVISAS_33');
@@ -401,7 +413,7 @@ export default function POSSportBarPage() {
       if (discountType === 'DIVISAS_33') setDiscountType('NONE');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentMethod, discountType]);
+  }, [paymentMethod, paymentMethodTouched, discountType]);
 
   useEffect(() => {
     if (!selectedCategory || !categories.length) return;
@@ -707,6 +719,7 @@ export default function POSSportBarPage() {
     setAmountReceived("");
     setSubAccountMode(false);
     setCheckoutTip("");
+    setPaymentMethodTouched(false);
   };
 
   // ============================================================================
@@ -760,6 +773,7 @@ export default function POSSportBarPage() {
     setIsPickupMixedMode(false);
     setMixedPaymentsPickup([]);
     setIsPickupMode(true);
+    setPaymentMethodTouched(false);
     setSelectedTableId("");
     setSelectedZoneId("");
     setShowPickupOpenModal(false);
@@ -785,6 +799,7 @@ export default function POSSportBarPage() {
     setIsPickupMixedMode(false);
     setMixedPaymentsPickup([]);
     setIsPickupMode(true);
+    setPaymentMethodTouched(false);
     setSelectedTableId("");
     setSelectedZoneId("");
   };
@@ -980,13 +995,28 @@ export default function POSSportBarPage() {
       setShowPaymentPinModal(false);
       setIsTableMixedMode(false);
       setMixedPaymentsTable([]);
+      setPaymentMethodTouched(false);
       await loadData();
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handlePrintPrecuenta = () => {
+  /**
+   * Imprime la pre-cuenta (documento informativo previo al cobro).
+   *
+   * @param withDivisasDiscount Si true, aplica el descuento del 33% por
+   *   pago en divisas. Default false — la pre-cuenta normal muestra el
+   *   monto pleno (sin descuento de divisas) para que el cliente vea el
+   *   costo real del consumo. La cajera invoca con `true` cuando el
+   *   cliente pide explícitamente ver el monto con el beneficio de divisas
+   *   aplicado (botón separado "Pre-cuenta c/ desc divisas").
+   *
+   * Nota: las cortesías autorizadas (CORTESIA_100, CORTESIA_PERCENT)
+   * siempre se reflejan independientemente de este flag — son información
+   * que el cliente debe ver en ambos casos.
+   */
+  const handlePrintPrecuenta = (withDivisasDiscount: boolean = false) => {
     if (!activeTab) return;
     const allItems = activeTab.orders.flatMap((order) =>
       (order.items || []).map((item) => ({
@@ -1002,26 +1032,16 @@ export default function POSSportBarPage() {
     // Use runningTotal as base — balanceDue decrements with partial payments, causing
     // a false "discount" line when items sum doesn't match the printed subtotal.
     const base = activeTab.runningTotal;
-    // SAFEGUARD: pre-cuenta debe reflejar lo que SE COBRARÁ con el método
-    // actual. Si el método no es divisas, no mostramos el descuento del 33%
-    // aunque discountType=DIVISAS_33 esté en state (race condition).
-    const precuentaDivisasQualifies = isTableMixedMode
-      ? mixedPaymentsTable.some(p => isDivisasMethod(p.method))
-      : isDivisasMethod(paymentMethod);
+    const divisasDiscountAmt = withDivisasDiscount ? base / 3 : 0;
     const discountAmt =
-      (discountType === "DIVISAS_33" && precuentaDivisasQualifies)
-        ? (isTableMixedMode ? divisasUsdAmountTable / 3 : base / 3)  // partial vs full
-        : discountType === "CORTESIA_100" ? base
-        : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
-        : 0;
+      withDivisasDiscount ? divisasDiscountAmt
+      : discountType === "CORTESIA_100" ? base
+      : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
+      : 0;
     const afterDiscount = base - discountAmt;
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
-    const precuentaTotal = afterDiscount + svcFee;
     const discountReason = discountAmt > 0
-      ? (discountType === "DIVISAS_33"
-          ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < base - 0.01
-              ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
-              : 'Pago en Divisas (33.33%)')
+      ? (withDivisasDiscount ? "Pago en Divisas (33.33%)"
           : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
           : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
           : undefined)
@@ -1227,6 +1247,7 @@ export default function POSSportBarPage() {
         }
         setMixedPaymentsPickup([]); setIsPickupMixedMode(false);
         setCheckoutTip('');
+        setPaymentMethodTouched(false);
         clearDiscount();
       } else {
         toast.error(result.message);
@@ -1913,8 +1934,8 @@ export default function POSSportBarPage() {
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             {SINGLE_PAY_METHODS.map((m) => (
-                              <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                                className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all active:scale-95 ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}>
+                              <button key={m} type="button" onClick={() => { setPaymentMethod(m); setPaymentMethodTouched(true); }}
+                                className={`py-3 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all active:scale-95 ${paymentMethodTouched && paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep/40"}`}>
                                 {PAYMENT_LABELS[m]}
                               </button>
                             ))}
@@ -2017,9 +2038,16 @@ export default function POSSportBarPage() {
 
                       {(() => {
                         const needsAmount = !isPickupMixedMode && METHODS_REQUIRING_AMOUNT.has(paymentMethod) && paidAmount <= 0;
+                        const needsMethod = !isPickupMixedMode && !paymentMethodTouched;
                         return (
                           <>
-                            {needsAmount && (
+                            {needsMethod && (
+                              <div className="text-center text-xs text-capsula-coral font-semibold py-1 inline-flex items-center justify-center gap-1.5 w-full">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                Selecciona un método de pago
+                              </div>
+                            )}
+                            {!needsMethod && needsAmount && (
                               <div className="text-center text-xs text-capsula-coral font-semibold py-1 inline-flex items-center justify-center gap-1.5 w-full">
                                 <AlertTriangle className="h-3.5 w-3.5" />
                                 Ingresa el monto recibido
@@ -2027,7 +2055,7 @@ export default function POSSportBarPage() {
                             )}
                             <button
                               onClick={handleCheckoutPickup}
-                              disabled={cart.length === 0 || isProcessing || needsAmount}
+                              disabled={cart.length === 0 || isProcessing || needsAmount || needsMethod}
                               className="pos-btn w-full py-5 text-lg disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               {isProcessing ? "Procesando…" : `Cobrar $${pickupTotal.toFixed(2)}`}
@@ -2242,16 +2270,27 @@ export default function POSSportBarPage() {
 
                 {/* Payment section */}
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2">
                     <div className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">Cobrar cuenta</div>
                     {activeTab.orders.length > 0 && (
-                      <button
-                        onClick={handlePrintPrecuenta}
-                        className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                        Pre-cuenta
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handlePrintPrecuenta(false)}
+                          title="Pre-cuenta sin descuento (monto pleno)"
+                          className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          Pre-cuenta
+                        </button>
+                        <button
+                          onClick={() => handlePrintPrecuenta(true)}
+                          title="Pre-cuenta aplicando 33% off por pago en divisas"
+                          className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          Pre-cuenta c/ desc divisas
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -2316,8 +2355,8 @@ export default function POSSportBarPage() {
                     {!isTableMixedMode ? (
                       <div className="grid grid-cols-2 gap-2">
                         {SINGLE_PAY_METHODS.map((m) => (
-                          <button key={m} onClick={() => setPaymentMethod(m)}
-                            className={`py-3 rounded-xl text-sm font-semibold transition ${paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}>
+                          <button key={m} onClick={() => { setPaymentMethod(m); setPaymentMethodTouched(true); }}
+                            className={`py-3 rounded-xl text-sm font-semibold transition ${paymentMethodTouched && paymentMethod === m ? "bg-capsula-navy-deep text-capsula-cream" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40"}`}>
                             {PAYMENT_LABELS[m]}
                           </button>
                         ))}
@@ -2450,7 +2489,7 @@ export default function POSSportBarPage() {
                       }
                       setShowPaymentPinModal(true);
                     }}
-                    disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing)}
+                    disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing || !paymentMethodTouched)}
                     className="pos-btn w-full py-5 text-base disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                   >
                     <Lock className="h-4 w-4" />

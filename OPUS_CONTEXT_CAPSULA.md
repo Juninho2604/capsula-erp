@@ -5351,3 +5351,45 @@ Extendido 2026-04-25 — Dark mode audit módulos non-POS, patrones 7–8, icono
 Repo canónico: capsula-erp
 Branch: main (post-cutover)
 Commits de consolidación: eec5e92 · b310466 · 591d323 · 3798142 · 4f18704 · 19b85f6 · 089dee5 · 95ba60e · ec37b51
+
+---
+
+## 27. Cobro POS Restaurante — método de pago sin default + pre-cuenta sin descuento divisas (2026-05-09)
+
+### 27.1 Sin método pre-seleccionado en el cobro
+
+Antes el panel de cobro de mesa, pickup y subcuenta arrancaban con `paymentMethod = "CASH_USD"`, lo que producía dos efectos no deseados:
+- Visualmente el botón "Cash $" aparecía resaltado, sugiriendo a la cajera que ya estaba elegido.
+- El `useEffect` de auto-aplicación de DIVISAS_33 marcaba el descuento desde el primer render → la pre-cuenta y la grilla de cobro mostraban el monto descontado antes de que la cajera escogiera nada.
+
+**Fix:** se conserva `paymentMethod = "CASH_USD"` como sentinel interno (para no propagar `null` a 50+ usos del valor) y se introduce un flag separado `paymentMethodTouched: boolean`:
+- **`src/app/dashboard/pos/restaurante/page.tsx`** — `paymentMethodTouched` arranca en `false`. Cada botón de método (`SINGLE_PAY_METHODS.map`) hace `setPaymentMethod(m); setPaymentMethodTouched(true)` en su `onClick`. El highlight visual usa `paymentMethodTouched && paymentMethod === m`.
+  - El `useEffect` de auto-aplicación de DIVISAS_33 retorna temprano si `!paymentMethodTouched` y limpia DIVISAS_33 si quedó residual.
+  - Botón "Registrar pago" deshabilitado en pago único cuando `!paymentMethodTouched`. En pickup mode aparece aviso `Selecciona un método de pago` antes del botón.
+  - Reset del flag en: `resetTableState()`, `handleNewPickupTab()`, `handleSelectPickupTab()`, después de cobro exitoso (mesa y pickup).
+- **`src/components/pos/SubAccountPanel.tsx`** — mismo patrón con `payMethodTouched`. Adicionalmente:
+  - `applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod)` (antes era directo).
+  - `handlePayConfirm` valida `payMethodTouched` y muestra `toast.error('Selecciona un método de pago')` si no.
+  - Botón "Confirmar" deshabilitado y muestra label "Elige método" hasta que la cajera escoja.
+  - `useEffect` resetea `payMethodTouched` cuando se cierra el formulario de pago para que la próxima apertura vuelva a exigir elección.
+
+### 27.2 Pre-cuenta — dos botones: con y sin descuento divisas
+
+La pre-cuenta es el documento informativo que el cliente ve **antes de pagar**. Su propósito por defecto: mostrar el monto pleno (sin descuento de divisas) para que el cliente lea el costo real del consumo. Pero si el cliente pide explícitamente verla con el beneficio de divisas aplicado, la cajera tiene un segundo botón.
+
+- **`handlePrintPrecuenta(withDivisasDiscount: boolean = false)` (`restaurante/page.tsx`)**: la firma ahora acepta un flag opcional.
+  - `false` (default) → no aplica descuento divisas. Sólo se reflejan cortesías autorizadas (CORTESIA_100, CORTESIA_PERCENT) si están activas.
+  - `true` → aplica `base / 3` como descuento e imprime la línea "Pago en Divisas (33.33%)".
+- **UI**: en el header de la sección "Cobrar cuenta" hay dos botones lado a lado:
+  - `Pre-cuenta` → llama `handlePrintPrecuenta(false)`. Default, monto pleno.
+  - `Pre-cuenta c/ desc divisas` → llama `handlePrintPrecuenta(true)`. La cajera la usa cuando el cliente pide ver cuánto sería pagando en divisas.
+- Esta separación es **independiente** del método de pago seleccionado en el panel de cobro — la cajera puede imprimir cualquiera de las dos pre-cuentas sin tocar la elección del método.
+- **SubAccountPanel `handlePrintSubAccount`**: sigue como estaba — `inferredDivisas` requiere `sub.status === 'PAID'`, así que la reimpresión de pre-cuenta de una subcuenta OPEN nunca aplica descuento divisas. (Si en el futuro se necesita el mismo patrón de dos botones a nivel subcuenta, se replicará el flag.)
+- El recibo final (`isPrecuenta: false`) sigue mostrando la línea de descuento divisas tal como antes — sólo se afectó el documento informativo previo al cobro.
+
+### 27.3 Archivos tocados
+
+- `src/app/dashboard/pos/restaurante/page.tsx`
+- `src/components/pos/SubAccountPanel.tsx`
+
+Tests: 81/81 ✓ — `tsc --noEmit` exit 0.
