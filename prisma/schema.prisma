@@ -61,6 +61,21 @@ model Tenant {
   inventoryCycles     InventoryCycle[]
   dailyInventories    DailyInventory[]
   cashRegisters       CashRegister[]
+  // Lote 1.D-γ (riesgo alto — POS crítico)
+  users               User[]
+  branches            Branch[]
+  areas               Area[]
+  serviceZones        ServiceZone[]
+  tableOrStations     TableOrStation[]
+  openTabs            OpenTab[]
+  salesOrders         SalesOrder[]
+  salesOrderItems     SalesOrderItem[]
+  waiters             Waiter[]
+  gameStations        GameStation[]
+  gameSessions        GameSession[]
+  invoiceCounters     InvoiceCounter[]
+  systemConfigs       SystemConfig[]
+  reservations        Reservation[]
 }
 
 model User {
@@ -140,8 +155,13 @@ model User {
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
   registeredSupplierPrices  SupplierItemPriceHistory[] @relation("SupplierPriceRegisteredBy")
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([email])
   @@index([role])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -184,7 +204,12 @@ model Area {
   // Items críticos por área
   criticalItems    AreaCriticalItem[]
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([branchId])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -993,7 +1018,11 @@ model SalesOrder {
   // Soft Delete
   deletedAt       DateTime?
   deletedById     String?
-  
+
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([orderNumber])
   @@index([orderType])
   @@index([status])
@@ -1005,6 +1034,7 @@ model SalesOrder {
   @@index([serviceZoneId])
   @@index([tableOrStationId])
   @@index([openTabId])
+  @@index([tenantId])
 }
 
 model SalesOrderItem {
@@ -1049,11 +1079,16 @@ model SalesOrderItem {
   // Asignaciones a subcuentas
   subAccountItems SubAccountItem[]
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([orderId])
   @@index([menuItemId])
   @@index([voidedAt])
   @@index([voidedByWaiterId])
   @@index([voidedByUserId])
+  @@index([tenantId])
 }
 
 model SalesOrderItemModifier {
@@ -1674,6 +1709,12 @@ model Branch {
   salesOrders     SalesOrder[]
   gameStations    GameStation[]
   waiters         Waiter[]
+
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
 }
 
 model Waiter {
@@ -1695,7 +1736,12 @@ model Waiter {
   transfersTo         TableTransfer[] @relation("TransferTo")
   transfersAuthorized TableTransfer[] @relation("TransferAuthorizedByWaiter")
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([branchId, isActive])
+  @@index([tenantId])
 }
 
 model TableTransfer {
@@ -1742,8 +1788,13 @@ model ServiceZone {
   openTabs      OpenTab[]
   salesOrders   SalesOrder[]
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@unique([branchId, name])
   @@index([branchId, zoneType])
+  @@index([tenantId])
 }
 
 model TableOrStation {
@@ -1766,9 +1817,14 @@ model TableOrStation {
   transfersFrom       TableTransfer[] @relation("TransferFromTable")
   transfersTo         TableTransfer[] @relation("TransferToTable")
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId            String?
+  tenant              Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@unique([branchId, code])
   @@index([serviceZoneId, stationType])
   @@index([currentStatus])
+  @@index([tenantId])
 }
 
 model OpenTab {
@@ -1819,8 +1875,13 @@ model OpenTab {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([branchId, status])
   @@index([tableOrStationId])
+  @@index([tenantId])
 }
 
 model OpenTabOrder {
@@ -1946,6 +2007,15 @@ model SystemConfig {
   value     String               // JSON string o texto plano
   updatedAt DateTime @updatedAt
   updatedBy String?              // userId quien lo cambió
+
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  // Nota: el unique sigue siendo en `key` (no en (tenantId, key)). Eso se
+  // cambia en Fase 2. Por ahora solo Shanklish tiene config, así que no hay
+  // colisión.
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
 }
 
 // Contador global de correlativo por canal (nunca se resetea)
@@ -1955,6 +2025,14 @@ model InvoiceCounter {
   // "DELIVERY" | "PICKUP" | "RESTAURANT" | "PEDIDOS_YA" | "OPEN_TAB" | "GAME_SESSION"
   lastValue Int      @default(100)
   updatedAt DateTime @updatedAt
+
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  // Nota: el unique sigue siendo en `channel`. Se cambia a (tenantId, channel)
+  // en Fase 2. Por ahora solo Shanklish, sin colisión.
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
 }
 
 model ExchangeRate {
@@ -2020,9 +2098,14 @@ model GameStation {
   reservations  Reservation[]
   queueTickets  QueueTicket[]
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([gameTypeId])
   @@index([currentStatus])
   @@index([branchId])
+  @@index([tenantId])
 }
 
 model WristbandPlan {
@@ -2075,9 +2158,14 @@ model Reservation {
   deletedAt       DateTime?
   deletedById     String?
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([stationId, scheduledStart])
   @@index([status])
   @@index([customerPhone])
+  @@index([tenantId])
 }
 
 model GameSession {
@@ -2109,9 +2197,14 @@ model GameSession {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([stationId, status])
   @@index([startedAt])
   @@index([salesOrderId])
+  @@index([tenantId])
 }
 
 model QueueTicket {
