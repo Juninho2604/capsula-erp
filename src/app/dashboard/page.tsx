@@ -20,7 +20,6 @@ import {
     AlertOctagon,
     BarChart2,
     Factory,
-    TrendingUp,
     Target,
     Gem,
     ChevronRight,
@@ -398,7 +397,6 @@ export default async function DashboardPage() {
                 <QuickAction href="/dashboard/recetas/nueva" label="Crear Receta" sub="Calculadora de costos" Icon={Plus} color="coral" />
                 <QuickAction href="/dashboard/inventario" label="Inventario" sub="Gestionar existencias" Icon={Package} color="navy" />
                 <QuickAction href="/dashboard/produccion" label="Producción" sub="Procesar órdenes" Icon={Factory} color="emerald" />
-                <QuickAction href="/dashboard/estadisticas" label="Estadísticas" sub="Análisis por rol" Icon={TrendingUp} color="amber" />
                 {salesKPIs && (
                     <QuickAction href="/dashboard/metas" label="Metas" sub="Objetivos y merma" Icon={Target} color="rose" />
                 )}
