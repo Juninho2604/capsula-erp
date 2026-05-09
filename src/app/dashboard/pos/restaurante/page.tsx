@@ -1002,7 +1002,21 @@ export default function POSSportBarPage() {
     }
   };
 
-  const handlePrintPrecuenta = () => {
+  /**
+   * Imprime la pre-cuenta (documento informativo previo al cobro).
+   *
+   * @param withDivisasDiscount Si true, aplica el descuento del 33% por
+   *   pago en divisas. Default false — la pre-cuenta normal muestra el
+   *   monto pleno (sin descuento de divisas) para que el cliente vea el
+   *   costo real del consumo. La cajera invoca con `true` cuando el
+   *   cliente pide explícitamente ver el monto con el beneficio de divisas
+   *   aplicado (botón separado "Pre-cuenta c/ desc divisas").
+   *
+   * Nota: las cortesías autorizadas (CORTESIA_100, CORTESIA_PERCENT)
+   * siempre se reflejan independientemente de este flag — son información
+   * que el cliente debe ver en ambos casos.
+   */
+  const handlePrintPrecuenta = (withDivisasDiscount: boolean = false) => {
     if (!activeTab) return;
     const allItems = activeTab.orders.flatMap((order) =>
       (order.items || []).map((item) => ({
@@ -1018,19 +1032,17 @@ export default function POSSportBarPage() {
     // Use runningTotal as base — balanceDue decrements with partial payments, causing
     // a false "discount" line when items sum doesn't match the printed subtotal.
     const base = activeTab.runningTotal;
-    // PRE-CUENTA: NUNCA aplica el descuento del 33% por divisas. Su propósito
-    // es que el cliente vea el monto pleno antes de elegir cómo pagar — el
-    // descuento por divisas es un beneficio que se aplica al COBRO real, no a
-    // la información mostrada al cliente. Las cortesías autorizadas SÍ se
-    // reflejan (es información que el cliente debe ver).
+    const divisasDiscountAmt = withDivisasDiscount ? base / 3 : 0;
     const discountAmt =
-      discountType === "CORTESIA_100" ? base
+      withDivisasDiscount ? divisasDiscountAmt
+      : discountType === "CORTESIA_100" ? base
       : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
       : 0;
     const afterDiscount = base - discountAmt;
     const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
     const discountReason = discountAmt > 0
-      ? (discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
+      ? (withDivisasDiscount ? "Pago en Divisas (33.33%)"
+          : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
           : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
           : undefined)
       : undefined;
@@ -2258,16 +2270,27 @@ export default function POSSportBarPage() {
 
                 {/* Payment section */}
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2">
                     <div className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">Cobrar cuenta</div>
                     {activeTab.orders.length > 0 && (
-                      <button
-                        onClick={handlePrintPrecuenta}
-                        className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                        Pre-cuenta
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handlePrintPrecuenta(false)}
+                          title="Pre-cuenta sin descuento (monto pleno)"
+                          className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          Pre-cuenta
+                        </button>
+                        <button
+                          onClick={() => handlePrintPrecuenta(true)}
+                          title="Pre-cuenta aplicando 33% off por pago en divisas"
+                          className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          Pre-cuenta c/ desc divisas
+                        </button>
+                      </div>
                     )}
                   </div>
 

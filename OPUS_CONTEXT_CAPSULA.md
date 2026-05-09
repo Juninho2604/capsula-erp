@@ -5373,12 +5373,18 @@ Antes el panel de cobro de mesa, pickup y subcuenta arrancaban con `paymentMetho
   - Botón "Confirmar" deshabilitado y muestra label "Elige método" hasta que la cajera escoja.
   - `useEffect` resetea `payMethodTouched` cuando se cierra el formulario de pago para que la próxima apertura vuelva a exigir elección.
 
-### 27.2 Pre-cuenta sin descuento divisas (jamás)
+### 27.2 Pre-cuenta — dos botones: con y sin descuento divisas
 
-La pre-cuenta es el documento informativo que el cliente ve **antes de pagar**. Su propósito ahora explícito: mostrar el monto pleno (sin descuento de divisas) para que el cliente lea el costo real del consumo. El descuento por divisas (33%) es un beneficio del método de cobro y se aplica en el recibo final, no en la pre-cuenta.
+La pre-cuenta es el documento informativo que el cliente ve **antes de pagar**. Su propósito por defecto: mostrar el monto pleno (sin descuento de divisas) para que el cliente lea el costo real del consumo. Pero si el cliente pide explícitamente verla con el beneficio de divisas aplicado, la cajera tiene un segundo botón.
 
-- **`handlePrintPrecuenta` (`restaurante/page.tsx`)**: se eliminó la rama `discountType === "DIVISAS_33"` del cálculo de `discountAmt`. Sólo quedan `CORTESIA_100` y `CORTESIA_PERCENT` (cortesías sí son información que el cliente debe ver).
-- **SubAccountPanel `handlePrintSubAccount`**: ya estaba correcto — `inferredDivisas` requiere `sub.status === 'PAID'`, así que la reimpresión de pre-cuenta de una subcuenta OPEN nunca aplica descuento divisas. No hubo cambio.
+- **`handlePrintPrecuenta(withDivisasDiscount: boolean = false)` (`restaurante/page.tsx`)**: la firma ahora acepta un flag opcional.
+  - `false` (default) → no aplica descuento divisas. Sólo se reflejan cortesías autorizadas (CORTESIA_100, CORTESIA_PERCENT) si están activas.
+  - `true` → aplica `base / 3` como descuento e imprime la línea "Pago en Divisas (33.33%)".
+- **UI**: en el header de la sección "Cobrar cuenta" hay dos botones lado a lado:
+  - `Pre-cuenta` → llama `handlePrintPrecuenta(false)`. Default, monto pleno.
+  - `Pre-cuenta c/ desc divisas` → llama `handlePrintPrecuenta(true)`. La cajera la usa cuando el cliente pide ver cuánto sería pagando en divisas.
+- Esta separación es **independiente** del método de pago seleccionado en el panel de cobro — la cajera puede imprimir cualquiera de las dos pre-cuentas sin tocar la elección del método.
+- **SubAccountPanel `handlePrintSubAccount`**: sigue como estaba — `inferredDivisas` requiere `sub.status === 'PAID'`, así que la reimpresión de pre-cuenta de una subcuenta OPEN nunca aplica descuento divisas. (Si en el futuro se necesita el mismo patrón de dos botones a nivel subcuenta, se replicará el flag.)
 - El recibo final (`isPrecuenta: false`) sigue mostrando la línea de descuento divisas tal como antes — sólo se afectó el documento informativo previo al cobro.
 
 ### 27.3 Archivos tocados
