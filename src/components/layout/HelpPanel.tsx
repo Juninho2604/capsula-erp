@@ -214,7 +214,7 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
 };
 
 const DEFAULT_GUIDE: ModuleGuide = {
-  title: 'CÁPSULA ERP',
+  title: 'KPSULA ERP',
   description: 'Sistema de gestión para restaurantes y locales tipo Sport Bar.',
   steps: [
     'Navega por los módulos del sidebar según tu rol',
@@ -391,7 +391,7 @@ export function HelpPanel() {
             {/* Footer */}
             <div className="border-t border-capsula-line bg-capsula-ivory-alt px-4 py-3">
               <p className="text-center text-[9px] font-medium uppercase tracking-[0.18em] text-capsula-ink-muted">
-                CÁPSULA · {guide.title}
+                KPSULA · {guide.title}
               </p>
               <p className="mt-0.5 text-center text-[9px] text-capsula-ink-faint">
                 Para soporte contacta al administrador del sistema

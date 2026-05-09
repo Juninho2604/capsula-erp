@@ -1,5 +1,5 @@
 // ============================================================================
-// CÁPSULA — Social Media Brand Config
+// KPSULA — Social Media Brand Config
 // ============================================================================
 // Constantes de marca para generación de contenido de redes sociales.
 // Especificaciones por plataforma, templates de post, pilares de contenido.
@@ -7,9 +7,9 @@
 
 export const SOCIAL_BRAND = {
   // ─── HANDLES ───────────────────────────────────────────────
-  handle: '@capsulapp',
+  handle: '@kpsula',
   hashtags: {
-    primary: ['#CÁPSULA', '#CapsulApp', '#ERPRestaurante'],
+    primary: ['#KPSULA', '#Kpsula', '#ERPRestaurante'],
     secondary: ['#GestiónDeRestaurantes', '#TechParaRestaurantes', '#FoodCost'],
     viral: ['#RestaurantesTech', '#DueñoDeRestaurante', '#SaaS', '#ERPLatam'],
   },
@@ -17,8 +17,8 @@ export const SOCIAL_BRAND = {
   // ─── PLATAFORMAS ───────────────────────────────────────────
   platforms: {
     tiktok: {
-      handle: '@capsulapp',
-      url: 'https://tiktok.com/@capsulapp',
+      handle: '@kpsula',
+      url: 'https://tiktok.com/@kpsula',
       priority: 1,
       frequency: '4-5 videos/semana',
       dimensions: {
@@ -29,8 +29,8 @@ export const SOCIAL_BRAND = {
       contentMix: { demos: 40, painPoints: 30, educational: 20, bts: 10 },
     },
     instagram: {
-      handle: '@capsulapp',
-      url: 'https://instagram.com/capsulapp',
+      handle: '@kpsula',
+      url: 'https://instagram.com/kpsula',
       priority: 2,
       frequency: '3-4 posts/semana + stories diarias',
       dimensions: {
@@ -43,8 +43,8 @@ export const SOCIAL_BRAND = {
       bestTimes: ['11:00', '14:00', '19:00'],
     },
     facebook: {
-      handle: '@capsulapp',
-      url: 'https://facebook.com/capsulapp',
+      handle: '@kpsula',
+      url: 'https://facebook.com/kpsula',
       priority: 3,
       frequency: '3 posts/semana',
       dimensions: {
@@ -54,8 +54,8 @@ export const SOCIAL_BRAND = {
       },
     },
     x: {
-      handle: '@capsulapp',
-      url: 'https://x.com/capsulapp',
+      handle: '@kpsula',
+      url: 'https://x.com/kpsula',
       priority: 4,
       frequency: '3-5 tweets/semana + 1 hilo/mes',
       dimensions: {
@@ -69,9 +69,9 @@ export const SOCIAL_BRAND = {
   // ─── BIO UNIVERSAL ─────────────────────────────────────────
   bio: {
     short: 'El ERP inteligente para tu restaurante 🧡',
-    medium: 'POS • Inventario • Recetas • Producción • IA\nTu negocio completo en una cápsula 💊',
-    full: 'CÁPSULA es el ERP todo-en-uno para restaurantes.\nPOS · Inventario · Recetas · Producción · IA nativa\n🧡 Tu negocio completo en una cápsula\n👇 capsulapp.com',
-    cta: 'capsulapp.com',
+    medium: 'POS • Inventario • Recetas • Producción • IA\nTu negocio completo en una kpsula 💊',
+    full: 'KPSULA es el ERP todo-en-uno para restaurantes.\nPOS · Inventario · Recetas · Producción · IA nativa\n🧡 Tu negocio completo en una kpsula\n👇 kpsula.app',
+    cta: 'kpsula.app',
   },
 
   // ─── PILARES DE CONTENIDO ──────────────────────────────────
@@ -94,7 +94,7 @@ export const SOCIAL_BRAND = {
       id: 'painPoints',
       name: 'Pain Points',
       percentage: 30,
-      description: 'Problemas reales de restauranteros → solución con CÁPSULA',
+      description: 'Problemas reales de restauranteros → solución con KPSULA',
       examples: [
         '¿Todavía cuentas inventario en Excel?',
         'Cuando el mesero anota mal y cocina prepara otra cosa',
@@ -138,7 +138,7 @@ export const SOCIAL_BRAND = {
   designRules: {
     post: {
       logoPosition: 'top-left',
-      logoSize: 'isotipo + CÁPSULA, 20px height',
+      logoSize: 'isotipo + KPSULA, 20px height',
       background: 'gradiente de color primario (#FF6B4A → #E85A3A)',
       titleColor: '#FFFFFF',
       titleFont: 'Nunito 800',
@@ -150,14 +150,14 @@ export const SOCIAL_BRAND = {
     carousel: {
       slide1: 'Hook visual + pregunta provocadora',
       slides2to6: '1 dato por slide, fondo warm (#FFF8F5)',
-      lastSlide: 'CTA + @capsulapp',
+      lastSlide: 'CTA + @kpsula',
       textColor: '#1B2D45 (navy)',
       accentColor: '#FF6B4A (coral)',
     },
     story: {
       background: 'gradiente coral o foto con overlay',
       textPosition: 'centro',
-      cta: 'Sticker de link a capsulapp.com',
+      cta: 'Sticker de link a kpsula.app',
     },
   },
 } as const;

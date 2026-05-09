@@ -1,27 +1,32 @@
 // ============================================================================
-// CÁPSULA — Brand Identity Configuration
+// KPSULA — Brand Identity Configuration
 // ============================================================================
-// Archivo central de identidad visual de CÁPSULA.
+// Archivo central de identidad visual de KPSULA.
 // Todos los colores, tipografías, logos y textos del sistema se leen de aquí.
 // Para multitenant: cada tenant puede override estos valores via SystemConfig.
+//
+// Nota: el identificador exportado `CAPSULA_BRAND` y los tokens CSS
+// `--capsula-*` mantienen su nombre legacy por compatibilidad con todo
+// el codebase (~500 referencias). Solo el branding visible al usuario
+// pasó a "KPSULA".
 // ============================================================================
 
 export const CAPSULA_BRAND = {
   // ─── IDENTIDAD ─────────────────────────────────────────────
-  name: 'CÁPSULA',
+  name: 'KPSULA',
   tagline: 'El ERP inteligente para tu restaurante',
-  taglineShort: 'Tu negocio, una cápsula',
-  domain: 'capsulapp.com',
-  email: 'hola@capsulapp.com',
+  taglineShort: 'Tu negocio, una kpsula',
+  domain: 'kpsula.app',
+  email: 'hola@kpsula.app',
 
   // ─── REDES SOCIALES ────────────────────────────────────────
   social: {
-    handle: '@capsulapp',
-    instagram: 'https://instagram.com/capsulapp',
-    tiktok: 'https://tiktok.com/@capsulapp',
-    facebook: 'https://facebook.com/capsulapp',
-    x: 'https://x.com/capsulapp',
-    linkedin: 'https://linkedin.com/company/capsulapp',
+    handle: '@kpsula',
+    instagram: 'https://instagram.com/kpsula',
+    tiktok: 'https://tiktok.com/@kpsula',
+    facebook: 'https://facebook.com/kpsula',
+    x: 'https://x.com/kpsula',
+    linkedin: 'https://linkedin.com/company/kpsula',
   },
 
   // ─── PALETA: CORAL ENERGY ─────────────────────────────────
@@ -158,7 +163,7 @@ export const CAPSULA_BRAND = {
 } as const;
 
 // ─── COLORES LEGACY POR TENANT (para migración) ─────────────
-// Los colores originales de cada tenant antes de CÁPSULA
+// Los colores originales de cada tenant antes de KPSULA
 export const TENANT_LEGACY_COLORS = {
   tablepong: {
     primary: '#E60023',     // Rojo Table Pong

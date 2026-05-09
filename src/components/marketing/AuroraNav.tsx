@@ -6,7 +6,7 @@ export default function AuroraNav() {
     return (
         <nav className="cap-nav">
             <div className="relative z-[1] mx-auto flex max-w-[1280px] items-center justify-between px-10 py-5">
-                <Link href="/" className="inline-flex items-center" aria-label="CÁPSULA — inicio">
+                <Link href="/" className="inline-flex items-center" aria-label="KPSULA — inicio">
                     <CapsulaLogo variant="full" size={22} />
                 </Link>
                 <div className="flex items-center gap-5">
