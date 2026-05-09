@@ -31,12 +31,23 @@ model Tenant {
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.
-  menuCategories    MenuCategory[]
-  menuItems         MenuItem[]
-  recipes           Recipe[]
-  suppliers         Supplier[]
-  expenseCategories ExpenseCategory[]
-  productFamilies   ProductFamily[]
+  menuCategories      MenuCategory[]
+  menuItems           MenuItem[]
+  recipes             Recipe[]
+  suppliers           Supplier[]
+  expenseCategories   ExpenseCategory[]
+  productFamilies     ProductFamily[]
+  // Lote 1.D-α (bajo riesgo)
+  inventoryItems      InventoryItem[]
+  menuModifierGroups  MenuModifierGroup[]
+  menuModifiers       MenuModifier[]
+  exchangeRates       ExchangeRate[]
+  auditLogs           AuditLog[]
+  broadcastMessages   BroadcastMessage[]
+  gameTypes           GameType[]
+  wristbandPlans      WristbandPlan[]
+  skuCreationTemplates SkuCreationTemplate[]
+  queueTickets        QueueTicket[]
 }
 
 model User {
@@ -239,12 +250,17 @@ model InventoryItem {
   // Histórico de precios por proveedor (Fase 2 — propuesta 002)
   supplierPriceHistory SupplierItemPriceHistory[]
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([sku])
   @@index([type])
   @@index([category])
   @@index([name])
   @@index([isBeverage])
   @@index([productFamilyId])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -783,20 +799,26 @@ model MenuModifierGroup {
   id              String   @id @default(cuid())
   name            String   // Ej: "AcompaÃ±antes", "TamaÃ±o", "Extras"
   description     String?
-  
+
   // Reglas de selecciÃ³n
   isRequired      Boolean  @default(false) // Debe seleccionar al menos uno
   minSelections   Int      @default(0)
   maxSelections   Int      @default(99)    // 99 = sin lÃ­mite
-  
+
   isActive        Boolean  @default(true)
   sortOrder       Int      @default(0)
-  
+
   // Relaciones
   modifiers       MenuModifier[]
   menuItems       MenuItemModifierGroup[]
-  
+
   createdAt       DateTime @default(now())
+
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
 }
 
 model MenuModifier {
@@ -821,9 +843,14 @@ model MenuModifier {
   // Soft Delete
   deletedAt   DateTime?
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([groupId])
   @@index([linkedMenuItemId])
   @@index([deletedAt])
+  @@index([tenantId])
 }
 
 // Tabla pivote: QuÃ© grupos de modificadores aplican a quÃ© productos
@@ -1346,11 +1373,16 @@ model AuditLog {
   // CONTEXTO OPERATIVO
   module        String?  // POS, INVENTORY, PRODUCTION, RECIPE, etc.
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([userId])
   @@index([entityType, entityId])
   @@index([action])
   @@index([createdAt])
   @@index([module])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -1866,7 +1898,12 @@ model ExchangeRate {
 
   salesOrders   SalesOrder[]
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([effectiveDate])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -1888,7 +1925,12 @@ model GameType {
   stations    GameStation[]
   sessions    GameSession[]
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([code])
+  @@index([tenantId])
 }
 
 model GameStation {
@@ -1930,7 +1972,12 @@ model WristbandPlan {
 
   reservations  Reservation[]
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([isActive])
+  @@index([tenantId])
 }
 
 model Reservation {
@@ -2016,8 +2063,13 @@ model QueueTicket {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([status, createdAt])
   @@index([stationId])
+  @@index([tenantId])
 }
 
 // ============================================================================
@@ -2127,7 +2179,12 @@ model SkuCreationTemplate {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([productFamilyId])
+  @@index([tenantId])
 }
 
 // Mensajes broadcast (anuncios internos)
@@ -2143,8 +2200,13 @@ model BroadcastMessage {
   createdById String
   createdAt   DateTime @default(now())
 
+  // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
   @@index([isActive, startsAt])
   @@index([type])
+  @@index([tenantId])
 }
 
 // Ciclo de Conteo Físico (Inventario Semanal/Mensual)
