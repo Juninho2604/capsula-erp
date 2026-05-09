@@ -14,6 +14,7 @@ import prisma from '@/server/db';
 import {
     Plus,
     Package,
+    AlertTriangle,
     Layers,
     UtensilsCrossed,
     AlertOctagon,
@@ -93,36 +94,67 @@ export default async function DashboardPage() {
                 />
             )}
 
-            {/* Stats secundarias del día (chips compactos).
-                Ventas Hoy, Cuentas Abiertas y Stock Bajo NO se duplican aquí —
-                ya están en el ExecutiveSummary de arriba. Aquí solo lo que
-                el ExecutiveSummary no muestra. */}
+            {/* Sales KPIs */}
             {salesKPIs && (
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* Órdenes hoy */}
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Órdenes hoy</span>
-                        <span className="font-semibold tabular-nums text-capsula-ink">{salesKPIs.todayOrders}</span>
-                        <span className="text-capsula-ink-muted">(ayer {salesKPIs.yesterdayOrders})</span>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Revenue Hoy */}
+                    <div className="capsula-card p-5">
+                        <p className="capsula-stat-label mb-1">Ventas Hoy</p>
+                        <p className="capsula-stat-value text-capsula-coral">
+                            ${salesKPIs.todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        {salesKPIs.revenueChange !== null ? (
+                            <p className={`mt-1 text-xs font-medium ${salesKPIs.revenueChange >= 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}`}>
+                                {salesKPIs.revenueChange >= 0 ? '▲' : '▼'} {Math.abs(salesKPIs.revenueChange).toFixed(1)}% vs ayer
+                            </p>
+                        ) : (
+                            <p className="mt-1 text-xs text-capsula-ink-muted">Sin datos de ayer</p>
+                        )}
                     </div>
-                    {/* Ticket promedio */}
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Ticket promedio</span>
-                        <span className="font-semibold tabular-nums text-capsula-ink">
+
+                    {/* Órdenes Hoy */}
+                    <div className="capsula-card p-5">
+                        <p className="capsula-stat-label mb-1">Órdenes Hoy</p>
+                        <p className="capsula-stat-value">{salesKPIs.todayOrders}</p>
+                        <p className="mt-1 text-xs text-capsula-ink-muted">Ayer: {salesKPIs.yesterdayOrders} órdenes</p>
+                    </div>
+
+                    {/* Ticket Promedio */}
+                    <div className="capsula-card p-5">
+                        <p className="capsula-stat-label mb-1">Ticket Promedio</p>
+                        <p className="capsula-stat-value">
                             ${salesKPIs.avgTicket.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        </p>
+                        <p className="mt-1 text-xs text-capsula-ink-muted">Por orden hoy</p>
                     </div>
-                    {/* Propinas colectivas (si hay) */}
+
+                    {/* Cuentas Abiertas */}
+                    <div className={`capsula-card p-5 ${salesKPIs.openTabs > 0 ? 'border-amber-500/40' : ''}`}>
+                        <p className="capsula-stat-label mb-1">Cuentas Abiertas</p>
+                        <p className={`capsula-stat-value ${salesKPIs.openTabs > 0 ? 'text-amber-600' : ''}`}>
+                            {salesKPIs.openTabs}
+                        </p>
+                        {salesKPIs.openTabs > 0 ? (
+                            <p className="mt-1 text-xs font-medium text-amber-600">${salesKPIs.openTabsExposed.toFixed(2)} expuestos</p>
+                        ) : (
+                            <p className="mt-1 text-xs text-capsula-ink-muted">Todo cobrado</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Secondary audit row: propinas + canceladas */}
+            {salesKPIs && (salesKPIs.propinasHoy?.count > 0 || salesKPIs.canceladasHoy?.count > 0) && (
+                <div className="flex flex-wrap items-center gap-3">
                     {salesKPIs.propinasHoy?.count > 0 && (
                         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-capsula-ivory-alt border border-capsula-line text-sm">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas hoy</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propinas colectivas hoy</span>
                             <span className="font-semibold tabular-nums text-capsula-ink">
                                 ${salesKPIs.propinasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <span className="text-capsula-ink-muted">({salesKPIs.propinasHoy.count} reg.)</span>
                         </div>
                     )}
-                    {/* Anuladas (si hay) — chip danger */}
                     {salesKPIs.canceladasHoy?.count > 0 && (
                         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#F7E3DB] border border-[#EFD2C8] dark:bg-[#3B1F14] dark:border-[#3B1F14] text-sm">
                             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#B04A2E] dark:text-[#EFD2C8]">Anuladas hoy</span>
@@ -130,7 +162,7 @@ export default async function DashboardPage() {
                                 {salesKPIs.canceladasHoy.count} órd.
                             </span>
                             <span className="text-[#B04A2E]/70 dark:text-[#EFD2C8]/70">
-                                — ${salesKPIs.canceladasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                — ${salesKPIs.canceladasHoy.total.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} anulados
                             </span>
                         </div>
                     )}
@@ -160,6 +192,87 @@ export default async function DashboardPage() {
                 <FinancialSummaryWidget finance={finance} />
               </div>
             )}
+
+            {/* Stats Grid */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Total Insumos */}
+                <div className="stat-card group">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="capsula-stat-label">Total Insumos</p>
+                            <p className="capsula-stat-value mt-2 transition-transform duration-300 origin-left group-hover:scale-110">
+                                {stats.totalItems}
+                            </p>
+                        </div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-capsula-navy-soft text-capsula-ink">
+                            <Package className="h-7 w-7" strokeWidth={1.5} />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-capsula-navy-soft">
+                        <div className="h-full w-2/3 rounded-full bg-capsula-navy shimmer" />
+                    </div>
+                </div>
+
+                {/* Stock Bajo */}
+                <div className={`stat-card group ${stats.lowStockCount > 0 ? 'border-capsula-coral/40' : ''}`}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="capsula-stat-label">Stock Bajo</p>
+                            <p className={`capsula-stat-value mt-2 transition-transform duration-300 origin-left group-hover:scale-110 ${stats.lowStockCount > 0 ? 'text-capsula-coral' : ''}`}>
+                                {stats.lowStockCount}
+                            </p>
+                        </div>
+                        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${stats.lowStockCount > 0 ? 'bg-capsula-coral-subtle text-capsula-coral animate-pulse' : 'bg-capsula-ivory-alt text-capsula-ink-muted'}`}>
+                            <AlertTriangle className="h-7 w-7" strokeWidth={1.5} />
+                        </div>
+                    </div>
+                    {stats.lowStockCount > 0 && (
+                        <p className="mt-4 flex items-center gap-1.5 text-xs font-medium text-capsula-coral">
+                            <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-capsula-coral opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-capsula-coral" />
+                            </span>
+                            Requiere atención inmediata
+                        </p>
+                    )}
+                </div>
+
+                {/* Sub-recetas */}
+                <div className="stat-card group">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="capsula-stat-label">Sub-recetas</p>
+                            <p className="capsula-stat-value mt-2 transition-transform duration-300 origin-left group-hover:scale-110">
+                                {stats.subRecipes}
+                            </p>
+                        </div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                            <Layers className="h-7 w-7" strokeWidth={1.5} />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-emerald-500/10">
+                        <div className="h-full w-1/2 rounded-full bg-emerald-500 shimmer" />
+                    </div>
+                </div>
+
+                {/* Productos */}
+                <div className="stat-card group">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="capsula-stat-label">Productos</p>
+                            <p className="capsula-stat-value mt-2 transition-transform duration-300 origin-left group-hover:scale-110">
+                                {stats.finishedGoods}
+                            </p>
+                        </div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                            <UtensilsCrossed className="h-7 w-7" strokeWidth={1.5} />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-amber-500/10">
+                        <div className="h-full w-3/4 rounded-full bg-amber-500 shimmer" />
+                    </div>
+                </div>
+            </div>
 
             {/* Vistas role-based (absorbidas de /dashboard/estadisticas) */}
             {estadisticasData && <RoleBasedSections data={estadisticasData} />}
