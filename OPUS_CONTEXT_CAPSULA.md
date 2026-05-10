@@ -5995,3 +5995,51 @@ contenedor con backdrop-filter/transform/etc., DEBE envolverse con
 `<Portal>` para garantizar que `position: fixed` se posicione relativo
 al viewport.
 
+---
+
+## 34. PWA — KPSULA instalable en tablets (2026-05-09)
+
+### 34.1 Por qué
+
+Los mesoneros usan Redmi Pad 2 con el POS web. Quejas recurrentes: "se queda medio pegado", "tarda en cargar", "si pierdo WiFi se pierde la orden". La PWA resuelve los tres dolores con una sola pieza:
+
+- App icon en home screen, abre instantánea (assets cacheados).
+- Modo `standalone` — sin barra del navegador, pantalla completa.
+- Cache del shell estático → arranque <1s.
+- Cuando esté Fase 2.5 (background sync + IndexedDB) → órdenes en cola si pierde WiFi.
+
+### 34.2 Piezas implementadas
+
+| Archivo | Rol |
+|---|---|
+| `public/manifest.json` | Manifest del PWA: name "KPSULA ERP", short "KPSULA", `start_url: /dashboard`, `display: standalone`, theme/background `#1B2438` (navy deep), icons 192/512 + maskable, shortcuts a POS Restaurante / Mesero / Delivery. |
+| `public/icons/*` | Iconos generados desde `public/brand/logo-icon-color.svg` con isotipo coral sobre fondo navy. Variantes: 192/512 any, 192/512 maskable (60% safe area), 180 apple-touch, 32/16 favicon. |
+| `scripts/generate-pwa-icons.ts` | Script `tsx` para regenerar iconos cuando cambie el isotipo. Usa `sharp` (devDependency). |
+| `public/sw.js` | Service Worker manual (~150 líneas, sin `next-pwa`). Estrategias:<br>– `_next/static/*` y assets estáticos → **cache-first inmutable**.<br>– HTML público → **network-first** con fallback a cache → fallback a `/offline`.<br>– HTML autenticado (`/dashboard/*`, `/kitchen/*`, `/maintenance`) → **network-only** (nunca cache, evita filtrar UI entre usuarios en tablets compartidas). Si offline → `/offline`.<br>– `/api/*` y métodos no-GET → bypass total.<br>– `CACHE_VERSION` `capsula-v1` para invalidar; cambia en cada release que toque el SW. |
+| `src/components/pwa-register.tsx` | Componente cliente que registra el SW en producción, des-registra en dev. Detecta nuevas versiones (`updatefound`) y muestra toast persistente "Nueva versión disponible — Actualizar". Click → `postMessage SKIP_WAITING` → SW activa → `controllerchange` → `window.location.reload()`. |
+| `src/app/layout.tsx` | Añade `metadata.manifest`, `metadata.appleWebApp` (capable + black-translucent, title "KPSULA"), `metadata.icons.apple`, y `viewport.themeColor` con variantes light (`#F7F5F0`) / dark (`#1B2438`). Inserta `<PWARegister />` al final del body. |
+| `src/app/offline/page.tsx` | Página servida cuando el usuario navega sin red y la página solicitada no está en cache. Diseño Minimal Navy (light + dark), sin dependencias dinámicas. Pre-cacheada en SW install. |
+
+### 34.3 Cómo instalar en una tablet (instrucciones para el operador)
+
+1. Abrir Chrome en la Redmi Pad 2.
+2. Visitar `https://capsula-erp.onrender.com` (o el dominio del cliente).
+3. Iniciar sesión normalmente.
+4. Menú de tres puntos → **"Instalar app"** o **"Agregar a la pantalla de inicio"**.
+5. Confirmar. Aparece icono "KPSULA" en el home.
+6. Tap al icono → abre en standalone (sin barra Chrome).
+7. La primera vez carga normal; las siguientes son cuasi-instantáneas (assets cacheados).
+
+### 34.4 Pendiente para Fase 2.5 (no implementado todavía)
+
+- **IndexedDB queue de órdenes**: si el mesonero envía orden sin red, queda en cola local y se sube al volver señal.
+- **Background Sync API**: dispara la sincronización automática.
+- **Optimistic UI**: al tocar "Enviar", la orden aparece como aceptada inmediatamente; el backend confirma atrás.
+- **TWA wrapper para generar APK**: distribuible por link sin Chrome.
+- **Tenant-aware manifest**: cada cliente con su propia marca en el icono y nombre (multi-tenant Fase 3).
+
+### 34.5 Versionar el SW
+
+Cada vez que se modifique `public/sw.js` o se quiera forzar un re-cache, **incrementar `CACHE_VERSION`** en el archivo. El próximo `fetch` desde el cliente detecta el nuevo SW, lo instala, y la próxima carga muestra el toast "Actualizar". El usuario hace click una vez y queda con la versión nueva.
+
+Tests: 81/81 ✓ — `tsc --noEmit` exit 0 — `next build` ok (offline page ○ static, 168B).
