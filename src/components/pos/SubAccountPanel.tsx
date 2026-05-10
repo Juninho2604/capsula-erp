@@ -82,6 +82,10 @@ interface SubAccountPanelProps {
     customerLabel?: string;
     tableLabel?: string;
     cashierName?: string;
+    // Si es false, oculta el flujo de cobro (botón "Cobrar" + form de pago).
+    // Usado por POS Mesero: el mesero crea/asigna subcuentas pero el cobro
+    // sigue siendo del cajero. Default true para no romper POS Restaurante.
+    canCharge?: boolean;
 }
 
 // ─── Payment method labels ────────────────────────────────────────────────────
@@ -253,13 +257,14 @@ interface SubAccountCardProps {
     onUnassign: (itemId: string, subId: string) => void;
     onPrint: (sub: SubAccount, includeService: boolean) => void;
     onVoid: (sub: SubAccount) => void;
+    canCharge: boolean;
 }
 
 // Cash USD/EUR/Zelle aplican descuento de 33% automático ("divisas").
 const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
     m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -459,8 +464,9 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                 </div>
             </div>
 
-            {/* Pay form */}
-            {!isPaid && (
+            {/* Pay form — solo visible si canCharge=true (cajero/manager). El
+                mesero ve la subcuenta pero no puede cobrar. */}
+            {!isPaid && canCharge && (
                 <div className="px-3 pb-3">
                     {!showPayForm ? (
                         <button
@@ -545,7 +551,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
 
 // ─── Panel principal ──────────────────────────────────────────────────────────
 
-export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated, tabCode, customerLabel, tableLabel, cashierName }: SubAccountPanelProps) {
+export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated, tabCode, customerLabel, tableLabel, cashierName, canCharge = true }: SubAccountPanelProps) {
     const [tab, setTab] = useState<TabWithSubs | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -872,6 +878,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onUnassign={handleUnassign}
                         onPrint={handlePrintSubAccount}
                         onVoid={openVoidModal}
+                        canCharge={canCharge}
                     />
                 ))}
 
