@@ -28,7 +28,7 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
-import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check } from "lucide-react";
+import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
 // TIPOS
@@ -304,6 +304,13 @@ export default function POSSportBarPage() {
   const [newPickupName, setNewPickupName] = useState("");
   const [newPickupPhone, setNewPickupPhone] = useState("");
 
+  // ── Copia de consumos a portapapeles (envío por WhatsApp) ────────────────
+  // Para que la cajera/mesonero pueda compartir los consumos en el grupo de
+  // WhatsApp sin tener que reescribirlos. Persistimos por tab los IDs ya
+  // copiados, así pulsar "Copiar" varias veces solo añade los ítems nuevos
+  // (delta), evitando duplicar todo el pedido cada vez.
+  const [copiedConsumoIds, setCopiedConsumoIds] = useState<Set<string>>(new Set());
+
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
   const [subAccountsCount, setSubAccountsCount] = useState(0);
@@ -458,6 +465,24 @@ export default function POSSportBarPage() {
       if (subs.length > 0) setSubAccountMode(true);
     })();
     return () => { cancelled = true; };
+  }, [activeTab?.id]);
+
+  // ── Sincronización de IDs ya copiados con localStorage por tab ────────────
+  // Cargar el set persistido cada vez que cambia la cuenta activa: así la
+  // dedupe sobrevive a recargas de página y a rebote entre mesas.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!activeTab?.id) {
+      setCopiedConsumoIds(new Set());
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(`posResto:copiedConsumos:${activeTab.id}`);
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      setCopiedConsumoIds(new Set(ids));
+    } catch {
+      setCopiedConsumoIds(new Set());
+    }
   }, [activeTab?.id]);
 
   const activePickupTab = useMemo(
@@ -1079,10 +1104,79 @@ export default function POSSportBarPage() {
         toast.error(result.message);
         return;
       }
+      // Limpiar dedupe local: la cuenta ya no existe.
+      try { window.localStorage.removeItem(`posResto:copiedConsumos:${activeTab.id}`); } catch {}
       await loadData();
       setSelectedTableId("");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // ============================================================================
+  // COPIAR CONSUMOS AL PORTAPAPELES (envío por WhatsApp)
+  // ============================================================================
+
+  const formatConsumosForClipboard = (
+    items: { quantity: number; itemName: string; modifiers?: { name: string }[] | null }[],
+  ): string => {
+    const header = `Mesa ${selectedTable?.name ?? activeTab?.tabCode ?? ""}${activeTab?.waiterLabel ? ` — ${activeTab.waiterLabel}` : ""}`;
+    const lines = [header.trim()];
+    for (const it of items) {
+      lines.push(`${it.quantity}× ${it.itemName}`);
+      const mods = (it.modifiers ?? []).map((m) => m.name).filter(Boolean);
+      if (mods.length > 0) lines.push(`   ${mods.join(" · ")}`);
+    }
+    return lines.join("\n");
+  };
+
+  const persistCopiedIds = (tabId: string, ids: Set<string>) => {
+    try {
+      window.localStorage.setItem(`posResto:copiedConsumos:${tabId}`, JSON.stringify(Array.from(ids)));
+    } catch {
+      // Silencioso: si falla localStorage la dedupe igual funciona en memoria.
+    }
+  };
+
+  /** Copia solo los ítems agregados desde la última vez que se copió esta cuenta. */
+  const handleCopyNewConsumos = async () => {
+    if (!activeTab) return;
+    const allItems = activeTab.orders.flatMap((o) => o.items);
+    const nuevos = allItems.filter((it) => !copiedConsumoIds.has(it.id));
+    if (nuevos.length === 0) {
+      toast("No hay consumos nuevos para copiar");
+      return;
+    }
+    const text = formatConsumosForClipboard(nuevos);
+    try {
+      await navigator.clipboard.writeText(text);
+      const next = new Set(copiedConsumoIds);
+      for (const it of nuevos) next.add(it.id);
+      setCopiedConsumoIds(next);
+      persistCopiedIds(activeTab.id, next);
+      toast.success(`${nuevos.length} consumo${nuevos.length === 1 ? "" : "s"} copiado${nuevos.length === 1 ? "" : "s"}`);
+    } catch {
+      toast.error("No se pudo copiar al portapapeles");
+    }
+  };
+
+  /** Copia todos los consumos cargados de la cuenta y reinicia la dedupe. */
+  const handleCopyAllConsumos = async () => {
+    if (!activeTab) return;
+    const allItems = activeTab.orders.flatMap((o) => o.items);
+    if (allItems.length === 0) {
+      toast("La cuenta no tiene consumos cargados");
+      return;
+    }
+    const text = formatConsumosForClipboard(allItems);
+    try {
+      await navigator.clipboard.writeText(text);
+      const next = new Set(allItems.map((it) => it.id));
+      setCopiedConsumoIds(next);
+      persistCopiedIds(activeTab.id, next);
+      toast.success(`${allItems.length} consumo${allItems.length === 1 ? "" : "s"} copiado${allItems.length === 1 ? "" : "s"}`);
+    } catch {
+      toast.error("No se pudo copiar al portapapeles");
     }
   };
 
@@ -2229,9 +2323,40 @@ export default function POSSportBarPage() {
                 </div>
 
                 {/* Consumed orders */}
-                {activeTab.orders.length > 0 && (
+                {activeTab.orders.length > 0 && (() => {
+                  const allConsumoItems = activeTab.orders.flatMap((o) => o.items);
+                  const nuevosCount = allConsumoItems.filter((it) => !copiedConsumoIds.has(it.id)).length;
+                  return (
                   <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-3">
-                    <div className="text-[10px] font-semibold text-capsula-ink-muted uppercase tracking-[0.14em] mb-2">Consumos cargados</div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="text-[10px] font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">
+                        Consumos cargados
+                        {nuevosCount > 0 && copiedConsumoIds.size > 0 && (
+                          <span className="ml-1.5 normal-case tracking-normal text-capsula-coral">· {nuevosCount} nuevo{nuevosCount === 1 ? "" : "s"}</span>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyNewConsumos}
+                          disabled={nuevosCount === 0}
+                          title={nuevosCount === 0 ? "No hay consumos nuevos desde la última copia" : "Copiar solo los consumos agregados desde la última vez"}
+                          className="text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-2.5 py-1 transition inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copiar nuevos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyAllConsumos}
+                          title="Copiar todos los consumos (reinicia el conteo de nuevos)"
+                          className="text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-soft bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-2.5 py-1 transition inline-flex items-center gap-1"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Todo
+                        </button>
+                      </div>
+                    </div>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {activeTab.orders.map((order) => (
                         <div key={order.id} className="bg-capsula-ivory rounded-lg p-2 border border-capsula-line">
@@ -2273,7 +2398,8 @@ export default function POSSportBarPage() {
                       ))}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Payment section */}
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
