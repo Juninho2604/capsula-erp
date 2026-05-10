@@ -2243,10 +2243,17 @@ export default function POSSportBarPage() {
                             </span>
                           </div>
                           {order.items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between text-xs py-0.5">
-                              <span className="text-capsula-ink-soft flex-1 truncate">
-                                {item.quantity}× {item.itemName}
-                              </span>
+                            <div key={item.id} className="flex items-start justify-between text-xs py-0.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-capsula-ink-soft truncate">
+                                  {item.quantity}× {item.itemName}
+                                </div>
+                                {item.modifiers && item.modifiers.length > 0 && (
+                                  <div className="text-[10px] text-capsula-ink-muted truncate pl-3">
+                                    {item.modifiers.map((m) => m.name).join(" · ")}
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
                                 <span className="text-capsula-ink-muted tabular-nums">${item.lineTotal.toFixed(2)}</span>
                                 <button
