@@ -636,7 +636,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
         >
           <div className="flex items-start justify-between mb-0.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              Ventas
+              Ventas (mes)
             </p>
             <span className="text-[9px] text-muted-foreground/40 leading-none mt-0.5">
               ver más
@@ -662,7 +662,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
         >
           <div className="flex items-start justify-between mb-0.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              Gastos
+              Gastos (mes)
             </p>
             <span className="text-[9px] text-muted-foreground/40 leading-none mt-0.5">
               ver más
@@ -688,7 +688,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
         >
           <div className="flex items-start justify-between mb-0.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              Utilidad
+              Utilidad (mes)
             </p>
             <span className="text-[9px] text-muted-foreground/40 leading-none mt-0.5">
               ver más
@@ -711,7 +711,7 @@ export default function FinancialSummaryWidget({ finance }: { finance: FinanceDa
         >
           <div className="flex items-start justify-between mb-0.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              Flujo Neto
+              Flujo (mes)
             </p>
             <span className="text-[9px] text-muted-foreground/40 leading-none mt-0.5">
               ver más
