@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
   getMenuForPOSAction,
+  getOpenTabWithSubAccountsAction,
   getRestaurantLayoutAction,
   openTabAction,
   modifyTabItemAction,
@@ -201,6 +202,7 @@ export default function POSMeseroPage() {
 
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
+  const [subAccountsCount, setSubAccountsCount] = useState(0);
 
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
@@ -324,6 +326,25 @@ export default function POSMeseroPage() {
     [selectedZone, selectedTableId],
   );
   const activeTab = useMemo(() => selectedTable?.openTabs[0] || null, [selectedTable]);
+
+  // Auto-detección de subcuentas existentes — si el cajero ya creó subcuentas
+  // (o el mesero las creó en una sesión previa), entramos automáticamente al
+  // modo subcuentas para que el mesonero las vea sin clicks extra.
+  useEffect(() => {
+    if (!activeTab?.id) {
+      setSubAccountsCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await getOpenTabWithSubAccountsAction(activeTab.id);
+      if (cancelled) return;
+      const subs = (res.data as any)?.subAccounts ?? [];
+      setSubAccountsCount(subs.length);
+      if (subs.length > 0) setSubAccountMode(true);
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab?.id]);
 
   const allMenuItems = useMemo(() => categories.flatMap((c) => c.items || []), [categories]);
   const filteredMenuItems = useMemo(() => {
@@ -1107,23 +1128,25 @@ export default function POSMeseroPage() {
                     <Receipt className="h-3.5 w-3.5" />
                     Mostrar cuenta al cliente
                   </button>
+                  {/* Subcuentas — disponible para cualquier mesero. El cobro
+                      sigue siendo del cajero. */}
+                  <button
+                    onClick={() => setSubAccountMode(true)}
+                    className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
+                  >
+                    <Divide className="h-3.5 w-3.5" />
+                    {subAccountsCount > 0
+                      ? <>Ver subcuentas existentes ({subAccountsCount})</>
+                      : <>Dividir cuenta (subcuentas)</>}
+                  </button>
                   {canUseCaptainFeatures && (
-                    <>
-                      <button
-                        onClick={() => setSubAccountMode(true)}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
-                      >
-                        <Divide className="h-3.5 w-3.5" />
-                        Dividir cuenta (subcuentas)
-                      </button>
-                      <button
-                        onClick={openTransferModal}
-                        className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
-                      >
-                        <ArrowLeftRight className="h-3.5 w-3.5" />
-                        Transferir mesa
-                      </button>
-                    </>
+                    <button
+                      onClick={openTransferModal}
+                      className="mt-2 w-full py-2 rounded-xl text-xs font-semibold bg-capsula-ivory-alt hover:bg-capsula-navy-soft text-capsula-ink-soft hover:text-capsula-ink border border-capsula-line transition inline-flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      Transferir mesa
+                    </button>
                   )}
                 </div>
               </>
