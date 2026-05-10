@@ -409,38 +409,94 @@ async function validateComponentStockAvailability(params: {
 }) {
     const shortages: string[] = [];
 
+    // Acumulador de stock requerido por inventoryItemId — necesario para
+    // validar correctamente cuando varios cartItems o modificadores comparten
+    // ingrediente (ej. dos Tablas con + Falafel: cada uno suma su receta).
+    type StockReq = { qty: number; unit: string; sourceLabel: string };
+    const required = new Map<string, StockReq>();
+
+    function addRequirement(itemId: string, qty: number, unit: string, label: string) {
+        const cur = required.get(itemId);
+        if (cur) {
+            cur.qty += qty;
+        } else {
+            required.set(itemId, { qty, unit, sourceLabel: label });
+        }
+    }
+
+    // Cache de recetas dentro de la validación (un mismo modificador puede
+    // aparecer en varias líneas y cada findUnique cuesta un round-trip).
+    const recipeCache = new Map<string, { isActive: boolean; ingredients: { ingredientItemId: string; quantity: number; unit: string }[] } | null>();
+    async function loadRecipeForValidation(recipeId: string) {
+        if (recipeCache.has(recipeId)) return recipeCache.get(recipeId)!;
+        const recipe = await prisma.recipe.findUnique({
+            where: { id: recipeId },
+            include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
+        });
+        const cached = recipe
+            ? { isActive: recipe.isActive, ingredients: recipe.ingredients }
+            : null;
+        recipeCache.set(recipeId, cached);
+        return cached;
+    }
+
     for (const cartItem of params.items) {
         const menuItem = params.menuMap.get(cartItem.menuItemId);
-        if (!menuItem || !requiresStockValidation(menuItem) || !menuItem.recipe) continue;
-
-        for (const ingredient of menuItem.recipe.ingredients) {
-            const requiredQty = ingredient.quantity * cartItem.quantity;
-
-            const stock = await prisma.inventoryLocation.findUnique({
-                where: {
-                    inventoryItemId_areaId: {
-                        inventoryItemId: ingredient.ingredientItemId,
-                        areaId: params.areaId
-                    }
-                },
-                include: {
-                    inventoryItem: {
-                        select: {
-                            name: true,
-                            baseUnit: true
-                        }
-                    }
-                }
-            });
-
-            const available = stock?.currentStock || 0;
-            if (available < requiredQty) {
-                const ingredientName = stock?.inventoryItem?.name || ingredient.ingredientItem?.name || ingredient.ingredientItemId;
-                const unit = stock?.inventoryItem?.baseUnit || '';
-                shortages.push(
-                    `${menuItem.name}: falta ${ingredientName} (${requiredQty.toFixed(2)} ${unit} requeridos, ${available.toFixed(2)} ${unit} disponibles)`
+        if (menuItem && requiresStockValidation(menuItem) && menuItem.recipe) {
+            for (const ingredient of menuItem.recipe.ingredients) {
+                addRequirement(
+                    ingredient.ingredientItemId,
+                    ingredient.quantity * cartItem.quantity,
+                    ingredient.unit ?? '',
+                    menuItem.name,
                 );
             }
+        }
+
+        // Modificadores con linkedMenuItem.recipe — su consumo de inventario
+        // también debe validarse antes de aceptar la venta.
+        for (const cartMod of cartItem.modifiers ?? []) {
+            if (!cartMod.modifierId) continue;
+            const menuModifier = await prisma.menuModifier.findUnique({
+                where: { id: cartMod.modifierId },
+                select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
+            });
+            const linkedRecipeId = menuModifier?.linkedMenuItem?.recipeId;
+            if (!linkedRecipeId) continue;
+            const recipe = await loadRecipeForValidation(linkedRecipeId);
+            if (!recipe?.isActive) continue;
+            const sourceLabel = `${menuItem?.name ?? cartItem.name} (${cartMod.name})`;
+            for (const ingredient of recipe.ingredients) {
+                addRequirement(
+                    ingredient.ingredientItemId,
+                    ingredient.quantity * cartItem.quantity,
+                    ingredient.unit ?? '',
+                    sourceLabel,
+                );
+            }
+        }
+    }
+
+    for (const [itemId, req] of Array.from(required.entries())) {
+        const stock = await prisma.inventoryLocation.findUnique({
+            where: {
+                inventoryItemId_areaId: {
+                    inventoryItemId: itemId,
+                    areaId: params.areaId
+                }
+            },
+            include: {
+                inventoryItem: { select: { name: true, baseUnit: true } }
+            }
+        });
+
+        const available = stock?.currentStock || 0;
+        if (available < req.qty) {
+            const ingredientName = stock?.inventoryItem?.name ?? itemId;
+            const unit = stock?.inventoryItem?.baseUnit || req.unit;
+            shortages.push(
+                `${req.sourceLabel}: falta ${ingredientName} (${req.qty.toFixed(2)} ${unit} requeridos, ${available.toFixed(2)} ${unit} disponibles)`
+            );
         }
     }
 
@@ -554,26 +610,64 @@ async function registerInventoryForCartItems(params: {
 
     const ops: DeductOp[] = [];
 
+    // Cache para no consultar la misma receta dos veces dentro de una venta
+    const recipeCache = new Map<string, { isActive: boolean; ingredients: { ingredientItemId: string; quantity: number; unit: string }[] }>();
+    async function loadRecipe(recipeId: string) {
+        if (recipeCache.has(recipeId)) return recipeCache.get(recipeId)!;
+        const recipe = await prisma.recipe.findUnique({
+            where: { id: recipeId },
+            include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
+        });
+        const cached = {
+            isActive: Boolean(recipe?.isActive),
+            ingredients: recipe?.ingredients ?? [],
+        };
+        recipeCache.set(recipeId, cached);
+        return cached;
+    }
+
     for (const cartItem of params.items) {
         const menuItem = await prisma.menuItem.findUnique({
             where: { id: cartItem.menuItemId },
             select: { name: true, recipeId: true },
         });
-        if (!menuItem?.recipeId) continue;
+        if (menuItem?.recipeId) {
+            const recipe = await loadRecipe(menuItem.recipeId);
+            if (recipe.isActive) {
+                for (const ing of recipe.ingredients) {
+                    ops.push({
+                        inventoryItemId: ing.ingredientItemId,
+                        quantity: ing.quantity * cartItem.quantity,
+                        unit: ing.unit,
+                        label: `Venta POS: ${cartItem.quantity}x ${menuItem.name}`,
+                    });
+                }
+            }
+        }
 
-        const recipe = await prisma.recipe.findUnique({
-            where: { id: menuItem.recipeId },
-            include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
-        });
-        if (!recipe?.isActive) continue;
-
-        for (const ing of recipe.ingredients) {
-            ops.push({
-                inventoryItemId: ing.ingredientItemId,
-                quantity: ing.quantity * cartItem.quantity,
-                unit: ing.unit,
-                label: `Venta POS: ${cartItem.quantity}x ${menuItem.name}`,
+        // Modificadores con linkedMenuItem (recetas) — descargo simétrico al
+        // que ya hace voidSalesOrderAction. Sin esto, anular reintegra stock
+        // que nunca se descontó. Cada entrada en cartItem.modifiers es UNA
+        // selección (el modal "explota" la cantidad seleccionada → 1 entrada
+        // por unidad), y se aplica a CADA línea (× cartItem.quantity).
+        for (const cartMod of cartItem.modifiers ?? []) {
+            if (!cartMod.modifierId) continue;
+            const menuModifier = await prisma.menuModifier.findUnique({
+                where: { id: cartMod.modifierId },
+                select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
             });
+            const linkedRecipeId = menuModifier?.linkedMenuItem?.recipeId;
+            if (!linkedRecipeId) continue;
+            const recipe = await loadRecipe(linkedRecipeId);
+            if (!recipe.isActive) continue;
+            for (const ing of recipe.ingredients) {
+                ops.push({
+                    inventoryItemId: ing.ingredientItemId,
+                    quantity: ing.quantity * cartItem.quantity,
+                    unit: ing.unit,
+                    label: `Venta POS: modificador ${cartMod.name} (${menuItem?.name ?? cartItem.name})`,
+                });
+            }
         }
     }
 

@@ -1222,9 +1222,16 @@ export default function POSMeseroPage() {
               <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1 min-h-0">
                 {activeTab.orders.flatMap(o => o.items).map((item, i) => (
                   <div key={i} className="flex justify-between items-baseline text-sm">
-                    <span className="text-capsula-ink-soft font-semibold flex-1 mr-2">
-                      <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
-                    </span>
+                    <div className="flex-1 mr-2 min-w-0">
+                      <div className="text-capsula-ink-soft font-semibold">
+                        <span className="text-capsula-ink-muted text-xs">×{item.quantity}</span> {item.itemName}
+                      </div>
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <div className="text-[11px] text-capsula-ink-muted italic pl-5">
+                          {item.modifiers.map((m) => m.name).join(", ")}
+                        </div>
+                      )}
+                    </div>
                     <span className="font-semibold text-capsula-ink tabular-nums">${item.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
@@ -1362,7 +1369,11 @@ export default function POSMeseroPage() {
                         `SHANKLISH — ${selectedTable?.name} (${activeTab.tabCode})`,
                         `Cliente: ${activeTab.customerLabel ?? ''}`,
                         '',
-                        ...activeTab.orders.flatMap(o => o.items).map(it => `× ${it.quantity}  ${it.itemName}  $${it.lineTotal.toFixed(2)}`),
+                        ...activeTab.orders.flatMap(o => o.items).flatMap(it => {
+                          const head = `× ${it.quantity}  ${it.itemName}  $${it.lineTotal.toFixed(2)}`;
+                          const mods = (it.modifiers ?? []).map(m => m.name).join(', ');
+                          return mods ? [head, `    + ${mods}`] : [head];
+                        }),
                         '',
                         `Subtotal:       $${subtotal.toFixed(2)}`,
                         ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
