@@ -168,6 +168,9 @@ export default function POSMeseroPage() {
 
   // ── Cart ──────────────────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartItem[]>([]);
+  // Si la cuenta tiene subcuentas abiertas, el mesero puede dirigir el pedido
+  // a una subcuenta concreta. null = "Cuenta general" (sin asignar).
+  const [cartTargetSubAccountId, setCartTargetSubAccountId] = useState<string | null>(null);
 
   // ── Modifier modal ─────────────────────────────────────────────────────────
   const [showModifierModal, setShowModifierModal] = useState(false);
@@ -202,7 +205,9 @@ export default function POSMeseroPage() {
 
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
-  const [subAccountsCount, setSubAccountsCount] = useState(0);
+  type SubAccountSummary = { id: string; label: string; sortOrder: number; status: string };
+  const [openSubAccounts, setOpenSubAccounts] = useState<SubAccountSummary[]>([]);
+  const subAccountsCount = openSubAccounts.length;
 
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
@@ -330,21 +335,38 @@ export default function POSMeseroPage() {
   // Auto-detección de subcuentas existentes — si el cajero ya creó subcuentas
   // (o el mesero las creó en una sesión previa), entramos automáticamente al
   // modo subcuentas para que el mesonero las vea sin clicks extra.
+  // También cacheamos la lista para alimentar el selector de destino del carrito.
+  const refreshSubAccounts = useCallback(async (tabId: string) => {
+    const res = await getOpenTabWithSubAccountsAction(tabId);
+    const subs = ((res.data as any)?.subAccounts ?? []) as SubAccountSummary[];
+    const open = subs
+      .filter((s) => s.status === 'OPEN')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    setOpenSubAccounts(open);
+    return open;
+  }, []);
+
   useEffect(() => {
     if (!activeTab?.id) {
-      setSubAccountsCount(0);
+      setOpenSubAccounts([]);
+      setCartTargetSubAccountId(null);
       return;
     }
     let cancelled = false;
     (async () => {
-      const res = await getOpenTabWithSubAccountsAction(activeTab.id);
+      const open = await refreshSubAccounts(activeTab.id);
       if (cancelled) return;
-      const subs = (res.data as any)?.subAccounts ?? [];
-      setSubAccountsCount(subs.length);
-      if (subs.length > 0) setSubAccountMode(true);
+      if (open.length > 0) setSubAccountMode(true);
     })();
     return () => { cancelled = true; };
-  }, [activeTab?.id]);
+  }, [activeTab?.id, refreshSubAccounts]);
+
+  // Si la subcuenta destino seleccionada deja de existir o se cierra, limpiar.
+  useEffect(() => {
+    if (!cartTargetSubAccountId) return;
+    const stillOpen = openSubAccounts.some((s) => s.id === cartTargetSubAccountId);
+    if (!stillOpen) setCartTargetSubAccountId(null);
+  }, [openSubAccounts, cartTargetSubAccountId]);
 
   const allMenuItems = useMemo(() => categories.flatMap((c) => c.items || []), [categories]);
   const filteredMenuItems = useMemo(() => {
@@ -480,6 +502,7 @@ export default function POSMeseroPage() {
         openTabId: activeTab.id,
         items: cart,
         waiterProfileId: activeWaiter.id,
+        targetSubAccountId: cartTargetSubAccountId ?? undefined,
       });
       if (!result.success) { toast.error(result.message); return; }
       if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
@@ -496,6 +519,9 @@ export default function POSMeseroPage() {
       setSendSuccess(true);
       setTimeout(() => setSendSuccess(false), 2500);
       await loadData();
+      // Refrescar subcuentas: los items recién creados pueden haber actualizado
+      // los totales de la subcuenta destino.
+      if (activeTab?.id) await refreshSubAccounts(activeTab.id);
     } finally {
       setIsProcessing(false);
     }
@@ -993,6 +1019,43 @@ export default function POSMeseroPage() {
                   Limpiar
                 </button>
               </div>
+              {/* Selector de destino — solo si hay subcuentas abiertas. Default
+                  "Cuenta general"; si el mesero elige una subcuenta, los items
+                  del carrito se asignan a esa subcuenta al enviar a cocina. */}
+              {openSubAccounts.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5">
+                    Destino del pedido
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setCartTargetSubAccountId(null)}
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition ${
+                        cartTargetSubAccountId === null
+                          ? 'bg-capsula-navy-deep text-capsula-cream border-capsula-navy-deep'
+                          : 'bg-capsula-ivory text-capsula-ink-soft border-capsula-line hover:bg-capsula-ivory-alt'
+                      }`}
+                    >
+                      Cuenta general
+                    </button>
+                    {openSubAccounts.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setCartTargetSubAccountId(s.id)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition ${
+                          cartTargetSubAccountId === s.id
+                            ? 'bg-capsula-navy-deep text-capsula-cream border-capsula-navy-deep'
+                            : 'bg-capsula-ivory text-capsula-ink-soft border-capsula-line hover:bg-capsula-ivory-alt'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {cart.map((item, i) => (
                   <div key={i} className="flex justify-between items-center text-xs bg-capsula-ivory rounded-lg px-3 py-2 border border-capsula-line">
@@ -1033,7 +1096,10 @@ export default function POSMeseroPage() {
               openTabId={activeTab.id}
               exchangeRate={exchangeRate}
               onClose={() => setSubAccountMode(false)}
-              onTabUpdated={() => loadData(false)}
+              onTabUpdated={() => {
+                loadData(false);
+                if (activeTab?.id) refreshSubAccounts(activeTab.id);
+              }}
               tabCode={activeTab.tabCode}
               customerLabel={activeTab.customerLabel ?? undefined}
               tableLabel={selectedTable?.name}

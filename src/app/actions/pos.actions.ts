@@ -86,6 +86,10 @@ export interface AddItemsToOpenTabInput {
     items: CartItem[];
     waiterProfileId?: string; // Mesonero identificado por PIN (Waiter.id)
     notes?: string;
+    // Si se provee, los items recién creados se asignan automáticamente a esta
+    // subcuenta (TabSubAccount). Permite al mesero tomar pedidos directos a una
+    // subcuenta concreta cuando la cuenta ya está dividida.
+    targetSubAccountId?: string;
 }
 
 export interface RegisterOpenTabPaymentInput {
@@ -1434,6 +1438,21 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
             return { success: false, message: 'La cuenta no está disponible para consumir' };
         }
 
+        // Validar subcuenta destino si se solicitó: debe pertenecer a la cuenta
+        // y estar OPEN. Si está PAID/VOID no se puede agregar más consumo ahí.
+        if (data.targetSubAccountId) {
+            const targetSub = await prisma.tabSubAccount.findUnique({
+                where: { id: data.targetSubAccountId },
+                select: { id: true, openTabId: true, status: true },
+            });
+            if (!targetSub || targetSub.openTabId !== openTab.id) {
+                return { success: false, message: 'Subcuenta destino no pertenece a esta cuenta' };
+            }
+            if (targetSub.status !== 'OPEN') {
+                return { success: false, message: 'La subcuenta destino no está abierta' };
+            }
+        }
+
         const salesArea = await resolveSalesAreaForBranch(openTab.branchId);
         const { subtotal, total } = calculateCartTotals({
             orderType: 'RESTAURANT',
@@ -1538,6 +1557,24 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                 }
             });
 
+            // Asignación directa a subcuenta — si el mesero tecleó productos
+            // mientras tenía una subcuenta seleccionada, los SalesOrderItem
+            // recién creados se vinculan a esa subcuenta vía SubAccountItem
+            // con la cantidad completa, y se recalculan los totales.
+            if (data.targetSubAccountId) {
+                for (const sItem of order.items) {
+                    await tx.subAccountItem.create({
+                        data: {
+                            subAccountId: data.targetSubAccountId,
+                            salesOrderItemId: sItem.id,
+                            quantity: sItem.quantity,
+                            lineTotal: sItem.lineTotal,
+                        },
+                    });
+                }
+                await recalcSubAccountTotals(tx, data.targetSubAccountId);
+            }
+
             return order;
                 });
                 break;
@@ -1580,6 +1617,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
         }
 
         revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
         revalidatePath('/dashboard/sales');
         revalidatePath('/dashboard/inventory');
         revalidatePath('/kitchen');
