@@ -6044,3 +6044,224 @@ Los mesoneros usan Redmi Pad 2 con el POS web. Quejas recurrentes: "se queda med
 Cada vez que se modifique `public/sw.js` o se quiera forzar un re-cache, **incrementar `CACHE_VERSION`** en el archivo. El próximo `fetch` desde el cliente detecta el nuevo SW, lo instala, y la próxima carga muestra el toast "Actualizar". El usuario hace click una vez y queda con la versión nueva.
 
 Tests: 81/81 ✓ — `tsc --noEmit` exit 0 — `next build` ok (offline page ○ static, 168B).
+
+---
+
+## 35. Multi-tenant — Fase 2.B aplicada + Fase 3 Pasos A y B (2026-05-11)
+
+Sesión de avance multi-tenant ejecutada con restaurante cerrado y backup
+de BD confirmado (`capsula_erp_prod-20260511-0700.dump`, 4.7 MB). Cero
+incidentes operativos, cero downtime.
+
+### 35.1 Step 1 (PR #105) — `findUnique → findFirst` preparatorio
+
+Antes de cambiar el schema, refactor de código que dependía del unique
+global single-column. Cero riesgo BD (solo cambio de método de query;
+mismo `where`, mismo comportamiento mientras hay un solo tenant).
+
+Hits refactorizados (4):
+- `src/app/actions/user.actions.ts:388` (`User.email`)
+- `src/app/actions/user.actions.ts:466` (`User.email`)
+- `src/app/actions/sku-studio.actions.ts:211` (`InventoryItem.sku`)
+- `src/app/actions/asistente.actions.ts:55` (`InventoryItem.sku`)
+
+El `upsert` sobre `InvoiceCounter.channel` quedó intacto en Step 1 —
+hacer findFirst+create/update rompía atomicidad. Se refactorizó en
+Step 2 con el `where: { tenantId_channel: { tenantId, channel } }`
+compuesto.
+
+### 35.2 Step 2 (PR #107) — Schema migration: uniques compuestos
+
+20 fields pasaron de `@unique` global a `@@unique([tenantId, X])`:
+
+```
+User.email                  InventoryItem.sku         MenuItem.sku
+ProductionOrder.orderNumber ProteinProcessing.code    Requisition.code
+SalesOrder.orderNumber      Supplier.code             PurchaseOrder.orderNumber
+ExpenseCategory.name        Branch.code               OpenTab.tabCode
+InvoiceCounter.channel      GameType.code             GameStation.code
+WristbandPlan.code          Reservation.code          GameSession.code
+ProductFamily.code          InventoryCycle.code
+```
+
+Quedan globales (intencional, documentado en migration.sql):
+- `Tenant.slug` — global por diseño
+- `IntercompanySettlement.code` — su modelo no es tenant-aware
+- `GameSession.reservationId` — relación 1:1 con Reservation, id ya
+  único globalmente; Prisma requiere `@unique` directo en field de FK
+  1:1
+- `RateLimitBucket.[key, windowStart]` — modelo no es tenant-aware
+
+**Migración:** `prisma/migrations/20260511130500_multitenant_2b_composite_uniques/`.
+
+Patrón por field (defensivo, idempotente):
+```sql
+ALTER TABLE "X" DROP CONSTRAINT IF EXISTS "X_field_key";
+DROP INDEX IF EXISTS "X_field_key";
+CREATE UNIQUE INDEX "X_tenantId_field_key" ON "X"("tenantId", "field");
+```
+
+Razón del doble DROP: en Postgres un `@unique` Prisma puede ser
+constraint o index puro según la migration que lo creó. ALTER TABLE
+DROP CONSTRAINT IF EXISTS cubre constraints; DROP INDEX IF EXISTS
+cubre índices puros. Idempotente — la que no aplique es no-op.
+
+**Auditoría pre-merge (6 vectores verificados):**
+1. ✅ Uniques actuales son INDEX puros (verificado en migration
+   `20260315200000_pos_restaurante_completo`)
+2. ✅ Cero FKs no-id que referencien estos campos
+3. ✅ Cero `$queryRaw`/`$executeRaw` en `src/` que dependa de nombres
+   de índices
+4. ✅ `Supplier.code` nullable: Postgres permite múltiples NULL en
+   uniques compuestos (igual que en single-col)
+5. ✅ Solo 1 tenant en BD → imposible que el composite tenga
+   colisiones con datos existentes
+6. ✅ DDL atómico en una sola transacción de `prisma migrate deploy`.
+   Postgres no expone estado intermedio
+
+**Cambio acompañante de código:** `src/lib/invoice-counter.ts`:
+```typescript
+// Antes
+tx.invoiceCounter.upsert({
+  where:  { channel },
+  update: { lastValue: { increment: 1 } },
+  create: { channel, lastValue: 101 },
+});
+
+// Ahora
+tx.invoiceCounter.upsert({
+  where:  { tenantId_channel: { tenantId, channel } },
+  update: { lastValue: { increment: 1 } },
+  create: { tenantId, channel, lastValue: 101 },
+});
+```
+
+Firma de `getNextCorrelativo(channel, tenantId = FALLBACK_TENANT_ID)`.
+Mantiene atomicidad del unique constraint (no degradado a
+findFirst+create/update).
+
+**Verificación post-deploy (consulta sobre BD productiva):**
+```sql
+SELECT indexname FROM pg_indexes
+WHERE schemaname='public'
+  AND (indexname LIKE '%_tenantId_%_key' OR indexname IN
+       ('User_email_key','InventoryItem_sku_key','MenuItem_sku_key',
+        'Branch_code_key','OpenTab_tabCode_key'))
+ORDER BY indexname;
+```
+
+Resultado confirmado: 20 índices `_tenantId_X_key`, cero rastro de los
+viejos. Sitio respondiendo normal.
+
+### 35.3 Paso A (PR #108) — `tenantId` en JWT
+
+Añadido a `SessionPayload`:
+```typescript
+/**
+ * ID del tenant al que pertenece el usuario. Opcional para
+ * compatibilidad con JWTs emitidos antes de Fase 3 — esos caen al
+ * fallback Shanklish vía resolveTenantContext().
+ */
+tenantId?: string;
+```
+
+En `auth.actions.ts`, el `select` del login ahora incluye `tenantId` y
+lo pasa a `createSession`. JWTs viejos sin el campo siguen funcionando
+— al expirar (24h) se renuevan con el campo poblado.
+
+Cero cambio de comportamiento runtime: nadie llama a
+`resolveTenantContext()` todavía, así que el JWT solo lleva info
+adicional.
+
+### 35.4 Paso B (PR #109) — Hardening del host parser
+
+Bug latente detectado: `extractTenantSlugFromHost('capsula-erp.vercel.app')`
+devolvía `'capsula-erp'`. Cuando se active Fase 3 plena, eso buscaría
+un tenant slug 'capsula-erp' en BD → fallback Shanklish. No rompía
+nada (la función no se llama en runtime), pero conceptualmente sucio.
+
+Fix: ahora solo extrae si el host termina exactamente en
+`.kpsula.app`. Cualquier otro host (Vercel preview, localhost,
+example.com, IPs) → `null`.
+
+```typescript
+const TENANT_ROOT_DOMAIN = 'kpsula.app';
+
+export function extractTenantSlugFromHost(host) {
+  // ...
+  if (!hostNoPort.endsWith('.' + TENANT_ROOT_DOMAIN)) return null;
+  // ...
+}
+```
+
+3 tests nuevos: 116/116 ✓ (antes 113):
+- `capsula-erp.vercel.app` / preview domains → null
+- `example.com` / `attacker.evil.com` → null
+- IPs raw → null
+- `staging.kpsula.app` → `'staging'` (multi-nivel toma primera label)
+- `shanklish.staging.kpsula.app` → `'shanklish'`
+
+### 35.5 Estado al cierre de la sesión
+
+**Schema y BD:** ✅
+- Tabla Tenant con 1 fila (Shanklish)
+- 42 modelos con `tenantId NOT NULL DEFAULT 'tnt_shanklish_caracas'`
+- 20 uniques compuestos `(tenantId, X)` verificados en producción
+
+**Código preparatorio:** ✅
+- `findUnique → findFirst` en hits críticos
+- `upsert` de invoice-counter usa unique compuesto
+- JWT lleva `tenantId` en sesiones nuevas
+- Host parser robusto contra hosts no-kpsula
+
+**Dormante (no se importa en runtime):** ✅
+- `src/lib/tenant-context.ts` (puro)
+- `src/lib/tenant-context.server.ts` (server-only, usa Prisma)
+- `src/lib/define-action.ts` (wrapper para actions)
+- `src/lib/prisma-tenant-client.ts` (extension `withTenant()`)
+
+### 35.6 Pendientes para próximas sesiones
+
+**Paso C — Middleware passive subdomain (~15 min, riesgo bajo pero
+blast radius alto)**
+- `middleware.ts` extrae slug del host → lo pasa como header
+  `x-tenant-slug` al downstream
+- Server actions/components no leen el header todavía → cero impacto
+- Requiere ventana de mantenimiento por safety (cambio en middleware =
+  todo el sitio depende de él)
+
+**Paso D — Activar `resolveTenantContext()` en actions críticas**
+- Empezar por una action piloto (e.g., `getOpenTabsAction`)
+- Si pasa una semana sin incidentes, migrar más
+- Esto sí cambia comportamiento: las queries empiezan a filtrar por
+  tenantId explícito (aunque sigue siendo Shanklish para todos)
+
+**Paso E — Cliente Prisma extendido (`withTenant(tenant.id)`)**
+- Reemplazar `prisma` por `withTenant(ctx.tenantId)` en actions
+  migradas
+- Inyecta `tenantId` automáticamente en `findMany/findFirst/create/etc.`
+
+**Signup self-service + panel SUPER_ADMIN (~2-3 h)**
+- `/signup` para crear nuevo tenant + owner
+- `/admin/tenants` para listar/desactivar
+- Bootstrap mínimo de un tenant nuevo (sucursal, áreas, zonas
+  default)
+
+**DNS wildcard `*.kpsula.app`** ← trabajo del usuario en GoDaddy/
+Cloudflare. Documento en `docs/VPS_MIGRATION_PLAN.md`.
+
+**Auditoría credenciales** — comando para SSH al VPS:
+```bash
+cd /var/www/capsula-erp && npx tsx scripts/audit-credentials.ts
+```
+Detecta passwords plain-text. 5 min, solo lectura.
+
+### 35.7 Referencias
+
+- PR #105: refactor findFirst preparatorio
+- PR #107: schema migration uniques compuestos
+- PR #108: tenantId en JWT
+- PR #109: hardening host parser
+- `prisma/migrations/20260511130500_multitenant_2b_composite_uniques/migration.sql`
+- `src/lib/tenant-context.ts` (función pura, 12 tests)
+- `src/lib/auth.ts` (`SessionPayload.tenantId?`)
