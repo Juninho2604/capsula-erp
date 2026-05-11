@@ -45,5 +45,26 @@ describe('extractTenantSlugFromHost', () => {
         // Los previews de Vercel son tipo my-project-xxx.vercel.app — la app
         // root es vercel.app así que cualquier subdomain ahí NO es un tenant.
         expect(extractTenantSlugFromHost('vercel.app')).toBeNull();
+        expect(extractTenantSlugFromHost('capsula-erp.vercel.app')).toBeNull();
+        expect(extractTenantSlugFromHost('capsula-erp-git-main.vercel.app')).toBeNull();
+        expect(extractTenantSlugFromHost('xxx-yyy-zzz.vercel.app')).toBeNull();
+    });
+
+    it('Dominios ajenos: nunca extrae tenant', () => {
+        expect(extractTenantSlugFromHost('example.com')).toBeNull();
+        expect(extractTenantSlugFromHost('shanklish.example.com')).toBeNull();
+        expect(extractTenantSlugFromHost('attacker.evil.com')).toBeNull();
+    });
+
+    it('IP raw: null', () => {
+        expect(extractTenantSlugFromHost('192.168.1.1')).toBeNull();
+        expect(extractTenantSlugFromHost('192.168.1.1:3000')).toBeNull();
+    });
+
+    it('Multi-nivel kpsula.app: toma primera label', () => {
+        // Útil para staging.kpsula.app → no es tenant, pero
+        // shanklish.staging.kpsula.app → tenant "shanklish" en sub-env.
+        expect(extractTenantSlugFromHost('staging.kpsula.app')).toBe('staging');
+        expect(extractTenantSlugFromHost('shanklish.staging.kpsula.app')).toBe('shanklish');
     });
 });
