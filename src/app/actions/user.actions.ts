@@ -385,7 +385,11 @@ export async function createUserAction(data: {
     }
 
     try {
-        const existing = await prisma.user.findUnique({ where: { email } });
+        // Pre-Fase 2.B: findFirst en lugar de findUnique para no depender del
+        // unique global sobre User.email. Mismo comportamiento mientras solo
+        // hay un tenant; cuando el unique pase a (tenantId, email) habrá que
+        // añadir tenantId al where.
+        const existing = await prisma.user.findFirst({ where: { email } });
         if (existing) {
             return { success: false, message: 'Ya existe un usuario con ese correo electrónico' };
         }
@@ -459,7 +463,9 @@ export async function updateUserNameAction(
     if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     try {
-        const conflict = await prisma.user.findUnique({ where: { email } });
+        // Pre-Fase 2.B: findFirst para no depender del unique global. Update
+        // sigue siendo por id (ese unique sí se mantiene global).
+        const conflict = await prisma.user.findFirst({ where: { email } });
         if (conflict && conflict.id !== userId) {
             return { success: false, message: 'Ese correo ya está en uso por otro usuario' };
         }

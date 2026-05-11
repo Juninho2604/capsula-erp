@@ -208,7 +208,9 @@ export async function createSkuItemAction(
         const prefix = input.skuPrefix?.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'SKU';
         const count = await prisma.inventoryItem.count({ where: { sku: { startsWith: prefix } } });
         const candidateSku = `${prefix}-${String(count + 1).padStart(3, '0')}`;
-        const existing = await prisma.inventoryItem.findUnique({ where: { sku: candidateSku } });
+        // Pre-Fase 2.B: findFirst en lugar de findUnique para no depender del
+        // unique global sobre InventoryItem.sku.
+        const existing = await prisma.inventoryItem.findFirst({ where: { sku: candidateSku } });
         const finalSku = existing ? `${prefix}-${Date.now().toString().slice(-5)}` : candidateSku;
 
         // Metadata SKU Studio en description

@@ -51,8 +51,9 @@ export async function createRawMaterialAction(
     if (!input.sku?.trim()) return { success: false, message: 'El SKU es obligatorio' };
     if (!input.baseUnit?.trim()) return { success: false, message: 'La unidad base es obligatoria' };
 
-    // Verificar SKU único
-    const existing = await prisma.inventoryItem.findUnique({ where: { sku: input.sku.trim().toUpperCase() } });
+    // Verificar SKU único — pre-Fase 2.B: findFirst para no depender del unique
+    // global sobre InventoryItem.sku.
+    const existing = await prisma.inventoryItem.findFirst({ where: { sku: input.sku.trim().toUpperCase() } });
     if (existing) {
       return { success: false, message: `Ya existe un ítem con el SKU "${input.sku}" — usa uno diferente` };
     }
