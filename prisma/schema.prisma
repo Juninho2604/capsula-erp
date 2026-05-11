@@ -80,7 +80,7 @@ model Tenant {
 
 model User {
   id            String    @id @default(cuid())
-  email         String    @unique
+  email         String
   passwordHash  String?
   firstName     String
   lastName      String
@@ -160,6 +160,7 @@ model User {
   tenantId      String   @default("tnt_shanklish_caracas")
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, email])
   @@index([email])
   @@index([role])
   @@index([tenantId])
@@ -219,7 +220,7 @@ model Area {
 
 model InventoryItem {
   id              String   @id @default(cuid())
-  sku             String   @unique
+  sku             String
   name            String
   description     String?
   type            String   // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
@@ -293,6 +294,7 @@ model InventoryItem {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, sku])
   @@index([sku])
   @@index([type])
   @@index([category])
@@ -487,7 +489,7 @@ model RecipeIngredient {
 
 model ProductionOrder {
   id              String   @id @default(cuid())
-  orderNumber     String   @unique
+  orderNumber     String
   
   recipeId        String
   recipe          Recipe   @relation(fields: [recipeId], references: [id])
@@ -521,6 +523,7 @@ model ProductionOrder {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, orderNumber])
   @@index([status])
   @@index([scheduledDate])
   @@index([tenantId])
@@ -532,7 +535,7 @@ model ProductionOrder {
 
 model ProteinProcessing {
   id              String   @id @default(cuid())
-  code            String   @unique // Ej: PROT-2026-001
+  code            String   // Ej: PROT-2026-001 — unique compuesto con tenantId abajo
   
   // Fecha del procesamiento
   processDate     DateTime @default(now())
@@ -594,6 +597,7 @@ model ProteinProcessing {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([processDate])
   @@index([status])
   @@index([sourceItemId])
@@ -689,7 +693,7 @@ model ProcessingTemplateOutput {
 
 model Requisition {
   id          String   @id @default(cuid())
-  code        String   @unique // Ej: REQ-1001
+  code        String   // Ej: REQ-1001 — unique compuesto con tenantId abajo
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
   
   // QuiÃ©n pide (Solicitante)
@@ -734,6 +738,7 @@ model Requisition {
   tenantId    String   @default("tnt_shanklish_caracas")
   tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([status])
   @@index([requestedById])
   @@index([targetAreaId])
@@ -788,7 +793,7 @@ model MenuCategory {
 
 model MenuItem {
   id              String   @id @default(cuid())
-  sku             String   @unique // Ej: "SHWRM-MIX", "BEB-PEPSI"
+  sku             String   // Ej: "SHWRM-MIX", "BEB-PEPSI" — unique compuesto con tenantId abajo
   name            String   // Ej: "Shawarma Mixto"
   description     String?
   
@@ -842,6 +847,7 @@ model MenuItem {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, sku])
   @@index([categoryId])
   @@index([sku])
   @@index([serviceCategory])
@@ -926,8 +932,8 @@ model MenuItemModifierGroup {
 model SalesOrder {
   id              String   @id @default(cuid())
   
-  // Correlativo Ãºnico por dÃ­a (Ej: "REST-2026-01-27-001")
-  orderNumber     String   @unique
+  // Correlativo único por día (Ej: "REST-2026-01-27-001") — unique compuesto con tenantId abajo
+  orderNumber     String
   
   // Tipo de venta
   orderType       String   @default("RESTAURANT") // RESTAURANT, DELIVERY
@@ -1024,6 +1030,7 @@ model SalesOrder {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, orderNumber])
   @@index([orderNumber])
   @@index([orderType])
   @@index([status])
@@ -1291,7 +1298,7 @@ model InventoryAuditItem {
 model Supplier {
   id          String   @id @default(cuid())
   name        String
-  code        String?  @unique // Código interno del proveedor
+  code        String?  // Código interno del proveedor — unique compuesto con tenantId abajo
   contactName String?
   phone       String?
   email       String?
@@ -1321,6 +1328,7 @@ model Supplier {
   // Histórico de precios (Fase 2 — propuesta 002)
   priceHistory   SupplierItemPriceHistory[]
 
+  @@unique([tenantId, code])
   @@index([name])
   @@index([tenantId])
 }
@@ -1347,7 +1355,7 @@ model SupplierItem {
 
 model PurchaseOrder {
   id              String   @id @default(cuid())
-  orderNumber     String   @unique // Ej: OC-2026-0001
+  orderNumber     String   // Ej: OC-2026-0001 — unique compuesto con tenantId abajo
   orderName       String?  // Nombre descriptivo: VEGETALES, COCHE, etc.
   
   supplierId      String?
@@ -1391,6 +1399,7 @@ model PurchaseOrder {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, orderNumber])
   @@index([status])
   @@index([orderDate])
   @@index([supplierId])
@@ -1476,7 +1485,7 @@ model AuditLog {
 /// Categorías de gastos operativos (alquiler, servicios, nómina, etc.)
 model ExpenseCategory {
   id          String   @id @default(cuid())
-  name        String   @unique  // ej: "Alquiler", "Servicios Públicos", "Nómina"
+  name        String   // ej: "Alquiler", "Servicios Públicos", "Nómina" — unique compuesto con tenantId abajo
   description String?
   color       String?  // hex color para UI, ej: "#3B82F6"
   icon        String?  // emoji, ej: "🏠"
@@ -1492,6 +1501,7 @@ model ExpenseCategory {
 
   expenses    Expense[]
 
+  @@unique([tenantId, name])
   @@index([isActive])
   @@index([tenantId])
 }
@@ -1690,7 +1700,7 @@ model AccountPayment {
 
 model Branch {
   id            String   @id @default(cuid())
-  code          String   @unique
+  code          String
   name          String
   legalName     String?
   timezone      String   @default("America/Caracas")
@@ -1715,6 +1725,7 @@ model Branch {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
@@ -1836,7 +1847,7 @@ model OpenTab {
   serviceZone     ServiceZone? @relation(fields: [serviceZoneId], references: [id])
   tableOrStationId String?
   tableOrStation  TableOrStation? @relation(fields: [tableOrStationId], references: [id])
-  tabCode         String   @unique
+  tabCode         String   // unique compuesto con tenantId abajo
   customerLabel   String?
   customerPhone   String?
   guestCount      Int      @default(1)
@@ -1880,6 +1891,7 @@ model OpenTab {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, tabCode])
   @@index([branchId, status])
   @@index([tableOrStationId])
   @@index([tenantId])
@@ -2022,17 +2034,16 @@ model SystemConfig {
 // Contador global de correlativo por canal (nunca se resetea)
 model InvoiceCounter {
   id        String   @id @default(cuid())
-  channel   String   @unique
+  channel   String
   // "DELIVERY" | "PICKUP" | "RESTAURANT" | "PEDIDOS_YA" | "OPEN_TAB" | "GAME_SESSION"
   lastValue Int      @default(100)
   updatedAt DateTime @updatedAt
 
-  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  // Nota: el unique sigue siendo en `channel`. Se cambia a (tenantId, channel)
-  // en Fase 2. Por ahora solo Shanklish, sin colisión.
+  // Multi-tenant (Fase 1.D-γ).
   tenantId  String   @default("tnt_shanklish_caracas")
   tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, channel])
   @@index([tenantId])
 }
 
@@ -2059,7 +2070,7 @@ model ExchangeRate {
 
 model GameType {
   id          String   @id @default(cuid())
-  code        String   @unique  // BILLAR, PLAYSTATION, PING_PONG, ARCADE, etc.
+  code        String   // BILLAR, PLAYSTATION, PING_PONG, ARCADE, etc. — unique compuesto con tenantId abajo
   name        String
   description String?
   icon        String?
@@ -2076,13 +2087,14 @@ model GameType {
   tenantId    String   @default("tnt_shanklish_caracas")
   tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([code])
   @@index([tenantId])
 }
 
 model GameStation {
   id            String   @id @default(cuid())
-  code          String   @unique  // BILLAR-01, PS5-01, etc.
+  code          String   // BILLAR-01, PS5-01, etc. — unique compuesto con tenantId abajo
   name          String
   gameTypeId    String
   gameType      GameType @relation(fields: [gameTypeId], references: [id])
@@ -2103,6 +2115,7 @@ model GameStation {
   tenantId      String   @default("tnt_shanklish_caracas")
   tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([gameTypeId])
   @@index([currentStatus])
   @@index([branchId])
@@ -2111,7 +2124,7 @@ model GameStation {
 
 model WristbandPlan {
   id            String   @id @default(cuid())
-  code          String   @unique
+  code          String
   name          String   // Ej: "Pulsera Básica 2h", "Pulsera Premium Full Day"
   description   String?
   durationMinutes Int    // Duración total en minutos
@@ -2128,13 +2141,14 @@ model WristbandPlan {
   tenantId      String   @default("tnt_shanklish_caracas")
   tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([isActive])
   @@index([tenantId])
 }
 
 model Reservation {
   id              String   @id @default(cuid())
-  code            String   @unique  // RES-2026-0001
+  code            String   // RES-2026-0001 — unique compuesto con tenantId abajo
   stationId       String
   station         GameStation @relation(fields: [stationId], references: [id])
   wristbandPlanId String?
@@ -2163,6 +2177,7 @@ model Reservation {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([stationId, scheduledStart])
   @@index([status])
   @@index([customerPhone])
@@ -2171,12 +2186,12 @@ model Reservation {
 
 model GameSession {
   id              String   @id @default(cuid())
-  code            String   @unique  // GSN-2026-0001
+  code            String   // GSN-2026-0001 — unique compuesto con tenantId abajo
   stationId       String
   station         GameStation @relation(fields: [stationId], references: [id])
   gameTypeId      String
   gameType        GameType @relation(fields: [gameTypeId], references: [id])
-  reservationId   String?  @unique
+  reservationId   String?  @unique  // global: 1:1 con Reservation cuyo id ya es único
   reservation     Reservation? @relation(fields: [reservationId], references: [id])
   salesOrderId    String?
   salesOrder      SalesOrder? @relation("GameSessions", fields: [salesOrderId], references: [id])
@@ -2202,6 +2217,7 @@ model GameSession {
   tenantId        String   @default("tnt_shanklish_caracas")
   tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([stationId, status])
   @@index([startedAt])
   @@index([salesOrderId])
@@ -2309,7 +2325,7 @@ model IntercompanyItemMapping {
 // Familia de productos (SKU Studio)
 model ProductFamily {
   id          String   @id @default(cuid())
-  code        String   @unique  // Ej: SHAWARMA, BEBIDA, POSTRE
+  code        String   // Ej: SHAWARMA, BEBIDA, POSTRE — unique compuesto con tenantId abajo
   name        String
   description String?
   icon        String?
@@ -2324,6 +2340,7 @@ model ProductFamily {
   items       InventoryItem[]
   templates   SkuCreationTemplate[]
 
+  @@unique([tenantId, code])
   @@index([code])
   @@index([tenantId])
 }
@@ -2374,7 +2391,7 @@ model BroadcastMessage {
 // Ciclo de Conteo Físico (Inventario Semanal/Mensual)
 model InventoryCycle {
   id          String   @id @default(cuid())
-  code        String   @unique  // CYCLE-2026-W12
+  code        String   // CYCLE-2026-W12 — unique compuesto con tenantId abajo
   name        String   // Ej: "Conteo Semana 12 - 2026"
   cycleType   String   @default("WEEKLY") // WEEKLY, MONTHLY, SPOT_CHECK
   areaIds     String   // JSON array de IDs de área incluidos
@@ -2393,6 +2410,7 @@ model InventoryCycle {
   tenantId    String   @default("tnt_shanklish_caracas")
   tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, code])
   @@index([status])
   @@index([cycleType])
   @@index([startedAt])

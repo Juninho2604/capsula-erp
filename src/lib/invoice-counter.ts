@@ -1,4 +1,5 @@
 import prisma from '@/server/db';
+import { FALLBACK_TENANT_ID } from '@/lib/tenant-context';
 
 export type InvoiceChannel =
   | 'DELIVERY'
@@ -18,23 +19,25 @@ const PREFIX: Record<InvoiceChannel, string> = {
 };
 
 /**
- * Retorna el siguiente correlativo global para el canal dado.
- * Usa una transacción atómica (upsert + increment) para garantizar
- * unicidad sin reseteo diario.
+ * Retorna el siguiente correlativo por (tenant, canal). Usa una transacción
+ * atómica (upsert + increment) sobre el unique compuesto (tenantId, channel)
+ * para garantizar unicidad sin reseteo diario.
  *
  * Ejemplos: REST-0101, DEL-0042, PYA-0007
  *
- * NOTA Fase 2.B: cuando InvoiceCounter pase a @@unique([tenantId, channel]),
- * este upsert debe usar `where: { tenantId_channel: { tenantId, channel } }`
- * para mantener la atomicidad. El refactor se hace en el mismo PR del schema
- * change.
+ * Mientras Fase 3 no esté activa, usa FALLBACK_TENANT_ID (Shanklish). Cuando
+ * el middleware esté activo se le pasará el tenantId explícito desde el
+ * contexto de la sesión.
  */
-export async function getNextCorrelativo(channel: InvoiceChannel): Promise<string> {
+export async function getNextCorrelativo(
+  channel: InvoiceChannel,
+  tenantId: string = FALLBACK_TENANT_ID,
+): Promise<string> {
   const counter = await prisma.$transaction(async (tx) => {
     return tx.invoiceCounter.upsert({
-      where:  { channel },
+      where:  { tenantId_channel: { tenantId, channel } },
       update: { lastValue: { increment: 1 } },
-      create: { channel, lastValue: 101 },
+      create: { tenantId, channel, lastValue: 101 },
     });
   });
   const prefix = PREFIX[channel];
