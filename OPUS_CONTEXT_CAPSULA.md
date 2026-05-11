@@ -6265,3 +6265,143 @@ Detecta passwords plain-text. 5 min, solo lectura.
 - `prisma/migrations/20260511130500_multitenant_2b_composite_uniques/migration.sql`
 - `src/lib/tenant-context.ts` (función pura, 12 tests)
 - `src/lib/auth.ts` (`SessionPayload.tenantId?`)
+
+---
+
+## 36. Auditoría de credenciales y auto-rehash silencioso (2026-05-11)
+
+Cierre de la deuda pendiente de §29 (hardening auth): correr el script
+`scripts/audit-credentials.ts` contra producción y resolver hallazgos.
+
+### 36.1 Setup del audit en el VPS
+
+El VPS Contabo (`/var/www/capsula-erp`) tiene un build standalone de
+Next, no un clone git completo, así que el script no estaba allí.
+Procedimiento usado:
+
+```bash
+cd /var/www/capsula-erp && \
+  mkdir -p scripts && \
+  wget -q https://raw.githubusercontent.com/Juninho2604/capsula-erp/main/scripts/audit-credentials.ts \
+    -O scripts/audit-credentials.ts && \
+  set -a && source .env && set +a && \
+  npx tsx scripts/audit-credentials.ts
+```
+
+**Trampa detectada:** el `.env` del proyecto (`/var/www/capsula-erp/.env`)
+apunta a la BD staging `capsula_db:5432` (vacía), NO a la productiva
+`capsula_erp_prod:5433`. El script corrió contra staging y reportó
+"4 users totales / 1 plain-text" engañosamente. La app en pm2 tiene
+su DATABASE_URL en otro lado (probablemente ecosystem.config.js).
+
+Para auditar realmente la BD productiva, se usó SQL directo:
+
+```bash
+sudo -u postgres psql -p 5433 capsula_erp_prod -c "
+  SELECT substring(id, 1, 8) AS id_prefix, email, \"isActive\"
+  FROM \"User\"
+  WHERE \"passwordHash\" IS NOT NULL
+    AND \"passwordHash\" !~ '^[0-9a-f]{32}:[0-9a-f]{64}\$';
+"
+```
+
+### 36.2 Hallazgos sobre BD productiva
+
+**17 users con password en plain-text** (todos creados el 2026-01-27
+salvo `admin@shanklish.com` que es 2026-03-26):
+
+```
+karina, admin, carlos, cocina, christian, maurizio, david, nour,
+victor, cajera1, cajera2, oscar, hadkin, ramiro, miguel (inactivo),
+nahomy, omar — todos @shanklish.com
+```
+
+El sistema seguía funcionando porque `verifyPassword`
+(`src/lib/password.ts:62-71`) tiene fallback retrocompatible: si el
+`stored` no contiene `:`, compara texto plano con `timingSafeEqualString`
+(constant-time). Esto era deuda de seguridad — un dump de BD revelaría
+todas las contraseñas en claro.
+
+Waiters: ✅ 6 totales, 4 con PIN hasheado, 2 sin PIN (capitanes), 0
+plain-text, 0 PINs duplicados entre waiters del mismo branch.
+
+### 36.3 Solución — auto-rehash silencioso (PR #111)
+
+En lugar de forzar password resets (disruptivo) o rehashear
+manualmente desde script (requiere saber los plain-text, lo que es
+exactamente la deuda que queremos cerrar), el fix es **transparente**:
+
+En `loginAction` (`src/app/actions/auth.actions.ts`), después de
+`verifyPassword` exitoso, si el `passwordHash` almacenado NO contiene
+`:` (es plain-text legacy), se re-hashea con `hashPassword(password)`
+y se persiste. El password en claro se conoce solo durante esa
+request (acabamos de validarlo), así que podemos derivar el hash
+correcto.
+
+```typescript
+if (user.passwordHash && !user.passwordHash.includes(':')) {
+    try {
+        const rehashed = await hashPassword(password);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: rehashed },
+        });
+    } catch (err) {
+        console.error('[auto-rehash] failed for user', user.id, err);
+        // No interrumpe el login (best-effort).
+    }
+}
+```
+
+Características:
+- **Cero disrupción**: el user no nota nada, su login ya fue exitoso.
+- **Best-effort**: si la `update` falla (BD ocupada, etc.) no
+  interrumpimos el login. Se reintentará en el próximo login.
+- **Sin riesgo de timing leak**: el bloque corre solo en el path
+  exitoso, después de validar credenciales.
+- **Auto-cierra la deuda**: a medida que cada user activo se loguea,
+  su row se actualiza a PBKDF2. La deuda se diluye solo.
+
+### 36.4 Verificación pendiente (3-5 días tras merge)
+
+Re-correr la query para confirmar que los plain-text bajaron:
+
+```bash
+sudo -u postgres psql -p 5433 capsula_erp_prod -c "
+  SELECT count(*) AS users_plain_text_restantes
+  FROM \"User\"
+  WHERE \"passwordHash\" IS NOT NULL
+    AND \"passwordHash\" !~ '^[0-9a-f]{32}:[0-9a-f]{64}\$';
+"
+```
+
+Expectativa: baja de 17 → ~1 (solo `miguel@shanklish.com` que está
+`isActive=false`). Cuando se reactive, rotación manual de su password.
+
+### 36.5 Lecciones aprendidas
+
+1. **El `.env` del repo en el VPS es de staging, no de producción.**
+   La app en pm2 usa otra fuente para DATABASE_URL. Anotar para
+   próxima sesión: si se quiere correr un script contra producción
+   desde VPS, hay que setear DATABASE_URL explícitamente con la URL
+   correcta o leer del ecosystem de pm2.
+
+2. **El script `audit-credentials.ts` tiene drift de schema** —
+   intenta `select pin` con un Prisma client del VPS que tiene
+   schema viejo. Actualizar el script o regenerar el client del VPS
+   antes de ejecutarlo. Para auditoría puntual, SQL directo es más
+   confiable.
+
+3. **`verifyPassword` con fallback plain-text es una superficie de
+   ataque silenciosa.** Útil para no romper logins históricos, pero
+   conviene drenarlo cuanto antes. Eventualmente (cuando se confirme
+   que no quedan plain-text), eliminar la rama de retrocompat de
+   `password.ts:63-66` y forzar formato PBKDF2.
+
+### 36.6 Referencias
+
+- PR #111: auto-rehash silencioso
+- `src/lib/password.ts` (fallback retrocompat — documentar deprecación
+  futura)
+- `scripts/audit-credentials.ts` (necesita actualización a schema
+  actual)
