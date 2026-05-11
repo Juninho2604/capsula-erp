@@ -2,7 +2,7 @@
 
 import prisma from '@/server/db';
 import { createSession, deleteSession } from '@/lib/auth';
-import { verifyPassword } from '@/lib/password';
+import { hashPassword, verifyPassword } from '@/lib/password';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { redirect } from 'next/navigation';
 
@@ -66,6 +66,26 @@ export async function loginAction(prevState: any, formData: FormData) {
 
         if (!user.isActive) {
             return { success: false, message: 'Cuenta desactivada. Contacta al admin.' };
+        }
+
+        // Auto-rehash silencioso para users legacy con password plain-text.
+        // verifyPassword acepta plain-text (sin ':' en el hash) por
+        // retrocompatibilidad, pero un dump de BD expondría las contraseñas.
+        // Si el password almacenado NO tiene ':', es plain-text: lo
+        // re-hasheamos con PBKDF2 y persistimos. Cero impacto para el user
+        // (su login ya tuvo éxito) y best-effort: si la update falla, no
+        // bloqueamos el login.
+        if (user.passwordHash && !user.passwordHash.includes(':')) {
+            try {
+                const rehashed = await hashPassword(password);
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { passwordHash: rehashed },
+                });
+            } catch (err) {
+                console.error('[auto-rehash] failed for user', user.id, err);
+                // No interrumpe el login.
+            }
         }
 
         // Crear sesión segura. tokenVersion permite invalidar JWTs vivos
