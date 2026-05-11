@@ -23,6 +23,11 @@ const PREFIX: Record<InvoiceChannel, string> = {
  * unicidad sin reseteo diario.
  *
  * Ejemplos: REST-0101, DEL-0042, PYA-0007
+ *
+ * NOTA Fase 2.B: cuando InvoiceCounter pase a @@unique([tenantId, channel]),
+ * este upsert debe usar `where: { tenantId_channel: { tenantId, channel } }`
+ * para mantener la atomicidad. El refactor se hace en el mismo PR del schema
+ * change.
  */
 export async function getNextCorrelativo(channel: InvoiceChannel): Promise<string> {
   const counter = await prisma.$transaction(async (tx) => {
