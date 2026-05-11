@@ -46,6 +46,12 @@ export interface SessionPayload {
      * compatibilidad con sesiones emitidas antes de PR 4.
      */
     tokenVersion?: number;
+    /**
+     * ID del tenant al que pertenece el usuario. Opcional para compatibilidad
+     * con JWTs emitidos antes de Fase 3 — esos caen al fallback Shanklish
+     * vía resolveTenantContext(). JWTs nuevos siempre lo incluyen.
+     */
+    tenantId?: string;
 }
 
 export async function encrypt(payload: SessionPayload) {
