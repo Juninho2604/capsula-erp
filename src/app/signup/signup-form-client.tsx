@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { signupTenantAction, type SignupState } from '@/app/actions/signup.actions';
 import { Check, ExternalLink } from 'lucide-react';
@@ -27,6 +27,18 @@ export default function SignupForm() {
     );
     const [slugPreview, setSlugPreview] = useState('mitiendaa');
 
+    // Auto-redirect cross-subdomain tras éxito. El token de bootstrap (60s)
+    // viaja en la URL y el endpoint /auth/bootstrap del subdomain lo canjea
+    // por una cookie de sesión local antes de mandar al /dashboard.
+    useEffect(() => {
+        if (state?.success && typeof window !== 'undefined') {
+            const t = window.setTimeout(() => {
+                window.location.href = state.loginUrl;
+            }, 1200);
+            return () => window.clearTimeout(t);
+        }
+    }, [state]);
+
     if (state?.success) {
         return (
             <div className="pos-card p-6 text-center space-y-4">
@@ -38,20 +50,21 @@ export default function SignupForm() {
                         Cuenta creada
                     </h2>
                     <p className="mt-2 text-sm text-capsula-ink-soft">
-                        Tu negocio ya está registrado en{' '}
+                        Entrando a{' '}
                         <span className="font-semibold text-capsula-ink">
                             {state.tenantSlug}.{TENANT_ROOT_DOMAIN}
                         </span>
+                        …
                     </p>
                 </div>
                 <a
                     href={state.loginUrl}
                     className="pos-btn w-full py-3 inline-flex items-center justify-center gap-2"
                 >
-                    Ir a iniciar sesión <ExternalLink className="h-4 w-4" />
+                    Ir ahora <ExternalLink className="h-4 w-4" />
                 </a>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-capsula-ink-muted">
-                    Usá el email y la contraseña que acabás de elegir.
+                    Te redirigimos automáticamente en un segundo.
                 </p>
             </div>
         );

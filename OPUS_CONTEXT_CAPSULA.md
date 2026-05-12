@@ -7038,6 +7038,53 @@ sub-secciones futuras (38.15, 38.16...) según feedback.
   desactivar abusos, ver métricas. Requiere role SUPER_ADMIN nuevo.
 - **CAPTCHA o Turnstile**: si hay bots intentando crear tenants masivos,
   añadir Cloudflare Turnstile (free) en el form.
+
+### 38.16 Bootstrap Branch + auto-login cross-subdomain (2026-05-12)
+
+Resuelve los dos primeros pendientes de §38.15. El signup ahora deja al
+owner directamente en `/dashboard` del subdomain del tenant, sin pedir
+que vuelva a tipear credenciales.
+
+**Cambios:**
+
+| Archivo | Cambio |
+|---|---|
+| `src/lib/signup/bootstrap-token.ts` | Helpers `createBootstrapToken()` / `verifyBootstrapToken()`. JWT HS256 firmado con `JWT_SECRET`, expira en 60s, payload `{kind:"signup-bootstrap", userId, tenantId, tenantSlug}`. |
+| `src/lib/signup/bootstrap-token.test.ts` | 4 tests: round-trip, JWT inválido, firma con otro secret, kind incorrecto. |
+| `src/app/actions/signup.actions.ts` | La transacción ahora también crea `Branch{code:"MAIN", name:businessName}` para el tenant nuevo. Tras commit genera un bootstrap token y devuelve `loginUrl: https://<slug>.kpsula.app/auth/bootstrap?t=<jwt>` en vez de `/login`. |
+| `src/app/auth/bootstrap/route.ts` | `GET` handler: verifica token, carga `User` validando `tenantId` matcheado, llama `createSession()` con snapshot fresco, redirige a `/dashboard`. Token inválido/expirado → `/login?bootstrap=expired`. |
+| `src/app/signup/signup-form-client.tsx` | Tras éxito, `useEffect` redirige automáticamente a `loginUrl` con `window.location.href` 1.2s después. El CTA queda visible como fallback ("Ir ahora"). |
+
+**Por qué un token en URL y no una cookie compartida `.kpsula.app`:**
+
+Si emitiéramos la cookie de sesión con `domain=.kpsula.app`, el navegador
+la mandaría también a otros subdomains de otros tenants. Aunque el
+resolver de tenant (Paso D) rechaza JWTs cuyo `tenantId` no coincide
+con el host, abrimos una superficie de cross-tenant leak innecesaria.
+El token one-shot de 60s elimina ese vector: vive solo el tiempo del
+redirect, no persiste y queda atado a un único `tenantId` específico.
+
+**Por qué `Branch{code:"MAIN"}` y no más seed:**
+
+`Branch` es el mínimo para que `/dashboard` no crashee en queries que
+listan por tenant. El resto del seed (categorías, métodos de pago,
+estaciones de cocina) queda para una sub-sección futura — es opinionado
+y depende del tipo de negocio. El owner lo configura desde
+`/dashboard/config` o `/dashboard/sku-studio`.
+
+**Riesgo:**
+
+Bajo. La acción sigue gated por `SIGNUPS_ENABLED`. El endpoint
+`/auth/bootstrap` existe siempre pero solo acepta tokens firmados con
+el `JWT_SECRET` actual, así que en Vercel (sin la flag) nadie puede
+llegar a generarlos. Vercel intocable: el deploy de signup ya iba a
+ese servidor en el code base anterior y queda igual de inerte.
+
+**Pendientes que siguen abiertos de §38.15:**
+Email de bienvenida, panel `SUPER_ADMIN`, Turnstile. El resto
+(seed más completo de Area/ServiceZone/TableOrStation) puede esperar
+porque el owner puede empezar el flujo solo con Branch + dashboard
+funcionando.
 ## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
 
 ### 39.1 Contexto
