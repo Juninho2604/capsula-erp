@@ -1,0 +1,30 @@
+{
+    "name": "@kpsula/print-agent",
+    "version": "0.1.0",
+    "description": "Daemon que corre en el restaurante y traduce print jobs del ERP a comandos ESC/POS para las impresoras AON Ethernet.",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=20"
+    },
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "tsx src/index.ts",
+        "test:print": "tsx src/cli-test-print.ts",
+        "install:service": "tsx scripts/install-service.ts",
+        "uninstall:service": "tsx scripts/uninstall-service.ts"
+    },
+    "dependencies": {
+        "node-thermal-printer": "^4.5.0",
+        "node-windows": "^1.0.0-beta.8",
+        "dotenv": "^16.4.5"
+    },
+    "devDependencies": {
+        "@types/node": "^22.5.0",
+        "@types/node-windows": "^0.1.6",
+        "tsx": "^4.19.0",
+        "typescript": "^5.5.4"
+    }
+}

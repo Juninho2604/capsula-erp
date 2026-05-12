@@ -76,6 +76,7 @@ model Tenant {
   invoiceCounters     InvoiceCounter[]
   systemConfigs       SystemConfig[]
   reservations        Reservation[]
+  printJobs           PrintJob[]
 }
 
 model User {
@@ -118,7 +119,10 @@ model User {
   openedTabs       OpenTab[]    @relation("OpenTabOpener")
   assignedTabs     OpenTab[]    @relation("OpenTabAssignee")
   closedTabs       OpenTab[]    @relation("OpenTabCloser")
-  
+
+  // Print Agent — jobs encolados por este usuario.
+  enqueuedPrintJobs PrintJob[] @relation("PrintJobEnqueuedBy")
+
   // Cierres de Inventario
   closedDailyInventories DailyInventory[]
 
@@ -2526,4 +2530,50 @@ model RateLimitBucket {
 
   @@unique([key, windowStart])
   @@index([expiresAt])
+}
+
+// ============================================================================
+// PRINT AGENT (§38 — daemon que traduce print jobs a ESC/POS)
+// ============================================================================
+
+/// Cola de trabajos de impresión que el Print Agent (corriendo en una PC
+/// del restaurante) procesa polling cada ~1s. El ERP encola, el agent
+/// despacha. Permite imprimir desde tablets que no tienen drivers de la
+/// térmica AON.
+model PrintJob {
+  id            String          @id @default(cuid())
+  tenantId      String
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  type          PrintJobType
+  station       String?
+  payload       Json
+
+  status        PrintJobStatus  @default(PENDING)
+  retries       Int             @default(0)
+  errorMessage  String?
+
+  createdAt     DateTime        @default(now())
+  claimedAt     DateTime?
+  completedAt   DateTime?
+
+  enqueuedById  String?
+  enqueuedBy    User?           @relation("PrintJobEnqueuedBy", fields: [enqueuedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, completedAt])
+}
+
+enum PrintJobType {
+  RECEIPT
+  PRECUENTA
+  KITCHEN
+  VOID_KITCHEN
+}
+
+enum PrintJobStatus {
+  PENDING
+  PRINTING
+  COMPLETED
+  FAILED
 }

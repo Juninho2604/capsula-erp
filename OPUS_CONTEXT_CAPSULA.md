@@ -6949,3 +6949,88 @@ ejecutar `bash /root/deploy-capsula.sh main` y reportar éxito.
 en GitHub con error de auth y nada cambia en el VPS. El job tiene
 `script_stop: true` así que cualquier error aborta sin dejar estados
 intermedios.
+
+---
+
+## 38. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
+
+### 38.1 Contexto
+
+Las tablets (Android, PWA) **no tienen drivers de impresora térmica** y no pueden imprimir directamente. Hoy el ERP usa `printReceipt()` y `printKitchenCommand()` en `src/lib/print-command.ts` que abren `window.open()` + `window.print()` — funciona en PCs con driver instalado y modo kiosk, **falla en tablets**.
+
+Setup físico (con Jonathan de sistemas):
+- **7 impresoras AON Ethernet** (3 caja + 2 cocina + 1 pronto + 1 barra).
+- **Pickup-1** (Windows 10/11) será el **host del Print Agent**.
+- Las AON soportan **ESC/POS estándar por TCP puerto 9100**.
+
+### 38.2 Arquitectura — polling, no WebSocket
+
+```
+Tablet POS              ERP Vercel            Print Agent (Pickup-1)      Impresora AON
+─────────              ──────────            ────────────────────       ─────────────
+enqueuePrintJob() ─►  crea PrintJob       ◄─  GET  /jobs?status=PENDING
+                      (DB Postgres)       ─►  POST /jobs/:id/claim
+                                                                      ─►  TCP:9100 (ESC/POS)
+                                          ◄─  POST /jobs/:id/complete
+```
+
+Vercel no soporta WebSockets persistentes nativamente. Polling cada 1s con jobs FIFO es trivialmente fiable y la latencia (~1-2s) es aceptable para impresión en restaurante.
+
+### 38.3 Pieza por pieza
+
+| Archivo | Rol |
+|---|---|
+| `prisma/schema.prisma` | Modelo `PrintJob` con enums `PrintJobType` (RECEIPT/PRECUENTA/KITCHEN/VOID_KITCHEN) y `PrintJobStatus` (PENDING/PRINTING/COMPLETED/FAILED). Relaciones a `Tenant` y `User`. Índices `(tenantId, status, createdAt)`. |
+| `prisma/migrations/20260512200000_add_print_job/` | Migration SQL con tabla + enums + FKs. |
+| `src/lib/print-agent-auth.ts` | Auth del agent: `Bearer <PRINT_AGENT_API_KEY>` + `X-Tenant-Id`. Comparación constant-time. |
+| `src/app/api/print-agent/jobs/route.ts` | `GET` — devuelve los jobs FIFO al agent. |
+| `src/app/api/print-agent/jobs/[id]/claim/route.ts` | `POST` — claim atómico PENDING → PRINTING. 409 si race. |
+| `src/app/api/print-agent/jobs/[id]/complete/route.ts` | `POST` — marca COMPLETED + completedAt. |
+| `src/app/api/print-agent/jobs/[id]/fail/route.ts` | `POST` `{errorMessage, retryable}` — incrementa retries. Si `retryable && retries < 3` → vuelve a PENDING. Sino FAILED final. |
+| `src/app/actions/print-agent.actions.ts` | `enqueuePrintJobAction({type, station?, payload})` — server action que el POS llama para encolar. `getRecentPrintJobsAction()` para UI futura. |
+| `src/lib/print-via-agent.ts` | Wrappers cliente `enqueueReceipt()` y `enqueueKitchenCommand()` + helper `shouldUseAgent()`. Override manual via `localStorage.setItem('pos-print-via-agent', 'true'/'false')`. Errores con toast, NUNCA propagan. |
+| `print-agent/` | Daemon Node.js standalone. Su propio package.json, tsconfig, .env.example, .gitignore. |
+| `print-agent/src/printer-adapter.ts` | Adapter sobre `node-thermal-printer`. ESC/POS por `tcp://<ip>:9100`. Perfil `PrinterTypes.EPSON` (las AON son compatibles ESC/POS estándar). `CharacterSet.WPC1252` para acentos/ñ. Renderers `renderReceipt` (con dedupeo de items + totales) y `renderKitchen` (con motivo de void si aplica). Función `testPrint()` para probar sin payload real. |
+| `print-agent/src/cli-test-print.ts` | CLI standalone: `npx tsx src/cli-test-print.ts --ip=192.168.1.50 --station=kitchen-1`. Útil para verificar conectividad sin pasar por el ERP. |
+| `print-agent/src/config.ts` | Carga `.env`. `PRINTERS_JSON` es JSON serializado con array `[{station, ip, port}]` — editable sin recompilar. |
+| `print-agent/src/api-client.ts` | Wrapper fetch hacia el ERP. Bearer + Tenant-Id en cada call. |
+| `print-agent/src/index.ts` | Loop principal. `setInterval(pollIntervalMs)`. Lock interno `inFlight` para no solapar. Graceful shutdown SIGINT/SIGTERM. |
+| `print-agent/scripts/install-service.ts` | Registra como Windows Service "KPSULA Print Agent" via `node-windows`. Auto-restart con backoff. |
+| `print-agent/scripts/uninstall-service.ts` | Desinstala el servicio. |
+| `print-agent/README.md` | Guía paso a paso para Jonathan. Troubleshooting con tabla síntoma → solución. |
+
+### 38.4 Variables de entorno requeridas
+
+**Vercel** (lado ERP):
+- `PRINT_AGENT_API_KEY` — secreto compartido. Generar con `openssl rand -hex 32`.
+
+**`.env` en Pickup-1** (lado agent):
+```env
+ERP_URL=https://shanklish-erp-main.vercel.app
+API_KEY=<misma-clave-que-Vercel>
+TENANT_ID=tnt_shanklish_caracas
+POLL_INTERVAL_MS=1000
+PRINTERS_JSON=[{"station":"kitchen-1","ip":"192.168.1.50","port":9100}]
+DEFAULT_STATION=kitchen-1
+```
+
+### 38.5 Flow end-to-end del primer print real
+
+1. Jonathan asigna IP estática a la primera AON (ej. `192.168.1.50`).
+2. Verifica `ping 192.168.1.50` + `Test-NetConnection -ComputerName 192.168.1.50 -Port 9100`.
+3. Instala Node 20 en Pickup-1.
+4. `cd C:\kpsula-erp\print-agent`, `npm install`.
+5. Copia `.env.example` a `.env`, edita IPs + API_KEY.
+6. Test sin ERP: `npx tsx src/cli-test-print.ts --ip=192.168.1.50`. Sale hoja "KPSULA PRINT AGENT — Test de conectividad".
+7. Configura `PRINT_AGENT_API_KEY` en Vercel.
+8. Modo dev: `npm run dev`. Loop arranca.
+9. Desde el POS, llamar `enqueueReceipt(payload, 'kitchen-1')`. En <2s sale el recibo.
+10. Para producción: `npm run build` + `npx tsx scripts/install-service.ts` (PowerShell elevado).
+
+### 38.6 Pendientes Fase 2+
+
+- **Migración progresiva del POS**: hoy `enqueueReceipt()` está como wrapper paralelo a `printReceipt()`. Cada lugar del POS que llame `printReceipt()` se migra uno a uno usando `shouldUseAgent()`.
+- **UI de monitoreo**: `/dashboard/admin/print-jobs` con lista, filtros, retry manual, reset huérfanos. La server action `getRecentPrintJobsAction()` ya está lista.
+- **WebSocket en lugar de polling** (v0.2.0): latencia <100ms.
+- **Multi-tenant**: el `PrintJob` ya tiene `tenantId`. Falta auth de agent por tenant (`PRINT_AGENT_API_KEY_<slug>`) cuando arranque Fase 3.
+- **Otras 6 impresoras**: agregar progresivamente a `PRINTERS_JSON` y el ERP enruta por `station`.
