@@ -805,6 +805,7 @@ Proteínas ──→ InventoryMovement (salida source, entrada subproductos) ─
   - PaymentSplit: dividir cuenta por persona en mesa
   - Descargo automático de inventario vía `inventory.service.registerSale()`
   - **Copiar consumos para WhatsApp** (botones en card "Consumos cargados"): "Copiar nuevos" copia solo los ítems agregados desde la última vez que se copió (dedupe por `OrderItem.id` persistida en `localStorage` con clave `posResto:copiedConsumos:<openTabId>`); "Todo" copia toda la cuenta y reinicia el conteo. El localStorage se limpia al cerrar la cuenta. Formato: `Mesa <name> — <waiter>` + lista `<qty>× <item>` con modificadores indentados
+  - **Copiar consumos en pickup**: mismos dos botones bajo el input "Nombre del cliente" en modo pickup. Dedupe por **cantidad de ítems del cart ya copiados** (no hay ID estable en `CartItem`), persistida en `localStorage` con clave `posResto:copiedPickupCount:<pickupTabId>`. Si la cajera borra un ítem y el cart encoge por debajo del contador, se reinicia automáticamente. Se limpia al pagar o descartar el pickup tab. Formato: `Pickup <PK-NN> — <cliente>` + lista `<qty>× <item> (Para llevar)` con modificadores y notas indentadas
 - **Impresión** (`src/lib/print-command.ts` → `printReceipt`):
   - `ReceiptData.tableLabel?: string` — nombre de mesa impreso bajo el correlativo (ej. `Mesa: Interior 3`)
   - `ReceiptData.tipAmount?: number` — propina impresa como línea informativa tras el 10% servicio
