@@ -6406,3 +6406,52 @@ Expectativa: baja de 17 → ~1 (solo `miguel@shanklish.com` que está
   futura)
 - `scripts/audit-credentials.ts` (necesita actualización a schema
   actual)
+
+---
+
+## 37. PWA Nivel 1 — fundación cache offline (2026-05-11)
+
+### 37.1 Contexto
+
+Continuación de §34 (PWA instalable). Los mesoneros se quejan de "se queda medio pegado" y "se pierde la orden si cae el WiFi". Esta fase entrega la **fundación** del cache offline (Nivel 1 — lectura): IndexedDB, detector de red real, banner global y guard de mutaciones. La integración a cada POS (Mesero, Restaurante, Pickup, Delivery) viene en commits siguientes.
+
+Niveles definidos en sesión:
+- **Nivel 0** (§34) — instalable + shell cacheado + página offline. ✓
+- **Nivel 1** (esta fase) — leer datos cacheados sin red; mutaciones bloqueadas con toast. ✓ fundación.
+- **Nivel 2** (futuro) — cola de mutaciones con Background Sync. Pospuesto: el modelo Edge (mini PC) lo hace redundante in-restaurante.
+
+### 37.2 Piezas implementadas
+
+| Archivo | Rol |
+|---|---|
+| `src/lib/offline-cache/db.ts` | IndexedDB schema (DB `kpsula-offline` v1) con 5 object stores: `menu`, `layout`, `tabs`, `config`, `cart`. Cada registro tiene `cachedAt: number`. Conexión singleton. Migración aditiva (nunca borra stores existentes). Helpers `readCache`, `writeCache`, `clearAllCaches`. |
+| `src/lib/offline-cache/network-status.ts` | Detector de conectividad real (no solo `navigator.onLine`). Combina `navigator.onLine` + ping activo a `/api/health` (timeout 4s) + polling cada 30s. **Threshold de 2 fallos consecutivos** antes de marcar offline para no oscilar con blips de 1-2s. Mini event emitter para hooks React. |
+| `src/lib/offline-cache/menu-cache.ts` | `saveMenuCache(menu)` / `loadMenuCache()`. Una sola entrada `id='current'`. |
+| `src/lib/offline-cache/layout-cache.ts` | Idem para layout (zonas + mesas). |
+| `src/lib/offline-cache/tabs-cache.ts` | Snapshot de tabs/mesas abiertas `id='active'`. Stale-aware (`cachedAt` se usa para mostrar "actualizado hace X min"). |
+| `src/lib/offline-cache/cart-cache.ts` | Carrito persistente por contexto: `tabId` / `pickup-${id}` / `delivery-${id}`. Operaciones: `saveCart`, `loadCart`, `deleteCart`, `listCarts`. Caso clave: mesonero en mesa 25 sin WiFi anota 5 ítems → al volver red presiona "Enviar" y se mandan todos. |
+| `src/lib/offline-cache/index.ts` | Barrel export. Importar desde `@/lib/offline-cache`. |
+| `src/hooks/use-online-status.ts` | Hook React `useOnlineStatus()` → `{ state: 'online'\|'offline'\|'unknown', sinceOffline: number\|null }`. Arranca el monitor global (idempotente, una sola instancia). |
+| `src/hooks/use-offline-guard.ts` | Hook `useOfflineGuard()` → `{ guardMutation, isOffline }`. `guardMutation(fn, { blockedMessage })` ejecuta `fn` solo si online; si offline muestra toast y devuelve undefined. Para deshabilitar botones preventivamente, usar `isOffline`. |
+| `src/components/offline-banner.tsx` | Banner global. Cinta amarilla persistente "Sin conexión — modo lectura" cuando offline. Al reconectar muestra cinta verde "Conexión restaurada" durante 3s. Usa los 4 tonos sutiles autorizados (warn + ok) de CLAUDE.md §3. z-[80] para quedar arriba de modales POS (z-[60]) y BellPanel (z-[70]). |
+| `src/app/dashboard/layout.tsx` | Monta `<OfflineBanner />` al inicio para que cubra todas las rutas autenticadas. |
+
+### 37.3 Tests
+
+- `src/lib/offline-cache/network-status.test.ts` — 7 tests. Cubre máquina de estados: navigator.onLine=false → offline inmediato; ping 200 → online; falla 1 → mantiene estado; falla 2 → offline; recover resetea contador; listener recibe transiciones; mismo estado consecutivo no notifica dos veces.
+- `src/lib/offline-cache/db.test.ts` — 10 tests con `fake-indexeddb`. Roundtrip de read/write, cache vacío, helpers específicos (menú/layout/tabs/cart), `deleteCart`, `listCarts`, `clearAllCaches`, `cachedAt` correcto.
+- **Total fase 1 + repo**: 133/133 ✓ — `tsc --noEmit` exit 0 — `next build` ok.
+
+### 37.4 Pendientes Fase 1.B (siguientes commits)
+
+Aplicar el patrón a cada POS:
+1. **POS Mesero** (prioridad 1, donde están las quejas) — cachear menú, layout, tabs activos; persistir carrito por `tabId`; envolver "Enviar a cocina" con `guardMutation`.
+2. **POS Restaurante** — idem + bloquear "Cobrar".
+3. **POS Pickup** — vive dentro de restaurante hoy.
+4. **POS Delivery** — más datos (clientes), pero mismo patrón.
+
+Cada POS necesita 4 cosas:
+- `loadXxxCache()` al mount, luego fetch fresh online y actualizar el cache.
+- Banner inline cuando se sirva desde cache: "actualizado hace X min".
+- Persistir el carrito en cada cambio.
+- Envolver botones de mutación con `useOfflineGuard().guardMutation` y deshabilitar visualmente con `isOffline`.
