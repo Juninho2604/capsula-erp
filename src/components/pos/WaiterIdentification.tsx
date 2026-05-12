@@ -54,9 +54,16 @@ export function WaiterIdentification({
 
     useEffect(() => {
         (async () => {
-            const res = await getActiveWaitersAction();
-            if (res.success) setWaiters(res.data as WaiterSummary[]);
-            setIsLoading(false);
+            try {
+                const res = await getActiveWaitersAction();
+                if (res.success) setWaiters(res.data as WaiterSummary[]);
+            } catch {
+                // Sin red al montar: dejamos la lista vacía y mostramos
+                // skeleton/empty state. NUNCA propagar — rompe la pantalla
+                // con "Application error: client-side exception".
+            } finally {
+                setIsLoading(false);
+            }
         })();
     }, []);
 

@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/theme-provider';
 import { PWARegister } from '@/components/pwa-register';
+import { NetworkErrorSuppressor } from '@/components/network-error-suppressor';
 
 // ── Minimal Navy design direction ────────────────────────────
 const interTight = Inter_Tight({
@@ -84,6 +85,7 @@ export default function RootLayout({
             <body
                 className={`${fontVars} font-sans antialiased bg-background text-foreground transition-colors duration-300`}
             >
+                <NetworkErrorSuppressor />
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="light"

@@ -6542,3 +6542,34 @@ Cualquier código cliente que invoque server actions o `fetch` en background (po
 5. Usuario ve la app refrescarse sola sin saber que hubo un deploy.
 
 Trade-off aceptado: el primer reload tras este merge ocurrirá la próxima vez que cada tablet abra la app. Después de eso, transparente.
+
+### 37.8 Hardening — supresor global en root + global-error.tsx + WaiterIdentification (2026-05-12)
+
+**Síntoma:** Tras §37.6 y §37.7 el usuario seguía viendo "Application error: a client-side exception has occurred" al apagar WiFi. Causas adicionales identificadas:
+
+1. **El supresor global de errores vivía en `<OfflineBanner />`**, que se monta dentro de `dashboard/layout.tsx`. Si una ruta hija (POS Mesero, etc.) crashea durante el primer paint **antes** que el banner ejecute su `useEffect`, los listeners no estaban activos y el error reventaba.
+
+2. **`WaiterIdentification.tsx`** invocaba `getActiveWaitersAction()` en un `useEffect` IIFE sin try/catch. Componente que monta en el POS Mesero al cargar — si offline, throw inmediato.
+
+3. **No había `global-error.tsx`**, así que el fallback era la pantalla blanca por defecto de Next.js con texto técnico que el mesonero no entiende.
+
+**Fixes:**
+
+1. **`src/components/network-error-suppressor.tsx`** — extraído del `OfflineBanner`. Componente sin UI que solo registra listeners. Patrones ampliados a `err_name_not_resolved`, `unexpected end of json`, `not valid json`, `unexpected token .* in json` (para cubrir el caso donde el SW devuelve HTML offline al server action y el cliente intenta parsearlo como JSON).
+
+2. **Montado en `src/app/layout.tsx` (root)**, dentro del `<body>` antes del `ThemeProvider`. Así los listeners están activos antes que cualquier ruta hija renderice.
+
+3. **`OfflineBanner` simplificado**: solo UI del banner. El handler global se removió de allí (referencia comentada en el JSDoc del archivo).
+
+4. **`WaiterIdentification`**: el `useEffect` ahora envuelve `getActiveWaitersAction()` en `try/catch/finally`. Lista vacía si falla, `setIsLoading(false)` siempre.
+
+5. **`src/app/global-error.tsx`**: nuevo. Reemplaza la pantalla blanca de Next.js con una página branded Minimal Navy: icono triangle alert coral, "Algo salió mal", botón **Reintentar** (usa el `reset()` que Next.js inyecta para re-renderizar sin recargar), botón secundario **Recargar completamente** (`window.location.reload()`). Muestra `error.digest` para soporte. Self-contained con estilos inline (no depende de globals.css ni Tailwind por si el problema vino de assets).
+
+6. **`CACHE_VERSION` bumped a `capsula-v3`** en `public/sw.js` — fuerza la instalación del SW nuevo.
+
+**Auditoría pendiente:** otros archivos identificados con `useEffect` que invocan `*Action()` sin try/catch (cubiertos por el supresor global pero conviene endurecer en futuras iteraciones):
+- `src/app/dashboard/pos/restaurante/page.tsx` (más fetches)
+- `src/app/dashboard/pos/delivery/page.tsx`
+- `src/app/dashboard/pos/pedidosya/page.tsx`
+
+El supresor global sigue siendo safety net obligatorio — no eliminarlo aunque envolvamos todo en try/catch, porque siempre habrá fetches que se nos escapan.
