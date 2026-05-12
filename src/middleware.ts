@@ -2,9 +2,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decrypt } from './lib/auth';
+import { extractTenantSlugFromHost } from './lib/tenant-context';
 
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
+
+    // Paso C multi-tenant — passive subdomain extraction.
+    // Si el host es `<slug>.kpsula.app` → setea x-tenant-slug en el request
+    // header para que el downstream (server components / actions / route
+    // handlers) lo lea vía resolveTenantContext(). Hosts no-kpsula (Vercel
+    // preview, IP raw, otros dominios) devuelven null → header NO se setea
+    // → fallback a Shanklish vía resolveTenantContext().
+    //
+    // Pasivo: nadie llama a resolveTenantContext() en runtime todavía. El
+    // header existe pero no afecta comportamiento hasta Paso D.
+    const tenantSlug = extractTenantSlugFromHost(request.headers.get('host'));
 
     // 0. MAINTENANCE MODE — durante migración de BD u operaciones críticas.
     //    Activado vía env var MAINTENANCE_MODE=true en Vercel.
@@ -83,6 +95,13 @@ export async function middleware(request: NextRequest) {
         }
     }
 
+    // Setear x-tenant-slug en el request header solo si extrajimos un slug
+    // válido. El downstream lo lee vía resolveTenantContext() (dormante).
+    if (tenantSlug) {
+        const headers = new Headers(request.headers);
+        headers.set('x-tenant-slug', tenantSlug);
+        return NextResponse.next({ request: { headers } });
+    }
     return NextResponse.next();
 }
 
