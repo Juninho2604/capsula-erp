@@ -25,6 +25,16 @@ import {
   WaiterIdentification,
   type ActiveWaiter,
 } from "@/components/pos/WaiterIdentification";
+import {
+  saveMenuCache,
+  loadMenuCache,
+  saveLayoutCache,
+  loadLayoutCache,
+  saveCart,
+  loadCart,
+  deleteCart,
+} from "@/lib/offline-cache";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 const ACTIVE_WAITER_KEY = "pos-mesero-active-waiter";
 
@@ -258,9 +268,55 @@ export default function POSMeseroPage() {
   // DATA LOADING
   // ============================================================================
 
+  // `cacheStaleAt` es el timestamp del cache cuando se cargó desde IndexedDB.
+  // Si está set y > 0 → estamos viendo datos cacheados (offline o slow network).
+  // Cuando hay refetch online exitoso lo limpiamos a null para ocultar el banner.
+  const [cacheStaleAt, setCacheStaleAt] = useState<number | null>(null);
+
+  /**
+   * Carga el menú + layout. Estrategia offline-first:
+   *   1. Hidrata desde IndexedDB inmediatamente (UI usable en <100ms).
+   *   2. Dispara fetch al server en paralelo.
+   *   3. Si el fetch llega ok → reemplaza el estado y persiste el nuevo cache.
+   *   4. Si el fetch falla (sin red) → silencioso, el cache sigue mostrándose
+   *      con su timestamp. El banner global ya señala "sin conexión".
+   */
   const loadData = async (showSpinner = true) => {
     if (showSpinner) setIsLoading(true);
     setLayoutError("");
+
+    // 1. Pintar desde cache primero (no espera al server)
+    let cachedMenuApplied = false;
+    let cachedLayoutApplied = false;
+    let oldestCacheAt: number | null = null;
+    try {
+      const [cachedMenu, cachedLayout] = await Promise.all([
+        loadMenuCache<any[]>(),
+        loadLayoutCache<SportBarLayout>(),
+      ]);
+      if (cachedMenu?.data?.length) {
+        setCategories(cachedMenu.data);
+        setSelectedCategory((prev) => prev || cachedMenu.data[0]?.id || "");
+        cachedMenuApplied = true;
+        oldestCacheAt = cachedMenu.cachedAt;
+      }
+      if (cachedLayout?.data) {
+        setLayout(cachedLayout.data);
+        setSelectedZoneId((prev) => prev || cachedLayout.data.serviceZones[0]?.id || "");
+        cachedLayoutApplied = true;
+        oldestCacheAt = oldestCacheAt
+          ? Math.min(oldestCacheAt, cachedLayout.cachedAt)
+          : cachedLayout.cachedAt;
+      }
+      if (cachedMenuApplied && cachedLayoutApplied) {
+        setIsLoading(false); // ya hay UI usable
+        setCacheStaleAt(oldestCacheAt);
+      }
+    } catch {
+      // IndexedDB no disponible (private mode, etc.) — caemos al fetch directo.
+    }
+
+    // 2. Refetch fresh — si llega lo reemplaza
     try {
       const [menuResult, layoutResult, rate] = await Promise.all([
         getMenuForPOSAction(),
@@ -270,15 +326,25 @@ export default function POSMeseroPage() {
       if (menuResult.success && menuResult.data) {
         setCategories(menuResult.data);
         setSelectedCategory((prev) => prev || menuResult.data[0]?.id || "");
+        await saveMenuCache(menuResult.data);
       }
       if (layoutResult.success && layoutResult.data) {
         const nextLayout = layoutResult.data as SportBarLayout;
         setLayout(nextLayout);
         setSelectedZoneId((prev) => prev || nextLayout.serviceZones[0]?.id || "");
-      } else if (!layoutResult.success) {
+        await saveLayoutCache(nextLayout);
+      } else if (!layoutResult.success && !cachedLayoutApplied) {
+        // Solo mostramos el error si NO había nada cacheado (UI sin datos).
         setLayoutError(layoutResult.message || "Error cargando mesas");
       }
       setExchangeRate(rate);
+      setCacheStaleAt(null); // ya estamos viendo datos frescos
+    } catch (err) {
+      // Sin red y sin cache → mostramos el error de layout para que el usuario
+      // sepa por qué no hay mesas. Si había cache → silencioso.
+      if (!cachedLayoutApplied && !cachedMenuApplied) {
+        setLayoutError("Sin conexión y sin datos en caché");
+      }
     } finally {
       if (showSpinner) setIsLoading(false);
     }
@@ -394,6 +460,48 @@ export default function POSMeseroPage() {
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const cartBadgeCount = cart.length;
 
+  // ── Persistencia offline del carrito por mesa ────────────────────────────────
+  // Cada `activeTab.id` tiene su propio carrito persistido en IndexedDB. Caso
+  // crítico: mesero en mesa 25 sin WiFi anota 5 ítems → si la app se recarga
+  // o cierra (batería se va, tablet hiberna), al volver y entrar a la mesa
+  // el carrito sigue ahí. Cuando "Enviar a cocina" se complete con éxito,
+  // borramos el carrito persistido (lo limpia ya `setCart([])` + delete).
+  const lastLoadedCartTabIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeTab?.id) {
+      lastLoadedCartTabIdRef.current = null;
+      return;
+    }
+    // Solo rehidratar cuando cambia la mesa, no en cada render.
+    if (lastLoadedCartTabIdRef.current === activeTab.id) return;
+    lastLoadedCartTabIdRef.current = activeTab.id;
+    let cancelled = false;
+    loadCart(activeTab.id).then((record) => {
+      if (cancelled || !record) return;
+      // Solo rehidratamos si el carrito local está vacío. Si el mesero ya
+      // empezó a agregar ítems en esta sesión, NO machacar lo que tiene en
+      // pantalla con lo cacheado (sería peor UX que perderlo).
+      setCart((current) => (current.length > 0 ? current : (record.items as CartItem[])));
+    });
+    return () => { cancelled = true; };
+  }, [activeTab?.id]);
+
+  // Guardar el carrito en cada cambio. Debounce no es necesario: IndexedDB
+  // es asíncrono y rápido, y los cambios al carrito ocurren por acción del
+  // usuario (no en cadenas de render rápidas).
+  useEffect(() => {
+    if (!activeTab?.id) return;
+    if (cart.length === 0) {
+      // Carrito vacío → borrar registro para no acumular basura.
+      deleteCart(activeTab.id);
+      return;
+    }
+    saveCart(activeTab.id, cart);
+  }, [cart, activeTab?.id]);
+
+  // Guard global para mutaciones (Enviar a cocina, modificar, etc.).
+  const { guardMutation, isOffline } = useOfflineGuard();
+
   // ============================================================================
   // OPEN TAB
   // ============================================================================
@@ -496,35 +604,43 @@ export default function POSMeseroPage() {
   const handleSendToTab = async () => {
     if (!activeTab || cart.length === 0) return;
     if (!activeWaiter) { toast.error("Identifícate con tu PIN antes de enviar a cocina"); return; }
-    setIsProcessing(true);
-    try {
-      const result = await addItemsToOpenTabAction({
-        openTabId: activeTab.id,
-        items: cart,
-        waiterProfileId: activeWaiter.id,
-        targetSubAccountId: cartTargetSubAccountId ?? undefined,
-      });
-      if (!result.success) { toast.error(result.message); return; }
-      if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
-        printKitchenCommand({
-          orderNumber: result.data.orderNumber,
-          orderType: "RESTAURANT",
-          tableName: selectedTable?.name ?? null,
-          customerName: activeTab.customerLabel || null,
-          items: cart.map((i) => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map((m) => m.name), notes: i.notes })),
-          createdAt: new Date(),
+    const guarded = await guardMutation(async () => {
+      setIsProcessing(true);
+      try {
+        const result = await addItemsToOpenTabAction({
+          openTabId: activeTab.id,
+          items: cart,
+          waiterProfileId: activeWaiter.id,
+          targetSubAccountId: cartTargetSubAccountId ?? undefined,
         });
+        if (!result.success) { toast.error(result.message); return null; }
+        if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
+          printKitchenCommand({
+            orderNumber: result.data.orderNumber,
+            orderType: "RESTAURANT",
+            tableName: selectedTable?.name ?? null,
+            customerName: activeTab.customerLabel || null,
+            items: cart.map((i) => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map((m) => m.name), notes: i.notes })),
+            createdAt: new Date(),
+          });
+        }
+        setCart([]);
+        // Cocina aceptó el carrito → borrar el cache offline de este tab.
+        if (activeTab?.id) await deleteCart(activeTab.id);
+        setSendSuccess(true);
+        setTimeout(() => setSendSuccess(false), 2500);
+        await loadData();
+        if (activeTab?.id) await refreshSubAccounts(activeTab.id);
+        return true;
+      } finally {
+        setIsProcessing(false);
       }
-      setCart([]);
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 2500);
-      await loadData();
-      // Refrescar subcuentas: los items recién creados pueden haber actualizado
-      // los totales de la subcuenta destino.
-      if (activeTab?.id) await refreshSubAccounts(activeTab.id);
-    } finally {
-      setIsProcessing(false);
-    }
+    }, {
+      blockedMessage: "Sin conexión. La orden quedó en el carrito local; se enviará cuando vuelva la señal.",
+    });
+    // guardMutation devuelve undefined si estaba offline; el carrito ya está
+    // persistido por el useEffect de auto-guardado, así que nada que hacer aquí.
+    void guarded;
   };
 
   // ============================================================================
@@ -653,8 +769,28 @@ export default function POSMeseroPage() {
     return <WaiterIdentification onIdentified={handleWaiterIdentified} />;
   }
 
+  // ── Helper: formatea "hace X min" para el banner de cache stale ──────────
+  const formatStaleAge = (ts: number): string => {
+    const diffMs = Date.now() - ts;
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 1) return 'hace menos de 1 min';
+    if (mins < 60) return `hace ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    return `hace ${hrs} h ${mins % 60} min`;
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-capsula-ivory pb-16 text-capsula-ink lg:pb-0">
+
+      {/* ── Banner inline: datos cacheados (no es el banner global de red) ──
+          Se muestra solo cuando estamos viendo menú/layout desde IndexedDB
+          porque el server no respondió. Diferente del banner global amarillo
+          (red caída) — este informa la antigüedad del dato concreto. */}
+      {cacheStaleAt && (
+        <div className="shrink-0 bg-[#E6ECF4] dark:bg-[#1A2636] text-[#2A4060] dark:text-[#D1DCE9] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-center">
+          Mostrando datos en caché · actualizados {formatStaleAge(cacheStaleAt)}
+        </div>
+      )}
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div className="flex shrink-0 items-center justify-between border-b border-capsula-line bg-capsula-ivory-surface px-3 py-3 shadow-cap-soft md:px-6 md:py-4">
@@ -1072,7 +1208,8 @@ export default function POSMeseroPage() {
               </div>
               <button
                 onClick={() => { handleSendToTab(); if (window.innerWidth < 1024) setMobileTab("tables"); }}
-                disabled={!activeTab || isProcessing}
+                disabled={!activeTab || isProcessing || isOffline}
+                title={isOffline ? "Sin conexión — el carrito queda guardado local hasta que vuelva la señal" : undefined}
                 className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                   sendSuccess
                     ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
@@ -1083,6 +1220,8 @@ export default function POSMeseroPage() {
                   <><Check className="h-4 w-4" /> ¡Enviado a cocina!</>
                 ) : isProcessing ? (
                   "Enviando..."
+                ) : isOffline ? (
+                  <><ChefHat className="h-4 w-4" /> Sin conexión · ${cartTotal.toFixed(2)}</>
                 ) : (
                   <><ChefHat className="h-4 w-4" /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
                 )}
