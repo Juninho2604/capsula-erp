@@ -14,7 +14,7 @@
  * Cambio nuevo → activación inmediata si la página envía 'SKIP_WAITING'.
  */
 
-const CACHE_VERSION = 'capsula-v4';
+const CACHE_VERSION = 'capsula-v5';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
