@@ -311,6 +311,12 @@ export default function POSSportBarPage() {
   // (delta), evitando duplicar todo el pedido cada vez.
   const [copiedConsumoIds, setCopiedConsumoIds] = useState<Set<string>>(new Set());
 
+  // En pickup el cart es local (CartItem[] sin ID estable), así que la dedupe
+  // se hace por "cuántos ítems del carrito ya se copiaron". Si la cajera
+  // borra un ítem y el carrito se encoge por debajo del contador, se
+  // reinicia automáticamente.
+  const [copiedPickupCount, setCopiedPickupCount] = useState(0);
+
   // ── Subcuentas ────────────────────────────────────────────────────────────
   const [subAccountMode, setSubAccountMode] = useState(false);
   const [subAccountsCount, setSubAccountsCount] = useState(0);
@@ -489,6 +495,22 @@ export default function POSSportBarPage() {
     () => pickupTabs.find((t) => t.id === activePickupTabId) ?? null,
     [pickupTabs, activePickupTabId],
   );
+
+  // ── Dedupe de copia para pickup tabs ──────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!activePickupTabId) {
+      setCopiedPickupCount(0);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(`posResto:copiedPickupCount:${activePickupTabId}`);
+      const n = raw ? parseInt(raw, 10) : 0;
+      setCopiedPickupCount(Number.isFinite(n) && n >= 0 ? n : 0);
+    } catch {
+      setCopiedPickupCount(0);
+    }
+  }, [activePickupTabId]);
 
   const allMenuItems = useMemo(
     () => categories.flatMap((c) => (c.items || [])),
@@ -831,6 +853,7 @@ export default function POSSportBarPage() {
 
   /** Elimina un pickup tab (sin cobrar — descartado) */
   const handleDiscardPickupTab = (tabId: string) => {
+    try { window.localStorage.removeItem(`posResto:copiedPickupCount:${tabId}`); } catch {}
     const remaining = pickupTabs.filter((t) => t.id !== tabId);
     setPickupTabs(remaining);
     if (activePickupTabId === tabId) {
@@ -1180,6 +1203,70 @@ export default function POSSportBarPage() {
     }
   };
 
+  // ── Copia en pickup mode ──────────────────────────────────────────────────
+  const formatPickupCartForClipboard = (items: CartItem[]): string => {
+    const headerParts: string[] = [];
+    if (activePickupTab?.pickupNumber) headerParts.push(activePickupTab.pickupNumber);
+    const customer = (pickupCustomerName || activePickupTab?.customerName || "").trim();
+    if (customer) headerParts.push(customer);
+    const header = headerParts.length > 0 ? `Pickup ${headerParts.join(" — ")}` : "Pickup";
+    const lines = [header];
+    for (const it of items) {
+      const takeaway = it.takeaway ? " (Para llevar)" : "";
+      lines.push(`${it.quantity}× ${it.name}${takeaway}`);
+      const mods = (it.modifiers ?? []).map((m) => m.name).filter(Boolean);
+      if (mods.length > 0) lines.push(`   ${mods.join(" · ")}`);
+      if (it.notes && it.notes.trim()) lines.push(`   Nota: ${it.notes.trim()}`);
+    }
+    return lines.join("\n");
+  };
+
+  const persistPickupCopiedCount = (tabId: string, count: number) => {
+    try {
+      window.localStorage.setItem(`posResto:copiedPickupCount:${tabId}`, String(count));
+    } catch {
+      // Silencioso.
+    }
+  };
+
+  const handleCopyNewPickup = async () => {
+    if (!activePickupTabId) return;
+    // Si el cart encogió por debajo del contador (la cajera borró ítems),
+    // reiniciamos: lo que quede en cart pasa a considerarse "nuevo".
+    const safeCount = cart.length < copiedPickupCount ? 0 : copiedPickupCount;
+    const nuevos = cart.slice(safeCount);
+    if (nuevos.length === 0) {
+      toast("No hay consumos nuevos para copiar");
+      return;
+    }
+    const text = formatPickupCartForClipboard(nuevos);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPickupCount(cart.length);
+      persistPickupCopiedCount(activePickupTabId, cart.length);
+      toast.success(`${nuevos.length} consumo${nuevos.length === 1 ? "" : "s"} copiado${nuevos.length === 1 ? "" : "s"}`);
+    } catch {
+      toast.error("No se pudo copiar al portapapeles");
+    }
+  };
+
+  const handleCopyAllPickup = async () => {
+    if (!activePickupTabId) return;
+    if (cart.length === 0) {
+      toast("El carrito está vacío");
+      return;
+    }
+    const text = formatPickupCartForClipboard(cart);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPickupCount(cart.length);
+      persistPickupCopiedCount(activePickupTabId, cart.length);
+      toast.success(`${cart.length} consumo${cart.length === 1 ? "" : "s"} copiado${cart.length === 1 ? "" : "s"}`);
+    } catch {
+      toast.error("No se pudo copiar al portapapeles");
+    }
+  };
+
   // ============================================================================
   // CHECKOUT PICKUP
   // ============================================================================
@@ -1325,6 +1412,9 @@ export default function POSSportBarPage() {
 
         // Eliminar el pickup tab completado y cambiar al siguiente (si existe)
         const completedTabId = activePickupTabId;
+        if (completedTabId) {
+          try { window.localStorage.removeItem(`posResto:copiedPickupCount:${completedTabId}`); } catch {}
+        }
         const remaining = pickupTabs.filter((t) => t.id !== completedTabId);
         setPickupTabs(remaining);
         if (remaining.length > 0) {
@@ -1924,6 +2014,45 @@ export default function POSSportBarPage() {
                   placeholder="Nombre del cliente…"
                   className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
+                {/* Copia a portapapeles (envío por WhatsApp) — dedupe por
+                    cantidad de ítems ya copiados de este pickup tab. */}
+                {(() => {
+                  const safeCount = cart.length < copiedPickupCount ? 0 : copiedPickupCount;
+                  const nuevosCount = Math.max(0, cart.length - safeCount);
+                  const hasCart = cart.length > 0;
+                  return (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] font-semibold text-capsula-ink-muted uppercase tracking-[0.14em]">
+                        Consumos
+                        {nuevosCount > 0 && safeCount > 0 && (
+                          <span className="ml-1.5 normal-case tracking-normal text-capsula-coral">· {nuevosCount} nuevo{nuevosCount === 1 ? "" : "s"}</span>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyNewPickup}
+                          disabled={nuevosCount === 0 || !hasCart}
+                          title={!hasCart ? "Carrito vacío" : nuevosCount === 0 ? "No hay consumos nuevos desde la última copia" : "Copiar solo los consumos agregados desde la última vez"}
+                          className="text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-2.5 py-1 transition inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copiar nuevos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyAllPickup}
+                          disabled={!hasCart}
+                          title={!hasCart ? "Carrito vacío" : "Copiar todos los consumos (reinicia el conteo de nuevos)"}
+                          className="text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-soft bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-2.5 py-1 transition inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Todo
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2 relative">
