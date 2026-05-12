@@ -6808,4 +6808,86 @@ trabajo manual de cada deploy futuro a un click en GitHub.
 - `/var/www/capsula-erp/ecosystem.config.js` (config pm2; vive en el VPS)
 - `src/middleware.ts` (Paso C activado)
 - `src/lib/tenant-context.ts` (extractor de slug, 13 tests)
-- `src/lib/tenant-context.server.ts` (dormante, espera Paso D)
+- `src/lib/tenant-context.server.ts` (resolver activado en Paso D.a)
+
+### 38.9 Paso D.a multi-tenant — endpoint `/api/tenant/whoami` (2026-05-12)
+
+Primer consumidor real de `resolveTenantContext()` en runtime. Endpoint
+de observabilidad que NO migra ninguna action existente — solo expone
+el tenant resuelto del request actual.
+
+**Por qué `whoami` y no migrar `getOpenTabsAction` (como sugería §35.6
+originalmente):**
+
+Migrar una action existente a `defineAction()` cambia su firma de retorno
+de `T` a `ActionResult<T>`, lo que rompe todos los callers (UI, otras
+actions). Es trabajo significativo y riesgoso para hacer en la misma
+sesión que activamos el resolver por primera vez.
+
+`whoami` desacopla las dos preocupaciones:
+- **D.a (este commit)**: validar en producción que el resolver server-side
+  funciona, retorna el tenant correcto en cada caso (subdomain / session
+  / fallback), y no rompe nada.
+- **D.b (siguiente sesión)**: una vez confirmado D.a, migrar la primera
+  action real con `defineAction()`.
+
+**Implementación** (`src/app/api/tenant/whoami/route.ts`):
+
+```typescript
+import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const ctx = await resolveTenantContext();
+    return NextResponse.json({
+        tenantId: ctx.tenantId,
+        slug: ctx.slug,
+        source: ctx.source,
+        sessionTenantId: (session as { tenantId?: string }).tenantId ?? null,
+    });
+}
+```
+
+**Casos esperados en producción** (deploy a Vercel + VPS):
+
+| URL | source | slug | sessionTenantId |
+|---|---|---|---|
+| `https://kpsula.app/api/tenant/whoami` (root, sin subdomain) | `fallback` (o `session` si el JWT tiene tenantId) | `shanklish` | depende de la sesión |
+| `https://shanklish.kpsula.app/api/tenant/whoami` | `subdomain` | `shanklish` | depende |
+| `https://shanklish-erp-main.vercel.app/api/tenant/whoami` | `fallback` (host no es kpsula.app) | `shanklish` | depende |
+
+**Riesgo de este commit:** muy bajo. El resolver hace 1 query a
+`prisma.tenant.findUnique` con `select: { id, slug }`. Si falla, el
+endpoint devuelve 500 pero el resto del sitio sigue. Ninguna action
+existente toca el resolver.
+
+**Seguridad:** endpoint protegido por `getSession()`. Sin sesión
+activa → 401. Cualquier role autenticado puede consultarlo (no es
+info sensible — `slug` ya está en la URL del host).
+
+### 38.10 Pendientes tras Paso D.a
+
+- **Paso D.b**: migrar 1 action existente real a `defineAction()`. Empezar
+  por una READ-only de bajo riesgo (no afecta data). Candidatos:
+  - Una action `get*` simple que ya tenga ActionResult shape
+  - O crear primero un wrapper paralelo y migrar callers gradualmente
+- **Paso E**: una vez D.b estable, reemplazar `prisma` por
+  `withTenant(tenant.id)` en actions migradas. Inyecta tenantId
+  automáticamente.
+- **Signup self-service**: ruta `/signup` que crea Tenant + Owner.
+- **Panel SUPER_ADMIN**: `/admin/tenants` para listar/desactivar tenants.
+- **Bootstrap de tenant nuevo**: branch default, áreas, zonas POS,
+  invoiceCounter, etc.
+
+### 38.11 Referencias adicionales
+
+- `src/app/api/tenant/whoami/route.ts` (Paso D.a — primer consumidor)
+- `src/lib/define-action.ts` (sigue dormante, espera D.b)
+- `src/lib/prisma-tenant-client.ts` (sigue dormante, espera E)
