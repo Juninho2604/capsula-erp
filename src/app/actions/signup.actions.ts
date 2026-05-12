@@ -17,6 +17,7 @@ import prisma from '@/server/db';
 import { hashPassword } from '@/lib/password';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { isReservedSlug } from '@/lib/signup/reserved-slugs';
+import { createBootstrapToken } from '@/lib/signup/bootstrap-token';
 
 export interface SignupSuccess {
     success: true;
@@ -105,16 +106,16 @@ export async function signupTenantAction(
         return { success: false, field: 'slug', message: 'Ese slug ya está tomado. Probá otro.' };
     }
 
-    // ─── Crear Tenant + Owner en transacción ────────────────────────────────
+    // ─── Crear Tenant + Owner + Branch default en transacción ──────────────
     try {
         const passwordHash = await hashPassword(password);
 
-        const tenant = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const t = await tx.tenant.create({
                 data: { slug: slugRaw, name: businessName },
                 select: { id: true, slug: true },
             });
-            await tx.user.create({
+            const u = await tx.user.create({
                 data: {
                     tenantId: t.id,
                     email,
@@ -125,13 +126,34 @@ export async function signupTenantAction(
                 },
                 select: { id: true },
             });
-            return t;
+            // Branch default — necesario para que el owner pueda navegar al
+            // dashboard sin crashear. `code` único por tenant; "MAIN" es fijo
+            // porque el tenant nuevo no tiene otros branches. El owner puede
+            // renombrarlo o crear más desde /dashboard/config.
+            await tx.branch.create({
+                data: {
+                    tenantId: t.id,
+                    code: 'MAIN',
+                    name: businessName,
+                },
+                select: { id: true },
+            });
+            return { tenant: t, userId: u.id };
+        });
+
+        // Token one-shot 60s para auto-login cross-subdomain. La ruta
+        // `<slug>.kpsula.app/auth/bootstrap` lo canjea por la cookie `session`
+        // local del subdomain. Evita compartir cookies entre tenants.
+        const bootstrapToken = await createBootstrapToken({
+            userId: result.userId,
+            tenantId: result.tenant.id,
+            tenantSlug: result.tenant.slug,
         });
 
         return {
             success: true,
-            tenantSlug: tenant.slug,
-            loginUrl: `https://${tenant.slug}.${TENANT_ROOT_DOMAIN}/login`,
+            tenantSlug: result.tenant.slug,
+            loginUrl: `https://${result.tenant.slug}.${TENANT_ROOT_DOMAIN}/auth/bootstrap?t=${encodeURIComponent(bootstrapToken)}`,
         };
     } catch (err) {
         // Posible race condition: el slug se tomó entre la verificación y el
