@@ -6512,3 +6512,33 @@ Al probar §37.5 en la tablet, apagar el WiFi disparaba pantalla blanca **"Appli
 
 **Regla de arquitectura nueva:**
 Cualquier código cliente que invoque server actions o `fetch` en background (polling, refreshes, useEffect, etc.) **debe** estar envuelto en `try/catch`. La defensa global de OfflineBanner es safety net, no excusa para no manejar errores. Para código nuevo: si llamas a una `*Action()` fuera de un `onClick`/`onSubmit`, envuelve.
+
+### 37.7 PWA auto-update silencioso (2026-05-12)
+
+**Problema:** El hotfix de §37.6 estaba en producción pero la tablet seguía viendo el bug porque el Service Worker servía el JS viejo cacheado. El flujo viejo de actualización (de §34 / PR #100) mostraba un toast "Nueva versión disponible — Actualizar" que el usuario tenía que tocar manualmente. En el POS este toast se pierde detrás de la cinta de "sin conexión" o cualquier modal, y el mesonero no entiende de Service Workers. Resultado: deploys nuevos nunca llegaban a las tablets en uso.
+
+**Solución (`src/components/pwa-register.tsx` reescrito):**
+
+1. **Auto-skip-waiting silencioso**: cuando `updatefound` detecta una versión nueva y se instala (`state === 'installed'`) **con `navigator.serviceWorker.controller` existente** (es decir, es un UPDATE, no la primera instalación), envía `SKIP_WAITING` inmediatamente sin prompt.
+
+2. **Reload con ventana de seguridad**: en lugar de `window.location.reload()` inmediato en `controllerchange`, llamamos `reloadWhenSafe()` que solo recarga cuando:
+   - No hay input/textarea/contenteditable focuseado (mesero no está tipeando).
+   - No hay `[role="dialog"]` ni `[data-state="open"]` (no hay modal abierto).
+   - Si no es seguro, reintenta cada 5s hasta 60s máximo.
+
+3. **El carrito está persistido** en IndexedDB (§37.5), así que aunque hubiera un reload mid-orden el contexto se restaura al volver a la mesa.
+
+4. **Chequeo periódico cada 60 min** mediante `reg.update()` — útil para tablets que se quedan encendidas todo el servicio sin recargar la página.
+
+5. **Sin import de `react-hot-toast`** ni `useRef` — código más simple, sin UI de prompt.
+
+6. **`CACHE_VERSION` bumped a `capsula-v2`** en `public/sw.js` — fuerza la instalación del SW nuevo en todas las tablets al recargar (gracias al `updateViaCache: 'none'` que ya teníamos).
+
+**Resultado:** desde este deploy en adelante, cualquier hotfix se aplica automáticamente:
+1. Vercel deploya nuevo bundle.
+2. Tablet abre la app (o ya está abierta).
+3. El SW chequea actualizaciones (al cargar, cada hora, o cuando el usuario fuerza refresh).
+4. Detecta versión nueva → instala en background → auto-skip-waiting → controllerchange → reload silencioso (cuando es seguro).
+5. Usuario ve la app refrescarse sola sin saber que hubo un deploy.
+
+Trade-off aceptado: el primer reload tras este merge ocurrirá la próxima vez que cada tablet abra la app. Después de eso, transparente.

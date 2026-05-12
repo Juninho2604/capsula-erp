@@ -1,32 +1,65 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { toast } from 'react-hot-toast';
+import { useEffect } from 'react';
 
 /**
- * Registra el Service Worker de Cápsula y muestra un toast cuando hay una
- * versión nueva disponible para que el usuario active la actualización con
- * un click. Sin click, la nueva versión activa al cerrar todas las pestañas.
+ * Registra el Service Worker de Cápsula y aplica actualizaciones **de
+ * forma automática y silenciosa**. Cuando detecta una versión nueva en
+ * segundo plano, envía SKIP_WAITING al SW pendiente, espera el
+ * controllerchange y recarga la página una sola vez.
  *
- * Solo se ejecuta en producción y en navegadores con soporte. En dev se
- * desregistra cualquier SW previo para no servir HTML cacheado mientras
- * iteramos.
+ * Por qué auto en lugar de prompt: el POS lo usan mesoneros que no
+ * entienden de Service Workers. Un toast "Actualizar" que requiere tap
+ * es fricción y se pierde con la cinta de "sin conexión" o un modal.
+ *
+ * Seguridad: solo recargamos cuando NO hay actividad activa del usuario
+ * (sin input focuseado y sin modales abiertos). Si el mesonero está en
+ * medio de tipear notas o agregar ítems, esperamos a que termine. El
+ * carrito está persistido en IndexedDB (§37.5), así que aunque hubiera
+ * un reload mid-orden el contexto se restaura.
+ *
+ * Solo en producción. En dev se desregistra cualquier SW previo.
  */
 export function PWARegister() {
-    const promptedRef = useRef(false);
-
     useEffect(() => {
         if (typeof window === 'undefined') return;
         if (!('serviceWorker' in navigator)) return;
 
         const isDev = process.env.NODE_ENV === 'development';
-
         if (isDev) {
             navigator.serviceWorker.getRegistrations().then((regs) => {
                 regs.forEach((r) => r.unregister());
             });
             return;
         }
+
+        let refreshing = false;
+        const reloadWhenSafe = () => {
+            if (refreshing) return;
+            refreshing = true;
+            const safeToReload = () => {
+                const active = document.activeElement as HTMLElement | null;
+                const isTyping = !!active && (
+                    active.tagName === 'INPUT' ||
+                    active.tagName === 'TEXTAREA' ||
+                    active.isContentEditable
+                );
+                const hasOpenModal = document.querySelector('[role="dialog"], [data-state="open"]');
+                return !isTyping && !hasOpenModal;
+            };
+            // Intentar recargar inmediato si es seguro. Si no, reintentar cada 5s
+            // hasta que lo sea — hasta un máximo de 60s para no quedar atascado.
+            let attempts = 0;
+            const tryReload = () => {
+                attempts += 1;
+                if (safeToReload() || attempts > 12) {
+                    window.location.reload();
+                } else {
+                    setTimeout(tryReload, 5000);
+                }
+            };
+            tryReload();
+        };
 
         const onLoad = async () => {
             try {
@@ -35,60 +68,41 @@ export function PWARegister() {
                     updateViaCache: 'none',
                 });
 
-                // Si ya hay un SW esperando al cargar (pestañas previas con la
-                // versión vieja), pedir activación inmediata.
-                if (reg.waiting) {
-                    promptUpdate(reg);
+                // Si ya hay un SW esperando al cargar (sesión previa que no
+                // recargó), activarlo inmediatamente.
+                if (reg.waiting && navigator.serviceWorker.controller) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
                 }
 
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
                     if (!installing) return;
                     installing.addEventListener('statechange', () => {
+                        // Solo auto-actualizamos cuando hay un controller previo
+                        // (es decir, es un UPDATE, no la primera instalación).
                         if (
                             installing.state === 'installed' &&
                             navigator.serviceWorker.controller
                         ) {
-                            promptUpdate(reg);
+                            installing.postMessage({ type: 'SKIP_WAITING' });
                         }
                     });
                 });
 
-                // Cuando el SW nuevo toma control, recargar para garantizar
-                // que la app corre contra los assets nuevos.
-                let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (refreshing) return;
-                    refreshing = true;
-                    window.location.reload();
+                    reloadWhenSafe();
                 });
+
+                // Forzar chequeo de actualizaciones cada 60 minutos mientras
+                // la app está abierta — útil para tablets que se quedan
+                // encendidas todo el servicio sin recargar.
+                setInterval(() => {
+                    reg.update().catch(() => {});
+                }, 60 * 60 * 1000);
             } catch (err) {
-                // Falló registrar SW — la app sigue funcionando sin PWA.
                 console.warn('[PWA] No se pudo registrar Service Worker:', err);
             }
         };
-
-        function promptUpdate(reg: ServiceWorkerRegistration) {
-            if (promptedRef.current) return;
-            promptedRef.current = true;
-            toast(
-                (t) => (
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm">Nueva versión disponible</span>
-                        <button
-                            onClick={() => {
-                                toast.dismiss(t.id);
-                                reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
-                            }}
-                            className="rounded-lg bg-capsula-navy-deep px-3 py-1 text-xs font-semibold text-capsula-cream"
-                        >
-                            Actualizar
-                        </button>
-                    </div>
-                ),
-                { duration: Infinity, id: 'pwa-update' }
-            );
-        }
 
         if (document.readyState === 'complete') {
             onLoad();
