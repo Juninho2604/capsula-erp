@@ -6573,3 +6573,239 @@ Trade-off aceptado: el primer reload tras este merge ocurrirá la próxima vez q
 - `src/app/dashboard/pos/pedidosya/page.tsx`
 
 El supresor global sigue siendo safety net obligatorio — no eliminarlo aunque envolvamos todo en try/catch, porque siempre habrá fetches que se nos escapan.
+## 38. Cutover Vercel→VPS paralelo + Paso C multi-tenant (2026-05-12)
+
+Sesión larga de migración de infraestructura. Resultado: `kpsula.app`
+sirviendo desde el VPS de Contabo en paralelo con Vercel, ambos
+golpeando la misma BD productiva. Más middleware passive (Paso C del
+multi-tenant) y script de deploy automatizado.
+
+### 38.1 DNS + SSL wildcard (Fases 1-2 del VPS_MIGRATION_PLAN)
+
+Dominio `kpsula.app` comprado en GoDaddy. Cloudflare configurado como
+nameserver:
+
+- 2 NS de Cloudflare (`robert.ns.cloudflare.com`, `adel.ns.cloudflare.com`)
+- A records `@` y `*` → `147.93.6.70` (IP del VPS), proxy DNS-only (gris)
+- API token Cloudflare con scope `Zone DNS Edit` para `kpsula.app` guardado
+  en `/etc/letsencrypt/cloudflare.ini` (perms 600)
+
+Certbot wildcard via DNS-01 emitió cert para `kpsula.app` y
+`*.kpsula.app`, vence 2026-08-10, auto-renueva cada 60 días.
+
+nginx site en `/etc/nginx/sites-available/kpsula.app`:
+- HTTP→HTTPS redirect en :80
+- HTTPS server en :443 con HTTP/2
+- `/_next/static/` y `/public/` con `alias` (servidos directo por nginx)
+- Resto `proxy_pass` a `127.0.0.1:3000` (Next standalone)
+
+`ufw allow 80/tcp` y `ufw allow 443/tcp` (descubrimos que faltaba —
+nginx escuchaba pero firewall bloqueaba externo).
+
+### 38.2 Deploy del build actual al VPS (Fase 3.5 — manual)
+
+El `/var/www/capsula-erp/` del VPS tenía un build del **17 de abril**,
+mes y medio atrás. Y el `.env` apuntaba a la BD staging vacía
+`capsula_db:5432`, no a `capsula_erp_prod:5433`. Es decir, esos 22
+días de uptime del pm2 nunca tocaron producción real. Buena noticia
+para esta sesión (cero riesgo de corrupción retroactiva).
+
+Plan ejecutado:
+
+1. Backup preventivo `pg_dump -Fc` de `capsula_erp_prod` (~5 MB).
+2. Clone fresh `git clone --depth 1 --branch main` en
+   `/var/www/capsula-erp-new/`.
+3. Nuevo `.env` con valores de Vercel (`vercel.com/settings/env`):
+   - `DATABASE_URL`: misma URL que Vercel pero con host
+     `localhost:5433` (loopback, más rápido + sin firewall).
+   - `NEXTAUTH_SECRET`, `JWT_SECRET`: copiados idénticos de Vercel.
+   - `CRON_SECRET`: GENERADO NUEVO con `openssl rand -hex 32`. El de
+     Vercel está marcado "Sensitive" y no se puede leer. Los crons
+     de Vercel siguen usando el suyo; el VPS no tiene scheduler aún.
+   - `NEXTAUTH_URL=https://kpsula.app`, `NODE_ENV=production`,
+     `HOSTNAME=127.0.0.1`, `PORT=3000`.
+4. `npm ci --include=dev` (sin --include=dev, npm omite
+   `autoprefixer`/`tailwindcss`/`typescript` que sí son necesarios
+   en build time). Después `npm run build` → standalone.
+5. Copia de assets al standalone: Next standalone NO incluye
+   `public/` ni `.next/static/`. Copiar a `.next/standalone/` y
+   `.next/standalone/.next/` para que los `alias` de nginx
+   funcionen.
+6. Smoke test en puerto 3001 (sin tocar pm2 viejo) + validación
+   visual via SSH tunnel.
+7. Swap atómico: `mv` viejo → `OLD-<TS>`, `mv` nuevo → activo.
+   `pm2 delete && pm2 start ecosystem.config.js && pm2 save`.
+
+### 38.3 Trampa con `--env-file` de Node 22
+
+Primera versión del `ecosystem.config.js` usaba
+`node_args: '--env-file=.env'`. El proceso arrancaba pero Prisma
+daba `Authentication failed against database server at localhost` —
+pese a que `psql "$DATABASE_URL"` con la misma URL conectaba.
+
+Diagnóstico: `node --env-file` y `bash source` veían ambos la misma
+URL (length 112, idéntica). El issue era contaminación de env del
+shell que ejecutó `pm2 start` (un `PORT=3001` leftover del smoke
+test). Tras `unset PORT`, otras inconsistencias residuales del shell
+seguían filtrándose al fork de pm2.
+
+**Fix definitivo:** wrapper script `start-server.sh` que sourcea
+`.env` explícitamente y `exec node`:
+
+```bash
+#!/usr/bin/env bash
+set -e
+set -a
+source /var/www/capsula-erp/.env
+set +a
+cd /var/www/capsula-erp
+exec node .next/standalone/server.js
+```
+
+`ecosystem.config.js` referencia ese script:
+
+```js
+module.exports = {
+  apps: [{
+    name: 'capsula-erp',
+    script: '/var/www/capsula-erp/start-server.sh',
+    interpreter: 'bash',
+    cwd: '/var/www/capsula-erp',
+    autorestart: true,
+    max_memory_restart: '1G',
+    error_file: '/root/.pm2/logs/capsula-erp-error.log',
+    out_file: '/root/.pm2/logs/capsula-erp-out.log',
+    time: true,
+  }]
+};
+```
+
+Tras este cambio, login con un user real en `https://kpsula.app`
+funciona contra la BD productiva. kpsula.app y
+`shanklish-erp-main.vercel.app` operan en paralelo contra el mismo
+`capsula_erp_prod`.
+
+Convención hereditaria: todos los deploys futuros al VPS deben
+respetar este patrón. El script de deploy automatizado (§38.5)
+copia el wrapper desde la instalación viva.
+
+### 38.4 Paso C multi-tenant — middleware passive
+
+`src/middleware.ts` ahora extrae el slug del host y lo setea como
+`x-tenant-slug` en el request header, vía `extractTenantSlugFromHost`:
+
+```typescript
+const tenantSlug = extractTenantSlugFromHost(request.headers.get('host'));
+// ... resto del middleware (maintenance, auth, RBAC) sin cambios ...
+if (tenantSlug) {
+    const headers = new Headers(request.headers);
+    headers.set('x-tenant-slug', tenantSlug);
+    return NextResponse.next({ request: { headers } });
+}
+return NextResponse.next();
+```
+
+Pasivo: nadie llama a `resolveTenantContext()` en runtime todavía.
+El header existe pero no afecta comportamiento hasta Paso D
+(activar `defineAction()` wrapper en una action piloto).
+
+Verificación: `shanklish.kpsula.app` → header `x-tenant-slug:
+shanklish`. `kpsula.app` (root) → sin header → si en algún momento
+se invoca `resolveTenantContext()` cae al fallback Shanklish.
+Vercel preview, IP raw, otros hosts → idéntico (sin header,
+fallback).
+
+### 38.5 Script de deploy `scripts/deploy-vps.sh`
+
+Para que futuros deploys al VPS no requieran el procedimiento
+manual de §38.2, hay un script reutilizable. Uso:
+
+```bash
+# En el VPS, como root:
+bash /root/deploy-capsula.sh           # deploya main
+bash /root/deploy-capsula.sh somebranch # deploya otra branch
+```
+
+Pasos (idempotente, con rollback en ~30s):
+
+1. Backup `pg_dump` de `capsula_erp_prod` a `/root/backups/`
+2. Clone fresh en `/var/www/capsula-erp-NEW-<TS>`
+3. Copia `.env`, `ecosystem.config.js`, `start-server.sh` desde el
+   directorio activo
+4. `npm ci --include=dev` y `npm run build`
+5. Copia `public/` y `.next/static/` al standalone
+6. **Smoke test Prisma**: aborta si no conecta a BD antes del swap
+7. Swap atómico de directorios
+8. `pm2 restart` y verificación con curl
+
+Instalación en el VPS:
+
+```bash
+wget https://raw.githubusercontent.com/Juninho2604/capsula-erp/main/scripts/deploy-vps.sh \
+  -O /root/deploy-capsula.sh
+chmod +x /root/deploy-capsula.sh
+```
+
+### 38.6 Estado al cierre y deuda
+
+**Sirviendo en paralelo:** ✅
+- Vercel (`shanklish-erp-main.vercel.app`) — producción, todos los
+  clientes
+- VPS (`kpsula.app`) — sirve mismo build de main, misma BD, listo
+  para cutover
+
+**Multi-tenant:** Paso A (JWT), Paso B (host parser), **Paso C
+(middleware passive)** ahora listos. Pendiente:
+- Paso D: activar `defineAction()` en 1 action piloto
+- Paso E: `withTenant()` Prisma extension en actions migradas
+- Signup self-service + panel SUPER_ADMIN
+
+**Hardening pendiente:**
+- `ufw deny` para puertos `5433` (Postgres) y `11434` (Ollama). Antes
+  de bloquear 5433, cambiar el acceso de Vercel a la BD: o
+  Cloudflare Tunnel, o whitelist por IP de Vercel, o TLS client cert.
+- El Next standalone ya escucha solo en `127.0.0.1:3000` (vía
+  `HOSTNAME=127.0.0.1` en `.env`), así que el puerto 3000 ya no es
+  alcanzable externamente.
+
+**CI/CD pendiente (Fase 3 del VPS_MIGRATION_PLAN):** GitHub Actions
+con workflow_dispatch que llama a `deploy-vps.sh` via SSH. Reduce
+trabajo manual de cada deploy futuro a un click en GitHub.
+
+### 38.7 Lecciones aprendidas
+
+1. `NODE_ENV=production` durante `npm ci` omite devDeps. Para
+   build, `unset NODE_ENV && npm ci --include=dev`. Cuidado con
+   `set -a; source .env` que puede leaks `NODE_ENV=production` al
+   shell.
+
+2. `node --env-file` no es 100% drop-in con `bash source` cuando
+   hay contaminación de env del shell padre. Wrapper script con
+   `source .env` explícito es el patrón confiable para pm2.
+
+3. Next standalone NO incluye `public/` ni `.next/static/`. Hay que
+   copiarlos a mano (o automatizarlo en CI/script).
+
+4. `ufw allow 80/443` no estaba aplicado por default en Contabo.
+   nginx escuchaba, certbot emitía cert, pero externamente nada
+   llegaba. Verificar `ufw status` antes de asumir que un servicio
+   "no responde".
+
+5. El `.env` del VPS no apuntaba a la BD productiva — apuntaba a
+   una BD staging vacía. Foot-gun: parecía que el VPS "ya estaba
+   productivo" pero no lo estaba.
+
+6. `tmux` es obligatorio para procesos >30s en SSH de Contabo. La
+   sesión SSH se cae cada ~37s por inactividad. Configurar
+   `ServerAliveInterval 30` en `~/.ssh/config` del cliente también
+   ayuda.
+
+### 38.8 Referencias
+
+- `docs/VPS_MIGRATION_PLAN.md` (plan completo de migración Vercel→VPS)
+- `scripts/deploy-vps.sh` (script de deploy reutilizable)
+- `/var/www/capsula-erp/start-server.sh` (wrapper pm2; vive en el VPS)
+- `/var/www/capsula-erp/ecosystem.config.js` (config pm2; vive en el VPS)
+- `src/middleware.ts` (Paso C activado)
+- `src/lib/tenant-context.ts` (extractor de slug, 13 tests)
+- `src/lib/tenant-context.server.ts` (dormante, espera Paso D)
