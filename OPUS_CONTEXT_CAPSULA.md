@@ -6891,3 +6891,61 @@ info sensible — `slug` ya está en la URL del host).
 - `src/app/api/tenant/whoami/route.ts` (Paso D.a — primer consumidor)
 - `src/lib/define-action.ts` (sigue dormante, espera D.b)
 - `src/lib/prisma-tenant-client.ts` (sigue dormante, espera E)
+
+### 38.12 CI/CD GitHub Actions → VPS (workflow_dispatch)
+
+`.github/workflows/ci.yml` actualizado para que:
+
+1. **`validate`** corra en push/PR a `main` (antes era `capsula/consolidation`).
+   Hace `npm ci` + `prisma generate` + `prisma db push` (sobre BD efímera de
+   CI) + `tsc` + `vitest`. Cualquier PR mostrará el estado.
+
+2. **`deploy`** corre solo en `workflow_dispatch` (botón "Run workflow" en
+   pestaña Actions). Hace SSH al VPS y ejecuta
+   `bash /root/deploy-capsula.sh main`.
+
+**Secrets requeridos** (configurar en GitHub → Settings → Secrets and
+variables → Actions):
+
+| Nombre | Valor |
+|---|---|
+| `CONTABO_HOST` | `147.93.6.70` |
+| `CONTABO_USER` | `root` |
+| `CONTABO_SSH_KEY` | Clave privada SSH ed25519 con acceso al VPS (ver §38.13) |
+
+**Trigger automático en push a main:** se mantiene **deshabilitado**
+hasta validar que el manual funciona. Una vez confirmado, se puede
+agregar `if: github.ref == 'refs/heads/main'` al deploy job junto con
+`github.event_name == 'push'`.
+
+### 38.13 SSH key setup para deploy automatizado
+
+Generar keypair dedicado para GitHub Actions (NO usar la del user
+operativo):
+
+```bash
+# En el VPS:
+ssh-keygen -t ed25519 -f /root/.ssh/github-actions -N "" -C "github-actions deploy"
+
+# Añadir la pública a authorized_keys
+cat /root/.ssh/github-actions.pub >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
+# Mostrar la PRIVADA (copiar TODO el contenido, incluyendo BEGIN/END)
+# para pegarla en GitHub Secret CONTABO_SSH_KEY:
+cat /root/.ssh/github-actions
+```
+
+Después en GitHub:
+1. Repo Settings → Secrets and variables → Actions → New repository secret
+2. Crear `CONTABO_HOST` = `147.93.6.70`
+3. Crear `CONTABO_USER` = `root`
+4. Crear `CONTABO_SSH_KEY` = pegar contenido de `/root/.ssh/github-actions`
+
+**Verificación**: GitHub → Actions → CI → "Run workflow" → main → debe
+ejecutar `bash /root/deploy-capsula.sh main` y reportar éxito.
+
+**Riesgo:** muy bajo. Si los secrets faltan o están mal, el job falla
+en GitHub con error de auth y nada cambia en el VPS. El job tiene
+`script_stop: true` así que cualquier error aborta sin dejar estados
+intermedios.
