@@ -6497,3 +6497,18 @@ Primer POS aplicando la fundación de §37.2.
 - POS Restaurante (mismo patrón).
 - POS Pickup (pickup tabs viven en `restaurante/page.tsx` actualmente; se cubre con el item anterior).
 - POS Delivery (necesita cachear lista de clientes/direcciones adicional al menú/layout).
+
+### 37.6 Hotfix — "Application error: client-side exception" al apagar WiFi (2026-05-12)
+
+Al probar §37.5 en la tablet, apagar el WiFi disparaba pantalla blanca **"Application error: a client-side exception has occurred"**. Causa raíz: `pollLayout` (cada 5s) y `refreshSubAccounts` invocaban server actions sin `try/catch`. Cuando la red caía, la promesa rechazada subía al error boundary de Next.js y reventaba la pantalla.
+
+**Fixes aplicados:**
+
+1. **`pollLayout` en POS Mesero y Restaurante**: envuelto en `try/catch`. En el camino exitoso, Mesero aprovecha para refrescar `saveLayoutCache(nextLayout)` y limpiar `cacheStaleAt` — así el cache offline siempre tiene el snapshot más reciente sin reload manual.
+
+2. **`refreshSubAccounts` en POS Mesero**: envuelto en `try/catch`. Devuelve `[]` cuando falla en lugar de propagar.
+
+3. **Defensa global en `<OfflineBanner />`** (`src/components/offline-banner.tsx`): registra listeners `unhandledrejection` y `error` en `window`. Si el mensaje matchea `NETWORK_ERROR_PATTERNS` (`failed to fetch`, `network error`, `load failed`, `the operation was aborted`, `err_internet_disconnected`, etc.) → `event.preventDefault()`. **No suprime errores reales de lógica** porque filtra por patrón de mensaje. Esta defensa cubre cualquier fetch sin `try/catch` en otros componentes del dashboard durante offline (panels, BellPanel, POS futuros) sin tener que auditarlos uno por uno.
+
+**Regla de arquitectura nueva:**
+Cualquier código cliente que invoque server actions o `fetch` en background (polling, refreshes, useEffect, etc.) **debe** estar envuelto en `try/catch`. La defensa global de OfflineBanner es safety net, no excusa para no manejar errores. Para código nuevo: si llamas a una `*Action()` fuera de un `onClick`/`onSubmit`, envuelve.

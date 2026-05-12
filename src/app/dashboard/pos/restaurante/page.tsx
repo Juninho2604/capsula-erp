@@ -386,14 +386,19 @@ export default function POSSportBarPage() {
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
 
   const pollLayout = useCallback(async () => {
-    const [layoutResult, rate] = await Promise.all([
-      getRestaurantLayoutAction(),
-      getExchangeRateValue(),
-    ]);
-    if (layoutResult.success && layoutResult.data) {
-      setLayout(layoutResult.data as SportBarLayout);
+    try {
+      const [layoutResult, rate] = await Promise.all([
+        getRestaurantLayoutAction(),
+        getExchangeRateValue(),
+      ]);
+      if (layoutResult.success && layoutResult.data) {
+        setLayout(layoutResult.data as SportBarLayout);
+      }
+      if (rate) setExchangeRate(rate);
+    } catch {
+      // Sin red durante poll: silencioso. El banner global cubre la UX.
+      // No propagar — rompe la pantalla con "Application error".
     }
-    if (rate) setExchangeRate(rate);
   }, []);
 
   useEffect(() => {

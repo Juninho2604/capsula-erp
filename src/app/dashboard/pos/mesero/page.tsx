@@ -357,14 +357,25 @@ export default function POSMeseroPage() {
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
 
   const pollLayout = useCallback(async () => {
-    const [layoutResult, rate] = await Promise.all([
-      getRestaurantLayoutAction(),
-      getExchangeRateValue(),
-    ]);
-    if (layoutResult.success && layoutResult.data) {
-      setLayout(layoutResult.data as SportBarLayout);
+    try {
+      const [layoutResult, rate] = await Promise.all([
+        getRestaurantLayoutAction(),
+        getExchangeRateValue(),
+      ]);
+      if (layoutResult.success && layoutResult.data) {
+        const nextLayout = layoutResult.data as SportBarLayout;
+        setLayout(nextLayout);
+        // El poll exitoso refresca el cache offline — así el snapshot
+        // local siempre tiene los datos más recientes sin reload manual.
+        await saveLayoutCache(nextLayout);
+        setCacheStaleAt(null);
+      }
+      if (rate) setExchangeRate(rate);
+    } catch {
+      // Sin red durante poll: silencioso. El banner global ya señala
+      // "sin conexión". NUNCA propagar — rompe la pantalla con
+      // "Application error: client-side exception".
     }
-    if (rate) setExchangeRate(rate);
   }, []);
 
   useEffect(() => {
@@ -402,14 +413,19 @@ export default function POSMeseroPage() {
   // (o el mesero las creó en una sesión previa), entramos automáticamente al
   // modo subcuentas para que el mesonero las vea sin clicks extra.
   // También cacheamos la lista para alimentar el selector de destino del carrito.
-  const refreshSubAccounts = useCallback(async (tabId: string) => {
-    const res = await getOpenTabWithSubAccountsAction(tabId);
-    const subs = ((res.data as any)?.subAccounts ?? []) as SubAccountSummary[];
-    const open = subs
-      .filter((s) => s.status === 'OPEN')
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    setOpenSubAccounts(open);
-    return open;
+  const refreshSubAccounts = useCallback(async (tabId: string): Promise<SubAccountSummary[]> => {
+    try {
+      const res = await getOpenTabWithSubAccountsAction(tabId);
+      const subs = ((res.data as any)?.subAccounts ?? []) as SubAccountSummary[];
+      const open = subs
+        .filter((s) => s.status === 'OPEN')
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      setOpenSubAccounts(open);
+      return open;
+    } catch {
+      // Sin red: no propagar (rompe la pantalla). Devolver lista vacía.
+      return [];
+    }
   }, []);
 
   useEffect(() => {
