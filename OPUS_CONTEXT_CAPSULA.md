@@ -6952,9 +6952,95 @@ intermedios.
 
 ---
 
-## 38. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
+### 38.14 Signup self-service MVP (feature flag SIGNUPS_ENABLED)
 
-### 38.1 Contexto
+Primer "tenant operativo" entregable: una persona externa puede crear
+su propia cuenta de negocio en `https://kpsula.app/signup` y empezar
+a usar la app en `https://<su-slug>.kpsula.app`.
+
+**Estado: detrás de feature flag.** En producción `SIGNUPS_ENABLED`
+NO está seteada → `/signup` devuelve 404 y `signupTenantAction`
+rechaza con mensaje "registros temporalmente cerrados".
+
+**Activación en producción:** añadir `SIGNUPS_ENABLED=true` al
+`/var/www/capsula-erp/.env` del VPS (y al `.env` de Vercel si querés
+también activarlo ahí), restart pm2. Doble check: el feature flag se
+chequea en `src/app/signup/page.tsx` (devuelve 404) y en
+`src/app/actions/signup.actions.ts` (rechaza con mensaje).
+
+**Componentes:**
+
+- `src/lib/signup/reserved-slugs.ts` — lista de ~55 slugs reservados
+  (www, api, admin, login, kpsula, shanklish, staging, dev, etc.) +
+  helper `isReservedSlug`. 7 tests.
+- `src/app/actions/signup.actions.ts` — `signupTenantAction(prevState, formData)`:
+  - Feature flag check
+  - Rate limit: 3 intentos/IP/hora vía `consumeRateLimit`
+  - Validación: businessName 2-100, slug regex `^[a-z0-9][a-z0-9-]{1,29}$`,
+    email regex, password 8-200, firstName/lastName 1-50
+  - `isReservedSlug` check
+  - Chequeo previo de slug único + `@unique` constraint atómico
+  - Transacción: crea `Tenant` + `User` role=OWNER
+  - Devuelve `{ success: true, tenantSlug, loginUrl }` o
+    `{ success: false, message, field? }`
+- `src/app/signup/page.tsx` — Server Component que llama `notFound()`
+  si feature flag desactivada.
+- `src/app/signup/signup-form-client.tsx` — Client Component con
+  `useActionState`, muestra errores por campo, success card con
+  link a `https://<slug>.kpsula.app/login`.
+
+**Bootstrap mínimo:** intencional. La acción solo crea `Tenant` + `User`.
+NO crea `Branch` ni datos default. El owner ve un dashboard inicial
+vacío y configura todo desde `/dashboard/config`. Iteramos en
+sub-secciones futuras (38.15, 38.16...) según feedback.
+
+**Flujo del usuario nuevo:**
+
+1. Va a `https://kpsula.app/signup` (con flag activada)
+2. Completa el form: nombre del negocio, slug deseado, sus datos
+3. Submit → action crea Tenant + User OWNER
+4. Pantalla de éxito con link a `https://<slug>.kpsula.app/login`
+5. Click → llega al login en su subdomain
+6. Login con su email/password → llega a `/dashboard`
+7. Configura branch, áreas, etc. manualmente
+
+**Riesgo:** muy bajo en producción con flag OFF (default). Con flag ON:
+- Cada signup escribe 2 filas en BD (Tenant + User). Inmutable: si algo
+  falla, la transacción revierte.
+- Rate limit defensivo contra abuso.
+- Slugs reservados protegen subdominios técnicos y rutas críticas.
+- `passwordHash` se calcula con PBKDF2 (`hashPassword` de
+  `src/lib/password.ts`).
+
+**Test plan (con flag ON localmente):**
+- Visitar `/signup` → form se renderiza
+- Submit con slug reservado (e.g. "www") → error "reservado"
+- Submit con slug ya existente (e.g. "shanklish") → error "ya tomado"
+- Submit válido → success card + Tenant nuevo en BD + User OWNER en BD
+- Visitar `https://<nuevoslug>.kpsula.app/login` → login funciona
+- Visitar `https://<nuevoslug>.kpsula.app/api/tenant/whoami` (con sesión)
+  → `source: "subdomain"`, `slug: <nuevoslug>`
+
+### 38.15 Pendientes tras Signup MVP
+
+- **Auto-login post-signup**: actualmente el flujo manda al user a `/login`.
+  Para hacerlo más fluido, el action podría llamar `createSession()` y
+  redirigir directo a `/dashboard`. Complicación: cookies cross-subdomain
+  — necesitamos setear `domain: '.kpsula.app'` en la cookie de sesión
+  para que sea válida en cualquier subdomain.
+- **Bootstrap de Branch default**: para que el owner pueda usar POS
+  inmediatamente, crear un Branch "Principal" + Area "General" +
+  ServiceZone "Salón" + algunas TableOrStation default. Reduce fricción
+  pero acopla signup al schema POS.
+- **Email de bienvenida**: notificar al owner por email (Resend / Postmark)
+  con link al login y guía rápida.
+- **Panel SUPER_ADMIN**: ruta `/admin/tenants` para listar tenants,
+  desactivar abusos, ver métricas. Requiere role SUPER_ADMIN nuevo.
+- **CAPTCHA o Turnstile**: si hay bots intentando crear tenants masivos,
+  añadir Cloudflare Turnstile (free) en el form.
+## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
+
+### 39.1 Contexto
 
 Las tablets (Android, PWA) **no tienen drivers de impresora térmica** y no pueden imprimir directamente. Hoy el ERP usa `printReceipt()` y `printKitchenCommand()` en `src/lib/print-command.ts` que abren `window.open()` + `window.print()` — funciona en PCs con driver instalado y modo kiosk, **falla en tablets**.
 
@@ -6963,7 +7049,7 @@ Setup físico (con Jonathan de sistemas):
 - **Pickup-1** (Windows 10/11) será el **host del Print Agent**.
 - Las AON soportan **ESC/POS estándar por TCP puerto 9100**.
 
-### 38.2 Arquitectura — polling, no WebSocket
+### 39.2 Arquitectura — polling, no WebSocket
 
 ```
 Tablet POS              ERP Vercel            Print Agent (Pickup-1)      Impresora AON
@@ -6976,7 +7062,7 @@ enqueuePrintJob() ─►  crea PrintJob       ◄─  GET  /jobs?status=PENDING
 
 Vercel no soporta WebSockets persistentes nativamente. Polling cada 1s con jobs FIFO es trivialmente fiable y la latencia (~1-2s) es aceptable para impresión en restaurante.
 
-### 38.3 Pieza por pieza
+### 39.3 Pieza por pieza
 
 | Archivo | Rol |
 |---|---|
@@ -6999,7 +7085,7 @@ Vercel no soporta WebSockets persistentes nativamente. Polling cada 1s con jobs 
 | `print-agent/scripts/uninstall-service.ts` | Desinstala el servicio. |
 | `print-agent/README.md` | Guía paso a paso para Jonathan. Troubleshooting con tabla síntoma → solución. |
 
-### 38.4 Variables de entorno requeridas
+### 39.4 Variables de entorno requeridas
 
 **Vercel** (lado ERP):
 - `PRINT_AGENT_API_KEY` — secreto compartido. Generar con `openssl rand -hex 32`.
@@ -7014,7 +7100,7 @@ PRINTERS_JSON=[{"station":"kitchen-1","ip":"192.168.1.50","port":9100}]
 DEFAULT_STATION=kitchen-1
 ```
 
-### 38.5 Flow end-to-end del primer print real
+### 39.5 Flow end-to-end del primer print real
 
 1. Jonathan asigna IP estática a la primera AON (ej. `192.168.1.50`).
 2. Verifica `ping 192.168.1.50` + `Test-NetConnection -ComputerName 192.168.1.50 -Port 9100`.
@@ -7027,7 +7113,7 @@ DEFAULT_STATION=kitchen-1
 9. Desde el POS, llamar `enqueueReceipt(payload, 'kitchen-1')`. En <2s sale el recibo.
 10. Para producción: `npm run build` + `npx tsx scripts/install-service.ts` (PowerShell elevado).
 
-### 38.6 Pendientes Fase 2+
+### 39.6 Pendientes Fase 2+
 
 - **Migración progresiva del POS**: hoy `enqueueReceipt()` está como wrapper paralelo a `printReceipt()`. Cada lugar del POS que llame `printReceipt()` se migra uno a uno usando `shouldUseAgent()`.
 - **UI de monitoreo**: `/dashboard/admin/print-jobs` con lista, filtros, retry manual, reset huérfanos. La server action `getRecentPrintJobsAction()` ya está lista.
