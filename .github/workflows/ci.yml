@@ -67,8 +67,12 @@ jobs:
 
   # Deploy al VPS Contabo (kpsula.app).
   #
-  # Trigger: solo manual desde la pestaña Actions (workflow_dispatch).
-  # Una vez verificado que funciona, podemos habilitar trigger on push a main.
+  # Triggers:
+  #   - push a main → auto-deploy tras `validate` verde.
+  #   - workflow_dispatch → manual desde la pestaña Actions (rollback, redeploy, etc.).
+  #
+  # Concurrency: un solo deploy a la vez; si llega otro push, cancela el corriente
+  # para evitar swaps atómicos solapados sobre /root/capsula-erp/current.
   #
   # Secrets requeridos en el repo (Settings → Secrets and variables → Actions):
   #   CONTABO_HOST    — IP o hostname del VPS (e.g. 147.93.6.70)
@@ -82,7 +86,10 @@ jobs:
     name: Deploy to Contabo VPS
     runs-on: ubuntu-latest
     needs: validate
-    if: github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: deploy-contabo-main
+      cancel-in-progress: true
     timeout-minutes: 20
 
     steps:
