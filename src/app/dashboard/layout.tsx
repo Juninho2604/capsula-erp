@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { OfflineBanner } from '@/components/offline-banner';
 import { getSession } from '@/lib/auth';
 import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 import { visibleModules } from '@/lib/permissions/has-permission';
@@ -42,8 +43,11 @@ export default async function DashboardLayout({
     );
 
     return (
-        <DashboardShell sidebar={sidebar}>
-            {children}
-        </DashboardShell>
+        <>
+            <OfflineBanner />
+            <DashboardShell sidebar={sidebar}>
+                {children}
+            </DashboardShell>
+        </>
     );
 }
