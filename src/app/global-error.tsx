@@ -137,17 +137,55 @@ export default function GlobalError({
                             Recargar completamente
                         </button>
                     </div>
-                    {error.digest && (
-                        <p
+                    {(error.message || error.digest) && (
+                        <details
                             style={{
-                                fontSize: '11px',
-                                color: 'rgba(27, 36, 56, 0.4)',
                                 marginTop: '20px',
-                                fontFamily: 'monospace',
+                                textAlign: 'left',
+                                backgroundColor: '#F5F2EC',
+                                border: '1px solid rgba(27, 36, 56, 0.08)',
+                                borderRadius: '10px',
+                                padding: '10px 14px',
                             }}
                         >
-                            ref: {error.digest}
-                        </p>
+                            <summary
+                                style={{
+                                    fontSize: '12px',
+                                    color: 'rgba(27, 36, 56, 0.7)',
+                                    cursor: 'pointer',
+                                    fontWeight: 500,
+                                    listStyle: 'none',
+                                }}
+                            >
+                                Detalle técnico (para soporte)
+                            </summary>
+                            {error.message && (
+                                <p
+                                    style={{
+                                        marginTop: '10px',
+                                        fontSize: '12px',
+                                        color: '#1B2438',
+                                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                        wordBreak: 'break-word',
+                                        lineHeight: 1.4,
+                                    }}
+                                >
+                                    {error.message}
+                                </p>
+                            )}
+                            {error.digest && (
+                                <p
+                                    style={{
+                                        marginTop: '6px',
+                                        fontSize: '11px',
+                                        color: 'rgba(27, 36, 56, 0.5)',
+                                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                    }}
+                                >
+                                    ref: {error.digest}
+                                </p>
+                            )}
+                        </details>
                     )}
                 </div>
             </body>
