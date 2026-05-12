@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - capsula/consolidation
+      - main
   pull_request:
     branches:
-      - capsula/consolidation
+      - main
   workflow_dispatch:
 
 jobs:
@@ -51,12 +51,11 @@ jobs:
 
       # FASE 3 BLOCKER: prisma/migrations/ carece de un baseline 0_init porque
       # el schema base fue creado originalmente vía `prisma db push` en la era
-      # pre-migrations. Las 26 migraciones actuales son solo deltas y fallan
+      # pre-migrations. Las migraciones actuales son solo deltas y fallan
       # al correr contra una DB vacía (la primera ALTER sobre PurchaseOrder
       # asume que la tabla ya existe).
       #
-      # Volver a `prisma migrate deploy` cuando se cree la migración baseline
-      # durante Fase 3 (multi-tenancy fuerza la resolución correcta).
+      # Volver a `prisma migrate deploy` cuando se cree la migración baseline.
       - name: Sync schema to database (CI bypasses migration history)
         run: npx prisma db push --skip-generate --accept-data-loss
 
@@ -66,17 +65,21 @@ jobs:
       - name: Run tests
         run: npm run test
 
-  # FASE 4: habilitar trigger on push a capsula/consolidation
-  # cuando existan los secrets CONTABO_HOST, CONTABO_USER, CONTABO_SSH_KEY.
-  # Por ahora solo se dispara manualmente desde Actions tab.
+  # Deploy al VPS Contabo (kpsula.app).
   #
-  # Secrets esperados:
-  #   CONTABO_HOST         - host/IP del servidor Contabo
-  #   CONTABO_USER         - usuario SSH (p.ej. root o deploy)
-  #   CONTABO_SSH_KEY      - clave privada SSH para autenticar
-  #   DATABASE_URL_PROD    - URL de la base de datos productiva (usada por prisma migrate deploy)
+  # Trigger: solo manual desde la pestaña Actions (workflow_dispatch).
+  # Una vez verificado que funciona, podemos habilitar trigger on push a main.
+  #
+  # Secrets requeridos en el repo (Settings → Secrets and variables → Actions):
+  #   CONTABO_HOST    — IP o hostname del VPS (e.g. 147.93.6.70)
+  #   CONTABO_USER    — usuario SSH (root)
+  #   CONTABO_SSH_KEY — clave privada SSH ed25519 con acceso a authorized_keys del VPS
+  #
+  # El script /root/deploy-capsula.sh hace todo el flujo seguro:
+  #   backup BD → clone fresh → build → smoke test Prisma → swap atómico → pm2 restart.
+  # Si falla en el smoke test, aborta sin tocar la instalación viva.
   deploy:
-    name: Deploy to Contabo
+    name: Deploy to Contabo VPS
     runs-on: ubuntu-latest
     needs: validate
     if: github.event_name == 'workflow_dispatch'
@@ -90,27 +93,9 @@ jobs:
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
           script_stop: true
-          envs: DATABASE_URL_PROD
+          command_timeout: 15m
           script: |
             set -e
-
-            echo ">>> Entrando al proyecto"
-            cd /var/www/capsula-erp
-
-            echo ">>> Pull"
-            git pull
-
-            echo ">>> Instalando dependencias (incluye dev)"
-            npm ci --production=false
-
-            echo ">>> Aplicando migraciones Prisma"
-            export DATABASE_URL="${DATABASE_URL_PROD}"
-            npx prisma migrate deploy
-
-            echo ">>> Build"
-            npm run build
-
-            echo ">>> Recargando PM2"
-            pm2 reload all
-
+            echo ">>> Ejecutando deploy-capsula.sh"
+            bash /root/deploy-capsula.sh main
             echo ">>> Deploy completado OK"
