@@ -6445,8 +6445,8 @@ Niveles definidos en sesión:
 ### 37.4 Pendientes Fase 1.B (siguientes commits)
 
 Aplicar el patrón a cada POS:
-1. **POS Mesero** (prioridad 1, donde están las quejas) — cachear menú, layout, tabs activos; persistir carrito por `tabId`; envolver "Enviar a cocina" con `guardMutation`.
-2. **POS Restaurante** — idem + bloquear "Cobrar".
+1. **POS Mesero** ✅ — integrado en §37.5.
+2. **POS Restaurante** — pendiente.
 3. **POS Pickup** — vive dentro de restaurante hoy.
 4. **POS Delivery** — más datos (clientes), pero mismo patrón.
 
@@ -6455,3 +6455,45 @@ Cada POS necesita 4 cosas:
 - Banner inline cuando se sirva desde cache: "actualizado hace X min".
 - Persistir el carrito en cada cambio.
 - Envolver botones de mutación con `useOfflineGuard().guardMutation` y deshabilitar visualmente con `isOffline`.
+
+### 37.5 POS Mesero — integrado al cache offline (2026-05-11)
+
+Primer POS aplicando la fundación de §37.2.
+
+**Archivo tocado:** `src/app/dashboard/pos/mesero/page.tsx`
+
+**Cambios:**
+
+1. **`loadData` reescrita como offline-first** (líneas ~260-340):
+   - Hidrata desde IndexedDB inmediatamente (UI usable en <100ms aunque el server tarde).
+   - Dispara fetch al server en paralelo. Si llega → reemplaza el estado y persiste el nuevo cache (`saveMenuCache`, `saveLayoutCache`).
+   - Si el fetch falla y hay cache → mantiene el estado cacheado, set `cacheStaleAt` con el timestamp.
+   - Si el fetch falla y NO hay cache → `setLayoutError("Sin conexión y sin datos en caché")`.
+
+2. **Estado `cacheStaleAt: number | null`** indica si la UI muestra datos cacheados. Se limpia en el siguiente fetch exitoso.
+
+3. **Banner inline "Mostrando datos en caché · actualizados hace X min"** justo debajo del header (tono info `#E6ECF4`/`#1A2636`). Diferente del banner global amarillo (red caída) — este informa antigüedad del dato concreto.
+
+4. **Carrito persistente por `tabId`** vía dos `useEffect`:
+   - Al cambiar `activeTab.id`: rehidrata el carrito desde `loadCart(tabId)`. Solo si el carrito local está vacío — para no machacar lo que el mesero ya tipeó en pantalla.
+   - En cada cambio de `cart`: si tiene ítems → `saveCart(tabId, cart)`; si está vacío → `deleteCart(tabId)`.
+   - Caso clave validado: mesero en mesa 25 sin WiFi anota 5 ítems → app se cierra → al reabrir y entrar a la mesa, los 5 ítems siguen ahí.
+
+5. **`handleSendToTab` envuelto en `guardMutation`** con mensaje específico: "Sin conexión. La orden quedó en el carrito local; se enviará cuando vuelva la señal." Tras éxito, `deleteCart(tabId)` limpia el cache persistido.
+
+6. **Botón "Enviar a cocina" visualmente deshabilitado con `isOffline`**, texto cambia a "Sin conexión · $X" + tooltip explicativo. El carrito sigue agregándose normal (queda persistido) — solo bloqueamos el envío al servidor.
+
+**Comportamiento end-to-end ahora:**
+
+| Situación | Antes (sin cache) | Ahora |
+|---|---|---|
+| Abre POS con WiFi malo | Spinner 5-10s, frustración | UI usable en <100ms desde cache, server se sincroniza atrás |
+| Pierde WiFi mid-servicio | Toda la pantalla deja de responder | Banner amarillo arriba + banner azul "datos en caché". Sigue navegando |
+| Agrega ítems offline | Toast genérico de error | Los agrega al carrito local. Botón dice "Sin conexión · $X" |
+| App se cierra con ítems offline | Pierde todo | Al volver y entrar a la mesa, ítems siguen ahí |
+| Vuelve WiFi y toca "Enviar" | — | Manda todos los ítems acumulados de una |
+
+**Pendiente para Fase 1.C:**
+- POS Restaurante (mismo patrón).
+- POS Pickup (pickup tabs viven en `restaurante/page.tsx` actualmente; se cubre con el item anterior).
+- POS Delivery (necesita cachear lista de clientes/direcciones adicional al menú/layout).
