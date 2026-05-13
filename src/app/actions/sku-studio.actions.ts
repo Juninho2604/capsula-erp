@@ -22,6 +22,8 @@
  */
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -57,10 +59,12 @@ const SkuItemInputSchema = z.object({
 // ─── Product Families ─────────────────────────────────────────────────────────
 
 export async function getProductFamilies() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.productFamily.findMany({
+    return db.productFamily.findMany({
         where: { isActive: true },
         include: { _count: { select: { items: true, templates: true } } },
         orderBy: { name: 'asc' },
@@ -68,6 +72,8 @@ export async function getProductFamilies() {
 }
 
 export async function createProductFamily(rawData: z.input<typeof ProductFamilyInputSchema>) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
     if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
@@ -82,7 +88,7 @@ export async function createProductFamily(rawData: z.input<typeof ProductFamilyI
     // Normaliza el código a uppercase
     const data = { ...parsed.data, code: parsed.data.code.toUpperCase() };
 
-    const family = await prisma.productFamily.create({ data });
+    const family = await db.productFamily.create({ data });
     revalidatePath('/dashboard/config/sku-studio');
     return { ok: true, family };
 }
@@ -90,10 +96,12 @@ export async function createProductFamily(rawData: z.input<typeof ProductFamilyI
 // ─── SKU Templates ───────────────────────────────────────────────────────────
 
 export async function getSkuTemplates(productFamilyId?: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.skuCreationTemplate.findMany({
+    return db.skuCreationTemplate.findMany({
         where: {
             isActive: true,
             ...(productFamilyId && { productFamilyId }),
@@ -104,6 +112,8 @@ export async function getSkuTemplates(productFamilyId?: string) {
 }
 
 export async function createSkuTemplate(rawData: z.input<typeof SkuTemplateInputSchema>) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
     if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
@@ -117,7 +127,7 @@ export async function createSkuTemplate(rawData: z.input<typeof SkuTemplateInput
     }
     const data = parsed.data;
 
-    const template = await prisma.skuCreationTemplate.create({
+    const template = await db.skuCreationTemplate.create({
         data: {
             name: data.name,
             description: data.description,
@@ -138,13 +148,15 @@ export async function createProductFromTemplate(
     templateId: string,
     overrides: Record<string, unknown>
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
     if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
         throw new Error('Sin permiso para crear productos');
     }
 
-    const template = await prisma.skuCreationTemplate.findUniqueOrThrow({
+    const template = await db.skuCreationTemplate.findUniqueOrThrow({
         where: { id: templateId },
     });
 
@@ -152,7 +164,7 @@ export async function createProductFromTemplate(
     const merged   = { ...defaults, ...overrides };
 
     // ── Create InventoryItem ────────────────────────────────────────────────
-    const invItem = await prisma.inventoryItem.create({
+    const invItem = await db.inventoryItem.create({
         data: {
             sku:         merged.sku          as string,
             name:        merged.name         as string,
@@ -170,7 +182,7 @@ export async function createProductFromTemplate(
     // ── Optionally create MenuItem ──────────────────────────────────────────
     let menuItem = null;
     if (merged.createMenuItem && merged.menuCategoryId) {
-        menuItem = await prisma.menuItem.create({
+        menuItem = await db.menuItem.create({
             data: {
                 sku:            invItem.sku,
                 name:           invItem.name,
@@ -193,6 +205,8 @@ export async function createProductFromTemplate(
 export async function createSkuItemAction(
     rawInput: z.input<typeof SkuItemInputSchema>
 ): Promise<{ success: boolean; message: string; data?: { id: string; sku: string; name: string } }> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -206,11 +220,11 @@ export async function createSkuItemAction(
 
         // Generar SKU
         const prefix = input.skuPrefix?.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'SKU';
-        const count = await prisma.inventoryItem.count({ where: { sku: { startsWith: prefix } } });
+        const count = await db.inventoryItem.count({ where: { sku: { startsWith: prefix } } });
         const candidateSku = `${prefix}-${String(count + 1).padStart(3, '0')}`;
         // Pre-Fase 2.B: findFirst en lugar de findUnique para no depender del
         // unique global sobre InventoryItem.sku.
-        const existing = await prisma.inventoryItem.findFirst({ where: { sku: candidateSku } });
+        const existing = await db.inventoryItem.findFirst({ where: { sku: candidateSku } });
         const finalSku = existing ? `${prefix}-${Date.now().toString().slice(-5)}` : candidateSku;
 
         // Metadata SKU Studio en description
@@ -219,7 +233,7 @@ export async function createSkuItemAction(
         if (input.trackingMode && input.trackingMode !== 'Por unidad') descParts.push(`Seguimiento: ${input.trackingMode}`);
         const description = descParts.length ? descParts.join(' | ') : null;
 
-        const item = await prisma.inventoryItem.create({
+        const item = await db.inventoryItem.create({
             data: {
                 name: input.name.trim(),
                 sku: finalSku,

@@ -1,6 +1,8 @@
 'use server';
 
 import { prisma } from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
@@ -38,6 +40,8 @@ export async function getAccountsPayableAction(filters?: {
   status?: string;
   supplierId?: string;
 }): Promise<{ success: boolean; data?: AccountPayableData[]; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'].includes(session.role)) {
@@ -45,7 +49,7 @@ export async function getAccountsPayableAction(filters?: {
   }
 
   try {
-    const accounts = await prisma.accountPayable.findMany({
+    const accounts = await db.accountPayable.findMany({
       where: {
         ...(filters?.status && { status: filters.status }),
         ...(filters?.supplierId && { supplierId: filters.supplierId }),
@@ -113,6 +117,8 @@ export async function createAccountPayableAction(input: {
   dueDate?: string;
   purchaseOrderId?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
@@ -128,7 +134,7 @@ export async function createAccountPayableAction(input: {
   const dueDate = input.dueDate ? new Date(input.dueDate) : null;
 
   try {
-    const account = await prisma.accountPayable.create({
+    const account = await db.accountPayable.create({
       data: {
         description: input.description.trim(),
         invoiceNumber: input.invoiceNumber?.trim() || null,
@@ -173,6 +179,8 @@ export async function registerPaymentAction(
     notes?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
@@ -184,7 +192,7 @@ export async function registerPaymentAction(
   if (isNaN(paidAt.getTime())) return { success: false, error: 'Fecha inválida' };
 
   try {
-    const account = await prisma.accountPayable.findUnique({ where: { id: accountPayableId } });
+    const account = await db.accountPayable.findUnique({ where: { id: accountPayableId } });
     if (!account) return { success: false, error: 'Cuenta por pagar no encontrada' };
     if (account.status === 'PAID' || account.status === 'VOID') {
       return { success: false, error: 'Esta cuenta ya está saldada o anulada' };
@@ -197,8 +205,8 @@ export async function registerPaymentAction(
     const newRemaining = account.totalAmountUsd - newPaid;
     const isPaid = newRemaining <= 0.01;
 
-    await prisma.$transaction([
-      prisma.accountPayment.create({
+    await db.$transaction([
+      db.accountPayment.create({
         data: {
           accountPayableId,
           amountUsd: input.amountUsd,
@@ -211,7 +219,7 @@ export async function registerPaymentAction(
           createdById: session.id,
         },
       }),
-      prisma.accountPayable.update({
+      db.accountPayable.update({
         where: { id: accountPayableId },
         data: {
           paidAmountUsd: newPaid,

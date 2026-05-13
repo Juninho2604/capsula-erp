@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
@@ -56,7 +58,10 @@ const DEFAULT_CONFIG: MetasConfig = {
 
 async function getMetasConfig(): Promise<MetasConfig> {
   try {
-    const record = await prisma.systemConfig.findUnique({ where: { key: METAS_CONFIG_KEY } });
+    const { tenantId } = await resolveTenantContext();
+    const record = await prisma.systemConfig.findFirst({
+      where: { tenantId, key: METAS_CONFIG_KEY },
+    });
     if (!record) return DEFAULT_CONFIG;
     const parsed = JSON.parse(record.value) as Partial<MetasConfig>;
     return { ...DEFAULT_CONFIG, ...parsed };
@@ -70,6 +75,8 @@ async function getMetasConfig(): Promise<MetasConfig> {
 // ============================================================================
 
 export async function getMetasAction(): Promise<{ success: boolean; data?: MetasData; message?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
@@ -92,27 +99,29 @@ export async function getMetasAction(): Promise<{ success: boolean; data?: Metas
     const monthStart = new Date(Date.UTC(_cy, _cm, 1, 4, 0, 0, 0));
 
     const [todayAgg, weekAgg, monthAgg, wasteAgg] = await Promise.all([
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: revenueWhere(todayStart, todayEnd),
         _sum: { total: true },
         _count: { id: true },
       }),
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: weekStart } },
         _sum: { total: true },
         _count: { id: true },
       }),
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: monthStart } },
         _sum: { total: true },
         _count: { id: true },
       }),
       // Merma del mes: movimientos tipo WASTE o ADJUSTMENT_OUT con totalCost
+      // InventoryMovement no es tenant-aware; filtramos por inventoryItem.tenantId.
       prisma.inventoryMovement.aggregate({
         where: {
           movementType: { in: ['WASTE', 'ADJUSTMENT_OUT', 'ADJUSTMENT'] },
-          quantity: { lt: 0 }, // solo salidas (negativas)
+          quantity: { lt: 0 },
           createdAt: { gte: monthStart },
+          inventoryItem: { tenantId },
         },
         _sum: { totalCost: true },
       }),
@@ -197,9 +206,10 @@ export async function saveMetasAction(input: Partial<MetasConfig>): Promise<{ su
       return { success: false, message: 'El % de merma debe estar entre 0 y 100' };
     }
 
+    const { tenantId: tenantIdForUpsert } = await resolveTenantContext();
     await prisma.systemConfig.upsert({
-      where:  { key: METAS_CONFIG_KEY },
-      create: { key: METAS_CONFIG_KEY, value: JSON.stringify(updated), updatedBy: session.id },
+      where:  { tenantId_key: { tenantId: tenantIdForUpsert, key: METAS_CONFIG_KEY } },
+      create: { key: METAS_CONFIG_KEY, value: JSON.stringify(updated), updatedBy: session.id, tenantId: tenantIdForUpsert },
       update: { value: JSON.stringify(updated), updatedBy: session.id },
     });
 

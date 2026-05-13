@@ -1,6 +1,8 @@
 'use server';
 
 import { prisma } from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
@@ -49,11 +51,13 @@ export interface ExpenseSummary {
 // ─── CATEGORÍAS ───────────────────────────────────────────────────────────────
 
 export async function getExpenseCategoriesAction(): Promise<{ success: boolean; data?: ExpenseCategoryData[]; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
 
   try {
-    const categories = await prisma.expenseCategory.findMany({
+    const categories = await db.expenseCategory.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { expenses: true } } },
     });
@@ -70,6 +74,8 @@ export async function createExpenseCategoryAction(input: {
   icon?: string;
   sortOrder?: number;
 }): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
@@ -79,7 +85,7 @@ export async function createExpenseCategoryAction(input: {
   if (!input.name.trim()) return { success: false, error: 'El nombre es requerido' };
 
   try {
-    const cat = await prisma.expenseCategory.create({
+    const cat = await db.expenseCategory.create({
       data: {
         name: input.name.trim(),
         description: input.description?.trim() || null,
@@ -105,6 +111,8 @@ export async function updateExpenseCategoryAction(
   id: string,
   input: { name?: string; description?: string; color?: string; icon?: string; isActive?: boolean; sortOrder?: number }
 ): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
@@ -112,7 +120,7 @@ export async function updateExpenseCategoryAction(
   }
 
   try {
-    await prisma.expenseCategory.update({
+    await db.expenseCategory.update({
       where: { id },
       data: {
         ...(input.name && { name: input.name.trim() }),
@@ -138,6 +146,8 @@ export async function getExpensesAction(filters?: {
   categoryId?: string;
   status?: string;
 }): Promise<{ success: boolean; data?: ExpenseData[]; summary?: ExpenseSummary; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'].includes(session.role)) {
@@ -156,7 +166,7 @@ export async function getExpensesAction(filters?: {
       ...(filters?.status ? { status: filters.status } : { status: 'CONFIRMED' }),
     };
 
-    const expenses = await prisma.expense.findMany({
+    const expenses = await db.expense.findMany({
       where,
       include: {
         category: { select: { name: true, color: true, icon: true } },
@@ -231,6 +241,8 @@ export async function createExpenseAction(input: {
   paymentRef?: string;
   paidAt: string; // ISO date string
 }): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
@@ -246,7 +258,7 @@ export async function createExpenseAction(input: {
   if (isNaN(paidAt.getTime())) return { success: false, error: 'Fecha inválida' };
 
   try {
-    const expense = await prisma.expense.create({
+    const expense = await db.expense.create({
       data: {
         description: input.description.trim(),
         notes: input.notes?.trim() || null,
@@ -286,6 +298,8 @@ export async function voidExpenseAction(
   id: string,
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
@@ -294,11 +308,11 @@ export async function voidExpenseAction(
   if (!reason.trim()) return { success: false, error: 'Se requiere un motivo de anulación' };
 
   try {
-    const expense = await prisma.expense.findUnique({ where: { id } });
+    const expense = await db.expense.findUnique({ where: { id } });
     if (!expense) return { success: false, error: 'Gasto no encontrado' };
     if (expense.status === 'VOID') return { success: false, error: 'El gasto ya está anulado' };
 
-    await prisma.expense.update({
+    await db.expense.update({
       where: { id },
       data: { status: 'VOID', voidReason: reason.trim(), voidedAt: new Date(), voidedById: session.id },
     });

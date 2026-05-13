@@ -1,6 +1,12 @@
 'use server';
 
+/**
+ * Movement history — multitenant (Lote 6.b — Fase 3 Paso D.b).
+ * InventoryMovement no es tenant-aware; filtramos por inventoryItem.tenantId.
+ */
+
 import prisma from '@/server/db';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface MovementHistoryFilters {
     month: number; // 1-12
@@ -14,11 +20,14 @@ export async function getMonthlyMovementsAction(filters: MovementHistoryFilters)
         const startDate = new Date(filters.year, filters.month - 1, 1);
         const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59);
 
+        const { tenantId } = await resolveTenantContext();
+
         const whereClause: any = {
             createdAt: {
                 gte: startDate,
                 lte: endDate,
             },
+            inventoryItem: { tenantId },
         };
 
         if (filters.movementType) {
@@ -27,6 +36,7 @@ export async function getMonthlyMovementsAction(filters: MovementHistoryFilters)
 
         if (filters.itemName) {
             whereClause.inventoryItem = {
+                tenantId,
                 name: { contains: filters.itemName, mode: 'insensitive' },
             };
         }
@@ -82,7 +92,9 @@ export async function getMonthlyMovementsAction(filters: MovementHistoryFilters)
 
 export async function getMovementTypesAction() {
     try {
+        const { tenantId } = await resolveTenantContext();
         const types = await prisma.inventoryMovement.findMany({
+            where: { inventoryItem: { tenantId } },
             select: { movementType: true },
             distinct: ['movementType'],
         });

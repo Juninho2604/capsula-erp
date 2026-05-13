@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on server
 import { InventoryItemType } from '@/types';
@@ -9,6 +11,8 @@ import { revenueWhere, propinasWhere, cancelledWhere } from '@/lib/sales-where';
 
 export async function getDashboardStatsAction() {
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         const session = await getSession();
         const isAdmin = session && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(session.role);
 
@@ -16,7 +20,7 @@ export async function getDashboardStatsAction() {
         const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
 
         const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg, propinasHoyAgg, canceladasHoyAgg] = await Promise.all([
-            prisma.inventoryItem.findMany({
+            db.inventoryItem.findMany({
                 where: { isActive: true },
                 include: {
                     stockLevels: true,
@@ -27,31 +31,31 @@ export async function getDashboardStatsAction() {
                 }
             }),
             // Today's sales
-            isAdmin ? prisma.salesOrder.aggregate({
+            isAdmin ? db.salesOrder.aggregate({
                 where: revenueWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Yesterday comparison
-            isAdmin ? prisma.salesOrder.aggregate({
+            isAdmin ? db.salesOrder.aggregate({
                 where: revenueWhere(yesterdayStart, yesterdayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Open tabs
-            isAdmin ? prisma.openTab.aggregate({
+            isAdmin ? db.openTab.aggregate({
                 where: { status: 'OPEN' },
                 _count: { id: true },
                 _sum: { balanceDue: true },
             }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
             // Propinas colectivas hoy
-            isAdmin ? prisma.salesOrder.aggregate({
+            isAdmin ? db.salesOrder.aggregate({
                 where: propinasWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Órdenes canceladas hoy (auditoría)
-            isAdmin ? prisma.salesOrder.aggregate({
+            isAdmin ? db.salesOrder.aggregate({
                 where: cancelledWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
