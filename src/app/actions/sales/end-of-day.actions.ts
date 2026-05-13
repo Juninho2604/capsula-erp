@@ -1,7 +1,14 @@
 'use server';
 
+/**
+ * Resumen de cierre del día — multitenant (Lote 5.b — Fase 3 Paso D.b).
+ * Solo lectura sobre SalesOrder (tenant-aware). El extension filtra auto.
+ */
+
 import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface EndOfDaySummary {
     date: string;
@@ -45,7 +52,9 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
         const today = date ? new Date(date + 'T12:00:00') : new Date();
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
-        const orders = await prisma.salesOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const orders = await db.salesOrder.findMany({
             where: { createdAt: { gte: startOfDay, lte: endOfDay }, customerName: { not: 'PROPINA COLECTIVA' } },
             include: {
                 orderPayments: { select: { method: true, amountUSD: true } },

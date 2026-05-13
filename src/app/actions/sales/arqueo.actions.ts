@@ -1,9 +1,16 @@
 'use server';
 
+/**
+ * Arqueo del día — multitenant (Lote 5.c — Fase 3 Paso D.b).
+ * Solo lectura sobre SalesOrder (tenant-aware).
+ */
+
 import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface ArqueoSaleRow {
     orderType: 'RESTAURANT' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
@@ -50,7 +57,9 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
     try {
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(date);
 
-        const orders = await prisma.salesOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const orders = await db.salesOrder.findMany({
             where: {
                 createdAt: { gte: startOfDay, lte: endOfDay },
                 status: { not: 'CANCELLED' }
