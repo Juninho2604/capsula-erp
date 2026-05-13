@@ -2020,18 +2020,18 @@ model SalesOrderPayment {
 // Clave: 'enabled_modules' → valor: JSON array de ids de módulos activos.
 
 model SystemConfig {
-  key       String   @id          // 'enabled_modules', 'business_name', etc.
-  value     String               // JSON string o texto plano
+  id        String   @id @default(cuid())   // PK cuid — desde Lote multitenant para soportar misma `key` entre tenants
+  key       String                          // 'enabled_modules', 'business_name', etc.
+  value     String                          // JSON string o texto plano
   updatedAt DateTime @updatedAt
-  updatedBy String?              // userId quien lo cambió
+  updatedBy String?                         // userId quien lo cambió
 
-  // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  // Nota: el unique sigue siendo en `key` (no en (tenantId, key)). Eso se
-  // cambia en Fase 2. Por ahora solo Shanklish tiene config, así que no hay
-  // colisión.
+  // Multi-tenant: `(tenantId, key)` es compound unique → cada tenant puede
+  // tener su propia config con las mismas keys.
   tenantId  String   @default("tnt_shanklish_caracas")
   tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([tenantId, key])
   @@index([tenantId])
 }
 

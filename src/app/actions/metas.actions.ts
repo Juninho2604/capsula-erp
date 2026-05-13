@@ -58,7 +58,10 @@ const DEFAULT_CONFIG: MetasConfig = {
 
 async function getMetasConfig(): Promise<MetasConfig> {
   try {
-    const record = await prisma.systemConfig.findUnique({ where: { key: METAS_CONFIG_KEY } });
+    const { tenantId } = await resolveTenantContext();
+    const record = await prisma.systemConfig.findFirst({
+      where: { tenantId, key: METAS_CONFIG_KEY },
+    });
     if (!record) return DEFAULT_CONFIG;
     const parsed = JSON.parse(record.value) as Partial<MetasConfig>;
     return { ...DEFAULT_CONFIG, ...parsed };
@@ -203,9 +206,10 @@ export async function saveMetasAction(input: Partial<MetasConfig>): Promise<{ su
       return { success: false, message: 'El % de merma debe estar entre 0 y 100' };
     }
 
+    const { tenantId: tenantIdForUpsert } = await resolveTenantContext();
     await prisma.systemConfig.upsert({
-      where:  { key: METAS_CONFIG_KEY },
-      create: { key: METAS_CONFIG_KEY, value: JSON.stringify(updated), updatedBy: session.id },
+      where:  { tenantId_key: { tenantId: tenantIdForUpsert, key: METAS_CONFIG_KEY } },
+      create: { key: METAS_CONFIG_KEY, value: JSON.stringify(updated), updatedBy: session.id, tenantId: tenantIdForUpsert },
       update: { value: JSON.stringify(updated), updatedBy: session.id },
     });
 
