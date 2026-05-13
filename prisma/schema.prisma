@@ -31,73 +31,74 @@ model Tenant {
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.
-  menuCategories      MenuCategory[]
-  menuItems           MenuItem[]
-  recipes             Recipe[]
-  suppliers           Supplier[]
-  expenseCategories   ExpenseCategory[]
-  productFamilies     ProductFamily[]
+  menuCategories       MenuCategory[]
+  menuItems            MenuItem[]
+  recipes              Recipe[]
+  suppliers            Supplier[]
+  expenseCategories    ExpenseCategory[]
+  productFamilies      ProductFamily[]
   // Lote 1.D-α (bajo riesgo)
-  inventoryItems      InventoryItem[]
-  menuModifierGroups  MenuModifierGroup[]
-  menuModifiers       MenuModifier[]
-  exchangeRates       ExchangeRate[]
-  auditLogs           AuditLog[]
-  broadcastMessages   BroadcastMessage[]
-  gameTypes           GameType[]
-  wristbandPlans      WristbandPlan[]
+  inventoryItems       InventoryItem[]
+  menuModifierGroups   MenuModifierGroup[]
+  menuModifiers        MenuModifier[]
+  exchangeRates        ExchangeRate[]
+  auditLogs            AuditLog[]
+  broadcastMessages    BroadcastMessage[]
+  gameTypes            GameType[]
+  wristbandPlans       WristbandPlan[]
   skuCreationTemplates SkuCreationTemplate[]
-  queueTickets        QueueTicket[]
+  queueTickets         QueueTicket[]
   // Lote 1.D-β (riesgo medio)
-  expenses            Expense[]
-  accountsPayable     AccountPayable[]
-  accountPayments     AccountPayment[]
-  purchaseOrders      PurchaseOrder[]
-  productionOrders    ProductionOrder[]
-  proteinProcessings  ProteinProcessing[]
-  requisitions        Requisition[]
-  inventoryAudits     InventoryAudit[]
-  inventoryLoans      InventoryLoan[]
-  inventoryCycles     InventoryCycle[]
-  dailyInventories    DailyInventory[]
-  cashRegisters       CashRegister[]
+  expenses             Expense[]
+  accountsPayable      AccountPayable[]
+  accountPayments      AccountPayment[]
+  purchaseOrders       PurchaseOrder[]
+  productionOrders     ProductionOrder[]
+  proteinProcessings   ProteinProcessing[]
+  requisitions         Requisition[]
+  inventoryAudits      InventoryAudit[]
+  inventoryLoans       InventoryLoan[]
+  inventoryCycles      InventoryCycle[]
+  dailyInventories     DailyInventory[]
+  cashRegisters        CashRegister[]
   // Lote 1.D-γ (riesgo alto — POS crítico)
-  users               User[]
-  branches            Branch[]
-  areas               Area[]
-  serviceZones        ServiceZone[]
-  tableOrStations     TableOrStation[]
-  openTabs            OpenTab[]
-  salesOrders         SalesOrder[]
-  salesOrderItems     SalesOrderItem[]
-  waiters             Waiter[]
-  gameStations        GameStation[]
-  gameSessions        GameSession[]
-  invoiceCounters     InvoiceCounter[]
-  systemConfigs       SystemConfig[]
-  reservations        Reservation[]
-  printJobs           PrintJob[]
+  users                User[]
+  branches             Branch[]
+  areas                Area[]
+  serviceZones         ServiceZone[]
+  tableOrStations      TableOrStation[]
+  openTabs             OpenTab[]
+  salesOrders          SalesOrder[]
+  salesOrderItems      SalesOrderItem[]
+  waiters              Waiter[]
+  gameStations         GameStation[]
+  gameSessions         GameSession[]
+  invoiceCounters      InvoiceCounter[]
+  systemConfigs        SystemConfig[]
+  reservations         Reservation[]
+  printJobs            PrintJob[]
+  customers            Customer[]
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String
-  passwordHash  String?
-  firstName     String
-  lastName      String
-  role          String    @default("CHEF") // OWNER, AUDITOR, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD, CASHIER (unified)
-  pin           String?   // Código de 4-6 dígitos para autorización rápida en POS
-  allowedModules String?  // JSON array de módulos permitidos (null = acceso por rol)
-  grantedPerms  String?   // JSON array de PERM keys que amplían el rol (ej: ["VOID_ORDER"])
-  revokedPerms  String?   // JSON array de PERM keys revocados del rol base (ej: ["EXPORT_SALES"])
-  tokenVersion  Int       @default(0) // Se incrementa al cambiar rol/permisos/password para invalidar JWTs vivos
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String   @id @default(cuid())
+  email          String
+  passwordHash   String?
+  firstName      String
+  lastName       String
+  role           String   @default("CHEF") // OWNER, AUDITOR, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD, CASHIER (unified)
+  pin            String? // Código de 4-6 dígitos para autorización rápida en POS
+  allowedModules String? // JSON array de módulos permitidos (null = acceso por rol)
+  grantedPerms   String? // JSON array de PERM keys que amplían el rol (ej: ["VOID_ORDER"])
+  revokedPerms   String? // JSON array de PERM keys revocados del rol base (ej: ["EXPORT_SALES"])
+  tokenVersion   Int      @default(0) // Se incrementa al cambiar rol/permisos/password para invalidar JWTs vivos
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Soft Delete
-  deletedAt     DateTime?
-  deletedById   String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Relaciones
   inventoryMovements InventoryMovement[]
@@ -105,36 +106,39 @@ model User {
   productionOrders   ProductionOrder[]
 
   // Requisiciones
-  requisitionsRequested Requisition[] @relation("RequisitionRequester")
-  requisitionsProcessed Requisition[] @relation("RequisitionProcessor")
+  requisitionsRequested  Requisition[] @relation("RequisitionRequester")
+  requisitionsProcessed  Requisition[] @relation("RequisitionProcessor")
   requisitionsDispatched Requisition[] @relation("RequisitionDispatcher")
-  requisitionsReceived  Requisition[] @relation("RequisitionReceiver")
+  requisitionsReceived   Requisition[] @relation("RequisitionReceiver")
 
   // POS - Ventas
-  salesOrders    SalesOrder[] @relation("SalesOrderCreator")
-  authorizedOrders     SalesOrder[]    @relation("SalesOrderAuthorizer")
-  authorizedTransfers  TableTransfer[] @relation("TransferAuthorizedByUser")
-  voidedOrders   SalesOrder[]     @relation("SalesOrderVoider")
-  voidedItems    SalesOrderItem[] @relation("ItemVoidedByUser")
-  openedTabs       OpenTab[]    @relation("OpenTabOpener")
-  assignedTabs     OpenTab[]    @relation("OpenTabAssignee")
-  closedTabs       OpenTab[]    @relation("OpenTabCloser")
+  salesOrders         SalesOrder[]     @relation("SalesOrderCreator")
+  authorizedOrders    SalesOrder[]     @relation("SalesOrderAuthorizer")
+  authorizedTransfers TableTransfer[]  @relation("TransferAuthorizedByUser")
+  voidedOrders        SalesOrder[]     @relation("SalesOrderVoider")
+  voidedItems         SalesOrderItem[] @relation("ItemVoidedByUser")
+  openedTabs          OpenTab[]        @relation("OpenTabOpener")
+  assignedTabs        OpenTab[]        @relation("OpenTabAssignee")
+  closedTabs          OpenTab[]        @relation("OpenTabCloser")
 
   // Print Agent — jobs encolados por este usuario.
   enqueuedPrintJobs PrintJob[] @relation("PrintJobEnqueuedBy")
+
+  // Clientes recurrentes creados por este usuario.
+  createdCustomers Customer[] @relation("CustomerCreatedBy")
 
   // Cierres de Inventario
   closedDailyInventories DailyInventory[]
 
   // Recetas creadas
   createdRecipes Recipe[]
-  
+
   // PrÃ©stamos creados
   createdLoans InventoryLoan[] @relation("LoanCreator")
 
   // Auditorías
-  createdAudits   InventoryAudit[] @relation("AuditCreator")
-  resolvedAudits  InventoryAudit[] @relation("AuditResolver")
+  createdAudits  InventoryAudit[] @relation("AuditCreator")
+  resolvedAudits InventoryAudit[] @relation("AuditResolver")
 
   // Órdenes de Compra
   createdPurchaseOrders  PurchaseOrder[] @relation("PurchaseOrderCreator")
@@ -145,24 +149,24 @@ model User {
   completedProteinProcessings ProteinProcessing[] @relation("ProteinProcessingCompleter")
 
   // Módulo Juegos
-  reservationsCreated GameSession[]    @relation("GameSessionStarter")
-  gameSessionsEnded   GameSession[]    @relation("GameSessionEnder")
-  createdReservations Reservation[]    @relation("ReservationCreator")
+  reservationsCreated GameSession[] @relation("GameSessionStarter")
+  gameSessionsEnded   GameSession[] @relation("GameSessionEnder")
+  createdReservations Reservation[] @relation("ReservationCreator")
 
   // Módulo Financiero
-  createdExpenses         Expense[]         @relation("ExpenseCreator")
-  openedCashRegisters     CashRegister[]    @relation("CashRegisterOpener")
-  closedCashRegisters     CashRegister[]    @relation("CashRegisterCloser")
-  createdAccountsPayable  AccountPayable[]  @relation("AccountPayableCreator")
-  createdAccountPayments  AccountPayment[]  @relation("AccountPaymentCreator")
+  createdExpenses        Expense[]        @relation("ExpenseCreator")
+  openedCashRegisters    CashRegister[]   @relation("CashRegisterOpener")
+  closedCashRegisters    CashRegister[]   @relation("CashRegisterCloser")
+  createdAccountsPayable AccountPayable[] @relation("AccountPayableCreator")
+  createdAccountPayments AccountPayment[] @relation("AccountPaymentCreator")
 
   // Fase 2 — propuestas 001/002 (audit trail)
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
   registeredSupplierPrices  SupplierItemPriceHistory[] @relation("SupplierPriceRegisteredBy")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, email])
   @@index([email])
@@ -196,23 +200,23 @@ model Area {
   requisitionsSource Requisition[] @relation("RequisitionSource")
 
   // POS - Ventas
-  salesOrders    SalesOrder[]
-  
+  salesOrders SalesOrder[]
+
   // Inventarios Diarios
   dailyInventories DailyInventory[]
 
   // Auditorías
-  audits         InventoryAudit[]
+  audits InventoryAudit[]
 
   // Procesamiento de Proteínas
   proteinProcessings ProteinProcessing[]
 
   // Items críticos por área
-  criticalItems    AreaCriticalItem[]
+  criticalItems AreaCriticalItem[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([branchId])
   @@index([tenantId])
@@ -223,80 +227,80 @@ model Area {
 // ============================================================================
 
 model InventoryItem {
-  id              String   @id @default(cuid())
-  sku             String
-  name            String
-  description     String?
-  type            String   // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
-  category        String?
-  baseUnit        String   // KG, L, UNIT, G, ML, PORTION
-  purchaseUnit    String?
-  conversionRate  Float?
-  minimumStock    Float    @default(0)
-  reorderPoint    Float    @default(0)
-  isActive        Boolean  @default(true)
-  isCritical      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  sku            String
+  name           String
+  description    String?
+  type           String // RAW_MATERIAL, SUB_RECIPE, FINISHED_GOOD
+  category       String?
+  baseUnit       String // KG, L, UNIT, G, ML, PORTION
+  purchaseUnit   String?
+  conversionRate Float?
+  minimumStock   Float    @default(0)
+  reorderPoint   Float    @default(0)
+  isActive       Boolean  @default(true)
+  isCritical     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Relaciones
-  stockLevels     InventoryLocation[]
-  movements       InventoryMovement[]
-  costHistory     CostHistory[]
+  stockLevels       InventoryLocation[]
+  movements         InventoryMovement[]
+  costHistory       CostHistory[]
   recipeIngredients RecipeIngredient[]
-  outputRecipes   Recipe[]            @relation("RecipeOutput")
+  outputRecipes     Recipe[]            @relation("RecipeOutput")
 
   requisitionItems RequisitionItem[]
-  
+
   // Préstamos
-  loans            InventoryLoan[]
-  
+  loans InventoryLoan[]
+
   // Inventario Diario
-  dailyCounts      DailyInventoryItem[]
+  dailyCounts DailyInventoryItem[]
 
   // Auditorías
-  auditItems     InventoryAuditItem[]
+  auditItems InventoryAuditItem[]
 
   // Órdenes de Compra
   supplierItems      SupplierItem[]
   purchaseOrderItems PurchaseOrderItem[]
 
   // Procesamiento de Proteínas
-  proteinSources     ProteinProcessing[] @relation("ProteinSource")
-  proteinOutputs     ProteinSubProduct[] @relation("ProteinOutput")
+  proteinSources ProteinProcessing[] @relation("ProteinSource")
+  proteinOutputs ProteinSubProduct[] @relation("ProteinOutput")
 
   // Plantillas de Procesamiento
-  templateSources    ProcessingTemplate[]       @relation("TemplateSource")
-  templateOutputs    ProcessingTemplateOutput[] @relation("TemplateOutput")
+  templateSources ProcessingTemplate[]       @relation("TemplateSource")
+  templateOutputs ProcessingTemplateOutput[] @relation("TemplateOutput")
 
   // Items críticos por área
-  areaCriticalItems  AreaCriticalItem[]
+  areaCriticalItems AreaCriticalItem[]
 
   // ── Beverage fields (Table-Pong / bar) ──────────────────────────────────
-  isBeverage         Boolean  @default(false)
-  beverageCategory   String?  // BEER, WINE, SPIRIT, COCKTAIL, SOFT_DRINK, WATER, JUICE, HOT
+  isBeverage          Boolean @default(false)
+  beverageCategory    String? // BEER, WINE, SPIRIT, COCKTAIL, SOFT_DRINK, WATER, JUICE, HOT
   beverageSubCategory String? // IPA, LAGER, ROSÉ, etc.
-  isAlcoholic        Boolean  @default(false)
-  servingSize        Float?   // Standard serving in baseUnit
-  servingSizeUnit    String?  // CL, ML, OZ
+  isAlcoholic         Boolean @default(false)
+  servingSize         Float? // Standard serving in baseUnit
+  servingSizeUnit     String? // CL, ML, OZ
 
   // Familia de producto (SKU Studio)
-  productFamilyId    String?
-  productFamily      ProductFamily? @relation(fields: [productFamilyId], references: [id])
+  productFamilyId String?
+  productFamily   ProductFamily? @relation(fields: [productFamilyId], references: [id])
 
   // Conteos Físicos (InventoryCycle)
-  cycleSnapshots     InventoryCycleSnapshot[]
+  cycleSnapshots InventoryCycleSnapshot[]
 
   // Histórico de precios por proveedor (Fase 2 — propuesta 002)
   supplierPriceHistory SupplierItemPriceHistory[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, sku])
   @@index([sku])
@@ -332,7 +336,7 @@ model InventoryLocation {
   area            Area          @relation(fields: [areaId], references: [id])
   currentStock    Float         @default(0)
   lastCountDate   DateTime?
-  
+
   @@unique([inventoryItemId, areaId])
   @@index([inventoryItemId])
   @@index([areaId])
@@ -343,49 +347,49 @@ model InventoryLocation {
 // ============================================================================
 
 model InventoryMovement {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
-  movementType    String   // PURCHASE, SALE, PRODUCTION_IN, PRODUCTION_OUT, ADJUSTMENT_IN, ADJUSTMENT_OUT, TRANSFER, WASTE
-  quantity        Float
-  unit            String
-  
+
+  movementType String // PURCHASE, SALE, PRODUCTION_IN, PRODUCTION_OUT, ADJUSTMENT_IN, ADJUSTMENT_OUT, TRANSFER, WASTE
+  quantity     Float
+  unit         String
+
   // Costo
-  unitCost        Float?
-  totalCost       Float?
-  
+  unitCost  Float?
+  totalCost Float?
+
   // Documento de soporte
   referenceNumber String?
   documentUrl     String?
   documentType    String?
-  
+
   // Notas
-  reason          String?
-  notes           String?
-  
+  reason String?
+  notes  String?
+
   // AuditorÃ­a
-  createdAt       DateTime @default(now())
-  createdById     String
-  createdBy       User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
 
   // VinculaciÃ³n con venta (si aplica)
-  salesOrderId    String?
-  salesOrder      SalesOrder? @relation("SaleMovements", fields: [salesOrderId], references: [id])
+  salesOrderId String?
+  salesOrder   SalesOrder? @relation("SaleMovements", fields: [salesOrderId], references: [id])
 
   // VinculaciÃ³n con prÃ©stamo
-  loanId          String?
-  loan            InventoryLoan? @relation(fields: [loanId], references: [id])
+  loanId String?
+  loan   InventoryLoan? @relation(fields: [loanId], references: [id])
 
   // Ubicación del movimiento
-  areaId          String?
-  area            Area?    @relation(fields: [areaId], references: [id])
+  areaId String?
+  area   Area?   @relation(fields: [areaId], references: [id])
 
   // Vinculaciones cruzadas (trazabilidad completa)
-  productionOrderId  String?
-  requisitionId      String?
-  purchaseOrderId    String?
-  auditId            String?
+  productionOrderId   String?
+  requisitionId       String?
+  purchaseOrderId     String?
+  auditId             String?
   proteinProcessingId String?
 
   @@index([inventoryItemId])
@@ -405,21 +409,21 @@ model InventoryMovement {
 // ============================================================================
 
 model CostHistory {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
-  costPerUnit     Float
-  currency        String   @default("USD")
-  isCalculated    Boolean  @default(false)
-  costBreakdown   String?  // JSON string
-  
-  effectiveFrom   DateTime @default(now())
-  effectiveTo     DateTime?
-  
-  reason          String?
-  createdById     String
-  createdBy       User     @relation(fields: [createdById], references: [id])
+
+  costPerUnit   Float
+  currency      String  @default("USD")
+  isCalculated  Boolean @default(false)
+  costBreakdown String? // JSON string
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  reason      String?
+  createdById String
+  createdBy   User    @relation(fields: [createdById], references: [id])
 
   @@index([inventoryItemId])
   @@index([effectiveFrom])
@@ -430,39 +434,39 @@ model CostHistory {
 // ============================================================================
 
 model Recipe {
-  id              String   @id @default(cuid())
-  name            String
-  description     String?
-  
-  outputItemId    String
-  outputItem      InventoryItem @relation("RecipeOutput", fields: [outputItemId], references: [id])
-  outputQuantity  Float    @default(1)
-  outputUnit      String
-  
-  yieldPercentage Float    @default(100)
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  outputItemId   String
+  outputItem     InventoryItem @relation("RecipeOutput", fields: [outputItemId], references: [id])
+  outputQuantity Float         @default(1)
+  outputUnit     String
+
+  yieldPercentage Float @default(100)
   prepTime        Int?
   cookTime        Int?
-  
-  isApproved      Boolean  @default(false)
-  isActive        Boolean  @default(true)
-  version         Int      @default(1)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
 
-  createdById     String?
-  createdBy       User?    @relation(fields: [createdById], references: [id])
+  isApproved Boolean @default(false)
+  isActive   Boolean @default(true)
+  version    Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Soft Delete
+  deletedAt   DateTime?
+  deletedById String?
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
-  ingredients     RecipeIngredient[]
+  ingredients      RecipeIngredient[]
   productionOrders ProductionOrder[]
 
   @@index([outputItemId])
@@ -470,18 +474,18 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id              String   @id @default(cuid())
-  recipeId        String
-  recipe          Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
   ingredientItemId String
   ingredientItem   InventoryItem @relation(fields: [ingredientItemId], references: [id])
-  
+
   quantity        Float
   unit            String
-  wastePercentage Float    @default(0)
+  wastePercentage Float   @default(0)
   notes           String?
-  sortOrder       Int      @default(0)
+  sortOrder       Int     @default(0)
 
   @@unique([recipeId, ingredientItemId])
   @@index([recipeId])
@@ -492,40 +496,40 @@ model RecipeIngredient {
 // ============================================================================
 
 model ProductionOrder {
-  id              String   @id @default(cuid())
-  orderNumber     String
-  
-  recipeId        String
-  recipe          Recipe   @relation(fields: [recipeId], references: [id])
-  
+  id          String @id @default(cuid())
+  orderNumber String
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id])
+
   outputItemId    String
   plannedQuantity Float
   actualQuantity  Float?
   unit            String
-  
-  status          String   @default("DRAFT") // DRAFT, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
-  priority        Int      @default(0)
-  
-  scheduledDate   DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  
+
+  status   String @default("DRAFT") // DRAFT, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
+  priority Int    @default(0)
+
+  scheduledDate DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+
   actualYieldPercentage Float?
-  actualCost      Float?
-  
-  notes           String?
-  
-  createdAt       DateTime @default(now())
-  createdById     String
-  createdBy       User     @relation(fields: [createdById], references: [id])
+  actualCost            Float?
+
+  notes String?
+
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
   @@index([status])
@@ -538,68 +542,68 @@ model ProductionOrder {
 // ============================================================================
 
 model ProteinProcessing {
-  id              String   @id @default(cuid())
-  code            String   // Ej: PROT-2026-001 — unique compuesto con tenantId abajo
-  
+  id   String @id @default(cuid())
+  code String // Ej: PROT-2026-001 — unique compuesto con tenantId abajo
+
   // Fecha del procesamiento
-  processDate     DateTime @default(now())
-  
+  processDate DateTime @default(now())
+
   // Producto a procesar (item del inventario - ej: Res entera, Pollo entero)
-  sourceItemId    String
-  sourceItem      InventoryItem @relation("ProteinSource", fields: [sourceItemId], references: [id])
-  
+  sourceItemId String
+  sourceItem   InventoryItem @relation("ProteinSource", fields: [sourceItemId], references: [id])
+
   // Proveedor (opcional)
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  supplierName    String?   // Por si no está en el sistema
-  
+  supplierId   String?
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  supplierName String? // Por si no está en el sistema
+
   // Pesos
-  frozenWeight    Float     // Peso congelado inicial (kg)
-  drainedWeight   Float     // Peso escurrido/descongelado (kg)
-  
+  frozenWeight  Float // Peso congelado inicial (kg)
+  drainedWeight Float // Peso escurrido/descongelado (kg)
+
   // Totales calculados
-  totalSubProducts Float    @default(0) // Suma de pesos de subproductos
-  wasteWeight     Float     @default(0) // Desperdicio (kg) calculado (Drained - SubProducts)
-  reportedWaste   Float?                // Desperdicio reportado manualmente (kg)
-  wastePercentage Float     @default(0) // % de desperdicio
-  yieldPercentage Float     @default(0) // % de rendimiento
-  
+  totalSubProducts Float  @default(0) // Suma de pesos de subproductos
+  wasteWeight      Float  @default(0) // Desperdicio (kg) calculado (Drained - SubProducts)
+  reportedWaste    Float? // Desperdicio reportado manualmente (kg)
+  wastePercentage  Float  @default(0) // % de desperdicio
+  yieldPercentage  Float  @default(0) // % de rendimiento
+
   // Estado
-  status          String    @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, CANCELLED
-  
+  status String @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, CANCELLED
+
   // Paso del procesamiento en cadena
-  processingStep  String    @default("LIMPIEZA") // LIMPIEZA, MASERADO, DISTRIBUCION, CUSTOM
-  
+  processingStep String @default("LIMPIEZA") // LIMPIEZA, MASERADO, DISTRIBUCION, CUSTOM
+
   // Encadenamiento: referencia al procesamiento padre (si es un paso posterior)
   parentProcessingId String?
   parentProcessing   ProteinProcessing?  @relation("ProcessingChain", fields: [parentProcessingId], references: [id])
   childProcessings   ProteinProcessing[] @relation("ProcessingChain")
-  
+
   // Área donde se realiza el procesamiento
-  areaId          String
-  area            Area      @relation(fields: [areaId], references: [id])
-  
-  notes           String?
-  
+  areaId String
+  area   Area   @relation(fields: [areaId], references: [id])
+
+  notes String?
+
   // Auditoría
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  createdById     String
-  createdBy       User      @relation("ProteinProcessingCreator", fields: [createdById], references: [id])
-  completedAt     DateTime?
-  completedById   String?
-  completedBy     User?     @relation("ProteinProcessingCompleter", fields: [completedById], references: [id])
-  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String
+  createdBy     User      @relation("ProteinProcessingCreator", fields: [createdById], references: [id])
+  completedAt   DateTime?
+  completedById String?
+  completedBy   User?     @relation("ProteinProcessingCompleter", fields: [completedById], references: [id])
+
   // Subproductos resultantes
-  subProducts     ProteinSubProduct[]
+  subProducts ProteinSubProduct[]
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([processDate])
@@ -610,29 +614,29 @@ model ProteinProcessing {
 }
 
 model ProteinSubProduct {
-  id              String   @id @default(cuid())
-  
-  processingId    String
-  processing      ProteinProcessing @relation(fields: [processingId], references: [id], onDelete: Cascade)
-  
+  id String @id @default(cuid())
+
+  processingId String
+  processing   ProteinProcessing @relation(fields: [processingId], references: [id], onDelete: Cascade)
+
   // Item de inventario resultante (ej: Lomo, Costilla, Pechuga)
-  outputItemId    String?
-  outputItem      InventoryItem? @relation("ProteinOutput", fields: [outputItemId], references: [id])
-  
+  outputItemId String?
+  outputItem   InventoryItem? @relation("ProteinOutput", fields: [outputItemId], references: [id])
+
   // Nombre del subproducto (por si no está en inventario)
-  name            String
-  
+  name String
+
   // Peso y unidades obtenidas
-  weight          Float     // Peso en kg
-  units           Int       @default(1) // Cantidad de piezas
-  unitType        String    @default("KG") // KG, UNIDAD, PIEZA
-  
+  weight   Float // Peso en kg
+  units    Int    @default(1) // Cantidad de piezas
+  unitType String @default("KG") // KG, UNIDAD, PIEZA
+
   // Costo calculado (proporcional al peso)  
-  estimatedCost   Float     @default(0)
-  
-  notes           String?
-  sortOrder       Int       @default(0)
-  
+  estimatedCost Float @default(0)
+
+  notes     String?
+  sortOrder Int     @default(0)
+
   @@index([processingId])
   @@index([outputItemId])
 }
@@ -642,51 +646,51 @@ model ProteinSubProduct {
 // ============================================================================
 
 model ProcessingTemplate {
-  id              String   @id @default(cuid())
-  name            String   // Ej: "Procesamiento de Lomito", "Procesamiento de Pollo"
-  description     String?
-  
+  id          String  @id @default(cuid())
+  name        String // Ej: "Procesamiento de Lomito", "Procesamiento de Pollo"
+  description String?
+
   // Item fuente (materia prima)
-  sourceItemId    String
-  sourceItem      InventoryItem @relation("TemplateSource", fields: [sourceItemId], references: [id])
-  
+  sourceItemId String
+  sourceItem   InventoryItem @relation("TemplateSource", fields: [sourceItemId], references: [id])
+
   // Paso de procesamiento que esta plantilla cubre (puede haber varias plantillas por item fuente, una por paso)
-  processingStep  String   @default("LIMPIEZA") // LIMPIEZA, MASERADO, DISTRIBUCION, CUSTOM
-  
+  processingStep String @default("LIMPIEZA") // LIMPIEZA, MASERADO, DISTRIBUCION, CUSTOM
+
   // Si el peso de salida puede ser mayor al de entrada (ej: maserado agrega condimentos)
-  canGainWeight   Boolean  @default(false)
-  
+  canGainWeight Boolean @default(false)
+
   // Orden en la cadena de pasos para este item fuente
-  chainOrder      Int      @default(0) // 0=primer paso, 1=segundo, etc.
-  
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  chainOrder Int @default(0) // 0=primer paso, 1=segundo, etc.
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Sub-productos permitidos en este paso
-  allowedOutputs  ProcessingTemplateOutput[]
-  
+  allowedOutputs ProcessingTemplateOutput[]
+
   @@index([sourceItemId])
   @@index([processingStep])
 }
 
 model ProcessingTemplateOutput {
-  id              String   @id @default(cuid())
-  templateId      String  
-  template        ProcessingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  
+  id         String             @id @default(cuid())
+  templateId String
+  template   ProcessingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
   // Item de salida permitido
-  outputItemId    String
-  outputItem      InventoryItem @relation("TemplateOutput", fields: [outputItemId], references: [id])
-  
+  outputItemId String
+  outputItem   InventoryItem @relation("TemplateOutput", fields: [outputItemId], references: [id])
+
   // Peso esperado (referencia para el usuario)
-  expectedWeight  Float?     // Peso promedio esperado en KG
-  expectedUnits   Int?       // Unidades esperadas
-  sortOrder       Int        @default(0)
-  
+  expectedWeight Float? // Peso promedio esperado en KG
+  expectedUnits  Int? // Unidades esperadas
+  sortOrder      Int    @default(0)
+
   // Indica si este output es un producto intermedio (input del siguiente paso) o un producto final
-  isIntermediate  Boolean    @default(false) // true = se usa como input del siguiente paso
-  
+  isIntermediate Boolean @default(false) // true = se usa como input del siguiente paso
+
   @@unique([templateId, outputItemId])
   @@index([templateId])
 }
@@ -696,51 +700,51 @@ model ProcessingTemplateOutput {
 // ============================================================================
 
 model Requisition {
-  id          String   @id @default(cuid())
-  code        String   // Ej: REQ-1001 — unique compuesto con tenantId abajo
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
-  
+  id     String @id @default(cuid())
+  code   String // Ej: REQ-1001 — unique compuesto con tenantId abajo
+  status String @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+
   // QuiÃ©n pide (Solicitante)
   requestedById String
-  requestedBy   User     @relation("RequisitionRequester", fields: [requestedById], references: [id])
-  
+  requestedBy   User   @relation("RequisitionRequester", fields: [requestedById], references: [id])
+
   // Para quÃ© Ã¡rea pide (Destino)
-  targetAreaId  String
-  targetArea    Area     @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
-  
+  targetAreaId String
+  targetArea   Area   @relation("RequisitionTarget", fields: [targetAreaId], references: [id])
+
   // De dÃ³nde se saca (Origen - Generalmente AlmacÃ©n Principal, pero puede variar)
-  sourceAreaId  String?
-  sourceArea    Area?    @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
+  sourceAreaId String?
+  sourceArea   Area?   @relation("RequisitionSource", fields: [sourceAreaId], references: [id])
 
   // Quién aprueba/recepciona (Gerente Operativo)
   processedById String?
-  processedBy   User?    @relation("RequisitionProcessor", fields: [processedById], references: [id])
+  processedBy   User?     @relation("RequisitionProcessor", fields: [processedById], references: [id])
   processedAt   DateTime?
 
   // Quién despacha (Jefe de Producción) - para flujo escalonado
   dispatchedById String?
-  dispatchedBy   User?    @relation("RequisitionDispatcher", fields: [dispatchedById], references: [id])
+  dispatchedBy   User?     @relation("RequisitionDispatcher", fields: [dispatchedById], references: [id])
   dispatchedAt   DateTime?
 
   // Quién recibe (Jefe de Cocina / Receptor) - verificación de recepción
-  receivedById   String?
-  receivedBy     User?    @relation("RequisitionReceiver", fields: [receivedById], references: [id])
-  receivedAt     DateTime?
-  
-  notes       String?
+  receivedById String?
+  receivedBy   User?     @relation("RequisitionReceiver", fields: [receivedById], references: [id])
+  receivedAt   DateTime?
 
-  items       RequisitionItem[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  notes String?
+
+  items RequisitionItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([status])
@@ -753,18 +757,18 @@ model RequisitionItem {
   id            String      @id @default(cuid())
   requisitionId String
   requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  
+
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
-  quantity      Float       // Cantidad solicitada por el Chef
-  unit          String
-  
+
+  quantity Float // Cantidad solicitada por el Chef
+  unit     String
+
   // Cantidades por etapa del flujo escalonado
-  sentQuantity       Float?   // Lo que realmente envió el Jefe de Producción
-  receivedQuantity   Float?   // Lo que confirmó el Gerente que llegó
-  dispatchedQuantity Float?   // Retrocompat: alias de sentQuantity
-  
+  sentQuantity       Float? // Lo que realmente envió el Jefe de Producción
+  receivedQuantity   Float? // Lo que confirmó el Gerente que llegó
+  dispatchedQuantity Float? // Retrocompat: alias de sentQuantity
+
   @@index([requisitionId])
 }
 
@@ -774,7 +778,7 @@ model RequisitionItem {
 
 model MenuCategory {
   id          String   @id @default(cuid())
-  name        String   // Ej: "Shawarmas", "Bebidas", "Postres"
+  name        String // Ej: "Shawarmas", "Bebidas", "Postres"
   description String?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
@@ -785,71 +789,71 @@ model MenuCategory {
   deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
-  items       MenuItem[]
+  items MenuItem[]
 
   @@index([sortOrder])
   @@index([tenantId])
 }
 
 model MenuItem {
-  id              String   @id @default(cuid())
-  sku             String   // Ej: "SHWRM-MIX", "BEB-PEPSI" — unique compuesto con tenantId abajo
-  name            String   // Ej: "Shawarma Mixto"
-  description     String?
-  
-  categoryId      String
-  category        MenuCategory @relation(fields: [categoryId], references: [id])
-  
+  id          String  @id @default(cuid())
+  sku         String // Ej: "SHWRM-MIX", "BEB-PEPSI" — unique compuesto con tenantId abajo
+  name        String // Ej: "Shawarma Mixto"
+  description String?
+
+  categoryId String
+  category   MenuCategory @relation(fields: [categoryId], references: [id])
+
   // Precios
-  price           Float    // Precio de venta en USD
-  cost            Float?   // Costo calculado (si tiene receta)
-  pedidosYaPrice  Float?   // Precio publicado en PedidosYA (override manual)
+  price            Float // Precio de venta en USD
+  cost             Float? // Costo calculado (si tiene receta)
+  pedidosYaPrice   Float? // Precio publicado en PedidosYA (override manual)
   pedidosYaEnabled Boolean @default(false) // Disponible en PedidosYA
-  
+
   // VinculaciÃ³n con inventario/receta (opcional)
-  recipeId        String?  // Si el producto tiene receta para descontar insumos
-  
+  recipeId String? // Si el producto tiene receta para descontar insumos
+
   // ConfiguraciÃ³n
-  isAvailable     Boolean  @default(true)
-  isActive        Boolean  @default(true)
+  isAvailable Boolean @default(true)
+  isActive    Boolean @default(true)
 
   // POS Navigation
-  posGroup        String?  // Agrupa variantes de tamaño (ej: "Shawarma Carne" para 250gr/350gr/500gr)
-  posSubcategory  String?  // Subcategoría visual en POS (ej: "Jugos", "Cafés")
-  
+  posGroup       String? // Agrupa variantes de tamaño (ej: "Shawarma Carne" para 250gr/350gr/500gr)
+  posSubcategory String? // Subcategoría visual en POS (ej: "Jugos", "Cafés")
+
   // Modificadores permitidos
-  modifierGroups  MenuItemModifierGroup[]
+  modifierGroups MenuItemModifierGroup[]
 
   // Modificadores vinculados (para descargo de inventario por componente elegido)
   linkedModifiers MenuModifier[] @relation("ModifierLinkedItem")
 
   // Relaciones
-  orderItems      SalesOrderItem[]
+  orderItems SalesOrderItem[]
 
   // ── Service routing ─────────────────────────────────────────────────────
-  serviceCategory  String?  // FOOD, BEVERAGE, GAME_TIME, MERCHANDISE
-  kitchenRouting   String?  // BAR, KITCHEN, GRILL, COLD_STATION — destino de comanda
+  serviceCategory String? // FOOD, BEVERAGE, GAME_TIME, MERCHANDISE
+  kitchenRouting  String? // BAR, KITCHEN, GRILL, COLD_STATION — destino de comanda
 
   // ── Intercompany ─────────────────────────────────────────────────────────
-  isIntercompanyItem    Boolean @default(false)  // Viene de otro negocio
-  externalSku           String? // SKU en el sistema origen
-  sourceBranchId        String? // Branch que lo origina
-  intercompanyMappings  IntercompanyItemMapping[] @relation("IntercompanyMenuItem")
+  isIntercompanyItem   Boolean                   @default(false) // Viene de otro negocio
+  externalSku          String? // SKU en el sistema origen
+  sourceBranchId       String? // Branch que lo origina
+  intercompanyMappings IntercompanyItemMapping[] @relation("IntercompanyMenuItem")
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, sku])
   @@index([categoryId])
@@ -860,41 +864,41 @@ model MenuItem {
 }
 
 model MenuModifierGroup {
-  id              String   @id @default(cuid())
-  name            String   // Ej: "AcompaÃ±antes", "TamaÃ±o", "Extras"
-  description     String?
+  id          String  @id @default(cuid())
+  name        String // Ej: "AcompaÃ±antes", "TamaÃ±o", "Extras"
+  description String?
 
   // Reglas de selecciÃ³n
-  isRequired      Boolean  @default(false) // Debe seleccionar al menos uno
-  minSelections   Int      @default(0)
-  maxSelections   Int      @default(99)    // 99 = sin lÃ­mite
+  isRequired    Boolean @default(false) // Debe seleccionar al menos uno
+  minSelections Int     @default(0)
+  maxSelections Int     @default(99) // 99 = sin lÃ­mite
 
-  isActive        Boolean  @default(true)
-  sortOrder       Int      @default(0)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
 
   // Relaciones
-  modifiers       MenuModifier[]
-  menuItems       MenuItemModifierGroup[]
+  modifiers MenuModifier[]
+  menuItems MenuItemModifierGroup[]
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([tenantId])
 }
 
 model MenuModifier {
-  id              String   @id @default(cuid())
-  groupId         String
-  group           MenuModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  
-  name            String   // Ej: "TabulÃ©", "Vegetales Salteados"
-  priceAdjustment Float    @default(0) // +$0.50, -$1.00, etc.
+  id      String            @id @default(cuid())
+  groupId String
+  group   MenuModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  isAvailable     Boolean  @default(true)
-  sortOrder       Int      @default(0)
+  name            String // Ej: "TabulÃ©", "Vegetales Salteados"
+  priceAdjustment Float  @default(0) // +$0.50, -$1.00, etc.
+
+  isAvailable Boolean @default(true)
+  sortOrder   Int     @default(0)
 
   // Vínculo a MenuItem para descargo de inventario por modificador
   // Cuando el cliente elige este modificador, se descarga la receta del plato vinculado
@@ -905,11 +909,11 @@ model MenuModifier {
   orderItemModifiers SalesOrderItemModifier[]
 
   // Soft Delete
-  deletedAt   DateTime?
+  deletedAt DateTime?
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([groupId])
   @@index([linkedMenuItemId])
@@ -919,13 +923,13 @@ model MenuModifier {
 
 // Tabla pivote: QuÃ© grupos de modificadores aplican a quÃ© productos
 model MenuItemModifierGroup {
-  id              String   @id @default(cuid())
-  menuItemId      String
-  menuItem        MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
   modifierGroupId String
   modifierGroup   MenuModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
-  
+
   @@unique([menuItemId, modifierGroupId])
 }
 
@@ -934,105 +938,105 @@ model MenuItemModifierGroup {
 // ============================================================================
 
 model SalesOrder {
-  id              String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Correlativo único por día (Ej: "REST-2026-01-27-001") — unique compuesto con tenantId abajo
-  orderNumber     String
-  
+  orderNumber String
+
   // Tipo de venta
-  orderType       String   @default("RESTAURANT") // RESTAURANT, DELIVERY
-  serviceFlow     String   @default("DIRECT_SALE") // DIRECT_SALE, OPEN_TAB, TAB_CLOSING
-  sourceChannel   String   @default("POS_RESTAURANT")
-  
+  orderType     String @default("RESTAURANT") // RESTAURANT, DELIVERY
+  serviceFlow   String @default("DIRECT_SALE") // DIRECT_SALE, OPEN_TAB, TAB_CLOSING
+  sourceChannel String @default("POS_RESTAURANT")
+
   // Cliente (opcional)
   customerName    String?
   customerPhone   String?
-  customerAddress String?  // Para delivery
-  
+  customerAddress String? // Para delivery
+
   // Estado
-  status          String   @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED
-  kitchenStatus   String   @default("NOT_SENT") // NOT_SENT, SENT, IN_PROGRESS, READY, NOT_REQUIRED
-  
+  status        String @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED
+  kitchenStatus String @default("NOT_SENT") // NOT_SENT, SENT, IN_PROGRESS, READY, NOT_REQUIRED
+
   // Totales
-  subtotal        Float    @default(0)
-  discount        Float    @default(0)
-  tax             Float    @default(0)
-  total           Float    @default(0)
+  subtotal Float @default(0)
+  discount Float @default(0)
+  tax      Float @default(0)
+  total    Float @default(0)
 
   // Detalles de Descuento
-  discountType    String?  // DIVISAS_33, CORTESIA_100, etc.
-  discountReason  String?
-  authorizedById  String?
-  authorizedBy    User?    @relation("SalesOrderAuthorizer", fields: [authorizedById], references: [id])
+  discountType   String? // DIVISAS_33, CORTESIA_100, etc.
+  discountReason String?
+  authorizedById String?
+  authorizedBy   User?   @relation("SalesOrderAuthorizer", fields: [authorizedById], references: [id])
 
   // Anulación
-  voidedAt        DateTime?
-  voidedById      String?
-  voidedBy        User?    @relation("SalesOrderVoider", fields: [voidedById], references: [id])
-  voidReason      String?
+  voidedAt   DateTime?
+  voidedById String?
+  voidedBy   User?     @relation("SalesOrderVoider", fields: [voidedById], references: [id])
+  voidReason String?
 
   // MÃ©todo de pago
-  
+
   // MÃ©todo de pago
-  paymentMethod   String?  // CASH, CARD, TRANSFER, MULTIPLE
-  paymentStatus   String   @default("PENDING") // PENDING, PAID, PARTIAL, REFUNDED
-  amountPaid      Float    @default(0)
-  change          Float    @default(0) // Vuelto
-  
+  paymentMethod String? // CASH, CARD, TRANSFER, MULTIPLE
+  paymentStatus String  @default("PENDING") // PENDING, PAID, PARTIAL, REFUNDED
+  amountPaid    Float   @default(0)
+  change        Float   @default(0) // Vuelto
+
   // AuditorÃ­a
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   sentToKitchenAt DateTime?
   closedAt        DateTime?
-  
+
   // Cajera que creÃ³ la orden
-  createdById     String
-  createdBy       User     @relation("SalesOrderCreator", fields: [createdById], references: [id])
-  
+  createdById String
+  createdBy   User   @relation("SalesOrderCreator", fields: [createdById], references: [id])
+
   // Ã�rea de la que se descuenta inventario
-  areaId          String
-  area            Area     @relation(fields: [areaId], references: [id])
-  branchId        String?
-  branch          Branch?  @relation(fields: [branchId], references: [id])
-  serviceZoneId   String?
-  serviceZone     ServiceZone? @relation(fields: [serviceZoneId], references: [id])
+  areaId           String
+  area             Area            @relation(fields: [areaId], references: [id])
+  branchId         String?
+  branch           Branch?         @relation(fields: [branchId], references: [id])
+  serviceZoneId    String?
+  serviceZone      ServiceZone?    @relation(fields: [serviceZoneId], references: [id])
   tableOrStationId String?
-  tableOrStation  TableOrStation? @relation(fields: [tableOrStationId], references: [id])
-  openTabId       String?
-  openTab         OpenTab? @relation(fields: [openTabId], references: [id])
+  tableOrStation   TableOrStation? @relation(fields: [tableOrStationId], references: [id])
+  openTabId        String?
+  openTab          OpenTab?        @relation(fields: [openTabId], references: [id])
 
   // Mesonero (del Waiter model, identificado por PIN en POS Mesero)
   waiterProfileId String?
-  waiterProfile   Waiter?  @relation(fields: [waiterProfileId], references: [id])
+  waiterProfile   Waiter? @relation(fields: [waiterProfileId], references: [id])
 
   // Snapshot financiero
   exchangeRateId    String?
   exchangeRate      ExchangeRate? @relation(fields: [exchangeRateId], references: [id])
   exchangeRateValue Float?
   totalBs           Float?
-  
+
   // Notas
-  notes           String?
-  
+  notes String?
+
   // LÃ­neas de la orden
-  items           SalesOrderItem[]
-  
+  items SalesOrderItem[]
+
   // Movimientos de inventario generados
-  inventoryMovements InventoryMovement[] @relation("SaleMovements")
+  inventoryMovements InventoryMovement[]       @relation("SaleMovements")
   openTabLinks       OpenTabOrder[]
   paymentSplits      PaymentSplit[]
   orderPayments      SalesOrderPayment[]
-  gameSessions       GameSession[]       @relation("GameSessions")
+  gameSessions       GameSession[]             @relation("GameSessions")
   // Outbox de descargo de inventario (Fase 2 — propuesta 001)
   deductionRetries   InventoryDeductionRetry[]
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
   @@index([orderNumber])
@@ -1050,38 +1054,38 @@ model SalesOrder {
 }
 
 model SalesOrderItem {
-  id              String   @id @default(cuid())
-  
-  orderId         String
-  order           SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  menuItemId      String
-  menuItem        MenuItem @relation(fields: [menuItemId], references: [id])
-  
+  id String @id @default(cuid())
+
+  orderId String
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
   // Snapshot del nombre y precio al momento de la venta
-  itemName        String   // Nombre del producto al momento de la venta
-  unitPrice       Float
-  quantity        Int      @default(1)
-  
+  itemName  String // Nombre del producto al momento de la venta
+  unitPrice Float
+  quantity  Int    @default(1)
+
   // Subtotal de esta lÃ­nea (unitPrice * quantity + modificadores)
-  lineTotal       Float
-  
+  lineTotal Float
+
   // Notas especiales (Ej: "Sin cebolla")
-  notes           String?
+  notes String?
 
   // Snapshot de costo (margen retroactivo)
-  costPerUnit     Float?
-  costTotal       Float?
-  marginPerUnit   Float?
-  marginPercent   Float?
+  costPerUnit   Float?
+  costTotal     Float?
+  marginPerUnit Float?
+  marginPercent Float?
 
   // Soft delete / void tracking
   voidedAt         DateTime?
   voidReason       String?
   voidedByWaiterId String?
-  voidedByWaiter   Waiter?         @relation("ItemVoidedByWaiter", fields: [voidedByWaiterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  voidedByWaiter   Waiter?          @relation("ItemVoidedByWaiter", fields: [voidedByWaiterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   voidedByUserId   String?
-  voidedByUser     User?           @relation("ItemVoidedByUser",   fields: [voidedByUserId],   references: [id], onDelete: SetNull, onUpdate: Cascade)
+  voidedByUser     User?            @relation("ItemVoidedByUser", fields: [voidedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   replacedByItemId String?
   replacedByItem   SalesOrderItem?  @relation("ItemReplacement", fields: [replacedByItemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   replacements     SalesOrderItem[] @relation("ItemReplacement")
@@ -1092,8 +1096,8 @@ model SalesOrderItem {
   subAccountItems SubAccountItem[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([orderId])
   @@index([menuItemId])
@@ -1104,18 +1108,18 @@ model SalesOrderItem {
 }
 
 model SalesOrderItemModifier {
-  id              String   @id @default(cuid())
-  
-  orderItemId     String
-  orderItem       SalesOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  
-  modifierId      String?
-  modifier        MenuModifier? @relation(fields: [modifierId], references: [id])
-  
+  id String @id @default(cuid())
+
+  orderItemId String
+  orderItem   SalesOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  modifierId String?
+  modifier   MenuModifier? @relation(fields: [modifierId], references: [id])
+
   // Snapshot del nombre y ajuste de precio al momento de la venta
-  name            String   // Nombre del modificador
-  priceAdjustment Float    @default(0)
-  
+  name            String // Nombre del modificador
+  priceAdjustment Float  @default(0)
+
   @@index([orderItemId])
 }
 
@@ -1124,32 +1128,32 @@ model SalesOrderItemModifier {
 // ============================================================================
 
 model DailyInventory {
-  id          String   @id @default(cuid())
-  date        DateTime // @db.Date no soportado en SQLite/algunas confs, usar DateTime normal y truncar
-  areaId      String
-  area        Area     @relation(fields: [areaId], references: [id])
-  
-  status      String   @default("DRAFT") // DRAFT, OPEN, CLOSED
-  
-  openedAt    DateTime?
-  closedAt    DateTime?
-  closedById  String?
-  closedBy    User?    @relation(fields: [closedById], references: [id])
-  
+  id     String   @id @default(cuid())
+  date   DateTime // @db.Date no soportado en SQLite/algunas confs, usar DateTime normal y truncar
+  areaId String
+  area   Area     @relation(fields: [areaId], references: [id])
+
+  status String @default("DRAFT") // DRAFT, OPEN, CLOSED
+
+  openedAt   DateTime?
+  closedAt   DateTime?
+  closedById String?
+  closedBy   User?     @relation(fields: [closedById], references: [id])
+
   totalVarianceValue Float?
-  
-  items       DailyInventoryItem[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  items DailyInventoryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([date, areaId])
   @@index([tenantId])
@@ -1159,69 +1163,68 @@ model DailyInventoryItem {
   id               String         @id @default(cuid())
   dailyInventoryId String
   dailyInventory   DailyInventory @relation(fields: [dailyInventoryId], references: [id], onDelete: Cascade)
-  
-  inventoryItemId  String
-  inventoryItem    InventoryItem  @relation(fields: [inventoryItemId], references: [id])
-  
-  initialCount     Float?   @default(0)
-  finalCount       Float?   @default(0)
-  
+
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  initialCount Float? @default(0)
+  finalCount   Float? @default(0)
+
   // Movimientos calculados
-  entries          Float    @default(0)
-  sales            Float    @default(0)
-  waste            Float    @default(0)
-  
+  entries Float @default(0)
+  sales   Float @default(0)
+  waste   Float @default(0)
+
   theoreticalStock Float?
   variance         Float?
-  
-  unit             String
-  costPerUnit      Float?
-  
-  notes            String?
-  
+
+  unit        String
+  costPerUnit Float?
+
+  notes String?
+
   @@unique([dailyInventoryId, inventoryItemId])
 }
-
 
 // ============================================================================
 // PRESTAMOS (LOANS)
 // ============================================================================
 
 model InventoryLoan {
-  id              String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
-  loaneeName      String   // Nombre del restaurante/persona
-  quantity        Float
-  unit            String
-  
-  type            String   // REPLACEMENT, PAYMENT
-  status          String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
-  
-  agreedPrice     Float?   // Precio unitario acordado (si es venta/pago)
-  
-  loanDate        DateTime @default(now())
-  resolvedAt      DateTime?
-  notes           String?
-  
-  createdById     String
-  createdBy       User     @relation("LoanCreator", fields: [createdById], references: [id])
+
+  loaneeName String // Nombre del restaurante/persona
+  quantity   Float
+  unit       String
+
+  type   String // REPLACEMENT, PAYMENT
+  status String @default("PENDING") // PENDING, COMPLETED, CANCELLED
+
+  agreedPrice Float? // Precio unitario acordado (si es venta/pago)
+
+  loanDate   DateTime  @default(now())
+  resolvedAt DateTime?
+  notes      String?
+
+  createdById String
+  createdBy   User   @relation("LoanCreator", fields: [createdById], references: [id])
 
   // Movimientos asociados
-  movements       InventoryMovement[]
+  movements InventoryMovement[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
   @@index([loaneeName])
@@ -1234,39 +1237,39 @@ model InventoryLoan {
 // ============================================================================
 
 model InventoryAudit {
-  id          String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Estado de la auditoría
-  status      String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
-  
+  status String @default("DRAFT") // DRAFT, APPROVED, REJECTED
+
   // Metadatos
-  name        String?  // Ej: "Inventario Mensual Enero"
-  notes       String?
-  areaId      String?
-  area        Area?    @relation(fields: [areaId], references: [id])
-  
+  name   String? // Ej: "Inventario Mensual Enero"
+  notes  String?
+  areaId String?
+  area   Area?   @relation(fields: [areaId], references: [id])
+
   // Fecha efectiva: permite cargar auditorías retroactivas (ej: inventario del domingo cargado el lunes)
   effectiveDate DateTime? // Si no se especifica, se usa createdAt
-  
+
   // Auditoría del registro
   createdAt   DateTime @default(now())
   createdById String
   createdBy   User     @relation("AuditCreator", fields: [createdById], references: [id])
-  
-  resolvedAt  DateTime?
+
+  resolvedAt   DateTime?
   resolvedById String?
-  resolvedBy   User?    @relation("AuditResolver", fields: [resolvedById], references: [id])
-  
+  resolvedBy   User?     @relation("AuditResolver", fields: [resolvedById], references: [id])
+
   // Relaciones
-  items       InventoryAuditItem[]
+  items InventoryAuditItem[]
 
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
   @@index([createdAt])
@@ -1275,21 +1278,21 @@ model InventoryAudit {
 }
 
 model InventoryAuditItem {
-  id              String   @id @default(cuid())
-  auditId         String
-  audit           InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  
+  id      String         @id @default(cuid())
+  auditId String
+  audit   InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
+
   // Valores
-  systemStock     Float    // Stock que decía el sistema al momento de crear la auditoría
-  countedStock    Float    // Stock real contado
-  difference      Float    // Calculado: counted - system
-  
-  costSnapshot    Float?   // Costo unitario en ese momento
-  
-  notes           String?
+  systemStock  Float // Stock que decía el sistema al momento de crear la auditoría
+  countedStock Float // Stock real contado
+  difference   Float // Calculado: counted - system
+
+  costSnapshot Float? // Costo unitario en ese momento
+
+  notes String?
 
   @@index([auditId])
   @@index([inventoryItemId])
@@ -1300,37 +1303,37 @@ model InventoryAuditItem {
 // ============================================================================
 
 model Supplier {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
-  code        String?  // Código interno del proveedor — unique compuesto con tenantId abajo
+  code        String? // Código interno del proveedor — unique compuesto con tenantId abajo
   contactName String?
   phone       String?
   email       String?
   address     String?
   notes       String?
-  
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft Delete
   deletedAt   DateTime?
   deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
-  purchaseOrders PurchaseOrder[]
+  purchaseOrders     PurchaseOrder[]
   // Productos que suministra este proveedor
-  suppliedItems  SupplierItem[]
+  suppliedItems      SupplierItem[]
   // Procesamiento de Proteínas
   proteinProcessings ProteinProcessing[]
   // Módulo Financiero
-  accountsPayable AccountPayable[]
+  accountsPayable    AccountPayable[]
   // Histórico de precios (Fase 2 — propuesta 002)
-  priceHistory   SupplierItemPriceHistory[]
+  priceHistory       SupplierItemPriceHistory[]
 
   @@unique([tenantId, code])
   @@index([name])
@@ -1344,64 +1347,64 @@ model SupplierItem {
   supplier        Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
+
   // Precio de referencia del proveedor
-  unitPrice       Float?
-  leadTimeDays    Int?          // Tiempo de entrega en días
-  minimumOrder    Float?        // Cantidad mínima de pedido
-  
-  isPreferred     Boolean       @default(false) // Proveedor preferido para este item
-  
+  unitPrice    Float?
+  leadTimeDays Int? // Tiempo de entrega en días
+  minimumOrder Float? // Cantidad mínima de pedido
+
+  isPreferred Boolean @default(false) // Proveedor preferido para este item
+
   @@unique([supplierId, inventoryItemId])
   @@index([supplierId])
   @@index([inventoryItemId])
 }
 
 model PurchaseOrder {
-  id              String   @id @default(cuid())
-  orderNumber     String   // Ej: OC-2026-0001 — unique compuesto con tenantId abajo
-  orderName       String?  // Nombre descriptivo: VEGETALES, COCHE, etc.
-  
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  
-  status          String   @default("DRAFT") // DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED
-  
+  id          String  @id @default(cuid())
+  orderNumber String // Ej: OC-2026-0001 — unique compuesto con tenantId abajo
+  orderName   String? // Nombre descriptivo: VEGETALES, COCHE, etc.
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  status String @default("DRAFT") // DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED
+
   // Fechas
-  orderDate       DateTime @default(now())
-  expectedDate    DateTime? // Fecha esperada de recepción
-  receivedDate    DateTime?
-  
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime? // Fecha esperada de recepción
+  receivedDate DateTime?
+
   // Totales
-  subtotal        Float    @default(0)
-  taxAmount       Float    @default(0)
-  totalAmount     Float    @default(0)
-  
-  notes           String?
-  internalNotes   String?  // Notas internas no visibles en la orden impresa
-  
+  subtotal    Float @default(0)
+  taxAmount   Float @default(0)
+  totalAmount Float @default(0)
+
+  notes         String?
+  internalNotes String? // Notas internas no visibles en la orden impresa
+
   // Auditoría
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdById     String
-  createdBy       User     @relation("PurchaseOrderCreator", fields: [createdById], references: [id])
-  
-  receivedById    String?
-  receivedBy      User?    @relation("PurchaseOrderReceiver", fields: [receivedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("PurchaseOrderCreator", fields: [createdById], references: [id])
+
+  receivedById String?
+  receivedBy   User?   @relation("PurchaseOrderReceiver", fields: [receivedById], references: [id])
 
   // Items de la orden
-  items           PurchaseOrderItem[]
-  accountsPayable AccountPayable[]
+  items                 PurchaseOrderItem[]
+  accountsPayable       AccountPayable[]
   // Fase 2 — propuesta 002: cambios de precio que dispararon esta OC
   triggeredPriceChanges SupplierItemPriceHistory[]
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
   @@index([status])
@@ -1414,22 +1417,22 @@ model PurchaseOrderItem {
   id              String        @id @default(cuid())
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  
+
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
+
   // Cantidades
-  quantityOrdered Float         // Cantidad solicitada
-  quantityReceived Float        @default(0) // Cantidad recibida
-  unit            String
-  
+  quantityOrdered  Float // Cantidad solicitada
+  quantityReceived Float  @default(0) // Cantidad recibida
+  unit             String
+
   // Precios
-  unitPrice       Float         @default(0)
-  totalPrice      Float         @default(0)
-  
+  unitPrice  Float @default(0)
+  totalPrice Float @default(0)
+
   // Información adicional
-  notes           String?
-  
+  notes String?
+
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
 }
@@ -1442,37 +1445,37 @@ model PurchaseOrderItem {
 // ============================================================================
 
 model AuditLog {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // QUIÉN
-  userId        String
-  userName      String   // Snapshot para no depender de JOIN
-  userRole      String   // Rol al momento de la acción
+  userId   String
+  userName String // Snapshot para no depender de JOIN
+  userRole String // Rol al momento de la acción
 
   // QUÉ
-  action        String   // CREATE, UPDATE, DELETE, VOID, APPROVE, REJECT, LOGIN, LOGOUT
-  entityType    String   // SalesOrder, InventoryMovement, Recipe, etc.
-  entityId      String   // ID del registro afectado
+  action     String // CREATE, UPDATE, DELETE, VOID, APPROVE, REJECT, LOGIN, LOGOUT
+  entityType String // SalesOrder, InventoryMovement, Recipe, etc.
+  entityId   String // ID del registro afectado
 
   // DETALLE
-  description   String?  // Descripción legible: "Creó orden REST-2026-03-15-001"
-  changes       String?  // JSON: { field: { from: "X", to: "Y" } }
-  metadata      String?  // JSON: datos contextuales adicionales
+  description String? // Descripción legible: "Creó orden REST-2026-03-15-001"
+  changes     String? // JSON: { field: { from: "X", to: "Y" } }
+  metadata    String? // JSON: datos contextuales adicionales
 
   // DESDE DÓNDE
-  ipAddress     String?
-  userAgent     String?
-  deviceId      String?  // Identificador de terminal/caja
+  ipAddress String?
+  userAgent String?
+  deviceId  String? // Identificador de terminal/caja
 
   // CUÁNDO
-  createdAt     DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // CONTEXTO OPERATIVO
-  module        String?  // POS, INVENTORY, PRODUCTION, RECIPE, etc.
+  module String? // POS, INVENTORY, PRODUCTION, RECIPE, etc.
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([userId])
   @@index([entityType, entityId])
@@ -1488,22 +1491,22 @@ model AuditLog {
 
 /// Categorías de gastos operativos (alquiler, servicios, nómina, etc.)
 model ExpenseCategory {
-  id          String   @id @default(cuid())
-  name        String   // ej: "Alquiler", "Servicios Públicos", "Nómina" — unique compuesto con tenantId abajo
+  id          String  @id @default(cuid())
+  name        String // ej: "Alquiler", "Servicios Públicos", "Nómina" — unique compuesto con tenantId abajo
   description String?
-  color       String?  // hex color para UI, ej: "#3B82F6"
-  icon        String?  // emoji, ej: "🏠"
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
+  color       String? // hex color para UI, ej: "#3B82F6"
+  icon        String? // emoji, ej: "🏠"
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  expenses    Expense[]
+  expenses Expense[]
 
   @@unique([tenantId, name])
   @@index([isActive])
@@ -1512,48 +1515,48 @@ model ExpenseCategory {
 
 /// Registro de gastos operativos (no de compras de inventario)
 model Expense {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Descripción
-  description     String   // Ej: "Pago alquiler local enero 2026"
-  notes           String?  // Notas adicionales o referencia
+  description String // Ej: "Pago alquiler local enero 2026"
+  notes       String? // Notas adicionales o referencia
 
   // Clasificación
-  categoryId      String
-  category        ExpenseCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
 
   // Monto
-  amountUsd       Float    // Monto en USD (moneda base del sistema)
-  amountBs        Float?   // Monto en Bs (opcional, para referencia)
-  exchangeRate    Float?   // Tasa usada para conversión
+  amountUsd    Float // Monto en USD (moneda base del sistema)
+  amountBs     Float? // Monto en Bs (opcional, para referencia)
+  exchangeRate Float? // Tasa usada para conversión
 
   // Pago
-  paymentMethod   String   // CASH_USD, CASH_BS, ZELLE, BANK_TRANSFER, MOBILE_PAY, CHECK, OTHER
-  paymentRef      String?  // Referencia de pago (número de transacción, cheque, etc.)
-  paidAt          DateTime // Fecha del pago/gasto
+  paymentMethod String // CASH_USD, CASH_BS, ZELLE, BANK_TRANSFER, MOBILE_PAY, CHECK, OTHER
+  paymentRef    String? // Referencia de pago (número de transacción, cheque, etc.)
+  paidAt        DateTime // Fecha del pago/gasto
 
   // Estado
-  status          String   @default("CONFIRMED") // CONFIRMED, VOID
-  voidReason      String?
-  voidedAt        DateTime?
-  voidedById      String?
+  status     String    @default("CONFIRMED") // CONFIRMED, VOID
+  voidReason String?
+  voidedAt   DateTime?
+  voidedById String?
 
   // Comprobante
-  receiptUrl      String?  // URL de imagen/PDF del comprobante (opcional)
+  receiptUrl String? // URL de imagen/PDF del comprobante (opcional)
 
   // Período al que pertenece
-  periodMonth     Int      // 1-12
-  periodYear      Int
+  periodMonth Int // 1-12
+  periodYear  Int
 
   // Auditoría
-  createdById     String
-  createdBy       User     @relation("ExpenseCreator", fields: [createdById], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([categoryId])
   @@index([paidAt])
@@ -1565,53 +1568,53 @@ model Expense {
 
 /// Apertura y cierre de caja (para cuadre de efectivo al inicio/fin del turno)
 model CashRegister {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificador de caja/terminal
-  registerName    String   // ej: "Caja Restaurante", "Caja Delivery"
-  shiftDate       DateTime // Fecha del turno (solo fecha, sin hora)
-  shiftType       String   @default("DAY") // DAY, NIGHT, MORNING
+  registerName String // ej: "Caja Restaurante", "Caja Delivery"
+  shiftDate    DateTime // Fecha del turno (solo fecha, sin hora)
+  shiftType    String   @default("DAY") // DAY, NIGHT, MORNING
 
   // Estado
-  status          String   @default("OPEN") // OPEN, CLOSED
+  status String @default("OPEN") // OPEN, CLOSED
 
   // Apertura
-  openingCashUsd  Float    @default(0)  // Fondo inicial en USD
-  openingCashBs   Float    @default(0)  // Fondo inicial en Bs
-  openedAt        DateTime @default(now())
-  openedById      String
-  openedBy        User     @relation("CashRegisterOpener", fields: [openedById], references: [id])
+  openingCashUsd Float    @default(0) // Fondo inicial en USD
+  openingCashBs  Float    @default(0) // Fondo inicial en Bs
+  openedAt       DateTime @default(now())
+  openedById     String
+  openedBy       User     @relation("CashRegisterOpener", fields: [openedById], references: [id])
 
   // Cierre
-  closingCashUsd  Float?   // Efectivo contado al cierre en USD
-  closingCashBs   Float?   // Efectivo contado al cierre en Bs
-  closedAt        DateTime?
-  closedById      String?
-  closedBy        User?    @relation("CashRegisterCloser", fields: [closedById], references: [id])
+  closingCashUsd Float? // Efectivo contado al cierre en USD
+  closingCashBs  Float? // Efectivo contado al cierre en Bs
+  closedAt       DateTime?
+  closedById     String?
+  closedBy       User?     @relation("CashRegisterCloser", fields: [closedById], references: [id])
 
   // Resumen calculado al cierre
-  totalSalesUsd   Float?   // Total ventas del turno
-  totalExpenses   Float?   // Total gastos del turno
-  expectedCash    Float?   // Efectivo esperado (apertura + ventas efectivo - gastos)
-  difference      Float?   // Diferencia (cierre contado - esperado)
+  totalSalesUsd Float? // Total ventas del turno
+  totalExpenses Float? // Total gastos del turno
+  expectedCash  Float? // Efectivo esperado (apertura + ventas efectivo - gastos)
+  difference    Float? // Diferencia (cierre contado - esperado)
 
   // Desglose de billetes (JSON nullable — no rompe registros existentes)
   // Formato: {"100":6,"50":2,"20":29,"10":10,"5":6,"1":21,"total":1431.00}
-  openingDenominationsJson  String?
-  closingDenominationsJson  String?
+  openingDenominationsJson String?
+  closingDenominationsJson String?
 
   // Operadoras activas en este turno (JSON array de nombres, nullable)
   // Ejemplo: ["Ana García", "María López"]
-  operatorsJson   String?
+  operatorsJson String?
 
-  notes           String?
+  notes String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([shiftDate])
   @@index([status])
@@ -1621,46 +1624,46 @@ model CashRegister {
 
 /// Cuentas por pagar — facturas/deudas pendientes con proveedores u otros acreedores
 model AccountPayable {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Descripción
-  description     String   // Ej: "Factura vegetales 15/03/2026"
-  invoiceNumber   String?  // Número de factura del proveedor
-  invoiceUrl      String?  // URL del comprobante
+  description   String // Ej: "Factura vegetales 15/03/2026"
+  invoiceNumber String? // Número de factura del proveedor
+  invoiceUrl    String? // URL del comprobante
 
   // Acreedor
-  supplierId      String?  // Si es un proveedor del sistema
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  creditorName    String?  // Si no está en el sistema de proveedores
+  supplierId   String? // Si es un proveedor del sistema
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  creditorName String? // Si no está en el sistema de proveedores
 
   // Montos
-  totalAmountUsd  Float    // Monto total de la deuda en USD
-  paidAmountUsd   Float    @default(0) // Monto pagado acumulado
-  remainingUsd    Float    // Monto pendiente (calculado: total - paid)
+  totalAmountUsd Float // Monto total de la deuda en USD
+  paidAmountUsd  Float @default(0) // Monto pagado acumulado
+  remainingUsd   Float // Monto pendiente (calculado: total - paid)
 
   // Fechas
-  invoiceDate     DateTime // Fecha de la factura
-  dueDate         DateTime? // Fecha de vencimiento (opcional)
-  fullyPaidAt     DateTime? // Fecha en que quedó saldada
+  invoiceDate DateTime // Fecha de la factura
+  dueDate     DateTime? // Fecha de vencimiento (opcional)
+  fullyPaidAt DateTime? // Fecha en que quedó saldada
 
   // Estado
-  status          String   @default("PENDING") // PENDING, PARTIAL, PAID, OVERDUE, DISPUTED, VOID
+  status String @default("PENDING") // PENDING, PARTIAL, PAID, OVERDUE, DISPUTED, VOID
 
   // Relación con PurchaseOrder (si aplica)
   purchaseOrderId String?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
 
   // Auditoría
-  createdById     String
-  createdBy       User     @relation("AccountPayableCreator", fields: [createdById], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("AccountPayableCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  payments        AccountPayment[]
+  payments AccountPayment[]
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
   @@index([dueDate])
@@ -1676,22 +1679,22 @@ model AccountPayment {
   accountPayableId String
   accountPayable   AccountPayable @relation(fields: [accountPayableId], references: [id], onDelete: Cascade)
 
-  amountUsd        Float
-  amountBs         Float?
-  exchangeRate     Float?
-  paymentMethod    String   // CASH_USD, CASH_BS, ZELLE, BANK_TRANSFER, MOBILE_PAY, CHECK
-  paymentRef       String?  // Referencia de transferencia, cheque, etc.
-  paidAt           DateTime
+  amountUsd     Float
+  amountBs      Float?
+  exchangeRate  Float?
+  paymentMethod String // CASH_USD, CASH_BS, ZELLE, BANK_TRANSFER, MOBILE_PAY, CHECK
+  paymentRef    String? // Referencia de transferencia, cheque, etc.
+  paidAt        DateTime
 
-  notes            String?
+  notes String?
 
-  createdById      String
-  createdBy        User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
-  createdAt        DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId         String   @default("tnt_shanklish_caracas")
-  tenant           Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([accountPayableId])
   @@index([paidAt])
@@ -1703,19 +1706,19 @@ model AccountPayment {
 // ============================================================================
 
 model Branch {
-  id            String   @id @default(cuid())
-  code          String
-  name          String
-  legalName     String?
-  timezone      String   @default("America/Caracas")
-  currencyCode  String   @default("USD")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  code         String
+  name         String
+  legalName    String?
+  timezone     String   @default("America/Caracas")
+  currencyCode String   @default("USD")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Soft Delete
-  deletedAt     DateTime?
-  deletedById   String?
+  deletedAt   DateTime?
+  deletedById String?
 
   areas           Area[]
   serviceZones    ServiceZone[]
@@ -1726,8 +1729,8 @@ model Branch {
   waiters         Waiter[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1737,48 +1740,48 @@ model Waiter {
   id        String   @id @default(cuid())
   branchId  String
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  firstName  String
-  lastName   String
-  pin        String?
-  isActive   Boolean  @default(true)
-  isCaptain  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  firstName String
+  lastName  String
+  pin       String?
+  isActive  Boolean  @default(true)
+  isCaptain Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  openTabs    OpenTab[]
-  salesOrders SalesOrder[]
-  voidedItems SalesOrderItem[] @relation("ItemVoidedByWaiter")
-  transfersFrom       TableTransfer[] @relation("TransferFrom")
-  transfersTo         TableTransfer[] @relation("TransferTo")
-  transfersAuthorized TableTransfer[] @relation("TransferAuthorizedByWaiter")
+  openTabs            OpenTab[]
+  salesOrders         SalesOrder[]
+  voidedItems         SalesOrderItem[] @relation("ItemVoidedByWaiter")
+  transfersFrom       TableTransfer[]  @relation("TransferFrom")
+  transfersTo         TableTransfer[]  @relation("TransferTo")
+  transfersAuthorized TableTransfer[]  @relation("TransferAuthorizedByWaiter")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([branchId, isActive])
   @@index([tenantId])
 }
 
 model TableTransfer {
-  id                   String   @id @default(cuid())
+  id                   String          @id @default(cuid())
   openTabId            String
-  openTab              OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  openTab              OpenTab         @relation(fields: [openTabId], references: [id], onDelete: Cascade)
   fromWaiterId         String
-  fromWaiter           Waiter   @relation("TransferFrom",     fields: [fromWaiterId],   references: [id])
+  fromWaiter           Waiter          @relation("TransferFrom", fields: [fromWaiterId], references: [id])
   toWaiterId           String
-  toWaiter             Waiter   @relation("TransferTo",       fields: [toWaiterId],     references: [id])
+  toWaiter             Waiter          @relation("TransferTo", fields: [toWaiterId], references: [id])
   fromTableId          String?
   fromTable            TableOrStation? @relation("TransferFromTable", fields: [fromTableId], references: [id])
   toTableId            String?
-  toTable              TableOrStation? @relation("TransferToTable",   fields: [toTableId],   references: [id])
+  toTable              TableOrStation? @relation("TransferToTable", fields: [toTableId], references: [id])
   authorizedByWaiterId String?
-  authorizedByWaiter   Waiter?  @relation("TransferAuthorizedByWaiter", fields: [authorizedByWaiterId], references: [id])
+  authorizedByWaiter   Waiter?         @relation("TransferAuthorizedByWaiter", fields: [authorizedByWaiterId], references: [id])
   authorizedByUserId   String?
-  authorizedByUser     User?    @relation("TransferAuthorizedByUser", fields: [authorizedByUserId], references: [id])
+  authorizedByUser     User?           @relation("TransferAuthorizedByUser", fields: [authorizedByUserId], references: [id])
   authorizedNote       String?
   reason               String?
-  transferredAt        DateTime @default(now())
+  transferredAt        DateTime        @default(now())
 
   @@index([openTabId])
   @@index([fromWaiterId])
@@ -1789,24 +1792,24 @@ model TableTransfer {
 }
 
 model ServiceZone {
-  id            String   @id @default(cuid())
-  branchId      String
-  branch        Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  code          String?
-  name          String
-  zoneType      String   @default("DINING") // DINING, BAR, TERRACE, VIP
-  sortOrder     Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(cuid())
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  code      String?
+  name      String
+  zoneType  String   @default("DINING") // DINING, BAR, TERRACE, VIP
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tablesOrStations TableOrStation[]
-  openTabs      OpenTab[]
-  salesOrders   SalesOrder[]
+  openTabs         OpenTab[]
+  salesOrders      SalesOrder[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([branchId, name])
   @@index([branchId, zoneType])
@@ -1814,28 +1817,28 @@ model ServiceZone {
 }
 
 model TableOrStation {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   branchId      String
-  branch        Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
   serviceZoneId String
   serviceZone   ServiceZone @relation(fields: [serviceZoneId], references: [id], onDelete: Cascade)
   code          String
   name          String
-  stationType   String   @default("TABLE") // TABLE, BAR_SEAT, VIP_ROOM
-  capacity      Int      @default(1)
-  currentStatus String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, OUT_OF_SERVICE
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  stationType   String      @default("TABLE") // TABLE, BAR_SEAT, VIP_ROOM
+  capacity      Int         @default(1)
+  currentStatus String      @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, OUT_OF_SERVICE
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  openTabs            OpenTab[]
-  salesOrders         SalesOrder[]
-  transfersFrom       TableTransfer[] @relation("TransferFromTable")
-  transfersTo         TableTransfer[] @relation("TransferToTable")
+  openTabs      OpenTab[]
+  salesOrders   SalesOrder[]
+  transfersFrom TableTransfer[] @relation("TransferFromTable")
+  transfersTo   TableTransfer[] @relation("TransferToTable")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId            String   @default("tnt_shanklish_caracas")
-  tenant              Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([branchId, code])
   @@index([serviceZoneId, stationType])
@@ -1844,56 +1847,56 @@ model TableOrStation {
 }
 
 model OpenTab {
-  id              String   @id @default(cuid())
-  branchId        String
-  branch          Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  serviceZoneId   String?
-  serviceZone     ServiceZone? @relation(fields: [serviceZoneId], references: [id])
-  tableOrStationId String?
-  tableOrStation  TableOrStation? @relation(fields: [tableOrStationId], references: [id])
-  tabCode         String   // unique compuesto con tenantId abajo
-  customerLabel   String?
-  customerPhone   String?
-  guestCount      Int      @default(1)
-  status          String   @default("OPEN") // OPEN, PARTIALLY_PAID, CLOSED, CANCELLED
-  serviceType     String   @default("TABLE_SERVICE") // TABLE_SERVICE, BAR_TAB, EVENT
-  runningSubtotal      Float @default(0)
-  runningDiscount      Float @default(0)
-  runningTax           Float @default(0)
-  runningTotal         Float @default(0)
-  balanceDue           Float @default(0)
-  totalServiceCharge   Float @default(0)  // Service charge acumulado de la mesa
-  totalTip             Float @default(0)  // Propina voluntaria acumulada
-  tipPercent           Float?             // Propina seleccionada por el cliente (0, 10, 15, 20)
-  tipAmount            Float?             // tipPercent/100 × runningSubtotal
-  version         Int      @default(0)
-  openedAt        DateTime @default(now())
-  closedAt        DateTime?
-  updatedAt       DateTime @updatedAt
-  notes           String?
-  waiterLabel     String?
-  openedById      String
-  openedBy        User     @relation("OpenTabOpener", fields: [openedById], references: [id])
-  assignedWaiterId String?
-  assignedWaiter  User?    @relation("OpenTabAssignee", fields: [assignedWaiterId], references: [id])
-  waiterProfileId String?
-  waiterProfile   Waiter?  @relation(fields: [waiterProfileId], references: [id])
-  closedById      String?
-  closedBy        User?    @relation("OpenTabCloser", fields: [closedById], references: [id])
+  id                 String          @id @default(cuid())
+  branchId           String
+  branch             Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  serviceZoneId      String?
+  serviceZone        ServiceZone?    @relation(fields: [serviceZoneId], references: [id])
+  tableOrStationId   String?
+  tableOrStation     TableOrStation? @relation(fields: [tableOrStationId], references: [id])
+  tabCode            String // unique compuesto con tenantId abajo
+  customerLabel      String?
+  customerPhone      String?
+  guestCount         Int             @default(1)
+  status             String          @default("OPEN") // OPEN, PARTIALLY_PAID, CLOSED, CANCELLED
+  serviceType        String          @default("TABLE_SERVICE") // TABLE_SERVICE, BAR_TAB, EVENT
+  runningSubtotal    Float           @default(0)
+  runningDiscount    Float           @default(0)
+  runningTax         Float           @default(0)
+  runningTotal       Float           @default(0)
+  balanceDue         Float           @default(0)
+  totalServiceCharge Float           @default(0) // Service charge acumulado de la mesa
+  totalTip           Float           @default(0) // Propina voluntaria acumulada
+  tipPercent         Float? // Propina seleccionada por el cliente (0, 10, 15, 20)
+  tipAmount          Float? // tipPercent/100 × runningSubtotal
+  version            Int             @default(0)
+  openedAt           DateTime        @default(now())
+  closedAt           DateTime?
+  updatedAt          DateTime        @updatedAt
+  notes              String?
+  waiterLabel        String?
+  openedById         String
+  openedBy           User            @relation("OpenTabOpener", fields: [openedById], references: [id])
+  assignedWaiterId   String?
+  assignedWaiter     User?           @relation("OpenTabAssignee", fields: [assignedWaiterId], references: [id])
+  waiterProfileId    String?
+  waiterProfile      Waiter?         @relation(fields: [waiterProfileId], references: [id])
+  closedById         String?
+  closedBy           User?           @relation("OpenTabCloser", fields: [closedById], references: [id])
 
-  orders          SalesOrder[]
-  orderLinks      OpenTabOrder[]
-  paymentSplits   PaymentSplit[]
-  subAccounts     TabSubAccount[]
-  transfers       TableTransfer[]
+  orders        SalesOrder[]
+  orderLinks    OpenTabOrder[]
+  paymentSplits PaymentSplit[]
+  subAccounts   TabSubAccount[]
+  transfers     TableTransfer[]
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, tabCode])
   @@index([branchId, status])
@@ -1902,40 +1905,40 @@ model OpenTab {
 }
 
 model OpenTabOrder {
-  id            String   @id @default(cuid())
-  openTabId     String
-  openTab       OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
-  salesOrderId  String
-  salesOrder    SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
-  addedAt       DateTime @default(now())
+  id           String     @id @default(cuid())
+  openTabId    String
+  openTab      OpenTab    @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  addedAt      DateTime   @default(now())
 
   @@unique([openTabId, salesOrderId])
   @@index([salesOrderId])
 }
 
 model PaymentSplit {
-  id            String   @id @default(cuid())
-  openTabId      String
-  openTab        OpenTab   @relation(fields: [openTabId], references: [id], onDelete: Cascade)
-  salesOrderId   String?
-  salesOrder     SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  id                  String         @id @default(cuid())
+  openTabId           String
+  openTab             OpenTab        @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  salesOrderId        String?
+  salesOrder          SalesOrder?    @relation(fields: [salesOrderId], references: [id])
   // null = pago de la mesa completa; set = pago de una subcuenta específica
-  subAccountId   String?
-  subAccount     TabSubAccount? @relation(fields: [subAccountId], references: [id])
-  splitLabel     String
-  splitType      String   @default("EQUAL") // EQUAL, ITEM_BASED, CUSTOM
-  paymentMethod  String?
-  status         String   @default("PENDING") // PENDING, PAID, VOID
-  subtotal             Float @default(0)
-  discount             Float @default(0)
-  tax                  Float @default(0)
-  serviceChargeAmount  Float @default(0) // Cargo de servicio prorrateado en este split
-  tipAmount            Float @default(0) // Propina prorrateada en este split
-  total                Float @default(0)
-  paidAmount           Float @default(0)
-  createdAt      DateTime @default(now())
-  paidAt         DateTime?
-  notes          String?
+  subAccountId        String?
+  subAccount          TabSubAccount? @relation(fields: [subAccountId], references: [id])
+  splitLabel          String
+  splitType           String         @default("EQUAL") // EQUAL, ITEM_BASED, CUSTOM
+  paymentMethod       String?
+  status              String         @default("PENDING") // PENDING, PAID, VOID
+  subtotal            Float          @default(0)
+  discount            Float          @default(0)
+  tax                 Float          @default(0)
+  serviceChargeAmount Float          @default(0) // Cargo de servicio prorrateado en este split
+  tipAmount           Float          @default(0) // Propina prorrateada en este split
+  total               Float          @default(0)
+  paidAmount          Float          @default(0)
+  createdAt           DateTime       @default(now())
+  paidAt              DateTime?
+  notes               String?
 
   @@index([openTabId, status])
   @@index([salesOrderId])
@@ -1948,26 +1951,26 @@ model PaymentSplit {
 // Los ítems se asignan a subcuentas via SubAccountItem (pueden ser parciales: qty < order item qty).
 
 model TabSubAccount {
-  id            String   @id @default(cuid())
-  openTabId     String
-  openTab       OpenTab  @relation(fields: [openTabId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  openTabId String
+  openTab   OpenTab @relation(fields: [openTabId], references: [id], onDelete: Cascade)
 
-  label         String            // "Cuenta 1", "Carlos", etc. — editable
-  sortOrder     Int      @default(0)
-  status        String   @default("OPEN") // OPEN | PAID | VOID
+  label     String // "Cuenta 1", "Carlos", etc. — editable
+  sortOrder Int    @default(0)
+  status    String @default("OPEN") // OPEN | PAID | VOID
 
   // Totales propios (recalculados por el server action en cada mutación)
-  subtotal      Float    @default(0)
-  serviceCharge Float    @default(0)  // siempre subtotal * 0.10
-  total         Float    @default(0)  // subtotal + serviceCharge
+  subtotal      Float @default(0)
+  serviceCharge Float @default(0) // siempre subtotal * 0.10
+  total         Float @default(0) // subtotal + serviceCharge
 
   // Cobro (se populan cuando status = PAID)
-  paidAmount    Float    @default(0)
+  paidAmount    Float     @default(0)
   paymentMethod String?
   paidAt        DateTime?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   items         SubAccountItem[]
   paymentSplits PaymentSplit[]
@@ -1976,19 +1979,19 @@ model TabSubAccount {
 }
 
 model SubAccountItem {
-  id               String        @id @default(cuid())
-  subAccountId     String
-  subAccount       TabSubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  subAccountId String
+  subAccount   TabSubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
 
   salesOrderItemId String
   salesOrderItem   SalesOrderItem @relation(fields: [salesOrderItemId], references: [id], onDelete: Cascade)
 
   // Cantidad asignada a esta subcuenta (puede ser menor que SalesOrderItem.quantity)
-  quantity         Int
+  quantity  Int
   // Snapshot del precio al momento de asignar (unitPrice * quantity + modificadores prorrateados)
-  lineTotal        Float
+  lineTotal Float
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([subAccountId])
   @@index([salesOrderItemId])
@@ -1999,11 +2002,11 @@ model SalesOrderPayment {
   id           String     @id @default(cuid())
   salesOrderId String
   salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
-  method       String     // CASH | ZELLE | CARD | MOBILE_PAY | TRANSFER | CORTESIA
+  method       String // CASH | ZELLE | CARD | MOBILE_PAY | TRANSFER | CORTESIA
   amountUSD    Float
-  amountBS     Float?     // Monto en Bs si el pago fue en Bs
-  exchangeRate Float?     // Tasa usada para esta línea
-  reference    String?    // Número de referencia (transferencia, confirmación Zelle, etc.)
+  amountBS     Float? // Monto en Bs si el pago fue en Bs
+  exchangeRate Float? // Tasa usada para esta línea
+  reference    String? // Número de referencia (transferencia, confirmación Zelle, etc.)
   createdAt    DateTime   @default(now())
 
   @@index([salesOrderId])
@@ -2020,16 +2023,16 @@ model SalesOrderPayment {
 // Clave: 'enabled_modules' → valor: JSON array de ids de módulos activos.
 
 model SystemConfig {
-  id        String   @id @default(cuid())   // PK cuid — desde Lote multitenant para soportar misma `key` entre tenants
-  key       String                          // 'enabled_modules', 'business_name', etc.
-  value     String                          // JSON string o texto plano
+  id        String   @id @default(cuid()) // PK cuid — desde Lote multitenant para soportar misma `key` entre tenants
+  key       String // 'enabled_modules', 'business_name', etc.
+  value     String // JSON string o texto plano
   updatedAt DateTime @updatedAt
-  updatedBy String?                         // userId quien lo cambió
+  updatedBy String? // userId quien lo cambió
 
   // Multi-tenant: `(tenantId, key)` es compound unique → cada tenant puede
   // tener su propia config con las mismas keys.
-  tenantId  String   @default("tnt_shanklish_caracas")
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, key])
   @@index([tenantId])
@@ -2044,8 +2047,8 @@ model InvoiceCounter {
   updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-γ).
-  tenantId  String   @default("tnt_shanklish_caracas")
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, channel])
   @@index([tenantId])
@@ -2053,16 +2056,16 @@ model InvoiceCounter {
 
 model ExchangeRate {
   id            String   @id @default(cuid())
-  rate          Float    // Bs por 1 USD
+  rate          Float // Bs por 1 USD
   effectiveDate DateTime
   source        String   @default("BCV")
   createdAt     DateTime @default(now())
 
-  salesOrders   SalesOrder[]
+  salesOrders SalesOrder[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([effectiveDate])
   @@index([tenantId])
@@ -2073,23 +2076,23 @@ model ExchangeRate {
 // ============================================================================
 
 model GameType {
-  id          String   @id @default(cuid())
-  code        String   // BILLAR, PLAYSTATION, PING_PONG, ARCADE, etc. — unique compuesto con tenantId abajo
-  name        String
-  description String?
-  icon        String?
-  color       String?  // Hex color para UI
-  defaultSessionMinutes Int @default(60)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  code                  String // BILLAR, PLAYSTATION, PING_PONG, ARCADE, etc. — unique compuesto con tenantId abajo
+  name                  String
+  description           String?
+  icon                  String?
+  color                 String? // Hex color para UI
+  defaultSessionMinutes Int      @default(60)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  stations    GameStation[]
-  sessions    GameSession[]
+  stations GameStation[]
+  sessions GameSession[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([code])
@@ -2098,26 +2101,26 @@ model GameType {
 
 model GameStation {
   id            String   @id @default(cuid())
-  code          String   // BILLAR-01, PS5-01, etc. — unique compuesto con tenantId abajo
+  code          String // BILLAR-01, PS5-01, etc. — unique compuesto con tenantId abajo
   name          String
   gameTypeId    String
   gameType      GameType @relation(fields: [gameTypeId], references: [id])
   branchId      String?
   branch        Branch?  @relation(fields: [branchId], references: [id])
   currentStatus String   @default("AVAILABLE") // AVAILABLE, IN_USE, RESERVED, MAINTENANCE
-  hourlyRate    Float?   // Precio por hora (null = pulsera / flat fee)
+  hourlyRate    Float? // Precio por hora (null = pulsera / flat fee)
   notes         String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  sessions      GameSession[]
-  reservations  Reservation[]
-  queueTickets  QueueTicket[]
+  sessions     GameSession[]
+  reservations Reservation[]
+  queueTickets QueueTicket[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([gameTypeId])
@@ -2127,23 +2130,23 @@ model GameStation {
 }
 
 model WristbandPlan {
-  id            String   @id @default(cuid())
-  code          String
-  name          String   // Ej: "Pulsera Básica 2h", "Pulsera Premium Full Day"
-  description   String?
-  durationMinutes Int    // Duración total en minutos
-  price         Float
-  color         String?  // Color físico de la pulsera
-  maxSessions   Int?     // Nº máximo de estaciones simultáneas (null = ilimitado)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  code            String
+  name            String // Ej: "Pulsera Básica 2h", "Pulsera Premium Full Day"
+  description     String?
+  durationMinutes Int // Duración total en minutos
+  price           Float
+  color           String? // Color físico de la pulsera
+  maxSessions     Int? // Nº máximo de estaciones simultáneas (null = ilimitado)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  reservations  Reservation[]
+  reservations Reservation[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId      String   @default("tnt_shanklish_caracas")
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([isActive])
@@ -2151,35 +2154,35 @@ model WristbandPlan {
 }
 
 model Reservation {
-  id              String   @id @default(cuid())
-  code            String   // RES-2026-0001 — unique compuesto con tenantId abajo
+  id              String         @id @default(cuid())
+  code            String // RES-2026-0001 — unique compuesto con tenantId abajo
   stationId       String
-  station         GameStation @relation(fields: [stationId], references: [id])
+  station         GameStation    @relation(fields: [stationId], references: [id])
   wristbandPlanId String?
   wristbandPlan   WristbandPlan? @relation(fields: [wristbandPlanId], references: [id])
   customerName    String
   customerPhone   String?
-  guestCount      Int      @default(1)
+  guestCount      Int            @default(1)
   scheduledStart  DateTime
   scheduledEnd    DateTime
-  status          String   @default("PENDING") // PENDING, CONFIRMED, CHECKED_IN, NO_SHOW, CANCELLED
+  status          String         @default("PENDING") // PENDING, CONFIRMED, CHECKED_IN, NO_SHOW, CANCELLED
   notes           String?
-  depositAmount   Float    @default(0)
-  depositPaid     Boolean  @default(false)
+  depositAmount   Float          @default(0)
+  depositPaid     Boolean        @default(false)
   createdById     String
-  createdBy       User     @relation("ReservationCreator", fields: [createdById], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdBy       User           @relation("ReservationCreator", fields: [createdById], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  session         GameSession?
+  session GameSession?
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([stationId, scheduledStart])
@@ -2189,37 +2192,37 @@ model Reservation {
 }
 
 model GameSession {
-  id              String   @id @default(cuid())
-  code            String   // GSN-2026-0001 — unique compuesto con tenantId abajo
-  stationId       String
-  station         GameStation @relation(fields: [stationId], references: [id])
-  gameTypeId      String
-  gameType        GameType @relation(fields: [gameTypeId], references: [id])
-  reservationId   String?  @unique  // global: 1:1 con Reservation cuyo id ya es único
-  reservation     Reservation? @relation(fields: [reservationId], references: [id])
-  salesOrderId    String?
-  salesOrder      SalesOrder? @relation("GameSessions", fields: [salesOrderId], references: [id])
-  wristbandCode   String?  // Código físico de la pulsera escaneada
-  customerName    String?
-  guestCount      Int      @default(1)
-  startedAt       DateTime @default(now())
-  endedAt         DateTime?
-  scheduledEndAt  DateTime?
-  status          String   @default("ACTIVE") // ACTIVE, PAUSED, ENDED, OVERTIME
-  billingType     String   @default("HOURLY") // HOURLY, WRISTBAND, FLAT
-  minutesBilled   Int      @default(0)
-  amountBilled    Float    @default(0)
-  notes           String?
-  startedById     String
-  startedBy       User     @relation("GameSessionStarter", fields: [startedById], references: [id])
-  endedById       String?
-  endedBy         User?    @relation("GameSessionEnder", fields: [endedById], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String       @id @default(cuid())
+  code           String // GSN-2026-0001 — unique compuesto con tenantId abajo
+  stationId      String
+  station        GameStation  @relation(fields: [stationId], references: [id])
+  gameTypeId     String
+  gameType       GameType     @relation(fields: [gameTypeId], references: [id])
+  reservationId  String?      @unique // global: 1:1 con Reservation cuyo id ya es único
+  reservation    Reservation? @relation(fields: [reservationId], references: [id])
+  salesOrderId   String?
+  salesOrder     SalesOrder?  @relation("GameSessions", fields: [salesOrderId], references: [id])
+  wristbandCode  String? // Código físico de la pulsera escaneada
+  customerName   String?
+  guestCount     Int          @default(1)
+  startedAt      DateTime     @default(now())
+  endedAt        DateTime?
+  scheduledEndAt DateTime?
+  status         String       @default("ACTIVE") // ACTIVE, PAUSED, ENDED, OVERTIME
+  billingType    String       @default("HOURLY") // HOURLY, WRISTBAND, FLAT
+  minutesBilled  Int          @default(0)
+  amountBilled   Float        @default(0)
+  notes          String?
+  startedById    String
+  startedBy      User         @relation("GameSessionStarter", fields: [startedById], references: [id])
+  endedById      String?
+  endedBy        User?        @relation("GameSessionEnder", fields: [endedById], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([stationId, status])
@@ -2229,25 +2232,25 @@ model GameSession {
 }
 
 model QueueTicket {
-  id          String   @id @default(cuid())
-  ticketNumber Int     // Correlativo del turno (reset por día)
-  stationId   String?
-  station     GameStation? @relation(fields: [stationId], references: [id])
-  gameTypeId  String?  // Si solo pide tipo de juego (cualquier estación)
-  customerName String
-  customerPhone String?
-  guestCount  Int      @default(1)
-  status      String   @default("WAITING") // WAITING, CALLED, SEATED, EXPIRED, CANCELLED
-  calledAt    DateTime?
-  seatedAt    DateTime?
+  id                   String       @id @default(cuid())
+  ticketNumber         Int // Correlativo del turno (reset por día)
+  stationId            String?
+  station              GameStation? @relation(fields: [stationId], references: [id])
+  gameTypeId           String? // Si solo pide tipo de juego (cualquier estación)
+  customerName         String
+  customerPhone        String?
+  guestCount           Int          @default(1)
+  status               String       @default("WAITING") // WAITING, CALLED, SEATED, EXPIRED, CANCELLED
+  calledAt             DateTime?
+  seatedAt             DateTime?
   estimatedWaitMinutes Int?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  notes                String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status, createdAt])
   @@index([stationId])
@@ -2259,29 +2262,29 @@ model QueueTicket {
 // ============================================================================
 
 model IntercompanySettlement {
-  id              String   @id @default(cuid())
-  code            String   @unique  // IC-2026-0001
-  fromBranchId    String   // Negocio que provee
-  toBranchId      String   // Negocio que recibe
-  periodStart     DateTime
-  periodEnd       DateTime
-  status          String   @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, PAID, DISPUTED
-  subtotal        Float    @default(0)
-  taxAmount       Float    @default(0)
-  totalAmount     Float    @default(0)
-  notes           String?
-  approvedById    String?
-  approvedAt      DateTime?
-  paidAt          DateTime?
-  createdById     String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String    @id @default(cuid())
+  code         String    @unique // IC-2026-0001
+  fromBranchId String // Negocio que provee
+  toBranchId   String // Negocio que recibe
+  periodStart  DateTime
+  periodEnd    DateTime
+  status       String    @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, PAID, DISPUTED
+  subtotal     Float     @default(0)
+  taxAmount    Float     @default(0)
+  totalAmount  Float     @default(0)
+  notes        String?
+  approvedById String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // Soft Delete
-  deletedAt       DateTime?
-  deletedById     String?
+  deletedAt   DateTime?
+  deletedById String?
 
-  lines           IntercompanySettlementLine[]
+  lines IntercompanySettlementLine[]
 
   @@index([fromBranchId, toBranchId])
   @@index([status])
@@ -2289,34 +2292,34 @@ model IntercompanySettlement {
 }
 
 model IntercompanySettlementLine {
-  id               String   @id @default(cuid())
-  settlementId     String
-  settlement       IntercompanySettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
-  menuItemId       String?
-  inventoryItemId  String?
-  description      String
-  quantity         Float
-  unit             String
-  unitPrice        Float
-  totalPrice       Float
-  notes            String?
-  sortOrder        Int      @default(0)
+  id              String                 @id @default(cuid())
+  settlementId    String
+  settlement      IntercompanySettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  menuItemId      String?
+  inventoryItemId String?
+  description     String
+  quantity        Float
+  unit            String
+  unitPrice       Float
+  totalPrice      Float
+  notes           String?
+  sortOrder       Int                    @default(0)
 
   @@index([settlementId])
 }
 
 model IntercompanyItemMapping {
-  id               String   @id @default(cuid())
+  id                    String   @id @default(cuid())
   // El MenuItem en el negocio receptor
-  menuItemId       String
-  menuItem         MenuItem @relation("IntercompanyMenuItem", fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId            String
+  menuItem              MenuItem @relation("IntercompanyMenuItem", fields: [menuItemId], references: [id], onDelete: Cascade)
   // El InventoryItem en el negocio proveedor que se debe descontar
   sourceInventoryItemId String
-  fromBranchId     String
-  toBranchId       String
-  transferPrice    Float?   // Precio de transferencia intercompany
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
+  fromBranchId          String
+  toBranchId            String
+  transferPrice         Float? // Precio de transferencia intercompany
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
 
   @@unique([menuItemId, fromBranchId])
   @@index([fromBranchId, toBranchId])
@@ -2329,7 +2332,7 @@ model IntercompanyItemMapping {
 // Familia de productos (SKU Studio)
 model ProductFamily {
   id          String   @id @default(cuid())
-  code        String   // Ej: SHAWARMA, BEBIDA, POSTRE — unique compuesto con tenantId abajo
+  code        String // Ej: SHAWARMA, BEBIDA, POSTRE — unique compuesto con tenantId abajo
   name        String
   description String?
   icon        String?
@@ -2338,11 +2341,11 @@ model ProductFamily {
   updatedAt   DateTime @updatedAt
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  items       InventoryItem[]
-  templates   SkuCreationTemplate[]
+  items     InventoryItem[]
+  templates SkuCreationTemplate[]
 
   @@unique([tenantId, code])
   @@index([code])
@@ -2351,20 +2354,20 @@ model ProductFamily {
 
 // Plantilla para crear SKUs rápidamente desde el SKU Studio
 model SkuCreationTemplate {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   name            String
   description     String?
   productFamilyId String?
   productFamily   ProductFamily? @relation(fields: [productFamilyId], references: [id])
   // JSON con los campos pre-rellenados para crear InventoryItem + MenuItem
-  defaultFields   String   // JSON
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  defaultFields   String // JSON
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId        String   @default("tnt_shanklish_caracas")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([productFamilyId])
   @@index([tenantId])
@@ -2372,20 +2375,20 @@ model SkuCreationTemplate {
 
 // Mensajes broadcast (anuncios internos)
 model BroadcastMessage {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   body        String
-  type        String   @default("INFO") // INFO, WARNING, ALERT, SUCCESS
-  targetRoles String?  // JSON array de roles que lo ven (null = todos)
-  isActive    Boolean  @default(true)
-  startsAt    DateTime @default(now())
+  type        String    @default("INFO") // INFO, WARNING, ALERT, SUCCESS
+  targetRoles String? // JSON array de roles que lo ven (null = todos)
+  isActive    Boolean   @default(true)
+  startsAt    DateTime  @default(now())
   expiresAt   DateTime?
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([isActive, startsAt])
   @@index([type])
@@ -2394,25 +2397,25 @@ model BroadcastMessage {
 
 // Ciclo de Conteo Físico (Inventario Semanal/Mensual)
 model InventoryCycle {
-  id          String   @id @default(cuid())
-  code        String   // CYCLE-2026-W12 — unique compuesto con tenantId abajo
-  name        String   // Ej: "Conteo Semana 12 - 2026"
-  cycleType   String   @default("WEEKLY") // WEEKLY, MONTHLY, SPOT_CHECK
-  areaIds     String   // JSON array de IDs de área incluidos
-  status      String   @default("OPEN") // OPEN, IN_PROGRESS, CLOSED, CANCELLED
-  startedAt   DateTime @default(now())
+  id          String    @id @default(cuid())
+  code        String // CYCLE-2026-W12 — unique compuesto con tenantId abajo
+  name        String // Ej: "Conteo Semana 12 - 2026"
+  cycleType   String    @default("WEEKLY") // WEEKLY, MONTHLY, SPOT_CHECK
+  areaIds     String // JSON array de IDs de área incluidos
+  status      String    @default("OPEN") // OPEN, IN_PROGRESS, CLOSED, CANCELLED
+  startedAt   DateTime  @default(now())
   closedAt    DateTime?
   closedById  String?
   notes       String?
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  snapshots   InventoryCycleSnapshot[]
+  snapshots InventoryCycleSnapshot[]
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId    String   @default("tnt_shanklish_caracas")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
   @@index([status])
@@ -2422,19 +2425,19 @@ model InventoryCycle {
 }
 
 model InventoryCycleSnapshot {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   cycleId         String
   cycle           InventoryCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   inventoryItemId String
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  inventoryItem   InventoryItem  @relation(fields: [inventoryItemId], references: [id])
   areaId          String
-  countedStock    Float    // Conteo físico real
-  systemStock     Float    // Stock del sistema al momento del conteo
-  difference      Float    // counted - system
+  countedStock    Float // Conteo físico real
+  systemStock     Float // Stock del sistema al momento del conteo
+  difference      Float // counted - system
   unit            String
   costSnapshot    Float?
   countedById     String
-  countedAt       DateTime @default(now())
+  countedAt       DateTime       @default(now())
   notes           String?
 
   @@unique([cycleId, inventoryItemId, areaId])
@@ -2457,24 +2460,24 @@ model InventoryCycleSnapshot {
 /// Outbox para reintentar el descargo de inventario fallido (Fase 2 propuesta 001).
 /// Ver prisma/migrations-proposed/001_inventory_deduction_retry.sql
 model InventoryDeductionRetry {
-  id             String       @id @default(cuid())
-  salesOrderId   String?
-  salesOrder     SalesOrder?  @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  id           String      @id @default(cuid())
+  salesOrderId String?
+  salesOrder   SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
 
-  payload        String       // JSON serializado del cart snapshot
-  status         String       @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | FAILED | CANCELLED
-  attempts       Int          @default(0)
-  maxAttempts    Int          @default(5)
-  lastError      String?
-  nextRetryAt    DateTime
-  lastAttemptAt  DateTime?
-  completedAt    DateTime?
-  cancelledAt    DateTime?
-  cancelledById  String?
-  cancelledBy    User?        @relation("DeductionRetryCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
-  notes          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  payload       String // JSON serializado del cart snapshot
+  status        String    @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | FAILED | CANCELLED
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5)
+  lastError     String?
+  nextRetryAt   DateTime
+  lastAttemptAt DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  cancelledById String?
+  cancelledBy   User?     @relation("DeductionRetryCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([status])
   @@index([nextRetryAt])
@@ -2487,24 +2490,24 @@ model InventoryDeductionRetry {
 /// El índice único parcial WHERE effectiveTo IS NULL se crea en la migración SQL
 /// (Prisma no soporta filtered unique indexes nativamente todavía).
 model SupplierItemPriceHistory {
-  id              String         @id @default(cuid())
+  id              String        @id @default(cuid())
   supplierId      String
-  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier        Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   inventoryItemId String
-  inventoryItem   InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  unitPrice       Float
-  currency        String         @default("USD")
-  effectiveFrom   DateTime       @default(now())
-  effectiveTo     DateTime?
+  unitPrice     Float
+  currency      String    @default("USD")
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
 
   registeredFromPurchaseOrderId String?
   registeredFromPurchaseOrder   PurchaseOrder? @relation(fields: [registeredFromPurchaseOrderId], references: [id], onDelete: SetNull)
 
-  registeredById  String?
-  registeredBy    User?          @relation("SupplierPriceRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
-  notes           String?
-  createdAt       DateTime       @default(now())
+  registeredById String?
+  registeredBy   User?    @relation("SupplierPriceRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
+  notes          String?
+  createdAt      DateTime @default(now())
 
   @@index([supplierId])
   @@index([inventoryItemId])
@@ -2541,24 +2544,24 @@ model RateLimitBucket {
 /// despacha. Permite imprimir desde tablets que no tienen drivers de la
 /// térmica AON.
 model PrintJob {
-  id            String          @id @default(cuid())
-  tenantId      String
-  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  type          PrintJobType
-  station       String?
-  payload       Json
+  type    PrintJobType
+  station String?
+  payload Json
 
-  status        PrintJobStatus  @default(PENDING)
-  retries       Int             @default(0)
-  errorMessage  String?
+  status       PrintJobStatus @default(PENDING)
+  retries      Int            @default(0)
+  errorMessage String?
 
-  createdAt     DateTime        @default(now())
-  claimedAt     DateTime?
-  completedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  claimedAt   DateTime?
+  completedAt DateTime?
 
-  enqueuedById  String?
-  enqueuedBy    User?           @relation("PrintJobEnqueuedBy", fields: [enqueuedById], references: [id], onDelete: SetNull)
+  enqueuedById String?
+  enqueuedBy   User?   @relation("PrintJobEnqueuedBy", fields: [enqueuedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, completedAt])
@@ -2576,4 +2579,41 @@ enum PrintJobStatus {
   PRINTING
   COMPLETED
   FAILED
+}
+
+// ============================================================================
+// CLIENTES (Customer)
+// ============================================================================
+// Tabla de clientes recurrentes. El POS Delivery busca aquí por cédula o
+// nombre y autollena datos al ingresar un pedido. No se vincula a User
+// (el cliente no se loguea en la app, solo es referencia de contacto).
+model Customer {
+  id       String @id @default(cuid())
+  tenantId String @default("tnt_shanklish_caracas")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  fullName   String // "Julio Acosta" (obligatorio)
+  idDocument String? // "V-12345678", "E-...", "J-...". Opcional (turistas).
+  phone      String? // "04241234567"
+  email      String?
+  address    String? // dirección por defecto para delivery
+  notes      String? // preferencias, alergias, etc.
+
+  // Stats (cache, se actualizan al crear órdenes). Optional para no
+  // requerir backfill inmediato si se importan clientes desde Excel.
+  totalOrders Int       @default(0)
+  totalSpent  Float     @default(0)
+  lastOrderAt DateTime?
+
+  isActive Boolean @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idDocument])
+  @@index([tenantId])
+  @@index([tenantId, fullName])
+  @@index([tenantId, phone])
 }
