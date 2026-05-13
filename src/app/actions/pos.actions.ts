@@ -1084,8 +1084,16 @@ export async function validateCashierPinAction(pin: string): Promise<ActionResul
 // GENERAR CORRELATIVO ÚNICO
 // ============================================================================
 
-async function generateOrderNumber(orderType: POSOrderType): Promise<string> {
-    const channel = orderType === 'RESTAURANT' ? 'RESTAURANT'
+async function generateOrderNumber(orderType: POSOrderType, opts?: { notes?: string }): Promise<string> {
+    // Pickup desde caja (Venta Directa Pickup) llega como orderType='RESTAURANT'
+    // porque se mete en flujo de salón, pero conceptualmente es pickup → debe
+    // usar el correlativo PICKUP (prefijo REST) en lugar del RESTAURANT (TAB).
+    // Distinguimos por la `notes` que el POS Restaurante setea explícitamente.
+    const isPickupFromCaja =
+        orderType === 'RESTAURANT' && (opts?.notes ?? '').startsWith('Venta Directa Pickup');
+
+    const channel = isPickupFromCaja ? 'PICKUP'
+        : orderType === 'RESTAURANT' ? 'RESTAURANT'
         : orderType === 'PICKUP' ? 'PICKUP'
         : 'DELIVERY';
     return getNextCorrelativo(channel);
@@ -1125,7 +1133,7 @@ export async function createSalesOrderAction(
                 if (attempt > 0) {
                     await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
                 }
-                const orderNumber = await generateOrderNumber(data.orderType);
+                const orderNumber = await generateOrderNumber(data.orderType, { notes: finalNotes });
                 newOrder = await db.salesOrder.create({
                     data: {
                         orderNumber,
