@@ -2124,7 +2124,10 @@ export async function modifyTabItemAction({
         const auth = await resolveVoidAuthPin(captainPin, branch.id);
         if (!auth) return { success: false, message: 'PIN de capitán o gerente incorrecto' };
 
-        // Cargar el ítem original con sus relaciones
+        // Cargar el ítem original con sus relaciones. Incluimos
+        // menuItem.category para que el cliente pueda decidir a qué
+        // estación enviar la anulación (barra vs cocina) al encolar
+        // el VOID_KITCHEN job.
         const item = await db.salesOrderItem.findUnique({
             where: { id: itemId },
             include: {
@@ -2135,6 +2138,7 @@ export async function modifyTabItemAction({
                     },
                 },
                 modifiers: true,
+                menuItem: { include: { category: { select: { name: true } } } },
             },
         });
         if (!item) return { success: false, message: 'Ítem no encontrado' };
@@ -2152,10 +2156,13 @@ export async function modifyTabItemAction({
             }
         }
 
-        // Construir el label del mesonero para la comanda
+        // Construir el label del autor para la comanda. Prioriza el
+        // mesero del order si existe; si no (caso pickup/caja sin
+        // mesero), cae al nombre del supervisor que autorizó. Evita
+        // que se imprima "Autor: undefined" en el ticket.
         const waiterLabel = item.order.waiterProfile
             ? `${item.order.waiterProfile.firstName} ${item.order.waiterProfile.lastName}`
-            : undefined;
+            : auth.name;
 
         let newItemForPrint: { name: string; quantity: number; modifiers: string[] } | undefined;
 
@@ -2301,7 +2308,12 @@ export async function modifyTabItemAction({
                     orderNumber: item.order.orderNumber,
                     tableName:   item.order.tableOrStation?.name ?? '',
                     waiterLabel,
+                    authorizerName: auth.name,
                     modificationType: modification.type,
+                    // categoryName del item anulado → permite al cliente
+                    // enrutar el VOID_KITCHEN a la estación correcta
+                    // (barra si es bebida, cocina si es plato).
+                    categoryName: item.menuItem?.category?.name ?? null,
                     voidedItem: {
                         name: item.itemName,
                         quantity: item.quantity,

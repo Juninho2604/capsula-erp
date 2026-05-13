@@ -470,6 +470,12 @@ export interface VoidKitchenCommandData {
     authorizerName:   string;
     waiterLabel?:     string;
     modificationType: 'VOID' | 'ADJUST_QTY' | 'REPLACE';
+    /**
+     * Categoría del item anulado. Se usa para enrutar la anulación a la
+     * estación correcta (barra vs cocina) cuando se imprime vía Print Agent.
+     * Devuelto por modifyTabItemAction.
+     */
+    categoryName?:    string | null;
     voidedItem:  { name: string; quantity: number; modifiers: string[] };
     newItem?:    { name: string; quantity: number; modifiers: string[] };
 }
