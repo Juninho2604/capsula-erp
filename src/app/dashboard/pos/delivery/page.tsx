@@ -10,6 +10,7 @@ import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt } from '@/lib/print-command';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
+import { searchCustomersAction, type CustomerSummary } from '@/app/actions/customer.actions';
 import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 import { PriceDisplay } from '@/components/pos/PriceDisplay';
@@ -64,6 +65,12 @@ export default function POSDeliveryPage() {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+    // Autocomplete de clientes recurrentes (Customer). El query es local
+    // y dispara `searchCustomersAction` con debounce mínimo. Al seleccionar
+    // un resultado se autollena nombre/teléfono/dirección.
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [customerSearchResults, setCustomerSearchResults] = useState<CustomerSummary[]>([]);
+    const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
 
@@ -144,6 +151,30 @@ export default function POSDeliveryPage() {
             if (discountType === 'DIVISAS_33') setDiscountType('NONE');
         }
     }, [isMixedMode, paymentMethod, discountType]);
+
+    // Debounce de búsqueda de clientes (300ms). Evita un fetch por
+    // cada keystroke pero responde rápido al usuario.
+    useEffect(() => {
+        const q = customerSearch.trim();
+        if (q.length < 2) {
+            setCustomerSearchResults([]);
+            return;
+        }
+        const handle = setTimeout(async () => {
+            const res = await searchCustomersAction(q);
+            if (res.success) setCustomerSearchResults(res.customers);
+        }, 300);
+        return () => clearTimeout(handle);
+    }, [customerSearch]);
+
+    function applyCustomer(c: CustomerSummary) {
+        setCustomerName(c.fullName);
+        setCustomerPhone(c.phone ?? '');
+        setCustomerAddress(c.address ?? '');
+        setCustomerSearch('');
+        setCustomerSearchResults([]);
+        setShowCustomerDropdown(false);
+    }
 
     const filteredMenuItems = productSearch.trim()
         ? categories.flatMap((c: any) => c.items as MenuItem[]).filter((i) =>
@@ -471,6 +502,47 @@ export default function POSDeliveryPage() {
                                     Limpiar
                                     <XIcon className="h-3 w-3" />
                                 </button>
+                            )}
+                        </div>
+
+                        {/* Buscador de cliente recurrente */}
+                        <div className="relative mb-2">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                            <input
+                                type="text"
+                                value={customerSearch}
+                                onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }}
+                                onFocus={() => setShowCustomerDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
+                                placeholder="Buscar cliente recurrente por cédula, nombre o teléfono…"
+                                className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                            />
+                            {showCustomerDropdown && customerSearchResults.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1 z-20 max-h-72 overflow-y-auto rounded-xl border border-capsula-line bg-capsula-ivory shadow-lg">
+                                    {customerSearchResults.map((c) => (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            onMouseDown={(e) => { e.preventDefault(); applyCustomer(c); }}
+                                            className="w-full px-3 py-2 text-left hover:bg-capsula-navy-soft border-b border-capsula-line last:border-b-0"
+                                        >
+                                            <div className="font-semibold text-sm text-capsula-ink truncate">{c.fullName}</div>
+                                            <div className="flex flex-wrap gap-x-2 text-[11px] text-capsula-ink-muted font-semibold mt-0.5">
+                                                {c.idDocument && <span>{c.idDocument}</span>}
+                                                {c.phone && <span>· {c.phone}</span>}
+                                                {c.totalOrders > 0 && <span>· {c.totalOrders} órdenes</span>}
+                                            </div>
+                                            {c.address && (
+                                                <div className="text-[11px] text-capsula-ink-soft truncate mt-0.5">{c.address}</div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {showCustomerDropdown && customerSearch.trim().length >= 2 && customerSearchResults.length === 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-capsula-line bg-capsula-ivory shadow-lg p-3 text-center">
+                                    <p className="text-xs text-capsula-ink-muted font-semibold">Sin coincidencias. Llena los campos manualmente y se guardará al cobrar (próximamente).</p>
+                                </div>
                             )}
                         </div>
                         <div className="mb-2 grid grid-cols-2 gap-2">
