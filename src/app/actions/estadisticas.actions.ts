@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
 import { revenueWhere, propinasWhere } from '@/lib/sales-where';
@@ -49,6 +51,9 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
 
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
     const role = session.role;
     const userId = session.id;
 
@@ -73,7 +78,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       propinasHoyAgg,
     ] = await Promise.all([
       // Ventas hoy
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: {
           ...revenueWhere(todayStart, todayEnd),
           ...(isCashier ? { createdById: userId } : {}),
@@ -83,7 +88,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       }),
       // Ventas ayer (solo admin+)
       isAdmin || isAuditor
-        ? prisma.salesOrder.aggregate({
+        ? db.salesOrder.aggregate({
             where: revenueWhere(yesterdayStart, yesterdayEnd),
             _sum: { total: true },
             _count: { id: true },
@@ -91,7 +96,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
       // Ventas mes (rango abierto hasta ahora)
       isAdmin || isAuditor
-        ? prisma.salesOrder.aggregate({
+        ? db.salesOrder.aggregate({
             where: {
               status: { not: 'CANCELLED' },
               customerName: { not: 'PROPINA COLECTIVA' },
@@ -103,7 +108,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
       // Cuentas abiertas
       isAdmin || isAuditor
-        ? prisma.openTab.aggregate({
+        ? db.openTab.aggregate({
             where: { status: 'OPEN' },
             _count: { id: true },
             _sum: { balanceDue: true },
@@ -111,7 +116,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
       // Stock bajo
       isAdmin || isAuditor || isChef
-        ? prisma.inventoryItem.findMany({
+        ? db.inventoryItem.findMany({
             where: { isActive: true },
             include: {
               stockLevels: { take: 1 },
@@ -134,7 +139,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve([]),
       // Propinas colectivas hoy (admin + auditor)
       isAdmin || isAuditor
-        ? prisma.salesOrder.aggregate({
+        ? db.salesOrder.aggregate({
             where: propinasWhere(todayStart, todayEnd),
             _sum: { total: true },
             _count: { id: true },
@@ -155,7 +160,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
     ] = await Promise.all([
       // Breakdown por método de pago (admin + auditor)
       isAdmin || isAuditor
-        ? prisma.salesOrder.groupBy({
+        ? db.salesOrder.groupBy({
             by: ['paymentMethod'],
             where: {
               ...revenueWhere(todayStart, todayEnd),
@@ -174,7 +179,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Top 5 items del día (admin + chef)
       isAdmin || isChef
-        ? prisma.salesOrderItem.groupBy({
+        ? db.salesOrderItem.groupBy({
             by: ['menuItemId', 'itemName'],
             where: {
               order: {
@@ -196,7 +201,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Breakdown de descuentos hoy (admin + auditor)
       isAdmin || isAuditor
-        ? prisma.salesOrder.findMany({
+        ? db.salesOrder.findMany({
             where: {
               createdAt: { gte: todayStart, lte: todayEnd },
               discountType: { not: 'NONE' },
@@ -219,7 +224,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Órdenes anuladas hoy (auditor + admin)
       isAdmin || isAuditor
-        ? prisma.salesOrder.findMany({
+        ? db.salesOrder.findMany({
             where: {
               voidedAt: { gte: todayStart, lte: todayEnd },
             },
@@ -239,7 +244,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Pedidos en cocina pendientes (chef + admin)
       isChef || isAdmin
-        ? prisma.salesOrder.findMany({
+        ? db.salesOrder.findMany({
             where: {
               kitchenStatus: 'SENT',
               status: { not: 'CANCELLED' },
@@ -264,7 +269,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Producción hoy (chef + admin)
       isChef || isAdmin
-        ? prisma.productionOrder.findMany({
+        ? db.productionOrder.findMany({
             where: {
               createdAt: { gte: todayStart, lte: todayEnd },
             },
@@ -283,7 +288,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
 
       // Mis ventas hoy (cashier)
       isCashier
-        ? prisma.salesOrder.aggregate({
+        ? db.salesOrder.aggregate({
             where: {
               ...revenueWhere(todayStart, todayEnd),
               createdById: userId,
@@ -298,11 +303,13 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve({ revenue: 0, orders: 0, avgTicket: 0 }),
 
       // Variaciones de inventario recientes (auditor)
+      // InventoryMovement no es tenant-aware; filtramos por inventoryItem.tenantId.
       isAuditor
         ? prisma.inventoryMovement.findMany({
             where: {
               movementType: { in: ['ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'ADJUSTMENT'] },
               createdAt: { gte: monthStart },
+              inventoryItem: { tenantId },
             },
             include: { inventoryItem: { select: { name: true, baseUnit: true } } },
             orderBy: { createdAt: 'desc' },

@@ -12,6 +12,8 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 
 // ============================================================================
@@ -48,8 +50,10 @@ export interface CreateProteinProcessingInput {
 // ============================================================================
 
 export async function getProteinItemsAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 // Filtrar items de proteínas (por categoría o nombre)
@@ -92,8 +96,10 @@ export async function getProteinItemsAction() {
 // ============================================================================
 
 export async function getProcessingAreasAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const areas = await prisma.area.findMany({
+        const areas = await db.area.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' }
         });
@@ -110,8 +116,10 @@ export async function getProcessingAreasAction() {
 // ============================================================================
 
 export async function getSuppliersAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const suppliers = await prisma.supplier.findMany({
+        const suppliers = await db.supplier.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' }
         });
@@ -134,6 +142,8 @@ export async function getSuppliersAction() {
 export async function createProteinProcessingAction(
     input: CreateProteinProcessingInput
 ): Promise<{ success: boolean; message: string; processingId?: string; code?: string }> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session?.id) {
         return { success: false, message: 'No autorizado' };
@@ -142,7 +152,7 @@ export async function createProteinProcessingAction(
     try {
         // Generar código único
         const year = new Date().getFullYear();
-        const count = await prisma.proteinProcessing.count({
+        const count = await db.proteinProcessing.count({
             where: {
                 code: { startsWith: `PROT-${year}` }
             }
@@ -159,7 +169,7 @@ export async function createProteinProcessingAction(
             ? (totalSubProducts / input.frozenWeight) * 100
             : 0;
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await db.$transaction(async (tx) => {
             // Crear el registro de procesamiento
             const processing = await tx.proteinProcessing.create({
                 data: {
@@ -233,6 +243,8 @@ export async function getProteinProcessingsAction(filters?: {
     startDate?: Date;
     endDate?: Date;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         const where: any = {};
 
@@ -245,7 +257,7 @@ export async function getProteinProcessingsAction(filters?: {
             if (filters.endDate) where.processDate.lte = filters.endDate;
         }
 
-        const processings = await prisma.proteinProcessing.findMany({
+        const processings = await db.proteinProcessing.findMany({
             where,
             include: {
                 sourceItem: {
@@ -295,8 +307,10 @@ export async function getProteinProcessingsAction(filters?: {
 // ============================================================================
 
 export async function getProteinProcessingByIdAction(id: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const processing = await prisma.proteinProcessing.findUnique({
+        const processing = await db.proteinProcessing.findUnique({
             where: { id },
             include: {
                 sourceItem: true,
@@ -333,13 +347,15 @@ export async function getProteinProcessingByIdAction(id: string) {
 export async function completeProteinProcessingAction(
     processingId: string
 ): Promise<{ success: boolean; message: string }> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session?.id) {
         return { success: false, message: 'No autorizado' };
     }
 
     try {
-        const processing = await prisma.proteinProcessing.findUnique({
+        const processing = await db.proteinProcessing.findUnique({
             where: { id: processingId },
             include: {
                 sourceItem: true,
@@ -358,7 +374,7 @@ export async function completeProteinProcessingAction(
             return { success: false, message: 'Este procesamiento ya fue completado' };
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // 1. Descontar la proteína original del inventario
             const sourceLocation = await tx.inventoryLocation.findFirst({
                 where: {
@@ -540,13 +556,15 @@ export async function cancelProteinProcessingAction(
     processingId: string,
     reason: string
 ): Promise<{ success: boolean; message: string }> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session?.id) {
         return { success: false, message: 'No autorizado' };
     }
 
     try {
-        const processing = await prisma.proteinProcessing.findUnique({
+        const processing = await db.proteinProcessing.findUnique({
             where: { id: processingId }
         });
 
@@ -558,7 +576,7 @@ export async function cancelProteinProcessingAction(
             return { success: false, message: 'No se puede cancelar un procesamiento completado' };
         }
 
-        await prisma.proteinProcessing.update({
+        await db.proteinProcessing.update({
             where: { id: processingId },
             data: {
                 status: 'CANCELLED',
@@ -588,6 +606,8 @@ export async function cancelProteinProcessingAction(
 // ============================================================================
 
 export async function getProteinProcessingStatsAction(startDate?: Date, endDate?: Date) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         const where: any = {
             status: 'COMPLETED'
@@ -599,7 +619,7 @@ export async function getProteinProcessingStatsAction(startDate?: Date, endDate?
             if (endDate) where.processDate.lte = endDate;
         }
 
-        const processings = await prisma.proteinProcessing.findMany({
+        const processings = await db.proteinProcessing.findMany({
             where,
             include: {
                 sourceItem: true
@@ -667,9 +687,11 @@ export async function getProteinProcessingStatsAction(startDate?: Date, endDate?
 // ============================================================================
 
 export async function getProcessingTemplatesAction() {
+    const { tenantId } = await resolveTenantContext();
     try {
         const templates = await prisma.processingTemplate.findMany({
-            where: { isActive: true },
+            where: {
+                sourceItem: { tenantId }, isActive: true },
             include: {
                 sourceItem: { select: { id: true, name: true, sku: true } },
                 allowedOutputs: {
@@ -689,6 +711,7 @@ export async function getProcessingTemplatesAction() {
 }
 
 export async function getTemplateBySourceItemAction(sourceItemId: string, processingStep?: string) {
+    const { tenantId } = await resolveTenantContext();
     try {
         const where: any = {
             sourceItemId,
@@ -720,10 +743,12 @@ export async function getTemplateBySourceItemAction(sourceItemId: string, proces
 
 // Obtener la cadena completa de plantillas para un item fuente
 export async function getTemplateChainAction(sourceItemId: string) {
+    const { tenantId } = await resolveTenantContext();
     try {
         // Buscar todas las plantillas que comienzan con este sourceItem
         const templates = await prisma.processingTemplate.findMany({
             where: {
+                sourceItem: { tenantId },
                 sourceItemId,
                 isActive: true
             },
@@ -748,6 +773,7 @@ export async function getTemplateChainAction(sourceItemId: string) {
             for (const output of intermediateOutputs) {
                 const childTemplates = await prisma.processingTemplate.findMany({
                     where: {
+                sourceItem: { tenantId },
                         sourceItemId: output.outputItemId,
                         isActive: true
                     },
@@ -839,8 +865,10 @@ export async function deleteProcessingTemplateAction(templateId: string): Promis
 // ============================================================================
 
 export async function getCompletedProcessingsForChainAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const processings = await prisma.proteinProcessing.findMany({
+        const processings = await db.proteinProcessing.findMany({
             where: {
                 status: 'COMPLETED'
             },
@@ -878,8 +906,10 @@ export async function getCompletedProcessingsForChainAction() {
 // ============================================================================
 
 export async function getProcessingChainAction(processingId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const processing = await prisma.proteinProcessing.findUnique({
+        const processing = await db.proteinProcessing.findUnique({
             where: { id: processingId },
             include: {
                 sourceItem: { select: { name: true } },

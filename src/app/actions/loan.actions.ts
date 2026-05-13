@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { UNIT_INFO, convertUnit, UnitOfMeasureType } from '@/lib/constants/units';
 
 // Helper to safely map database units to our system units
@@ -48,8 +50,10 @@ export interface ResolveLoanInput {
  * Get all loans, ordered by status (PENDING first) and date
  */
 export async function getLoansAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const loans = await prisma.inventoryLoan.findMany({
+        const loans = await db.inventoryLoan.findMany({
             include: {
                 inventoryItem: true,
                 createdBy: {
@@ -82,12 +86,14 @@ export async function getLoansAction() {
  * Deducts inventory immediately.
  */
 export async function createLoanAction(input: CreateLoanInput) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         if (!input.inventoryItemId || !input.loaneeName || !input.quantity) {
             return { success: false, message: 'Faltan datos requeridos' };
         }
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await db.$transaction(async (tx) => {
             // 0. Fetch Item for Base Unit
             const item = await tx.inventoryItem.findUnique({ where: { id: input.inventoryItemId } });
             if (!item) throw new Error("Item no encontrado");
@@ -182,8 +188,10 @@ export async function createLoanAction(input: CreateLoanInput) {
  * Resolve a loan (Complete/Pay/Return)
  */
 export async function resolveLoanAction(input: ResolveLoanInput) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await db.$transaction(async (tx) => {
             const loan = await tx.inventoryLoan.findUnique({
                 where: { id: input.loanId },
                 include: { inventoryItem: true } // Need item for baseUnit
@@ -260,8 +268,10 @@ export async function resolveLoanAction(input: ResolveLoanInput) {
 }
 
 export async function getLoanableItemsAction() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const items = await db.inventoryItem.findMany({
             where: { isActive: true },
             select: {
                 id: true,

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 
 export interface CreateAuditInput {
@@ -30,7 +32,9 @@ export interface ApproveAuditInput {
 
 export async function getAuditsAction() {
     try {
-        const audits = await prisma.inventoryAudit.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const audits = await db.inventoryAudit.findMany({
             include: {
                 createdBy: { select: { firstName: true, lastName: true } },
                 resolvedBy: { select: { firstName: true, lastName: true } },
@@ -47,7 +51,9 @@ export async function getAuditsAction() {
 
 export async function getAuditAction(id: string) {
     try {
-        const audit = await prisma.inventoryAudit.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const audit = await db.inventoryAudit.findFirst({
             where: { id },
             include: {
                 createdBy: { select: { firstName: true, lastName: true } },
@@ -75,7 +81,9 @@ export async function createAuditAction(input: CreateAuditInput) {
     const userId = session.id;
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const result = await db.$transaction(async (tx: any) => {
             // 1. Create Audit Header
             const audit = await tx.inventoryAudit.create({
                 data: {
@@ -98,7 +106,7 @@ export async function createAuditAction(input: CreateAuditInput) {
                 }
             });
 
-            const dbItemsMap = new Map(dbItems.map(i => [i.id, i]));
+            const dbItemsMap = new Map<string, any>(dbItems.map((i: any) => [i.id, i]));
             const auditItemsData = [];
 
             for (const itemInput of input.items) {
@@ -107,10 +115,10 @@ export async function createAuditAction(input: CreateAuditInput) {
 
                 let systemStock = 0;
                 if (input.areaId) {
-                    const loc = dbItem.stockLevels.find(l => l.areaId === input.areaId);
+                    const loc = dbItem.stockLevels.find((l: any) => l.areaId === input.areaId);
                     systemStock = loc ? loc.currentStock : 0;
                 } else {
-                    systemStock = dbItem.stockLevels.reduce((acc, loc) => acc + loc.currentStock, 0);
+                    systemStock = dbItem.stockLevels.reduce((acc: number, loc: any) => acc + loc.currentStock, 0);
                 }
 
                 const costSnapshot = dbItem.costHistory[0]?.costPerUnit || 0;
@@ -148,6 +156,8 @@ export async function updateAuditItemAction(input: UpdateAuditItemInput) {
     if (!session?.id) return { success: false, message: 'No autorizado' };
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         const item = await prisma.inventoryAuditItem.findUnique({ where: { id: input.itemId }, include: { audit: true } });
         if (!item) return { success: false, message: 'Item no encontrado' };
         if (item.audit.status !== 'DRAFT') return { success: false, message: 'Auditoría cerrada' };
@@ -177,17 +187,19 @@ export async function approveAuditAction(input: ApproveAuditInput) {
     const userId = session.id;
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         // OPTIMIZATION: Get area ID OUTSIDE the transaction to reduce transaction time
         let targetAreaId = input.areaId;
         if (!targetAreaId) {
             // Try exact match first (with accent)
-            let mainArea = await prisma.area.findFirst({
+            let mainArea = await db.area.findFirst({
                 where: { name: 'Almacén Principal' }
             });
 
             // Fallback: search by partial match without accent
             if (!mainArea) {
-                mainArea = await prisma.area.findFirst({
+                mainArea = await db.area.findFirst({
                     where: {
                         OR: [
                             { name: { contains: 'Almacen', mode: 'insensitive' } },
@@ -199,7 +211,7 @@ export async function approveAuditAction(input: ApproveAuditInput) {
 
             // Final fallback: use first available area
             if (!mainArea) {
-                mainArea = await prisma.area.findFirst();
+                mainArea = await db.area.findFirst();
             }
 
             targetAreaId = mainArea?.id;
@@ -209,8 +221,8 @@ export async function approveAuditAction(input: ApproveAuditInput) {
             return { success: false, message: 'No se encontró un área destino para los ajustes' };
         }
 
-        const result = await prisma.$transaction(async (tx) => {
-            const audit = await tx.inventoryAudit.findUnique({
+        const result = await db.$transaction(async (tx: any) => {
+            const audit = await tx.inventoryAudit.findFirst({
                 where: { id: input.auditId },
                 include: { items: true }
             });
@@ -221,7 +233,7 @@ export async function approveAuditAction(input: ApproveAuditInput) {
             // Use the areaId from audit if available, otherwise use the one we found
             const areaToUse = audit.areaId || targetAreaId;
 
-            await tx.inventoryAudit.update({
+            await tx.inventoryAudit.updateMany({
                 where: { id: input.auditId },
                 data: {
                     status: 'APPROVED',
@@ -242,7 +254,7 @@ export async function approveAuditAction(input: ApproveAuditInput) {
                 const movements = await tx.inventoryMovement.findMany({
                     where: {
                         createdAt: { gt: audit.effectiveDate },
-                        inventoryItemId: { in: audit.items.map(i => i.inventoryItemId) }
+                        inventoryItemId: { in: audit.items.map((i: any) => i.inventoryItemId) }
                     }
                 });
                 for (const mov of movements) {
@@ -327,7 +339,9 @@ export async function rejectAuditAction(auditId: string) {
     if (!session?.id) return { success: false };
 
     try {
-        await prisma.inventoryAudit.update({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        await db.inventoryAudit.updateMany({
             where: { id: auditId },
             data: { status: 'REJECTED' }
         });
@@ -349,8 +363,10 @@ export async function voidAuditAction(auditId: string) {
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            const audit = await tx.inventoryAudit.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const result = await db.$transaction(async (tx: any) => {
+            const audit = await tx.inventoryAudit.findFirst({
                 where: { id: auditId },
                 include: { items: true }
             });
@@ -358,7 +374,7 @@ export async function voidAuditAction(auditId: string) {
             if (!audit) throw new Error("Auditoría no encontrada");
             if (audit.status !== 'APPROVED') throw new Error("Solo se pueden anular auditorías aprobadas");
 
-            await tx.inventoryAudit.update({
+            await tx.inventoryAudit.updateMany({
                 where: { id: auditId },
                 data: {
                     status: 'VOIDED',
@@ -422,7 +438,9 @@ export async function deleteAuditAction(auditId: string) {
     if (!session?.id) return { success: false };
 
     try {
-        await prisma.inventoryAudit.update({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        await db.inventoryAudit.updateMany({
             where: { id: auditId },
             data: { deletedAt: new Date(), deletedById: session.id }
         });

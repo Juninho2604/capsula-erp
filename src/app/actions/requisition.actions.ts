@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { revalidatePath } from 'next/cache';
 
 // ============================================================================
@@ -43,12 +45,14 @@ export interface ActionResult {
 // ============================================================================
 
 export async function getRequisitions(filter: 'ALL' | 'PENDING' | 'COMPLETED' = 'ALL') {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         const whereClause: any = {};
         if (filter === 'PENDING') whereClause.status = { in: ['PENDING', 'DISPATCHED'] };
         if (filter === 'COMPLETED') whereClause.status = { in: ['APPROVED', 'COMPLETED', 'RECEIVED', 'REJECTED'] };
 
-        const requisitions = await prisma.requisition.findMany({
+        const requisitions = await db.requisition.findMany({
             where: whereClause,
             include: {
                 requestedBy: { select: { firstName: true, lastName: true } },
@@ -79,14 +83,16 @@ export async function getRequisitions(filter: 'ALL' | 'PENDING' | 'COMPLETED' = 
 
 // 1. CREAR SOLICITUD
 export async function createRequisition(input: CreateRequisitionInput): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const count = await prisma.requisition.count();
+        const count = await db.requisition.count();
         const code = `REQ-${(count + 1).toString().padStart(4, '0')}`;
 
         // Buscar un Area Origen por defecto (Almacén Principal) si no viene
         let sourceId = input.sourceAreaId;
         if (!sourceId) {
-            const mainWarehouse = await prisma.area.findFirst({
+            const mainWarehouse = await db.area.findFirst({
                 where: { name: { contains: 'ALMACEN PRINCIPAL', mode: 'insensitive' } }
             });
             sourceId = mainWarehouse?.id;
@@ -95,13 +101,13 @@ export async function createRequisition(input: CreateRequisitionInput): Promise<
         // Crear la requisición y sus items
         // Validar usuario (Fallback para desarrollo tras DB Reset)
         let requesterId = input.requestedById;
-        const userExists = await prisma.user.findUnique({ where: { id: requesterId } });
+        const userExists = await db.user.findUnique({ where: { id: requesterId } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) requesterId = owner.id;
         }
 
-        const requisition = await prisma.requisition.create({
+        const requisition = await db.requisition.create({
             data: {
                 code,
                 requestedById: requesterId,
@@ -137,8 +143,10 @@ export async function dispatchRequisition(input: {
     dispatchedById: string;
     items: { inventoryItemId: string; sentQuantity: number }[];
 }): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const req = await prisma.requisition.findUnique({
+        const req = await db.requisition.findUnique({
             where: { id: input.requisitionId },
             include: { items: true }
         });
@@ -148,7 +156,7 @@ export async function dispatchRequisition(input: {
             return { success: false, message: 'Esta solicitud ya fue procesada o despachada' };
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // Si no tenía origen, buscar almacén principal
             let sourceAreaId = req.sourceAreaId;
             if (!sourceAreaId) {
@@ -194,9 +202,11 @@ export async function dispatchRequisition(input: {
 
 // 2b. APROBAR Y COMPLETAR (Gerente)
 export async function approveRequisition(input: ApproveRequisitionInput): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         // Buscar la requisición para validar
-        const req = await prisma.requisition.findUnique({
+        const req = await db.requisition.findUnique({
             where: { id: input.requisitionId },
             include: { items: true }
         });
@@ -209,7 +219,7 @@ export async function approveRequisition(input: ApproveRequisitionInput): Promis
 
         // Si no tenía origen, intentar asignarlo ahora o fallar
         if (!req.sourceAreaId) {
-            const mainWarehouse = await prisma.area.findFirst({
+            const mainWarehouse = await db.area.findFirst({
                 where: { name: { contains: 'ALMACEN PRINCIPAL', mode: 'insensitive' } }
             });
             if (!mainWarehouse) return { success: false, message: 'No hay Almacén Principal definido para despachar' };
@@ -218,13 +228,13 @@ export async function approveRequisition(input: ApproveRequisitionInput): Promis
 
         // Validar usuario aprobador (Fallback)
         let processedById = input.processedById;
-        const userExists = await prisma.user.findUnique({ where: { id: processedById } });
+        const userExists = await db.user.findUnique({ where: { id: processedById } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) processedById = owner.id;
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // 1. Actualizar estado Requisición
             await tx.requisition.update({
                 where: { id: input.requisitionId },
@@ -322,16 +332,18 @@ export async function approveRequisition(input: ApproveRequisitionInput): Promis
 
 // 3. RECHAZAR SOLICITUD
 export async function rejectRequisition(requisitionId: string, userId: string): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         // Validar usuario (Fallback)
         let processorId = userId;
-        const userExists = await prisma.user.findUnique({ where: { id: userId } });
+        const userExists = await db.user.findUnique({ where: { id: userId } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) processorId = owner.id;
         }
 
-        await prisma.requisition.update({
+        await db.requisition.update({
             where: { id: requisitionId },
             data: {
                 status: 'REJECTED',
@@ -355,8 +367,10 @@ export async function receiveRequisition(input: {
     items: { inventoryItemId: string; receivedQuantity: number }[];
     notes?: string;
 }): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const req = await prisma.requisition.findUnique({
+        const req = await db.requisition.findUnique({
             where: { id: input.requisitionId },
             include: { items: true }
         });
@@ -368,13 +382,13 @@ export async function receiveRequisition(input: {
 
         // Validar usuario
         let receiverId = input.receivedById;
-        const userExists = await prisma.user.findUnique({ where: { id: receiverId } });
+        const userExists = await db.user.findUnique({ where: { id: receiverId } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) receiverId = owner.id;
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // Actualizar estado
             await tx.requisition.update({
                 where: { id: input.requisitionId },
@@ -415,8 +429,10 @@ export async function receiveRequisition(input: {
 
 // 5. MARCAR COMO COMPLETADO (cierre final de transferencia recibida)
 export async function completeRequisition(requisitionId: string, completedById: string): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const req = await prisma.requisition.findUnique({
+        const req = await db.requisition.findUnique({
             where: { id: requisitionId }
         });
 
@@ -426,13 +442,13 @@ export async function completeRequisition(requisitionId: string, completedById: 
         }
 
         let userId = completedById;
-        const userExists = await prisma.user.findUnique({ where: { id: userId } });
+        const userExists = await db.user.findUnique({ where: { id: userId } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) userId = owner.id;
         }
 
-        await prisma.requisition.update({
+        await db.requisition.update({
             where: { id: requisitionId },
             data: {
                 status: 'COMPLETED',
@@ -460,8 +476,10 @@ export async function getCategoriesForTransferAction(): Promise<{
     success: boolean;
     categories?: { name: string; count: number }[];
 }> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const items = await prisma.inventoryItem.groupBy({
+        const items = await db.inventoryItem.groupBy({
             by: ['category'],
             where: {
                 isActive: true,
@@ -497,15 +515,17 @@ export async function previewBulkTransferAction(
     message: string;
     items?: { id: string; name: string; currentStock: number; unit: string }[];
 }> {
+    const { tenantId } = await resolveTenantContext();
     try {
-        // Obtener items de la categoría con stock en el área origen
+        // Obtener items de la categoría con stock en el área origen (tenant-scoped vía inventoryItem)
         const locations = await prisma.inventoryLocation.findMany({
             where: {
                 areaId: sourceAreaId,
                 currentStock: { gt: 0 },
                 inventoryItem: {
                     category: { equals: category, mode: 'insensitive' },
-                    isActive: true
+                    isActive: true,
+                    tenantId,
                 }
             },
             include: {
@@ -547,6 +567,8 @@ export async function executeBulkTransferAction(
     userId: string,
     excludedItemIds: string[] = []
 ): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         if (sourceAreaId === targetAreaId) {
             return { success: false, message: 'Origen y destino no pueden ser iguales' };
@@ -554,13 +576,13 @@ export async function executeBulkTransferAction(
 
         // Validar usuario
         let executorId = userId;
-        const userExists = await prisma.user.findUnique({ where: { id: userId } });
+        const userExists = await db.user.findUnique({ where: { id: userId } });
         if (!userExists) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (owner) executorId = owner.id;
         }
 
-        // Obtener items con stock en origen (excluyendo los indicados)
+        // Obtener items con stock en origen (excluyendo los indicados, tenant-scoped)
         const locationsToTransfer = await prisma.inventoryLocation.findMany({
             where: {
                 areaId: sourceAreaId,
@@ -568,7 +590,8 @@ export async function executeBulkTransferAction(
                 inventoryItem: {
                     category: { equals: category, mode: 'insensitive' },
                     isActive: true,
-                    id: { notIn: excludedItemIds }
+                    id: { notIn: excludedItemIds },
+                    tenantId,
                 }
             },
             include: {
@@ -584,11 +607,11 @@ export async function executeBulkTransferAction(
         }
 
         // Generar código de transferencia
-        const count = await prisma.requisition.count();
+        const count = await db.requisition.count();
         const code = `BULK-${(count + 1).toString().padStart(4, '0')}`;
 
         // Ejecutar transferencia en transacción
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // Crear requisición como historial
             const req = await tx.requisition.create({
                 data: {

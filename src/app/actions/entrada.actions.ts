@@ -8,6 +8,8 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // Tipos locales
 type UnitOfMeasure = 'KG' | 'G' | 'L' | 'ML' | 'UNIT' | 'PORTION';
@@ -67,9 +69,11 @@ function getConversionRate(itemId: string, itemSku: string, fromUnit: string): n
 export async function registrarEntradaMercancia(
     input: EntradaMercanciaInput
 ): Promise<ActionResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         // 1. Obtener item y validar
-        const item = await prisma.inventoryItem.findUnique({
+        const item = await db.inventoryItem.findUnique({
             where: { id: input.inventoryItemId },
             include: {
                 stockLevels: {
@@ -87,7 +91,7 @@ export async function registrarEntradaMercancia(
             return { success: false, message: 'Insumo no encontrado en el sistema' };
         }
 
-        const area = await prisma.area.findUnique({ where: { id: input.areaId } });
+        const area = await db.area.findUnique({ where: { id: input.areaId } });
         const areaName = area ? area.name : 'Almacén Desconocido';
 
         // 2. Convertir cantidad a unidad base si es diferente
@@ -113,10 +117,10 @@ export async function registrarEntradaMercancia(
 
         // 5.5. Asegurar un userId válido (Fallback para desarrollo)
         let finalUserId = input.userId;
-        const userExists = await prisma.user.findUnique({ where: { id: input.userId } });
+        const userExists = await db.user.findUnique({ where: { id: input.userId } });
         if (!userExists) {
             console.warn(`Usuario ${input.userId} no encontrado. Buscando fallback...`);
-            const adminUser = await prisma.user.findFirst({ where: { role: 'OWNER' } });
+            const adminUser = await db.user.findFirst({ where: { role: 'OWNER' } });
             if (adminUser) {
                 finalUserId = adminUser.id;
                 console.log(`Usando usuario fallback: ${adminUser.email} (${adminUser.id})`);
@@ -126,7 +130,7 @@ export async function registrarEntradaMercancia(
         }
 
         // 6. Ejecutar transacción atómica
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await db.$transaction(async (tx) => {
             // Crear movimiento de inventario
             const movement = await tx.inventoryMovement.create({
                 data: {
@@ -248,8 +252,10 @@ export async function registrarEntradaMercancia(
 // ============================================================================
 
 export async function getInventoryItemsForSelect() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: 'RAW_MATERIAL', // Solo insumos base para compras
@@ -297,8 +303,10 @@ export async function getInventoryItemsForSelect() {
 }
 
 export async function getAreasForSelect() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
-        const areas = await prisma.area.findMany({
+        const areas = await db.area.findMany({
             where: { isActive: true },
             select: {
                 id: true,
@@ -316,8 +324,9 @@ export async function getAreasForSelect() {
 
 export async function getRecentMovements(limit: number = 10) {
     try {
+        const { tenantId } = await resolveTenantContext();
         const movements = await prisma.inventoryMovement.findMany({
-            where: { movementType: 'PURCHASE' },
+            where: { movementType: 'PURCHASE', inventoryItem: { tenantId } },
             include: {
                 inventoryItem: {
                     select: { name: true, sku: true },
