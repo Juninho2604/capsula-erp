@@ -20,9 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { PrinterConfig } from './printer-adapter.js';
 
-// Cargar .env del directorio del agent (no del cwd).
+// Cargar .env del directorio del agent (no del cwd). El archivo .ts vive
+// en print-agent/src/ y el .env en print-agent/, así que un solo nivel
+// arriba. En modo build (dist/) el path también es 1 nivel arriba.
 const here = dirname(fileURLToPath(import.meta.url));
-config({ path: join(here, '..', '..', '.env') });
+config({ path: join(here, '..', '.env') });
 
 export interface AgentConfig {
     erpUrl: string;
