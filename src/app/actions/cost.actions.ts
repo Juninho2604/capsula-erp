@@ -1,15 +1,21 @@
 'use server';
 
+/**
+ * Costos — multitenant pleno (Lote 3.a — Fase 3 Paso D.b).
+ *
+ * Modelos involucrados:
+ *   - InventoryItem, Recipe, MenuItem → tenant-aware. La extension filtra.
+ *   - CostHistory → NO tiene tenantId; tenant-scoped implícitamente vía
+ *     FK a InventoryItem. Cualquier query a CostHistory por inventoryItemId
+ *     debe partir de un id que ya validamos pertenece al tenant.
+ */
+
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import * as XLSX from 'xlsx';
 import { getSession } from '@/lib/auth';
-
-/**
- * SHANKLISH CARACAS ERP - Cost Actions
- * 
- * Server Actions para gestión de costos y precios de compra
- */
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 interface CostImportItem {
     row: number;
@@ -68,8 +74,10 @@ export async function parseCostUploadAction(
             return { success: false, message: 'El archivo está vacío o no tiene datos' };
         }
 
-        // Get all inventory items for matching
-        const allItems = await prisma.inventoryItem.findMany({
+        // Get all inventory items for matching (tenant-scoped)
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const allItems = await db.inventoryItem.findMany({
             where: { isActive: true },
             select: { id: true, name: true, sku: true, baseUnit: true, category: true },
         });
@@ -204,6 +212,21 @@ export async function processCostImportAction(
             });
         }
 
+        // Validar que todos los itemIds pertenecen al tenant actual antes
+        // de tocar CostHistory. CostHistory no tiene tenantId; el aislamiento
+        // viene de partir solo de inventoryItemIds del tenant.
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const requestedIds = Array.from(latestCostByItem.keys());
+        const ownedItems = await db.inventoryItem.findMany({
+            where: { id: { in: requestedIds } },
+            select: { id: true },
+        });
+        const ownedIds = new Set(ownedItems.map(i => i.id));
+        for (const id of requestedIds) {
+            if (!ownedIds.has(id)) latestCostByItem.delete(id);
+        }
+
         // Transaction to update costs
         const result = await prisma.$transaction(async (tx) => {
             let updatedCount = 0;
@@ -278,7 +301,9 @@ export async function getCurrentCostsAction(): Promise<{
             return { success: false, message: 'No autorizado' };
         }
 
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: 'RAW_MATERIAL',
@@ -326,6 +351,18 @@ export async function updateItemCostAction(
         const session = await getSession();
         if (!session) {
             return { success: false, message: 'No autorizado' };
+        }
+
+        // Verificar que el item pertenece al tenant actual antes de tocar
+        // CostHistory (que no es tenant-aware en sí — su scope viene de la FK).
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const ownedItem = await db.inventoryItem.findFirst({
+            where: { id: itemId },
+            select: { id: true },
+        });
+        if (!ownedItem) {
+            return { success: false, message: 'Item no encontrado' };
         }
 
         // Close current cost
@@ -399,17 +436,19 @@ export async function getDishMarginsAction(): Promise<DishMarginsResult> {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        // 1. Obtener todos los items de menú activos con categoría
-        const menuItems = await prisma.menuItem.findMany({
+        // 1. Obtener todos los items de menú activos con categoría (tenant-scoped)
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const menuItems = await db.menuItem.findMany({
             where: { isActive: true },
             include: { category: { select: { name: true } } },
             orderBy: [{ categoryId: 'asc' }, { name: 'asc' }],
         });
 
-        // 2. Obtener recetas con ingredientes y costos
+        // 2. Obtener recetas con ingredientes y costos (tenant-scoped)
         const recipeIds = menuItems.map(m => m.recipeId).filter(Boolean) as string[];
         const recipes = recipeIds.length
-            ? await prisma.recipe.findMany({
+            ? await db.recipe.findMany({
                 where: { id: { in: recipeIds }, isActive: true },
                 include: {
                     ingredients: {
