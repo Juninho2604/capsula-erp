@@ -103,6 +103,12 @@ export async function printToStation(
         case 'KITCHEN':
         case 'VOID_KITCHEN':
             renderKitchen(printer, payload, cfg.station);
+            // Buzzer audible al final de cada comanda/anulación: 3 pitidos de
+            // longitud 5 (escala 1–9 del comando ESC/POS BEEP). Importante
+            // para cocina/barra: el cocinero/barman puede estar de espaldas
+            // y necesita escuchar que llegó un pedido nuevo. No suena en
+            // recibos (sería molesto para el cliente en caja).
+            printer.beep(3, 5);
             break;
         case 'RECEIPT':
         case 'PRECUENTA':
