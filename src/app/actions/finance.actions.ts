@@ -1,6 +1,8 @@
 'use server';
 
 import { prisma } from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { getCaracasNowParts } from '@/lib/datetime';
@@ -72,8 +74,10 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
   const endDate = new Date(Date.UTC(y, m, 1, 3, 59, 59, 999));
 
   try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     // 1. Ventas del período
-    const salesOrders = await prisma.salesOrder.findMany({
+    const salesOrders = await db.salesOrder.findMany({
       where: revenueWhere(startDate, endDate),
       select: {
         total: true,
@@ -124,7 +128,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
       .sort((a, b) => a.day - b.day);
 
     // 2. Gastos del período
-    const expenses = await prisma.expense.findMany({
+    const expenses = await db.expense.findMany({
       where: { status: 'CONFIRMED', periodMonth: m, periodYear: y },
       include: { category: { select: { name: true, color: true } } },
     });
@@ -156,7 +160,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
       }));
 
     // 3. Compras del período
-    const purchaseAgg = await prisma.purchaseOrder.aggregate({
+    const purchaseAgg = await db.purchaseOrder.aggregate({
       where: {
         status: { in: ['RECEIVED', 'PARTIAL'] },
         receivedDate: { gte: startDate, lte: endDate },
@@ -166,7 +170,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
     });
 
     // 4. Cuentas por pagar pendientes (todo historial, no solo el mes)
-    const pendingAccounts = await prisma.accountPayable.findMany({
+    const pendingAccounts = await db.accountPayable.findMany({
       where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } },
       select: { remainingUsd: true, dueDate: true },
     });
@@ -200,7 +204,7 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
     const operatingMarginPct = totalSalesUsd > 0 ? (operatingProfit / totalSalesUsd) * 100 : 0;
 
     // 6. Cash Flow
-    const accountPayments = await prisma.accountPayment.aggregate({
+    const accountPayments = await db.accountPayment.aggregate({
       where: { paidAt: { gte: startDate, lte: endDate } },
       _sum: { amountUsd: true },
     });
@@ -218,11 +222,11 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
     const prevEnd = new Date(Date.UTC(prevYear, prevMonth, 1, 3, 59, 59, 999));
 
     const [prevSalesOrders, prevExpAgg] = await Promise.all([
-      prisma.salesOrder.findMany({
+      db.salesOrder.findMany({
         where: revenueWhere(prevStart, prevEnd),
         select: { total: true, items: { select: { costTotal: true } } },
       }),
-      prisma.expense.aggregate({
+      db.expense.aggregate({
         where: { status: 'CONFIRMED', periodMonth: prevMonth, periodYear: prevYear },
         _sum: { amountUsd: true },
       }),
@@ -298,6 +302,8 @@ export async function getMonthlyTrendAction(months = 6): Promise<{
   if (!guard.ok) return { success: false, error: guard.message };
 
   try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const results: { label: string; sales: number; cogs: number; expenses: number; profit: number }[] = [];
     const { year: _cy, month: _cm } = getCaracasNowParts();
 
@@ -309,14 +315,14 @@ export async function getMonthlyTrendAction(months = 6): Promise<{
       const startDate = new Date(Date.UTC(y, m - 1, 1, 4, 0, 0, 0));
       const endDate = new Date(Date.UTC(y, m, 1, 3, 59, 59, 999));
 
-      const salesOrders = await prisma.salesOrder.findMany({
+      const salesOrders = await db.salesOrder.findMany({
         where: revenueWhere(startDate, endDate),
         select: { total: true, items: { select: { costTotal: true } } },
       });
       const sales = salesOrders.reduce((s: number, o) => s + o.total, 0);
       const cogs = salesOrders.reduce((s: number, o) => s + o.items.reduce((si: number, i) => si + (i.costTotal ?? 0), 0), 0);
 
-      const expAgg = await prisma.expense.aggregate({
+      const expAgg = await db.expense.aggregate({
         where: { status: 'CONFIRMED', periodMonth: m, periodYear: y },
         _sum: { amountUsd: true },
       });
@@ -349,7 +355,9 @@ export async function getDailySalesAction(month: number, year: number): Promise<
   const endDate = new Date(Date.UTC(year, month, 1, 3, 59, 59, 999));
 
   try {
-    const salesOrders = await prisma.salesOrder.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const salesOrders = await db.salesOrder.findMany({
       where: revenueWhere(startDate, endDate),
       select: { total: true, createdAt: true },
     });
@@ -434,6 +442,8 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
   if (!guard.ok) return { success: false, error: guard.message };
 
   try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     // Default: hoy en Caracas
     const todayParts = getCaracasNowParts();
     const targetDateStr = dateStr ?? `${todayParts.year}-${String(todayParts.month + 1).padStart(2, '0')}-${String(todayParts.day).padStart(2, '0')}`;
@@ -451,7 +461,7 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
     const endDate = new Date(Date.UTC(y, m - 1, d + 1, 3, 59, 59, 999));
 
     // ── Ventas del día ─────────────────────────────────────────────────────
-    const salesOrders = await prisma.salesOrder.findMany({
+    const salesOrders = await db.salesOrder.findMany({
       where: revenueWhere(startDate, endDate),
       select: {
         total: true,
@@ -497,7 +507,7 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
     }));
 
     // ── Gastos del día (filtra por paidAt) ──────────────────────────────────
-    const expenses = await prisma.expense.findMany({
+    const expenses = await db.expense.findMany({
       where: {
         status: 'CONFIRMED',
         paidAt: { gte: startDate, lte: endDate },
@@ -529,7 +539,7 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
       }));
 
     // ── Compras del día ─────────────────────────────────────────────────────
-    const purchaseAgg = await prisma.purchaseOrder.aggregate({
+    const purchaseAgg = await db.purchaseOrder.aggregate({
       where: {
         status: { in: ['RECEIVED', 'PARTIAL'] },
         receivedDate: { gte: startDate, lte: endDate },
@@ -544,7 +554,7 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
     const operatingProfit = grossProfit - totalExpensesUsd;
     const operatingMarginPct = totalSalesUsd > 0 ? (operatingProfit / totalSalesUsd) * 100 : 0;
 
-    const accountPayments = await prisma.accountPayment.aggregate({
+    const accountPayments = await db.accountPayment.aggregate({
       where: { paidAt: { gte: startDate, lte: endDate } },
       _sum: { amountUsd: true },
     });
@@ -559,11 +569,11 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
     const prevStart = new Date(Date.UTC(y, m - 1, d - 1, 4, 0, 0, 0));
     const prevEnd = new Date(Date.UTC(y, m - 1, d, 3, 59, 59, 999));
     const [prevSalesOrders, prevExpAgg] = await Promise.all([
-      prisma.salesOrder.findMany({
+      db.salesOrder.findMany({
         where: revenueWhere(prevStart, prevEnd),
         select: { total: true, items: { select: { costTotal: true } } },
       }),
-      prisma.expense.aggregate({
+      db.expense.aggregate({
         where: { status: 'CONFIRMED', paidAt: { gte: prevStart, lte: prevEnd } },
         _sum: { amountUsd: true },
       }),
