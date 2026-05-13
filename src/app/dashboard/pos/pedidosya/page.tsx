@@ -53,6 +53,7 @@ export default function POSPedidosYAPage() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isReprintingComanda, setIsReprintingComanda] = useState(false);
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [customerName, setCustomerName] = useState('');
@@ -200,6 +201,15 @@ export default function POSPedidosYAPage() {
 
     const handleReprintComanda = () => {
         if (!lastOrder) return;
+        if (isReprintingComanda) return;
+        const confirmed = window.confirm(
+            `¿Reimprimir comanda ${lastOrder.orderNumber}?\n\n` +
+            `Cada click genera 2 papeles en cocina (modo espejo: Pase + Caliente).\n` +
+            `Solo úsalo si la comanda original no llegó.`
+        );
+        if (!confirmed) return;
+
+        setIsReprintingComanda(true);
         const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
         void enqueueKitchenCommand({
             type: 'KITCHEN',
@@ -209,6 +219,11 @@ export default function POSPedidosYAPage() {
             items: buildKitchenItems(lastOrder.items, menuItemCategoryMap),
             createdAt: new Date().toISOString(),
         });
+        toast.success(`Comanda ${lastOrder.orderNumber} reimprimiendo…`);
+        // Cooldown de 3s para prevenir doble-click accidental y confirmar al
+        // usuario que la acción ya se disparó. El estado se persiste el
+        // tiempo suficiente para que el agent imprima los papeles físicos.
+        setTimeout(() => setIsReprintingComanda(false), 3000);
     };
 
     if (isLoading) return (
@@ -425,10 +440,13 @@ export default function POSPedidosYAPage() {
                         {lastOrder && (
                             <button
                                 onClick={handleReprintComanda}
-                                className="pos-btn pos-btn-secondary w-full !min-h-0 py-3 text-sm"
+                                disabled={isReprintingComanda}
+                                className="pos-btn pos-btn-secondary w-full !min-h-0 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <Printer className="h-4 w-4" />
-                                Reimprimir comanda {lastOrder.orderNumber}
+                                {isReprintingComanda
+                                    ? `Reimprimiendo ${lastOrder.orderNumber}…`
+                                    : `Reimprimir comanda ${lastOrder.orderNumber}`}
                             </button>
                         )}
                     </div>
