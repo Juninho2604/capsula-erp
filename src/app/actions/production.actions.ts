@@ -1,14 +1,25 @@
 'use server';
 
 /**
- * SHANKLISH CARACAS ERP - Production Actions
- * 
- * Server Actions para gestión de producción conectadas a Prisma
+ * Producción — multitenant (Lote 4.d — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: Recipe, InventoryItem, Area, ProductionOrder.
+ * Modelos NO tenant-aware (FK-scoped): InventoryLocation, InventoryMovement.
+ *
+ * Validaciones nuevas:
+ *   - calculateRequirementsAction: ownership de recipeId y areaId.
+ *   - quickProductionAction: ownership de recipeId y areaId antes de la tx.
+ *   - manualProductionAction: ownership de outputItemId, areaId y todos los
+ *     ingredient itemIds antes de la tx.
+ *   - updateProductionOrderAction / deleteProductionOrderAction: update →
+ *     updateMany con tenant filter.
  */
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ============================================================================
 // TIPOS
@@ -17,7 +28,7 @@ import { getSession } from '@/lib/auth';
 export interface QuickProductionFormData {
     recipeId: string;
     actualQuantity: number;
-    areaId: string; // Área donde se produce (ej: Centro de Producción)
+    areaId: string;
     notes?: string;
 }
 
@@ -48,7 +59,9 @@ export interface IngredientRequirement {
 
 export async function getProductionRecipesAction() {
     try {
-        const recipes = await prisma.recipe.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const recipes = await db.recipe.findMany({
             where: { isActive: true },
             include: {
                 outputItem: {
@@ -86,7 +99,10 @@ export async function calculateRequirementsAction(
     areaId: string
 ): Promise<{ success: boolean; requirements: IngredientRequirement[] }> {
     try {
-        const recipe = await prisma.recipe.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        // findUnique no se filtra por la extension; findFirst sí.
+        const recipe = await db.recipe.findFirst({
             where: { id: recipeId },
             include: {
                 ingredients: {
@@ -152,8 +168,21 @@ export async function quickProductionAction(
         }
         const userId = session.id;
 
-        // 1. Obtener receta con ingredientes
-        const recipe = await prisma.recipe.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership de areaId (recipeId se valida implícitamente vía
+        // findFirst abajo).
+        const ownedArea = await db.area.findFirst({
+            where: { id: formData.areaId },
+            select: { id: true },
+        });
+        if (!ownedArea) {
+            return { success: false, message: 'Área no encontrada' };
+        }
+
+        // 1. Obtener receta con ingredientes (tenant-scoped)
+        const recipe = await db.recipe.findFirst({
             where: { id: formData.recipeId },
             include: {
                 outputItem: true,
@@ -214,7 +243,7 @@ export async function quickProductionAction(
         // 3. Generar número de orden
         const today = new Date();
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await prisma.productionOrder.count({
+        const count = await db.productionOrder.count({
             where: {
                 createdAt: {
                     gte: new Date(today.setHours(0, 0, 0, 0))
@@ -223,8 +252,10 @@ export async function quickProductionAction(
         });
         const orderNumber = `PROD-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
-        // 4. Ejecutar transacción
-        const result = await prisma.$transaction(async (tx) => {
+        // 4. Ejecutar transacción. Mezcla:
+        //   - ProductionOrder (tenant-aware) → usamos db extendido
+        //   - InventoryLocation / InventoryMovement (NO tenant-aware) → prisma raw
+        const result = await db.$transaction(async (tx) => {
             // 4a. Crear orden de producción
             const productionOrder = await tx.productionOrder.create({
                 data: {
@@ -244,7 +275,6 @@ export async function quickProductionAction(
 
             // 4b. Descontar ingredientes del área de producción
             for (const ing of ingredientsToConsume) {
-                // Actualizar stock
                 await tx.inventoryLocation.update({
                     where: { id: ing.stockLevelId },
                     data: {
@@ -252,7 +282,6 @@ export async function quickProductionAction(
                     }
                 });
 
-                // Crear movimiento de salida (consumo)
                 await tx.inventoryMovement.create({
                     data: {
                         inventoryItemId: ing.itemId,
@@ -267,7 +296,6 @@ export async function quickProductionAction(
             }
 
             // 4c. Sumar producto terminado al área de producción
-            // Buscar o crear el InventoryLocation para el producto
             let outputStock = await tx.inventoryLocation.findUnique({
                 where: {
                     inventoryItemId_areaId: {
@@ -294,7 +322,7 @@ export async function quickProductionAction(
                 });
             }
 
-            // Crear movimiento de entrada (producción)
+            // Movimiento de entrada (producción)
             await tx.inventoryMovement.create({
                 data: {
                     inventoryItemId: recipe.outputItemId,
@@ -310,7 +338,6 @@ export async function quickProductionAction(
             return productionOrder;
         });
 
-        // 5. Revalidar páginas
         revalidatePath('/dashboard');
         revalidatePath('/dashboard/inventario');
         revalidatePath('/dashboard/produccion');
@@ -352,7 +379,9 @@ export async function getProductionHistoryAction(filters?: {
     status?: string;
 }) {
     try {
-        const orders = await prisma.productionOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const orders = await db.productionOrder.findMany({
             where: filters?.status ? { status: filters.status } : {},
             take: filters?.limit || 50,
             orderBy: { createdAt: 'desc' },
@@ -391,7 +420,9 @@ export async function getProductionHistoryAction(filters?: {
 
 export async function getProductionAreasAction() {
     try {
-        const areas = await prisma.area.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const areas = await db.area.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' }
         });
@@ -408,7 +439,9 @@ export async function getProductionAreasAction() {
 
 export async function getProductionItemsAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: { isActive: true },
             select: {
                 id: true,
@@ -453,8 +486,20 @@ export async function manualProductionAction(
         }
         const userId = session.id;
 
-        // Obtener info del producto de salida
-        const outputItem = await prisma.inventoryItem.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership de areaId
+        const ownedArea = await db.area.findFirst({
+            where: { id: formData.areaId },
+            select: { id: true },
+        });
+        if (!ownedArea) {
+            return { success: false, message: 'Área no encontrada' };
+        }
+
+        // Obtener info del producto de salida (tenant-scoped)
+        const outputItem = await db.inventoryItem.findFirst({
             where: { id: formData.outputItemId }
         });
         if (!outputItem) {
@@ -466,7 +511,8 @@ export async function manualProductionAction(
         const stockErrors: string[] = [];
 
         for (const ing of formData.ingredients) {
-            const item = await prisma.inventoryItem.findUnique({
+            // findFirst con tenant filter (el item debe pertenecer al tenant)
+            const item = await db.inventoryItem.findFirst({
                 where: { id: ing.itemId },
                 include: {
                     stockLevels: {
@@ -508,7 +554,7 @@ export async function manualProductionAction(
         // Generar número de orden
         const today = new Date();
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await prisma.productionOrder.count({
+        const count = await db.productionOrder.count({
             where: {
                 createdAt: {
                     gte: new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -518,17 +564,15 @@ export async function manualProductionAction(
         const orderNumber = `PROD-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
         // Buscar o crear una receta temporal para esta producción manual
-        // Usamos la primera receta que tenga este outputItemId, o creamos una genérica
         let recipeId: string;
-        const existingRecipe = await prisma.recipe.findFirst({
+        const existingRecipe = await db.recipe.findFirst({
             where: { outputItemId: formData.outputItemId, isActive: true }
         });
 
         if (existingRecipe) {
             recipeId = existingRecipe.id;
         } else {
-            // Crear una receta genérica para poder vincular la producción
-            const newRecipe = await prisma.recipe.create({
+            const newRecipe = await db.recipe.create({
                 data: {
                     name: `Producción manual: ${outputItem.name}`,
                     outputItemId: formData.outputItemId,
@@ -544,8 +588,7 @@ export async function manualProductionAction(
         }
 
         // Ejecutar transacción
-        const result = await prisma.$transaction(async (tx) => {
-            // Crear orden de producción
+        const result = await db.$transaction(async (tx) => {
             const productionOrder = await tx.productionOrder.create({
                 data: {
                     orderNumber,
@@ -667,12 +710,14 @@ export async function updateProductionOrderAction(
             return { success: false, message: 'No autorizado' };
         }
 
-        await prisma.productionOrder.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).productionOrder.updateMany({
             where: { id: orderId },
             data: {
                 notes: data.notes,
             }
         });
+        if (res.count === 0) return { success: false, message: 'Orden no encontrada' };
 
         revalidatePath('/dashboard/produccion');
 
@@ -696,14 +741,15 @@ export async function deleteProductionOrderAction(
             return { success: false, message: 'No autorizado' };
         }
 
-        // Solo permitir cancelar, no borrar (para mantener historial)
-        await prisma.productionOrder.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).productionOrder.updateMany({
             where: { id: orderId },
             data: {
                 status: 'CANCELLED',
                 notes: 'Cancelado por el usuario',
             }
         });
+        if (res.count === 0) return { success: false, message: 'Orden no encontrada' };
 
         revalidatePath('/dashboard/produccion');
 
