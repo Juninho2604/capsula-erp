@@ -7085,6 +7085,73 @@ Email de bienvenida, panel `SUPER_ADMIN`, Turnstile. El resto
 (seed más completo de Area/ServiceZone/TableOrStation) puede esperar
 porque el owner puede empezar el flujo solo con Branch + dashboard
 funcionando.
+
+### 38.17 Panel SUPER_ADMIN — `/admin/tenants` (2026-05-13)
+
+Resuelve el pendiente "Panel SUPER_ADMIN" de §38.15. Permite listar y
+suspender tenants sin tocar BD a mano.
+
+**Modelo de autorización: env-var allowlist, no rol persistido.**
+
+Un SUPER_ADMIN sigue siendo un `User` normal (con su rol y su tenant)
+pero su email aparece en `SUPER_ADMIN_EMAILS` (lista separada por coma).
+Esa whitelist le habilita acceso a `/admin/*` y a operar sobre cualquier
+tenant. No hay schema change ni nuevo rol en `roles.ts`.
+
+Ventajas vs un `role='SUPER_ADMIN'` en BD:
+- No requiere migration.
+- Bootstrap inmediato: edit `.env` + `pm2 restart` y listo, sin login previo.
+- Revocar = remover email de la env + restart. Sin propagar a JWTs vivos.
+- No contamina la tabla `Tenant`/`User` con un concepto cross-tenant.
+
+Desventajas:
+- No queda registro auditable en BD de quién fue SUPER_ADMIN cuándo
+  (mitigable con git history del `.env` si está versionado, o con audit
+  log de acciones del panel — futuro).
+
+**Cambios:**
+
+| Archivo | Rol |
+|---|---|
+| `src/lib/super-admin.ts` | `isSuperAdmin(email)`: lee `SUPER_ADMIN_EMAILS`, normaliza lowercase, cachea hasta cambio de la env var. `__resetSuperAdminCache()` para tests. |
+| `src/lib/super-admin.test.ts` | 6 tests (no env / vacía / match exacto / case-insensitive / lista con espacios / email vacío). |
+| `src/middleware.ts` | Gate `/admin/*` — sin sesión o email fuera de la allowlist responde 404 directo (no leakea existencia). |
+| `src/app/admin/layout.tsx` | Doble check defense-in-depth con `getSession()` + `isSuperAdmin()` → `notFound()`. Header con email del admin. |
+| `src/app/admin/page.tsx` | Redirect a `/admin/tenants`. |
+| `src/app/admin/tenants/page.tsx` | Server Component: `prisma.tenant.findMany()` cross-tenant + `groupBy` de users activos y `salesOrder` últimos 30d. |
+| `src/app/admin/tenants/actions.ts` | `suspendTenantAction` (todos los users → `isActive:false` + `tokenVersion += 1`); `reactivateTenantAction` (→ `isActive:true`). Ambos repiten `requireSuperAdmin()` por defense in depth. |
+| `src/app/admin/tenants/tenants-table-client.tsx` | Tabla con badges Activo/Suspendido, link a `https://<slug>.kpsula.app`, botón Suspender (coral) / Reactivar. `confirm()` nativo antes de mutar. |
+
+**Cómo se "suspende" un tenant sin `Tenant.isActive`:**
+
+`updateMany` sobre `User` poniendo `isActive=false` + `tokenVersion += 1`.
+Resultado:
+- `loginAction` rechaza nuevos logins (chequea `isActive`).
+- JWTs vivos quedan inválidos en la siguiente verificación porque
+  `tokenVersion` del payload ya no matchea con el de BD.
+- "Suspendido" en el panel = todos los users del tenant tienen
+  `isActive=false`. Si hay al menos uno activo, mostramos "Activo".
+
+**Variables de entorno:**
+
+```env
+SUPER_ADMIN_EMAILS=admin@kpsula.app,otroadmin@kpsula.app
+```
+
+Sin la var → `/admin` 404 universal. Setear en VPS (y opcionalmente en
+Vercel si querés operar también desde ahí).
+
+**Riesgo:**
+
+Bajo. Sin la env var setteada el panel es invisible y inaccesible. Las
+acciones validan SUPER_ADMIN en cada llamada (no confían en el middleware).
+No hay schema change ni migration; nada toca BD existente más que un
+`updateMany` reversible de `User.isActive`.
+
+**Pendientes que quedan:**
+Email de bienvenida, Turnstile, audit log de acciones del panel, seed
+completo (Area/ServiceZone/TableOrStation).
+
 ## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
 
 ### 39.1 Contexto
