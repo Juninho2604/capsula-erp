@@ -642,6 +642,7 @@ export default function POSMeseroPage() {
             type: "KITCHEN",
             orderNumber: result.data.orderNumber,
             orderType: "RESTAURANT",
+            orderTypeLabel: "MESA",
             tableName: selectedTable?.name ?? null,
             customerName: activeTab.customerLabel || null,
             items: buildKitchenItems(cart, menuItemCategoryMap),

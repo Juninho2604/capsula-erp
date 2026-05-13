@@ -334,6 +334,7 @@ export default function POSDeliveryPage() {
                     type: 'KITCHEN',
                     orderNumber: result.data.orderNumber,
                     orderType: 'DELIVERY',
+                    orderTypeLabel: 'DELIVERY',
                     customerName: `${customerName} (${customerPhone})`,
                     items: buildKitchenItems(cart, menuItemCategoryMap),
                     createdAt: new Date().toISOString(),
