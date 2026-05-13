@@ -9,10 +9,22 @@ export type InvoiceChannel =
   | 'OPEN_TAB'
   | 'GAME_SESSION';
 
+// Prefijos del correlativo por canal. El prefijo aparece en el ticket de
+// comanda y permite al cocinero distinguir el tipo de pedido al instante:
+//   - TAB-####  → SalesOrder generada desde una mesa abierta (OpenTab)
+//   - REST-#### → Pickup directo desde caja (Venta Directa)
+//   - DEL-####  → Delivery propio
+//   - PYA-####  → PedidosYa
+//
+// OPEN_TAB usa el mismo prefijo 'TAB' que RESTAURANT — el tabCode de
+// la mesa abierta y el orderNumber de la SalesOrder generada al enviar
+// a cocina son secuencias independientes (counters distintos) pero
+// comparten visualmente el prefijo, lo cual es deseable: ambos
+// representan la misma mesa lógica.
 const PREFIX: Record<InvoiceChannel, string> = {
   DELIVERY:     'DEL',
-  PICKUP:       'PKP',
-  RESTAURANT:   'REST',
+  PICKUP:       'REST',
+  RESTAURANT:   'TAB',
   PEDIDOS_YA:   'PYA',
   OPEN_TAB:     'TAB',
   GAME_SESSION: 'GSN',
