@@ -76,6 +76,14 @@ export interface AgentKitchenPayload {
      * no distingue mesa de pickup; este label sí.
      */
     orderTypeLabel?: 'MESA' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
+    /**
+     * Solo para comandas de mesa abierta. El agent lo imprime grande
+     * arriba (ej. TAB-1512) y deja `orderNumber` chico debajo. Así
+     * múltiples comandas de la misma mesa comparten header y la cajera
+     * las puede agrupar al cierre con el recibo final (que también
+     * lleva el tabCode).
+     */
+    tabCode?: string;
     tableName?: string | null;
     customerName?: string | null;
     items: AgentKitchenItem[];

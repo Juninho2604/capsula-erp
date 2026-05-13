@@ -68,6 +68,15 @@ export interface KitchenPayload {
      * son RESTAURANT). Este label sí — lo setea el POS al encolar.
      */
     orderTypeLabel?: string;
+    /**
+     * Si el pedido viene de una OpenTab (mesa), el `tabCode` es el
+     * código padre estable durante toda la noche (ej. TAB-1512). El
+     * agent lo imprime GRANDE en el header de la comanda y deja el
+     * `orderNumber` (ej. REST-3981) en una línea pequeña debajo. Así
+     * todas las comandas de la misma mesa comparten el mismo header
+     * grande y la cajera puede engrapar/agrupar fácilmente al cierre.
+     */
+    tabCode?: string;
     tableName?: string | null;
     customerName?: string | null;
     items: Array<{
@@ -260,13 +269,22 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     printer.bold(false);
     printer.drawLine();
 
-    // Número de orden grande y centrado para que la cajera lo identifique
-    // al engrapar comandas con su recibo al cierre de turno.
+    // Header grande: si la comanda viene de una OpenTab (mesa), usamos
+    // el `tabCode` (ej. TAB-1512) como número visible — es estable para
+    // todas las comandas de esa misma mesa, lo que permite a la cajera
+    // engrapar/agrupar al cierre por un único código. La `orderNumber`
+    // (REST-3981, 3982...) queda en una línea pequeña debajo.
+    // Para pickup/delivery/pedidosya no hay tabCode → mostramos
+    // orderNumber GRANDE como ahora.
     printer.alignCenter();
     printer.bold(true);
     printer.setTextSize(1, 1);
-    printer.println(`#${p.orderNumber}`);
+    printer.println(`#${p.tabCode ?? p.orderNumber}`);
     printer.setTextNormal();
+    if (p.tabCode) {
+        // Comanda secundaria → label discreto con orderNumber
+        printer.println(`Comanda #${p.orderNumber}`);
+    }
     // Label de tipo (MESA / PICKUP / DELIVERY / PEDIDOSYA) en negrita
     // debajo del número — permite al cocinero priorizar al ojo: los
     // pickups y deliveries van con prisa, las mesas pueden esperar.
