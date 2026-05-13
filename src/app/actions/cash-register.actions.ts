@@ -1,9 +1,21 @@
 'use server';
 
+/**
+ * Caja registradora — multitenant (Lote 5.f — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: CashRegister, SalesOrder, Expense.
+ *
+ * Validaciones:
+ *   - close / updateOperators: findUnique → findFirst con tenant filter.
+ *   - update → updateMany con tenant filter.
+ */
+
 import { prisma } from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface CashRegisterData {
   id: string;
@@ -45,12 +57,13 @@ export async function getCashRegistersAction(filters?: {
   const month = filters?.month ?? (now.getMonth() + 1);
   const year = filters?.year ?? now.getFullYear();
 
-  // Fecha inicio y fin del mes
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0, 23, 59, 59);
 
   try {
-    const registers = await prisma.cashRegister.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const registers = await db.cashRegister.findMany({
       where: {
         shiftDate: { gte: startDate, lte: endDate },
         ...(filters?.status && { status: filters.status }),
@@ -109,16 +122,15 @@ export async function openCashRegisterAction(input: {
   if (!input.registerName.trim()) return { success: false, error: 'El nombre de caja es requerido' };
   if (input.openingCashUsd < 0) return { success: false, error: 'El fondo inicial no puede ser negativo' };
 
-  // Obtener fecha del día en zona Caracas
   const now = new Date();
   const shiftDate = new Date(now.toLocaleDateString('en-CA', { timeZone: 'America/Caracas' }) + 'T00:00:00.000Z');
 
   try {
-    // Nombre de la cajera que abre (primer operador por defecto)
-  const openerName = `${session.firstName} ${session.lastName}`;
+    const openerName = `${session.firstName} ${session.lastName}`;
 
-  // Verificar que no haya una caja abierta con el mismo nombre hoy
-    const existing = await prisma.cashRegister.findFirst({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const existing = await db.cashRegister.findFirst({
       where: {
         registerName: input.registerName.trim(),
         shiftDate,
@@ -127,7 +139,7 @@ export async function openCashRegisterAction(input: {
     });
     if (existing) return { success: false, error: `Ya hay una caja "${input.registerName}" abierta hoy` };
 
-    const register = await prisma.cashRegister.create({
+    const register = await db.cashRegister.create({
       data: {
         registerName: input.registerName.trim(),
         shiftDate,
@@ -173,17 +185,16 @@ export async function closeCashRegisterAction(
   }
 
   try {
-    const register = await prisma.cashRegister.findUnique({ where: { id } });
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const register = await db.cashRegister.findFirst({ where: { id } });
     if (!register) return { success: false, error: 'Caja no encontrada' };
     if (register.status === 'CLOSED') return { success: false, error: 'La caja ya está cerrada' };
 
-    // Calcular totales de ventas del día en esa caja (usando SalesOrders del mismo día)
-    // shiftDate está guardado como medianoche UTC del día Caracas (ej. 2026-04-07T00:00:00Z)
-    // El día Caracas completo = +4h a +28h en UTC (medianoche a medianoche Caracas)
-    const dayStart = new Date(register.shiftDate.getTime() + 4  * 3_600_000);       // 04:00 UTC = 00:00 Caracas
-    const dayEnd   = new Date(register.shiftDate.getTime() + 28 * 3_600_000 - 1);   // 04:00 UTC siguiente - 1ms
+    const dayStart = new Date(register.shiftDate.getTime() + 4  * 3_600_000);
+    const dayEnd   = new Date(register.shiftDate.getTime() + 28 * 3_600_000 - 1);
 
-    const salesAgg = await prisma.salesOrder.aggregate({
+    const salesAgg = await db.salesOrder.aggregate({
       where: {
         status: { in: ['COMPLETED', 'CONFIRMED'] },
         createdAt: { gte: dayStart, lte: dayEnd },
@@ -191,8 +202,7 @@ export async function closeCashRegisterAction(
       _sum: { total: true },
     });
 
-    // PROPINA COLECTIVA orders have total=0; we need amountPaid to count them correctly
-    const tipsAgg = await prisma.salesOrder.aggregate({
+    const tipsAgg = await db.salesOrder.aggregate({
       where: {
         status: { in: ['COMPLETED', 'CONFIRMED'] },
         createdAt: { gte: dayStart, lte: dayEnd },
@@ -201,7 +211,7 @@ export async function closeCashRegisterAction(
       _sum: { amountPaid: true },
     });
 
-    const expensesAgg = await prisma.expense.aggregate({
+    const expensesAgg = await db.expense.aggregate({
       where: {
         status: 'CONFIRMED',
         paidAt: { gte: dayStart, lte: dayEnd },
@@ -215,7 +225,7 @@ export async function closeCashRegisterAction(
     const expectedCash = register.openingCashUsd + totalSalesUsd + totalTipsUsd - totalExpenses;
     const difference = input.closingCashUsd - expectedCash;
 
-    await prisma.cashRegister.update({
+    await db.cashRegister.updateMany({
       where: { id },
       data: {
         status: 'CLOSED',
@@ -268,7 +278,9 @@ export async function updateRegisterOperatorsAction(
   if (!name) return { success: false, error: 'Nombre requerido' };
 
   try {
-    const register = await prisma.cashRegister.findUnique({ where: { id: registerId } });
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const register = await db.cashRegister.findFirst({ where: { id: registerId } });
     if (!register) return { success: false, error: 'Caja no encontrada' };
     if (register.status === 'CLOSED') return { success: false, error: 'La caja ya está cerrada' };
 
@@ -280,7 +292,7 @@ export async function updateRegisterOperatorsAction(
       operators = [name];
     }
 
-    await prisma.cashRegister.update({
+    await db.cashRegister.updateMany({
       where: { id: registerId },
       data: { operatorsJson: JSON.stringify(operators) } as any,
     });
