@@ -1104,6 +1104,65 @@ function isOrderNumberUniqueError(err: unknown): boolean {
     return msg.includes('Unique constraint failed') && msg.includes('orderNumber');
 }
 
+/**
+ * Busca un Customer recurrente por teléfono (match exacto en este tenant).
+ * Si existe, incrementa stats (totalOrders++, totalSpent +=, lastOrderAt = ahora)
+ * y actualiza dirección si era distinta. Si no existe, lo crea con stats=1.
+ *
+ * Pensado para llamarse desde `createSalesOrderAction` cuando es DELIVERY
+ * con `customerPhone + customerName`. No lanza si el upsert falla — la
+ * orden ya está guardada y no queremos romper el flujo crítico de venta.
+ *
+ * Normaliza el phone removiendo espacios y guiones para que "0424-1234567"
+ * matchee "04241234567".
+ */
+async function upsertCustomerFromOrder(
+    db: ReturnType<typeof withTenant>,
+    p: {
+        name: string;
+        phone: string;
+        address?: string;
+        orderTotal: number;
+        userId: string;
+    },
+): Promise<void> {
+    const normalizedPhone = p.phone.replace(/[\s-]/g, '');
+    if (!normalizedPhone) return;
+
+    // Buscar por phone normalizado (cualquier registro activo).
+    const existing = await db.customer.findFirst({
+        where: { phone: normalizedPhone, isActive: true },
+    });
+
+    const now = new Date();
+    if (existing) {
+        await db.customer.update({
+            where: { id: existing.id },
+            data: {
+                totalOrders: { increment: 1 },
+                totalSpent: { increment: p.orderTotal },
+                lastOrderAt: now,
+                // Solo actualizamos dirección si no había una y ahora viene.
+                ...(existing.address ? {} : p.address ? { address: p.address } : {}),
+            },
+        });
+        return;
+    }
+
+    // No existe → crear nuevo.
+    await db.customer.create({
+        data: {
+            fullName: p.name.trim(),
+            phone: normalizedPhone,
+            address: p.address?.trim() ?? null,
+            totalOrders: 1,
+            totalSpent: p.orderTotal,
+            lastOrderAt: now,
+            createdById: p.userId,
+        },
+    });
+}
+
 // ============================================================================
 // ACTION: CREAR ORDEN DE VENTA
 // ============================================================================
@@ -1252,9 +1311,28 @@ export async function createSalesOrderAction(
             } catch { /* best effort */ }
         }
 
+        // Upsert Customer si la orden es de DELIVERY con teléfono + nombre.
+        // Aprovechamos el flujo para mantener viva la tabla de clientes
+        // recurrentes (totalOrders, totalSpent, lastOrderAt). Si ya existe
+        // un Customer con ese phone, sumamos; si no, lo creamos. No
+        // bloqueamos la respuesta — si falla, log y seguimos.
+        if (data.orderType === 'DELIVERY' && data.customerPhone && data.customerName) {
+            try {
+                await upsertCustomerFromOrder(db, {
+                    name: data.customerName,
+                    phone: data.customerPhone,
+                    address: data.customerAddress,
+                    orderTotal: newOrder.total,
+                    userId: session.id,
+                });
+            } catch (custErr) {
+                console.error('[CUSTOMER UPSERT] no crítico:', custErr);
+            }
+        }
+
         revalidatePath('/dashboard/pos/restaurante');
         revalidatePath('/dashboard/pos/delivery');
-        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/clientes');
         revalidatePath('/dashboard/sales');
         revalidatePath('/dashboard/inventory');
 
