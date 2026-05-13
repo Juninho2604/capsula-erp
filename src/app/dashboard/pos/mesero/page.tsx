@@ -16,7 +16,8 @@ import {
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
-import { printKitchenCommand, printVoidKitchenCommand, printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printVoidKitchenCommand, printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -630,14 +631,21 @@ export default function POSMeseroPage() {
           targetSubAccountId: cartTargetSubAccountId ?? undefined,
         });
         if (!result.success) { toast.error(result.message); return null; }
-        if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
-          printKitchenCommand({
+        if (result.data?.kitchenStatus === "SENT") {
+          // Encolar comanda en el Print Agent → split automático por
+          // categoría (Bebidas → barra, resto → cocina). Las impresoras
+          // térmicas de cocina/barra están en la LAN del local, el agent
+          // las maneja por IP. Reemplaza al antiguo printKitchenCommand
+          // (window.print) que dependía de la USB local de la caja.
+          const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+          void enqueueKitchenCommand({
+            type: "KITCHEN",
             orderNumber: result.data.orderNumber,
             orderType: "RESTAURANT",
             tableName: selectedTable?.name ?? null,
             customerName: activeTab.customerLabel || null,
-            items: cart.map((i) => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map((m) => m.name), notes: i.notes })),
-            createdAt: new Date(),
+            items: buildKitchenItems(cart, menuItemCategoryMap),
+            createdAt: new Date().toISOString(),
           });
         }
         setCart([]);

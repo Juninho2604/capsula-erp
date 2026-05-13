@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
 import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
-import { printKitchenCommand } from '@/lib/print-command';
+import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 import toast from 'react-hot-toast';
 
@@ -171,18 +171,18 @@ export default function POSPedidosYAPage() {
             });
 
             if (result.success && result.data) {
-                // Comanda cocina
-                const cfg = getPOSConfig();
-                if (cfg.printComandaOnDelivery) {
-                    printKitchenCommand({
-                        orderNumber: result.data.orderNumber,
-                        orderType: 'DELIVERY',
-                        customerName: customerName || 'PedidosYA',
-                        items: cart.map(i => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map(m => m.name), notes: i.notes })),
-                        createdAt: new Date(),
-                        address: customerAddress,
-                    });
-                }
+                // Comanda cocina/barra vía Print Agent (impresoras Ethernet
+                // del local). El agent hace split por categoría: bebidas →
+                // barra, resto → cocina.
+                const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+                void enqueueKitchenCommand({
+                    type: 'KITCHEN',
+                    orderNumber: result.data.orderNumber,
+                    orderType: 'DELIVERY',
+                    customerName: customerName || 'PedidosYA',
+                    items: buildKitchenItems(cart, menuItemCategoryMap),
+                    createdAt: new Date().toISOString(),
+                });
                 setLastOrder({ orderNumber: result.data.orderNumber, items: [...cart], customerName: customerName || 'PedidosYA' });
                 setCart([]);
                 setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setExternalOrderId(''); setNotes('');
@@ -200,12 +200,14 @@ export default function POSPedidosYAPage() {
 
     const handleReprintComanda = () => {
         if (!lastOrder) return;
-        printKitchenCommand({
+        const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+        void enqueueKitchenCommand({
+            type: 'KITCHEN',
             orderNumber: lastOrder.orderNumber,
             orderType: 'DELIVERY',
             customerName: lastOrder.customerName,
-            items: lastOrder.items.map(i => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map(m => m.name), notes: i.notes })),
-            createdAt: new Date(),
+            items: buildKitchenItems(lastOrder.items, menuItemCategoryMap),
+            createdAt: new Date().toISOString(),
         });
     };
 

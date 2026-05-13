@@ -21,7 +21,8 @@ import {
 } from "@/app/actions/pos.actions";
 import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
-import { printKitchenCommand, printReceipt, printVoidKitchenCommand, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printReceipt, printVoidKitchenCommand, type VoidKitchenCommandData } from "@/lib/print-command";
+import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -732,21 +733,16 @@ export default function POSSportBarPage() {
         toast.error(result.message);
         return;
       }
-      if (result.data?.kitchenStatus === "SENT" && getPOSConfig().printComandaOnRestaurant) {
-        printKitchenCommand({
+      if (result.data?.kitchenStatus === "SENT") {
+        const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+        void enqueueKitchenCommand({
+          type: "KITCHEN",
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT",
           tableName: selectedTable?.name ?? null,
           customerName: activeTab.customerLabel || null,
-          waiterLabel: activeTab.waiterLabel || null,
-          items: cart.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            modifiers: i.modifiers.map((m) => m.name),
-            notes: i.notes,
-            takeaway: i.takeaway,
-          })),
-          createdAt: new Date(),
+          items: buildKitchenItems(cart, menuItemCategoryMap),
+          createdAt: new Date().toISOString(),
         });
       }
       setCart([]);
@@ -1354,21 +1350,19 @@ export default function POSSportBarPage() {
       });
 
       if (result.success && result.data) {
-        if (getPOSConfig().printComandaOnRestaurant) {
-        printKitchenCommand({
+        // Pickup desde la caja: encolar al agent para que imprima en
+        // cocina/barra (impresoras Ethernet del local), no en la USB
+        // de la caja. La caja imprime el RECIBO por separado.
+        const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+        void enqueueKitchenCommand({
+          type: "KITCHEN",
           orderNumber: result.data.orderNumber,
           orderType: "RESTAURANT",
           tableName: null,
           customerName: pickupCustomerName || "Cliente Caja",
-          items: cart.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            modifiers: i.modifiers.map((m) => m.name),
-            notes: i.notes,
-          })),
-          createdAt: new Date(),
+          items: buildKitchenItems(cart, menuItemCategoryMap),
+          createdAt: new Date().toISOString(),
         });
-        }
         const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
         const discount = pickupDiscount;
         const discountReason = discountType === "CORTESIA_100" ? 'Cortesía Autorizada (100%)'
