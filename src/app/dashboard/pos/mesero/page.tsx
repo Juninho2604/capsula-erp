@@ -223,11 +223,36 @@ export default function POSMeseroPage() {
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
   const [isTipSetting, setIsTipSetting] = useState(false);
-  // Preview "Divisas -33%": muestra al cliente cuánto pagaría si pagara en
-  // efectivo USD/EUR (descuento del 33% por divisa). Solo afecta la
+  // Preview "Divisas -33,33%": muestra al cliente cuánto pagaría si pagara
+  // en efectivo USD/EUR (descuento de 1/3 por divisa). Solo afecta la
   // visualización del modal, no se persiste; el cobro real se hace en la
   // pantalla de pago donde la cajera selecciona método.
   const [divisasPreview, setDivisasPreview] = useState(false);
+  // Sub-cuenta seleccionada en el modal. 'general' = vista total de la
+  // mesa; un id de sub-cuenta = solo items asignados a esa sub. Permite
+  // al mesero mostrar al cliente UNA sub-cuenta a la vez cuando dividen.
+  const [billSubAccountView, setBillSubAccountView] = useState<string>('general');
+  // Detalle completo del tab incluyendo items por sub-cuenta. Se carga
+  // fresh al abrir el modal para no depender de un estado obsoleto.
+  type SubAccountDetail = {
+      id: string;
+      label: string;
+      status: string;
+      subtotal: number;
+      serviceCharge: number;
+      total: number;
+      paidAmount: number;
+      items: Array<{
+          id: string;
+          quantity: number;
+          lineTotal: number;
+          salesOrderItem: {
+              itemName: string;
+              modifiers: Array<{ name: string }>;
+          };
+      }>;
+  };
+  const [tabSubAccountsDetail, setTabSubAccountsDetail] = useState<SubAccountDetail[]>([]);
 
   // ── Mover tab entre mesas físicas (solo capitanes) ────────────────────────
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -511,18 +536,28 @@ export default function POSMeseroPage() {
   // Al abrir "Mostrar cuenta al cliente": setear propina 10% por defecto
   // si la tab aún no tiene propina configurada. El mesero/cliente puede
   // cambiarlo a Sin propina, 15%, 20%, etc. desde los botones del modal.
-  // También resetear el preview Divisas al cerrar para no llevar el flag
-  // a otra mesa.
+  // También resetear el preview Divisas y la vista de sub-cuenta al
+  // cerrar para no llevar el flag a otra mesa.
   useEffect(() => {
     if (!showBillModal) {
       setDivisasPreview(false);
+      setBillSubAccountView('general');
+      setTabSubAccountsDetail([]);
       return;
     }
     if (activeTab && (activeTab.tipPercent == null) && !isTipSetting) {
       void handleSetTip(10);
     }
-    // handleSetTip cambia con re-renders pero su lógica interna no
-    // depende de nada que necesitemos sincronizar aquí.
+    // Cargar detalle fresco de sub-cuentas (con items por sub) al abrir
+    // el modal — solo si hay sub-cuentas abiertas en la tab.
+    if (activeTab && subAccountsCount > 0) {
+      void getOpenTabWithSubAccountsAction(activeTab.id).then((res) => {
+        const subs = ((res.data as { subAccounts?: SubAccountDetail[] } | null)?.subAccounts ?? []) as SubAccountDetail[];
+        setTabSubAccountsDetail(subs);
+      });
+    }
+    // handleSetTip y subAccountsCount cambian con re-renders pero su
+    // lógica interna no depende de nada que necesitemos sincronizar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showBillModal, activeTab?.id, activeTab?.tipPercent]);
 
@@ -1453,27 +1488,66 @@ export default function POSMeseroPage() {
 
       {/* ══ MODAL: CUENTA AL CLIENTE z-[70] ══════════════════════════════ */}
       {showBillModal && activeTab && (() => {
-        const subtotal      = activeTab.runningSubtotal;
-        const discount      = activeTab.runningDiscount;
-        const serviceCharge = activeTab.totalServiceCharge ?? 0;
-        const tipAmount     = activeTab.tipAmount ?? 0;
-        const paidSplits    = (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
-        const paidTotal     = paidSplits.reduce((s, p) => s + p.paidAmount, 0);
-        // Preview Divisas −33.33%: descuento de 1/3 (= 33.33% recurrente)
-        // sobre el subtotal cuando el cliente paga en cash USD/EUR. Se
-        // usa la misma fórmula `/ 3` que POS Delivery / Restaurante para
-        // mantener consistencia exacta entre módulos.
+        // Vista activa: 'general' = toda la mesa; un id de sub = solo
+        // los items asignados a esa sub-cuenta.
+        const selectedSub = billSubAccountView !== 'general'
+            ? tabSubAccountsDetail.find(s => s.id === billSubAccountView) ?? null
+            : null;
+
+        // Subtotal/items dependen de la vista. Para vista general usamos
+        // los runnings de la tab (que ya consideran toda la mesa). Para
+        // una sub específica usamos los datos de esa SubAccount.
+        const subtotal      = selectedSub
+            ? selectedSub.subtotal
+            : activeTab.runningSubtotal;
+        const discount      = selectedSub
+            ? 0  // descuento global de la tab no se distribuye automático
+            : activeTab.runningDiscount;
+        const serviceCharge = selectedSub
+            ? (selectedSub.serviceCharge ?? 0)
+            : (activeTab.totalServiceCharge ?? 0);
+        // Propina: el % se mantiene global, pero el monto se recalcula
+        // proporcional al subtotal de la sub-cuenta.
+        const tipPct = activeTab.tipPercent ?? 0;
+        const tipAmount = selectedSub
+            ? subtotal * (tipPct / 100)
+            : (activeTab.tipAmount ?? 0);
+        const paidSplits    = selectedSub
+            ? []  // los paidSplits a nivel sub son distintos; simplificamos: no mostramos saldo parcial en vista sub
+            : (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
+        const paidTotal     = selectedSub
+            ? (selectedSub.paidAmount ?? 0)
+            : paidSplits.reduce((s, p) => s + p.paidAmount, 0);
+        // Preview Divisas −33.33%: descuento de 1/3 sobre el subtotal.
         const divisasDiscount = divisasPreview ? subtotal / 3 : 0;
-        const grandTotal    = activeTab.runningTotal + serviceCharge + tipAmount - divisasDiscount;
-        // Saldo restante INCLUYE propina y descuento divisas, para que los
-        // métodos de pago muestren el monto correcto a cobrar.
+        const grandTotal    = subtotal - discount + serviceCharge + tipAmount - divisasDiscount;
         const saldoBruto    = Math.max(0, grandTotal - paidTotal);
         const amountToShow  = saldoBruto > 0.01 ? saldoBruto : grandTotal;
         const totalBs       = exchangeRate ? grandTotal * exchangeRate : null;
         const saldoBs       = exchangeRate ? amountToShow * exchangeRate : null;
-        // Para Bs: 2 decimales con separador "," (es-VE).
         const formatBs = (n: number) =>
             `Bs ${n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        // Items a listar: si vista sub, solo los items asignados a esa
+        // sub. Si vista general, todos los items de todas las órdenes.
+        type BillItem = { itemName: string; quantity: number; lineTotal: number; modifiers: Array<{ name: string }> };
+        const itemsToShow: BillItem[] = selectedSub
+            ? selectedSub.items.map(it => ({
+                itemName: it.salesOrderItem.itemName,
+                quantity: it.quantity,
+                lineTotal: it.lineTotal,
+                modifiers: it.salesOrderItem.modifiers,
+            }))
+            : activeTab.orders.flatMap(o => o.items).map(it => ({
+                itemName: it.itemName,
+                quantity: it.quantity,
+                lineTotal: it.lineTotal,
+                modifiers: it.modifiers ?? [],
+            }));
+
+        // Sub-cuentas OPEN para el selector. Filtramos paid/void para
+        // que el mesero no muestre por error una cuenta ya cobrada.
+        const openSubs = tabSubAccountsDetail.filter(s => s.status === 'OPEN');
 
         const methodLabel = (pm: string | null) => {
           const k = (pm ?? '').toUpperCase();
@@ -1518,9 +1592,45 @@ export default function POSMeseroPage() {
                 </button>
               </div>
 
+              {/* Selector de vista: general / sub-cuentas (solo si hay subs abiertas) */}
+              {openSubs.length > 0 && (
+                <div className="px-5 pt-3 shrink-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5">Mostrar al cliente</p>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    <button
+                      onClick={() => setBillSubAccountView('general')}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition ${
+                        billSubAccountView === 'general'
+                          ? 'bg-capsula-navy-deep text-capsula-cream'
+                          : 'bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40'
+                      }`}
+                    >
+                      Cuenta general
+                    </button>
+                    {openSubs.map((sub) => (
+                      <button
+                        key={sub.id}
+                        onClick={() => setBillSubAccountView(sub.id)}
+                        className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition ${
+                          billSubAccountView === sub.id
+                            ? 'bg-capsula-navy-deep text-capsula-cream'
+                            : 'bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40'
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Items */}
               <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1 min-h-0">
-                {activeTab.orders.flatMap(o => o.items).map((item, i) => (
+                {itemsToShow.length === 0 ? (
+                  <p className="text-center text-xs text-capsula-ink-muted py-6 font-semibold">
+                    Esta sub-cuenta no tiene items asignados.
+                  </p>
+                ) : itemsToShow.map((item, i) => (
                   <div key={i} className="flex justify-between items-baseline text-sm">
                     <div className="flex-1 mr-2 min-w-0">
                       <div className="text-capsula-ink-soft font-semibold">
@@ -1696,11 +1806,12 @@ export default function POSMeseroPage() {
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => {
+                      const subLabel = selectedSub ? ` · ${selectedSub.label}` : '';
                       const lines = [
-                        `SHANKLISH — ${selectedTable?.name} (${activeTab.tabCode})`,
+                        `SHANKLISH — ${selectedTable?.name} (${activeTab.tabCode})${subLabel}`,
                         `Cliente: ${activeTab.customerLabel ?? ''}`,
                         '',
-                        ...activeTab.orders.flatMap(o => o.items).flatMap(it => {
+                        ...itemsToShow.flatMap(it => {
                           const head = `× ${it.quantity}  ${it.itemName}  $${it.lineTotal.toFixed(2)}`;
                           const mods = (it.modifiers ?? []).map(m => m.name).join(', ');
                           return mods ? [head, `    + ${mods}`] : [head];
@@ -1724,15 +1835,18 @@ export default function POSMeseroPage() {
                   {canUseCaptainFeatures && (
                   <button
                     onClick={() => {
-                      const items = activeTab.orders.flatMap(o => o.items).map(it => ({
+                      // Si está activa una sub-cuenta, imprime solo esos items.
+                      const items = itemsToShow.map(it => ({
                         name: it.itemName,
                         quantity: it.quantity,
                         unitPrice: it.lineTotal / (it.quantity || 1),
                         total: it.lineTotal,
-                        modifiers: (it.modifiers ?? []).map((m: any) => typeof m === 'string' ? m : m?.name ?? ''),
+                        modifiers: (it.modifiers ?? []).map((m: { name?: string } | string) =>
+                            typeof m === 'string' ? m : (m?.name ?? '')),
                       }));
+                      const titleSuffix = selectedSub ? ` (${selectedSub.label})` : '';
                       printReceipt({
-                        orderNumber: activeTab.tabCode,
+                        orderNumber: `${activeTab.tabCode}${titleSuffix}`,
                         orderType: 'RESTAURANT',
                         date: new Date(),
                         cashierName: activeTab.openedBy.firstName,
@@ -1743,7 +1857,7 @@ export default function POSMeseroPage() {
                         discount: discount > 0.001 ? discount : 0,
                         // print-command espera `total` como base (post-discount, pre-service,
                         // pre-tip); luego suma serviceFee + tipAmount internamente.
-                        total: activeTab.runningTotal,
+                        total: subtotal - discount - divisasDiscount,
                         serviceFee: serviceCharge > 0.001 ? serviceCharge : undefined,
                         tipAmount: tipAmount > 0.001 ? tipAmount : undefined,
                         isPrecuenta: true,
