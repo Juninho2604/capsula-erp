@@ -1,8 +1,29 @@
 'use server';
 
+/**
+ * Inventario (core) — multitenant (Lote 4.c — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: InventoryItem, Area, Recipe, SalesOrder, ProductFamily,
+ *                       Supplier.
+ * Modelos NO tenant-aware (FK-scoped): InventoryLocation, InventoryMovement,
+ *                       CostHistory, InventoryDeductionRetry.
+ *
+ * Validaciones nuevas:
+ *   - createQuickItem: sourceAreaId pertenece al tenant antes de tocar
+ *     InventoryLocation/InventoryMovement.
+ *   - updateInventoryItemAction / deleteInventoryItemAction: update → updateMany
+ *     con tenantId implícito.
+ *   - getInventoryHistoryAction: filtra movimientos por inventoryItem.tenantId.
+ *   - getOutboxSummaryAction: filtra retries por salesOrder.tenantId. Las
+ *     retries con salesOrderId=null se excluyen del scope tenant (solo aparecen
+ *     en admin global).
+ */
+
 import { prisma } from '@/server/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export async function createQuickItem(data: {
     name: string;
@@ -17,13 +38,27 @@ export async function createQuickItem(data: {
     isFinalProduct?: boolean; // Si es FINISHED_GOOD → también crear stub de receta
 }) {
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership del sourceAreaId si se pasa
+        if (data.sourceAreaId) {
+            const ownedArea = await db.area.findFirst({
+                where: { id: data.sourceAreaId },
+                select: { id: true },
+            });
+            if (!ownedArea) {
+                return { success: false, message: 'Área no encontrada' };
+            }
+        }
+
         // Generate a SKU
         const skuPrefix = data.name.substring(0, 3).toUpperCase().replace(/\s/g, '');
-        const count = await prisma.inventoryItem.count();
+        const count = await db.inventoryItem.count();
         const sku = `${skuPrefix}-${String(count + 1).padStart(4, '0')}`;
 
-        // Create the item
-        const item = await prisma.inventoryItem.create({
+        // Create the item (tenantId injected by extension)
+        const item = await db.inventoryItem.create({
             data: {
                 name: data.name,
                 sku: sku,
@@ -74,7 +109,7 @@ export async function createQuickItem(data: {
         // Si es producto terminado (FINISHED_GOOD) → crear stub de receta vacía
         if (data.type === 'FINISHED_GOOD' || data.isFinalProduct) {
             try {
-                const recipe = await prisma.recipe.create({
+                const recipe = await db.recipe.create({
                     data: {
                         name: data.name,
                         description: `Receta de ${data.name} — completar ingredientes`,
@@ -92,7 +127,8 @@ export async function createQuickItem(data: {
             }
         }
 
-        // If cost is provided, add an initial cost history
+        // If cost is provided, add an initial cost history (CostHistory no es
+        // tenant-aware; scope vía inventoryItemId, ya validado por owned item).
         if (data.cost && data.cost > 0) {
             await prisma.costHistory.create({
                 data: {
@@ -121,7 +157,9 @@ export async function createQuickItem(data: {
 
 export async function getInventoryListAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: { isActive: true },
             include: {
                 stockLevels: true,
@@ -148,7 +186,9 @@ export async function getInventoryListAction() {
 
 export async function getAreasAction() {
     try {
-        return await prisma.area.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        return await db.area.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' }
         });
@@ -160,7 +200,8 @@ export async function getAreasAction() {
 
 export async function updateInventoryItemAction(id: string, data: any) {
     try {
-        await prisma.inventoryItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).inventoryItem.updateMany({
             where: { id },
             data: {
                 name: data.name,
@@ -171,6 +212,7 @@ export async function updateInventoryItemAction(id: string, data: any) {
                 reorderPoint: data.reorderPoint
             }
         });
+        if (res.count === 0) return { success: false, message: 'Ítem no encontrado' };
         revalidatePath('/dashboard/inventario');
         return { success: true, message: 'Ítem actualizado correctamente' };
     } catch (error) {
@@ -194,10 +236,12 @@ export async function deleteInventoryItemAction(id: string) {
 
         // Verificar si tiene transacciones históricas importantes antes de 'eliminar'
         // Por ahora haremos Soft Delete (isActive = false)
-        await prisma.inventoryItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).inventoryItem.updateMany({
             where: { id },
             data: { isActive: false }
         });
+        if (res.count === 0) return { success: false, message: 'Ítem no encontrado' };
 
         revalidatePath('/dashboard/inventario');
         revalidatePath('/dashboard/inventario/entrada');
@@ -213,9 +257,13 @@ export async function getInventoryHistoryAction(filters?: {
     limit?: number;
 }) {
     try {
+        // InventoryMovement no es tenant-aware. Filtramos por la FK al
+        // inventoryItem (que sí lo es) usando nested where.
+        const { tenantId } = await resolveTenantContext();
         const movements = await prisma.inventoryMovement.findMany({
             where: {
                 ...(filters?.type ? { movementType: filters.type } : {}),
+                inventoryItem: { tenantId },
             },
             take: filters?.limit || 100,
             orderBy: { createdAt: 'desc' },
@@ -257,14 +305,16 @@ export async function getPendingDeductionSummaryAction(opts?: {
     since.setDate(since.getDate() - days);
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         const where = {
             createdAt: { gte: since },
             notes: { contains: 'DESCARGO INVENTARIO PENDIENTE' as const },
         };
 
         const [count, recent] = await Promise.all([
-            prisma.salesOrder.count({ where }),
-            prisma.salesOrder.findMany({
+            db.salesOrder.count({ where }),
+            db.salesOrder.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
                 take: limit,
@@ -302,6 +352,10 @@ export async function getPendingDeductionSummaryAction(opts?: {
  * Lee la tabla introducida por la migración 20260428120000 y devuelve
  * un agregado por status. Solo SELECT — no escribe nada.
  *
+ * InventoryDeductionRetry NO es tenant-aware. Filtramos por la FK al
+ * salesOrder.tenantId. Las retries con salesOrderId=null (huérfanas)
+ * quedan fuera del scope del tenant — solo aparecen en admin global.
+ *
  * - PENDING / IN_PROGRESS: requieren atención del worker (futuro 2.C).
  * - FAILED: agotaron maxAttempts → necesitan revisión manual.
  * - COMPLETED: descargo finalmente aplicado, no se muestra.
@@ -310,12 +364,15 @@ export async function getPendingDeductionSummaryAction(opts?: {
 export async function getOutboxSummaryAction(opts?: { recentLimit?: number }) {
     const limit = opts?.recentLimit ?? 5;
     try {
+        const { tenantId } = await resolveTenantContext();
+        const tenantFilter = { salesOrder: { is: { tenantId } } };
+
         const [pendingCount, inProgressCount, failedCount, recent] = await Promise.all([
-            prisma.inventoryDeductionRetry.count({ where: { status: 'PENDING' } }),
-            prisma.inventoryDeductionRetry.count({ where: { status: 'IN_PROGRESS' } }),
-            prisma.inventoryDeductionRetry.count({ where: { status: 'FAILED' } }),
+            prisma.inventoryDeductionRetry.count({ where: { status: 'PENDING', ...tenantFilter } }),
+            prisma.inventoryDeductionRetry.count({ where: { status: 'IN_PROGRESS', ...tenantFilter } }),
+            prisma.inventoryDeductionRetry.count({ where: { status: 'FAILED', ...tenantFilter } }),
             prisma.inventoryDeductionRetry.findMany({
-                where: { status: { in: ['PENDING', 'IN_PROGRESS', 'FAILED'] } },
+                where: { status: { in: ['PENDING', 'IN_PROGRESS', 'FAILED'] }, ...tenantFilter },
                 orderBy: { createdAt: 'desc' },
                 take: limit,
                 select: {
@@ -384,8 +441,10 @@ export async function getOutboxSummaryAction(opts?: { recentLimit?: number }) {
 //
 export async function getInventoryForPrintAction() {
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         const [items, areas] = await Promise.all([
-            prisma.inventoryItem.findMany({
+            db.inventoryItem.findMany({
                 where: { isActive: true, deletedAt: null },
                 include: {
                     stockLevels: {
@@ -410,7 +469,7 @@ export async function getInventoryForPrintAction() {
                 },
                 orderBy: [{ category: 'asc' }, { name: 'asc' }],
             }),
-            prisma.area.findMany({
+            db.area.findMany({
                 where: { isActive: true },
                 select: { id: true, name: true },
                 orderBy: { name: 'asc' },
