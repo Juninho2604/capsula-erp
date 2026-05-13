@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@/server/db'; // Correct path from previous files
+import { prisma } from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server'; // Correct path from previous files
 import { getSession, createSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { revalidatePath } from 'next/cache';
@@ -61,10 +63,12 @@ export async function hashPin(pin: string): Promise<string> {
  * Obtiene la lista de todos los usuarios
  */
 export async function getUsers() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) throw new Error(guard.message);
 
-    const users = await prisma.user.findMany({
+    const users = await db.user.findMany({
         orderBy: {
             lastName: 'asc',
         },
@@ -94,6 +98,8 @@ export async function getUsers() {
  *  - No se puede degradar al último OWNER activo del sistema.
  */
 export async function updateUserRole(userId: string, newRole: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -113,7 +119,7 @@ export async function updateUserRole(userId: string, newRole: string) {
     if (!degradeCheck.ok) return { success: false, message: degradeCheck.message };
 
     try {
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 role: newRole as any, // Cast as any or import UserRole enum if available
@@ -137,6 +143,8 @@ export async function updateUserRole(userId: string, newRole: string) {
  *  - No se puede desactivar al último OWNER activo del sistema.
  */
 export async function toggleUserStatus(userId: string, isActive: boolean) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -156,7 +164,7 @@ export async function toggleUserStatus(userId: string, isActive: boolean) {
     if (!lastOwnerCheck.ok) return { success: false, message: lastOwnerCheck.message };
 
     try {
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 isActive,
@@ -179,6 +187,8 @@ export async function toggleUserStatus(userId: string, isActive: boolean) {
  * Cambiar contraseña del usuario actual
  */
 export async function changePasswordAction(currentPassword: string, newPassword: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
 
     if (!session?.id) {
@@ -187,7 +197,7 @@ export async function changePasswordAction(currentPassword: string, newPassword:
 
     try {
         // 1. Obtener usuario actual
-        const user = await prisma.user.findUnique({
+        const user = await db.user.findUnique({
             where: { id: session.id },
         });
 
@@ -212,7 +222,7 @@ export async function changePasswordAction(currentPassword: string, newPassword:
         // NO sea expulsado. Otras sesiones del mismo user (otros dispositivos)
         // sí quedan invalidadas porque conservan el tokenVersion antiguo.
         const hashed = await hashPassword(newPassword);
-        const updated = await prisma.user.update({
+        const updated = await db.user.update({
             where: { id: session.id },
             data: {
                 passwordHash: hashed,
@@ -237,6 +247,8 @@ export async function changePasswordAction(currentPassword: string, newPassword:
  * [] o [ids] = solo esos módulos (además de las restricciones de rol)
  */
 export async function updateUserModules(userId: string, allowedModules: string[] | null) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -250,7 +262,7 @@ export async function updateUserModules(userId: string, allowedModules: string[]
     if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     try {
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 allowedModules: allowedModules ? JSON.stringify(allowedModules) : null,
@@ -271,6 +283,8 @@ export async function updateUserModules(userId: string, allowedModules: string[]
  * El PIN se hashea automáticamente con PBKDF2-SHA256 antes de guardarse.
  */
 export async function updateUserPin(userId: string, rawPin: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_PINS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -294,7 +308,7 @@ export async function updateUserPin(userId: string, rawPin: string) {
 
     try {
         const hashed = await hashPin(trimmed);
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: { pin: hashed },
         });
@@ -316,6 +330,8 @@ export async function updateUserPerms(
     grantedPerms: string[] | null,
     revokedPerms: string[] | null,
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -329,7 +345,7 @@ export async function updateUserPerms(
     if (!ownerCheck.ok) return { success: false, message: ownerCheck.message };
 
     try {
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 grantedPerms: grantedPerms && grantedPerms.length > 0 ? JSON.stringify(grantedPerms) : null,
@@ -358,6 +374,8 @@ export async function createUserAction(data: {
     password: string;
     role: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -389,14 +407,14 @@ export async function createUserAction(data: {
         // unique global sobre User.email. Mismo comportamiento mientras solo
         // hay un tenant; cuando el unique pase a (tenantId, email) habrá que
         // añadir tenantId al where.
-        const existing = await prisma.user.findFirst({ where: { email } });
+        const existing = await db.user.findFirst({ where: { email } });
         if (existing) {
             return { success: false, message: 'Ya existe un usuario con ese correo electrónico' };
         }
 
         const passwordHash = await hashPassword(data.password);
 
-        const user = await prisma.user.create({
+        const user = await db.user.create({
             data: {
                 email,
                 passwordHash,
@@ -441,6 +459,8 @@ export async function updateUserNameAction(
     userId: string,
     data: { firstName: string; lastName: string; email: string },
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -465,11 +485,11 @@ export async function updateUserNameAction(
     try {
         // Pre-Fase 2.B: findFirst para no depender del unique global. Update
         // sigue siendo por id (ese unique sí se mantiene global).
-        const conflict = await prisma.user.findFirst({ where: { email } });
+        const conflict = await db.user.findFirst({ where: { email } });
         if (conflict && conflict.id !== userId) {
             return { success: false, message: 'Ese correo ya está en uso por otro usuario' };
         }
-        await prisma.user.update({ where: { id: userId }, data: { firstName, lastName, email } });
+        await db.user.update({ where: { id: userId }, data: { firstName, lastName, email } });
         revalidatePath('/dashboard/usuarios');
         return { success: true, message: 'Datos actualizados correctamente' };
     } catch {
@@ -482,6 +502,8 @@ export async function updateUserNameAction(
  * No puede resetear la propia contraseña por esta vía (usar changePasswordAction).
  */
 export async function adminResetPasswordAction(userId: string, newPassword: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const guard = await checkActionPermission(PERM.MANAGE_USERS);
     if (!guard.ok) return { success: false, message: guard.message };
 
@@ -505,7 +527,7 @@ export async function adminResetPasswordAction(userId: string, newPassword: stri
     try {
         const passwordHash = await hashPassword(newPassword);
 
-        await prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 passwordHash,

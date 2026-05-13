@@ -8,6 +8,8 @@
  */
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
@@ -36,10 +38,12 @@ export type QueueTicketFull = Awaited<ReturnType<typeof getQueueTickets>>[number
 // =============================================================================
 
 export async function getGameTypes() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.gameType.findMany({
+    return db.gameType.findMany({
         where: { isActive: true },
         include: {
             _count: { select: { stations: true, sessions: true } },
@@ -56,9 +60,11 @@ export async function createGameType(data: {
     color?: string;
     defaultSessionMinutes?: number;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await requireRole(GAMES_ROLES);
 
-    const gameType = await prisma.gameType.create({ data });
+    const gameType = await db.gameType.create({ data });
     revalidatePath('/dashboard/games');
     return { ok: true, gameType };
 }
@@ -74,8 +80,10 @@ export async function updateGameType(
         isActive: boolean;
     }>
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
-    const gameType = await prisma.gameType.update({ where: { id }, data });
+    const gameType = await db.gameType.update({ where: { id }, data });
     revalidatePath('/dashboard/games');
     return { ok: true, gameType };
 }
@@ -89,10 +97,12 @@ export async function getGameStations(filters?: {
     currentStatus?: string;
     isActive?: boolean;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.gameStation.findMany({
+    return db.gameStation.findMany({
         where: {
             isActive: filters?.isActive ?? true,
             ...(filters?.gameTypeId && { gameTypeId: filters.gameTypeId }),
@@ -118,9 +128,11 @@ export async function createGameStation(data: {
     hourlyRate?: number;
     notes?: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
 
-    const station = await prisma.gameStation.create({ data });
+    const station = await db.gameStation.create({ data });
     revalidatePath('/dashboard/games');
     return { ok: true, station };
 }
@@ -129,8 +141,10 @@ export async function updateStationStatus(
     stationId: string,
     currentStatus: 'AVAILABLE' | 'IN_USE' | 'RESERVED' | 'MAINTENANCE'
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
-    const station = await prisma.gameStation.update({
+    const station = await db.gameStation.update({
         where: { id: stationId },
         data: { currentStatus },
     });
@@ -143,10 +157,12 @@ export async function updateStationStatus(
 // =============================================================================
 
 export async function getActiveSessions() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.gameSession.findMany({
+    return db.gameSession.findMany({
         where: { status: { in: ['ACTIVE', 'PAUSED'] } },
         include: {
             station: { include: { gameType: true } },
@@ -162,10 +178,12 @@ export async function getSessionHistory(filters?: {
     toDate?: Date;
     limit?: number;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.gameSession.findMany({
+    return db.gameSession.findMany({
         where: {
             status: { in: ['ENDED'] },
             ...(filters?.stationId && { stationId: filters.stationId }),
@@ -192,10 +210,12 @@ export async function startSession(data: {
     scheduledEndAt?: Date;
     notes?: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await requireRole(CASHIER_ROLES);
 
     // Verificar que la estación está disponible
-    const station = await prisma.gameStation.findUniqueOrThrow({
+    const station = await db.gameStation.findUniqueOrThrow({
         where: { id: data.stationId },
     });
 
@@ -206,8 +226,8 @@ export async function startSession(data: {
     // Generar código de sesión (contador global, nunca se resetea)
     const code = await getNextCorrelativo('GAME_SESSION');
 
-    const [gameSession] = await prisma.$transaction([
-        prisma.gameSession.create({
+    const [gameSession] = await db.$transaction([
+        db.gameSession.create({
             data: {
                 code,
                 stationId: data.stationId,
@@ -223,7 +243,7 @@ export async function startSession(data: {
                 startedById: session.id,
             },
         }),
-        prisma.gameStation.update({
+        db.gameStation.update({
             where: { id: data.stationId },
             data: { currentStatus: 'IN_USE' },
         }),
@@ -234,9 +254,11 @@ export async function startSession(data: {
 }
 
 export async function endSession(sessionId: string, notes?: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const authSession = await requireRole(CASHIER_ROLES);
 
-    const gameSession = await prisma.gameSession.findUniqueOrThrow({
+    const gameSession = await db.gameSession.findUniqueOrThrow({
         where: { id: sessionId },
         include: { station: true },
     });
@@ -255,8 +277,8 @@ export async function endSession(sessionId: string, notes?: string) {
         amountBilled = (minutesBilled / 60) * gameSession.station.hourlyRate;
     }
 
-    const [updatedSession] = await prisma.$transaction([
-        prisma.gameSession.update({
+    const [updatedSession] = await db.$transaction([
+        db.gameSession.update({
             where: { id: sessionId },
             data: {
                 status: 'ENDED',
@@ -267,7 +289,7 @@ export async function endSession(sessionId: string, notes?: string) {
                 notes: notes ?? gameSession.notes,
             },
         }),
-        prisma.gameStation.update({
+        db.gameStation.update({
             where: { id: gameSession.stationId },
             data: { currentStatus: 'AVAILABLE' },
         }),
@@ -283,9 +305,11 @@ export async function endSession(sessionId: string, notes?: string) {
 }
 
 export async function pauseSession(sessionId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const authSession = await requireRole(CASHIER_ROLES);
 
-    const updated = await prisma.gameSession.update({
+    const updated = await db.gameSession.update({
         where: { id: sessionId },
         data: { status: 'PAUSED' },
     });
@@ -295,9 +319,11 @@ export async function pauseSession(sessionId: string) {
 }
 
 export async function resumeSession(sessionId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const authSession = await requireRole(CASHIER_ROLES);
 
-    const updated = await prisma.gameSession.update({
+    const updated = await db.gameSession.update({
         where: { id: sessionId },
         data: { status: 'ACTIVE' },
     });
@@ -311,10 +337,12 @@ export async function resumeSession(sessionId: string) {
 // =============================================================================
 
 export async function getWristbandPlans(activeOnly = true) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.wristbandPlan.findMany({
+    return db.wristbandPlan.findMany({
         where: activeOnly ? { isActive: true } : {},
         include: { _count: { select: { reservations: true } } },
         orderBy: { price: 'asc' },
@@ -330,9 +358,11 @@ export async function createWristbandPlan(data: {
     color?: string;
     maxSessions?: number;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
 
-    const plan = await prisma.wristbandPlan.create({ data });
+    const plan = await db.wristbandPlan.create({ data });
     revalidatePath('/dashboard/wristbands');
     return { ok: true, plan };
 }
@@ -349,8 +379,10 @@ export async function updateWristbandPlan(
         isActive: boolean;
     }>
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
-    const plan = await prisma.wristbandPlan.update({ where: { id }, data });
+    const plan = await db.wristbandPlan.update({ where: { id }, data });
     revalidatePath('/dashboard/wristbands');
     return { ok: true, plan };
 }
@@ -364,6 +396,8 @@ export async function getReservations(filters?: {
     stationId?: string;
     status?: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
@@ -377,7 +411,7 @@ export async function getReservations(filters?: {
         dateTo.setHours(23, 59, 59, 999);
     }
 
-    return prisma.reservation.findMany({
+    return db.reservation.findMany({
         where: {
             deletedAt: null,
             ...(filters?.stationId && { stationId: filters.stationId }),
@@ -406,10 +440,12 @@ export async function createReservation(data: {
     depositPaid?: boolean;
     notes?: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await requireRole(CASHIER_ROLES);
 
     // Validar que no haya choque de horario en esa estación
-    const conflict = await prisma.reservation.findFirst({
+    const conflict = await db.reservation.findFirst({
         where: {
             stationId: data.stationId,
             deletedAt: null,
@@ -429,10 +465,10 @@ export async function createReservation(data: {
         );
     }
 
-    const count = await prisma.reservation.count();
+    const count = await db.reservation.count();
     const code  = `RES-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
-    const reservation = await prisma.reservation.create({
+    const reservation = await db.reservation.create({
         data: {
             code,
             ...data,
@@ -453,8 +489,10 @@ export async function createReservation(data: {
 }
 
 export async function confirmReservation(id: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
-    const reservation = await prisma.reservation.update({
+    const reservation = await db.reservation.update({
         where: { id },
         data: { status: 'CONFIRMED' },
     });
@@ -463,8 +501,10 @@ export async function confirmReservation(id: string) {
 }
 
 export async function cancelReservation(id: string, reason?: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
-    const reservation = await prisma.reservation.update({
+    const reservation = await db.reservation.update({
         where: { id },
         data: { status: 'CANCELLED', notes: reason },
     });
@@ -473,9 +513,11 @@ export async function cancelReservation(id: string, reason?: string) {
 }
 
 export async function checkInReservation(reservationId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const authSession = await requireRole(CASHIER_ROLES);
 
-    const reservation = await prisma.reservation.findUniqueOrThrow({
+    const reservation = await db.reservation.findUniqueOrThrow({
         where: { id: reservationId },
         include: { station: true },
     });
@@ -486,7 +528,7 @@ export async function checkInReservation(reservationId: string) {
 
     // Marcar como CHECKED_IN y arrancar sesión automáticamente
     const code = await getNextCorrelativo('GAME_SESSION');
-    const [updatedReservation, gameSession] = await prisma.$transaction(async tx => {
+    const [updatedReservation, gameSession] = await db.$transaction(async tx => {
         const sess = await tx.gameSession.create({
             data: {
                 code,
@@ -525,10 +567,12 @@ export async function checkInReservation(reservationId: string) {
 // =============================================================================
 
 export async function getQueueTickets(statusFilter?: string[]) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.queueTicket.findMany({
+    return db.queueTicket.findMany({
         where: {
             status: { in: statusFilter ?? ['WAITING', 'CALLED'] },
         },
@@ -547,13 +591,15 @@ export async function issueQueueTicket(data: {
     gameTypeId?: string;
     notes?: string;
 }) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await requireRole(CASHIER_ROLES);
 
     // Calcular siguiente número de ticket (reset diario)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const lastToday = await prisma.queueTicket.findFirst({
+    const lastToday = await db.queueTicket.findFirst({
         where: { createdAt: { gte: today } },
         orderBy: { ticketNumber: 'desc' },
     });
@@ -561,11 +607,11 @@ export async function issueQueueTicket(data: {
     const ticketNumber = (lastToday?.ticketNumber ?? 0) + 1;
 
     // Estimar espera: tickets en espera × 30 min promedio
-    const waitingCount = await prisma.queueTicket.count({
+    const waitingCount = await db.queueTicket.count({
         where: { status: 'WAITING' },
     });
 
-    const ticket = await prisma.queueTicket.create({
+    const ticket = await db.queueTicket.create({
         data: {
             ticketNumber,
             customerName: data.customerName,
@@ -584,9 +630,11 @@ export async function issueQueueTicket(data: {
 }
 
 export async function callQueueTicket(ticketId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
 
-    const ticket = await prisma.queueTicket.update({
+    const ticket = await db.queueTicket.update({
         where: { id: ticketId },
         data: { status: 'CALLED', calledAt: new Date() },
     });
@@ -596,9 +644,11 @@ export async function callQueueTicket(ticketId: string) {
 }
 
 export async function seatQueueTicket(ticketId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
 
-    const ticket = await prisma.queueTicket.update({
+    const ticket = await db.queueTicket.update({
         where: { id: ticketId },
         data: { status: 'SEATED', seatedAt: new Date() },
     });
@@ -608,9 +658,11 @@ export async function seatQueueTicket(ticketId: string) {
 }
 
 export async function expireQueueTicket(ticketId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
 
-    const ticket = await prisma.queueTicket.update({
+    const ticket = await db.queueTicket.update({
         where: { id: ticketId },
         data: { status: 'EXPIRED' },
     });
@@ -620,9 +672,11 @@ export async function expireQueueTicket(ticketId: string) {
 }
 
 export async function cancelQueueTicket(ticketId: string) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     await requireRole(CASHIER_ROLES);
 
-    const ticket = await prisma.queueTicket.update({
+    const ticket = await db.queueTicket.update({
         where: { id: ticketId },
         data: { status: 'CANCELLED' },
     });
@@ -636,6 +690,8 @@ export async function cancelQueueTicket(ticketId: string) {
 // =============================================================================
 
 export async function getGamesDashboardStats() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
@@ -650,18 +706,18 @@ export async function getGamesDashboardStats() {
         queueWaiting,
         revenueToday,
     ] = await Promise.all([
-        prisma.gameStation.count({ where: { isActive: true } }),
-        prisma.gameStation.count({ where: { isActive: true, currentStatus: 'AVAILABLE' } }),
-        prisma.gameSession.count({ where: { status: 'ACTIVE' } }),
-        prisma.reservation.count({
+        db.gameStation.count({ where: { isActive: true } }),
+        db.gameStation.count({ where: { isActive: true, currentStatus: 'AVAILABLE' } }),
+        db.gameSession.count({ where: { status: 'ACTIVE' } }),
+        db.reservation.count({
             where: {
                 deletedAt: null,
                 scheduledStart: { gte: today },
                 status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
             },
         }),
-        prisma.queueTicket.count({ where: { status: 'WAITING' } }),
-        prisma.gameSession.aggregate({
+        db.queueTicket.count({ where: { status: 'WAITING' } }),
+        db.gameSession.aggregate({
             where: { startedAt: { gte: today }, status: 'ENDED' },
             _sum: { amountBilled: true },
         }),
