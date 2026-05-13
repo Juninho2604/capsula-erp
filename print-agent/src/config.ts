@@ -77,3 +77,18 @@ export function findPrinter(cfg: AgentConfig, stationOrNull: string | null): Pri
     if (!station) return null;
     return cfg.printers.find((p) => p.station === station) ?? null;
 }
+
+/**
+ * Devuelve TODAS las impresoras configuradas para una station.
+ * Permite el modo "fanout" donde varias entradas en PRINTERS_JSON tienen
+ * el mismo `station` → el agent imprime el mismo job en todas (espejo).
+ *
+ * Útil cuando hay 2 impresoras físicas en una misma estación lógica (ej.
+ * 2 comanderas en cocina que deben recibir todas las comandas, una como
+ * respaldo de la otra o una para entrada y otra para pase).
+ */
+export function findPrinters(cfg: AgentConfig, stationOrNull: string | null): PrinterConfig[] {
+    const station = stationOrNull ?? cfg.defaultStation;
+    if (!station) return [];
+    return cfg.printers.filter((p) => p.station === station);
+}

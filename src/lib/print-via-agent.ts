@@ -53,20 +53,96 @@ export interface AgentReceiptPayload {
     hideDiscount?: boolean;
 }
 
+export interface AgentKitchenItem {
+    name: string;
+    quantity: number;
+    modifiers: string[];
+    notes?: string;
+    /**
+     * Nombre de la categoría del MenuItem (ej. "Bebidas", "Shawarmas", "Cremas").
+     * Si está presente, `enqueueKitchenCommand` lo usa para hacer split
+     * automático entre estaciones (barra vs cocina).
+     */
+    categoryName?: string;
+}
+
 export interface AgentKitchenPayload {
     type: 'KITCHEN' | 'VOID_KITCHEN';
     orderNumber: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     tableName?: string | null;
     customerName?: string | null;
-    items: Array<{
-        name: string;
-        quantity: number;
-        modifiers: string[];
-        notes?: string;
-    }>;
+    items: AgentKitchenItem[];
     createdAt: string; // ISO
     voidReason?: string;
+}
+
+/**
+ * Categorías del menú que se imprimen en la BARRA.
+ * Si una categoría no está aquí, se considera de cocina.
+ *
+ * Cuando llegue la 4ta impresora (línea fría), añadiremos
+ * `CATEGORIES_BY_STATION` con `kitchen-pase`, `kitchen-caliente` y
+ * `kitchen-frio` y este array quedará junto a ellos. Hoy solo
+ * separamos bar vs kitchen y la cocina está en modo espejo (las 2
+ * comanderas físicas reciben todo).
+ */
+const BAR_CATEGORIES: readonly string[] = ['Bebidas'];
+
+function classifyStation(categoryName?: string): 'bar' | 'kitchen' {
+    if (!categoryName) return 'kitchen';
+    return BAR_CATEGORIES.includes(categoryName) ? 'bar' : 'kitchen';
+}
+
+/**
+ * Construye un mapa `menuItemId → categoryName` a partir de las categorías
+ * cargadas en el POS. Cada POS tiene `categories: Array<{ name, items: [{id}] }>`
+ * en su estado (ver loadMenu en cada page.tsx).
+ *
+ * Uso típico en el POS:
+ *   const menuItemCategoryMap = useMemo(
+ *     () => buildMenuItemCategoryMap(categories),
+ *     [categories]
+ *   );
+ */
+export function buildMenuItemCategoryMap(
+    categories: Array<{ name?: string; items?: Array<{ id: string }> | null } | null | undefined>
+): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const cat of categories) {
+        const name = cat?.name;
+        if (!name) continue;
+        const items = cat?.items ?? [];
+        for (const item of items) {
+            if (item?.id) map.set(item.id, name);
+        }
+    }
+    return map;
+}
+
+/**
+ * Adapta un CartItem (con `menuItemId` + `modifiers: { name }[]`) al formato
+ * `AgentKitchenItem` que `enqueueKitchenCommand` necesita. Resuelve el
+ * `categoryName` consultando el mapa pre-construido para que el split por
+ * estación funcione automáticamente.
+ */
+export function buildKitchenItems(
+    cart: Array<{
+        menuItemId: string;
+        name: string;
+        quantity: number;
+        modifiers: Array<{ name: string }>;
+        notes?: string;
+    }>,
+    menuItemCategoryMap: Map<string, string>
+): AgentKitchenItem[] {
+    return cart.map((c) => ({
+        name: c.name,
+        quantity: c.quantity,
+        modifiers: c.modifiers.map((m) => m.name),
+        notes: c.notes,
+        categoryName: menuItemCategoryMap.get(c.menuItemId),
+    }));
 }
 
 /**
@@ -111,22 +187,78 @@ export async function enqueueReceipt(
     }
 }
 
+/**
+ * Encola una comanda de cocina/barra para que el Print Agent la imprima
+ * en la(s) impresora(s) térmica(s) configurada(s) en el local.
+ *
+ * Si los items del payload incluyen `categoryName`, hace **split
+ * automático** entre estaciones:
+ *   - Items con categoría "Bebidas" → station = "bar"
+ *   - Resto → station = "kitchen"
+ *   - Se encola UN print job por estación con sus items.
+ *
+ * Si pasas `stationOverride`, encola un único job con esa estación
+ * (no hace split). Útil para flujos legacy o casos especiales.
+ *
+ * Si una comanda solo tiene bebidas → solo encola job para barra.
+ * Si solo tiene comida → solo encola job para cocina.
+ * Si tiene de ambas → encola 2 jobs (uno por estación).
+ *
+ * Errores se reportan con toast pero NUNCA propagan (la impresión es
+ * accesoria, no debe bloquear el envío a cocina vía API).
+ */
 export async function enqueueKitchenCommand(
     payload: AgentKitchenPayload,
-    station?: string
+    stationOverride?: string
 ): Promise<void> {
-    try {
-        const input: EnqueuePrintJobInput = {
-            type: payload.type === 'VOID_KITCHEN' ? 'VOID_KITCHEN' : 'KITCHEN',
-            station,
-            payload: payload as unknown as Record<string, unknown>,
-        };
-        const res = await enqueuePrintJobAction(input);
-        if (!res.success) {
-            toast.error(`No se pudo encolar la comanda: ${res.message ?? 'error desconocido'}`);
+    const jobType = payload.type === 'VOID_KITCHEN' ? 'VOID_KITCHEN' : 'KITCHEN';
+
+    // Modo override: un solo job con la estación que diga el caller.
+    if (stationOverride) {
+        try {
+            const res = await enqueuePrintJobAction({
+                type: jobType,
+                station: stationOverride,
+                payload: payload as unknown as Record<string, unknown>,
+            });
+            if (!res.success) {
+                toast.error(`No se pudo encolar la comanda: ${res.message ?? 'error desconocido'}`);
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            toast.error(`Error encolando comanda: ${msg}`);
         }
-    } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        toast.error(`Error encolando comanda: ${msg}`);
+        return;
     }
+
+    // Modo split: agrupar items por estación según categoryName.
+    const groups = new Map<'bar' | 'kitchen', AgentKitchenItem[]>();
+    for (const item of payload.items) {
+        const station = classifyStation(item.categoryName);
+        const arr = groups.get(station) ?? [];
+        arr.push(item);
+        groups.set(station, arr);
+    }
+
+    if (groups.size === 0) return;
+
+    // Encolar 1 job por estación, en paralelo.
+    await Promise.all(
+        Array.from(groups.entries()).map(async ([station, items]) => {
+            const subPayload: AgentKitchenPayload = { ...payload, items };
+            try {
+                const res = await enqueuePrintJobAction({
+                    type: jobType,
+                    station,
+                    payload: subPayload as unknown as Record<string, unknown>,
+                });
+                if (!res.success) {
+                    toast.error(`No se pudo encolar comanda (${station}): ${res.message ?? 'error desconocido'}`);
+                }
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                toast.error(`Error encolando comanda (${station}): ${msg}`);
+            }
+        })
+    );
 }

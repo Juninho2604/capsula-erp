@@ -7,7 +7,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
-import { printReceipt, printKitchenCommand } from '@/lib/print-command';
+import { printReceipt } from '@/lib/print-command';
+import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
@@ -326,14 +327,17 @@ export default function POSDeliveryPage() {
 
             if (result.success && result.data) {
                 const cfg = getPOSConfig();
-                if (cfg.printComandaOnDelivery) {
-                    printKitchenCommand({
-                        orderNumber: result.data.orderNumber, orderType: 'DELIVERY',
-                        customerName: `${customerName} (${customerPhone})`,
-                        items: cart.map(i => ({ name: i.name, quantity: i.quantity, modifiers: i.modifiers.map(m => m.name), notes: i.notes })),
-                        createdAt: new Date(), address: customerAddress
-                    });
-                }
+                // Comanda cocina/barra vía Print Agent (impresoras Ethernet
+                // del local). Split por categoría: bebidas → barra, resto → cocina.
+                const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+                void enqueueKitchenCommand({
+                    type: 'KITCHEN',
+                    orderNumber: result.data.orderNumber,
+                    orderType: 'DELIVERY',
+                    customerName: `${customerName} (${customerPhone})`,
+                    items: buildKitchenItems(cart, menuItemCategoryMap),
+                    createdAt: new Date().toISOString(),
+                });
                 const receiptData = {
                     orderNumber: result.data.orderNumber,
                     orderType: 'DELIVERY' as const,

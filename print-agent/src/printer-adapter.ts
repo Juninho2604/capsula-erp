@@ -99,10 +99,15 @@ export async function printToStation(
         throw new Error(`Impresora ${cfg.station} (${cfg.ip}:${cfg.port}) no responde`);
     }
 
-    if (payload.type === 'KITCHEN' || payload.type === 'VOID_KITCHEN') {
-        renderKitchen(printer, payload);
-    } else {
-        renderReceipt(printer, payload);
+    switch (payload.type) {
+        case 'KITCHEN':
+        case 'VOID_KITCHEN':
+            renderKitchen(printer, payload);
+            break;
+        case 'RECEIPT':
+        case 'PRECUENTA':
+            renderReceipt(printer, payload);
+            break;
     }
 
     printer.cut();
