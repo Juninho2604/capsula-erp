@@ -1,32 +1,22 @@
 'use server';
 
 /**
- * Meseros — multitenant pleno (Lote 2.b — Fase 3 Paso D.b) PARCIAL.
+ * Meseros — multitenant pleno (Lote 2.b admin + Lote 5.j transferTable/moveTab).
  *
- * Migrado al patrón withTenant + resolveTenantContext:
+ * Todas las server actions del archivo están migradas al patrón
+ * withTenant + resolveTenantContext:
  *   - getActiveBranch (helper)
  *   - getWaitersAction / getActiveWaitersAction
  *   - createWaiterAction
  *   - updateWaiterAction / toggleWaiterActiveAction / deleteWaiterAction
- *     (update → updateMany con tenantId explícito)
  *   - validateWaiterPinAction
  *   - resolveAuthPin (helper)
+ *   - transferTableAction (cerrado en Lote 5.j)
+ *   - moveTabBetweenTablesAction (cerrado en Lote 5.j)
  *
- * DIFERIDO a Lote 5 (POS):
- *   - transferTableAction
- *   - moveTabBetweenTablesAction
- *
- * Son transacciones interactivas con findUnique / update keyed by id
- * sobre OpenTab, Waiter, TableOrStation. La extension `withTenant()` no
- * filtra esas operaciones (uniques globales), así que pasar a tenant-safe
- * requiere convertir cada findUnique → findFirst({ where: { id, tenantId } })
- * y cada update → updateMany. Los hago juntos con el resto del POS en
- * Lote 5 para mantener review focalizado.
- *
- * Por el branchId FK, las queries dentro de transferTable / moveTab están
- * IMPLICITAMENTE tenant-scoped vía Branch (que ya es tenant-aware). El
- * riesgo concreto es que un ID de OpenTab/Waiter/Table de otro tenant
- * matchee si alguien lo conoce, pero la UI no lo expone.
+ * En las transacciones de transfer/move, las ops sobre OpenTab/TableOrStation
+ * usan tx.X.updateMany / findFirst con tenant filter. TableTransfer no es
+ * tenant-aware; su scope viene de la FK openTabId ya validado.
  */
 
 import { getSession } from '@/lib/auth';
@@ -336,8 +326,11 @@ export async function transferTableAction({
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
-        // Verificar que el tab existe y está abierto
-        const openTab = await prisma.openTab.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Verificar que el tab existe (tenant-scoped) y está abierto
+        const openTab = await db.openTab.findFirst({
             where: { id: openTabId },
             select: { id: true, status: true, waiterProfileId: true },
         });
@@ -346,8 +339,8 @@ export async function transferTableAction({
             return { success: false, message: 'La cuenta ya está cerrada' };
         }
 
-        // Verificar waiter destino existe y está activo
-        const toWaiter = await prisma.waiter.findUnique({
+        // Verificar waiter destino existe (tenant-scoped) y está activo
+        const toWaiter = await db.waiter.findFirst({
             where: { id: toWaiterId },
             select: { id: true, firstName: true, lastName: true, isActive: true },
         });
@@ -361,8 +354,9 @@ export async function transferTableAction({
             return { success: false, message: 'PIN de capitán o gerente incorrecto' };
         }
 
-        // Transacción: crear registro + actualizar OpenTab
-        const transfer = await prisma.$transaction(async (tx) => {
+        // Transacción: crear registro + actualizar OpenTab (tenant-scoped vía db)
+        const transfer = await db.$transaction(async (tx) => {
+            // TableTransfer no es tenant-aware; scope vía openTabId ya validado.
             const record = await tx.tableTransfer.create({
                 data: {
                     openTabId,
@@ -376,7 +370,8 @@ export async function transferTableAction({
                     reason: reason?.trim() || null,
                 },
             });
-            await tx.openTab.update({
+            // OpenTab tenant-aware → updateMany para que tenantId filtre.
+            await tx.openTab.updateMany({
                 where: { id: openTabId },
                 data: { waiterProfileId: toWaiterId },
             });
@@ -424,8 +419,11 @@ export async function moveTabBetweenTablesAction({
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
-        // Cargar el OpenTab con su mesa y mesonero actuales
-        const openTab = await prisma.openTab.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Cargar el OpenTab con su mesa y mesonero actuales (tenant-scoped)
+        const openTab = await db.openTab.findFirst({
             where: { id: openTabId },
             select: {
                 id: true,
@@ -443,8 +441,8 @@ export async function moveTabBetweenTablesAction({
         if (!fromTableId) return { success: false, message: 'La cuenta no tiene mesa asignada' };
         if (fromTableId === toTableId) return { success: false, message: 'La mesa destino es la misma que la actual' };
 
-        // Validar que la mesa destino existe, pertenece a la sucursal y está AVAILABLE
-        const toTable = await prisma.tableOrStation.findUnique({
+        // Validar que la mesa destino existe (tenant-scoped), pertenece a la sucursal y está AVAILABLE
+        const toTable = await db.tableOrStation.findFirst({
             where: { id: toTableId },
             select: { id: true, name: true, currentStatus: true, branchId: true, isActive: true },
         });
@@ -458,8 +456,8 @@ export async function moveTabBetweenTablesAction({
             return { success: false, message: `La mesa "${toTable.name}" no está disponible (${toTable.currentStatus})` };
         }
 
-        // Verificar que no haya otro OpenTab activo en la mesa destino
-        const conflictTab = await prisma.openTab.findFirst({
+        // Verificar que no haya otro OpenTab activo en la mesa destino (tenant-scoped)
+        const conflictTab = await db.openTab.findFirst({
             where: {
                 tableOrStationId: toTableId,
                 status: { in: ['OPEN', 'PARTIALLY_PAID'] },
@@ -480,27 +478,27 @@ export async function moveTabBetweenTablesAction({
         const waiterId = openTab.waiterProfileId;
         if (!waiterId) return { success: false, message: 'La cuenta no tiene mesonero asignado' };
 
-        // Transacción atómica
-        const transfer = await prisma.$transaction(async (tx) => {
-            // 1. Reasignar mesa en el OpenTab
-            await tx.openTab.update({
+        // Transacción atómica (tenant-scoped vía db.$transaction)
+        const transfer = await db.$transaction(async (tx) => {
+            // 1. Reasignar mesa en el OpenTab (tenant-aware → updateMany)
+            await tx.openTab.updateMany({
                 where: { id: openTabId },
                 data: { tableOrStationId: toTableId },
             });
 
-            // 2. Mesa origen → AVAILABLE
-            await tx.tableOrStation.update({
+            // 2. Mesa origen → AVAILABLE (tenant-aware → updateMany)
+            await tx.tableOrStation.updateMany({
                 where: { id: fromTableId },
                 data: { currentStatus: 'AVAILABLE' },
             });
 
-            // 3. Mesa destino → OCCUPIED
-            await tx.tableOrStation.update({
+            // 3. Mesa destino → OCCUPIED (tenant-aware → updateMany)
+            await tx.tableOrStation.updateMany({
                 where: { id: toTableId },
                 data: { currentStatus: 'OCCUPIED' },
             });
 
-            // 4. Registrar en TableTransfer (waiter no cambia, solo cambia la mesa)
+            // 4. Registrar en TableTransfer (NO tenant-aware; scope vía openTabId)
             const record = await tx.tableTransfer.create({
                 data: {
                     openTabId,
