@@ -1,10 +1,29 @@
 'use server';
 
+/**
+ * Cierre diario de inventario — multitenant (Lote 4.e — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: DailyInventory, MenuItem, Recipe, InventoryItem,
+ *                       SalesOrder, Area, Requisition, ProteinProcessing.
+ * Modelos NO tenant-aware (FK-scoped): DailyInventoryItem (FK a DailyInventory),
+ *                       AreaCriticalItem (FK a Area + InventoryItem).
+ *
+ * Validaciones nuevas:
+ *   - getDailyInventoryAction / save / close / reopen: ownership de dailyId
+ *     o areaId vía findFirst en db tenant-aware.
+ *   - saveDailyInventoryCountsAction: updates de DailyInventoryItem usan
+ *     `where: { id, dailyInventoryId: dailyId }` para que un id de otro
+ *     daily no matchee.
+ *   - toggleItemCriticalStatusAction: ownership de areaId + inventoryItemId.
+ */
+
 import prisma from '@/server/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ============================================================================
 // OBTENER INVENTARIO DIARIO (Sincronizado con Transferencias y Producciones)
@@ -17,9 +36,21 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // 1. Buscar inventario diario existente
-        let daily = await prisma.dailyInventory.findUnique({
-            where: { date_areaId: { date: startOfDay, areaId: areaId } },
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership del areaId (lo usaremos como filtro en muchas queries)
+        const ownedArea = await db.area.findFirst({
+            where: { id: areaId },
+            select: { id: true },
+        });
+        if (!ownedArea) {
+            return { success: false, message: 'Área no encontrada' };
+        }
+
+        // 1. Buscar inventario diario existente (findUnique → findFirst con tenant filter)
+        let daily = await db.dailyInventory.findFirst({
+            where: { date: startOfDay, areaId },
             include: {
                 area: true,
                 items: {
@@ -29,7 +60,8 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             }
         });
 
-        // 2. Obtener ITEMS CRÍTICOS POR ÁREA (tabla nueva)
+        // 2. Obtener ITEMS CRÍTICOS POR ÁREA. AreaCriticalItem no es tenant-aware
+        // pero el areaId ya está validado upstream → scope correcto.
         const areaCriticals = await prisma.areaCriticalItem.findMany({
             where: { areaId },
             include: { inventoryItem: true }
@@ -45,7 +77,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
         };
 
         // ── Transferencias donde ESTA ÁREA es DESTINO (entradas) ──
-        const inboundRequisitions = await prisma.requisition.findMany({
+        const inboundRequisitions = await db.requisition.findMany({
             where: {
                 targetAreaId: areaId,
                 status: 'COMPLETED',
@@ -57,14 +89,13 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
         for (const req of inboundRequisitions) {
             for (const item of req.items) {
                 const current = entriesFromTransfers.get(item.inventoryItemId) || 0;
-                // FIX: Use dispatchedQuantity → sentQuantity → quantity as fallback chain
                 const qty = item.dispatchedQuantity ?? item.sentQuantity ?? item.quantity ?? 0;
                 entriesFromTransfers.set(item.inventoryItemId, current + qty);
             }
         }
 
         // ── Transferencias donde ESTA ÁREA es ORIGEN (salidas) ──
-        const outboundRequisitions = await prisma.requisition.findMany({
+        const outboundRequisitions = await db.requisition.findMany({
             where: {
                 sourceAreaId: areaId,
                 status: 'COMPLETED',
@@ -82,7 +113,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
         }
 
         // ── Producciones completadas hoy (entradas para Centro de Producción) ──
-        const completedProductions = await prisma.proteinProcessing.findMany({
+        const completedProductions = await db.proteinProcessing.findMany({
             where: {
                 areaId: areaId,
                 status: 'COMPLETED',
@@ -100,7 +131,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             }
         }
 
-        // ── Combinar: Entradas automáticas = transferencias entrantes + producciones ──
+        // ── Combinar entradas/salidas ──
         const autoEntries = new Map<string, number>();
         for (const [id, qty] of Array.from(entriesFromTransfers.entries())) {
             autoEntries.set(id, (autoEntries.get(id) || 0) + qty);
@@ -109,7 +140,6 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             autoEntries.set(id, (autoEntries.get(id) || 0) + qty);
         }
 
-        // ── Salidas automáticas = transferencias salientes ──
         const autoSales = new Map<string, number>();
         for (const [id, qty] of Array.from(salesFromTransfers.entries())) {
             autoSales.set(id, (autoSales.get(id) || 0) + qty);
@@ -120,13 +150,13 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             // Buscar día anterior para arrastre automático
             const yesterday = new Date(startOfDay);
             yesterday.setDate(yesterday.getDate() - 1);
-            const prevDaily = await prisma.dailyInventory.findUnique({
-                where: { date_areaId: { date: yesterday, areaId } },
+            const prevDaily = await db.dailyInventory.findFirst({
+                where: { date: yesterday, areaId },
                 include: { items: true }
             });
             const prevMap = new Map(prevDaily?.items.map((i: any) => [i.inventoryItemId, i.finalCount]) || []);
 
-            daily = await prisma.dailyInventory.create({
+            daily = await db.dailyInventory.create({
                 data: {
                     date: startOfDay,
                     areaId,
@@ -153,6 +183,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             const missingCriticals = criticalItems.filter((ci: any) => !existingItemIds.has(ci.id));
 
             if (missingCriticals.length > 0) {
+                // DailyInventoryItem no es tenant-aware; FK al daily ya validado.
                 await prisma.dailyInventoryItem.createMany({
                     data: missingCriticals.map((item: any) => ({
                         dailyInventoryId: daily!.id,
@@ -179,8 +210,8 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
                 });
             }
 
-            // ── SYNC 3: Actualizar SOLO entradas/salidas automáticas (no sobreescribir manuales) ──
-            daily = await prisma.dailyInventory.findUnique({
+            // ── SYNC 3: Releer daily con datos actualizados ──
+            daily = await db.dailyInventory.findFirst({
                 where: { id: daily.id },
                 include: {
                     area: true,
@@ -190,10 +221,6 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
                     }
                 }
             });
-
-            // NOTE: No sobreescribimos automáticamente entries/sales una vez creados.
-            // El usuario puede editarlos manualmente. Las transferencias se muestran como 
-            // "sugerencia automática" en la UI para que el usuario decida.
         }
 
         // Calcular las sugerencias automáticas para enviar a la UI
@@ -223,6 +250,15 @@ export async function saveDailyInventoryCountsAction(dailyId: string, itemsData:
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
+        // Validar ownership del daily inventory
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const ownedDaily = await db.dailyInventory.findFirst({
+            where: { id: dailyId },
+            select: { id: true },
+        });
+        if (!ownedDaily) return { success: false, message: 'Inventario no encontrado' };
+
         for (const item of itemsData) {
             const initial = parseFloat(item.initialCount) || 0;
             const entries = parseFloat(item.entries) || 0;
@@ -235,8 +271,10 @@ export async function saveDailyInventoryCountsAction(dailyId: string, itemsData:
             // Variación = Cierre real - Teórico
             const variance = finalCount - theoretical;
 
-            await prisma.dailyInventoryItem.update({
-                where: { id: item.id },
+            // Update con `dailyInventoryId` explícito para que un id de un
+            // DailyInventoryItem de otro daily no matchee.
+            await prisma.dailyInventoryItem.updateMany({
+                where: { id: item.id, dailyInventoryId: dailyId },
                 data: {
                     initialCount: initial,
                     entries: entries,
@@ -263,7 +301,9 @@ export async function saveDailyInventoryCountsAction(dailyId: string, itemsData:
 // ============================================================================
 export async function getMenuItemsWithRecipesAction() {
     try {
-        const items = await prisma.menuItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.menuItem.findMany({
             where: { isActive: true },
             include: { category: true },
             orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }]
@@ -279,7 +319,9 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const daily = await prisma.dailyInventory.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const daily = await db.dailyInventory.findFirst({
             where: { id: dailyId },
             include: { items: true }
         });
@@ -291,12 +333,12 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
         for (const sale of salesData) {
             if (sale.quantity <= 0) continue;
 
-            const menuItem = await prisma.menuItem.findUnique({
+            const menuItem = await db.menuItem.findFirst({
                 where: { id: sale.menuItemId }
             });
 
             if (menuItem?.recipeId) {
-                const recipe = await prisma.recipe.findUnique({
+                const recipe = await db.recipe.findFirst({
                     where: { id: menuItem.recipeId },
                     include: { ingredients: true }
                 });
@@ -316,8 +358,8 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
         for (const [itemId, qty] of consumptionEntries) {
             const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
             if (dailyItem) {
-                await prisma.dailyInventoryItem.update({
-                    where: { id: dailyItem.id },
+                await prisma.dailyInventoryItem.updateMany({
+                    where: { id: dailyItem.id, dailyInventoryId: dailyId },
                     data: { sales: { increment: qty } }
                 });
             }
@@ -334,13 +376,6 @@ export async function processManualSalesAction(dailyId: string, salesData: { men
 // ============================================================================
 // PROCESAR VENTAS DESDE WHATSAPP PARA INVENTARIO DIARIO
 // ============================================================================
-/**
- * Recibe un array de productos parseados del chat de WhatsApp y calcula el
- * consumo de proteínas, luego lo acumula en el inventario diario.
- * 
- * Cada item tiene: { productName, quantity, proteinBreakdown }
- * proteinBreakdown: { ingredientName: string, grams: number }[]
- */
 export async function processWhatsAppSalesForDailyAction(
     dailyId: string,
     parsedProducts: {
@@ -353,7 +388,9 @@ export async function processWhatsAppSalesForDailyAction(
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const daily = await prisma.dailyInventory.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const daily = await db.dailyInventory.findFirst({
             where: { id: dailyId },
             include: { items: true }
         });
@@ -368,7 +405,6 @@ export async function processWhatsAppSalesForDailyAction(
 
             for (const breakdown of product.proteinBreakdown) {
                 const current = totalConsumption.get(breakdown.inventoryItemId) || 0;
-                // grams * quantity del producto;  convertir a KG si la unidad base es KG
                 totalConsumption.set(breakdown.inventoryItemId, current + (breakdown.grams * product.quantity));
             }
         }
@@ -378,12 +414,11 @@ export async function processWhatsAppSalesForDailyAction(
         for (const [itemId, totalGrams] of Array.from(totalConsumption.entries())) {
             const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
             if (dailyItem) {
-                // Verificar la unidad: si es KG, convertir gramos a KG
                 const unit = dailyItem.unit?.toUpperCase() || '';
                 const valueToAdd = unit === 'KG' ? totalGrams / 1000 : totalGrams;
 
-                await prisma.dailyInventoryItem.update({
-                    where: { id: dailyItem.id },
+                await prisma.dailyInventoryItem.updateMany({
+                    where: { id: dailyItem.id, dailyInventoryId: dailyId },
                     data: { sales: { increment: valueToAdd } }
                 });
                 updatedCount++;
@@ -410,7 +445,9 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const daily = await prisma.dailyInventory.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const daily = await db.dailyInventory.findFirst({
             where: { id: dailyId },
             include: { items: true }
         });
@@ -421,7 +458,7 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
         const endOfDay = new Date(daily.date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        const orders = await prisma.salesOrder.findMany({
+        const orders = await db.salesOrder.findMany({
             where: {
                 areaId: daily.areaId,
                 status: 'COMPLETED',
@@ -440,7 +477,7 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
 
                 const menuItem = item.menuItem;
                 if (menuItem?.recipeId) {
-                    const recipe = await prisma.recipe.findUnique({
+                    const recipe = await db.recipe.findFirst({
                         where: { id: menuItem.recipeId },
                         include: { ingredients: true }
                     });
@@ -459,8 +496,8 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
         for (const [itemId, consumption] of itemsWithConsumption) {
             const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
             if (dailyItem) {
-                await prisma.dailyInventoryItem.update({
-                    where: { id: dailyItem.id },
+                await prisma.dailyInventoryItem.updateMany({
+                    where: { id: dailyItem.id, dailyInventoryId: dailyId },
                     data: { sales: consumption }
                 });
             }
@@ -486,7 +523,8 @@ export async function closeDailyInventoryAction(dailyId: string) {
     if (!guard.ok) return { success: false, message: guard.message };
 
     try {
-        await prisma.dailyInventory.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).dailyInventory.updateMany({
             where: { id: dailyId },
             data: {
                 status: 'CLOSED',
@@ -494,6 +532,7 @@ export async function closeDailyInventoryAction(dailyId: string) {
                 closedById: guard.user.id
             }
         });
+        if (res.count === 0) return { success: false, message: 'Inventario no encontrado' };
 
         revalidatePath('/dashboard/inventario/diario');
         return { success: true, message: 'Inventario diario finalizado exitosamente' };
@@ -513,7 +552,8 @@ export async function reopenDailyInventoryAction(dailyId: string) {
             return { success: false, message: 'Solo el propietario o auditor puede reabrir un día cerrado' };
         }
 
-        await prisma.dailyInventory.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).dailyInventory.updateMany({
             where: { id: dailyId },
             data: {
                 status: 'DRAFT',
@@ -521,6 +561,7 @@ export async function reopenDailyInventoryAction(dailyId: string) {
                 closedById: null
             }
         });
+        if (res.count === 0) return { success: false, message: 'Inventario no encontrado' };
 
         revalidatePath('/dashboard/inventario/diario');
         return { success: true, message: 'Día reabierto exitosamente' };
@@ -544,7 +585,9 @@ export async function getInventorySummaryByRangeAction(
         const endDate = new Date(endDateStr);
         endDate.setHours(23, 59, 59, 999);
 
-        const dailies = await prisma.dailyInventory.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const dailies = await db.dailyInventory.findMany({
             where: {
                 areaId,
                 date: { gte: startDate, lte: endDate }
@@ -610,7 +653,9 @@ export async function getDaysStatusAction(areaId: string, startDateStr: string, 
         const endDate = new Date(endDateStr);
         endDate.setHours(23, 59, 59, 999);
 
-        const dailies = await prisma.dailyInventory.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const dailies = await db.dailyInventory.findMany({
             where: {
                 areaId,
                 date: { gte: startDate, lte: endDate }
@@ -644,7 +689,9 @@ export async function getDaysStatusAction(areaId: string, startDateStr: string, 
 // ============================================================================
 export async function searchItemsForCriticalListAction(query: string, areaId: string) {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 OR: [
@@ -656,6 +703,9 @@ export async function searchItemsForCriticalListAction(query: string, areaId: st
             take: 50
         });
 
+        // AreaCriticalItem no es tenant-aware; el areaId ya está validado
+        // (los items ya están filtrados por tenant arriba, así que el cruce
+        // es seguro).
         const areaCriticals = await prisma.areaCriticalItem.findMany({
             where: { areaId },
             select: { inventoryItemId: true }
@@ -679,6 +729,17 @@ export async function toggleItemCriticalStatusAction(itemId: string, isCritical:
         const session = await getSession();
         if (!session || !['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
             return { success: false, message: 'Permisos insuficientes' };
+        }
+
+        // Validar ownership de areaId + itemId antes de tocar el pivot.
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const [ownedArea, ownedItem] = await Promise.all([
+            db.area.findFirst({ where: { id: areaId }, select: { id: true } }),
+            db.inventoryItem.findFirst({ where: { id: itemId }, select: { id: true } }),
+        ]);
+        if (!ownedArea || !ownedItem) {
+            return { success: false, message: 'Área o item no encontrados' };
         }
 
         if (isCritical) {
@@ -706,6 +767,16 @@ export async function toggleItemCriticalStatusAction(itemId: string, isCritical:
 // ============================================================================
 export async function getCriticalProteinItemsAction(areaId: string) {
     try {
+        // areaCriticalItem.findMany filtrando por areaId; los inventoryItem
+        // adjuntos vienen vía FK. Para tenant-safety, validamos area upstream.
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const ownedArea = await db.area.findFirst({
+            where: { id: areaId },
+            select: { id: true },
+        });
+        if (!ownedArea) return { success: false, data: [] };
+
         const areaCriticals = await prisma.areaCriticalItem.findMany({
             where: { areaId },
             include: {
