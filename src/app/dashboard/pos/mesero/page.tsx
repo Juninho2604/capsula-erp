@@ -1459,10 +1459,11 @@ export default function POSMeseroPage() {
         const tipAmount     = activeTab.tipAmount ?? 0;
         const paidSplits    = (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
         const paidTotal     = paidSplits.reduce((s, p) => s + p.paidAmount, 0);
-        // Preview Divisas -33%: descuento del 33% sobre el subtotal cuando
-        // el cliente paga en cash USD/EUR. Servicio y propina se recalculan
-        // sobre el subtotal con descuento para no inflar artificialmente.
-        const divisasDiscount = divisasPreview ? subtotal * 0.33 : 0;
+        // Preview Divisas −33.33%: descuento de 1/3 (= 33.33% recurrente)
+        // sobre el subtotal cuando el cliente paga en cash USD/EUR. Se
+        // usa la misma fórmula `/ 3` que POS Delivery / Restaurante para
+        // mantener consistencia exacta entre módulos.
+        const divisasDiscount = divisasPreview ? subtotal / 3 : 0;
         const grandTotal    = activeTab.runningTotal + serviceCharge + tipAmount - divisasDiscount;
         // Saldo restante INCLUYE propina y descuento divisas, para que los
         // métodos de pago muestren el monto correcto a cobrar.
@@ -1559,7 +1560,7 @@ export default function POSMeseroPage() {
                         : 'text-capsula-ink-muted hover:text-capsula-ink'
                     }`}
                   >
-                    Divisas −33%
+                    Divisas −33,33%
                   </button>
                 </div>
 
@@ -1577,7 +1578,7 @@ export default function POSMeseroPage() {
                   )}
                   {divisasDiscount > 0.001 && (
                     <div className="flex justify-between text-xs text-capsula-coral">
-                      <span className="font-semibold uppercase tracking-wider">Descuento Divisas (−33%)</span>
+                      <span className="font-semibold uppercase tracking-wider">Descuento Divisas (−33,33%)</span>
                       <span className="font-semibold tabular-nums">−${divisasDiscount.toFixed(2)}</span>
                     </div>
                   )}
