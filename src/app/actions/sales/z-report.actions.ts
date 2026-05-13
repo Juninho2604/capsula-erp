@@ -1,8 +1,15 @@
 'use server';
 
+/**
+ * Reporte Z (cierre de caja) — multitenant (Lote 5.d — Fase 3 Paso D.b).
+ * Solo lectura sobre SalesOrder (tenant-aware).
+ */
+
 import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { cancelledWhere } from '@/lib/sales-where';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface ZReportData {
     period: string;
@@ -55,8 +62,10 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const today = date ? new Date(date + 'T12:00:00') : new Date();
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         const [orders, cancelledAgg] = await Promise.all([
-            prisma.salesOrder.findMany({
+            db.salesOrder.findMany({
                 where: {
                     createdAt:    { gte: startOfDay, lte: endOfDay },
                     status:       { notIn: ['CANCELLED'] },
@@ -81,7 +90,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                     },
                 },
             }),
-            prisma.salesOrder.aggregate({
+            db.salesOrder.aggregate({
                 where: cancelledWhere(startOfDay, endOfDay),
                 _count: { id: true },
                 _sum: { total: true },
