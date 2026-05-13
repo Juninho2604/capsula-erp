@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -39,6 +41,8 @@ export interface NotificationsResult {
 // ============================================================================
 
 export async function getNotificationsAction(): Promise<NotificationsResult> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false, systemMessages: [], stockAlerts: [], totalCount: 0 };
@@ -49,7 +53,7 @@ export async function getNotificationsAction(): Promise<NotificationsResult> {
     const isOperational = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CHEF', 'KITCHEN_CHEF', 'AUDITOR'].includes(role);
 
     // ── Mensajes del sistema desde BD ─────────────────────────────────────────
-    const rawMessages = await prisma.broadcastMessage.findMany({
+    const rawMessages = await db.broadcastMessage.findMany({
       where: {
         isActive: true,
         startsAt: { lte: now },
@@ -86,7 +90,7 @@ export async function getNotificationsAction(): Promise<NotificationsResult> {
     let stockAlerts: StockAlert[] = [];
 
     if (isOperational) {
-      const items = await prisma.inventoryItem.findMany({
+      const items = await db.inventoryItem.findMany({
         where: { isActive: true },
         include: { stockLevels: { select: { currentStock: true } } },
       });
@@ -134,6 +138,8 @@ export async function createBroadcastAction(input: {
   targetRoles?: string[];
   expiresInHours?: number;
 }): Promise<{ success: boolean; message: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
@@ -148,7 +154,7 @@ export async function createBroadcastAction(input: {
       ? new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000)
       : null;
 
-    await prisma.broadcastMessage.create({
+    await db.broadcastMessage.create({
       data: {
         title: input.title.trim(),
         body: input.body.trim(),
@@ -187,6 +193,8 @@ export interface BroadcastRecord {
 }
 
 export async function getAllBroadcastsAdminAction(): Promise<{ success: boolean; data?: BroadcastRecord[] }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false };
@@ -194,7 +202,7 @@ export async function getAllBroadcastsAdminAction(): Promise<{ success: boolean;
       return { success: false };
     }
 
-    const rows = await prisma.broadcastMessage.findMany({
+    const rows = await db.broadcastMessage.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -219,13 +227,15 @@ export async function getAllBroadcastsAdminAction(): Promise<{ success: boolean;
 }
 
 export async function dismissBroadcastAction(id: string): Promise<{ success: boolean }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false };
     if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
       return { success: false };
     }
-    await prisma.broadcastMessage.update({
+    await db.broadcastMessage.update({
       where: { id },
       data: { isActive: false },
     });

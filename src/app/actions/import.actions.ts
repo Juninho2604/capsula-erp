@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import * as XLSX from 'xlsx';
 import { getSession } from '@/lib/auth';
 import { z } from 'zod';
@@ -44,6 +46,8 @@ export async function parseUploadAction(
     fileBase64: string,
     type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL'
 ): Promise<ImportPreviewResult> {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         if (!fileBase64 || !fileBase64.includes(',')) {
             throw new Error('Formato de archivo inválido (Base64 corrupto)');
@@ -69,7 +73,7 @@ export async function parseUploadAction(
         const items: ImportPreviewResult['items'] = [];
 
         // Load all items (active or inactive) to prevent duplicates and allow reactivation
-        const dbItems = await prisma.inventoryItem.findMany({
+        const dbItems = await db.inventoryItem.findMany({
             select: { id: true, name: true, sku: true }
         });
 
@@ -293,6 +297,8 @@ export async function processImportAction(
     type: 'ENTRADA_ALMACEN' | 'MERMA' | 'INVENTARIO_INICIAL',
     areaId?: string // NEW: Optional area ID, defaults to Almacén Principal
 ) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     const session = await getSession();
     if (!session?.id) return { success: false, message: 'No autorizado' };
     const userId = session.id;
@@ -305,7 +311,7 @@ export async function processImportAction(
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await db.$transaction(async (tx) => {
             const movementType = (type === 'ENTRADA_ALMACEN' || type === 'INVENTARIO_INICIAL') ? 'PURCHASE' : 'WASTE';
 
             // FIX: If areaId provided, use it. Otherwise find "Almacén Principal" by name

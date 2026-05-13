@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
@@ -70,6 +72,8 @@ async function getMetasConfig(): Promise<MetasConfig> {
 // ============================================================================
 
 export async function getMetasAction(): Promise<{ success: boolean; data?: MetasData; message?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
@@ -92,27 +96,29 @@ export async function getMetasAction(): Promise<{ success: boolean; data?: Metas
     const monthStart = new Date(Date.UTC(_cy, _cm, 1, 4, 0, 0, 0));
 
     const [todayAgg, weekAgg, monthAgg, wasteAgg] = await Promise.all([
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: revenueWhere(todayStart, todayEnd),
         _sum: { total: true },
         _count: { id: true },
       }),
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: weekStart } },
         _sum: { total: true },
         _count: { id: true },
       }),
-      prisma.salesOrder.aggregate({
+      db.salesOrder.aggregate({
         where: { status: { not: 'CANCELLED' }, customerName: { not: 'PROPINA COLECTIVA' }, createdAt: { gte: monthStart } },
         _sum: { total: true },
         _count: { id: true },
       }),
       // Merma del mes: movimientos tipo WASTE o ADJUSTMENT_OUT con totalCost
+      // InventoryMovement no es tenant-aware; filtramos por inventoryItem.tenantId.
       prisma.inventoryMovement.aggregate({
         where: {
           movementType: { in: ['WASTE', 'ADJUSTMENT_OUT', 'ADJUSTMENT'] },
-          quantity: { lt: 0 }, // solo salidas (negativas)
+          quantity: { lt: 0 },
           createdAt: { gte: monthStart },
+          inventoryItem: { tenantId },
         },
         _sum: { totalCost: true },
       }),

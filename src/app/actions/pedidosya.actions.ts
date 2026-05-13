@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { revalidatePath } from 'next/cache';
@@ -29,13 +31,15 @@ async function generatePYAOrderNumber(): Promise<string> {
 }
 
 export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData) {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
         // Obtener área de ventas base
-        let salesArea = await prisma.area.findFirst({ where: { name: { contains: 'Ventas' } } });
-        if (!salesArea) salesArea = await prisma.area.findFirst();
+        let salesArea = await db.area.findFirst({ where: { name: { contains: 'Ventas' } } });
+        if (!salesArea) salesArea = await db.area.findFirst();
         if (!salesArea) return { success: false, message: 'No hay área configurada' };
 
         const subtotal = data.items.reduce((s, i) => s + i.lineTotal, 0);
@@ -46,7 +50,7 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
             data.notes || '',
         ].filter(Boolean).join(' | ') || 'PedidosYA';
 
-        const order = await prisma.salesOrder.create({
+        const order = await db.salesOrder.create({
             data: {
                 orderNumber,
                 orderType: 'PEDIDOSYA',
@@ -92,12 +96,12 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
         try {
             for (const item of order.items) {
                 if (!item.menuItemId) continue;
-                const menuItem = await prisma.menuItem.findUnique({
+                const menuItem = await db.menuItem.findUnique({
                     where: { id: item.menuItemId },
                     select: { recipeId: true, name: true }
                 });
                 if (!menuItem?.recipeId) continue;
-                const recipe = await prisma.recipe.findUnique({
+                const recipe = await db.recipe.findUnique({
                     where: { id: menuItem.recipeId },
                     include: { ingredients: { include: { ingredientItem: true } } }
                 });

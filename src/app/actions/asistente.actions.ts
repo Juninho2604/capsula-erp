@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -42,6 +44,8 @@ export interface MenuRecipeStatus {
 export async function createRawMaterialAction(
   input: CreateRawMaterialInput
 ): Promise<{ success: boolean; message: string; data?: { id: string; sku: string; name: string } }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
@@ -53,12 +57,12 @@ export async function createRawMaterialAction(
 
     // Verificar SKU único — pre-Fase 2.B: findFirst para no depender del unique
     // global sobre InventoryItem.sku.
-    const existing = await prisma.inventoryItem.findFirst({ where: { sku: input.sku.trim().toUpperCase() } });
+    const existing = await db.inventoryItem.findFirst({ where: { sku: input.sku.trim().toUpperCase() } });
     if (existing) {
       return { success: false, message: `Ya existe un ítem con el SKU "${input.sku}" — usa uno diferente` };
     }
 
-    const item = await prisma.inventoryItem.create({
+    const item = await db.inventoryItem.create({
       data: {
         name: input.name.trim(),
         sku: input.sku.trim().toUpperCase(),
@@ -94,9 +98,11 @@ export async function createRawMaterialAction(
 // ============================================================================
 
 export async function suggestSkuAction(prefix: string): Promise<string> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
     const clean = prefix.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const count = await prisma.inventoryItem.count({
+    const count = await db.inventoryItem.count({
       where: { sku: { startsWith: clean } },
     });
     return `${clean}-${String(count + 1).padStart(3, '0')}`;
@@ -114,8 +120,10 @@ export async function getMenuRecipeStatusAction(): Promise<{
   data?: MenuRecipeStatus[];
   summary?: { total: number; complete: number; stub: number; none: number };
 }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
-    const categories = await prisma.menuCategory.findMany({
+    const categories = await db.menuCategory.findMany({
       include: {
         items: {
           where: { isActive: true },
@@ -130,7 +138,7 @@ export async function getMenuRecipeStatusAction(): Promise<{
     const allItems = categories.flatMap((c) => c.items);
     const recipeIds = allItems.map((i) => i.recipeId).filter(Boolean) as string[];
     const recipesWithCounts = recipeIds.length
-      ? await prisma.recipe.findMany({
+      ? await db.recipe.findMany({
           where: { id: { in: recipeIds } },
           select: { id: true, _count: { select: { ingredients: true } } },
         })
@@ -185,8 +193,10 @@ export async function getRawMaterialsListAction(): Promise<{
   success: boolean;
   data?: { id: string; sku: string; name: string; type: string; baseUnit: string; category: string }[];
 }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
   try {
-    const items = await prisma.inventoryItem.findMany({
+    const items = await db.inventoryItem.findMany({
       where: {
         isActive: true,
         type: { in: ['RAW_MATERIAL', 'SUB_RECIPE'] },

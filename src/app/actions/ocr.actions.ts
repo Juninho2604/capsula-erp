@@ -4,6 +4,8 @@
 import Fuse from 'fuse.js';
 import { prisma } from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 /**
  * Server Action que recibe una imagen (en base64) y utiliza Google Cloud Vision API (REST)
@@ -76,8 +78,10 @@ export async function processHandwrittenNotesAction(imageBase64: string) {
         // 5. Separar por líneas
         const lines = detectedText.split('\n').filter((line: string) => line.trim().length > 0);
 
-        // 6. Obtener lista de productos activos para comparar
-        const products = await prisma.inventoryItem.findMany({
+        // 6. Obtener lista de productos activos para comparar (tenant-scoped)
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const products = await db.inventoryItem.findMany({
             where: { isActive: true },
             select: { id: true, name: true, sku: true, baseUnit: true }
         });
