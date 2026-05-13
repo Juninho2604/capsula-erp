@@ -102,7 +102,7 @@ export async function printToStation(
     switch (payload.type) {
         case 'KITCHEN':
         case 'VOID_KITCHEN':
-            renderKitchen(printer, payload);
+            renderKitchen(printer, payload, cfg.station);
             break;
         case 'RECEIPT':
         case 'PRECUENTA':
@@ -230,19 +230,32 @@ function renderReceipt(printer: ThermalPrinter, p: ReceiptPayload): void {
     printer.newLine();
 }
 
-function renderKitchen(printer: ThermalPrinter, p: KitchenPayload): void {
+function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: string): void {
     const isVoid = p.type === 'VOID_KITCHEN';
+
+    // Encabezado depende de la estación física: cada impresora muestra
+    // su nombre para que el cocinero/barman sepa al toque que esa
+    // comanda es de su estación, no de la otra.
+    const stationName = station === 'bar' ? 'BARRA' : 'COCINA';
+    const heading = isVoid ? `ANULACIÓN ${stationName}` : `COMANDA ${stationName}`;
 
     printer.alignCenter();
     printer.bold(true);
     printer.setTextSize(1, 1);
-    printer.println(isVoid ? 'ANULACIÓN COCINA' : 'COMANDA COCINA');
+    printer.println(heading);
     printer.setTextNormal();
     printer.bold(false);
     printer.drawLine();
 
+    // Número de orden grande y centrado para que la cajera lo identifique
+    // al engrapar comandas con su recibo al cierre de turno.
+    printer.alignCenter();
+    printer.bold(true);
+    printer.setTextSize(1, 1);
+    printer.println(`#${p.orderNumber}`);
+    printer.setTextNormal();
+    printer.bold(false);
     printer.alignLeft();
-    printer.println(`Orden:  #${p.orderNumber}`);
     printer.println(`Hora:   ${formatDateTime(p.createdAt)}`);
     if (p.tableName) printer.println(`Mesa:   ${p.tableName}`);
     if (p.customerName) printer.println(`Cliente: ${p.customerName}`);

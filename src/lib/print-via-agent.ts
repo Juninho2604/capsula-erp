@@ -188,6 +188,62 @@ export async function enqueueReceipt(
 }
 
 /**
+ * Encola una anulación / modificación de comanda en la estación correcta
+ * (barra o cocina) según la categoría del item anulado. Reemplaza al
+ * antiguo `printVoidKitchenCommand` (window.print en USB local) — ahora
+ * la anulación sale en la impresora térmica Ethernet de la estación.
+ *
+ * Útil cuando el supervisor autoriza anular, ajustar cantidad o
+ * reemplazar un ítem desde el POS (mesero/restaurante). El cocinero o
+ * barman ve la anulación impresa directamente sobre la línea, sin
+ * necesidad de que la cajera/mesero la lleve manualmente.
+ */
+export async function enqueueVoidKitchenCommand(data: {
+    orderNumber: string;
+    tableName?: string | null;
+    waiterLabel?: string | null;
+    authorizerName: string;
+    modificationType: 'VOID' | 'ADJUST_QTY' | 'REPLACE';
+    categoryName?: string | null;
+    voidedItem: { name: string; quantity: number; modifiers: string[] };
+    newItem?: { name: string; quantity: number; modifiers: string[] };
+}): Promise<void> {
+    const modLabel =
+        data.modificationType === 'VOID' ? 'CANCELADO'
+            : data.modificationType === 'ADJUST_QTY' ? 'AJUSTE DE CANTIDAD'
+            : 'REEMPLAZO';
+    const authorByline = data.waiterLabel
+        ? `Autor: ${data.waiterLabel} · Autorizó: ${data.authorizerName}`
+        : `Autorizó: ${data.authorizerName}`;
+    const reasonLines = [`${modLabel}`, authorByline];
+    if (data.newItem) {
+        reasonLines.push(
+            `Reemplaza por: ${data.newItem.quantity}x ${data.newItem.name}`
+        );
+    }
+
+    const payload: AgentKitchenPayload = {
+        type: 'VOID_KITCHEN',
+        orderNumber: data.orderNumber,
+        orderType: 'RESTAURANT',
+        tableName: data.tableName ?? null,
+        customerName: null,
+        items: [
+            {
+                name: data.voidedItem.name,
+                quantity: data.voidedItem.quantity,
+                modifiers: data.voidedItem.modifiers,
+                categoryName: data.categoryName ?? undefined,
+            },
+        ],
+        createdAt: new Date().toISOString(),
+        voidReason: reasonLines.join(' | '),
+    };
+
+    await enqueueKitchenCommand(payload);
+}
+
+/**
  * Encola una comanda de cocina/barra para que el Print Agent la imprima
  * en la(s) impresora(s) térmica(s) configurada(s) en el local.
  *

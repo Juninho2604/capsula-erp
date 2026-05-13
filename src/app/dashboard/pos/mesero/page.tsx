@@ -16,8 +16,8 @@ import {
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
-import { printVoidKitchenCommand, printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
-import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
+import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -719,7 +719,17 @@ export default function POSMeseroPage() {
       if (!result.success) { setRemoveError(result.message); return; }
       setShowRemoveModal(false);
       if (result.data?.kitchenPrintData) {
-        printVoidKitchenCommand(result.data.kitchenPrintData as VoidKitchenCommandData);
+        const k = result.data.kitchenPrintData as VoidKitchenCommandData;
+        void enqueueVoidKitchenCommand({
+          orderNumber: k.orderNumber,
+          tableName: k.tableName,
+          waiterLabel: k.waiterLabel,
+          authorizerName: k.authorizerName ?? activeWaiter?.firstName ?? 'Supervisor',
+          modificationType: k.modificationType,
+          categoryName: k.categoryName,
+          voidedItem: k.voidedItem,
+          newItem: k.newItem,
+        });
       }
       await loadData(false);
     } finally {
