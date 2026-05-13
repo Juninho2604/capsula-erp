@@ -1,8 +1,22 @@
 'use server';
 
+/**
+ * Menú — multitenant (Lote 3.c — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: MenuCategory, MenuItem, Recipe, InventoryItem.
+ * Todos los queries pasan por `db = withTenant(tenantId)`.
+ *
+ * Validaciones de ownership añadidas:
+ *   - createMenuItemAction: data.categoryId
+ *   - linkMenuItemToRecipeAction: menuItemId y recipeId
+ *   - createRecipeStubForMenuItemAction: findUnique → findFirst (tenant-safe)
+ */
+
 import prisma from '@/server/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ============================================================================
 // TIPOS
@@ -29,7 +43,9 @@ export interface ActionResult {
 
 export async function getFullMenuAction() {
     try {
-        const categories = await prisma.menuCategory.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const categories = await db.menuCategory.findMany({
             include: {
                 items: {
                     orderBy: { name: 'asc' },
@@ -38,11 +54,11 @@ export async function getFullMenuAction() {
             orderBy: { sortOrder: 'asc' }
         });
 
-        // Fetch recipe ingredient counts for items that have a recipeId
+        // Fetch recipe ingredient counts for items that have a recipeId (tenant-scoped)
         const allItems = categories.flatMap((c) => c.items);
         const recipeIds = allItems.map((i) => i.recipeId).filter(Boolean) as string[];
         const recipesWithCounts = recipeIds.length
-            ? await prisma.recipe.findMany({
+            ? await db.recipe.findMany({
                   where: { id: { in: recipeIds } },
                   select: { id: true, _count: { select: { ingredients: true } } },
               })
@@ -67,7 +83,9 @@ export async function getFullMenuAction() {
 
 export async function getCategoriesAction() {
     try {
-        const categories = await prisma.menuCategory.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const categories = await db.menuCategory.findMany({
             orderBy: { sortOrder: 'asc' }
         });
         return { success: true, data: categories };
@@ -83,16 +101,22 @@ export async function getCategoriesAction() {
 export async function createMenuItemAction(data: MenuItemData): Promise<ActionResult> {
     try {
         const session = await getSession();
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar que la categoría pertenece al tenant antes de crear.
+        const ownedCategory = await db.menuCategory.findFirst({ where: { id: data.categoryId } });
+        if (!ownedCategory) return { success: false, message: 'Categoría no encontrada' };
 
         // Generar SKU automático si no viene
         let sku = data.sku;
         if (!sku) {
             const prefix = data.name.substring(0, 3).toUpperCase();
-            const count = await prisma.menuItem.count();
+            const count = await db.menuItem.count();
             sku = `${prefix}-${String(count + 1).padStart(3, '0')}`;
         }
 
-        const newItem = await prisma.menuItem.create({
+        const newItem = await db.menuItem.create({
             data: {
                 name: data.name,
                 description: data.description,
@@ -106,7 +130,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
         // AUTO-CREAR STUB DE RECETA vinculado al item del menú
         try {
             const invSku = `FG-${data.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
-            const invItem = await prisma.inventoryItem.create({
+            const invItem = await db.inventoryItem.create({
                 data: {
                     name: data.name,
                     sku: invSku,
@@ -118,7 +142,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
                 }
             });
 
-            const recipe = await prisma.recipe.create({
+            const recipe = await db.recipe.create({
                 data: {
                     name: data.name,
                     description: `Receta de ${data.name} - completar ingredientes`,
@@ -131,7 +155,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
                 }
             });
 
-            await prisma.menuItem.update({
+            await db.menuItem.updateMany({
                 where: { id: newItem.id },
                 data: { recipeId: recipe.id }
             });
@@ -154,10 +178,12 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
 
 export async function updateMenuItemPriceAction(id: string, newPrice: number): Promise<ActionResult> {
     try {
-        await prisma.menuItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).menuItem.updateMany({
             where: { id },
             data: { price: parseFloat(newPrice.toString()) }
         });
+        if (res.count === 0) return { success: false, message: 'Producto no encontrado' };
 
         revalidatePath('/dashboard/menu');
         revalidatePath('/dashboard/pos/restaurante');
@@ -171,10 +197,12 @@ export async function updateMenuItemPriceAction(id: string, newPrice: number): P
 
 export async function toggleMenuItemStatusAction(id: string, isActive: boolean): Promise<ActionResult> {
     try {
-        await prisma.menuItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).menuItem.updateMany({
             where: { id },
             data: { isActive }
         });
+        if (res.count === 0) return { success: false, message: 'Producto no encontrado' };
 
         revalidatePath('/dashboard/menu');
         revalidatePath('/dashboard/pos/restaurante');
@@ -189,10 +217,12 @@ export async function updateMenuItemNameAction(id: string, newName: string): Pro
     try {
         if (!newName.trim()) return { success: false, message: 'El nombre no puede estar vacío' };
 
-        await prisma.menuItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).menuItem.updateMany({
             where: { id },
             data: { name: newName.trim() }
         });
+        if (res.count === 0) return { success: false, message: 'Producto no encontrado' };
 
         revalidatePath('/dashboard/menu');
         revalidatePath('/dashboard/pos/restaurante');
@@ -214,7 +244,9 @@ export async function updateMenuItemNameAction(id: string, newName: string): Pro
  */
 export async function getMenuItemsWithoutRecipeAction() {
     try {
-        const items = await prisma.menuItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.menuItem.findMany({
             where: {
                 isActive: true,
                 recipeId: null,
@@ -236,7 +268,18 @@ export async function getMenuItemsWithoutRecipeAction() {
  */
 export async function linkMenuItemToRecipeAction(menuItemId: string, recipeId: string): Promise<ActionResult> {
     try {
-        await prisma.menuItem.update({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership de ambos antes de vincular.
+        const [item, recipe] = await Promise.all([
+            db.menuItem.findFirst({ where: { id: menuItemId } }),
+            db.recipe.findFirst({ where: { id: recipeId } }),
+        ]);
+        if (!item) return { success: false, message: 'Item no encontrado' };
+        if (!recipe) return { success: false, message: 'Receta no encontrada' };
+
+        await db.menuItem.updateMany({
             where: { id: menuItemId },
             data: { recipeId }
         });
@@ -254,12 +297,15 @@ export async function linkMenuItemToRecipeAction(menuItemId: string, recipeId: s
 export async function createRecipeStubForMenuItemAction(menuItemId: string): Promise<ActionResult> {
     try {
         const session = await getSession();
-        const menuItem = await prisma.menuItem.findUnique({ where: { id: menuItemId } });
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const menuItem = await db.menuItem.findFirst({ where: { id: menuItemId } });
         if (!menuItem) return { success: false, message: 'Item no encontrado' };
         if (menuItem.recipeId) return { success: false, message: 'El item ya tiene receta' };
 
         const invSku = `FG-${menuItem.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
-        const invItem = await prisma.inventoryItem.create({
+        const invItem = await db.inventoryItem.create({
             data: {
                 name: menuItem.name,
                 sku: invSku,
@@ -270,7 +316,7 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
             }
         });
 
-        const recipe = await prisma.recipe.create({
+        const recipe = await db.recipe.create({
             data: {
                 name: menuItem.name,
                 description: `Receta de ${menuItem.name} - completar ingredientes`,
@@ -283,7 +329,7 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
             }
         });
 
-        await prisma.menuItem.update({
+        await db.menuItem.updateMany({
             where: { id: menuItemId },
             data: { recipeId: recipe.id }
         });
@@ -302,7 +348,9 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
 // ============================================================================
 
 export async function ensureBasicCategoriesAction() {
-    const count = await prisma.menuCategory.count();
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const count = await db.menuCategory.count();
     if (count === 0) {
         const basicCats = [
             { name: 'Shawarmas', sortOrder: 1, icon: '🥙' },
@@ -313,7 +361,7 @@ export async function ensureBasicCategoriesAction() {
         ];
 
         for (const cat of basicCats) {
-            await prisma.menuCategory.create({ data: cat });
+            await db.menuCategory.create({ data: cat });
         }
         return { success: true, message: 'Categorías base creadas' };
     }
