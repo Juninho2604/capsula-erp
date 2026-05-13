@@ -1,9 +1,22 @@
 'use server';
 
+/**
+ * Anular orden de venta — multitenant (Lote 5.a — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: SalesOrder, Recipe, MenuModifier.
+ * Modelos NO tenant-aware (FK-scoped): InventoryMovement, InventoryLocation.
+ *
+ * El orderId entra del cliente → validamos ownership con db.findFirst.
+ * Las ops de inventario heredan tenant scope vía inventoryItemId/areaId
+ * que vienen del propio order (ya validado).
+ */
+
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export async function voidSalesOrderAction(params: {
     orderId: string;
@@ -16,8 +29,11 @@ export async function voidSalesOrderAction(params: {
 
     try {
         const { user } = guard;
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
 
-        const order = await prisma.salesOrder.findUnique({
+        // findUnique → findFirst con tenant filter
+        const order = await db.salesOrder.findFirst({
             where: { id: params.orderId },
             include: {
                 items: {
@@ -33,7 +49,7 @@ export async function voidSalesOrderAction(params: {
         if (order.status === 'CANCELLED') return { success: false, message: 'Esta orden ya está anulada' };
 
         const restoreRecipe = async (recipeId: string, qty: number, label: string) => {
-            const recipe = await prisma.recipe.findUnique({
+            const recipe = await db.recipe.findFirst({
                 where: { id: recipeId },
                 include: { ingredients: true }
             });
@@ -68,7 +84,7 @@ export async function voidSalesOrderAction(params: {
 
                 for (const modifier of (item.modifiers || [])) {
                     if (!modifier.modifierId) continue;
-                    const menuModifier = await prisma.menuModifier.findUnique({
+                    const menuModifier = await db.menuModifier.findFirst({
                         where: { id: modifier.modifierId },
                         select: { linkedMenuItem: { select: { name: true, recipeId: true } } }
                     });
@@ -85,7 +101,7 @@ export async function voidSalesOrderAction(params: {
             console.error('Error revirtiendo inventario en anulación:', invError);
         }
 
-        await prisma.salesOrder.update({
+        await db.salesOrder.updateMany({
             where: { id: params.orderId },
             data: {
                 status: 'CANCELLED',
