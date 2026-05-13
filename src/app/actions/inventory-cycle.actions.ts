@@ -1,26 +1,21 @@
 'use server';
 
 /**
- * INVENTORY CYCLE ACTIONS (Conteo Físico Semanal / Mensual)
- * ─────────────────────────────────────────────────────────────────────────────
- * Gestión de ciclos de conteo físico de inventario.
+ * INVENTORY CYCLE ACTIONS — multitenant (Lote 4.a — Fase 3 Paso D.b).
  *
- * TODO: Copiar/adaptar la lógica de Table-Pong repo si existía,
- *       o implementar desde cero basándose en los modelos:
- *         InventoryCycle, InventoryCycleSnapshot
+ * Conteo Físico Semanal / Mensual de inventario.
  *
- * Funciones a implementar:
- *   getCycles(filters)             — listar ciclos con paginación
- *   getCycleById(id)               — detalle de un ciclo + snapshots
- *   openCycle(data)                — abrir nuevo ciclo de conteo
- *   saveSnapshot(cycleId, items)   — guardar conteo parcial o final
- *   closeCycle(id)                 — cerrar ciclo y generar ajustes de inventario
- *   cancelCycle(id)                — cancelar ciclo sin aplicar cambios
+ * Modelos tenant-aware: InventoryCycle, InventoryItem.
+ * Modelos NO tenant-aware: InventoryCycleSnapshot, InventoryLocation,
+ * InventoryMovement — su scope viene de FKs a Cycle / Item / Area.
+ * Por eso validamos ownership de los IDs upstream antes de tocar pivotes.
  */
 
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +37,9 @@ export async function getCycles(filters?: { status?: string; cycleType?: string 
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.inventoryCycle.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.inventoryCycle.findMany({
         where: {
             ...(filters?.status    && { status: filters.status }),
             ...(filters?.cycleType && { cycleType: filters.cycleType }),
@@ -56,7 +53,10 @@ export async function getCycleById(id: string) {
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    return prisma.inventoryCycle.findUnique({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    // findUnique no se filtra por la extension; findFirst con db aplica el filtro.
+    return db.inventoryCycle.findFirst({
         where: { id },
         include: {
             snapshots: {
@@ -80,12 +80,15 @@ export async function openCycle(data: {
         throw new Error('Sin permiso para abrir un ciclo de conteo');
     }
 
-    const count = await prisma.inventoryCycle.count();
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    const count = await db.inventoryCycle.count();
     const year  = new Date().getFullYear();
     const week  = Math.ceil((new Date().getDate()) / 7); // rough week number
     const code  = `CYCLE-${year}-W${String(week).padStart(2, '0')}-${count + 1}`;
 
-    const cycle = await prisma.inventoryCycle.create({
+    const cycle = await db.inventoryCycle.create({
         data: {
             code,
             name: data.name,
@@ -105,7 +108,37 @@ export async function saveSnapshots(cycleId: string, snapshots: SnapshotInput[])
     const session = await getSession();
     if (!session) throw new Error('No autorizado');
 
-    // Upsert each snapshot
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    // Validar ownership del ciclo antes de tocar snapshots.
+    const ownedCycle = await db.inventoryCycle.findFirst({
+        where: { id: cycleId },
+        select: { id: true },
+    });
+    if (!ownedCycle) throw new Error('Ciclo no encontrado');
+
+    // Validar que cada inventoryItemId pertenece al tenant.
+    const itemIds = Array.from(new Set(snapshots.map(s => s.inventoryItemId)));
+    const ownedItems = await db.inventoryItem.findMany({
+        where: { id: { in: itemIds } },
+        select: { id: true },
+    });
+    if (ownedItems.length !== itemIds.length) {
+        throw new Error('Uno o más items no pertenecen a este tenant');
+    }
+
+    // Validar ownership de cada areaId.
+    const areaIds = Array.from(new Set(snapshots.map(s => s.areaId)));
+    const ownedAreas = await db.area.findMany({
+        where: { id: { in: areaIds } },
+        select: { id: true },
+    });
+    if (ownedAreas.length !== areaIds.length) {
+        throw new Error('Una o más áreas no pertenecen a este tenant');
+    }
+
+    // Upsert each snapshot (InventoryCycleSnapshot no es tenant-aware; FK valida).
     await Promise.all(
         snapshots.map(s =>
             prisma.inventoryCycleSnapshot.upsert({
@@ -135,7 +168,7 @@ export async function saveSnapshots(cycleId: string, snapshots: SnapshotInput[])
     );
 
     // Mark cycle as IN_PROGRESS if it was OPEN
-    await prisma.inventoryCycle.updateMany({
+    await db.inventoryCycle.updateMany({
         where: { id: cycleId, status: 'OPEN' },
         data: { status: 'IN_PROGRESS' },
     });
@@ -151,7 +184,11 @@ export async function closeCycle(id: string) {
         throw new Error('Sin permiso para cerrar un ciclo de conteo');
     }
 
-    const cycle = await prisma.inventoryCycle.findUniqueOrThrow({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    // findUniqueOrThrow no se filtra por la extension; findFirst + throw manual.
+    const cycle = await db.inventoryCycle.findFirst({
         where: { id },
         include: {
             snapshots: {
@@ -159,13 +196,16 @@ export async function closeCycle(id: string) {
             },
         },
     });
+    if (!cycle) throw new Error('Ciclo no encontrado');
 
     if (cycle.status === 'CLOSED') {
         throw new Error('El ciclo ya está cerrado');
     }
 
     // Generar InventoryMovements de ajuste por cada snapshot con diferencia ≠ 0
-    // Se ejecuta todo en una transacción para garantizar atomicidad
+    // Se ejecuta todo en una transacción para garantizar atomicidad.
+    // InventoryLocation y InventoryMovement no son tenant-aware; el scope viene
+    // de inventoryItemId / areaId, que ya pertenecen al cycle (tenant-owned).
     await prisma.$transaction(async tx => {
         const adjustments: Array<{
             inventoryItemId: string;
@@ -223,9 +263,9 @@ export async function closeCycle(id: string) {
             });
         }
 
-        // Cerrar el ciclo
-        await tx.inventoryCycle.update({
-            where: { id },
+        // Cerrar el ciclo (updateMany para que el tenantId filtre).
+        await tx.inventoryCycle.updateMany({
+            where: { id, tenantId },
             data: { status: 'CLOSED', closedAt: new Date(), closedById: session.id },
         });
     });
