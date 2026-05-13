@@ -9,25 +9,19 @@ export type InvoiceChannel =
   | 'OPEN_TAB'
   | 'GAME_SESSION';
 
-// Prefijos del correlativo por canal. El prefijo aparece en el ticket
-// de comanda y permite al cocinero distinguir el tipo de pedido:
-//   - TAB-####  → tabCode de mesa abierta (OpenTab.tabCode)
-//   - REST-#### → SalesOrder de mesa abierta o pickup desde caja
+// Prefijos del correlativo por canal. Revertidos a la versión original
+// después de incidente productivo: PICKUP y RESTAURANT con el mismo
+// prefijo 'REST' compartían rango de números y generaban conflictos
+// de unique constraint en (tenantId, orderNumber) entre tablas.
+//
+//   - TAB-####  → tabCode del OpenTab (mesa abierta)
+//   - REST-#### → SalesOrder (RESTAURANT channel)
+//   - PKP-#### → Pickup directo desde caja (PICKUP channel)
 //   - DEL-####  → SalesOrder de Delivery
 //   - PYA-####  → SalesOrder de PedidosYa
-//
-// NOTA: el intento previo de diferenciar SalesOrder de mesa (TAB) vs
-// pickup (REST) generó un Unique constraint failed en
-// `(tenantId, orderNumber)` porque el contador RESTAURANT tenía
-// lastValue alineado con los REST-XXXX existentes en BD y al cambiar
-// a prefijo TAB el sistema seguía generando números del mismo rango
-// donde ya existían tabCodes TAB-XXXX desde la era OPEN_TAB.
-// Por ahora ambas (mesa y pickup) comparten prefijo REST en SalesOrder
-// y el TAB se queda solo para OpenTab.tabCode. La distinción mesa vs
-// pickup se hace por orderType/notes del SalesOrder, no por prefijo.
 const PREFIX: Record<InvoiceChannel, string> = {
   DELIVERY:     'DEL',
-  PICKUP:       'REST',
+  PICKUP:       'PKP',
   RESTAURANT:   'REST',
   PEDIDOS_YA:   'PYA',
   OPEN_TAB:     'TAB',
