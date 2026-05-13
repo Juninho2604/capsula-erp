@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decrypt } from './lib/auth';
 import { extractTenantSlugFromHost } from './lib/tenant-context';
+import { isSuperAdmin } from './lib/super-admin';
 
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
@@ -59,6 +60,15 @@ export async function middleware(request: NextRequest) {
     // 1. Protección Base: Login requerido
     if (path.startsWith('/dashboard') && !session) {
         return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // 1.b /admin/* — solo emails en SUPER_ADMIN_EMAILS. Sin sesión o sin
+    // estar en la allowlist responde 404 directo (no leakeamos que la ruta
+    // existe). El layout además repite el chequeo defense-in-depth.
+    if (path.startsWith('/admin')) {
+        if (!session || !isSuperAdmin(session.email)) {
+            return new NextResponse('Not Found', { status: 404 });
+        }
     }
 
     // 2. Redirección Login -> Dashboard

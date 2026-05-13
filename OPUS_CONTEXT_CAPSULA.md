@@ -6952,9 +6952,363 @@ intermedios.
 
 ---
 
-## 38. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
+### 38.14 Signup self-service MVP (feature flag SIGNUPS_ENABLED)
 
-### 38.1 Contexto
+Primer "tenant operativo" entregable: una persona externa puede crear
+su propia cuenta de negocio en `https://kpsula.app/signup` y empezar
+a usar la app en `https://<su-slug>.kpsula.app`.
+
+**Estado: detrás de feature flag.** En producción `SIGNUPS_ENABLED`
+NO está seteada → `/signup` devuelve 404 y `signupTenantAction`
+rechaza con mensaje "registros temporalmente cerrados".
+
+**Activación en producción:** añadir `SIGNUPS_ENABLED=true` al
+`/var/www/capsula-erp/.env` del VPS (y al `.env` de Vercel si querés
+también activarlo ahí), restart pm2. Doble check: el feature flag se
+chequea en `src/app/signup/page.tsx` (devuelve 404) y en
+`src/app/actions/signup.actions.ts` (rechaza con mensaje).
+
+**Componentes:**
+
+- `src/lib/signup/reserved-slugs.ts` — lista de ~55 slugs reservados
+  (www, api, admin, login, kpsula, shanklish, staging, dev, etc.) +
+  helper `isReservedSlug`. 7 tests.
+- `src/app/actions/signup.actions.ts` — `signupTenantAction(prevState, formData)`:
+  - Feature flag check
+  - Rate limit: 3 intentos/IP/hora vía `consumeRateLimit`
+  - Validación: businessName 2-100, slug regex `^[a-z0-9][a-z0-9-]{1,29}$`,
+    email regex, password 8-200, firstName/lastName 1-50
+  - `isReservedSlug` check
+  - Chequeo previo de slug único + `@unique` constraint atómico
+  - Transacción: crea `Tenant` + `User` role=OWNER
+  - Devuelve `{ success: true, tenantSlug, loginUrl }` o
+    `{ success: false, message, field? }`
+- `src/app/signup/page.tsx` — Server Component que llama `notFound()`
+  si feature flag desactivada.
+- `src/app/signup/signup-form-client.tsx` — Client Component con
+  `useActionState`, muestra errores por campo, success card con
+  link a `https://<slug>.kpsula.app/login`.
+
+**Bootstrap mínimo:** intencional. La acción solo crea `Tenant` + `User`.
+NO crea `Branch` ni datos default. El owner ve un dashboard inicial
+vacío y configura todo desde `/dashboard/config`. Iteramos en
+sub-secciones futuras (38.15, 38.16...) según feedback.
+
+**Flujo del usuario nuevo:**
+
+1. Va a `https://kpsula.app/signup` (con flag activada)
+2. Completa el form: nombre del negocio, slug deseado, sus datos
+3. Submit → action crea Tenant + User OWNER
+4. Pantalla de éxito con link a `https://<slug>.kpsula.app/login`
+5. Click → llega al login en su subdomain
+6. Login con su email/password → llega a `/dashboard`
+7. Configura branch, áreas, etc. manualmente
+
+**Riesgo:** muy bajo en producción con flag OFF (default). Con flag ON:
+- Cada signup escribe 2 filas en BD (Tenant + User). Inmutable: si algo
+  falla, la transacción revierte.
+- Rate limit defensivo contra abuso.
+- Slugs reservados protegen subdominios técnicos y rutas críticas.
+- `passwordHash` se calcula con PBKDF2 (`hashPassword` de
+  `src/lib/password.ts`).
+
+**Test plan (con flag ON localmente):**
+- Visitar `/signup` → form se renderiza
+- Submit con slug reservado (e.g. "www") → error "reservado"
+- Submit con slug ya existente (e.g. "shanklish") → error "ya tomado"
+- Submit válido → success card + Tenant nuevo en BD + User OWNER en BD
+- Visitar `https://<nuevoslug>.kpsula.app/login` → login funciona
+- Visitar `https://<nuevoslug>.kpsula.app/api/tenant/whoami` (con sesión)
+  → `source: "subdomain"`, `slug: <nuevoslug>`
+
+### 38.15 Pendientes tras Signup MVP
+
+- **Auto-login post-signup**: actualmente el flujo manda al user a `/login`.
+  Para hacerlo más fluido, el action podría llamar `createSession()` y
+  redirigir directo a `/dashboard`. Complicación: cookies cross-subdomain
+  — necesitamos setear `domain: '.kpsula.app'` en la cookie de sesión
+  para que sea válida en cualquier subdomain.
+- **Bootstrap de Branch default**: para que el owner pueda usar POS
+  inmediatamente, crear un Branch "Principal" + Area "General" +
+  ServiceZone "Salón" + algunas TableOrStation default. Reduce fricción
+  pero acopla signup al schema POS.
+- **Email de bienvenida**: notificar al owner por email (Resend / Postmark)
+  con link al login y guía rápida.
+- **Panel SUPER_ADMIN**: ruta `/admin/tenants` para listar tenants,
+  desactivar abusos, ver métricas. Requiere role SUPER_ADMIN nuevo.
+- **CAPTCHA o Turnstile**: si hay bots intentando crear tenants masivos,
+  añadir Cloudflare Turnstile (free) en el form.
+
+### 38.16 Bootstrap Branch + auto-login cross-subdomain (2026-05-12)
+
+Resuelve los dos primeros pendientes de §38.15. El signup ahora deja al
+owner directamente en `/dashboard` del subdomain del tenant, sin pedir
+que vuelva a tipear credenciales.
+
+**Cambios:**
+
+| Archivo | Cambio |
+|---|---|
+| `src/lib/signup/bootstrap-token.ts` | Helpers `createBootstrapToken()` / `verifyBootstrapToken()`. JWT HS256 firmado con `JWT_SECRET`, expira en 60s, payload `{kind:"signup-bootstrap", userId, tenantId, tenantSlug}`. |
+| `src/lib/signup/bootstrap-token.test.ts` | 4 tests: round-trip, JWT inválido, firma con otro secret, kind incorrecto. |
+| `src/app/actions/signup.actions.ts` | La transacción ahora también crea `Branch{code:"MAIN", name:businessName}` para el tenant nuevo. Tras commit genera un bootstrap token y devuelve `loginUrl: https://<slug>.kpsula.app/auth/bootstrap?t=<jwt>` en vez de `/login`. |
+| `src/app/auth/bootstrap/route.ts` | `GET` handler: verifica token, carga `User` validando `tenantId` matcheado, llama `createSession()` con snapshot fresco, redirige a `/dashboard`. Token inválido/expirado → `/login?bootstrap=expired`. |
+| `src/app/signup/signup-form-client.tsx` | Tras éxito, `useEffect` redirige automáticamente a `loginUrl` con `window.location.href` 1.2s después. El CTA queda visible como fallback ("Ir ahora"). |
+
+**Por qué un token en URL y no una cookie compartida `.kpsula.app`:**
+
+Si emitiéramos la cookie de sesión con `domain=.kpsula.app`, el navegador
+la mandaría también a otros subdomains de otros tenants. Aunque el
+resolver de tenant (Paso D) rechaza JWTs cuyo `tenantId` no coincide
+con el host, abrimos una superficie de cross-tenant leak innecesaria.
+El token one-shot de 60s elimina ese vector: vive solo el tiempo del
+redirect, no persiste y queda atado a un único `tenantId` específico.
+
+**Por qué `Branch{code:"MAIN"}` y no más seed:**
+
+`Branch` es el mínimo para que `/dashboard` no crashee en queries que
+listan por tenant. El resto del seed (categorías, métodos de pago,
+estaciones de cocina) queda para una sub-sección futura — es opinionado
+y depende del tipo de negocio. El owner lo configura desde
+`/dashboard/config` o `/dashboard/sku-studio`.
+
+**Riesgo:**
+
+Bajo. La acción sigue gated por `SIGNUPS_ENABLED`. El endpoint
+`/auth/bootstrap` existe siempre pero solo acepta tokens firmados con
+el `JWT_SECRET` actual, así que en Vercel (sin la flag) nadie puede
+llegar a generarlos. Vercel intocable: el deploy de signup ya iba a
+ese servidor en el code base anterior y queda igual de inerte.
+
+**Pendientes que siguen abiertos de §38.15:**
+Email de bienvenida, panel `SUPER_ADMIN`, Turnstile. El resto
+(seed más completo de Area/ServiceZone/TableOrStation) puede esperar
+porque el owner puede empezar el flujo solo con Branch + dashboard
+funcionando.
+
+### 38.17 Panel SUPER_ADMIN — `/admin/tenants` (2026-05-13)
+
+Resuelve el pendiente "Panel SUPER_ADMIN" de §38.15. Permite listar y
+suspender tenants sin tocar BD a mano.
+
+**Modelo de autorización: env-var allowlist, no rol persistido.**
+
+Un SUPER_ADMIN sigue siendo un `User` normal (con su rol y su tenant)
+pero su email aparece en `SUPER_ADMIN_EMAILS` (lista separada por coma).
+Esa whitelist le habilita acceso a `/admin/*` y a operar sobre cualquier
+tenant. No hay schema change ni nuevo rol en `roles.ts`.
+
+Ventajas vs un `role='SUPER_ADMIN'` en BD:
+- No requiere migration.
+- Bootstrap inmediato: edit `.env` + `pm2 restart` y listo, sin login previo.
+- Revocar = remover email de la env + restart. Sin propagar a JWTs vivos.
+- No contamina la tabla `Tenant`/`User` con un concepto cross-tenant.
+
+Desventajas:
+- No queda registro auditable en BD de quién fue SUPER_ADMIN cuándo
+  (mitigable con git history del `.env` si está versionado, o con audit
+  log de acciones del panel — futuro).
+
+**Cambios:**
+
+| Archivo | Rol |
+|---|---|
+| `src/lib/super-admin.ts` | `isSuperAdmin(email)`: lee `SUPER_ADMIN_EMAILS`, normaliza lowercase, cachea hasta cambio de la env var. `__resetSuperAdminCache()` para tests. |
+| `src/lib/super-admin.test.ts` | 6 tests (no env / vacía / match exacto / case-insensitive / lista con espacios / email vacío). |
+| `src/middleware.ts` | Gate `/admin/*` — sin sesión o email fuera de la allowlist responde 404 directo (no leakea existencia). |
+| `src/app/admin/layout.tsx` | Doble check defense-in-depth con `getSession()` + `isSuperAdmin()` → `notFound()`. Header con email del admin. |
+| `src/app/admin/page.tsx` | Redirect a `/admin/tenants`. |
+| `src/app/admin/tenants/page.tsx` | Server Component: `prisma.tenant.findMany()` cross-tenant + `groupBy` de users activos y `salesOrder` últimos 30d. |
+| `src/app/admin/tenants/actions.ts` | `suspendTenantAction` (todos los users → `isActive:false` + `tokenVersion += 1`); `reactivateTenantAction` (→ `isActive:true`). Ambos repiten `requireSuperAdmin()` por defense in depth. |
+| `src/app/admin/tenants/tenants-table-client.tsx` | Tabla con badges Activo/Suspendido, link a `https://<slug>.kpsula.app`, botón Suspender (coral) / Reactivar. `confirm()` nativo antes de mutar. |
+
+**Cómo se "suspende" un tenant sin `Tenant.isActive`:**
+
+`updateMany` sobre `User` poniendo `isActive=false` + `tokenVersion += 1`.
+Resultado:
+- `loginAction` rechaza nuevos logins (chequea `isActive`).
+- JWTs vivos quedan inválidos en la siguiente verificación porque
+  `tokenVersion` del payload ya no matchea con el de BD.
+- "Suspendido" en el panel = todos los users del tenant tienen
+  `isActive=false`. Si hay al menos uno activo, mostramos "Activo".
+
+**Variables de entorno:**
+
+```env
+SUPER_ADMIN_EMAILS=admin@kpsula.app,otroadmin@kpsula.app
+```
+
+Sin la var → `/admin` 404 universal. Setear en VPS (y opcionalmente en
+Vercel si querés operar también desde ahí).
+
+**Riesgo:**
+
+Bajo. Sin la env var setteada el panel es invisible y inaccesible. Las
+acciones validan SUPER_ADMIN en cada llamada (no confían en el middleware).
+No hay schema change ni migration; nada toca BD existente más que un
+`updateMany` reversible de `User.isActive`.
+
+**Pendientes que quedan:**
+Email de bienvenida, Turnstile, audit log de acciones del panel, seed
+completo (Area/ServiceZone/TableOrStation).
+
+### 38.18 Fase 3 Paso D.b — kickoff: red de seguridad (Lote 0) (2026-05-13)
+
+Antes de empezar a migrar server actions a `withTenant()`, instalamos
+una red de regression contra Postgres real para validar que el motor
+de aislamiento (`prisma-tenant-client.ts`) hace lo que dice. Sin esto,
+una bug en la extension contamina silenciosamente todos los módulos
+que se migren después.
+
+**Archivo:**
+`src/lib/prisma-tenant-client.int.test.ts` — 5 tests de integración:
+1. `create` inyecta `tenantId` y `findMany` no devuelve rows de otro tenant.
+2. `count` y `aggregate` respetan el scope.
+3. `findFirst` no leakea rows entre tenants aunque haya match en otros campos.
+4. `updateMany` del scope A no toca rows de B.
+5. `deleteMany` del scope A no toca rows de B.
+
+**Gating:**
+Solo corre cuando `process.env.CI === 'true'` (GitHub Actions lo setea
+automáticamente). Eso evita que un `npm test` en dev local pegue
+contra la BD del desarrollador y deje filas residuales. Para forzarlo
+localmente:
+
+```bash
+CI=true DATABASE_URL=postgres://... npx vitest run prisma-tenant-client.int.test.ts
+```
+
+**Cleanup:**
+Cada run usa prefijo único `int-test-<timestamp>-` para tenants y
+branches. `afterAll` borra branches (FK Restrict) y luego tenants.
+Si el cleanup falla, las filas quedan en la BD del CI (efímera) o
+hay que limpiar a mano en dev.
+
+**Resultado local:** 150 tests pasan + 5 skipped (integration).
+**Resultado CI:** todos corren contra el servicio `postgres:16` del
+workflow `validate`.
+
+**Próximo lote:**
+Lote 1 — migrar `exchange.actions.ts` (el más chico, baja criticidad)
+para establecer el patrón de migración (`withTenant(ctx.tenantId)` +
+`resolveTenantContext()`). Una vez validado en producción Shanklish,
+seguimos con `areas`, `waiter`, `system-config`.
+
+### 38.19 Lote 1 — `exchange.actions.ts` migrado a `withTenant()` (2026-05-13)
+
+Primera server action migrada al patrón multitenant pleno. Sirve como
+ejemplo canónico para los lotes siguientes.
+
+**Patrón canónico** (lo que TODA action de aquí en adelante hace):
+
+```ts
+'use server';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+
+export async function listX() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.x.findMany({ orderBy: { ... } });
+}
+```
+
+**Por qué no `defineAction()` todavía:**
+
+`defineAction()` envuelve sesión + permiso + tenant, pero introduce
+cambios en la firma del export (`async (args)` en vez de `async fn`)
+y en cómo callers lo invocan. Mientras los callers (forms, client
+components) están sin migrar, mantenemos las firmas planas y solo
+inyectamos `withTenant + resolveTenantContext`. La transición a
+`defineAction()` queda para una sub-fase posterior.
+
+**Por qué empezamos por `exchange.actions.ts`:**
+
+- 2.4 KB, 5 funciones, modelo único (`ExchangeRate`).
+- Sin dependencias con POS / inventario / sales.
+- Solo 3 callers (`tasa-cambio` config + `CurrencyCalculator`).
+- Cada tenant lleva su propia tasa (Shanklish: BCV directo;
+  Table Pong: BCV + 3%; etc.).
+
+**Compatibilidad con Shanklish en producción:**
+
+El resolver cae al fallback `tnt_shanklish_caracas` para:
+- Hosts sin subdomain (kpsula.app, capsula-erp.vercel.app, IP raw).
+- JWTs viejos sin `tenantId` (sesiones pre-Fase 3 Paso A).
+
+Las tasas existentes en BD ya tienen `tenantId="tnt_shanklish_caracas"`
+(default del schema), así que un `withTenant("tnt_shanklish_caracas")
+.findMany()` devuelve exactamente lo mismo que el `findMany()` original.
+Cero impacto perceptible para Shanklish.
+
+**Validación:**
+
+- `npx tsc --noEmit` → 0 errores.
+- `npx vitest run` → 150/150 + 5 skipped (integration).
+- En CI los 5 integration corren contra Postgres y validan el motor.
+
+**Próximo lote:**
+
+Lote 2 — `areas.actions.ts`, `waiter.actions.ts`, `system-config.actions.ts`.
+Tres módulos admin chicos, read-mostly, sin dependencias críticas. Un PR
+por archivo para mantener review fácil.
+
+### 38.20 Lote 2.a/2.b mergeados + blocker en Lote 2.c (2026-05-13)
+
+**Mergeados:**
+- Lote 2.a (`areas.actions.ts`, PR #132): patrón `withTenant` + `update→updateMany` para tenant-safe writes.
+- Lote 2.b parcial (`waiter.actions.ts`, PR #133): admin meseros (CRUD + PIN). `transferTableAction` y `moveTabBetweenTablesAction` diferidos a Lote 5 por su complejidad transaccional.
+
+**Blocker encontrado en Lote 2.c — `SystemConfig`:**
+
+`SystemConfig` es el ÚNICO modelo del schema cuya PK no es un cuid:
+
+```prisma
+model SystemConfig {
+  key       String   @id          // ← PK es la key, NO cuid
+  value     String
+  tenantId  String   @default("tnt_shanklish_caracas")
+  ...
+}
+```
+
+El propio comentario del schema lo reconoce: "el unique sigue siendo en
+`key` (no en `(tenantId, key)`). Eso se cambia en Fase 2."
+
+**Consecuencia:**
+Cuando Table Pong intente guardar su propio `enabled_modules`:
+- `create` falla con P2002 (la PK ya existe para Shanklish).
+- `upsert({ where: { key } })` encuentra la fila de Shanklish y la
+  sobrescribe — mezcla configs entre tenants.
+
+**Por qué saltamos en este lote:**
+Migrar `system-config.actions.ts` requiere primero un **schema change**:
+1. Añadir `id String @id @default(cuid())`.
+2. Quitar `@id` de `key`.
+3. Añadir `@@unique([tenantId, key])`.
+4. Migration SQL que preserve los datos de Shanklish (asignar cuids
+   nuevos a las filas existentes).
+
+Riesgo bajo en sí (SystemConfig no tiene FKs apuntándolo) pero es DDL
+que requiere coordinación con la BD de producción. Lo dejo como
+**sub-tarea bloqueante de Lote 8** (alta de Table Pong y Sello Criollo
+necesita que cada tenant pueda guardar su config sin colisionar con
+Shanklish). Cuando arranquemos Lote 8 abrimos un PR aparte solo para
+el schema fix.
+
+**Para Shanklish todo sigue igual** — `system-config.actions.ts` no se
+toca, sigue usando `prisma` directo. Los reads y writes funcionan como
+hoy porque solo hay un tenant.
+
+**Próximo:**
+Lote 3 — Catálogo (`menu.actions.ts`, `recipe.actions.ts`,
+`modifier.actions.ts`, `cost.actions.ts`). Mismo patrón canónico,
+ningún blocker conocido (todos esos modelos tienen PK cuid + tenantId
+opcional).
+
+## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
+
+### 39.1 Contexto
 
 Las tablets (Android, PWA) **no tienen drivers de impresora térmica** y no pueden imprimir directamente. Hoy el ERP usa `printReceipt()` y `printKitchenCommand()` en `src/lib/print-command.ts` que abren `window.open()` + `window.print()` — funciona en PCs con driver instalado y modo kiosk, **falla en tablets**.
 
@@ -6963,7 +7317,7 @@ Setup físico (con Jonathan de sistemas):
 - **Pickup-1** (Windows 10/11) será el **host del Print Agent**.
 - Las AON soportan **ESC/POS estándar por TCP puerto 9100**.
 
-### 38.2 Arquitectura — polling, no WebSocket
+### 39.2 Arquitectura — polling, no WebSocket
 
 ```
 Tablet POS              ERP Vercel            Print Agent (Pickup-1)      Impresora AON
@@ -6976,7 +7330,7 @@ enqueuePrintJob() ─►  crea PrintJob       ◄─  GET  /jobs?status=PENDING
 
 Vercel no soporta WebSockets persistentes nativamente. Polling cada 1s con jobs FIFO es trivialmente fiable y la latencia (~1-2s) es aceptable para impresión en restaurante.
 
-### 38.3 Pieza por pieza
+### 39.3 Pieza por pieza
 
 | Archivo | Rol |
 |---|---|
@@ -6999,7 +7353,7 @@ Vercel no soporta WebSockets persistentes nativamente. Polling cada 1s con jobs 
 | `print-agent/scripts/uninstall-service.ts` | Desinstala el servicio. |
 | `print-agent/README.md` | Guía paso a paso para Jonathan. Troubleshooting con tabla síntoma → solución. |
 
-### 38.4 Variables de entorno requeridas
+### 39.4 Variables de entorno requeridas
 
 **Vercel** (lado ERP):
 - `PRINT_AGENT_API_KEY` — secreto compartido. Generar con `openssl rand -hex 32`.
@@ -7014,7 +7368,7 @@ PRINTERS_JSON=[{"station":"kitchen-1","ip":"192.168.1.50","port":9100}]
 DEFAULT_STATION=kitchen-1
 ```
 
-### 38.5 Flow end-to-end del primer print real
+### 39.5 Flow end-to-end del primer print real
 
 1. Jonathan asigna IP estática a la primera AON (ej. `192.168.1.50`).
 2. Verifica `ping 192.168.1.50` + `Test-NetConnection -ComputerName 192.168.1.50 -Port 9100`.
@@ -7027,7 +7381,7 @@ DEFAULT_STATION=kitchen-1
 9. Desde el POS, llamar `enqueueReceipt(payload, 'kitchen-1')`. En <2s sale el recibo.
 10. Para producción: `npm run build` + `npx tsx scripts/install-service.ts` (PowerShell elevado).
 
-### 38.6 Pendientes Fase 2+
+### 39.6 Pendientes Fase 2+
 
 - **Migración progresiva del POS**: hoy `enqueueReceipt()` está como wrapper paralelo a `printReceipt()`. Cada lugar del POS que llame `printReceipt()` se migra uno a uno usando `shouldUseAgent()`.
 - **UI de monitoreo**: `/dashboard/admin/print-jobs` con lista, filtros, retry manual, reset huérfanos. La server action `getRecentPrintJobsAction()` ya está lista.

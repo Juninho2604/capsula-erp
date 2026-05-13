@@ -1,9 +1,16 @@
 'use server';
 
+/**
+ * Historial de ventas — multitenant (Lote 5.e — Fase 3 Paso D.b).
+ * Solo lectura sobre SalesOrder (tenant-aware).
+ */
+
 import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface SalesFilter {
     startDate?: Date;
@@ -27,7 +34,9 @@ export async function getSalesHistoryAction(date?: string) {
         const queryDate = date ? new Date(date + 'T12:00:00') : new Date();
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(queryDate);
 
-        const orders = await prisma.salesOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const orders = await db.salesOrder.findMany({
             where: { createdAt: { gte: startOfDay, lte: endOfDay } },
             orderBy: { createdAt: 'desc' },
             include: {

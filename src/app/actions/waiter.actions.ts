@@ -1,12 +1,35 @@
 'use server';
 
+/**
+ * Meseros — multitenant pleno (Lote 2.b admin + Lote 5.j transferTable/moveTab).
+ *
+ * Todas las server actions del archivo están migradas al patrón
+ * withTenant + resolveTenantContext:
+ *   - getActiveBranch (helper)
+ *   - getWaitersAction / getActiveWaitersAction
+ *   - createWaiterAction
+ *   - updateWaiterAction / toggleWaiterActiveAction / deleteWaiterAction
+ *   - validateWaiterPinAction
+ *   - resolveAuthPin (helper)
+ *   - transferTableAction (cerrado en Lote 5.j)
+ *   - moveTabBetweenTablesAction (cerrado en Lote 5.j)
+ *
+ * En las transacciones de transfer/move, las ops sobre OpenTab/TableOrStation
+ * usan tx.X.updateMany / findFirst con tenant filter. TableTransfer no es
+ * tenant-aware; su scope viene de la FK openTabId ya validado.
+ */
+
 import { getSession } from '@/lib/auth';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { hashPin, pbkdf2Hex } from './user.actions';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 
 async function getActiveBranch() {
-    return prisma.branch.findFirst({ where: { isActive: true } });
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.branch.findFirst({ where: { isActive: true } });
 }
 
 const PIN_MANAGER_ROLES = new Set(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER']);
@@ -49,7 +72,9 @@ export async function getWaitersAction() {
         if (!session) return { success: false, message: 'No autorizado', data: [] };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa', data: [] };
-        const waiters = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiters = await db.waiter.findMany({
             where: { branchId: branch.id },
             orderBy: [{ isActive: 'desc' }, { firstName: 'asc' }],
         });
@@ -65,7 +90,9 @@ export async function getActiveWaitersAction() {
         if (!session) return { success: false, message: 'No autorizado', data: [] };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa', data: [] };
-        const waiters = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiters = await db.waiter.findMany({
             where: { branchId: branch.id, isActive: true },
             orderBy: { firstName: 'asc' },
         });
@@ -86,7 +113,9 @@ export async function createWaiterAction(data: { firstName: string; lastName: st
         }
         const pinClean = sanitizePin(data.pin);
         const pinHash = pinClean ? await hashPin(pinClean) : null;
-        const waiter = await prisma.waiter.create({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiter = await db.waiter.create({
             data: {
                 branchId: branch.id,
                 firstName: data.firstName.trim(),
@@ -126,7 +155,16 @@ export async function updateWaiterAction(id: string, data: { firstName: string; 
                 updateData.pin = pinClean ? await hashPin(pinClean) : null;
             }
         }
-        const waiter = await prisma.waiter.update({ where: { id }, data: updateData });
+        // updateMany con tenantId explícito para que un ID de otro tenant
+        // no matchee. Pierde el row de vuelta — leemos después por findFirst.
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const res = await db.waiter.updateMany({ where: { id }, data: updateData });
+        if (res.count === 0) {
+            return { success: false, message: 'Mesonero no encontrado' };
+        }
+        const waiter = await db.waiter.findFirst({ where: { id } });
+        if (!waiter) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: 'Mesonero actualizado', data: publicWaiter(waiter) };
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Error actualizando mesonero';
@@ -138,7 +176,12 @@ export async function toggleWaiterActiveAction(id: string, isActive: boolean) {
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        await prisma.waiter.update({ where: { id }, data: { isActive } });
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).waiter.updateMany({
+            where: { id },
+            data: { isActive },
+        });
+        if (res.count === 0) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: isActive ? 'Mesonero activado' : 'Mesonero desactivado' };
     } catch {
         return { success: false, message: 'Error actualizando estado' };
@@ -149,7 +192,12 @@ export async function deleteWaiterAction(id: string) {
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        await prisma.waiter.update({ where: { id }, data: { isActive: false } });
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).waiter.updateMany({
+            where: { id },
+            data: { isActive: false },
+        });
+        if (res.count === 0) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: 'Mesonero eliminado' };
     } catch {
         return { success: false, message: 'Error eliminando mesonero' };
@@ -191,7 +239,9 @@ export async function validateWaiterPinAction(pin: string): Promise<{
         }
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
-        const candidates = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const candidates = await db.waiter.findMany({
             where: { branchId: branch.id, isActive: true, pin: { not: null } },
             select: { id: true, firstName: true, lastName: true, isCaptain: true, pin: true },
         });
@@ -223,8 +273,10 @@ type AuthResult =
 
 async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult | null> {
     const trimmed = pin.trim();
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     // Tipo 1: Waiter capitán activo en la sucursal
-    const captains = await prisma.waiter.findMany({
+    const captains = await db.waiter.findMany({
         where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
@@ -233,8 +285,8 @@ async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult
             return { type: 'CAPTAIN', name: `${c.firstName} ${c.lastName}`, waiterId: c.id };
         }
     }
-    // Tipo 2: User gerente/dueño activo (cualquier sucursal)
-    const managers = await prisma.user.findMany({
+    // Tipo 2: User gerente/dueño activo (cualquier sucursal del mismo tenant)
+    const managers = await db.user.findMany({
         where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] }, isActive: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
@@ -274,8 +326,11 @@ export async function transferTableAction({
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
-        // Verificar que el tab existe y está abierto
-        const openTab = await prisma.openTab.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Verificar que el tab existe (tenant-scoped) y está abierto
+        const openTab = await db.openTab.findFirst({
             where: { id: openTabId },
             select: { id: true, status: true, waiterProfileId: true },
         });
@@ -284,8 +339,8 @@ export async function transferTableAction({
             return { success: false, message: 'La cuenta ya está cerrada' };
         }
 
-        // Verificar waiter destino existe y está activo
-        const toWaiter = await prisma.waiter.findUnique({
+        // Verificar waiter destino existe (tenant-scoped) y está activo
+        const toWaiter = await db.waiter.findFirst({
             where: { id: toWaiterId },
             select: { id: true, firstName: true, lastName: true, isActive: true },
         });
@@ -299,8 +354,9 @@ export async function transferTableAction({
             return { success: false, message: 'PIN de capitán o gerente incorrecto' };
         }
 
-        // Transacción: crear registro + actualizar OpenTab
-        const transfer = await prisma.$transaction(async (tx) => {
+        // Transacción: crear registro + actualizar OpenTab (tenant-scoped vía db)
+        const transfer = await db.$transaction(async (tx) => {
+            // TableTransfer no es tenant-aware; scope vía openTabId ya validado.
             const record = await tx.tableTransfer.create({
                 data: {
                     openTabId,
@@ -314,7 +370,8 @@ export async function transferTableAction({
                     reason: reason?.trim() || null,
                 },
             });
-            await tx.openTab.update({
+            // OpenTab tenant-aware → updateMany para que tenantId filtre.
+            await tx.openTab.updateMany({
                 where: { id: openTabId },
                 data: { waiterProfileId: toWaiterId },
             });
@@ -362,8 +419,11 @@ export async function moveTabBetweenTablesAction({
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
-        // Cargar el OpenTab con su mesa y mesonero actuales
-        const openTab = await prisma.openTab.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Cargar el OpenTab con su mesa y mesonero actuales (tenant-scoped)
+        const openTab = await db.openTab.findFirst({
             where: { id: openTabId },
             select: {
                 id: true,
@@ -381,8 +441,8 @@ export async function moveTabBetweenTablesAction({
         if (!fromTableId) return { success: false, message: 'La cuenta no tiene mesa asignada' };
         if (fromTableId === toTableId) return { success: false, message: 'La mesa destino es la misma que la actual' };
 
-        // Validar que la mesa destino existe, pertenece a la sucursal y está AVAILABLE
-        const toTable = await prisma.tableOrStation.findUnique({
+        // Validar que la mesa destino existe (tenant-scoped), pertenece a la sucursal y está AVAILABLE
+        const toTable = await db.tableOrStation.findFirst({
             where: { id: toTableId },
             select: { id: true, name: true, currentStatus: true, branchId: true, isActive: true },
         });
@@ -396,8 +456,8 @@ export async function moveTabBetweenTablesAction({
             return { success: false, message: `La mesa "${toTable.name}" no está disponible (${toTable.currentStatus})` };
         }
 
-        // Verificar que no haya otro OpenTab activo en la mesa destino
-        const conflictTab = await prisma.openTab.findFirst({
+        // Verificar que no haya otro OpenTab activo en la mesa destino (tenant-scoped)
+        const conflictTab = await db.openTab.findFirst({
             where: {
                 tableOrStationId: toTableId,
                 status: { in: ['OPEN', 'PARTIALLY_PAID'] },
@@ -418,27 +478,27 @@ export async function moveTabBetweenTablesAction({
         const waiterId = openTab.waiterProfileId;
         if (!waiterId) return { success: false, message: 'La cuenta no tiene mesonero asignado' };
 
-        // Transacción atómica
-        const transfer = await prisma.$transaction(async (tx) => {
-            // 1. Reasignar mesa en el OpenTab
-            await tx.openTab.update({
+        // Transacción atómica (tenant-scoped vía db.$transaction)
+        const transfer = await db.$transaction(async (tx) => {
+            // 1. Reasignar mesa en el OpenTab (tenant-aware → updateMany)
+            await tx.openTab.updateMany({
                 where: { id: openTabId },
                 data: { tableOrStationId: toTableId },
             });
 
-            // 2. Mesa origen → AVAILABLE
-            await tx.tableOrStation.update({
+            // 2. Mesa origen → AVAILABLE (tenant-aware → updateMany)
+            await tx.tableOrStation.updateMany({
                 where: { id: fromTableId },
                 data: { currentStatus: 'AVAILABLE' },
             });
 
-            // 3. Mesa destino → OCCUPIED
-            await tx.tableOrStation.update({
+            // 3. Mesa destino → OCCUPIED (tenant-aware → updateMany)
+            await tx.tableOrStation.updateMany({
                 where: { id: toTableId },
                 data: { currentStatus: 'OCCUPIED' },
             });
 
-            // 4. Registrar en TableTransfer (waiter no cambia, solo cambia la mesa)
+            // 4. Registrar en TableTransfer (NO tenant-aware; scope vía openTabId)
             const record = await tx.tableTransfer.create({
                 data: {
                     openTabId,

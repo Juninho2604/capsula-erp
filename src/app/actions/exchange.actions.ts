@@ -1,11 +1,28 @@
 'use server';
 
-import prisma from '@/server/db';
+/**
+ * Tasa de cambio USD/Bs. Cada tenant lleva su propia tasa (Shanklish puede
+ * usar BCV directo, Table Pong puede usar BCV + 3%, etc.).
+ *
+ * Migrado a multitenant pleno (Lote 1 — Fase 3 Paso D.b):
+ *   - Lectura: `withTenant(tenantId).exchangeRate.X` filtra al tenant.
+ *   - Escritura: `withTenant(tenantId).exchangeRate.create` inyecta tenantId.
+ *
+ * El tenant se resuelve por `resolveTenantContext()` (subdomain → JWT →
+ * fallback Shanklish). Para Shanklish todo sigue funcionando idéntico
+ * porque el resolver cae al fallback `tnt_shanklish_caracas` en hosts
+ * sin subdomain y para JWTs viejos sin `tenantId`.
+ */
+
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { revalidatePath } from 'next/cache';
 
 export async function getCurrentExchangeRate() {
-    const rate = await prisma.exchangeRate.findFirst({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const rate = await db.exchangeRate.findFirst({
         orderBy: { effectiveDate: 'desc' },
     });
     return rate;
@@ -41,7 +58,9 @@ export async function setExchangeRateAction(rate: number, effectiveDate: Date) {
     const roundedRate = Math.round(rate * 100) / 100;
 
     try {
-        await prisma.exchangeRate.create({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        await db.exchangeRate.create({
             data: {
                 rate: roundedRate,
                 effectiveDate,
@@ -61,7 +80,9 @@ export async function setExchangeRateAction(rate: number, effectiveDate: Date) {
 }
 
 export async function getExchangeRateHistory(limit = 10) {
-    return prisma.exchangeRate.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.exchangeRate.findMany({
         orderBy: { effectiveDate: 'desc' },
         take: limit,
     });

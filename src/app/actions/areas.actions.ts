@@ -1,7 +1,19 @@
 'use server';
 
-import prisma from '@/server/db';
+/**
+ * Áreas / Almacenes — multitenant pleno (Lote 2 — Fase 3 Paso D.b).
+ *
+ * Migración mecánica: imports + `withTenant(tenantId)` en cada query.
+ *
+ * Para `update({ where: { id } })` la extension no inyecta `tenantId` por
+ * la limitación documentada en `prisma-tenant-client.ts` (los uniques son
+ * globales, no compuestos). Lo convertimos a `updateMany({ where: { id,
+ * tenantId } })` para que un ID de otro tenant no pueda escribirse.
+ */
+
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { revalidatePath } from 'next/cache';
 
 export interface AreaItem {
@@ -21,7 +33,10 @@ export async function getAreasAction(): Promise<{ success: boolean; data?: AreaI
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
 
-    const areas = await prisma.area.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    const areas = await db.area.findMany({
       where: { deletedAt: null },
       include: { _count: { select: { inventoryLocations: true } } },
       orderBy: { name: 'asc' },
@@ -59,7 +74,10 @@ export async function createAreaAction(
     }
     if (!name?.trim()) return { success: false, message: 'El nombre es obligatorio' };
 
-    await prisma.area.create({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    await db.area.create({
       data: { name: name.trim().toUpperCase(), description: description?.trim() || null },
     });
 
@@ -86,7 +104,19 @@ export async function toggleAreaStatusAction(
       return { success: false, message: 'Sin permisos' };
     }
 
-    await prisma.area.update({ where: { id }, data: { isActive } });
+    const { tenantId } = await resolveTenantContext();
+
+    // `update({ where: { id } })` no se filtra por tenantId en la extension
+    // (uniques globales). Usamos `updateMany` con tenantId explícito para
+    // que un ID de otro tenant no matchee.
+    const res = await withTenant(tenantId).area.updateMany({
+      where: { id },
+      data: { isActive },
+    });
+
+    if (res.count === 0) {
+      return { success: false, message: 'Almacén no encontrado' };
+    }
 
     revalidatePath('/dashboard/almacenes');
     return { success: true, message: isActive ? 'Almacén activado' : 'Almacén desactivado' };
@@ -105,7 +135,10 @@ export async function findDuplicateAreasAction(): Promise<{ success: boolean; gr
     const session = await getSession();
     if (!session) return { success: false, message: 'No autorizado' };
 
-    const areas = await prisma.area.findMany({
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    const areas = await db.area.findMany({
       where: { deletedAt: null },
       select: { id: true, name: true },
     });

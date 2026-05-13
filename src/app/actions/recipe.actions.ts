@@ -1,16 +1,25 @@
 'use server';
 
+/**
+ * Recetas — multitenant (Lote 3.d — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: Recipe, InventoryItem, MenuItem.
+ * Modelos NO tenant-aware: CostHistory (FK a InventoryItem) y RecipeIngredient
+ * (FK a Recipe). Sus ops siguen con `prisma` directo PERO cualquier id que
+ * venga de afuera (recipeId, etc.) se valida primero como tenant-owned.
+ *
+ * `calculateRecipeCost(prisma, recipeId)` queda con prisma raw. Al llamarlo
+ * desde acá ya validamos que recipeId pertenece al tenant; las sub-recetas
+ * a las que accede vía FK están en el mismo tenant por integridad del schema.
+ */
+
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/server/db';
 import { calculateRecipeCost } from '@/server/services/cost.service';
 import { UnitOfMeasure } from '@/types'; // Assuming this exists, otherwise we use string
-
-/**
- * SHANKLISH CARACAS ERP - Recipe Actions
- * 
- * Server Actions para gestión de recetas y costos
- */
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export interface ActionResult {
     success: boolean;
@@ -54,7 +63,9 @@ const UpdateRecipeInputSchema = CreateRecipeInputSchema.extend({
 
 export async function getRecipesAction() {
     try {
-        const recipes = await prisma.recipe.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const recipes = await db.recipe.findMany({
             where: { isActive: true },
             include: {
                 outputItem: {
@@ -105,7 +116,11 @@ export async function getRecipesAction() {
 
 export async function getRecipeByIdAction(id: string) {
     try {
-        const recipe = await prisma.recipe.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        // findUnique no se filtra por la extension; usamos findFirst para
+        // que el filtro de tenantId aplique.
+        const recipe = await db.recipe.findFirst({
             where: { id },
             include: {
                 outputItem: {
@@ -164,7 +179,9 @@ export async function getRecipeByIdAction(id: string) {
  */
 export async function getIngredientOptionsAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: { in: ['RAW_MATERIAL', 'SUB_RECIPE'] }
@@ -213,11 +230,28 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
     const input = parsed.data;
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership de todos los ingredientItemIds antes de iniciar
+        // la transacción. La extension auto-filtra inventoryItem.findMany
+        // por tenant; si algún ingrediente no aparece, abortamos.
+        const ingredientIds = input.ingredients.map(i => i.itemId);
+        const ownedIngredients = await db.inventoryItem.findMany({
+            where: { id: { in: ingredientIds } },
+            select: { id: true },
+        });
+        if (ownedIngredients.length !== new Set(ingredientIds).size) {
+            return { success: false, message: 'Uno o más ingredientes no pertenecen a este tenant' };
+        }
 
         // Generate SKU roughly
         const sku = `REC-${input.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
 
-        const result = await prisma.$transaction(async (tx) => {
+        // La transacción usa la extension para que tenantId se inyecte en
+        // create de InventoryItem y Recipe. RecipeIngredient no es tenant-aware
+        // (FK a Recipe) — su create nested también va dentro del extended.
+        const result = await db.$transaction(async (tx) => {
             // 1. Create the Output Inventory Item (The thing this recipe makes)
             const outputItem = await tx.inventoryItem.create({
                 data: {
@@ -303,10 +337,32 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
     const input = parsed.data;
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
 
-        const result = await prisma.$transaction(async (tx) => {
-            // 1. Get existing recipe to know output item
-            const existing = await tx.recipe.findUnique({
+        // Validar ownership de la receta antes de tocar nada.
+        const ownedRecipe = await db.recipe.findFirst({
+            where: { id: input.id },
+            select: { id: true },
+        });
+        if (!ownedRecipe) {
+            return { success: false, message: 'Receta no encontrada' };
+        }
+
+        // Validar ownership de todos los ingredientItemIds nuevos.
+        const ingredientIds = input.ingredients.map(i => i.itemId);
+        const ownedIngredients = await db.inventoryItem.findMany({
+            where: { id: { in: ingredientIds } },
+            select: { id: true },
+        });
+        if (ownedIngredients.length !== new Set(ingredientIds).size) {
+            return { success: false, message: 'Uno o más ingredientes no pertenecen a este tenant' };
+        }
+
+        const result = await db.$transaction(async (tx) => {
+            // 1. Get existing recipe to know output item (ya validado arriba, pero
+            // re-leemos dentro de la tx para tener outputItem fresco).
+            const existing = await tx.recipe.findFirst({
                 where: { id: input.id },
                 include: { outputItem: true }
             });
@@ -315,7 +371,7 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
             // 2. Update Output Item if name, category, or type changed
             const newType = input.type || existing.outputItem.type;
             if (existing.name !== input.name || existing.outputItem.category !== input.category || existing.outputItem.type !== newType) {
-                await tx.inventoryItem.update({
+                await tx.inventoryItem.updateMany({
                     where: { id: existing.outputItemId },
                     data: {
                         name: input.name,
@@ -326,7 +382,7 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
             }
 
             // 3. Update Recipe Basic Info
-            const updatedRecipe = await tx.recipe.update({
+            await tx.recipe.updateMany({
                 where: { id: input.id },
                 data: {
                     name: input.name,
@@ -338,8 +394,10 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
                     cookTime: input.cookTime,
                 }
             });
+            const updatedRecipe = await tx.recipe.findFirst({ where: { id: input.id } });
 
-            // 4. Replace Ingredients
+            // 4. Replace Ingredients (RecipeIngredient no es tenant-aware;
+            // scope viene de recipeId, ya validado).
             // Delete old
             await tx.recipeIngredient.deleteMany({
                 where: { recipeId: input.id }
@@ -406,8 +464,10 @@ export async function updateRecipeCostAction(
 
         console.log(`Costo calculado: ${result.costPerUnit} (Total: ${result.totalCost})`);
 
-        // 2. Obtener el outputItem ID de la receta
-        const recipe = await prisma.recipe.findUnique({
+        // 2. Obtener el outputItem ID de la receta (tenant-scoped)
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const recipe = await db.recipe.findFirst({
             where: { id: recipeId },
             select: { outputItemId: true }
         });
@@ -468,8 +528,11 @@ export async function getOrphanRecipesSummaryAction(opts?: { recentLimit?: numbe
     const limit = opts?.recentLimit ?? 5;
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
         // 1) MenuItems activos con recipeId no nulo
-        const menuItemsWithRecipe = await prisma.menuItem.findMany({
+        const menuItemsWithRecipe = await db.menuItem.findMany({
             where: { isActive: true, recipeId: { not: null } },
             select: { id: true, name: true, sku: true, recipeId: true },
         });
@@ -479,7 +542,7 @@ export async function getOrphanRecipesSummaryAction(opts?: { recentLimit?: numbe
         );
 
         // 2) Recetas que efectivamente existen entre las referenciadas
-        const existingRecipes = await prisma.recipe.findMany({
+        const existingRecipes = await db.recipe.findMany({
             where: { id: { in: referencedRecipeIds } },
             select: { id: true, isActive: true, name: true },
         });
@@ -494,7 +557,7 @@ export async function getOrphanRecipesSummaryAction(opts?: { recentLimit?: numbe
 
         // 4) Recetas activas no referenciadas (huérfanas inversas)
         const referencedSet = new Set(referencedRecipeIds);
-        const allActiveRecipes = await prisma.recipe.findMany({
+        const allActiveRecipes = await db.recipe.findMany({
             where: { isActive: true },
             select: { id: true, name: true },
         });
@@ -541,10 +604,12 @@ export async function getRecipesWithOutdatedCostAction(opts?: { limit?: number }
     const limit = opts?.limit ?? 25;
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
         // Cargamos recetas activas con su costHistory más reciente (snapshot)
         // y los costHistory más recientes de cada ingrediente. Una sola query
         // de Prisma; in-memory comparison para evitar SQL crudo.
-        const recipes = await prisma.recipe.findMany({
+        const recipes = await db.recipe.findMany({
             where: { isActive: true },
             select: {
                 id: true,

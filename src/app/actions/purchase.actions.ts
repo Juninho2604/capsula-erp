@@ -1,19 +1,35 @@
 'use server';
 
 /**
- * SHANKLISH CARACAS ERP - Purchase Order Actions
- * 
- * Server Actions para gestión de Órdenes de Compra
- * - Configuración masiva de stock mínimo / punto de reorden
- * - Generación automática basada en stock mínimo
- * - Vista por categoría
- * - Recepción parcial vinculada a OC
- * - Entrada excepcional independiente
+ * Órdenes de Compra — multitenant (Lote 4.f — Fase 3 Paso D.b).
+ *
+ * Cierra Lote 4 (operaciones). 18 funciones, recepción de mercancía con
+ * cascada a InventoryLocation / InventoryMovement / CostHistory + histórico
+ * de precios por proveedor.
+ *
+ * Modelos tenant-aware: InventoryItem, PurchaseOrder, Supplier, Area, User,
+ *                       BroadcastMessage.
+ * Modelos NO tenant-aware (FK-scoped): PurchaseOrderItem, SupplierItem,
+ *                       SupplierItemPriceHistory, InventoryLocation,
+ *                       InventoryMovement, CostHistory. Sus ops siguen con
+ *                       prisma raw pero los IDs de entrada se validan.
+ *
+ * Validaciones nuevas:
+ *   - createPurchaseOrderAction: ownership de supplierId (si se pasa) y de
+ *     todos los inventoryItemIds.
+ *   - sendPurchaseOrderAction / cancelPurchaseOrderAction: update → updateMany
+ *     con tenant filter.
+ *   - receivePurchaseOrderItemsAction: ownership de orderId + areaId; cada
+ *     purchaseOrderItemId se filtra por purchaseOrderId.
+ *   - createReorderBroadcastsAction: User/BroadcastMessage via db (tenant-aware).
+ *   - getSupplierPriceHistoryAction: findUnique → findFirst (tenant filter).
  */
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ============================================================================
 // TIPOS
@@ -64,20 +80,9 @@ export interface StockConfigItem {
 /**
  * Registra un cambio de precio para el par (supplierId, inventoryItemId).
  *
- * Comportamiento:
- *  1. Lee el SupplierItem actual y el último registro vigente del histórico.
- *  2. Si el `newUnitPrice` es igual al actual (con tolerancia 0.0001), no
- *     hace nada (idempotente).
- *  3. Si difiere o no había registro previo:
- *     a. Cierra el registro vigente del histórico (effectiveTo = NOW()).
- *     b. Inserta uno nuevo (effectiveFrom = NOW(), effectiveTo = null,
- *        registeredFromPurchaseOrderId, registeredById).
- *     c. Actualiza SupplierItem.unitPrice con el nuevo precio (mantiene
- *        caché de "último precio vigente"). Si el SupplierItem no existe
- *        para ese par, lo crea.
- *
- * Toda la operación está envuelta en `prisma.$transaction` para garantizar
- * atomicidad (o se aplica todo, o nada).
+ * Los IDs entran ya validados como tenant-owned desde el caller. Las tablas
+ * SupplierItem y SupplierItemPriceHistory no son tenant-aware; su scope viene
+ * de las FKs ya validadas.
  */
 async function registerSupplierPriceChange(params: {
     supplierId: string;
@@ -88,7 +93,6 @@ async function registerSupplierPriceChange(params: {
 }): Promise<void> {
     const { supplierId, inventoryItemId, newUnitPrice, purchaseOrderId, registeredById } = params;
 
-    // Tolerancia para comparar floats (centavos)
     const PRICE_TOLERANCE = 0.0001;
 
     const existingSupplierItem = await prisma.supplierItem.findUnique({
@@ -98,7 +102,6 @@ async function registerSupplierPriceChange(params: {
 
     const currentPrice = existingSupplierItem?.unitPrice ?? null;
 
-    // Si el precio es idéntico al cacheado, no hacemos nada
     if (currentPrice !== null && Math.abs(currentPrice - newUnitPrice) < PRICE_TOLERANCE) {
         return;
     }
@@ -106,13 +109,11 @@ async function registerSupplierPriceChange(params: {
     const now = new Date();
 
     await prisma.$transaction(async tx => {
-        // 1. Cerrar registro vigente (si lo hay)
         await tx.supplierItemPriceHistory.updateMany({
             where: { supplierId, inventoryItemId, effectiveTo: null },
             data: { effectiveTo: now },
         });
 
-        // 2. Insertar nuevo registro vigente
         await tx.supplierItemPriceHistory.create({
             data: {
                 supplierId,
@@ -125,7 +126,6 @@ async function registerSupplierPriceChange(params: {
             },
         });
 
-        // 3. Actualizar (o crear) el SupplierItem con el nuevo precio
         if (existingSupplierItem) {
             await tx.supplierItem.update({
                 where: { id: existingSupplierItem.id },
@@ -148,10 +148,6 @@ async function registerSupplierPriceChange(params: {
 // ACTION: CONFIGURAR STOCK MÍNIMO EN LOTE
 // ============================================================================
 
-/**
- * Actualiza minimumStock y reorderPoint para múltiples items a la vez.
- * Esto es necesario para que el sistema de alertas de stock bajo funcione.
- */
 export async function updateStockLevelsAction(
     items: StockConfigItem[]
 ): Promise<{ success: boolean; message: string; updatedCount?: number }> {
@@ -161,7 +157,9 @@ export async function updateStockLevelsAction(
     }
 
     try {
-        // Actualizar en lotes paralelos (evita timeout de transacción en BD remota)
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
         const BATCH_SIZE = 10;
         let updatedCount = 0;
 
@@ -169,7 +167,7 @@ export async function updateStockLevelsAction(
             const batch = items.slice(i, i + BATCH_SIZE);
             await Promise.all(
                 batch.map(item =>
-                    prisma.inventoryItem.update({
+                    db.inventoryItem.updateMany({
                         where: { id: item.id },
                         data: {
                             minimumStock: item.minimumStock,
@@ -202,13 +200,11 @@ export async function updateStockLevelsAction(
 // ACTION: OBTENER TODOS LOS ITEMS CON SU CONFIGURACIÓN DE STOCK
 // ============================================================================
 
-/**
- * Obtiene todos los items de materia prima con su stock actual,
- * mínimo y punto de reorden para configuración masiva.
- */
 export async function getAllItemsWithStockConfigAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: 'RAW_MATERIAL'
@@ -243,13 +239,11 @@ export async function getAllItemsWithStockConfigAction() {
 // ACTION: OBTENER ITEMS CON STOCK BAJO (PARA GENERAR ORDEN AUTOMÁTICA)
 // ============================================================================
 
-/**
- * Obtiene todos los items que están por debajo del punto de reorden
- * o del stock mínimo. Calcula la cantidad sugerida a pedir.
- */
 export async function getLowStockItemsAction(): Promise<LowStockItem[]> {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: 'RAW_MATERIAL'
@@ -272,7 +266,6 @@ export async function getLowStockItemsAction(): Promise<LowStockItem[]> {
             const isBelowMinimum = item.minimumStock > 0 && totalStock < item.minimumStock;
 
             if (isBelowReorder || isBelowMinimum) {
-                // Cantidad sugerida: llegar al punto de reorden + 20% buffer
                 const targetStock = Math.max(item.reorderPoint, item.minimumStock * 1.5);
                 const suggestedQty = Math.max(0, targetStock - totalStock);
 
@@ -295,7 +288,6 @@ export async function getLowStockItemsAction(): Promise<LowStockItem[]> {
             }
         }
 
-        // Ordenar: críticos primero, luego por ratio
         lowStockItems.sort((a, b) => {
             if (a.isCritical && !b.isCritical) return -1;
             if (!a.isCritical && b.isCritical) return 1;
@@ -317,7 +309,9 @@ export async function getLowStockItemsAction(): Promise<LowStockItem[]> {
 
 export async function getAllItemsForPurchaseAction() {
     try {
-        const items = await prisma.inventoryItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
                 type: 'RAW_MATERIAL'
@@ -360,9 +354,31 @@ export async function createPurchaseOrderAction(
     }
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar ownership de supplierId (si se pasa)
+        if (input.supplierId) {
+            const ownedSupplier = await db.supplier.findFirst({
+                where: { id: input.supplierId },
+                select: { id: true },
+            });
+            if (!ownedSupplier) return { success: false, message: 'Proveedor no encontrado' };
+        }
+
+        // Validar ownership de cada inventoryItemId
+        const itemIds = Array.from(new Set(input.items.map(i => i.inventoryItemId)));
+        const ownedItems = await db.inventoryItem.findMany({
+            where: { id: { in: itemIds } },
+            select: { id: true },
+        });
+        if (ownedItems.length !== itemIds.length) {
+            return { success: false, message: 'Uno o más items no pertenecen a este tenant' };
+        }
+
         // Generar número de orden
         const year = new Date().getFullYear();
-        const count = await prisma.purchaseOrder.count({
+        const count = await db.purchaseOrder.count({
             where: {
                 orderNumber: { startsWith: `OC-${year}` }
             }
@@ -384,7 +400,7 @@ export async function createPurchaseOrderAction(
             };
         });
 
-        const order = await prisma.purchaseOrder.create({
+        const order = await db.purchaseOrder.create({
             data: {
                 orderNumber,
                 orderName: input.orderName?.trim() || null,
@@ -424,7 +440,9 @@ export async function createPurchaseOrderAction(
 
 export async function getPurchaseOrdersAction(status?: string) {
     try {
-        const orders = await prisma.purchaseOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const orders = await db.purchaseOrder.findMany({
             where: status ? { status } : undefined,
             include: {
                 supplier: true,
@@ -482,7 +500,10 @@ export async function getPurchaseOrdersAction(status?: string) {
 
 export async function getPurchaseOrderByIdAction(orderId: string) {
     try {
-        const order = await prisma.purchaseOrder.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        // findUnique → findFirst con tenant filter
+        const order = await db.purchaseOrder.findFirst({
             where: { id: orderId },
             include: {
                 supplier: true,
@@ -520,10 +541,12 @@ export async function sendPurchaseOrderAction(orderId: string): Promise<{ succes
     }
 
     try {
-        await prisma.purchaseOrder.update({
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).purchaseOrder.updateMany({
             where: { id: orderId },
             data: { status: 'SENT' }
         });
+        if (res.count === 0) return { success: false, message: 'Orden no encontrada' };
 
         revalidatePath('/dashboard/compras');
         return { success: true, message: 'Orden enviada al proveedor' };
@@ -548,23 +571,33 @@ export async function receivePurchaseOrderItemsAction(
     }
 
     try {
-        let receivedCount = 0;
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
 
-        // Pre-cargar la orden completa para conocer el proveedor — necesario
-        // para registrar el histórico de precios por par (supplier, item)
-        // en SupplierItemPriceHistory (Fase 2.D).
-        const orderForSupplier = await prisma.purchaseOrder.findUnique({
+        // Validar ownership de orderId + areaId
+        const orderForSupplier = await db.purchaseOrder.findFirst({
             where: { id: orderId },
-            select: { supplierId: true },
+            select: { id: true, supplierId: true },
         });
-        const supplierId = orderForSupplier?.supplierId ?? null;
+        if (!orderForSupplier) return { success: false, message: 'Orden no encontrada' };
+
+        const ownedArea = await db.area.findFirst({
+            where: { id: areaId },
+            select: { id: true },
+        });
+        if (!ownedArea) return { success: false, message: 'Área no encontrada' };
+
+        const supplierId = orderForSupplier.supplierId;
+        let receivedCount = 0;
 
         // Procesar item por item (sin transacción interactiva para evitar timeout en BD remota)
         for (const item of items) {
             if (item.quantityReceived <= 0) continue;
 
-            const orderItem = await prisma.purchaseOrderItem.findUnique({
-                where: { id: item.purchaseOrderItemId },
+            // Filtrar por purchaseOrderId para que un orderItemId de otra orden
+            // (incluso del mismo tenant) no matchee.
+            const orderItem = await prisma.purchaseOrderItem.findFirst({
+                where: { id: item.purchaseOrderItemId, purchaseOrderId: orderId },
                 include: { inventoryItem: true }
             });
 
@@ -628,18 +661,7 @@ export async function receivePurchaseOrderItemsAction(
                 });
             }
 
-            // ────────────────────────────────────────────────────────────
             // Histórico de precios por par (supplier, item) — Fase 2.D
-            // ────────────────────────────────────────────────────────────
-            // Solo si la OC tiene proveedor asociado y el costo unitario
-            // recibido es > 0. Si difiere del último precio vigente, cerramos
-            // ese registro (effectiveTo = NOW) e insertamos el nuevo. También
-            // actualizamos SupplierItem.unitPrice para mantener el caché.
-            //
-            // Best-effort: si esta sección falla (ej. tabla recién creada,
-            // race condition), NO rompe el flujo de recepción. Solo se
-            // loggea. La operación principal (recibir mercancía) ya quedó
-            // hecha arriba.
             if (supplierId && unitCost > 0) {
                 try {
                     await registerSupplierPriceChange({
@@ -655,8 +677,8 @@ export async function receivePurchaseOrderItemsAction(
             }
         }
 
-        // Actualizar estado de la orden
-        const updatedOrder = await prisma.purchaseOrder.findUnique({
+        // Actualizar estado de la orden (relectura con tenant filter)
+        const updatedOrder = await db.purchaseOrder.findFirst({
             where: { id: orderId },
             include: { items: true }
         });
@@ -677,7 +699,7 @@ export async function receivePurchaseOrderItemsAction(
                 newStatus = 'PARTIAL';
             }
 
-            await prisma.purchaseOrder.update({
+            await db.purchaseOrder.updateMany({
                 where: { id: orderId },
                 data: {
                     status: newStatus,
@@ -711,8 +733,11 @@ export async function cancelPurchaseOrderAction(orderId: string): Promise<{ succ
     }
 
     try {
-        const order = await prisma.purchaseOrder.findUnique({
-            where: { id: orderId }
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const order = await db.purchaseOrder.findFirst({
+            where: { id: orderId },
+            select: { id: true, status: true },
         });
 
         if (!order) {
@@ -723,7 +748,7 @@ export async function cancelPurchaseOrderAction(orderId: string): Promise<{ succ
             return { success: false, message: 'No se puede cancelar una orden ya recibida' };
         }
 
-        await prisma.purchaseOrder.update({
+        await db.purchaseOrder.updateMany({
             where: { id: orderId },
             data: { status: 'CANCELLED' }
         });
@@ -742,7 +767,9 @@ export async function cancelPurchaseOrderAction(orderId: string): Promise<{ succ
 
 export async function getSuppliersAction() {
     try {
-        const suppliers = await prisma.supplier.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const suppliers = await db.supplier.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' },
             include: {
@@ -781,7 +808,9 @@ export async function createSupplierAction(input: {
     notes?: string;
 }): Promise<{ success: boolean; message: string; supplierId?: string }> {
     try {
-        const supplier = await prisma.supplier.create({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const supplier = await db.supplier.create({
             data: input
         });
 
@@ -803,7 +832,9 @@ export async function createSupplierAction(input: {
 
 export async function getAreasForReceivingAction() {
     try {
-        const areas = await prisma.area.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const areas = await db.area.findMany({
             where: { isActive: true },
             select: {
                 id: true,
@@ -823,20 +854,16 @@ export async function getAreasForReceivingAction() {
 // ACTION: CREAR ALERTAS DE REORDEN EN BROADCAST (auto o manual)
 // ============================================================================
 
-/**
- * Detecta items bajo su punto de reorden y crea BroadcastMessages activos.
- * - No duplica alertas: si ya existe un broadcast activo para ese item, lo omite.
- * - Se puede llamar manualmente desde Compras o automáticamente tras descargo.
- * Retorna el número de alertas nuevas creadas.
- */
 export async function createReorderBroadcastsAction(): Promise<{ created: number; skipped: number }> {
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
         // Obtener usuario para createdById (requerido por el modelo)
         const session = await getSession();
-        // Si no hay sesión activa, buscar el primer OWNER como fallback (ej. llamada fire-and-forget)
         let authorId: string | null = session?.id ?? null;
         if (!authorId) {
-            const owner = await prisma.user.findFirst({ where: { role: 'OWNER', isActive: true }, select: { id: true } });
+            const owner = await db.user.findFirst({ where: { role: 'OWNER', isActive: true }, select: { id: true } });
             authorId = owner?.id ?? null;
         }
         if (!authorId) return { created: 0, skipped: 0 };
@@ -845,8 +872,8 @@ export async function createReorderBroadcastsAction(): Promise<{ created: number
         if (lowStockItems.length === 0) return { created: 0, skipped: 0 };
 
         // No duplicar alertas activas del mismo item
-        const existingBroadcasts = await prisma.broadcastMessage.findMany({
-            where: { isActive: true, title: { startsWith: '🔁 Reorden:' } },
+        const existingBroadcasts = await db.broadcastMessage.findMany({
+            where: { isActive: true, title: { startsWith: 'Reorden:' } },
             select: { title: true },
         });
         const existingTitles = new Set(existingBroadcasts.map(b => b.title));
@@ -865,7 +892,7 @@ export async function createReorderBroadcastsAction(): Promise<{ created: number
                 : `reorden ${item.reorderPoint} ${item.baseUnit}`;
             const body = `Stock actual: ${stockLabel} (${minLabel}). SKU: ${item.sku}${item.category ? ` · ${item.category}` : ''}`;
 
-            await prisma.broadcastMessage.create({
+            await db.broadcastMessage.create({
                 data: {
                     title,
                     body,
@@ -893,7 +920,9 @@ export async function createReorderBroadcastsAction(): Promise<{ created: number
 
 export async function exportPurchaseOrderTextAction(orderId: string): Promise<string> {
     try {
-        const order = await prisma.purchaseOrder.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const order = await db.purchaseOrder.findFirst({
             where: { id: orderId },
             include: {
                 supplier: true,
@@ -960,16 +989,11 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
 // ACTIONS: SUPPLIER PRICE HISTORY (Fase 2.E — read-only)
 // ============================================================================
 
-/**
- * Lista de proveedores activos con resumen de items que provee y fecha del
- * último cambio de precio registrado en SupplierItemPriceHistory. Read-only.
- *
- * Se usa en el listado /dashboard/compras/proveedor para que el usuario
- * elija qué proveedor inspeccionar.
- */
 export async function getSupplierListForHistoryAction() {
     try {
-        const suppliers = await prisma.supplier.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const suppliers = await db.supplier.findMany({
             where: { isActive: true, deletedAt: null },
             orderBy: { name: 'asc' },
             select: {
@@ -1000,19 +1024,12 @@ export async function getSupplierListForHistoryAction() {
     }
 }
 
-/**
- * Detalle de un proveedor + histórico de precios de cada uno de sus items.
- *
- * Para cada InventoryItem que el proveedor provee, devuelve:
- *  - precio vigente (SupplierItem.unitPrice)
- *  - histórico cronológico (SupplierItemPriceHistory ordenado por
- *    effectiveFrom desc, máximo 50 puntos por item para evitar over-fetch)
- *
- * Read-only.
- */
 export async function getSupplierPriceHistoryAction(supplierId: string) {
     try {
-        const supplier = await prisma.supplier.findUnique({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        // findUnique → findFirst con tenant filter
+        const supplier = await db.supplier.findFirst({
             where: { id: supplierId },
             select: {
                 id: true,
@@ -1040,8 +1057,8 @@ export async function getSupplierPriceHistoryAction(supplierId: string) {
 
         if (!supplier) return null;
 
-        // Histórico de precios para todos los items que provee este supplier,
-        // en una sola query batch
+        // SupplierItemPriceHistory no es tenant-aware, pero filtramos por
+        // supplierId (que ya validamos como del tenant).
         const itemIds = supplier.suppliedItems.map(si => si.inventoryItemId);
         const history = itemIds.length
             ? await prisma.supplierItemPriceHistory.findMany({
@@ -1060,7 +1077,6 @@ export async function getSupplierPriceHistoryAction(supplierId: string) {
             })
             : [];
 
-        // Agrupar histórico por item (limitando a 50 puntos por item)
         const historyByItem = new Map<string, typeof history>();
         for (const h of history) {
             const arr = historyByItem.get(h.inventoryItemId) ?? [];
@@ -1103,4 +1119,3 @@ export async function getSupplierPriceHistoryAction(supplierId: string) {
         return null;
     }
 }
-

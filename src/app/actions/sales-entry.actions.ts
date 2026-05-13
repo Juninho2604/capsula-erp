@@ -1,17 +1,25 @@
 'use server';
 
 /**
- * SHANKLISH CARACAS ERP - Sales Entry Actions
- * 
- * Server Actions para carga manual de ventas
- * - Para gerentes que registran comandas de WhatsApp
- * - Permite cargar ventas históricas del día
+ * Carga manual de ventas — multitenant (Lote 5.g — Fase 3 Paso D.b).
+ *
+ * Para gerentes que registran comandas de WhatsApp/históricas del día.
+ *
+ * Modelos tenant-aware: MenuItem, MenuCategory, SalesOrder, User, Area,
+ *                       Recipe.
+ * Modelos NO tenant-aware: InventoryMovement (vía registerSale service).
+ *
+ * Validaciones:
+ *   - createSalesEntryAction: ownership de areaId y de cada menuItemId.
+ *   - voidSalesOrderAction: update → updateMany con tenant filter.
  */
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 // ============================================================================
 // TIPOS
@@ -33,7 +41,6 @@ export interface CreateSalesEntryInput {
     discountType?: string;
     discountAmount?: number;
     notes?: string;
-    // Para permitir cargar ventas de horas anteriores
     orderTime?: Date;
     customerName?: string;
     customerPhone?: string;
@@ -46,7 +53,9 @@ export interface CreateSalesEntryInput {
 
 export async function getMenuItemsForSalesAction() {
     try {
-        const menuItems = await prisma.menuItem.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const menuItems = await db.menuItem.findMany({
             where: {
                 isActive: true,
                 isAvailable: true
@@ -77,7 +86,9 @@ export async function getMenuItemsForSalesAction() {
 
 export async function getMenuCategoriesAction() {
     try {
-        const categories = await prisma.menuCategory.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const categories = await db.menuCategory.findMany({
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' }
         });
@@ -104,8 +115,11 @@ export async function createSalesEntryAction(
         return { success: false, message: 'No autorizado' };
     }
 
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
     // Verificar rol (solo gerentes o superior)
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findFirst({
         where: { id: session.id },
         select: { role: true }
     });
@@ -115,30 +129,43 @@ export async function createSalesEntryAction(
         return { success: false, message: 'No tienes permisos para registrar ventas manualmente' };
     }
 
+    // Validar ownership de areaId
+    const ownedArea = await db.area.findFirst({
+        where: { id: input.areaId },
+        select: { id: true },
+    });
+    if (!ownedArea) return { success: false, message: 'Área no encontrada' };
+
+    // Validar ownership de cada menuItemId
+    const menuItemIds = Array.from(new Set(input.items.map(i => i.menuItemId)));
+    const ownedMenuItems = await db.menuItem.findMany({
+        where: { id: { in: menuItemIds } },
+        select: { id: true },
+    });
+    if (ownedMenuItems.length !== menuItemIds.length) {
+        return { success: false, message: 'Uno o más items del menú no pertenecen a este tenant' };
+    }
+
     try {
         // Generar número de orden
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await prisma.salesOrder.count({
+        const count = await db.salesOrder.count({
             where: {
                 orderNumber: { startsWith: `VTA-${today}` }
             }
         });
         const orderNumber = `VTA-${today}-${String(count + 1).padStart(4, '0')}`;
 
-        // Calcular subtotal
         const subtotal = input.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-
-        // Aplicar descuento si existe
         const discount = input.discountAmount || 0;
         const total = Math.max(0, subtotal - discount);
 
-        const result = await prisma.$transaction(async (tx) => {
-            // Crear la orden de venta
+        const result = await db.$transaction(async (tx) => {
             const salesOrder = await tx.salesOrder.create({
                 data: {
                     orderNumber,
                     orderType: input.orderType,
-                    status: 'COMPLETED', // Las ventas manuales se consideran completadas
+                    status: 'COMPLETED',
                     subtotal,
                     discount,
                     total,
@@ -169,7 +196,7 @@ export async function createSalesEntryAction(
             return salesOrder;
         }, { timeout: 60000 });
 
-        console.log('💰 VENTA REGISTRADA:', {
+        console.log('VENTA REGISTRADA:', {
             orden: result.orderNumber,
             tipo: input.orderType,
             items: input.items.length,
@@ -180,10 +207,8 @@ export async function createSalesEntryAction(
         // GESTIÓN DE INVENTARIO (Descargo de Recetas)
         // ====================================================================
         try {
-            // Recorrer los items vendidos
             for (const item of input.items) {
-                // 1. Buscar si el producto tiene receta
-                const menuItem = await prisma.menuItem.findUnique({
+                const menuItem = await db.menuItem.findFirst({
                     where: { id: item.menuItemId },
                     select: {
                         name: true,
@@ -191,9 +216,8 @@ export async function createSalesEntryAction(
                     }
                 });
 
-                // 2. Si tiene recipeId, buscar la receta completa
                 if (menuItem?.recipeId) {
-                    const recipe = await prisma.recipe.findUnique({
+                    const recipe = await db.recipe.findFirst({
                         where: { id: menuItem.recipeId },
                         include: {
                             ingredients: {
@@ -203,20 +227,18 @@ export async function createSalesEntryAction(
                     });
 
                     if (recipe && recipe.isActive) {
-                        // 3. Descontar ingredientes
                         for (const ingredient of recipe.ingredients) {
-                            // Cantidad total = CantidadIngrediente * CantidadItemsVendidos
                             const totalQty = ingredient.quantity * item.quantity;
 
                             await registerSale({
                                 inventoryItemId: ingredient.ingredientItemId,
                                 quantity: totalQty,
                                 unit: ingredient.unit as any,
-                                areaId: input.areaId, // Usamos el área de venta
+                                areaId: input.areaId,
                                 orderId: result.id,
                                 userId: session.id,
                                 notes: `Carga Manual: ${item.quantity}x ${menuItem.name}`,
-                                allowNegative: true // Permitir negativos
+                                allowNegative: true
                             });
                         }
                     }
@@ -224,7 +246,6 @@ export async function createSalesEntryAction(
             }
         } catch (invError) {
             console.error('Error descontando inventario de carga manual:', invError);
-            // No fallamos la venta, la registramos igual.
         }
 
         revalidatePath('/dashboard/ventas');
@@ -258,7 +279,9 @@ export async function getTodaySalesAction() {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const sales = await prisma.salesOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const sales = await db.salesOrder.findMany({
             where: {
                 createdAt: {
                     gte: today,
@@ -277,7 +300,6 @@ export async function getTodaySalesAction() {
             orderBy: { createdAt: 'desc' }
         });
 
-        // Calcular totales
         const totalSales = sales.length;
         const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
         const byType = {
@@ -320,8 +342,9 @@ export async function getTodaySalesAction() {
 
 export async function getSalesAreasAction() {
     try {
-        // Devolver todas las áreas activas
-        const areas = await prisma.area.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const areas = await db.area.findMany({
             where: { isActive: true },
             orderBy: { name: 'asc' }
         });
@@ -346,8 +369,11 @@ export async function voidSalesOrderAction(
         return { success: false, message: 'No autorizado' };
     }
 
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
     // Verificar rol
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findFirst({
         where: { id: session.id },
         select: { role: true }
     });
@@ -358,13 +384,14 @@ export async function voidSalesOrderAction(
     }
 
     try {
-        await prisma.salesOrder.update({
+        const res = await db.salesOrder.updateMany({
             where: { id: orderId },
             data: {
                 status: 'CANCELLED',
                 notes: `ANULADA: ${reason}`
             }
         });
+        if (res.count === 0) return { success: false, message: 'Venta no encontrada' };
 
         revalidatePath('/dashboard/ventas');
         return { success: true, message: 'Venta anulada' };
@@ -380,7 +407,9 @@ export async function voidSalesOrderAction(
 
 export async function getSalesSummaryAction(startDate: Date, endDate: Date) {
     try {
-        const sales = await prisma.salesOrder.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const sales = await db.salesOrder.findMany({
             where: {
                 status: { not: 'CANCELLED' },
                 createdAt: {
@@ -398,13 +427,11 @@ export async function getSalesSummaryAction(startDate: Date, endDate: Date) {
 
         const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
 
-        // Agrupar por tipo
         const byOrderType = sales.reduce((acc, s) => {
             acc[s.orderType] = (acc[s.orderType] || 0) + s.total;
             return acc;
         }, {} as Record<string, number>);
 
-        // Agrupar por método de pago
         const byPaymentMethod = sales.reduce((acc, s) => {
             const method = s.paymentMethod || 'NO_ESPECIFICADO';
             acc[method] = (acc[method] || 0) + s.total;

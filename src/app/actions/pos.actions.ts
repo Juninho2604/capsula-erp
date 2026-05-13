@@ -8,6 +8,13 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+
+async function getTenantDb() {
+    const { tenantId } = await resolveTenantContext();
+    return withTenant(tenantId);
+}
 import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
@@ -121,42 +128,43 @@ class POSActionError extends Error {
 }
 
 async function ensureBaseSalesArea() {
+    const db = await getTenantDb();
     const whereActive = { isActive: true };
 
     // 1. SHANKLISH SERVICIO (almacén preferido)
-    let area = await prisma.area.findFirst({
+    let area = await db.area.findFirst({
         where: { ...whereActive, name: { contains: 'SHANKLISH SERVICIO', mode: 'insensitive' } },
     });
     if (area) return area;
 
     // 2. Restaurante
-    area = await prisma.area.findFirst({
+    area = await db.area.findFirst({
         where: { ...whereActive, name: { contains: 'Restaurante', mode: 'insensitive' } },
     });
     if (area) return area;
 
     // 3. Barra (incluye BARRA, DEPOSITO BARRA)
-    area = await prisma.area.findFirst({
+    area = await db.area.findFirst({
         where: { ...whereActive, name: { contains: 'Barra', mode: 'insensitive' } },
     });
     if (area) return area;
 
     // 4. Oficina
-    area = await prisma.area.findFirst({
+    area = await db.area.findFirst({
         where: { ...whereActive, name: { contains: 'Oficina', mode: 'insensitive' } },
     });
     if (area) return area;
 
     // 5. Cualquier área activa
-    area = await prisma.area.findFirst({ where: whereActive });
+    area = await db.area.findFirst({ where: whereActive });
     if (area) return area;
 
     // 6. Último recurso: cualquier área (incluso inactiva)
-    area = await prisma.area.findFirst();
+    area = await db.area.findFirst();
     if (area) return area;
 
     // 7. Crear área SHANKLISH SERVICIO por defecto
-    return prisma.area.create({
+    return db.area.create({
         data: { name: 'SHANKLISH SERVICIO', isActive: true }
     });
 }
@@ -166,39 +174,40 @@ const RESTAURANT_ZONES = [
 ] as const;
 
 async function ensureRestaurantSetup() {
+    const db = await getTenantDb();
     // Ensure branch
-    let branch = await prisma.branch.findFirst();
+    let branch = await db.branch.findFirst();
     if (!branch) {
-        branch = await prisma.branch.create({
+        branch = await db.branch.create({
             data: { code: 'SHK-CCS', name: 'Shanklish Caracas', legalName: 'Shanklish Caracas, C.A.' }
         });
     }
 
     // Ensure sales area for inventory
-    const hasArea = await prisma.area.findFirst({ where: { branchId: branch.id, name: { contains: 'Salón', mode: 'insensitive' } } });
+    const hasArea = await db.area.findFirst({ where: { branchId: branch.id, name: { contains: 'Salón', mode: 'insensitive' } } });
     if (!hasArea) {
-        await prisma.area.create({
+        await db.area.create({
             data: { branchId: branch.id, name: 'Salón Principal', description: 'Área de descarga POS Restaurante' }
         });
     }
 
     // Upsert each zone with tables
     for (const zConf of RESTAURANT_ZONES) {
-        let zone = await prisma.serviceZone.findFirst({ where: { branchId: branch.id, code: zConf.code } });
+        let zone = await db.serviceZone.findFirst({ where: { branchId: branch.id, code: zConf.code } });
         if (!zone) {
-            zone = await prisma.serviceZone.findFirst({ where: { branchId: branch.id, name: zConf.name } });
+            zone = await db.serviceZone.findFirst({ where: { branchId: branch.id, name: zConf.name } });
         }
         if (!zone) {
-            zone = await prisma.serviceZone.create({
+            zone = await db.serviceZone.create({
                 data: { branchId: branch.id, code: zConf.code, name: zConf.name, zoneType: zConf.zoneType, sortOrder: zConf.sortOrder }
             });
         } else {
-            zone = await prisma.serviceZone.update({
+            zone = await db.serviceZone.update({
                 where: { id: zone.id },
                 data: { code: zConf.code, zoneType: zConf.zoneType, sortOrder: zConf.sortOrder }
             });
         }
-        const existingCodes = await prisma.tableOrStation.findMany({
+        const existingCodes = await db.tableOrStation.findMany({
             where: { serviceZoneId: zone.id },
             select: { code: true }
         });
@@ -211,12 +220,12 @@ async function ensureRestaurantSetup() {
             }
         }
         if (toCreate.length > 0) {
-            await prisma.tableOrStation.createMany({ data: toCreate, skipDuplicates: true });
+            await db.tableOrStation.createMany({ data: toCreate, skipDuplicates: true });
         }
     }
 
     // Return full layout with traceability — filter by name (reliable even if code was null before)
-    return prisma.branch.findFirstOrThrow({
+    return db.branch.findFirstOrThrow({
         where: { id: branch.id },
         include: {
             serviceZones: {
@@ -255,8 +264,9 @@ async function ensureRestaurantSetup() {
 }
 
 async function resolveSalesAreaForBranch(branchId?: string) {
+    const db = await getTenantDb();
     if (branchId) {
-        const branchArea = await prisma.area.findFirst({
+        const branchArea = await db.area.findFirst({
             where: {
                 branchId,
                 OR: [
@@ -387,7 +397,8 @@ async function generateTabCode(): Promise<string> {
 }
 
 async function getMenuItemMetadata(menuItemIds: string[]) {
-    return prisma.menuItem.findMany({
+    const db = await getTenantDb();
+    return db.menuItem.findMany({
         where: { id: { in: menuItemIds } }
     });
 }
@@ -411,6 +422,7 @@ async function validateComponentStockAvailability(params: {
     areaId: string;
     menuMap: Map<string, any>;
 }) {
+    const db = await getTenantDb();
     const shortages: string[] = [];
 
     // Acumulador de stock requerido por inventoryItemId — necesario para
@@ -432,8 +444,9 @@ async function validateComponentStockAvailability(params: {
     // aparecer en varias líneas y cada findUnique cuesta un round-trip).
     const recipeCache = new Map<string, { isActive: boolean; ingredients: { ingredientItemId: string; quantity: number; unit: string }[] } | null>();
     async function loadRecipeForValidation(recipeId: string) {
+        const db = await getTenantDb();
         if (recipeCache.has(recipeId)) return recipeCache.get(recipeId)!;
-        const recipe = await prisma.recipe.findUnique({
+        const recipe = await db.recipe.findUnique({
             where: { id: recipeId },
             include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
         });
@@ -461,7 +474,7 @@ async function validateComponentStockAvailability(params: {
         // también debe validarse antes de aceptar la venta.
         for (const cartMod of cartItem.modifiers ?? []) {
             if (!cartMod.modifierId) continue;
-            const menuModifier = await prisma.menuModifier.findUnique({
+            const menuModifier = await db.menuModifier.findUnique({
                 where: { id: cartMod.modifierId },
                 select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
             });
@@ -603,6 +616,7 @@ async function registerInventoryForCartItems(params: {
     orderId: string;
     userId: string;
 }): Promise<void> {
+    const db = await getTenantDb();
     // ── FASE 1: Lecturas (sin escrituras) ────────────────────────────────────
     // Recopilar todas las operaciones de descuento necesarias antes de escribir.
     type DeductOp = {
@@ -617,8 +631,9 @@ async function registerInventoryForCartItems(params: {
     // Cache para no consultar la misma receta dos veces dentro de una venta
     const recipeCache = new Map<string, { isActive: boolean; ingredients: { ingredientItemId: string; quantity: number; unit: string }[] }>();
     async function loadRecipe(recipeId: string) {
+        const db = await getTenantDb();
         if (recipeCache.has(recipeId)) return recipeCache.get(recipeId)!;
-        const recipe = await prisma.recipe.findUnique({
+        const recipe = await db.recipe.findUnique({
             where: { id: recipeId },
             include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
         });
@@ -631,7 +646,7 @@ async function registerInventoryForCartItems(params: {
     }
 
     for (const cartItem of params.items) {
-        const menuItem = await prisma.menuItem.findUnique({
+        const menuItem = await db.menuItem.findUnique({
             where: { id: cartItem.menuItemId },
             select: { name: true, recipeId: true },
         });
@@ -656,7 +671,7 @@ async function registerInventoryForCartItems(params: {
         // por unidad), y se aplica a CADA línea (× cartItem.quantity).
         for (const cartMod of cartItem.modifiers ?? []) {
             if (!cartMod.modifierId) continue;
-            const menuModifier = await prisma.menuModifier.findUnique({
+            const menuModifier = await db.menuModifier.findUnique({
                 where: { id: cartMod.modifierId },
                 select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
             });
@@ -680,7 +695,7 @@ async function registerInventoryForCartItems(params: {
     // ── FASE 2: Escrituras atómicas ───────────────────────────────────────────
     // UNA sola transacción para todos los ingredientes.
     // Si cualquier operación lanza, Prisma hace rollback de TODAS las anteriores.
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
         for (const op of ops) {
             // Registrar movimiento de inventario (trazabilidad)
             await tx.inventoryMovement.create({
@@ -767,6 +782,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
     status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'SKIPPED';
     error?: string;
 }> {
+    const db = await getTenantDb();
     // 1. CLAIM optimista: solo si todavía está PENDING y nextRetryAt <= NOW
     const claim = await prisma.inventoryDeductionRetry.updateMany({
         where: {
@@ -804,7 +820,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
 
     // 3. Validación: si el SalesOrder fue cancelado o no existe, no descargar.
     if (row.salesOrderId) {
-        const order = await prisma.salesOrder.findUnique({
+        const order = await db.salesOrder.findUnique({
             where: { id: row.salesOrderId },
             select: { status: true },
         });
@@ -881,8 +897,9 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
 // ============================================================================
 
 export async function getMenuForPOSAction() {
+    const db = await getTenantDb();
     try {
-        const categories = await prisma.menuCategory.findMany({
+        const categories = await db.menuCategory.findMany({
             include: {
                 items: {
                     where: { isActive: true },
@@ -943,6 +960,7 @@ async function verifyPin(pin: string, stored: string): Promise<boolean> {
 // ============================================================================
 
 export async function validateManagerPinAction(pin: string): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         if (!pin || pin.length < 4) {
             return { success: false, message: 'PIN debe tener al menos 4 dígitos' };
@@ -967,7 +985,7 @@ export async function validateManagerPinAction(pin: string): Promise<ActionResul
             console.error('[rate-limit] manager pin failed:', err);
         }
 
-        const candidates = await prisma.user.findMany({
+        const candidates = await db.user.findMany({
             where: {
                 role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
                 isActive: true,
@@ -1006,6 +1024,7 @@ export async function validateManagerPinAction(pin: string): Promise<ActionResul
 // ============================================================================
 
 export async function validateCashierPinAction(pin: string): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         if (!pin || pin.length < 4) {
             return { success: false, message: 'PIN debe tener al menos 4 dígitos' };
@@ -1029,7 +1048,7 @@ export async function validateCashierPinAction(pin: string): Promise<ActionResul
             console.error('[rate-limit] cashier pin failed:', err);
         }
 
-        const candidates = await prisma.user.findMany({
+        const candidates = await db.user.findMany({
             where: {
                 role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
                 isActive: true,
@@ -1084,6 +1103,7 @@ function isOrderNumberUniqueError(err: unknown): boolean {
 export async function createSalesOrderAction(
     data: CreateOrderData
 ): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) {
@@ -1106,7 +1126,7 @@ export async function createSalesOrderAction(
                     await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
                 }
                 const orderNumber = await generateOrderNumber(data.orderType);
-                newOrder = await prisma.salesOrder.create({
+                newOrder = await db.salesOrder.create({
                     data: {
                         orderNumber,
                         orderType: data.orderType,
@@ -1215,7 +1235,7 @@ export async function createSalesOrderAction(
 
             // 2. Flag visible en notas (compat histórica para reportes existentes)
             try {
-                await prisma.salesOrder.update({
+                await db.salesOrder.update({
                     where: { id: newOrder.id },
                     data: {
                         notes: `[DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${newOrder.notes ? ' | ' + newOrder.notes : ''}`,
@@ -1257,6 +1277,7 @@ export async function recordCollectiveTipAction(data: {
     paymentMethod: string;
     note?: string;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -1268,7 +1289,7 @@ export async function recordCollectiveTipAction(data: {
             try {
                 if (attempt > 0) await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
                 const orderNumber = await generateOrderNumber('PICKUP');
-                order = await prisma.salesOrder.create({
+                order = await db.salesOrder.create({
                     data: {
                         orderNumber,
                         orderType: 'PICKUP',
@@ -1332,13 +1353,14 @@ export async function getRestaurantLayoutAction(): Promise<ActionResult> {
 }
 
 export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) {
             return { success: false, message: 'No autorizado' };
         }
 
-        const table = await prisma.tableOrStation.findUnique({
+        const table = await db.tableOrStation.findUnique({
             where: { id: data.tableOrStationId },
             include: {
                 openTabs: {
@@ -1369,7 +1391,7 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
 
         const tabCode = await generateTabCode();
 
-        const tab = await prisma.$transaction(async (tx) => {
+        const tab = await db.$transaction(async (tx) => {
             const createdTab = await tx.openTab.create({
                 data: {
                     branchId: table.branchId,
@@ -1416,6 +1438,7 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
 }
 
 export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) {
@@ -1426,7 +1449,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
             return { success: false, message: 'No hay items para agregar' };
         }
 
-        const openTab = await prisma.openTab.findUnique({
+        const openTab = await db.openTab.findUnique({
             where: { id: data.openTabId },
             include: {
                 tableOrStation: true,
@@ -1488,7 +1511,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
                 }
                 const orderNumber = await generateOrderNumber('RESTAURANT');
-                createdOrder = await prisma.$transaction(async (tx) => {
+                createdOrder = await db.$transaction(async (tx) => {
             await assertOpenTabVersionUpdate({
                 tx,
                 openTabId: openTab.id,
@@ -1607,7 +1630,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
 
             // 2. Flag visible en notas (compat histórica)
             try {
-                await prisma.salesOrder.update({
+                await db.salesOrder.update({
                     where: { id: createdOrder.id },
                     data: {
                         notes: `[DESCARGO INVENTARIO PENDIENTE — Revisar manualmente]${createdOrder.notes ? ' | ' + createdOrder.notes : ''}`,
@@ -1637,6 +1660,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
 }
 
 export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentInput): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) {
@@ -1647,7 +1671,7 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             return { success: false, message: 'El monto debe ser mayor a cero' };
         }
 
-        const openTab = await prisma.openTab.findUnique({
+        const openTab = await db.openTab.findUnique({
             where: { id: data.openTabId },
             include: {
                 orders: true,
@@ -1683,7 +1707,7 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const isTableService = openTab.serviceType === 'TABLE_SERVICE';
         const serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
 
-        const updatedTab = await prisma.$transaction(async (tx) => {
+        const updatedTab = await db.$transaction(async (tx) => {
             await assertOpenTabVersionUpdate({
                 tx,
                 openTabId: openTab.id,
@@ -1790,6 +1814,7 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
 const VALID_TIP_PERCENTS = [0, 10, 15, 20];
 
 export async function setOpenTabTipAction(data: { openTabId: string; tipPercent: number }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -1798,14 +1823,14 @@ export async function setOpenTabTipAction(data: { openTabId: string; tipPercent:
             return { success: false, message: 'Porcentaje de propina no válido' };
         }
 
-        const openTab = await prisma.openTab.findUnique({ where: { id: data.openTabId } });
+        const openTab = await db.openTab.findUnique({ where: { id: data.openTabId } });
         if (!openTab || !['OPEN', 'PARTIALLY_PAID'].includes(openTab.status)) {
             return { success: false, message: 'Cuenta no disponible' };
         }
 
         const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
 
-        const updated = await prisma.openTab.update({
+        const updated = await db.openTab.update({
             where: { id: data.openTabId },
             data: { tipPercent: data.tipPercent, tipAmount },
         });
@@ -1821,13 +1846,14 @@ export async function setOpenTabTipAction(data: { openTabId: string; tipPercent:
 }
 
 export async function closeOpenTabAction(openTabId: string): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) {
             return { success: false, message: 'No autorizado' };
         }
 
-        const openTab = await prisma.openTab.findUnique({
+        const openTab = await db.openTab.findUnique({
             where: { id: openTabId }
         });
 
@@ -1841,7 +1867,7 @@ export async function closeOpenTabAction(openTabId: string): Promise<ActionResul
             return { success: false, message: 'La cuenta aún tiene saldo pendiente' };
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             await assertOpenTabVersionUpdate({
                 tx,
                 openTabId,
@@ -1895,10 +1921,11 @@ type VoidAuth =
     | { type: 'MANAGER'; name: string; waiterId: null; userId: string };
 
 async function resolveVoidAuthPin(pin: string, branchId: string): Promise<VoidAuth | null> {
+    const db = await getTenantDb();
     const trimmed = pin.trim();
 
     // Pool 1 — Waiter capitán activo en la sucursal
-    const captains = await prisma.waiter.findMany({
+    const captains = await db.waiter.findMany({
         where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
@@ -1909,7 +1936,7 @@ async function resolveVoidAuthPin(pin: string, branchId: string): Promise<VoidAu
     }
 
     // Pool 2 — User gerente / dueño activo
-    const managers = await prisma.user.findMany({
+    const managers = await db.user.findMany({
         where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'] }, isActive: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
@@ -1924,11 +1951,12 @@ async function resolveVoidAuthPin(pin: string, branchId: string): Promise<VoidAu
 // ============================================================================
 // VOID INTERNO COMPARTIDO
 // Marca el item como void en la transacción y ajusta totales del tab/orden.
-// NO hace commit — debe llamarse dentro de prisma.$transaction.
+// NO hace commit — debe llamarse dentro de db.$transaction.
 // ============================================================================
 
 async function voidItemInTx(
-    tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+    // Acepta tx tanto del cliente original como del extendido (withTenant).
+    tx: any,
     item: {
         id: string; orderId: string; itemName: string;
         quantity: number; lineTotal: number;
@@ -1955,7 +1983,7 @@ async function voidItemInTx(
     const remaining = await tx.salesOrderItem.findMany({
         where: { orderId: item.orderId, voidedAt: null },
     });
-    const newOrderTotal = remaining.reduce((s, i) => s + i.lineTotal, 0);
+    const newOrderTotal = remaining.reduce((s: number, i: { lineTotal: number }) => s + i.lineTotal, 0);
     await tx.salesOrder.update({
         where: { id: item.orderId },
         data: { subtotal: newOrderTotal, total: newOrderTotal },
@@ -1996,19 +2024,20 @@ export async function removeItemFromOpenTabAction({
     justification: string;
     waiterProfileId?: string;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
         if (!justification?.trim()) return { success: false, message: 'La justificación es obligatoria' };
         if (!cashierPin || cashierPin.trim().length < 4) return { success: false, message: 'PIN inválido' };
 
-        const branch = await prisma.branch.findFirst({ where: { isActive: true } });
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
         const auth = await resolveVoidAuthPin(cashierPin, branch.id);
         if (!auth) return { success: false, message: 'PIN incorrecto o sin permisos' };
 
-        const item = await prisma.salesOrderItem.findUnique({
+        const item = await db.salesOrderItem.findUnique({
             where: { id: itemId },
             include: {
                 order: { include: { tableOrStation: true } },
@@ -2022,12 +2051,12 @@ export async function removeItemFromOpenTabAction({
         // Mesonero solicitante para el log
         let requesterLabel = '';
         if (waiterProfileId) {
-            const w = await prisma.waiter.findUnique({ where: { id: waiterProfileId }, select: { firstName: true, lastName: true } });
+            const w = await db.waiter.findUnique({ where: { id: waiterProfileId }, select: { firstName: true, lastName: true } });
             if (w) requesterLabel = ` | Mesonero: ${w.firstName} ${w.lastName}`;
         }
         const reasonFull = justification.trim() + requesterLabel;
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             await voidItemInTx(tx, item, openTabId, reasonFull, auth);
         });
 
@@ -2084,18 +2113,19 @@ export async function modifyTabItemAction({
     reason: string;
     modification: ModifyTabItemModification;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         if (!reason?.trim()) return { success: false, message: 'El motivo es obligatorio' };
         if (!captainPin || captainPin.trim().length < 4) return { success: false, message: 'PIN inválido' };
 
-        const branch = await prisma.branch.findFirst({ where: { isActive: true } });
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
 
         const auth = await resolveVoidAuthPin(captainPin, branch.id);
         if (!auth) return { success: false, message: 'PIN de capitán o gerente incorrecto' };
 
         // Cargar el ítem original con sus relaciones
-        const item = await prisma.salesOrderItem.findUnique({
+        const item = await db.salesOrderItem.findUnique({
             where: { id: itemId },
             include: {
                 order: {
@@ -2129,7 +2159,7 @@ export async function modifyTabItemAction({
 
         let newItemForPrint: { name: string; quantity: number; modifiers: string[] } | undefined;
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             if (modification.type === 'VOID') {
                 await voidItemInTx(tx, item, openTabId, reason, auth);
             }
@@ -2293,12 +2323,13 @@ export async function modifyTabItemAction({
 // ============================================================================
 
 export async function getUsersForTabAction(): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        const branch = await prisma.branch.findFirst({ where: { isActive: true } });
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
         if (!branch) return { success: false, message: 'Sin sucursal', data: [] };
-        const waiters = await prisma.waiter.findMany({
+        const waiters = await db.waiter.findMany({
             where: { branchId: branch.id, isActive: true },
             orderBy: { firstName: 'asc' },
             select: { id: true, firstName: true, lastName: true },
@@ -2335,11 +2366,12 @@ export async function createSubAccountsAction(data: {
     openTabId: string;
     labels: string[];
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const tab = await prisma.openTab.findUnique({
+        const tab = await db.openTab.findUnique({
             where: { id: data.openTabId },
             include: { subAccounts: true },
         });
@@ -2355,7 +2387,7 @@ export async function createSubAccountsAction(data: {
             };
         }
 
-        const created = await prisma.$transaction(
+        const created = await db.$transaction(
             data.labels.map((label, i) =>
                 prisma.tabSubAccount.create({
                     data: {
@@ -2440,11 +2472,12 @@ export async function assignItemToSubAccountAction(data: {
     subAccountId: string;
     quantity: number;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const item = await prisma.salesOrderItem.findUnique({
+        const item = await db.salesOrderItem.findUnique({
             where: { id: data.salesOrderItemId },
             include: { order: true, subAccountItems: true },
         });
@@ -2476,7 +2509,7 @@ export async function assignItemToSubAccountAction(data: {
         const unitLineTotal = item.lineTotal / item.quantity;
         const newLineTotal = Math.round(unitLineTotal * data.quantity * 100) / 100;
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // Replace any existing assignment of this item to this subcuenta
             await tx.subAccountItem.deleteMany({
                 where: { salesOrderItemId: data.salesOrderItemId, subAccountId: data.subAccountId },
@@ -2508,6 +2541,7 @@ export async function unassignItemFromSubAccountAction(data: {
     salesOrderItemId: string;
     subAccountId: string;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -2517,7 +2551,7 @@ export async function unassignItemFromSubAccountAction(data: {
             return { success: false, message: 'No se puede modificar una subcuenta cobrada' };
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             await tx.subAccountItem.deleteMany({
                 where: {
                     salesOrderItemId: data.salesOrderItemId,
@@ -2546,6 +2580,7 @@ export async function autoSplitEqualAction(data: {
     openTabId: string;
     count: number;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -2554,7 +2589,7 @@ export async function autoSplitEqualAction(data: {
             return { success: false, message: 'El número de divisiones debe estar entre 2 y 25' };
         }
 
-        const tab = await prisma.openTab.findUnique({
+        const tab = await db.openTab.findUnique({
             where: { id: data.openTabId },
             include: {
                 orders: { include: { items: true } },
@@ -2565,7 +2600,7 @@ export async function autoSplitEqualAction(data: {
             return { success: false, message: 'Cuenta no disponible' };
         }
 
-        await prisma.$transaction(async (tx) => {
+        await db.$transaction(async (tx) => {
             // Ensure exactly `count` OPEN subcuentas exist
             const openSubs = tab.subAccounts.filter((s) => s.status === 'OPEN');
             let subIds: string[] = openSubs.map((s) => s.id);
@@ -2658,6 +2693,7 @@ export async function paySubAccountAction(data: {
      */
     discountType?: 'NONE' | 'DIVISAS_33';
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -2712,7 +2748,7 @@ export async function paySubAccountAction(data: {
         if (applyServiceFee) labelParts.push('+10% serv');
         const splitLabel = labelParts.join(' | ');
 
-        const updatedTab = await prisma.$transaction(async (tx) => {
+        const updatedTab = await db.$transaction(async (tx) => {
             // Mark subcuenta as PAID
             await tx.tabSubAccount.update({
                 where: { id: data.subAccountId },
@@ -2826,6 +2862,7 @@ export async function voidSubAccountAction(params: {
     authorizedById: string;
     authorizedByName: string;
 }): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -2848,7 +2885,7 @@ export async function voidSubAccountAction(params: {
         const wasPaid = sub.status === 'PAID';
         const auditNote = `[${params.authorizedByName}] ${params.voidReason}`;
 
-        const updatedTab = await prisma.$transaction(async (tx) => {
+        const updatedTab = await db.$transaction(async (tx) => {
             // 1. Marcar la subcuenta como VOID. Limpia paidAt/paidAmount/method
             //    para que la UI muestre claramente que no está pagada.
             await tx.tabSubAccount.update({
@@ -2947,11 +2984,12 @@ export async function voidSubAccountAction(params: {
  * Usado para sincronizar el estado del panel de subcuentas en el frontend.
  */
 export async function getOpenTabWithSubAccountsAction(openTabId: string): Promise<ActionResult> {
+    const db = await getTenantDb();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const tab = await prisma.openTab.findUnique({
+        const tab = await db.openTab.findUnique({
             where: { id: openTabId },
             include: {
                 subAccounts: {
@@ -3010,6 +3048,7 @@ export async function getOpenTabWithSubAccountsAction(openTabId: string): Promis
 export async function getDailyPickupCountAction(
     openTabNumbers: string[] = [],
 ): Promise<{ success: boolean; nextNumber: string }> {
+    const db = await getTenantDb();
     try {
         const { start, end } = getCaracasDayRange();
 
@@ -3017,7 +3056,7 @@ export async function getDailyPickupCountAction(
         // Las ventas directas/pickup se crean con orderType='RESTAURANT' y
         // llevan "Venta Directa Pickup" en notes. (orderType='PICKUP' solo lo
         // usan las propinas colectivas registradas via recordCollectiveTipAction.)
-        const orders = await prisma.salesOrder.findMany({
+        const orders = await db.salesOrder.findMany({
             where: {
                 orderType: 'RESTAURANT',
                 sourceChannel: 'POS_RESTAURANT',
