@@ -7152,6 +7152,48 @@ No hay schema change ni migration; nada toca BD existente más que un
 Email de bienvenida, Turnstile, audit log de acciones del panel, seed
 completo (Area/ServiceZone/TableOrStation).
 
+### 38.18 Fase 3 Paso D.b — kickoff: red de seguridad (Lote 0) (2026-05-13)
+
+Antes de empezar a migrar server actions a `withTenant()`, instalamos
+una red de regression contra Postgres real para validar que el motor
+de aislamiento (`prisma-tenant-client.ts`) hace lo que dice. Sin esto,
+una bug en la extension contamina silenciosamente todos los módulos
+que se migren después.
+
+**Archivo:**
+`src/lib/prisma-tenant-client.int.test.ts` — 5 tests de integración:
+1. `create` inyecta `tenantId` y `findMany` no devuelve rows de otro tenant.
+2. `count` y `aggregate` respetan el scope.
+3. `findFirst` no leakea rows entre tenants aunque haya match en otros campos.
+4. `updateMany` del scope A no toca rows de B.
+5. `deleteMany` del scope A no toca rows de B.
+
+**Gating:**
+Solo corre cuando `process.env.CI === 'true'` (GitHub Actions lo setea
+automáticamente). Eso evita que un `npm test` en dev local pegue
+contra la BD del desarrollador y deje filas residuales. Para forzarlo
+localmente:
+
+```bash
+CI=true DATABASE_URL=postgres://... npx vitest run prisma-tenant-client.int.test.ts
+```
+
+**Cleanup:**
+Cada run usa prefijo único `int-test-<timestamp>-` para tenants y
+branches. `afterAll` borra branches (FK Restrict) y luego tenants.
+Si el cleanup falla, las filas quedan en la BD del CI (efímera) o
+hay que limpiar a mano en dev.
+
+**Resultado local:** 150 tests pasan + 5 skipped (integration).
+**Resultado CI:** todos corren contra el servicio `postgres:16` del
+workflow `validate`.
+
+**Próximo lote:**
+Lote 1 — migrar `exchange.actions.ts` (el más chico, baja criticidad)
+para establecer el patrón de migración (`withTenant(ctx.tenantId)` +
+`resolveTenantContext()`). Una vez validado en producción Shanklish,
+seguimos con `areas`, `waiter`, `system-config`.
+
 ## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
 
 ### 39.1 Contexto
