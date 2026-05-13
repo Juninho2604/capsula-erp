@@ -1,10 +1,26 @@
 'use server';
 
+/**
+ * Conteo físico de inventario via Excel — multitenant (Lote 4.b — Fase 3 Paso D.b).
+ *
+ * Modelos tenant-aware: Area, InventoryItem.
+ * Modelos NO tenant-aware (FK-scoped): InventoryLocation, InventoryMovement.
+ *
+ * Fix de seguridad importante en esta migración:
+ *   - `resetAllWarehouseStockAction` antes ejecutaba
+ *     `prisma.inventoryLocation.updateMany({ data: { currentStock: 0 } })`
+ *     SIN where, lo cual ponía en cero TODOS los warehouses de TODOS los
+ *     tenants. Ahora filtra por inventoryItemId que pertenezcan al tenant
+ *     del request.
+ */
+
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { parseInventoryExcelBuffer } from '@/lib/inventory-excel-parse';
 import Fuse from 'fuse.js';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 const RESET_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 const APPLY_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'];
@@ -24,7 +40,9 @@ export async function resolveDefaultCountAreasAction(): Promise<{
   productionId: string | null;
   areas: { id: string; name: string }[];
 }> {
-  const areas = await prisma.area.findMany({
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
+  const areas = await db.area.findMany({
     where: { isActive: true },
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
@@ -82,7 +100,9 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
 
   if (parsed.length === 0) return { success: false, message: 'No se encontraron filas de productos' };
 
-  const items = await prisma.inventoryItem.findMany({
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
+  const items = await db.inventoryItem.findMany({
     where: { isActive: true, deletedAt: null },
     select: { id: true, name: true, sku: true },
   });
@@ -167,6 +187,27 @@ export async function applyPhysicalCountAction(input: {
 
   const userId = session.id;
   const reason = 'Conteo físico semanal (carga en sistema)';
+
+  // Validar ownership de todos los inventoryItemIds + áreas antes de tocar
+  // tabla InventoryLocation/InventoryMovement (no tenant-aware).
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
+  const itemIds = Array.from(new Set(input.rows.map(r => r.inventoryItemId)));
+  const ownedItems = await db.inventoryItem.findMany({
+    where: { id: { in: itemIds } },
+    select: { id: true },
+  });
+  if (ownedItems.length !== itemIds.length) {
+    return { success: false, message: 'Uno o más items no pertenecen a este tenant' };
+  }
+  const areaIds = [input.principalAreaId, ...(prodArea ? [prodArea] : [])];
+  const ownedAreas = await db.area.findMany({
+    where: { id: { in: areaIds } },
+    select: { id: true },
+  });
+  if (ownedAreas.length !== areaIds.length) {
+    return { success: false, message: 'Una o más áreas no pertenecen a este tenant' };
+  }
 
   try {
     let applied = 0;
@@ -256,8 +297,12 @@ export async function applyPhysicalCountAction(input: {
 }
 
 /**
- * Pone currentStock = 0 en todas las ubicaciones (todos los almacenes).
+ * Pone currentStock = 0 en todas las ubicaciones del tenant.
  * Solo gerencia — acción destructiva.
+ *
+ * Fix multitenant: antes ejecutaba `updateMany({ data: { currentStock: 0 } })`
+ * SIN where, poniendo en cero TODOS los warehouses de TODOS los tenants.
+ * Ahora filtra por inventoryItemId que pertenezca al tenant del request.
  */
 export async function resetAllWarehouseStockAction(confirmPhrase: string): Promise<{
   success: boolean;
@@ -274,7 +319,18 @@ export async function resetAllWarehouseStockAction(confirmPhrase: string): Promi
   }
 
   try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    // Sacar IDs de items del tenant para filtrar el updateMany. InventoryLocation
+    // no tiene tenantId, así que el filtro va por la FK inventoryItemId.
+    const ownedItems = await db.inventoryItem.findMany({ select: { id: true } });
+    const ownedIds = ownedItems.map(i => i.id);
+    if (ownedIds.length === 0) {
+      return { success: true, message: 'No hay items para reiniciar.', locationsUpdated: 0 };
+    }
+
     const result = await prisma.inventoryLocation.updateMany({
+      where: { inventoryItemId: { in: ownedIds } },
       data: { currentStock: 0, lastCountDate: new Date() },
     });
 
