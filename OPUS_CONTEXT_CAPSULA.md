@@ -7194,6 +7194,65 @@ para establecer el patrón de migración (`withTenant(ctx.tenantId)` +
 `resolveTenantContext()`). Una vez validado en producción Shanklish,
 seguimos con `areas`, `waiter`, `system-config`.
 
+### 38.19 Lote 1 — `exchange.actions.ts` migrado a `withTenant()` (2026-05-13)
+
+Primera server action migrada al patrón multitenant pleno. Sirve como
+ejemplo canónico para los lotes siguientes.
+
+**Patrón canónico** (lo que TODA action de aquí en adelante hace):
+
+```ts
+'use server';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+
+export async function listX() {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.x.findMany({ orderBy: { ... } });
+}
+```
+
+**Por qué no `defineAction()` todavía:**
+
+`defineAction()` envuelve sesión + permiso + tenant, pero introduce
+cambios en la firma del export (`async (args)` en vez de `async fn`)
+y en cómo callers lo invocan. Mientras los callers (forms, client
+components) están sin migrar, mantenemos las firmas planas y solo
+inyectamos `withTenant + resolveTenantContext`. La transición a
+`defineAction()` queda para una sub-fase posterior.
+
+**Por qué empezamos por `exchange.actions.ts`:**
+
+- 2.4 KB, 5 funciones, modelo único (`ExchangeRate`).
+- Sin dependencias con POS / inventario / sales.
+- Solo 3 callers (`tasa-cambio` config + `CurrencyCalculator`).
+- Cada tenant lleva su propia tasa (Shanklish: BCV directo;
+  Table Pong: BCV + 3%; etc.).
+
+**Compatibilidad con Shanklish en producción:**
+
+El resolver cae al fallback `tnt_shanklish_caracas` para:
+- Hosts sin subdomain (kpsula.app, capsula-erp.vercel.app, IP raw).
+- JWTs viejos sin `tenantId` (sesiones pre-Fase 3 Paso A).
+
+Las tasas existentes en BD ya tienen `tenantId="tnt_shanklish_caracas"`
+(default del schema), así que un `withTenant("tnt_shanklish_caracas")
+.findMany()` devuelve exactamente lo mismo que el `findMany()` original.
+Cero impacto perceptible para Shanklish.
+
+**Validación:**
+
+- `npx tsc --noEmit` → 0 errores.
+- `npx vitest run` → 150/150 + 5 skipped (integration).
+- En CI los 5 integration corren contra Postgres y validan el motor.
+
+**Próximo lote:**
+
+Lote 2 — `areas.actions.ts`, `waiter.actions.ts`, `system-config.actions.ts`.
+Tres módulos admin chicos, read-mostly, sin dependencias críticas. Un PR
+por archivo para mantener review fácil.
+
 ## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
 
 ### 39.1 Contexto
