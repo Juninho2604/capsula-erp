@@ -7253,6 +7253,59 @@ Lote 2 — `areas.actions.ts`, `waiter.actions.ts`, `system-config.actions.ts`.
 Tres módulos admin chicos, read-mostly, sin dependencias críticas. Un PR
 por archivo para mantener review fácil.
 
+### 38.20 Lote 2.a/2.b mergeados + blocker en Lote 2.c (2026-05-13)
+
+**Mergeados:**
+- Lote 2.a (`areas.actions.ts`, PR #132): patrón `withTenant` + `update→updateMany` para tenant-safe writes.
+- Lote 2.b parcial (`waiter.actions.ts`, PR #133): admin meseros (CRUD + PIN). `transferTableAction` y `moveTabBetweenTablesAction` diferidos a Lote 5 por su complejidad transaccional.
+
+**Blocker encontrado en Lote 2.c — `SystemConfig`:**
+
+`SystemConfig` es el ÚNICO modelo del schema cuya PK no es un cuid:
+
+```prisma
+model SystemConfig {
+  key       String   @id          // ← PK es la key, NO cuid
+  value     String
+  tenantId  String   @default("tnt_shanklish_caracas")
+  ...
+}
+```
+
+El propio comentario del schema lo reconoce: "el unique sigue siendo en
+`key` (no en `(tenantId, key)`). Eso se cambia en Fase 2."
+
+**Consecuencia:**
+Cuando Table Pong intente guardar su propio `enabled_modules`:
+- `create` falla con P2002 (la PK ya existe para Shanklish).
+- `upsert({ where: { key } })` encuentra la fila de Shanklish y la
+  sobrescribe — mezcla configs entre tenants.
+
+**Por qué saltamos en este lote:**
+Migrar `system-config.actions.ts` requiere primero un **schema change**:
+1. Añadir `id String @id @default(cuid())`.
+2. Quitar `@id` de `key`.
+3. Añadir `@@unique([tenantId, key])`.
+4. Migration SQL que preserve los datos de Shanklish (asignar cuids
+   nuevos a las filas existentes).
+
+Riesgo bajo en sí (SystemConfig no tiene FKs apuntándolo) pero es DDL
+que requiere coordinación con la BD de producción. Lo dejo como
+**sub-tarea bloqueante de Lote 8** (alta de Table Pong y Sello Criollo
+necesita que cada tenant pueda guardar su config sin colisionar con
+Shanklish). Cuando arranquemos Lote 8 abrimos un PR aparte solo para
+el schema fix.
+
+**Para Shanklish todo sigue igual** — `system-config.actions.ts` no se
+toca, sigue usando `prisma` directo. Los reads y writes funcionan como
+hoy porque solo hay un tenant.
+
+**Próximo:**
+Lote 3 — Catálogo (`menu.actions.ts`, `recipe.actions.ts`,
+`modifier.actions.ts`, `cost.actions.ts`). Mismo patrón canónico,
+ningún blocker conocido (todos esos modelos tienen PK cuid + tenantId
+opcional).
+
 ## 39. Print Agent — daemon ESC/POS para impresoras AON (2026-05-12)
 
 ### 39.1 Contexto
