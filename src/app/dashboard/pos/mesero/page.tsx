@@ -223,6 +223,11 @@ export default function POSMeseroPage() {
   // ── Mostrar cuenta al cliente ─────────────────────────────────────────────
   const [showBillModal, setShowBillModal] = useState(false);
   const [isTipSetting, setIsTipSetting] = useState(false);
+  // Preview "Divisas -33%": muestra al cliente cuánto pagaría si pagara en
+  // efectivo USD/EUR (descuento del 33% por divisa). Solo afecta la
+  // visualización del modal, no se persiste; el cobro real se hace en la
+  // pantalla de pago donde la cajera selecciona método.
+  const [divisasPreview, setDivisasPreview] = useState(false);
 
   // ── Mover tab entre mesas físicas (solo capitanes) ────────────────────────
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -502,6 +507,24 @@ export default function POSMeseroPage() {
     });
     return () => { cancelled = true; };
   }, [activeTab?.id]);
+
+  // Al abrir "Mostrar cuenta al cliente": setear propina 10% por defecto
+  // si la tab aún no tiene propina configurada. El mesero/cliente puede
+  // cambiarlo a Sin propina, 15%, 20%, etc. desde los botones del modal.
+  // También resetear el preview Divisas al cerrar para no llevar el flag
+  // a otra mesa.
+  useEffect(() => {
+    if (!showBillModal) {
+      setDivisasPreview(false);
+      return;
+    }
+    if (activeTab && (activeTab.tipPercent == null) && !isTipSetting) {
+      void handleSetTip(10);
+    }
+    // handleSetTip cambia con re-renders pero su lógica interna no
+    // depende de nada que necesitemos sincronizar aquí.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBillModal, activeTab?.id, activeTab?.tipPercent]);
 
   // Guardar el carrito en cada cambio. Debounce no es necesario: IndexedDB
   // es asíncrono y rápido, y los cambios al carrito ocurren por acción del
@@ -1434,12 +1457,22 @@ export default function POSMeseroPage() {
         const discount      = activeTab.runningDiscount;
         const serviceCharge = activeTab.totalServiceCharge ?? 0;
         const tipAmount     = activeTab.tipAmount ?? 0;
-        const grandTotal    = activeTab.runningTotal + serviceCharge + tipAmount;
         const paidSplits    = (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
-        const saldo         = activeTab.balanceDue;
-        const amountToShow  = saldo > 0.01 ? saldo : grandTotal;
+        const paidTotal     = paidSplits.reduce((s, p) => s + p.paidAmount, 0);
+        // Preview Divisas -33%: descuento del 33% sobre el subtotal cuando
+        // el cliente paga en cash USD/EUR. Servicio y propina se recalculan
+        // sobre el subtotal con descuento para no inflar artificialmente.
+        const divisasDiscount = divisasPreview ? subtotal * 0.33 : 0;
+        const grandTotal    = activeTab.runningTotal + serviceCharge + tipAmount - divisasDiscount;
+        // Saldo restante INCLUYE propina y descuento divisas, para que los
+        // métodos de pago muestren el monto correcto a cobrar.
+        const saldoBruto    = Math.max(0, grandTotal - paidTotal);
+        const amountToShow  = saldoBruto > 0.01 ? saldoBruto : grandTotal;
         const totalBs       = exchangeRate ? grandTotal * exchangeRate : null;
         const saldoBs       = exchangeRate ? amountToShow * exchangeRate : null;
+        // Para Bs: 2 decimales con separador "," (es-VE).
+        const formatBs = (n: number) =>
+            `Bs ${n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
         const methodLabel = (pm: string | null) => {
           const k = (pm ?? '').toUpperCase();
@@ -1453,13 +1486,15 @@ export default function POSMeseroPage() {
           return pm ?? 'Otro';
         };
 
+        // Tasa BCV + 2 decimales: el cliente espera ver el monto exacto
+        // al céntimo cuando paga por transferencia/pago móvil.
         const payMethods: { Icon: React.ElementType; label: string; value: string }[] = [
           { Icon: DollarSign, label: 'Cash USD / Zelle', value: `$${amountToShow.toFixed(2)}` },
           { Icon: Euro,       label: 'Cash EUR',          value: 'consultar tasa' },
           { Icon: CreditCard, label: 'Punto de Venta',    value: `$${amountToShow.toFixed(2)}` },
           ...(saldoBs !== null ? [
-            { Icon: Smartphone, label: 'Pago Móvil',      value: `Bs ${saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}` },
-            { Icon: Banknote,   label: 'Transferencia',   value: `Bs ${saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}` },
+            { Icon: Smartphone, label: 'Pago Móvil',      value: formatBs(saldoBs) },
+            { Icon: Banknote,   label: 'Transferencia',   value: formatBs(saldoBs) },
           ] : []),
         ];
 
@@ -1503,6 +1538,31 @@ export default function POSMeseroPage() {
 
               {/* Totales + pagos + métodos */}
               <div className="px-5 pt-3 pb-4 border-t border-capsula-line space-y-3 shrink-0 overflow-y-auto">
+                {/* Toggle Normal / Divisas -33% — recalcula desglose abajo
+                    si está activo (sin persistir, solo preview para el cliente). */}
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-capsula-ivory-alt p-1 border border-capsula-line">
+                  <button
+                    onClick={() => setDivisasPreview(false)}
+                    className={`py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition ${
+                      !divisasPreview
+                        ? 'bg-capsula-navy-deep text-capsula-cream shadow-sm'
+                        : 'text-capsula-ink-muted hover:text-capsula-ink'
+                    }`}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    onClick={() => setDivisasPreview(true)}
+                    className={`py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition ${
+                      divisasPreview
+                        ? 'bg-capsula-coral text-capsula-cream shadow-sm'
+                        : 'text-capsula-ink-muted hover:text-capsula-ink'
+                    }`}
+                  >
+                    Divisas −33%
+                  </button>
+                </div>
+
                 {/* Desglose */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-capsula-ink-muted">
@@ -1513,6 +1573,12 @@ export default function POSMeseroPage() {
                     <div className="flex justify-between text-xs text-[#2F6B4E] dark:text-[#6FB88F]">
                       <span className="font-semibold uppercase tracking-wider">Descuento</span>
                       <span className="font-semibold tabular-nums">−${discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {divisasDiscount > 0.001 && (
+                    <div className="flex justify-between text-xs text-capsula-coral">
+                      <span className="font-semibold uppercase tracking-wider">Descuento Divisas (−33%)</span>
+                      <span className="font-semibold tabular-nums">−${divisasDiscount.toFixed(2)}</span>
                     </div>
                   )}
                   {serviceCharge > 0.001 && (
@@ -1536,7 +1602,7 @@ export default function POSMeseroPage() {
                   {totalBs !== null && (
                     <div className="flex justify-between text-[11px] text-capsula-ink-muted">
                       <span className="font-semibold uppercase tracking-wider">Bs (tasa {exchangeRate?.toFixed(2)})</span>
-                      <span className="font-semibold tabular-nums">Bs {totalBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}</span>
+                      <span className="font-semibold tabular-nums">{formatBs(totalBs)}</span>
                     </div>
                   )}
                 </div>
@@ -1598,13 +1664,13 @@ export default function POSMeseroPage() {
                     ))}
                     <div className="flex justify-between items-center border-t border-capsula-line pt-1.5">
                       <span className="text-xs font-semibold uppercase tracking-wider text-capsula-ink">Saldo pendiente</span>
-                      <span className={`text-base font-semibold tabular-nums ${saldo > 0.01 ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'}`}>
-                        {saldo > 0.01 ? `$${saldo.toFixed(2)}` : 'PAGADO'}
+                      <span className={`text-base font-semibold tabular-nums ${saldoBruto > 0.01 ? 'text-capsula-coral' : 'text-[#2F6B4E] dark:text-[#6FB88F]'}`}>
+                        {saldoBruto > 0.01 ? `$${saldoBruto.toFixed(2)}` : 'PAGADO'}
                       </span>
                     </div>
-                    {saldoBs !== null && saldo > 0.01 && (
+                    {saldoBs !== null && saldoBruto > 0.01 && (
                       <div className="text-right text-[10px] text-capsula-ink-muted font-semibold tabular-nums">
-                        Bs {saldoBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                        {formatBs(saldoBs)}
                       </div>
                     )}
                   </div>
@@ -1644,8 +1710,8 @@ export default function POSMeseroPage() {
                         ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
                         ...(tipAmount > 0.001 ? [`Propina${activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` ${activeTab.tipPercent}%` : ''}:  $${tipAmount.toFixed(2)}`] : []),
                         `TOTAL USD:      $${grandTotal.toFixed(2)}`,
-                        ...(totalBs !== null ? [`Bs equiv.:      Bs ${totalBs.toLocaleString('es-VE', { maximumFractionDigits: 0 })}`] : []),
-                        ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldo.toFixed(2)}`] : []),
+                        ...(totalBs !== null ? [`Bs equiv.:      ${formatBs(totalBs)}`] : []),
+                        ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldoBruto.toFixed(2)}`] : []),
                       ];
                       navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));
                     }}
