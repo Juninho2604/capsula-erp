@@ -70,6 +70,12 @@ export interface AgentKitchenPayload {
     type: 'KITCHEN' | 'VOID_KITCHEN';
     orderNumber: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
+    /**
+     * Label visible en la comanda para identificar el tipo operativo:
+     * 'MESA', 'PICKUP', 'DELIVERY', 'PEDIDOSYA'. El `orderType` técnico
+     * no distingue mesa de pickup; este label sí.
+     */
+    orderTypeLabel?: 'MESA' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
     tableName?: string | null;
     customerName?: string | null;
     items: AgentKitchenItem[];

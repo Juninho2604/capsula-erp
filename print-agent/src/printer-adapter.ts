@@ -61,6 +61,13 @@ export interface KitchenPayload {
     type: 'KITCHEN' | 'VOID_KITCHEN';
     orderNumber: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
+    /**
+     * Label visible en la comanda para identificar el tipo operativo
+     * del pedido: 'MESA', 'PICKUP', 'DELIVERY', 'PEDIDOSYA'. El
+     * `orderType` técnico arriba no distingue mesa de pickup (ambos
+     * son RESTAURANT). Este label sí — lo setea el POS al encolar.
+     */
+    orderTypeLabel?: string;
     tableName?: string | null;
     customerName?: string | null;
     items: Array<{
@@ -260,7 +267,14 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     printer.setTextSize(1, 1);
     printer.println(`#${p.orderNumber}`);
     printer.setTextNormal();
-    printer.bold(false);
+    // Label de tipo (MESA / PICKUP / DELIVERY / PEDIDOSYA) en negrita
+    // debajo del número — permite al cocinero priorizar al ojo: los
+    // pickups y deliveries van con prisa, las mesas pueden esperar.
+    if (p.orderTypeLabel) {
+        printer.bold(true);
+        printer.println(`[ ${p.orderTypeLabel} ]`);
+        printer.bold(false);
+    }
     printer.alignLeft();
     printer.println(`Hora:   ${formatDateTime(p.createdAt)}`);
     if (p.tableName) printer.println(`Mesa:   ${p.tableName}`);
