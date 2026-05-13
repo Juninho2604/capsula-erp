@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, BarChart3, Search, FileX2, X as XIcon, ChevronRight, ChevronDown, Receipt, UserCircle2, Ban, RefreshCw, Tag, ShoppingBag } from 'lucide-react';
+import { Calendar, Download, Printer, BarChart3, Search, FileX2, X as XIcon, ChevronRight, ChevronDown, Receipt, UserCircle2, Ban, RefreshCw, Tag, ShoppingBag, ClipboardCheck } from 'lucide-react';
 import { getSalesHistoryAction } from '@/app/actions/sales/history.actions';
 import { getDailyZReportAction, type ZReportData } from '@/app/actions/sales/z-report.actions';
 import { getEndOfDaySummaryAction, type EndOfDaySummary } from '@/app/actions/sales/end-of-day.actions';
 import { voidSalesOrderAction } from '@/app/actions/sales/void.actions';
+import { getSalesAuditAction } from '@/app/actions/sales/audit-export.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { exportZReportToExcel } from '@/lib/export-z-report';
+import { exportSalesAuditToExcel } from '@/lib/export-sales-audit';
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -69,6 +71,27 @@ export default function SalesHistoryPage() {
         const result = await getEndOfDaySummaryAction(filterDate || undefined);
         if (result.success && result.data) { setDaySummary(result.data); setShowDaySummary(true); }
         else alert('Error generando resumen de cierre');
+    };
+
+    const handleExportAudit = async () => {
+        const result = await getSalesAuditAction(filterDate || undefined);
+        if (!result.success || !result.data) {
+            alert(result.message || 'Error generando auditoría');
+            return;
+        }
+        if (result.data.items.length === 0) {
+            alert('No hay ventas para la fecha seleccionada.');
+            return;
+        }
+        exportSalesAuditToExcel(result.data);
+    };
+
+    const setFilterDateToYesterday = () => {
+        const todayCaracas = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Caracas' });
+        const [y, m, d] = todayCaracas.split('-').map(Number);
+        const yesterday = new Date(Date.UTC(y, m - 1, d - 1));
+        const stamp = `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterday.getUTCDate()).padStart(2, '0')}`;
+        setFilterDate(stamp);
     };
 
     const handleExportArqueo = async () => {
@@ -326,6 +349,21 @@ export default function SalesHistoryPage() {
                             className="bg-transparent text-capsula-ink text-sm tabular-nums focus:outline-none cursor-pointer w-32"
                         />
                     </div>
+                    <button
+                        onClick={setFilterDateToYesterday}
+                        title="Filtrar por ayer (Caracas)"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-3 py-2 text-xs font-semibold transition-colors"
+                    >
+                        Ayer
+                    </button>
+                    <button
+                        onClick={handleExportAudit}
+                        title={`Descargar auditoría de inventario (detalle por producto) — ${displayDate || 'hoy'}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
+                    >
+                        <ClipboardCheck className="h-3.5 w-3.5" />
+                        Auditoría {displayDate ? `· ${displayDate}` : ''}
+                    </button>
                     <button
                         onClick={handleExportArqueo}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
