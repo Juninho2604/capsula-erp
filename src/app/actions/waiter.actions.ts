@@ -1,12 +1,45 @@
 'use server';
 
+/**
+ * Meseros — multitenant pleno (Lote 2.b — Fase 3 Paso D.b) PARCIAL.
+ *
+ * Migrado al patrón withTenant + resolveTenantContext:
+ *   - getActiveBranch (helper)
+ *   - getWaitersAction / getActiveWaitersAction
+ *   - createWaiterAction
+ *   - updateWaiterAction / toggleWaiterActiveAction / deleteWaiterAction
+ *     (update → updateMany con tenantId explícito)
+ *   - validateWaiterPinAction
+ *   - resolveAuthPin (helper)
+ *
+ * DIFERIDO a Lote 5 (POS):
+ *   - transferTableAction
+ *   - moveTabBetweenTablesAction
+ *
+ * Son transacciones interactivas con findUnique / update keyed by id
+ * sobre OpenTab, Waiter, TableOrStation. La extension `withTenant()` no
+ * filtra esas operaciones (uniques globales), así que pasar a tenant-safe
+ * requiere convertir cada findUnique → findFirst({ where: { id, tenantId } })
+ * y cada update → updateMany. Los hago juntos con el resto del POS en
+ * Lote 5 para mantener review focalizado.
+ *
+ * Por el branchId FK, las queries dentro de transferTable / moveTab están
+ * IMPLICITAMENTE tenant-scoped vía Branch (que ya es tenant-aware). El
+ * riesgo concreto es que un ID de OpenTab/Waiter/Table de otro tenant
+ * matchee si alguien lo conoce, pero la UI no lo expone.
+ */
+
 import { getSession } from '@/lib/auth';
 import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { hashPin, pbkdf2Hex } from './user.actions';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 
 async function getActiveBranch() {
-    return prisma.branch.findFirst({ where: { isActive: true } });
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    return db.branch.findFirst({ where: { isActive: true } });
 }
 
 const PIN_MANAGER_ROLES = new Set(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER']);
@@ -49,7 +82,9 @@ export async function getWaitersAction() {
         if (!session) return { success: false, message: 'No autorizado', data: [] };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa', data: [] };
-        const waiters = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiters = await db.waiter.findMany({
             where: { branchId: branch.id },
             orderBy: [{ isActive: 'desc' }, { firstName: 'asc' }],
         });
@@ -65,7 +100,9 @@ export async function getActiveWaitersAction() {
         if (!session) return { success: false, message: 'No autorizado', data: [] };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa', data: [] };
-        const waiters = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiters = await db.waiter.findMany({
             where: { branchId: branch.id, isActive: true },
             orderBy: { firstName: 'asc' },
         });
@@ -86,7 +123,9 @@ export async function createWaiterAction(data: { firstName: string; lastName: st
         }
         const pinClean = sanitizePin(data.pin);
         const pinHash = pinClean ? await hashPin(pinClean) : null;
-        const waiter = await prisma.waiter.create({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const waiter = await db.waiter.create({
             data: {
                 branchId: branch.id,
                 firstName: data.firstName.trim(),
@@ -126,7 +165,16 @@ export async function updateWaiterAction(id: string, data: { firstName: string; 
                 updateData.pin = pinClean ? await hashPin(pinClean) : null;
             }
         }
-        const waiter = await prisma.waiter.update({ where: { id }, data: updateData });
+        // updateMany con tenantId explícito para que un ID de otro tenant
+        // no matchee. Pierde el row de vuelta — leemos después por findFirst.
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const res = await db.waiter.updateMany({ where: { id }, data: updateData });
+        if (res.count === 0) {
+            return { success: false, message: 'Mesonero no encontrado' };
+        }
+        const waiter = await db.waiter.findFirst({ where: { id } });
+        if (!waiter) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: 'Mesonero actualizado', data: publicWaiter(waiter) };
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Error actualizando mesonero';
@@ -138,7 +186,12 @@ export async function toggleWaiterActiveAction(id: string, isActive: boolean) {
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        await prisma.waiter.update({ where: { id }, data: { isActive } });
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).waiter.updateMany({
+            where: { id },
+            data: { isActive },
+        });
+        if (res.count === 0) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: isActive ? 'Mesonero activado' : 'Mesonero desactivado' };
     } catch {
         return { success: false, message: 'Error actualizando estado' };
@@ -149,7 +202,12 @@ export async function deleteWaiterAction(id: string) {
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
-        await prisma.waiter.update({ where: { id }, data: { isActive: false } });
+        const { tenantId } = await resolveTenantContext();
+        const res = await withTenant(tenantId).waiter.updateMany({
+            where: { id },
+            data: { isActive: false },
+        });
+        if (res.count === 0) return { success: false, message: 'Mesonero no encontrado' };
         return { success: true, message: 'Mesonero eliminado' };
     } catch {
         return { success: false, message: 'Error eliminando mesonero' };
@@ -191,7 +249,9 @@ export async function validateWaiterPinAction(pin: string): Promise<{
         }
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
-        const candidates = await prisma.waiter.findMany({
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const candidates = await db.waiter.findMany({
             where: { branchId: branch.id, isActive: true, pin: { not: null } },
             select: { id: true, firstName: true, lastName: true, isCaptain: true, pin: true },
         });
@@ -223,8 +283,10 @@ type AuthResult =
 
 async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult | null> {
     const trimmed = pin.trim();
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
     // Tipo 1: Waiter capitán activo en la sucursal
-    const captains = await prisma.waiter.findMany({
+    const captains = await db.waiter.findMany({
         where: { branchId, isActive: true, isCaptain: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
@@ -233,8 +295,8 @@ async function resolveAuthPin(pin: string, branchId: string): Promise<AuthResult
             return { type: 'CAPTAIN', name: `${c.firstName} ${c.lastName}`, waiterId: c.id };
         }
     }
-    // Tipo 2: User gerente/dueño activo (cualquier sucursal)
-    const managers = await prisma.user.findMany({
+    // Tipo 2: User gerente/dueño activo (cualquier sucursal del mismo tenant)
+    const managers = await db.user.findMany({
         where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] }, isActive: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
