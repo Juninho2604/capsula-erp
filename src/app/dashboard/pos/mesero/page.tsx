@@ -676,15 +676,74 @@ export default function POSMeseroPage() {
   // ENVIAR PEDIDO A COCINA (sin cobro)
   // ============================================================================
 
-  const handleSendToTab = async () => {
+  /**
+   * Categorías del menú que se consideran ENTRADAS (cocina las prepara
+   * primero, el mesero las marcha al principio). Las demás categorías
+   * caen automáticamente en "principales". Mantener alineado con
+   * seed-menu-real.ts. Las bebidas van a barra y conceptualmente
+   * acompañan la entrada, así que las incluimos aquí.
+   */
+  const COURSE_ENTRADAS = useMemo(
+    () => new Set(['Quesos Shanklish', 'Cremas', 'Ensaladas', 'Bebidas']),
+    []
+  );
+
+  // Mapa menuItemId → 'entrada' | 'principal' para clasificar items
+  // del cart sin requerir lookup por nombre cada vez.
+  const itemCourseMap = useMemo(() => {
+    const map = new Map<string, 'entrada' | 'principal'>();
+    for (const cat of categories as Array<{ name?: string; items?: Array<{ id: string }> }>) {
+      const course: 'entrada' | 'principal' = COURSE_ENTRADAS.has(cat.name ?? '')
+        ? 'entrada' : 'principal';
+      for (const it of cat.items ?? []) {
+        map.set(it.id, course);
+      }
+    }
+    return map;
+  }, [categories, COURSE_ENTRADAS]);
+
+  // Conteos por curso para decidir qué botones mostrar.
+  const cartCourseCounts = useMemo(() => {
+    let entradas = 0;
+    let principales = 0;
+    for (const c of cart) {
+      if (itemCourseMap.get(c.menuItemId) === 'entrada') entradas++;
+      else principales++;
+    }
+    return { entradas, principales };
+  }, [cart, itemCourseMap]);
+
+  /**
+   * Envía a cocina. Si `courseFilter` es 'entradas' o 'principales',
+   * envía solo esos items y deja los demás en el cart local. Si es
+   * 'all' (default), envía todo y limpia el cart.
+   */
+  const handleSendToTab = async (courseFilter: 'entradas' | 'principales' | 'all' = 'all') => {
     if (!activeTab || cart.length === 0) return;
     if (!activeWaiter) { toast.error("Identifícate con tu PIN antes de enviar a cocina"); return; }
+
+    // Filtrar el cart según el curso elegido. Los items que quedan
+    // afuera del filtro permanecen en el cart para marcharse después.
+    const itemsToSend = courseFilter === 'all'
+      ? cart
+      : cart.filter((c) => itemCourseMap.get(c.menuItemId) === (
+          courseFilter === 'entradas' ? 'entrada' : 'principal'
+        ));
+    const itemsToKeep = courseFilter === 'all'
+      ? []
+      : cart.filter((c) => !itemsToSend.includes(c));
+
+    if (itemsToSend.length === 0) {
+      toast.error(`No hay items de ${courseFilter} en el carrito`);
+      return;
+    }
+
     const guarded = await guardMutation(async () => {
       setIsProcessing(true);
       try {
         const result = await addItemsToOpenTabAction({
           openTabId: activeTab.id,
-          items: cart,
+          items: itemsToSend,
           waiterProfileId: activeWaiter.id,
           targetSubAccountId: cartTargetSubAccountId ?? undefined,
         });
@@ -703,13 +762,16 @@ export default function POSMeseroPage() {
             orderTypeLabel: "MESA",
             tableName: selectedTable?.name ?? null,
             customerName: activeTab.customerLabel || null,
-            items: buildKitchenItems(cart, menuItemCategoryMap),
+            items: buildKitchenItems(itemsToSend, menuItemCategoryMap),
             createdAt: new Date().toISOString(),
           });
         }
-        setCart([]);
-        // Cocina aceptó el carrito → borrar el cache offline de este tab.
-        if (activeTab?.id) await deleteCart(activeTab.id);
+        // Si fue parcial, dejar en el cart los items pendientes.
+        setCart(itemsToKeep);
+        if (itemsToKeep.length === 0 && activeTab?.id) {
+          // Cocina aceptó todo el cart → borrar el cache offline.
+          await deleteCart(activeTab.id);
+        }
         setSendSuccess(true);
         setTimeout(() => setSendSuccess(false), 2500);
         await loadData();
@@ -1299,26 +1361,69 @@ export default function POSMeseroPage() {
                 <span className="text-xs font-semibold text-capsula-ink-muted uppercase tracking-wider">Subtotal</span>
                 <span className="text-sm font-semibold text-capsula-ink tabular-nums">${cartTotal.toFixed(2)}</span>
               </div>
-              <button
-                onClick={() => { handleSendToTab(); if (window.innerWidth < 1024) setMobileTab("tables"); }}
-                disabled={!activeTab || isProcessing || isOffline}
-                title={isOffline ? "Sin conexión — el carrito queda guardado local hasta que vuelva la señal" : undefined}
-                className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
-                  sendSuccess
-                    ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
-                    : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream disabled:opacity-40 disabled:cursor-not-allowed"
-                }`}
-              >
-                {sendSuccess ? (
-                  <><Check className="h-4 w-4" /> ¡Enviado a cocina!</>
-                ) : isProcessing ? (
-                  "Enviando..."
-                ) : isOffline ? (
-                  <><ChefHat className="h-4 w-4" /> Sin conexión · ${cartTotal.toFixed(2)}</>
-                ) : (
-                  <><ChefHat className="h-4 w-4" /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
-                )}
-              </button>
+              {/* Botones de marchar — si el cart tiene items de ambos cursos,
+                  mostrar 3 botones (entradas / principales / todo). Si solo
+                  tiene uno de los dos, mostrar el botón único "Enviar a cocina". */}
+              {(() => {
+                const hasEntradas = cartCourseCounts.entradas > 0;
+                const hasPrincipales = cartCourseCounts.principales > 0;
+                const showSplit = hasEntradas && hasPrincipales && !sendSuccess && !isProcessing;
+                const baseBtn = "py-3 rounded-xl font-semibold text-xs uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed";
+
+                if (showSplit) {
+                  return (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          onClick={() => { void handleSendToTab('entradas'); }}
+                          disabled={!activeTab || isProcessing || isOffline}
+                          className={`${baseBtn} bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40`}
+                        >
+                          <ChefHat className="h-3.5 w-3.5" /> Entradas ({cartCourseCounts.entradas})
+                        </button>
+                        <button
+                          onClick={() => { void handleSendToTab('principales'); }}
+                          disabled={!activeTab || isProcessing || isOffline}
+                          className={`${baseBtn} bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40`}
+                        >
+                          <Flame className="h-3.5 w-3.5" /> Principales ({cartCourseCounts.principales})
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { void handleSendToTab('all'); if (window.innerWidth < 1024) setMobileTab("tables"); }}
+                        disabled={!activeTab || isProcessing || isOffline}
+                        className={`w-full ${baseBtn} bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream`}
+                      >
+                        <ChefHat className="h-4 w-4" /> Marchar todo · ${cartTotal.toFixed(2)}
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Caso simple: un solo curso en el cart → botón único.
+                return (
+                  <button
+                    onClick={() => { void handleSendToTab('all'); if (window.innerWidth < 1024) setMobileTab("tables"); }}
+                    disabled={!activeTab || isProcessing || isOffline}
+                    title={isOffline ? "Sin conexión — el carrito queda guardado local hasta que vuelva la señal" : undefined}
+                    className={`w-full mt-3 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+                      sendSuccess
+                        ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
+                        : "bg-capsula-navy-deep hover:bg-capsula-navy-deep/90 text-capsula-cream disabled:opacity-40 disabled:cursor-not-allowed"
+                    }`}
+                  >
+                    {sendSuccess ? (
+                      <><Check className="h-4 w-4" /> ¡Enviado a cocina!</>
+                    ) : isProcessing ? (
+                      "Enviando..."
+                    ) : isOffline ? (
+                      <><ChefHat className="h-4 w-4" /> Sin conexión · ${cartTotal.toFixed(2)}</>
+                    ) : (
+                      <><ChefHat className="h-4 w-4" /> Enviar a cocina · ${cartTotal.toFixed(2)}</>
+                    )}
+                  </button>
+                );
+              })()}
             </div>
           )}
 
