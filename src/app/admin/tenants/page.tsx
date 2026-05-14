@@ -1,4 +1,6 @@
 import prisma from '@/server/db';
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import TenantsTable, { type TenantRow } from './tenants-table-client';
 
 export const dynamic = 'force-dynamic';
@@ -60,13 +62,22 @@ export default async function TenantsAdminPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold tracking-[-0.02em] text-capsula-ink">
-                    Tenants
-                </h1>
-                <p className="mt-1 text-sm text-capsula-ink-soft">
-                    {rows.length} tenant{rows.length === 1 ? '' : 's'} registrado{rows.length === 1 ? '' : 's'}.
-                </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-[-0.02em] text-capsula-ink">
+                        Tenants
+                    </h1>
+                    <p className="mt-1 text-sm text-capsula-ink-soft">
+                        {rows.length} tenant{rows.length === 1 ? '' : 's'} registrado{rows.length === 1 ? '' : 's'}.
+                    </p>
+                </div>
+                <Link
+                    href="/admin/tenants/new"
+                    className="pos-btn inline-flex items-center gap-2 px-4 py-2 text-sm"
+                >
+                    <Plus className="h-4 w-4" />
+                    Nuevo tenant
+                </Link>
             </div>
             <TenantsTable rows={rows} />
         </div>

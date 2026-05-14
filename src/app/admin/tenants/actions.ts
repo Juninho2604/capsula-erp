@@ -24,6 +24,7 @@ import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/super-admin';
 import { hashPassword } from '@/lib/password';
+import { isReservedSlug } from '@/lib/signup/reserved-slugs';
 import { revalidatePath } from 'next/cache';
 
 export interface AdminActionState {
@@ -236,6 +237,118 @@ export async function recordTenantPaymentAction(input: {
     } catch (err) {
         console.error('[recordTenantPaymentAction]', err);
         return { success: false, message: 'Error al registrar pago.' };
+    }
+}
+
+// ─── Crear tenant desde UI ──────────────────────────────────────────────────
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,29}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export interface CreateTenantState extends AdminActionState {
+    /** Solo si success: redirigir al detalle del tenant creado. */
+    tenantId?: string;
+}
+
+export async function createTenantAction(input: {
+    slug: string;
+    name: string;
+    ownerEmail: string;
+    ownerPassword: string;
+    ownerFirstName: string;
+    ownerLastName: string;
+}): Promise<CreateTenantState> {
+    const auth = await requireSuperAdmin();
+    if (!auth.ok) return auth.state;
+
+    const slug = (input.slug ?? '').trim().toLowerCase();
+    const name = (input.name ?? '').trim();
+    const ownerEmail = (input.ownerEmail ?? '').trim().toLowerCase();
+    const ownerPassword = input.ownerPassword ?? '';
+    const ownerFirstName = (input.ownerFirstName ?? '').trim();
+    const ownerLastName = (input.ownerLastName ?? '').trim();
+
+    if (!SLUG_RE.test(slug)) {
+        return {
+            success: false,
+            message:
+                'Slug inválido. 2-30 chars, solo minúsculas, dígitos y guiones; empezar por letra/dígito.',
+        };
+    }
+    if (isReservedSlug(slug)) {
+        return { success: false, message: `Slug "${slug}" está reservado.` };
+    }
+    if (name.length < 2 || name.length > 100) {
+        return { success: false, message: 'Nombre del negocio inválido (2-100 chars).' };
+    }
+    if (!EMAIL_RE.test(ownerEmail) || ownerEmail.length > 200) {
+        return { success: false, message: 'Email del owner inválido.' };
+    }
+    if (ownerPassword.length < 8 || ownerPassword.length > 200) {
+        return { success: false, message: 'Password del owner debe tener entre 8 y 200 caracteres.' };
+    }
+    if (ownerFirstName.length < 1 || ownerFirstName.length > 50) {
+        return { success: false, message: 'Nombre del owner inválido (1-50 chars).' };
+    }
+    if (ownerLastName.length < 1 || ownerLastName.length > 50) {
+        return { success: false, message: 'Apellido del owner inválido (1-50 chars).' };
+    }
+
+    try {
+        const existing = await prisma.tenant.findUnique({
+            where: { slug },
+            select: { id: true, name: true },
+        });
+        if (existing) {
+            return {
+                success: false,
+                message: `Slug "${slug}" ya existe (tenant: ${existing.name}).`,
+            };
+        }
+
+        const passwordHash = await hashPassword(ownerPassword);
+
+        const result = await prisma.$transaction(async (tx) => {
+            const tenant = await tx.tenant.create({
+                data: { slug, name },
+                select: { id: true, slug: true, name: true },
+            });
+            await tx.user.create({
+                data: {
+                    tenantId: tenant.id,
+                    email: ownerEmail,
+                    passwordHash,
+                    firstName: ownerFirstName,
+                    lastName: ownerLastName,
+                    role: 'OWNER',
+                    isActive: true,
+                },
+            });
+            await tx.branch.create({
+                data: {
+                    tenantId: tenant.id,
+                    code: 'MAIN',
+                    name,
+                    timezone: 'America/Caracas',
+                    currencyCode: 'USD',
+                    isActive: true,
+                },
+            });
+            return tenant;
+        });
+
+        revalidatePath('/admin/tenants');
+        return {
+            success: true,
+            message: `Tenant "${name}" creado. Owner: ${ownerEmail}.`,
+            tenantId: result.id,
+        };
+    } catch (err) {
+        console.error('[createTenantAction]', err);
+        return {
+            success: false,
+            message: `Error al crear tenant: ${err instanceof Error ? err.message : 'desconocido'}.`,
+        };
     }
 }
 
