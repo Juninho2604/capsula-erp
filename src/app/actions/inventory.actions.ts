@@ -60,6 +60,7 @@ export async function createQuickItem(data: {
         // Create the item (tenantId injected by extension)
         const item = await db.inventoryItem.create({
             data: {
+                tenantId,
                 name: data.name,
                 sku: sku,
                 type: data.type,
@@ -111,6 +112,7 @@ export async function createQuickItem(data: {
             try {
                 const recipe = await db.recipe.create({
                     data: {
+                        tenantId,
                         name: data.name,
                         description: `Receta de ${data.name} — completar ingredientes`,
                         outputItemId: item.id,

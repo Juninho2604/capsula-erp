@@ -109,6 +109,7 @@ export async function createRequisition(input: CreateRequisitionInput): Promise<
 
         const requisition = await db.requisition.create({
             data: {
+                tenantId,
                 code,
                 requestedById: requesterId,
                 targetAreaId: input.targetAreaId,
@@ -615,6 +616,7 @@ export async function executeBulkTransferAction(
             // Crear requisición como historial
             const req = await tx.requisition.create({
                 data: {
+                    tenantId,
                     code,
                     requestedById: executorId,
                     processedById: executorId,

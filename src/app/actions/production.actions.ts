@@ -259,6 +259,7 @@ export async function quickProductionAction(
             // 4a. Crear orden de producción
             const productionOrder = await tx.productionOrder.create({
                 data: {
+                    tenantId,
                     orderNumber,
                     recipeId: formData.recipeId,
                     outputItemId: recipe.outputItemId,
@@ -574,6 +575,7 @@ export async function manualProductionAction(
         } else {
             const newRecipe = await db.recipe.create({
                 data: {
+                    tenantId,
                     name: `Producción manual: ${outputItem.name}`,
                     outputItemId: formData.outputItemId,
                     outputQuantity: formData.outputQuantity,
@@ -591,6 +593,7 @@ export async function manualProductionAction(
         const result = await db.$transaction(async (tx) => {
             const productionOrder = await tx.productionOrder.create({
                 data: {
+                    tenantId,
                     orderNumber,
                     recipeId,
                     outputItemId: formData.outputItemId,

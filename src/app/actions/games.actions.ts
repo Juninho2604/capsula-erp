@@ -64,7 +64,7 @@ export async function createGameType(data: {
     const db = withTenant(tenantId);
     const session = await requireRole(GAMES_ROLES);
 
-    const gameType = await db.gameType.create({ data });
+    const gameType = await db.gameType.create({ data: { tenantId, ...data } });
     revalidatePath('/dashboard/games');
     return { ok: true, gameType };
 }
@@ -132,7 +132,7 @@ export async function createGameStation(data: {
     const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
 
-    const station = await db.gameStation.create({ data });
+    const station = await db.gameStation.create({ data: { tenantId, ...data } });
     revalidatePath('/dashboard/games');
     return { ok: true, station };
 }
@@ -229,6 +229,7 @@ export async function startSession(data: {
     const [gameSession] = await db.$transaction([
         db.gameSession.create({
             data: {
+                tenantId,
                 code,
                 stationId: data.stationId,
                 gameTypeId: station.gameTypeId,
@@ -362,7 +363,7 @@ export async function createWristbandPlan(data: {
     const db = withTenant(tenantId);
     await requireRole(GAMES_ROLES);
 
-    const plan = await db.wristbandPlan.create({ data });
+    const plan = await db.wristbandPlan.create({ data: { tenantId, ...data } });
     revalidatePath('/dashboard/wristbands');
     return { ok: true, plan };
 }
@@ -470,6 +471,7 @@ export async function createReservation(data: {
 
     const reservation = await db.reservation.create({
         data: {
+            tenantId,
             code,
             ...data,
             guestCount: data.guestCount ?? 1,
@@ -531,6 +533,7 @@ export async function checkInReservation(reservationId: string) {
     const [updatedReservation, gameSession] = await db.$transaction(async tx => {
         const sess = await tx.gameSession.create({
             data: {
+                tenantId,
                 code,
                 stationId: reservation.stationId,
                 gameTypeId: reservation.station.gameTypeId,
@@ -613,6 +616,7 @@ export async function issueQueueTicket(data: {
 
     const ticket = await db.queueTicket.create({
         data: {
+            tenantId,
             ticketNumber,
             customerName: data.customerName,
             customerPhone: data.customerPhone,

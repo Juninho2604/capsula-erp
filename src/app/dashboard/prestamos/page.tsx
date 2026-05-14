@@ -1,13 +1,18 @@
 import Link from 'next/link';
 import { getLoansAction } from '@/app/actions/loan.actions';
 import LoanList from './LoanList';
-import prisma from '@/server/db';
+import { withTenant } from '@/lib/prisma-tenant-client';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PrestamosPage() {
     const loans = await getLoansAction();
-    const areas = await prisma.area.findMany({
+    // CRÍTICO: filtrar áreas por tenant — sin extension el findMany leakea
+    // áreas de todos los tenants. withTenant inyecta tenantId en la query.
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const areas = await db.area.findMany({
         where: { isActive: true },
         select: { id: true, name: true }
     });

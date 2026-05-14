@@ -62,6 +62,7 @@ export async function setExchangeRateAction(rate: number, effectiveDate: Date) {
         const db = withTenant(tenantId);
         await db.exchangeRate.create({
             data: {
+                tenantId,
                 rate: roundedRate,
                 effectiveDate,
                 source: 'BCV',

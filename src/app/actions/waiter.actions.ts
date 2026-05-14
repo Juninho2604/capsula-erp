@@ -117,6 +117,7 @@ export async function createWaiterAction(data: { firstName: string; lastName: st
         const db = withTenant(tenantId);
         const waiter = await db.waiter.create({
             data: {
+                tenantId,
                 branchId: branch.id,
                 firstName: data.firstName.trim(),
                 lastName: data.lastName.trim(),

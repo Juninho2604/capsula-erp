@@ -416,6 +416,7 @@ export async function createUserAction(data: {
 
         const user = await db.user.create({
             data: {
+                tenantId,
                 email,
                 passwordHash,
                 firstName,

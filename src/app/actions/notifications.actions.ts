@@ -156,6 +156,7 @@ export async function createBroadcastAction(input: {
 
     await db.broadcastMessage.create({
       data: {
+        tenantId,
         title: input.title.trim(),
         body: input.body.trim(),
         type: input.type,

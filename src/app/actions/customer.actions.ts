@@ -187,6 +187,7 @@ export async function createCustomerAction(input: CustomerInput): Promise<{
 
         const c = await db.customer.create({
             data: {
+                tenantId,
                 fullName: parsed.data.fullName,
                 idDocument: parsed.data.idDocument ?? null,
                 phone: parsed.data.phone ?? null,

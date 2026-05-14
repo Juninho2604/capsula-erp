@@ -355,6 +355,7 @@ export async function processImportAction(
 
                     const newItem = await tx.inventoryItem.create({
                         data: {
+                            tenantId,
                             name: item.itemName,
                             sku: sku,
                             type: 'RAW_MATERIAL', // Default

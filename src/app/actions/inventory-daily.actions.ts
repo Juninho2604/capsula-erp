@@ -158,6 +158,7 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
 
             daily = await db.dailyInventory.create({
                 data: {
+                    tenantId,
                     date: startOfDay,
                     areaId,
                     status: 'DRAFT',

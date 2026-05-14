@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { prisma } from '@/lib/prisma';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
 type AuditAction =
   | 'CREATE'
@@ -75,8 +76,10 @@ interface AuditLogParams {
  */
 export async function logAudit(params: AuditLogParams): Promise<void> {
   try {
+    const { tenantId } = await resolveTenantContext();
     await prisma.auditLog.create({
       data: {
+        tenantId,
         userId: params.userId,
         userName: params.userName,
         userRole: params.userRole,
@@ -137,11 +140,12 @@ export function diffChanges(
  */
 export async function logAuditTx(
   tx: any, // Prisma TransactionClient
-  params: AuditLogParams
+  params: AuditLogParams & { tenantId: string }
 ): Promise<void> {
   try {
     await tx.auditLog.create({
       data: {
+        tenantId: params.tenantId,
         userId: params.userId,
         userName: params.userName,
         userRole: params.userRole,

@@ -106,6 +106,7 @@ export async function createLoanAction(input: CreateLoanInput) {
             // 1. Create the Loan Record
             const loan = await tx.inventoryLoan.create({
                 data: {
+                    tenantId,
                     inventoryItemId: input.inventoryItemId,
                     loaneeName: input.loaneeName,
                     quantity: input.quantity,

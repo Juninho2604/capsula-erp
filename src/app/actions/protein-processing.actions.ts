@@ -173,6 +173,7 @@ export async function createProteinProcessingAction(
             // Crear el registro de procesamiento
             const processing = await tx.proteinProcessing.create({
                 data: {
+                    tenantId,
                     code,
                     processDate: input.processDate,
                     sourceItemId: input.sourceItemId,

@@ -90,6 +90,7 @@ export async function openCycle(data: {
 
     const cycle = await db.inventoryCycle.create({
         data: {
+            tenantId,
             code,
             name: data.name,
             cycleType: data.cycleType ?? 'WEEKLY',

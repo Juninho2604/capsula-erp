@@ -171,7 +171,7 @@ model User {
   registeredSupplierPrices  SupplierItemPriceHistory[] @relation("SupplierPriceRegisteredBy")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, email])
@@ -221,7 +221,7 @@ model Area {
   criticalItems AreaCriticalItem[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([branchId])
@@ -305,7 +305,7 @@ model InventoryItem {
   supplierPriceHistory SupplierItemPriceHistory[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, sku])
@@ -468,7 +468,7 @@ model Recipe {
   createdBy   User?   @relation(fields: [createdById], references: [id])
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
@@ -534,7 +534,7 @@ model ProductionOrder {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
@@ -608,7 +608,7 @@ model ProteinProcessing {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -749,7 +749,7 @@ model Requisition {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -795,7 +795,7 @@ model MenuCategory {
   deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
@@ -858,7 +858,7 @@ model MenuItem {
   deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, sku])
@@ -889,7 +889,7 @@ model MenuModifierGroup {
   createdAt DateTime @default(now())
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([tenantId])
@@ -918,7 +918,7 @@ model MenuModifier {
   deletedAt DateTime?
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([groupId])
@@ -1041,7 +1041,7 @@ model SalesOrder {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
@@ -1102,7 +1102,7 @@ model SalesOrderItem {
   subAccountItems SubAccountItem[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([orderId])
@@ -1158,7 +1158,7 @@ model DailyInventory {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([date, areaId])
@@ -1229,7 +1229,7 @@ model InventoryLoan {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
@@ -1274,7 +1274,7 @@ model InventoryAudit {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
@@ -1327,7 +1327,7 @@ model Supplier {
   deletedById String?
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relaciones
@@ -1409,7 +1409,7 @@ model PurchaseOrder {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, orderNumber])
@@ -1480,7 +1480,7 @@ model AuditLog {
   module String? // POS, INVENTORY, PRODUCTION, RECIPE, etc.
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([userId])
@@ -1509,7 +1509,7 @@ model ExpenseCategory {
   updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   expenses Expense[]
@@ -1561,7 +1561,7 @@ model Expense {
   updatedAt   DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([categoryId])
@@ -1619,7 +1619,7 @@ model CashRegister {
   updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([shiftDate])
@@ -1668,7 +1668,7 @@ model AccountPayable {
   payments AccountPayment[]
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status])
@@ -1699,7 +1699,7 @@ model AccountPayment {
   createdAt   DateTime @default(now())
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([accountPayableId])
@@ -1735,7 +1735,7 @@ model Branch {
   waiters         Waiter[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -1762,7 +1762,7 @@ model Waiter {
   transfersAuthorized TableTransfer[]  @relation("TransferAuthorizedByWaiter")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([branchId, isActive])
@@ -1814,7 +1814,7 @@ model ServiceZone {
   salesOrders      SalesOrder[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([branchId, name])
@@ -1843,7 +1843,7 @@ model TableOrStation {
   transfersTo   TableTransfer[] @relation("TransferToTable")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([branchId, code])
@@ -1901,7 +1901,7 @@ model OpenTab {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, tabCode])
@@ -2037,7 +2037,7 @@ model SystemConfig {
 
   // Multi-tenant: `(tenantId, key)` es compound unique → cada tenant puede
   // tener su propia config con las mismas keys.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, key])
@@ -2053,7 +2053,7 @@ model InvoiceCounter {
   updatedAt DateTime @updatedAt
 
   // Multi-tenant (Fase 1.D-γ).
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, channel])
@@ -2070,7 +2070,7 @@ model ExchangeRate {
   salesOrders SalesOrder[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([effectiveDate])
@@ -2097,7 +2097,7 @@ model GameType {
   sessions GameSession[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2125,7 +2125,7 @@ model GameStation {
   queueTickets QueueTicket[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2151,7 +2151,7 @@ model WristbandPlan {
   reservations Reservation[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2187,7 +2187,7 @@ model Reservation {
   deletedById String?
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2227,7 +2227,7 @@ model GameSession {
   updatedAt      DateTime     @updatedAt
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2255,7 +2255,7 @@ model QueueTicket {
   updatedAt            DateTime     @updatedAt
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([status, createdAt])
@@ -2347,7 +2347,7 @@ model ProductFamily {
   updatedAt   DateTime @updatedAt
 
   // Multi-tenant (Fase 1.B). Opcional por ahora; backfill en 1.C, NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   items     InventoryItem[]
@@ -2372,7 +2372,7 @@ model SkuCreationTemplate {
   updatedAt       DateTime       @updatedAt
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([productFamilyId])
@@ -2393,7 +2393,7 @@ model BroadcastMessage {
   createdAt   DateTime  @default(now())
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([isActive, startsAt])
@@ -2420,7 +2420,7 @@ model InventoryCycle {
   snapshots InventoryCycleSnapshot[]
 
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([tenantId, code])
@@ -2595,7 +2595,7 @@ enum PrintJobStatus {
 // (el cliente no se loguea en la app, solo es referencia de contacto).
 model Customer {
   id       String @id @default(cuid())
-  tenantId String @default("tnt_shanklish_caracas")
+  tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   fullName   String // "Julio Acosta" (obligatorio)
