@@ -1,0 +1,76 @@
+name: Ops — Run Script on VPS
+
+# Workflow genérico para ejecutar cualquier script de scripts/ en el VPS desde
+# la UI de GitHub Actions, sin necesidad de SSH.
+#
+# Cómo usarlo:
+#   1. GitHub → Actions → "Ops — Run Script on VPS"
+#   2. Click "Run workflow"
+#   3. Elegí el script y pasale args si necesita
+#   4. Click "Run workflow"
+#
+# Scripts disponibles (allowlist explícita por seguridad):
+#   - seed-demo-tenant          → siembra/refresca el tenant demo
+#   - cleanup-leaked-records    → limpia leaks cross-tenant (dry-run por default)
+#   - inspect-neon-schema       → inspecciona BD origen para migración
+#   - migrate-from-neon         → migra datos de Neon
+#   - create-tenant             → crea tenant nuevo (requiere args)
+#
+# Nota: si querés agregar un script nuevo a esta lista, edita el `case` abajo.
+
+on:
+    workflow_dispatch:
+        inputs:
+            script:
+                description: 'Script a ejecutar'
+                required: true
+                type: choice
+                options:
+                    - seed-demo-tenant
+                    - cleanup-leaked-records
+                    - inspect-neon-schema
+                    - migrate-from-neon
+                    - create-tenant
+            args:
+                description: 'Argumentos extra (ej: --reset, --apply, --slug=tablepong)'
+                required: false
+                default: ''
+                type: string
+
+jobs:
+    run:
+        name: ${{ inputs.script }} ${{ inputs.args }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        concurrency:
+            group: vps-ops
+            cancel-in-progress: false
+
+        steps:
+            - name: Run via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.CONTABO_HOST }}
+                  username: ${{ secrets.CONTABO_USER }}
+                  key: ${{ secrets.CONTABO_SSH_KEY }}
+                  script_stop: true
+                  command_timeout: 12m
+                  envs: SCRIPT_NAME,SCRIPT_ARGS
+                  script: |
+                      set -e
+                      cd /var/www/capsula-erp
+                      set -a && source .env && set +a
+                      case "$SCRIPT_NAME" in
+                          seed-demo-tenant|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant)
+                              echo ">>> Ejecutando: npx tsx scripts/${SCRIPT_NAME}.ts $SCRIPT_ARGS"
+                              npx tsx "scripts/${SCRIPT_NAME}.ts" $SCRIPT_ARGS
+                              ;;
+                          *)
+                              echo "ERROR: script '$SCRIPT_NAME' no está en la allowlist"
+                              exit 1
+                              ;;
+                      esac
+                      echo ">>> Done"
+              env:
+                  SCRIPT_NAME: ${{ inputs.script }}
+                  SCRIPT_ARGS: ${{ inputs.args }}

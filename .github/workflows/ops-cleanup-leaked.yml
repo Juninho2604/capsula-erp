@@ -1,0 +1,56 @@
+name: Ops — Cleanup Leaked Tenant Records
+
+# Workflow manual para ejecutar scripts/cleanup-leaked-records.ts en el VPS
+# sin abrir terminal. Usa los mismos secrets que el deploy job.
+#
+# Cómo usarlo:
+#   1. GitHub → Actions → "Ops — Cleanup Leaked Tenant Records"
+#   2. Click "Run workflow"
+#   3. Modo: dry-run (default, solo lista) o apply (BORRA registros leakeados)
+#   4. Click "Run workflow" en el form
+#
+# Idempotente: dry-run no toca nada; apply borra sólo registros con tenantId
+# mismatch confirmado.
+
+on:
+    workflow_dispatch:
+        inputs:
+            mode:
+                description: 'Modo de ejecución'
+                required: true
+                default: 'dry-run'
+                type: choice
+                options:
+                    - dry-run
+                    - apply
+
+jobs:
+    cleanup:
+        name: Run cleanup-leaked-records (${{ inputs.mode }})
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        concurrency:
+            group: vps-ops
+            cancel-in-progress: false
+
+        steps:
+            - name: Run via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.CONTABO_HOST }}
+                  username: ${{ secrets.CONTABO_USER }}
+                  key: ${{ secrets.CONTABO_SSH_KEY }}
+                  script_stop: true
+                  command_timeout: 8m
+                  script: |
+                      set -e
+                      cd /var/www/capsula-erp
+                      set -a && source .env && set +a
+                      if [ "${{ inputs.mode }}" = "apply" ]; then
+                          echo ">>> Modo APPLY — borra registros leakeados"
+                          npx tsx scripts/cleanup-leaked-records.ts --apply
+                      else
+                          echo ">>> Modo dry-run — solo lista, no borra"
+                          npx tsx scripts/cleanup-leaked-records.ts --dry-run
+                      fi
+                      echo ">>> Listo"
