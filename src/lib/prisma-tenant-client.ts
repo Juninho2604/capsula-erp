@@ -27,7 +27,7 @@ import 'server-only';
 import { Prisma } from '@prisma/client';
 import prisma from '@/server/db';
 
-// ─── Modelos con tenantId (los 42 que tienen el campo) ──────────────────────
+// ─── Modelos con tenantId (todos los que tienen el campo en schema.prisma) ─
 //
 // Los nombres son los devueltos por Prisma en `model` del callback
 // $allOperations: PascalCase. Mantener sincronizado con schema.prisma.
@@ -39,6 +39,7 @@ const TENANT_MODELS = new Set<string>([
     'Branch',
     'BroadcastMessage',
     'CashRegister',
+    'Customer',
     'DailyInventory',
     'ExchangeRate',
     'Expense',
@@ -46,29 +47,38 @@ const TENANT_MODELS = new Set<string>([
     'GameSession',
     'GameStation',
     'GameType',
+    'IntercompanyItemMapping',
     'InventoryAudit',
+    'InventoryAuditItem',
     'InventoryCycle',
     'InventoryItem',
     'InventoryLoan',
     'InvoiceCounter',
     'MenuCategory',
     'MenuItem',
+    'MenuItemModifierGroup',
     'MenuModifier',
     'MenuModifierGroup',
     'OpenTab',
+    'PrintJob',
+    'ProcessingTemplateOutput',
     'ProductFamily',
     'ProductionOrder',
     'ProteinProcessing',
     'PurchaseOrder',
     'QueueTicket',
+    'RateLimitBucket',
     'Recipe',
     'Requisition',
+    'RequisitionItem',
     'Reservation',
     'SalesOrder',
     'SalesOrderItem',
+    'SalesOrderPayment',
     'ServiceZone',
     'SkuCreationTemplate',
     'Supplier',
+    'SupplierItem',
     'SystemConfig',
     'TableOrStation',
     'User',
