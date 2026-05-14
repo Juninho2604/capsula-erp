@@ -78,6 +78,9 @@ model Tenant {
   reservations         Reservation[]
   printJobs            PrintJob[]
   customers            Customer[]
+  // SaaS billing — pagos del tenant al operador del SaaS. NO multi-tenant
+  // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
+  tenantPayments       TenantPayment[]
 }
 
 model User {
@@ -126,6 +129,9 @@ model User {
 
   // Clientes recurrentes creados por este usuario.
   createdCustomers Customer[] @relation("CustomerCreatedBy")
+
+  // SaaS billing: pagos de tenants registrados por este SUPER_ADMIN.
+  recordedTenantPayments TenantPayment[] @relation("TenantPaymentRecorder")
 
   // Cierres de Inventario
   closedDailyInventories DailyInventory[]
@@ -2616,4 +2622,28 @@ model Customer {
   @@index([tenantId])
   @@index([tenantId, fullName])
   @@index([tenantId, phone])
+}
+
+/// SaaS billing — registro manual de pagos que cada tenant le hace al
+/// operador del SaaS (vos). NO multi-tenant a nivel app: solo SUPER_ADMIN
+/// consulta y escribe vía prisma directo en /admin/tenants/[id].
+/// Si querés cobrar más tarde con plan + suspensión automática, este modelo
+/// se extiende con `dueAt`, `status`, etc. — por ahora minimal.
+model TenantPayment {
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amount       Float
+  currency     String    @default("USD") // USD, BSD, EUR, etc.
+  paidAt       DateTime
+  method       String // cash, transfer, zelle, crypto, pdv, etc.
+  periodStart  DateTime? // opcional: cubre desde
+  periodEnd    DateTime? // opcional: cubre hasta
+  note         String?
+  recordedById String
+  recordedBy   User      @relation("TenantPaymentRecorder", fields: [recordedById], references: [id])
+  createdAt    DateTime  @default(now())
+
+  @@index([tenantId, paidAt])
+  @@index([recordedById])
 }
