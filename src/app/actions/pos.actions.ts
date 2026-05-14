@@ -8,12 +8,31 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/server/db';
-import { withTenant } from '@/lib/prisma-tenant-client';
+import { withTenant, type TenantPrismaClient } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 
-async function getTenantDb() {
+/**
+ * Devuelve el cliente Prisma con isolación por tenant + el tenantId resuelto.
+ *
+ * Por qué entregamos el tenantId al caller (y no solo el db extendido):
+ * la extension `withTenant` inyecta tenantId en operaciones DIRECTAS al cliente
+ * (db.openTab.create), pero hay incertidumbre sobre propagación dentro de
+ * `db.$transaction(async (tx) => ...)` en Prisma 5.x. Para defensa en
+ * profundidad, los callers pasan tenantId explícito a creates sobre modelos
+ * tenant-aware dentro de transacciones.
+ */
+async function getTenantCtx(): Promise<{ db: TenantPrismaClient; tenantId: string }> {
     const { tenantId } = await resolveTenantContext();
-    return withTenant(tenantId);
+    return { db: withTenant(tenantId), tenantId };
+}
+
+/**
+ * Wrapper retrocompatible: devuelve solo el db extendido. Para call sites que
+ * no necesitan el tenantId.
+ */
+async function getTenantDb(): Promise<TenantPrismaClient> {
+    const { db } = await getTenantCtx();
+    return db;
 }
 import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
@@ -1170,7 +1189,7 @@ async function upsertCustomerFromOrder(
 export async function createSalesOrderAction(
     data: CreateOrderData
 ): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) {
@@ -1195,6 +1214,7 @@ export async function createSalesOrderAction(
                 const orderNumber = await generateOrderNumber(data.orderType, { notes: finalNotes });
                 newOrder = await db.salesOrder.create({
                     data: {
+                        tenantId,
                         orderNumber,
                         orderType: data.orderType,
                         customerName: data.customerName,
@@ -1363,7 +1383,7 @@ export async function recordCollectiveTipAction(data: {
     paymentMethod: string;
     note?: string;
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -1377,6 +1397,7 @@ export async function recordCollectiveTipAction(data: {
                 const orderNumber = await generateOrderNumber('PICKUP');
                 order = await db.salesOrder.create({
                     data: {
+                        tenantId,
                         orderNumber,
                         orderType: 'PICKUP',
                         customerName: 'PROPINA COLECTIVA',
@@ -1439,7 +1460,7 @@ export async function getRestaurantLayoutAction(): Promise<ActionResult> {
 }
 
 export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) {
@@ -1480,6 +1501,7 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
         const tab = await db.$transaction(async (tx) => {
             const createdTab = await tx.openTab.create({
                 data: {
+                    tenantId,
                     branchId: table.branchId,
                     serviceZoneId: table.serviceZoneId,
                     tableOrStationId: table.id,
@@ -1524,7 +1546,7 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
 }
 
 export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) {
@@ -1612,6 +1634,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
 
             const order = await tx.salesOrder.create({
                 data: {
+                    tenantId,
                     orderNumber,
                     orderType: 'RESTAURANT',
                     serviceFlow: 'OPEN_TAB',
@@ -2199,7 +2222,7 @@ export async function modifyTabItemAction({
     reason: string;
     modification: ModifyTabItemModification;
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         if (!reason?.trim()) return { success: false, message: 'El motivo es obligatorio' };
         if (!captainPin || captainPin.trim().length < 4) return { success: false, message: 'PIN inválido' };
@@ -2268,6 +2291,7 @@ export async function modifyTabItemAction({
                 // Crear ítem de reemplazo con cantidad reducida
                 const newItem = await tx.salesOrderItem.create({
                     data: {
+                        tenantId,
                         orderId:   item.orderId,
                         menuItemId: item.menuItemId,
                         itemName:  item.itemName,
@@ -2338,6 +2362,7 @@ export async function modifyTabItemAction({
                 // Crear ítem de reemplazo
                 const newItem = await tx.salesOrderItem.create({
                     data: {
+                        tenantId,
                         orderId:   item.orderId,
                         menuItemId: newMenuItem.id,
                         itemName:  newMenuItem.name,
