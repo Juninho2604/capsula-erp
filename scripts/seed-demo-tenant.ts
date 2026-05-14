@@ -125,7 +125,7 @@ async function main() {
 
     try {
         // Pre-check / reset
-        const existing = await prisma.tenant.findUnique({
+        let existing = await prisma.tenant.findUnique({
             where: { slug: args.slug },
             select: { id: true, name: true },
         });
@@ -134,6 +134,9 @@ async function main() {
             if (args.reset) {
                 console.log(`Tenant "${args.slug}" ya existe (id: ${existing.id}). RESETEANDO...`);
                 await resetTenantData(prisma, existing.id);
+                // Importante: resetTenantData borra el Tenant. Marcamos existing
+                // como null para que el flujo siguiente cree uno nuevo.
+                existing = null;
             } else {
                 console.error(`Tenant "${args.slug}" ya existe (id: ${existing.id}). Usá --reset para reconstruir desde cero, o cambia el --slug.`);
                 process.exit(1);
@@ -142,9 +145,8 @@ async function main() {
 
         // ─── 1. Tenant + Owner + Users ──────────────────────────────────
         console.log('1. Creando tenant + usuarios...');
-        const tenantId = existing?.id ?? null;
-        const tenant = tenantId
-            ? await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } })
+        const tenant = existing
+            ? await prisma.tenant.findUniqueOrThrow({ where: { id: existing.id } })
             : await prisma.tenant.create({
                 data: { slug: args.slug, name: 'Capsula Demo Bistró' },
             });
