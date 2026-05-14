@@ -64,6 +64,7 @@ export async function createRawMaterialAction(
 
     const item = await db.inventoryItem.create({
       data: {
+        tenantId,
         name: input.name.trim(),
         sku: input.sku.trim().toUpperCase(),
         type: input.type,

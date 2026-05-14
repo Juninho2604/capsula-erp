@@ -87,6 +87,7 @@ export async function createAuditAction(input: CreateAuditInput) {
             // 1. Create Audit Header
             const audit = await tx.inventoryAudit.create({
                 data: {
+                    tenantId,
                     name: input.name,
                     notes: input.notes,
                     areaId: input.areaId,
@@ -124,6 +125,7 @@ export async function createAuditAction(input: CreateAuditInput) {
                 const costSnapshot = dbItem.costHistory[0]?.costPerUnit || 0;
 
                 auditItemsData.push({
+                    tenantId,
                     auditId: audit.id,
                     inventoryItemId: itemInput.inventoryItemId,
                     systemStock: systemStock,

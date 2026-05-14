@@ -402,6 +402,7 @@ export async function createPurchaseOrderAction(
 
         const order = await db.purchaseOrder.create({
             data: {
+                tenantId,
                 orderNumber,
                 orderName: input.orderName?.trim() || null,
                 supplierId: input.supplierId || null,
@@ -811,7 +812,7 @@ export async function createSupplierAction(input: {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
         const supplier = await db.supplier.create({
-            data: input
+            data: { tenantId, ...input }
         });
 
         revalidatePath('/dashboard/compras');
@@ -894,6 +895,7 @@ export async function createReorderBroadcastsAction(): Promise<{ created: number
 
             await db.broadcastMessage.create({
                 data: {
+                    tenantId,
                     title,
                     body,
                     type: severity,

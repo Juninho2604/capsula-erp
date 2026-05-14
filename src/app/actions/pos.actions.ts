@@ -147,7 +147,7 @@ class POSActionError extends Error {
 }
 
 async function ensureBaseSalesArea() {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     const whereActive = { isActive: true };
 
     // 1. SHANKLISH SERVICIO (almacén preferido)
@@ -184,7 +184,7 @@ async function ensureBaseSalesArea() {
 
     // 7. Crear área SHANKLISH SERVICIO por defecto
     return db.area.create({
-        data: { name: 'SHANKLISH SERVICIO', isActive: true }
+        data: { tenantId, name: 'SHANKLISH SERVICIO', isActive: true }
     });
 }
 
@@ -193,12 +193,12 @@ const RESTAURANT_ZONES = [
 ] as const;
 
 async function ensureRestaurantSetup() {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     // Ensure branch
     let branch = await db.branch.findFirst();
     if (!branch) {
         branch = await db.branch.create({
-            data: { code: 'SHK-CCS', name: 'Shanklish Caracas', legalName: 'Shanklish Caracas, C.A.' }
+            data: { tenantId, code: 'SHK-CCS', name: 'Shanklish Caracas', legalName: 'Shanklish Caracas, C.A.' }
         });
     }
 
@@ -206,7 +206,7 @@ async function ensureRestaurantSetup() {
     const hasArea = await db.area.findFirst({ where: { branchId: branch.id, name: { contains: 'Salón', mode: 'insensitive' } } });
     if (!hasArea) {
         await db.area.create({
-            data: { branchId: branch.id, name: 'Salón Principal', description: 'Área de descarga POS Restaurante' }
+            data: { tenantId, branchId: branch.id, name: 'Salón Principal', description: 'Área de descarga POS Restaurante' }
         });
     }
 
@@ -218,7 +218,7 @@ async function ensureRestaurantSetup() {
         }
         if (!zone) {
             zone = await db.serviceZone.create({
-                data: { branchId: branch.id, code: zConf.code, name: zConf.name, zoneType: zConf.zoneType, sortOrder: zConf.sortOrder }
+                data: { tenantId, branchId: branch.id, code: zConf.code, name: zConf.name, zoneType: zConf.zoneType, sortOrder: zConf.sortOrder }
             });
         } else {
             zone = await db.serviceZone.update({
@@ -231,11 +231,11 @@ async function ensureRestaurantSetup() {
             select: { code: true }
         });
         const codeSet = new Set(existingCodes.map(t => t.code));
-        const toCreate: { branchId: string; serviceZoneId: string; code: string; name: string; stationType: string; capacity: number }[] = [];
+        const toCreate: { tenantId: string; branchId: string; serviceZoneId: string; code: string; name: string; stationType: string; capacity: number }[] = [];
         for (let i = 1; i <= zConf.tableCount; i++) {
             const tCode = `${zConf.prefix}-${String(i).padStart(2, '0')}`;
             if (!codeSet.has(tCode)) {
-                toCreate.push({ branchId: branch.id, serviceZoneId: zone.id, code: tCode, name: `Mesa ${tCode}`, stationType: 'TABLE', capacity: 4 });
+                toCreate.push({ tenantId, branchId: branch.id, serviceZoneId: zone.id, code: tCode, name: `Mesa ${tCode}`, stationType: 'TABLE', capacity: 4 });
             }
         }
         if (toCreate.length > 0) {
@@ -1137,6 +1137,7 @@ function isOrderNumberUniqueError(err: unknown): boolean {
  */
 async function upsertCustomerFromOrder(
     db: ReturnType<typeof withTenant>,
+    tenantId: string,
     p: {
         name: string;
         phone: string;
@@ -1171,6 +1172,7 @@ async function upsertCustomerFromOrder(
     // No existe → crear nuevo.
     await db.customer.create({
         data: {
+            tenantId,
             fullName: p.name.trim(),
             phone: normalizedPhone,
             address: p.address?.trim() ?? null,
@@ -1252,6 +1254,7 @@ export async function createSalesOrderAction(
 
                         items: {
                             create: data.items.map(item => ({
+                                tenantId,
                                 menuItemId: item.menuItemId,
                                 itemName: item.name,
                                 quantity: item.quantity,
@@ -1285,6 +1288,7 @@ export async function createSalesOrderAction(
         if (data.payments && data.payments.length > 0) {
             await prisma.salesOrderPayment.createMany({
                 data: data.payments.map(p => ({
+                    tenantId,
                     salesOrderId: newOrder!.id,
                     method: p.method,
                     amountUSD: p.amountUSD,
@@ -1338,7 +1342,7 @@ export async function createSalesOrderAction(
         // bloqueamos la respuesta — si falla, log y seguimos.
         if (data.orderType === 'DELIVERY' && data.customerPhone && data.customerName) {
             try {
-                await upsertCustomerFromOrder(db, {
+                await upsertCustomerFromOrder(db, tenantId, {
                     name: data.customerName,
                     phone: data.customerPhone,
                     address: data.customerAddress,
@@ -1657,6 +1661,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     createdById: session.activeCashierId ?? session.id,
                     items: {
                         create: data.items.map(item => ({
+                            tenantId,
                             menuItemId: item.menuItemId,
                             itemName: item.name,
                             quantity: item.quantity,

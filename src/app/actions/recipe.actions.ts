@@ -255,6 +255,7 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
             // 1. Create the Output Inventory Item (The thing this recipe makes)
             const outputItem = await tx.inventoryItem.create({
                 data: {
+                    tenantId,
                     name: input.name,
                     sku: sku,
                     category: input.category,
@@ -268,6 +269,7 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
             // 2. Create the Recipe
             const recipe = await tx.recipe.create({
                 data: {
+                    tenantId,
                     name: input.name,
                     description: input.description,
                     outputItemId: outputItem.id,

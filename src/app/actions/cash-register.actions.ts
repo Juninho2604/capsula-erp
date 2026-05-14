@@ -141,6 +141,7 @@ export async function openCashRegisterAction(input: {
 
     const register = await db.cashRegister.create({
       data: {
+        tenantId,
         registerName: input.registerName.trim(),
         shiftDate,
         shiftType: input.shiftType ?? 'DAY',

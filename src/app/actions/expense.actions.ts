@@ -87,6 +87,7 @@ export async function createExpenseCategoryAction(input: {
   try {
     const cat = await db.expenseCategory.create({
       data: {
+        tenantId,
         name: input.name.trim(),
         description: input.description?.trim() || null,
         color: input.color || null,
@@ -260,6 +261,7 @@ export async function createExpenseAction(input: {
   try {
     const expense = await db.expense.create({
       data: {
+        tenantId,
         description: input.description.trim(),
         notes: input.notes?.trim() || null,
         categoryId: input.categoryId,

@@ -145,7 +145,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
         });
         setSavingGroup(false);
         if (res.success && res.data) {
-            setLocalGroups(prev => [...prev, res.data as ModifierGroup]);
+            setLocalGroups(prev => [...prev, res.data as unknown as ModifierGroup]);
             setExpandedGroup(res.data.id);
             setShowNewGroupForm(false);
             setNewGroupName(''); setNewGroupDesc(''); setNewGroupRequired(false); setNewGroupMin(0); setNewGroupMax(1);

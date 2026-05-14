@@ -136,6 +136,7 @@ export async function createAccountPayableAction(input: {
   try {
     const account = await db.accountPayable.create({
       data: {
+        tenantId,
         description: input.description.trim(),
         invoiceNumber: input.invoiceNumber?.trim() || null,
         supplierId: input.supplierId || null,
@@ -208,6 +209,7 @@ export async function registerPaymentAction(
     await db.$transaction([
       db.accountPayment.create({
         data: {
+          tenantId,
           accountPayableId,
           amountUsd: input.amountUsd,
           amountBs: input.amountBs ?? null,

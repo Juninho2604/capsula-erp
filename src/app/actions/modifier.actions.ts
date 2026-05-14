@@ -141,6 +141,7 @@ export async function createModifierGroupAction(data: {
         const maxSort = await db.menuModifierGroup.aggregate({ _max: { sortOrder: true } });
         const group = await db.menuModifierGroup.create({
             data: {
+                tenantId,
                 name: data.name.trim(),
                 description: data.description?.trim() || null,
                 isRequired: data.isRequired,
@@ -229,6 +230,7 @@ export async function addModifierAction(data: {
         });
         const modifier = await db.menuModifier.create({
             data: {
+                tenantId,
                 groupId: data.groupId,
                 name: data.name.trim(),
                 priceAdjustment: data.priceAdjustment,

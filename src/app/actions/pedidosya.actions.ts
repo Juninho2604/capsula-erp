@@ -52,6 +52,7 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
 
         const order = await db.salesOrder.create({
             data: {
+                tenantId,
                 orderNumber,
                 orderType: 'PEDIDOSYA',
                 customerName: data.customerName || 'PedidosYA',
@@ -74,6 +75,7 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
                 areaId: salesArea.id,
                 items: {
                     create: data.items.map(item => ({
+                        tenantId,
                         menuItemId: item.menuItemId,
                         itemName: item.name,
                         quantity: item.quantity,

@@ -118,6 +118,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
 
         const newItem = await db.menuItem.create({
             data: {
+                tenantId,
                 name: data.name,
                 description: data.description,
                 price: parseFloat(data.price.toString()),
@@ -132,6 +133,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
             const invSku = `FG-${data.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
             const invItem = await db.inventoryItem.create({
                 data: {
+                    tenantId,
                     name: data.name,
                     sku: invSku,
                     type: 'FINISHED_GOOD',
@@ -144,6 +146,7 @@ export async function createMenuItemAction(data: MenuItemData): Promise<ActionRe
 
             const recipe = await db.recipe.create({
                 data: {
+                    tenantId,
                     name: data.name,
                     description: `Receta de ${data.name} - completar ingredientes`,
                     outputItemId: invItem.id,
@@ -307,6 +310,7 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
         const invSku = `FG-${menuItem.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
         const invItem = await db.inventoryItem.create({
             data: {
+                tenantId,
                 name: menuItem.name,
                 sku: invSku,
                 type: 'FINISHED_GOOD',
@@ -318,6 +322,7 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
 
         const recipe = await db.recipe.create({
             data: {
+                tenantId,
                 name: menuItem.name,
                 description: `Receta de ${menuItem.name} - completar ingredientes`,
                 outputItemId: invItem.id,
@@ -361,7 +366,7 @@ export async function ensureBasicCategoriesAction() {
         ];
 
         for (const cat of basicCats) {
-            await db.menuCategory.create({ data: cat });
+            await db.menuCategory.create({ data: { tenantId, ...cat } });
         }
         return { success: true, message: 'Categorías base creadas' };
     }

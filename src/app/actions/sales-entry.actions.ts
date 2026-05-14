@@ -163,6 +163,7 @@ export async function createSalesEntryAction(
         const result = await db.$transaction(async (tx) => {
             const salesOrder = await tx.salesOrder.create({
                 data: {
+                    tenantId,
                     orderNumber,
                     orderType: input.orderType,
                     status: 'COMPLETED',
@@ -182,6 +183,7 @@ export async function createSalesEntryAction(
                     customerAddress: input.customerAddress,
                     items: {
                         create: input.items.map(item => ({
+                            tenantId,
                             menuItemId: item.menuItemId,
                             itemName: item.menuItemName,
                             unitPrice: item.unitPrice,

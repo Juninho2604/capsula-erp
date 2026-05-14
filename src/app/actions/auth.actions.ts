@@ -4,6 +4,7 @@ import prisma from '@/server/db';
 import { createSession, deleteSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { redirect } from 'next/navigation';
 
 // Hash con formato válido (saltHex:hashHex) que nunca matchea ningún password
@@ -46,12 +47,17 @@ export async function loginAction(prevState: any, formData: FormData) {
     }
 
     try {
+        // CRÍTICO: filtramos por tenantId del subdominio para evitar tomar
+        // control cross-tenant si el mismo email existe en varios tenants.
+        // El compound unique (tenantId, email) garantiza max 1 match per tenant.
+        const { tenantId } = await resolveTenantContext();
+
         // Búsqueda case-insensitive: cubre tanto emails ya normalizados a
         // lowercase como usuarios viejos guardados con mixed-case en BD.
         // findFirst en lugar de findUnique porque el unique constraint de
         // Prisma no soporta mode:'insensitive' (es a nivel DB).
         const user = await prisma.user.findFirst({
-            where: { email: { equals: email, mode: 'insensitive' } },
+            where: { tenantId, email: { equals: email, mode: 'insensitive' } },
             select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true, tokenVersion: true, tenantId: true },
         });
 

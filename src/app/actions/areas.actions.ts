@@ -78,7 +78,7 @@ export async function createAreaAction(
     const db = withTenant(tenantId);
 
     await db.area.create({
-      data: { name: name.trim().toUpperCase(), description: description?.trim() || null },
+      data: { tenantId, name: name.trim().toUpperCase(), description: description?.trim() || null },
     });
 
     revalidatePath('/dashboard/almacenes');

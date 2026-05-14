@@ -88,7 +88,7 @@ export async function createProductFamily(rawData: z.input<typeof ProductFamilyI
     // Normaliza el código a uppercase
     const data = { ...parsed.data, code: parsed.data.code.toUpperCase() };
 
-    const family = await db.productFamily.create({ data });
+    const family = await db.productFamily.create({ data: { tenantId, ...data } });
     revalidatePath('/dashboard/config/sku-studio');
     return { ok: true, family };
 }
@@ -129,6 +129,7 @@ export async function createSkuTemplate(rawData: z.input<typeof SkuTemplateInput
 
     const template = await db.skuCreationTemplate.create({
         data: {
+            tenantId,
             name: data.name,
             description: data.description,
             productFamilyId: data.productFamilyId,
@@ -166,6 +167,7 @@ export async function createProductFromTemplate(
     // ── Create InventoryItem ────────────────────────────────────────────────
     const invItem = await db.inventoryItem.create({
         data: {
+            tenantId,
             sku:         merged.sku          as string,
             name:        merged.name         as string,
             description: merged.description  as string | undefined,
@@ -184,6 +186,7 @@ export async function createProductFromTemplate(
     if (merged.createMenuItem && merged.menuCategoryId) {
         menuItem = await db.menuItem.create({
             data: {
+                tenantId,
                 sku:            invItem.sku,
                 name:           invItem.name,
                 description:    invItem.description ?? undefined,
@@ -235,6 +238,7 @@ export async function createSkuItemAction(
 
         const item = await db.inventoryItem.create({
             data: {
+                tenantId,
                 name: input.name.trim(),
                 sku: finalSku,
                 type: input.type,
