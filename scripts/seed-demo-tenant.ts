@@ -322,19 +322,19 @@ async function main() {
         // ─── 7. Menu ─────────────────────────────────────────────────────
         console.log('7. Menú...');
         const catEntradas = await prisma.menuCategory.create({
-            data: { tenantId: tenant.id, name: 'Entradas', sortOrder: 1, isActive: true, icon: 'Salad' },
+            data: { tenantId: tenant.id, name: 'Entradas', sortOrder: 1, isActive: true },
         });
         const catPrincipales = await prisma.menuCategory.create({
-            data: { tenantId: tenant.id, name: 'Platos Principales', sortOrder: 2, isActive: true, icon: 'UtensilsCrossed' },
+            data: { tenantId: tenant.id, name: 'Platos Principales', sortOrder: 2, isActive: true },
         });
         const catPostres = await prisma.menuCategory.create({
-            data: { tenantId: tenant.id, name: 'Postres', sortOrder: 3, isActive: true, icon: 'Cookie' },
+            data: { tenantId: tenant.id, name: 'Postres', sortOrder: 3, isActive: true },
         });
         const catBebidas = await prisma.menuCategory.create({
-            data: { tenantId: tenant.id, name: 'Bebidas', sortOrder: 4, isActive: true, icon: 'GlassWater' },
+            data: { tenantId: tenant.id, name: 'Bebidas', sortOrder: 4, isActive: true },
         });
         const catCocteles = await prisma.menuCategory.create({
-            data: { tenantId: tenant.id, name: 'Cócteles', sortOrder: 5, isActive: true, icon: 'Wine' },
+            data: { tenantId: tenant.id, name: 'Cócteles', sortOrder: 5, isActive: true },
         });
 
         const menuItemDefs = [
@@ -433,7 +433,7 @@ async function main() {
             await prisma.expense.create({
                 data: {
                     tenantId: tenant.id, categoryId: exp.categoryId, description: exp.description,
-                    amountUsd: exp.amountUsd, status: 'CONFIRMED',
+                    amountUsd: exp.amountUsd, paymentMethod: 'BANK_TRANSFER', status: 'CONFIRMED',
                     paidAt: daysAgo(randInt(1, 14)), createdById: ownerId,
                     periodMonth: now.getMonth() + 1, periodYear: now.getFullYear(),
                 },
