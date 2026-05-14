@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 42 modelos esperados', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(42);
+    it('Contiene los 52 modelos esperados (actualizado tras añadir Customer, PrintJob, etc.)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(52);
     });
 
     it('Incluye modelos críticos del POS', () => {
