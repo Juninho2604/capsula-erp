@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { suspendTenantAction, reactivateTenantAction } from './actions';
-import { Ban, RefreshCw, ExternalLink, Check, AlertTriangle } from 'lucide-react';
+import { Ban, RefreshCw, ExternalLink, Check, AlertTriangle, ChevronRight } from 'lucide-react';
 
 export interface TenantRow {
     id: string;
@@ -70,7 +71,15 @@ export default function TenantsTable({ rows }: { rows: TenantRow[] }) {
                                 const suspended = r.userCount > 0 && r.activeUserCount === 0;
                                 return (
                                     <tr key={r.id} className="border-b border-capsula-line last:border-b-0">
-                                        <Td className="font-semibold text-capsula-ink">{r.name}</Td>
+                                        <Td className="font-semibold text-capsula-ink">
+                                            <Link
+                                                href={`/admin/tenants/${r.id}`}
+                                                className="inline-flex items-center gap-1 hover:text-capsula-coral"
+                                            >
+                                                {r.name}
+                                                <ChevronRight className="h-3 w-3 opacity-50" />
+                                            </Link>
+                                        </Td>
                                         <Td>
                                             <a
                                                 href={`https://${r.slug}.${TENANT_ROOT_DOMAIN}`}
