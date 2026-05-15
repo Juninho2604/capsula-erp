@@ -1173,8 +1173,11 @@ model DailyInventoryItem {
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
-  initialCount Float? @default(0)
-  finalCount   Float? @default(0)
+  initialCount            Float? @default(0)
+  // Apertura teórica: cierre del día anterior (auto-arrastrado, read-only).
+  // initialCount es el conteo físico real de la mañana (editable).
+  theoreticalInitialCount Float? @default(0)
+  finalCount              Float? @default(0)
 
   // Movimientos calculados
   entries Float @default(0)

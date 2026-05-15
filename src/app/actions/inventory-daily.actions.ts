@@ -314,6 +314,7 @@ export async function getDailyInventoryAction(
                             inventoryItemId: item.id,
                             unit: item.baseUnit,
                             initialCount: prevMap.get(item.id) || 0,
+                            theoreticalInitialCount: prevMap.get(item.id) || 0,
                             finalCount: 0,
                             entries: autoEntries.get(item.id) || 0,
                             sales: autoSales.get(item.id) || 0,
@@ -331,13 +332,25 @@ export async function getDailyInventoryAction(
             const missingCriticals = criticalItems.filter((ci: any) => !existingItemIds.has(ci.id));
 
             if (missingCriticals.length > 0) {
+                // Buscar cierre del día anterior al rango para sembrar
+                // la apertura teórica de items recién añadidos al daily.
+                const dayBeforeRange2 = new Date(effectiveStart);
+                dayBeforeRange2.setDate(dayBeforeRange2.getDate() - 1);
+                dayBeforeRange2.setHours(0, 0, 0, 0);
+                const prevDaily2 = await db.dailyInventory.findFirst({
+                    where: { date: dayBeforeRange2, areaId },
+                    include: { items: true }
+                });
+                const prevMap2 = new Map(prevDaily2?.items.map((i: any) => [i.inventoryItemId, i.finalCount]) || []);
+
                 // DailyInventoryItem no es tenant-aware; FK al daily ya validado.
                 await prisma.dailyInventoryItem.createMany({
                     data: missingCriticals.map((item: any) => ({
                         dailyInventoryId: daily!.id,
                         inventoryItemId: item.id,
                         unit: item.baseUnit,
-                        initialCount: 0,
+                        initialCount: prevMap2.get(item.id) || 0,
+                        theoreticalInitialCount: prevMap2.get(item.id) || 0,
                         finalCount: 0,
                         entries: autoEntries.get(item.id) || 0,
                         sales: autoSales.get(item.id) || 0,
@@ -359,24 +372,37 @@ export async function getDailyInventoryAction(
             }
 
             // ── SYNC 2.b: Re-sincronizar auto-values en items existentes.
-            // Como las columnas Apertura/Entradas/Ventas/Merma son read-only en
-            // UI, el operador no puede aplicar las sugerencias manualmente.
-            // Actualizamos los valores en BD para que reflejen los cómputos
-            // automáticos al cargar la página (entries de transferencias +
-            // producción, sales de transferencias + producción consumida,
-            // waste de la merma del procesamiento).
+            // Entries/Sales/Waste vienen de transferencias + producción.
+            // theoreticalInitialCount viene del cierre del día anterior y se
+            // mantiene siempre derivado (nunca editable por el usuario).
+            const dayBeforeRangeSync = new Date(effectiveStart);
+            dayBeforeRangeSync.setDate(dayBeforeRangeSync.getDate() - 1);
+            dayBeforeRangeSync.setHours(0, 0, 0, 0);
+            const prevDailySync = await db.dailyInventory.findFirst({
+                where: { date: dayBeforeRangeSync, areaId },
+                include: { items: true }
+            });
+            const prevMapSync = new Map(prevDailySync?.items.map((i: any) => [i.inventoryItemId, i.finalCount]) || []);
+
             for (const ditem of daily.items) {
                 const newEntries = autoEntries.get(ditem.inventoryItemId) || 0;
                 const newSales = autoSales.get(ditem.inventoryItemId) || 0;
                 const newWaste = autoWaste.get(ditem.inventoryItemId) || 0;
+                const newTheoreticalInit = prevMapSync.get(ditem.inventoryItemId) || 0;
                 if (
                     ditem.entries !== newEntries ||
                     ditem.sales !== newSales ||
-                    ditem.waste !== newWaste
+                    ditem.waste !== newWaste ||
+                    (ditem.theoreticalInitialCount ?? 0) !== newTheoreticalInit
                 ) {
                     await prisma.dailyInventoryItem.update({
                         where: { id: ditem.id },
-                        data: { entries: newEntries, sales: newSales, waste: newWaste },
+                        data: {
+                            entries: newEntries,
+                            sales: newSales,
+                            waste: newWaste,
+                            theoreticalInitialCount: newTheoreticalInit,
+                        },
                     });
                 }
             }
