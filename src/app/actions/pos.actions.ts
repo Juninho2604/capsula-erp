@@ -1290,10 +1290,15 @@ export async function createSalesOrderAction(
         // ====================================================================
         // REGISTRAR LÍNEAS DE PAGO MIXTO
         // ====================================================================
+        // NOTA: SalesOrderPayment NO tiene columna `tenantId` en el schema.
+        // La aislación tenant se hereda de la FK `salesOrderId` → SalesOrder
+        // (que sí tiene tenantId). PR #181 añadió `tenantId` por error aquí
+        // creyendo que el modelo lo tenía; eso causaba el error en producción:
+        //   "Unknown argument `tenantId`. Available options are marked with ?"
+        // bloqueando todos los cobros con pagos registrados.
         if (data.payments && data.payments.length > 0) {
             await prisma.salesOrderPayment.createMany({
                 data: data.payments.map(p => ({
-                    tenantId,
                     salesOrderId: newOrder!.id,
                     method: p.method,
                     amountUSD: p.amountUSD,
