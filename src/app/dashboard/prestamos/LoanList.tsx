@@ -64,7 +64,7 @@ export default function LoanList({ loans, areas }: LoanListProps) {
             });
 
             if (result.success) {
-                toast.success('Préstamo finalizado con éxito');
+                toast.success('Nota de entrega finalizada con éxito');
                 setShowResolveModal(null);
                 setResolveNotes('');
             } else {
@@ -167,7 +167,7 @@ export default function LoanList({ loans, areas }: LoanListProps) {
 
                 {loans.length === 0 && (
                     <div className="col-span-full py-12 text-center text-gray-500">
-                        No hay préstamos registrados.
+                        No hay notas de entrega registradas.
                     </div>
                 )}
             </div>
@@ -180,7 +180,7 @@ export default function LoanList({ loans, areas }: LoanListProps) {
 
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600 dark:text-gray-300">
-                                ¿Estás seguro de marcar este préstamo como completado? Esto indica que:
+                                ¿Estás seguro de marcar esta nota de entrega como completada? Esto indica que:
                             </p>
                             <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300">
                                 {loans.find(l => l.id === showResolveModal)?.type === 'PAYMENT'

@@ -255,8 +255,10 @@ export default function POSSportBarPage() {
   const [cortesiaPercent, setCortesiaPercent] = useState("100");
   const [cortesiaPinError, setCortesiaPinError] = useState("");
 
-  // ── 10% Servicio — obligatorio para todas las mesas ──────────────────────
-  const serviceFeeIncluded = true;
+  // ── 10% Servicio — default ON; eximir requiere PIN de capitán o gerente ──
+  const [serviceFeeIncluded, setServiceFeeIncluded] = useState(true);
+  const [skipServiceFeePin, setSkipServiceFeePin] = useState('');
+  const [showSkipServiceFeeModal, setShowSkipServiceFeeModal] = useState(false);
 
   // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -989,6 +991,7 @@ export default function POSSportBarPage() {
         discountType: effectiveDiscountType,
         discountReason: discountReasonText,
         serviceFeeIncluded,
+        skipServiceFeeAuthPin: !serviceFeeIncluded ? skipServiceFeePin : undefined,
       });
       if (!result.success) {
         toast.error(result.message);
@@ -2608,6 +2611,75 @@ export default function POSSportBarPage() {
                       </p>
                     )}
                   </div>
+
+                  {/* 1.b Servicio 10% — default ON, eximir con PIN capitán/gerente */}
+                  <div className="mb-3 rounded-xl border border-capsula-line bg-capsula-ivory p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-capsula-ink">10% Servicio</p>
+                        <p className="text-[10px] text-capsula-ink-muted">
+                          {serviceFeeIncluded ? 'Aplica al cobro' : 'Eximido — autorizado por PIN'}
+                        </p>
+                      </div>
+                      {serviceFeeIncluded ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowSkipServiceFeeModal(true)}
+                          className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-coral hover:text-capsula-coral"
+                        >
+                          Quitar 10%
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setServiceFeeIncluded(true); setSkipServiceFeePin(''); }}
+                          className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-navy-deep"
+                        >
+                          Restaurar 10%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {showSkipServiceFeeModal && (
+                    <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                      <div className="bg-capsula-ivory border border-capsula-line w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl">
+                        <div className="border-b border-capsula-line p-5">
+                          <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Eximir 10% servicio</h3>
+                          <p className="text-xs text-capsula-ink-muted mt-1">El cliente NO va a pagar el 10% — se requiere PIN de capitán o gerente.</p>
+                        </div>
+                        <div className="p-5 space-y-3">
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            autoFocus
+                            value={skipServiceFeePin}
+                            onChange={e => setSkipServiceFeePin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            placeholder="PIN (4-8 dígitos)"
+                            className="pos-input w-full text-center text-2xl tracking-[0.4em] font-mono"
+                          />
+                          <p className="text-[10px] text-capsula-ink-muted">El PIN se validará al cobrar. Si es inválido, el cobro se rechaza y volvés a esta pantalla.</p>
+                        </div>
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => { setShowSkipServiceFeeModal(false); setSkipServiceFeePin(''); }}
+                            className="pos-btn-secondary flex-1 py-3"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={skipServiceFeePin.length < 4}
+                            onClick={() => { setServiceFeeIncluded(false); setShowSkipServiceFeeModal(false); }}
+                            className="pos-btn flex-[2] py-3 disabled:opacity-50"
+                          >
+                            Confirmar eximir
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 2. Forma de pago */}
                   <div className="mb-3">
