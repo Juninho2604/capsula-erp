@@ -255,7 +255,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             { wch: 12 }, // Variación
         ];
 
-        XLSX.utils.book_append_sheet(wb, ws, 'Inventario Diario');
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventario Físico');
 
         // ── File name ──
         const fileName = `inventario_${selectedAreaName.replace(/\s+/g, '_').toLowerCase()}_${selectedDate}.xlsx`;
@@ -274,7 +274,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             {showRangeReport && (
                 <div className="mx-4 mt-4 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 p-4">
                     <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
-                        <h3 className="font-semibold text-base tracking-[-0.01em] text-capsula-navy">Reporte por Rango de Fechas</h3>
+                        <h3 className="font-semibold text-base tracking-[-0.01em] text-capsula-navy">Variaciones al final del día — rango de fechas</h3>
                         <div className="flex items-center gap-2 flex-wrap">
                             <input
                                 type="date"
@@ -425,7 +425,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-surface'
                             )}
                         >
-                            <BarChart3 className="mr-1 inline h-4 w-4" /> Reporte por Rango
+                            <BarChart3 className="mr-1 inline h-4 w-4" /> Variaciones por rango
                         </button>
                         <button
                             onClick={exportToExcel}
@@ -550,18 +550,18 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 <th className="min-w-[220px] border-r border-blue-500/30 px-6 py-2">
                                     <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5" /> Producto Crítico</span>
                                 </th>
-                                <th className="min-w-[90px] border-r border-blue-500/30 bg-blue-700/50 px-3 py-2 text-center">Apertura</th>
-                                <th className="min-w-[100px] border-r border-blue-500/30 bg-indigo-700/50 px-3 py-2 text-center" title="Editable. Hay sugerencia automática indicada con icono Zap.">
+                                <th className="min-w-[90px] border-r border-blue-500/30 bg-blue-700/50 px-3 py-2 text-center" title="Read-only: cierre del día anterior">Apertura</th>
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-indigo-700/50 px-3 py-2 text-center" title="Read-only: compras + transferencias del día">
                                     {isProduction ? 'Producción (+)' : 'Entradas (+)'}
                                 </th>
-                                <th className="min-w-[100px] border-r border-blue-500/30 bg-rose-700/40 px-3 py-2 text-center" title="Editable. Hay sugerencia automática indicada con icono Zap.">
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-rose-700/40 px-3 py-2 text-center" title="Read-only: ventas del POS">
                                     {isProduction ? 'Transf. Salida (−)' : 'Ventas (−)'}
                                 </th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-orange-700/40 min-w-[90px]" title="Merma / desperdicio">
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-orange-700/40 min-w-[90px]" title="Read-only: merma / desperdicio registrado">
                                     Merma (−)
                                 </th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-gray-800/20 min-w-[80px]">Teórico</th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-green-700/50 min-w-[90px]">Cierre</th>
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-gray-800/20 min-w-[80px]" title="Read-only: apertura + entradas − ventas − merma">Teórico</th>
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-green-700/50 min-w-[90px]" title="Editable: conteo físico real">Cierre</th>
                                 <th className="px-6 py-2 text-right bg-blue-800 font-extrabold underline decoration-blue-300 min-w-[100px]">Variación</th>
                             </tr>
                         </thead>
@@ -597,80 +597,32 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                             </div>
                                         </td>
 
-                                        {/* APERTURA */}
-                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
-                                            <input
-                                                type="number"
-                                                disabled={isClosed}
-                                                value={item.initialCount || 0}
-                                                onChange={e => handleInputChange(item.id, 'initialCount', e.target.value)}
-                                                className="w-20 rounded-lg border border-capsula-line bg-capsula-ivory-alt py-1.5 text-center text-sm font-bold tabular-nums text-capsula-ink focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-                                                onFocus={e => e.target.select()}
-                                                step="0.01"
-                                            />
+                                        {/* APERTURA — read-only: viene del cierre del día anterior */}
+                                        <td className="border-r border-capsula-line bg-capsula-ivory-alt px-3 py-3 text-center">
+                                            <span className="text-sm font-bold tabular-nums text-capsula-ink-muted">
+                                                {(item.initialCount || 0).toFixed(2)}
+                                            </span>
                                         </td>
 
-                                        {/* ENTRADAS */}
-                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    disabled={isClosed}
-                                                    value={item.entries || 0}
-                                                    onChange={e => handleInputChange(item.id, 'entries', e.target.value)}
-                                                    className="w-20 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-center text-sm font-bold tabular-nums text-indigo-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300"
-                                                    onFocus={e => e.target.select()}
-                                                    step="0.01"
-                                                />
-                                                {hasEntryHint && !isClosed && (
-                                                    <button
-                                                        onClick={() => applyAutoSuggestion(item.id, item.inventoryItemId, 'entries')}
-                                                        title={`Aplicar sugerencia automática: ${suggestion.autoEntries}`}
-                                                        className="rounded-full p-1 text-cyan-600 transition-colors hover:bg-cyan-100 hover:text-cyan-800 dark:hover:bg-cyan-900/30"
-                                                        aria-label="Aplicar sugerencia automática"
-                                                    >
-                                                        <Zap className="h-3.5 w-3.5" />
-                                                    </button>
-                                                )}
-                                            </div>
+                                        {/* ENTRADAS — read-only: viene de compras + transferencias */}
+                                        <td className="border-r border-capsula-line bg-indigo-50/40 px-3 py-3 text-center dark:bg-indigo-950/20">
+                                            <span className="text-sm font-bold tabular-nums text-indigo-700 dark:text-indigo-300">
+                                                +{(item.entries || 0).toFixed(2)}
+                                            </span>
                                         </td>
 
-                                        {/* VENTAS */}
-                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    disabled={isClosed}
-                                                    value={item.sales || 0}
-                                                    onChange={e => handleInputChange(item.id, 'sales', e.target.value)}
-                                                    className="w-20 rounded-lg border border-rose-200 bg-rose-50 py-1.5 text-center text-sm font-bold tabular-nums text-rose-700 focus:ring-2 focus:ring-rose-500 disabled:opacity-60 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300"
-                                                    onFocus={e => e.target.select()}
-                                                    step="0.01"
-                                                />
-                                                {hasSalesHint && !isClosed && (
-                                                    <button
-                                                        onClick={() => applyAutoSuggestion(item.id, item.inventoryItemId, 'sales')}
-                                                        title={`Aplicar sugerencia automática: ${suggestion.autoSales}`}
-                                                        className="rounded-full p-1 text-cyan-600 transition-colors hover:bg-cyan-100 hover:text-cyan-800 dark:hover:bg-cyan-900/30"
-                                                        aria-label="Aplicar sugerencia automática"
-                                                    >
-                                                        <Zap className="h-3.5 w-3.5" />
-                                                    </button>
-                                                )}
-                                            </div>
+                                        {/* VENTAS — read-only: viene del POS */}
+                                        <td className="border-r border-capsula-line bg-rose-50/40 px-3 py-3 text-center dark:bg-rose-950/20">
+                                            <span className="text-sm font-bold tabular-nums text-rose-700 dark:text-rose-300">
+                                                −{(item.sales || 0).toFixed(2)}
+                                            </span>
                                         </td>
 
-                                        {/* MERMA */}
-                                        <td className="border-r border-capsula-line px-3 py-3 text-center">
-                                            <input
-                                                type="number"
-                                                disabled={isClosed}
-                                                value={item.waste || 0}
-                                                onChange={e => handleInputChange(item.id, 'waste', e.target.value)}
-                                                className="w-20 rounded-lg border border-orange-200 bg-orange-50 py-1.5 text-center text-sm font-bold tabular-nums text-orange-700 focus:ring-2 focus:ring-orange-500 disabled:opacity-60 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300"
-                                                onFocus={e => e.target.select()}
-                                                step="0.01"
-                                            />
+                                        {/* MERMA — read-only: viene de movimientos / ajustes */}
+                                        <td className="border-r border-capsula-line bg-orange-50/40 px-3 py-3 text-center dark:bg-orange-950/20">
+                                            <span className="text-sm font-bold tabular-nums text-orange-700 dark:text-orange-300">
+                                                {(item.waste || 0).toFixed(2)}
+                                            </span>
                                         </td>
 
                                         {/* TEÓRICO */}

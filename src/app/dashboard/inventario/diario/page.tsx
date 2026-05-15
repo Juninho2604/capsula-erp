@@ -10,7 +10,7 @@ export default async function DailyInventoryPage() {
     return (
         <div className="container mx-auto p-4 space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Inventario diario de alimentos</h1>
+                <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Inventario físico</h1>
             </div>
 
             {/* Orden recomendado de operaciones */}
@@ -19,8 +19,8 @@ export default async function DailyInventoryPage() {
                 <ol className="list-inside list-decimal space-y-1 text-sm text-[#946A1C]/90 dark:text-[#E8D9B8]/90">
                     <li><strong>Transferencias</strong> → Marcar como completadas las del día (o de la semana si acumulaste)</li>
                     <li><strong>Ventas</strong> → &quot;Importar desde Cargar Ventas&quot; (si usaste POS/Cargar Ventas) o &quot;Cargar Ventas Manual&quot;</li>
-                    <li><strong>Conteos</strong> → Revisar apertura, entradas, cierre físico y guardar</li>
-                    <li><strong>Variaciones</strong> → Revisar diferencias y cerrar el día</li>
+                    <li><strong>Conteo físico</strong> → Solo se modifica la columna <em>Cierre</em> (el conteo real de existencias)</li>
+                    <li><strong>Variaciones al final del día</strong> → Revisar diferencias y cerrar el día</li>
                 </ol>
             </div>
 
