@@ -226,19 +226,25 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         // ── Header columns ──
         const headers = [
             'PRODUCTO', 'SKU', 'UNIDAD',
-            'APERTURA', 'ENTRADAS (+)', 'VENTAS/CONSUMO (−)', 'MERMA (−)',
-            'TEÓRICO', 'CIERRE REAL', 'VARIACIÓN'
+            'CIERRE NOCHE ANT.', 'APERTURA REAL', 'DIF. SALTO',
+            '+ INGRESOS', '− CONSUMO TEÓRICO', '− MERMA',
+            'CIERRE TEÓRICO', 'CIERRE REAL', 'DIF. OPERATIVA'
         ];
 
         // ── Data rows ──
         const dataRows = items.map(item => {
             const theoretical = item.theoreticalStock || 0;
             const variance = item.variance || 0;
+            const theoreticalInit = item.theoreticalInitialCount || 0;
+            const realInit = item.initialCount || 0;
+            const initDiff = realInit - theoreticalInit;
             return [
                 item.inventoryItem.name,
                 item.inventoryItem.sku,
                 item.unit,
-                item.initialCount || 0,
+                theoreticalInit,
+                realInit,
+                parseFloat(initDiff.toFixed(4)),
                 item.entries || 0,
                 item.sales || 0,
                 item.waste || 0,
@@ -251,7 +257,9 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         // ── Totals row ──
         const totalsRow = [
             `TOTALES (${items.length} items)`, '', '',
+            items.reduce((s, i) => s + (i.theoreticalInitialCount || 0), 0),
             items.reduce((s, i) => s + (i.initialCount || 0), 0),
+            items.reduce((s, i) => s + ((i.initialCount || 0) - (i.theoreticalInitialCount || 0)), 0),
             items.reduce((s, i) => s + (i.entries || 0), 0),
             items.reduce((s, i) => s + (i.sales || 0), 0),
             items.reduce((s, i) => s + (i.waste || 0), 0),
@@ -285,13 +293,15 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             { wch: 32 }, // Producto
             { wch: 14 }, // SKU
             { wch: 8 },  // Unidad
-            { wch: 12 }, // Apertura
-            { wch: 14 }, // Entradas
-            { wch: 20 }, // Ventas
+            { wch: 14 }, // Cierre Noche Ant.
+            { wch: 14 }, // Apertura Real
+            { wch: 12 }, // Dif. Salto
+            { wch: 14 }, // Ingresos
+            { wch: 18 }, // Consumo Teórico
             { wch: 12 }, // Merma
-            { wch: 12 }, // Teórico
-            { wch: 12 }, // Cierre
-            { wch: 12 }, // Variación
+            { wch: 14 }, // Cierre Teórico
+            { wch: 14 }, // Cierre Real
+            { wch: 14 }, // Dif. Operativa
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, 'Inventario Físico');
@@ -728,12 +738,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             {/* Leyenda de colores de columnas */}
             {!loading && items.length > 0 && (
                 <div className="flex flex-wrap gap-4 border-b border-capsula-line bg-capsula-ivory-alt px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">
-                    <span className="inline-flex items-center gap-1.5 text-blue-600"><span className="h-2 w-2 rounded-full bg-blue-600" /> Apertura</span>
-                    <span className="inline-flex items-center gap-1.5 text-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Entradas (+)</span>
-                    <span className="inline-flex items-center gap-1.5 text-rose-600"><span className="h-2 w-2 rounded-full bg-rose-600" /> Ventas/Consumo (−)</span>
+                    <span className="inline-flex items-center gap-1.5 text-slate-500"><span className="h-2 w-2 rounded-full bg-slate-500" /> Cierre noche ant. (auto)</span>
+                    <span className="inline-flex items-center gap-1.5 text-blue-600"><span className="h-2 w-2 rounded-full bg-blue-600" /> Apertura real (editable)</span>
+                    <span className="inline-flex items-center gap-1.5 text-amber-500"><span className="h-2 w-2 rounded-full bg-amber-500" /> Dif. salto (Apertura − Cierre noche)</span>
+                    <span className="inline-flex items-center gap-1.5 text-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Ingresos (+)</span>
+                    <span className="inline-flex items-center gap-1.5 text-rose-600"><span className="h-2 w-2 rounded-full bg-rose-600" /> Consumo teórico (−)</span>
                     <span className="inline-flex items-center gap-1.5 text-orange-500"><span className="h-2 w-2 rounded-full bg-orange-500" /> Merma (−)</span>
-                    <span className="inline-flex items-center gap-1.5 text-capsula-ink-muted"><span className="h-2 w-2 rounded-sm border border-capsula-line-strong" /> Teórico = Apertura + Entradas − Ventas − Merma</span>
-                    <span className="inline-flex items-center gap-1.5 text-green-600"><span className="h-2 w-2 rounded-full bg-green-600" /> Cierre real</span>
+                    <span className="inline-flex items-center gap-1.5 text-capsula-ink-muted"><span className="h-2 w-2 rounded-sm border border-capsula-line-strong" /> Cierre teórico = Apertura + Ingresos − Consumo − Merma</span>
+                    <span className="inline-flex items-center gap-1.5 text-green-600"><span className="h-2 w-2 rounded-full bg-green-600" /> Cierre real (editable)</span>
                     {Object.values(autoSuggestions).some(s => s.autoEntries > 0 || s.autoSales > 0) && (
                         <span className="inline-flex items-center gap-1.5 text-cyan-600"><Zap className="h-3 w-3" /> Sugerencia automática (click para aplicar)</span>
                     )}
@@ -754,25 +766,27 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 <th className="min-w-[220px] border-r border-blue-500/30 px-6 py-2">
                                     <span className="inline-flex items-center gap-1.5"><Package className="h-3.5 w-3.5" /> Producto Crítico</span>
                                 </th>
-                                <th className="min-w-[90px] border-r border-blue-500/30 bg-blue-700/50 px-3 py-2 text-center" title="Read-only: cierre del día anterior">Apertura</th>
-                                <th className="min-w-[100px] border-r border-blue-500/30 bg-indigo-700/50 px-3 py-2 text-center" title="Read-only: compras + transferencias del día">
-                                    {isProduction ? 'Producción (+)' : 'Entradas (+)'}
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-slate-700/50 px-3 py-2 text-center" title="Read-only: cierre real registrado el día anterior">Cierre Noche Ant.</th>
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-blue-700/50 px-3 py-2 text-center" title="Editable: conteo físico real al iniciar el día">Apertura Real</th>
+                                <th className="min-w-[80px] border-r border-blue-500/30 bg-amber-700/50 px-3 py-2 text-center" title="Apertura Real − Cierre Noche Ant.: salto inexplicado entre días">Dif. Salto</th>
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-indigo-700/50 px-3 py-2 text-center" title="Read-only: compras + transferencias + producción del rango">
+                                    + {isProduction ? 'Producción' : 'Ingresos'}
                                 </th>
-                                <th className="min-w-[100px] border-r border-blue-500/30 bg-rose-700/40 px-3 py-2 text-center" title="Read-only: ventas del POS">
-                                    {isProduction ? 'Transf. Salida (−)' : 'Ventas (−)'}
+                                <th className="min-w-[100px] border-r border-blue-500/30 bg-rose-700/40 px-3 py-2 text-center" title="Read-only: consumo POS + consumo por procesamiento del rango">
+                                    − {isProduction ? 'Transf. Salida' : 'Consumo Teórico'}
                                 </th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-orange-700/40 min-w-[90px]" title="Read-only: merma / desperdicio registrado">
-                                    Merma (−)
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-orange-700/40 min-w-[90px]" title="Read-only: merma / desperdicio del rango (incluye merma de procesamientos)">
+                                    − Merma
                                 </th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-gray-800/20 min-w-[80px]" title="Read-only: apertura + entradas − ventas − merma">Teórico</th>
-                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-green-700/50 min-w-[90px]" title="Editable: conteo físico real">Cierre</th>
-                                <th className="px-6 py-2 text-right bg-blue-800 font-extrabold underline decoration-blue-300 min-w-[100px]">Variación</th>
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-gray-800/20 min-w-[100px]" title="Read-only: Apertura Real + Ingresos − Consumo − Merma">Cierre Teórico</th>
+                                <th className="px-3 py-2 text-center border-r border-blue-500/30 bg-green-700/50 min-w-[100px]" title="Editable: conteo físico real al cerrar el turno / período">Cierre Real</th>
+                                <th className="px-6 py-2 text-right bg-blue-800 font-extrabold underline decoration-blue-300 min-w-[110px]" title="Cierre Real − Cierre Teórico">Dif. Operativa</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-capsula-line">
                             {items.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="bg-capsula-ivory-alt px-4 py-12 text-center text-capsula-ink-muted">
+                                    <td colSpan={10} className="bg-capsula-ivory-alt px-4 py-12 text-center text-capsula-ink-muted">
                                         No hay productos críticos asignados a este reporte.<br />
                                         <button onClick={() => setShowConfig(true)} className="mt-2 text-sm text-capsula-coral underline">
                                             Configurar lista de items críticos →
@@ -801,12 +815,52 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                             </div>
                                         </td>
 
-                                        {/* APERTURA — read-only: viene del cierre del día anterior */}
-                                        <td className="border-r border-capsula-line bg-capsula-ivory-alt px-3 py-3 text-center">
+                                        {/* CIERRE NOCHE ANT. — read-only: cierre real del día anterior */}
+                                        <td className="border-r border-capsula-line bg-slate-50/40 dark:bg-slate-900/20 px-3 py-3 text-center">
                                             <span className="text-sm font-bold tabular-nums text-capsula-ink-muted">
-                                                {(item.initialCount || 0).toFixed(2)}
+                                                {(item.theoreticalInitialCount || 0).toFixed(2)}
                                             </span>
                                         </td>
+
+                                        {/* APERTURA REAL — editable: conteo físico real al iniciar el día.
+                                            DIF. SALTO en columna aparte, resaltada si > 2% y > 0.5. */}
+                                        {(() => {
+                                            const theoreticalInit = item.theoreticalInitialCount || 0;
+                                            const realInit = item.initialCount || 0;
+                                            const initDiff = realInit - theoreticalInit;
+                                            const initDiffAbs = Math.abs(initDiff);
+                                            const initDiffPct = theoreticalInit > 0.001 ? initDiffAbs / theoreticalInit : 0;
+                                            const hasOpeningGap = initDiffAbs > 0.5 && initDiffPct > 0.02;
+                                            return (
+                                                <>
+                                                    <td className="border-r border-capsula-line bg-blue-50/40 dark:bg-blue-950/20 px-3 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={realInit}
+                                                            onChange={e => handleInputChange(item.id, 'initialCount', e.target.value)}
+                                                            className={cn(
+                                                                "w-20 rounded-lg border px-2 py-1.5 text-center text-sm font-bold tabular-nums",
+                                                                hasOpeningGap
+                                                                    ? "border-rose-400 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-200"
+                                                                    : "border-capsula-line bg-capsula-ivory text-capsula-ink"
+                                                            )}
+                                                        />
+                                                    </td>
+                                                    <td
+                                                        className={cn(
+                                                            "border-r border-capsula-line px-3 py-3 text-center text-sm font-bold tabular-nums",
+                                                            hasOpeningGap
+                                                                ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200"
+                                                                : "bg-amber-50/40 dark:bg-amber-950/20 text-capsula-ink-muted"
+                                                        )}
+                                                        title={hasOpeningGap ? `Salto significativo: ${(initDiffPct * 100).toFixed(1)}%` : 'Sin salto significativo'}
+                                                    >
+                                                        {initDiff === 0 ? '0.00' : `${initDiff > 0 ? '+' : ''}${initDiff.toFixed(2)}`}
+                                                    </td>
+                                                </>
+                                            );
+                                        })()}
 
                                         {/* ENTRADAS — read-only: viene de compras + transferencias */}
                                         <td className="border-r border-capsula-line bg-indigo-50/40 px-3 py-3 text-center dark:bg-indigo-950/20">
@@ -873,9 +927,23 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             <tfoot className="sticky bottom-0 bg-capsula-navy-deep text-capsula-cream">
                                 <tr className="text-xs font-black uppercase tracking-widest">
                                     <td className="px-6 py-2 text-capsula-cream/80">TOTALES ({items.length} items)</td>
+                                    <td className="px-3 py-2 text-center font-mono tabular-nums text-slate-300">
+                                        {items.reduce((s, i) => s + (i.theoreticalInitialCount || 0), 0).toFixed(2)}
+                                    </td>
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-blue-300">
                                         {items.reduce((s, i) => s + (i.initialCount || 0), 0).toFixed(2)}
                                     </td>
+                                    {(() => {
+                                        const totalDiff = items.reduce((s, i) => s + ((i.initialCount || 0) - (i.theoreticalInitialCount || 0)), 0);
+                                        return (
+                                            <td className={cn(
+                                                "px-3 py-2 text-center font-mono tabular-nums",
+                                                Math.abs(totalDiff) > 0.01 ? 'text-amber-300' : 'text-capsula-cream/60'
+                                            )}>
+                                                {totalDiff === 0 ? '0.00' : `${totalDiff > 0 ? '+' : ''}${totalDiff.toFixed(2)}`}
+                                            </td>
+                                        );
+                                    })()}
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-indigo-300">
                                         +{items.reduce((s, i) => s + (i.entries || 0), 0).toFixed(2)}
                                     </td>
