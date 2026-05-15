@@ -2493,6 +2493,156 @@ export async function getUsersForTabAction(): Promise<ActionResult> {
 }
 
 // ============================================================================
+// CORTESÍA POR ÍTEM
+// ============================================================================
+//
+// Marca un ítem individual de la mesa como "cortesía de la casa" (no se
+// cobra). Resta el lineTotal del OpenTab (runningSubtotal, runningTotal,
+// balanceDue). La comanda a cocina YA fue procesada — la cortesía solo
+// afecta el cobro, no la operación.
+//
+// Solo capitanes (Waiter.isCaptain) y gerentes (User en MANAGER_ROLES)
+// pueden autorizar via PIN. Reusa `resolveVoidAuthPin` para no duplicar
+// lógica de auth.
+//
+// Reversible con `unmarkItemCourtesyAction` (mismo PIN check).
+// ============================================================================
+
+export async function markItemAsCourtesyAction({
+    itemId,
+    captainPin,
+    reason,
+}: {
+    itemId: string;
+    captainPin: string;
+    reason?: string;
+}): Promise<ActionResult> {
+    const db = await getTenantDb();
+    try {
+        if (!captainPin || captainPin.trim().length < 4) {
+            return { success: false, message: 'PIN inválido' };
+        }
+
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
+        if (!branch) return { success: false, message: 'Sin sucursal activa' };
+
+        const auth = await resolveVoidAuthPin(captainPin, branch.id);
+        if (!auth) {
+            return { success: false, message: 'PIN de capitán o gerente incorrecto' };
+        }
+
+        const item = await db.salesOrderItem.findUnique({
+            where: { id: itemId },
+            include: { order: { select: { openTabId: true, status: true } } },
+        });
+        if (!item) return { success: false, message: 'Ítem no encontrado' };
+        if (item.voidedAt) return { success: false, message: 'El ítem está anulado' };
+        if (item.isCourtesy) return { success: false, message: 'El ítem ya es cortesía' };
+
+        await db.$transaction(async (tx) => {
+            await tx.salesOrderItem.update({
+                where: { id: itemId },
+                data: {
+                    isCourtesy: true,
+                    courtesyReason: reason?.trim() || null,
+                    courtesyAuthorizedByLabel: auth.name,
+                    courtesyAuthorizedByUserId: auth.userId ?? null,
+                    courtesyAuthorizedAt: new Date(),
+                },
+            });
+
+            // Si la orden está en una mesa abierta, restar el lineTotal
+            // del running de la tab. Si es una orden directa (delivery,
+            // pickup) ya cobrada, no aplicaría — pero igual el flag
+            // queda guardado para reportería.
+            if (item.order.openTabId) {
+                await tx.openTab.update({
+                    where: { id: item.order.openTabId },
+                    data: {
+                        runningSubtotal: { decrement: item.lineTotal },
+                        runningTotal: { decrement: item.lineTotal },
+                        balanceDue: { decrement: item.lineTotal },
+                    },
+                });
+            }
+        });
+
+        revalidatePath('/dashboard/pos/mesero');
+        revalidatePath('/dashboard/pos/restaurante');
+
+        return {
+            success: true,
+            message: `Cortesía aplicada por ${auth.name}`,
+            data: { authorizerName: auth.name },
+        };
+    } catch (error) {
+        console.error('markItemAsCourtesyAction error:', error);
+        return { success: false, message: 'Error aplicando cortesía' };
+    }
+}
+
+export async function unmarkItemCourtesyAction({
+    itemId,
+    captainPin,
+}: {
+    itemId: string;
+    captainPin: string;
+}): Promise<ActionResult> {
+    const db = await getTenantDb();
+    try {
+        if (!captainPin || captainPin.trim().length < 4) {
+            return { success: false, message: 'PIN inválido' };
+        }
+
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
+        if (!branch) return { success: false, message: 'Sin sucursal activa' };
+
+        const auth = await resolveVoidAuthPin(captainPin, branch.id);
+        if (!auth) return { success: false, message: 'PIN de capitán o gerente incorrecto' };
+
+        const item = await db.salesOrderItem.findUnique({
+            where: { id: itemId },
+            include: { order: { select: { openTabId: true } } },
+        });
+        if (!item) return { success: false, message: 'Ítem no encontrado' };
+        if (!item.isCourtesy) return { success: false, message: 'El ítem no estaba en cortesía' };
+
+        await db.$transaction(async (tx) => {
+            await tx.salesOrderItem.update({
+                where: { id: itemId },
+                data: {
+                    isCourtesy: false,
+                    courtesyReason: null,
+                    courtesyAuthorizedByLabel: null,
+                    courtesyAuthorizedByUserId: null,
+                    courtesyAuthorizedAt: null,
+                },
+            });
+
+            if (item.order.openTabId) {
+                // Devolver el lineTotal al tab.
+                await tx.openTab.update({
+                    where: { id: item.order.openTabId },
+                    data: {
+                        runningSubtotal: { increment: item.lineTotal },
+                        runningTotal: { increment: item.lineTotal },
+                        balanceDue: { increment: item.lineTotal },
+                    },
+                });
+            }
+        });
+
+        revalidatePath('/dashboard/pos/mesero');
+        revalidatePath('/dashboard/pos/restaurante');
+
+        return { success: true, message: `Cortesía removida por ${auth.name}` };
+    } catch (error) {
+        console.error('unmarkItemCourtesyAction error:', error);
+        return { success: false, message: 'Error removiendo cortesía' };
+    }
+}
+
+// ============================================================================
 // SUBCUENTAS — División de cuenta por persona / grupo
 // ============================================================================
 

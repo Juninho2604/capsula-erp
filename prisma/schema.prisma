@@ -120,6 +120,7 @@ model User {
   authorizedTransfers TableTransfer[]  @relation("TransferAuthorizedByUser")
   voidedOrders        SalesOrder[]     @relation("SalesOrderVoider")
   voidedItems         SalesOrderItem[] @relation("ItemVoidedByUser")
+  courtesyAuthorizedItems SalesOrderItem[] @relation("ItemCourtesyAuthorizedBy")
   openedTabs          OpenTab[]        @relation("OpenTabOpener")
   assignedTabs        OpenTab[]        @relation("OpenTabAssignee")
   closedTabs          OpenTab[]        @relation("OpenTabCloser")
@@ -1101,6 +1102,20 @@ model SalesOrderItem {
   // Asignaciones a subcuentas
   subAccountItems SubAccountItem[]
 
+  // Cortesía: ítem marcado como "invita la casa", no se cobra (lineTotal
+  // se EXCLUYE de runningTotal/balanceDue de la tab al recalcular). La
+  // comanda a cocina YA fue procesada — la cortesía solo afecta el cobro,
+  // no la operación. Solo capitanes/sub-capitanes (Waiter.isCaptain) o
+  // managers pueden marcar/desmarcar via PIN.
+  isCourtesy                 Boolean   @default(false)
+  courtesyReason             String?
+  // Snapshot del nombre del autorizador (waiter capitán o user gerente).
+  // String libre para soportar ambos casos sin múltiples FK opcionales.
+  courtesyAuthorizedByLabel  String?
+  courtesyAuthorizedByUserId String?
+  courtesyAuthorizedByUser   User?    @relation("ItemCourtesyAuthorizedBy", fields: [courtesyAuthorizedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  courtesyAuthorizedAt       DateTime?
+
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1109,6 +1124,7 @@ model SalesOrderItem {
   @@index([menuItemId])
   @@index([voidedAt])
   @@index([voidedByWaiterId])
+  @@index([isCourtesy])
   @@index([voidedByUserId])
   @@index([tenantId])
 }
