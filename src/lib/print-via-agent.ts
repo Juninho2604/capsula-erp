@@ -93,7 +93,8 @@ export interface AgentKitchenPayload {
 
 /**
  * Categorías del menú que se imprimen en la BARRA.
- * Si una categoría no está aquí, se considera de cocina.
+ * Si una categoría no está aquí (ni hace match con palabras clave de bar),
+ * se considera de cocina.
  *
  * Cuando llegue la 4ta impresora (línea fría), añadiremos
  * `CATEGORIES_BY_STATION` con `kitchen-pase`, `kitchen-caliente` y
@@ -103,9 +104,61 @@ export interface AgentKitchenPayload {
  */
 const BAR_CATEGORIES: readonly string[] = ['Bebidas'];
 
+/**
+ * Palabras clave (case-insensitive) en el nombre de la categoría que la
+ * marcan automáticamente como BARRA, aunque la categoría exacta no esté
+ * en `BAR_CATEGORIES`. Útil para categorías nuevas que el admin agregue
+ * sin acordarse de actualizar BAR_CATEGORIES (ej. "Licores", "Cocteles
+ * de la casa", "Vinos premium", "Cervezas artesanales", "Café").
+ *
+ * Si quieres que un item con categoría "X" vaya a barra, asegúrate que
+ * X contenga alguna de estas palabras. Si no aplica ninguna, agregalo
+ * a BAR_CATEGORIES (match exacto).
+ */
+const BAR_KEYWORDS: readonly string[] = [
+    'bebida',
+    'licor',
+    'coctel',  // cubre "cocteles", "coctelería"
+    'cocktail',
+    'cerveza',
+    'vino',
+    'champaña',
+    'champagne',
+    'espumante',
+    'whisky',
+    'whiskey',
+    'ron',
+    'vodka',
+    'gin',
+    'ginebra',
+    'tequila',
+    'aperitivo',
+    'destilado',
+    'jugo',
+    'refresco',
+    'soda',
+    'agua',
+    'cafe',
+    'café',
+    'te',
+    'té',
+    'infusi',  // infusión, infusiones
+];
+
 function classifyStation(categoryName?: string): 'bar' | 'kitchen' {
     if (!categoryName) return 'kitchen';
-    return BAR_CATEGORIES.includes(categoryName) ? 'bar' : 'kitchen';
+    // 1. Match exacto (rápido)
+    if (BAR_CATEGORIES.includes(categoryName)) return 'bar';
+    // 2. Match por palabra clave (case-insensitive, sin acentos)
+    const normalized = categoryName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, ''); // quita acentos
+    for (const kw of BAR_KEYWORDS) {
+        const kwNorm = kw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        if (normalized.includes(kwNorm)) return 'bar';
+    }
+    return 'kitchen';
 }
 
 /**
