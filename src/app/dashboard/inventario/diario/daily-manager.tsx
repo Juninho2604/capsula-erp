@@ -51,6 +51,14 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const [syncingSales, setSyncingSales] = useState(false);
     const [autoSuggestions, setAutoSuggestions] = useState<Record<string, { autoEntries: number; autoSales: number }>>({});
 
+    // Vista acumulada por rango (Fase 4 — por sesión)
+    const [rangeMode, setRangeMode] = useState(false);
+    const [rangeStartDate, setRangeStartDateField] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 6); // default: 7 días atrás
+        return d.toISOString().split('T')[0];
+    });
+
     // Filtros sumables de SKU críticos (Fase 2 — por sesión, no persiste)
     const [showFilters, setShowFilters] = useState(false);
     const [filterByCost, setFilterByCost] = useState(false);
@@ -93,12 +101,13 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         if (!selectedArea) return;
         loadData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedDate, selectedArea, filterByCost, filterByCostTopN, filterByCategory, filterCategoryValues, filterCompletos, filterTodos]);
+    }, [selectedDate, selectedArea, filterByCost, filterByCostTopN, filterByCategory, filterCategoryValues, filterCompletos, filterTodos, rangeMode, rangeStartDate]);
 
     async function loadData() {
         setLoading(true);
         try {
-            const res = await getDailyInventoryAction(selectedDate, selectedArea, buildFilters());
+            const accumulateFrom = rangeMode && rangeStartDate < selectedDate ? rangeStartDate : null;
+            const res = await getDailyInventoryAction(selectedDate, selectedArea, buildFilters(), accumulateFrom);
             if (res.success && res.data) {
                 setData(res.data);
                 setItems(res.data.items);
@@ -546,13 +555,43 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-capsula-line bg-capsula-ivory-alt p-4">
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex flex-col">
-                        <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Fecha de Auditoría</label>
+                        <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">
+                            {rangeMode ? 'Hasta' : 'Fecha de Auditoría'}
+                        </label>
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={e => setSelectedDate(e.target.value)}
                             className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-sm font-bold text-capsula-ink shadow-sm"
                         />
+                    </div>
+                    {rangeMode && (
+                        <div className="flex flex-col">
+                            <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Desde</label>
+                            <input
+                                type="date"
+                                value={rangeStartDate}
+                                max={selectedDate}
+                                onChange={e => setRangeStartDateField(e.target.value)}
+                                className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-sm font-bold text-capsula-ink shadow-sm"
+                            />
+                        </div>
+                    )}
+                    <div className="flex flex-col self-end">
+                        <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Vista</label>
+                        <button
+                            type="button"
+                            onClick={() => setRangeMode(!rangeMode)}
+                            className={cn(
+                                "rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition-all",
+                                rangeMode
+                                    ? 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-200'
+                                    : 'border-capsula-line bg-capsula-ivory text-capsula-ink hover:bg-capsula-ivory-surface'
+                            )}
+                            title="En modo rango, Entradas/Ventas/Merma se acumulan desde la fecha 'Desde' hasta 'Hasta'. La Apertura es el cierre del día anterior al rango."
+                        >
+                            {rangeMode ? 'Rango acumulado' : 'Día único'}
+                        </button>
                     </div>
                     <div className="flex flex-col">
                         <label className="px-1 text-[10px] font-bold uppercase tracking-widest text-capsula-ink-muted">Área / Ubicación</label>

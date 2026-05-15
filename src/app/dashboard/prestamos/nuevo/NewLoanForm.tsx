@@ -70,14 +70,14 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
             });
 
             if (result.success) {
-                toast.success('Préstamo creado con éxito');
+                toast.success('Nota de Entrega creado con éxito');
                 router.push('/dashboard/prestamos');
                 router.refresh();
             } else {
                 toast.error(result.message);
             }
         } catch (error) {
-            toast.error('Error al crear préstamo');
+            toast.error('Error al crear nota de entrega');
         } finally {
             setIsSubmitting(false);
         }
@@ -94,7 +94,7 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                     ←
                 </Link>
                 <div>
-                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Registrar Préstamo</h1>
+                    <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Registrar Nota de Entrega</h1>
                     <p className="text-gray-500">
                         Salida de insumos a terceros
                     </p>
@@ -239,7 +239,7 @@ export default function NewLoanForm({ items, areas }: NewLoanFormProps) {
                             disabled={isSubmitting || !loaneeName || !selectedItemId || !fromAreaId || quantity <= 0}
                             className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isSubmitting ? 'Registrando...' : 'Registrar Préstamo'}
+                            {isSubmitting ? 'Registrando...' : 'Registrar Nota de Entrega'}
                         </button>
                     </div>
                 </div>

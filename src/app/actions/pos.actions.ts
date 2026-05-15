@@ -127,7 +127,12 @@ export interface RegisterOpenTabPaymentInput {
     discountAmount?: number;
     discountType?: string;   // 'DIVISAS_33', 'CORTESIA_100', 'CORTESIA_PERCENT', 'NONE'
     discountReason?: string; // texto auditable: "Pago en Divisas (33.33%)", etc.
-    serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal)
+    serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal). Default: true para TABLE_SERVICE.
+    /**
+     * PIN de capitán o gerente necesario para EXIMIR del 10% servicio
+     * (cuando serviceFeeIncluded === false en una mesa TABLE_SERVICE).
+     */
+    skipServiceFeeAuthPin?: string;
 }
 
 export interface ActionResult {
@@ -1817,9 +1822,23 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const nextOrderPaymentStatus = newBalance === 0 ? 'PAID' : 'PARTIAL';
         const nextPaymentMethod = openTab.paymentSplits.length > 0 ? 'MULTIPLE' : data.paymentMethod;
 
-        // 10% service charge is mandatory for all TABLE_SERVICE tabs
+        // 10% service charge: default ON para TABLE_SERVICE; eximir requiere
+        // PIN de capitán/gerente.
         const isTableService = openTab.serviceType === 'TABLE_SERVICE';
-        const serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
+        const wantsSkipServiceFee = isTableService && data.serviceFeeIncluded === false;
+        let serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
+
+        if (wantsSkipServiceFee) {
+            const pin = (data.skipServiceFeeAuthPin || '').trim();
+            if (pin.length < 4) {
+                return { success: false, message: 'Para quitar el 10% servicio se requiere PIN de capitán o gerente.' };
+            }
+            const auth = await resolveVoidAuthPin(pin, openTab.branchId);
+            if (!auth) {
+                return { success: false, message: 'PIN de capitán o gerente incorrecto.' };
+            }
+            serviceCharge = 0;
+        }
 
         const updatedTab = await db.$transaction(async (tx) => {
             await assertOpenTabVersionUpdate({

@@ -60,6 +60,13 @@ export async function getDailyInventoryAction(
     dateStr: string,
     areaId: string,
     filters?: CriticalFilters | null,
+    /**
+     * Si se pasa una fecha de inicio anterior a `dateStr`, el inventario muestra
+     * la SUMA acumulada de entradas/salidas/merma desde `accumulateFromDate`
+     * hasta `dateStr`, y la Apertura corresponde al cierre del día anterior al
+     * rango. Útil para inventario semanal/quincenal en lugar de diario.
+     */
+    accumulateFromDate?: string | null,
 ) {
     try {
         const date = new Date(dateStr);
@@ -67,6 +74,14 @@ export async function getDailyInventoryAction(
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
+
+        // Rango acumulado: si accumulateFromDate < dateStr, los queries de
+        // entries/sales/waste cubren TODO el período. El "Apertura" se toma
+        // del día anterior a accumulateFromDate.
+        const rangeStartDate = accumulateFromDate ? new Date(accumulateFromDate) : startOfDay;
+        rangeStartDate.setHours(0, 0, 0, 0);
+        const isRangedView = rangeStartDate.getTime() < startOfDay.getTime();
+        const effectiveStart = isRangedView ? rangeStartDate : startOfDay;
 
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
@@ -170,10 +185,13 @@ export async function getDailyInventoryAction(
         }
 
         // 3. CALCULAR ENTRADAS Y SALIDAS AUTOMÁTICAS SEGÚN EL ÁREA
+        // En vista ranged: cubre [effectiveStart .. endOfDay]. En vista diaria:
+        // [startOfDay .. endOfDay] (= [effectiveStart .. endOfDay] porque
+        // effectiveStart = startOfDay).
         const transferDateFilter = {
             OR: [
-                { processedAt: { gte: startOfDay, lte: endOfDay } },
-                { AND: [{ processedAt: null }, { createdAt: { gte: startOfDay, lte: endOfDay } }] }
+                { processedAt: { gte: effectiveStart, lte: endOfDay } },
+                { AND: [{ processedAt: null }, { createdAt: { gte: effectiveStart, lte: endOfDay } }] }
             ]
         };
 
@@ -213,26 +231,44 @@ export async function getDailyInventoryAction(
             }
         }
 
-        // ── Producciones completadas hoy (entradas para Centro de Producción) ──
+        // ── Producciones completadas hoy ──
+        // - Sub-products (outputs) → Entradas del item de salida
+        // - Source item:
+        //   · totalSubProducts → Salidas del source (lo que se transformó)
+        //   · wasteWeight (input − outputs) → Merma del source
         const completedProductions = await db.proteinProcessing.findMany({
             where: {
                 areaId: areaId,
                 status: 'COMPLETED',
-                completedAt: { gte: startOfDay, lte: endOfDay }
+                completedAt: { gte: effectiveStart, lte: endOfDay }
             },
             include: { subProducts: true }
         });
         const entriesFromProduction = new Map<string, number>();
+        const salesFromProduction = new Map<string, number>();
+        const wasteFromProduction = new Map<string, number>();
         for (const proc of completedProductions) {
+            // Outputs → entradas de los items de subproducto
+            let totalSubProductsForProc = 0;
             for (const sub of proc.subProducts) {
                 if (sub.outputItemId) {
                     const current = entriesFromProduction.get(sub.outputItemId) || 0;
                     entriesFromProduction.set(sub.outputItemId, current + sub.weight);
                 }
+                totalSubProductsForProc += sub.weight;
+            }
+            // Source item:
+            //   Salidas = totalSubProducts (lo que efectivamente se transformó)
+            //   Merma = wasteWeight (la pérdida del proceso)
+            if (proc.sourceItemId) {
+                const curSales = salesFromProduction.get(proc.sourceItemId) || 0;
+                salesFromProduction.set(proc.sourceItemId, curSales + totalSubProductsForProc);
+                const curWaste = wasteFromProduction.get(proc.sourceItemId) || 0;
+                wasteFromProduction.set(proc.sourceItemId, curWaste + (proc.wasteWeight || 0));
             }
         }
 
-        // ── Combinar entradas/salidas ──
+        // ── Combinar entradas/salidas/merma ──
         const autoEntries = new Map<string, number>();
         for (const [id, qty] of Array.from(entriesFromTransfers.entries())) {
             autoEntries.set(id, (autoEntries.get(id) || 0) + qty);
@@ -245,14 +281,24 @@ export async function getDailyInventoryAction(
         for (const [id, qty] of Array.from(salesFromTransfers.entries())) {
             autoSales.set(id, (autoSales.get(id) || 0) + qty);
         }
+        for (const [id, qty] of Array.from(salesFromProduction.entries())) {
+            autoSales.set(id, (autoSales.get(id) || 0) + qty);
+        }
+
+        const autoWaste = new Map<string, number>();
+        for (const [id, qty] of Array.from(wasteFromProduction.entries())) {
+            autoWaste.set(id, (autoWaste.get(id) || 0) + qty);
+        }
 
         // 4. CREAR O SINCRONIZAR
         if (!daily) {
-            // Buscar día anterior para arrastre automático
-            const yesterday = new Date(startOfDay);
-            yesterday.setDate(yesterday.getDate() - 1);
+            // Apertura = cierre del día anterior al rango (en ranged) o del
+            // día anterior a hoy (en single-day).
+            const dayBeforeRange = new Date(effectiveStart);
+            dayBeforeRange.setDate(dayBeforeRange.getDate() - 1);
+            dayBeforeRange.setHours(0, 0, 0, 0);
             const prevDaily = await db.dailyInventory.findFirst({
-                where: { date: yesterday, areaId },
+                where: { date: dayBeforeRange, areaId },
                 include: { items: true }
             });
             const prevMap = new Map(prevDaily?.items.map((i: any) => [i.inventoryItemId, i.finalCount]) || []);
@@ -271,7 +317,7 @@ export async function getDailyInventoryAction(
                             finalCount: 0,
                             entries: autoEntries.get(item.id) || 0,
                             sales: autoSales.get(item.id) || 0,
-                            waste: 0,
+                            waste: autoWaste.get(item.id) || 0,
                             theoreticalStock: 0,
                             variance: 0
                         }))
@@ -295,7 +341,7 @@ export async function getDailyInventoryAction(
                         finalCount: 0,
                         entries: autoEntries.get(item.id) || 0,
                         sales: autoSales.get(item.id) || 0,
-                        waste: 0,
+                        waste: autoWaste.get(item.id) || 0,
                         theoreticalStock: 0,
                         variance: 0
                     }))
@@ -310,6 +356,29 @@ export async function getDailyInventoryAction(
                 await prisma.dailyInventoryItem.deleteMany({
                     where: { id: { in: nonCriticalDailyItems.map((i: any) => i.id) } }
                 });
+            }
+
+            // ── SYNC 2.b: Re-sincronizar auto-values en items existentes.
+            // Como las columnas Apertura/Entradas/Ventas/Merma son read-only en
+            // UI, el operador no puede aplicar las sugerencias manualmente.
+            // Actualizamos los valores en BD para que reflejen los cómputos
+            // automáticos al cargar la página (entries de transferencias +
+            // producción, sales de transferencias + producción consumida,
+            // waste de la merma del procesamiento).
+            for (const ditem of daily.items) {
+                const newEntries = autoEntries.get(ditem.inventoryItemId) || 0;
+                const newSales = autoSales.get(ditem.inventoryItemId) || 0;
+                const newWaste = autoWaste.get(ditem.inventoryItemId) || 0;
+                if (
+                    ditem.entries !== newEntries ||
+                    ditem.sales !== newSales ||
+                    ditem.waste !== newWaste
+                ) {
+                    await prisma.dailyInventoryItem.update({
+                        where: { id: ditem.id },
+                        data: { entries: newEntries, sales: newSales, waste: newWaste },
+                    });
+                }
             }
 
             // ── SYNC 3: Releer daily con datos actualizados ──
