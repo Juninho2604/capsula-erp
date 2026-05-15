@@ -28,7 +28,39 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 // ============================================================================
 // OBTENER INVENTARIO DIARIO (Sincronizado con Transferencias y Producciones)
 // ============================================================================
-export async function getDailyInventoryAction(dateStr: string, areaId: string) {
+/**
+ * Filtros sumables para definir qué SKUs aparecen como "críticos" en el
+ * inventario físico del día. Cuando al menos uno está activo, la unión de
+ * todos los resultados reemplaza la lista manual (AreaCriticalItem).
+ * Si todos vienen vacíos/undefined → fallback al comportamiento histórico
+ * (lista manual).
+ */
+export interface CriticalFilters {
+    /** Top N items por costo unitario (desc). null = filtro inactivo. */
+    byCost?: { topN: number } | null;
+    /** Items cuyo `category` está en la lista. Vacío = filtro inactivo. */
+    byCategory?: { values: string[] } | null;
+    /** Items con data completa: category != null && description != null && cost > 0 */
+    completos?: boolean | null;
+    /** Todos los items del catálogo (override de los demás). */
+    todos?: boolean | null;
+}
+
+function hasActiveFilters(f?: CriticalFilters | null): boolean {
+    if (!f) return false;
+    return (
+        !!f.todos ||
+        !!f.completos ||
+        (!!f.byCost && f.byCost.topN > 0) ||
+        (!!f.byCategory && f.byCategory.values.length > 0)
+    );
+}
+
+export async function getDailyInventoryAction(
+    dateStr: string,
+    areaId: string,
+    filters?: CriticalFilters | null,
+) {
     try {
         const date = new Date(dateStr);
         const startOfDay = new Date(date);
@@ -60,13 +92,82 @@ export async function getDailyInventoryAction(dateStr: string, areaId: string) {
             }
         });
 
-        // 2. Obtener ITEMS CRÍTICOS POR ÁREA. AreaCriticalItem no es tenant-aware
-        // pero el areaId ya está validado upstream → scope correcto.
-        const areaCriticals = await prisma.areaCriticalItem.findMany({
-            where: { areaId },
-            include: { inventoryItem: true }
-        });
-        const criticalItems = areaCriticals.map(ac => ac.inventoryItem).filter(i => i.isActive);
+        // 2. Obtener ITEMS CRÍTICOS — dos modos:
+        //    a) filtros activos → unión de los 4 filtros (por costo, categoría, completos, todos)
+        //    b) sin filtros → lista manual histórica (AreaCriticalItem)
+        let criticalItems: Array<{ id: string; name: string; sku: string; baseUnit: string; isActive: boolean }> = [];
+
+        if (hasActiveFilters(filters)) {
+            const f = filters!;
+            const matchedIds = new Set<string>();
+
+            // "Todos" domina: incluye todos los items activos del catálogo.
+            if (f.todos) {
+                const all = await db.inventoryItem.findMany({
+                    where: { isActive: true },
+                    select: { id: true, name: true, sku: true, baseUnit: true, isActive: true },
+                });
+                for (const it of all) matchedIds.add(it.id);
+            }
+
+            // "Por categoría": items cuya category está en values.
+            if (f.byCategory && f.byCategory.values.length > 0) {
+                const byCat = await db.inventoryItem.findMany({
+                    where: { isActive: true, category: { in: f.byCategory.values } },
+                    select: { id: true },
+                });
+                for (const it of byCat) matchedIds.add(it.id);
+            }
+
+            // "Completos": tienen category, description y al menos un CostHistory > 0.
+            if (f.completos) {
+                const candidates = await db.inventoryItem.findMany({
+                    where: {
+                        isActive: true,
+                        category: { not: null },
+                        description: { not: null },
+                    },
+                    select: { id: true, costHistory: { take: 1, orderBy: { effectiveFrom: 'desc' }, select: { costPerUnit: true } } },
+                });
+                for (const it of candidates) {
+                    const cost = it.costHistory[0]?.costPerUnit ?? 0;
+                    if (cost > 0) matchedIds.add(it.id);
+                }
+            }
+
+            // "Por costo": top N por costo unitario actual (desc).
+            if (f.byCost && f.byCost.topN > 0) {
+                const all = await db.inventoryItem.findMany({
+                    where: { isActive: true },
+                    select: { id: true, costHistory: { take: 1, orderBy: { effectiveFrom: 'desc' }, select: { costPerUnit: true } } },
+                });
+                const ranked = all
+                    .map((it: { id: string; costHistory: { costPerUnit: number }[] }) => ({ id: it.id, cost: it.costHistory[0]?.costPerUnit ?? 0 }))
+                    .filter((x: { id: string; cost: number }) => x.cost > 0)
+                    .sort((a: { id: string; cost: number }, b: { id: string; cost: number }) => b.cost - a.cost)
+                    .slice(0, f.byCost.topN);
+                for (const x of ranked) matchedIds.add(x.id);
+            }
+
+            // Cargar info de los items matched (con datos para el flujo posterior).
+            if (matchedIds.size > 0) {
+                const items = await db.inventoryItem.findMany({
+                    where: { id: { in: Array.from(matchedIds) }, isActive: true },
+                    select: { id: true, name: true, sku: true, baseUnit: true, isActive: true },
+                });
+                criticalItems = items;
+            }
+        } else {
+            // Fallback: lista manual por área (comportamiento histórico).
+            // AreaCriticalItem no es tenant-aware; el areaId ya validado upstream.
+            const areaCriticals = await prisma.areaCriticalItem.findMany({
+                where: { areaId },
+                include: { inventoryItem: true }
+            });
+            criticalItems = areaCriticals
+                .map(ac => ac.inventoryItem)
+                .filter((i: { isActive: boolean }) => i.isActive);
+        }
 
         // 3. CALCULAR ENTRADAS Y SALIDAS AUTOMÁTICAS SEGÚN EL ÁREA
         const transferDateFilter = {
@@ -799,6 +900,30 @@ export async function getCriticalProteinItemsAction(areaId: string) {
         return { success: true, data: items };
     } catch (error) {
         console.error('Error getting critical protein items:', error);
+        return { success: false, data: [] };
+    }
+}
+
+/**
+ * Devuelve la lista de categorías distintas (no null) del catálogo de items
+ * para alimentar el selector del filtro "Por categoría" del inventario físico.
+ */
+export async function getInventoryCategoriesAction(): Promise<{ success: boolean; data: string[] }> {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const rows = await db.inventoryItem.findMany({
+            where: { isActive: true, category: { not: null } },
+            select: { category: true },
+            distinct: ['category'],
+            orderBy: { category: 'asc' },
+        });
+        const values = rows
+            .map((r: { category: string | null }) => r.category)
+            .filter((c: string | null): c is string => !!c && c.trim().length > 0);
+        return { success: true, data: values };
+    } catch (error) {
+        console.error('Error fetching inventory categories:', error);
         return { success: false, data: [] };
     }
 }

@@ -10,6 +10,8 @@ import {
     getInventorySummaryByRangeAction,
     getWeeklyInventorySummaryAction,
     reopenDailyInventoryAction,
+    getInventoryCategoriesAction,
+    type CriticalFilters,
 } from '@/app/actions/inventory-daily.actions';
 import { toast } from 'react-hot-toast';
 import {
@@ -49,6 +51,33 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const [syncingSales, setSyncingSales] = useState(false);
     const [autoSuggestions, setAutoSuggestions] = useState<Record<string, { autoEntries: number; autoSales: number }>>({});
 
+    // Filtros sumables de SKU críticos (Fase 2 — por sesión, no persiste)
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterByCost, setFilterByCost] = useState(false);
+    const [filterByCostTopN, setFilterByCostTopN] = useState(20);
+    const [filterByCategory, setFilterByCategory] = useState(false);
+    const [filterCategoryValues, setFilterCategoryValues] = useState<string[]>([]);
+    const [filterCompletos, setFilterCompletos] = useState(false);
+    const [filterTodos, setFilterTodos] = useState(false);
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+
+    useEffect(() => {
+        getInventoryCategoriesAction().then(res => {
+            if (res.success) setAvailableCategories(res.data);
+        });
+    }, []);
+
+    function buildFilters(): CriticalFilters | null {
+        const f: CriticalFilters = {};
+        if (filterByCost) f.byCost = { topN: filterByCostTopN };
+        if (filterByCategory && filterCategoryValues.length > 0) {
+            f.byCategory = { values: filterCategoryValues };
+        }
+        if (filterCompletos) f.completos = true;
+        if (filterTodos) f.todos = true;
+        return Object.keys(f).length > 0 ? f : null;
+    }
+
     // Reporte por rango
     const [showRangeReport, setShowRangeReport] = useState(false);
     const [rangeStart, setRangeStart] = useState(() => {
@@ -63,12 +92,13 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     useEffect(() => {
         if (!selectedArea) return;
         loadData();
-    }, [selectedDate, selectedArea]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDate, selectedArea, filterByCost, filterByCostTopN, filterByCategory, filterCategoryValues, filterCompletos, filterTodos]);
 
     async function loadData() {
         setLoading(true);
         try {
-            const res = await getDailyInventoryAction(selectedDate, selectedArea);
+            const res = await getDailyInventoryAction(selectedDate, selectedArea, buildFilters());
             if (res.success && res.data) {
                 setData(res.data);
                 setItems(res.data.items);
@@ -270,6 +300,129 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     return (
         <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-xl">
 
+            {/* Panel Filtros SKU críticos */}
+            {showFilters && (
+                <div className="mx-4 mt-4 rounded-xl border border-purple-200 bg-purple-50/50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-semibold text-base tracking-[-0.01em] text-capsula-navy-deep">
+                            Filtros SKU críticos — definí qué items aparecen
+                        </h3>
+                        <button
+                            onClick={() => {
+                                setFilterByCost(false);
+                                setFilterByCategory(false);
+                                setFilterCategoryValues([]);
+                                setFilterCompletos(false);
+                                setFilterTodos(false);
+                            }}
+                            className="text-xs text-capsula-ink-muted underline hover:text-capsula-coral"
+                        >
+                            Limpiar filtros
+                        </button>
+                    </div>
+                    <p className="mb-3 text-xs text-capsula-ink-muted">
+                        Los filtros se <strong>suman</strong> (unión). Sin ningún filtro activo, se usa la lista manual del área. Con uno o más, se ignora la lista manual.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {/* Por costo */}
+                        <div className="rounded-lg border border-capsula-line bg-capsula-ivory p-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-capsula-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={filterByCost}
+                                    onChange={e => setFilterByCost(e.target.checked)}
+                                    className="h-4 w-4 accent-purple-600"
+                                />
+                                Por costo
+                            </label>
+                            <div className="mt-2 flex items-center gap-2 text-xs">
+                                <span className="text-capsula-ink-muted">Top</span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={500}
+                                    value={filterByCostTopN}
+                                    onChange={e => setFilterByCostTopN(Math.max(1, parseInt(e.target.value) || 20))}
+                                    disabled={!filterByCost}
+                                    className="w-16 rounded-md border border-capsula-line bg-capsula-ivory-alt px-2 py-1 text-center text-sm tabular-nums disabled:opacity-50"
+                                />
+                                <span className="text-capsula-ink-muted">items más caros</span>
+                            </div>
+                        </div>
+
+                        {/* Por categoría */}
+                        <div className="rounded-lg border border-capsula-line bg-capsula-ivory p-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-capsula-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={filterByCategory}
+                                    onChange={e => setFilterByCategory(e.target.checked)}
+                                    className="h-4 w-4 accent-purple-600"
+                                />
+                                Por categoría
+                            </label>
+                            <div className="mt-2 max-h-24 overflow-y-auto rounded-md border border-capsula-line bg-capsula-ivory-alt p-1.5">
+                                {availableCategories.length === 0 ? (
+                                    <span className="text-xs text-capsula-ink-muted">Sin categorías</span>
+                                ) : (
+                                    availableCategories.map(cat => (
+                                        <label key={cat} className="flex items-center gap-1.5 text-xs hover:bg-capsula-ivory-surface px-1 py-0.5 rounded">
+                                            <input
+                                                type="checkbox"
+                                                disabled={!filterByCategory}
+                                                checked={filterCategoryValues.includes(cat)}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setFilterCategoryValues([...filterCategoryValues, cat]);
+                                                    } else {
+                                                        setFilterCategoryValues(filterCategoryValues.filter(c => c !== cat));
+                                                    }
+                                                }}
+                                                className="h-3 w-3 accent-purple-600"
+                                            />
+                                            {cat}
+                                        </label>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Completos */}
+                        <div className="rounded-lg border border-capsula-line bg-capsula-ivory p-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-capsula-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={filterCompletos}
+                                    onChange={e => setFilterCompletos(e.target.checked)}
+                                    className="h-4 w-4 accent-purple-600"
+                                />
+                                Completos
+                            </label>
+                            <p className="mt-2 text-xs text-capsula-ink-muted">
+                                Items con categoría, descripción y costo &gt; 0 cargados.
+                            </p>
+                        </div>
+
+                        {/* Todos */}
+                        <div className="rounded-lg border border-capsula-line bg-capsula-ivory p-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-capsula-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={filterTodos}
+                                    onChange={e => setFilterTodos(e.target.checked)}
+                                    className="h-4 w-4 accent-purple-600"
+                                />
+                                Todos
+                            </label>
+                            <p className="mt-2 text-xs text-capsula-ink-muted">
+                                Todos los items activos del catálogo (anula a los demás filtros).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Panel Reporte por Rango */}
             {showRangeReport && (
                 <div className="mx-4 mt-4 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 p-4">
@@ -434,6 +587,18 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             title="Descargar inventario del día como Excel"
                         >
                             <Download className="h-4 w-4" /> Exportar Excel
+                        </button>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={cn(
+                                "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-bold shadow-sm transition-all",
+                                showFilters || buildFilters() !== null
+                                    ? 'border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-700 dark:bg-purple-900/50 dark:text-purple-200'
+                                    : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-surface'
+                            )}
+                            title="Definir qué SKUs aparecen como críticos (por costo, categoría, completos, todos)"
+                        >
+                            <Package className="h-4 w-4" /> Filtros SKU críticos
                         </button>
                         <button
                             onClick={() => setShowConfig(true)}
