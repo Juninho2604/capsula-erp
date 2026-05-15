@@ -5,6 +5,22 @@ import { decrypt } from './lib/auth';
 import { extractTenantSlugFromHost } from './lib/tenant-context';
 import { isSuperAdmin } from './lib/super-admin';
 
+/**
+ * Construye una URL absoluta para redirect/rewrite usando el HOST real
+ * del request (kpsula.app, foo.kpsula.app, etc) en lugar de `request.url`
+ * que en Next.js detrás de un proxy reverso (nginx en el VPS) puede
+ * resolver a `http://localhost:3000`. Bug observado: al hacer
+ * `siteUrl(request, '/login')` el redirect mandaba a localhost.
+ * `request.nextUrl` siempre respeta el host externo correcto.
+ */
+function siteUrl(request: NextRequest, target: string): URL {
+    const u = request.nextUrl.clone();
+    const [pathname, search] = target.split('?');
+    u.pathname = pathname;
+    u.search = search ? `?${search}` : '';
+    return u;
+}
+
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
@@ -49,7 +65,7 @@ export async function middleware(request: NextRequest) {
                 );
             }
             // Páginas → rewrite a /maintenance (sin cambiar URL para que F5 no rompa)
-            return NextResponse.rewrite(new URL('/maintenance', request.url));
+            return NextResponse.rewrite(siteUrl(request, '/maintenance'));
         }
         return NextResponse.next();
     }
@@ -59,7 +75,7 @@ export async function middleware(request: NextRequest) {
 
     // 1. Protección Base: Login requerido
     if (path.startsWith('/dashboard') && !session) {
-        return NextResponse.redirect(new URL('/login', request.url));
+        return NextResponse.redirect(siteUrl(request, '/login'));
     }
 
     // 1.b /admin/* — solo emails en SUPER_ADMIN_EMAILS. Sin sesión o sin
@@ -73,7 +89,7 @@ export async function middleware(request: NextRequest) {
 
     // 2. Redirección Login -> Dashboard
     if (path.startsWith('/login') && session) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        return NextResponse.redirect(siteUrl(request, '/dashboard'));
     }
 
     // 3. Control de Accesos (RBAC)
@@ -84,7 +100,7 @@ export async function middleware(request: NextRequest) {
         if (path.startsWith('/dashboard/usuarios')) {
             const allowed = ['OWNER', 'ADMIN_MANAGER'];
             if (!allowed.includes(userRole)) {
-                return NextResponse.redirect(new URL('/dashboard?error=unauthorized_users', request.url));
+                return NextResponse.redirect(siteUrl(request, '/dashboard?error=unauthorized_users'));
             }
         }
 
@@ -92,7 +108,7 @@ export async function middleware(request: NextRequest) {
         if (path.startsWith('/dashboard/inventario/auditorias') || path.startsWith('/dashboard/inventario/importar')) {
             const allowed = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'];
             if (!allowed.includes(userRole)) {
-                return NextResponse.redirect(new URL('/dashboard?error=unauthorized_audit', request.url));
+                return NextResponse.redirect(siteUrl(request, '/dashboard?error=unauthorized_audit'));
             }
         }
 
@@ -100,7 +116,7 @@ export async function middleware(request: NextRequest) {
         if (path.startsWith('/dashboard/config')) {
             const allowed = ['OWNER'];
             if (!allowed.includes(userRole)) {
-                return NextResponse.redirect(new URL('/dashboard?error=unauthorized_config', request.url));
+                return NextResponse.redirect(siteUrl(request, '/dashboard?error=unauthorized_config'));
             }
         }
     }
