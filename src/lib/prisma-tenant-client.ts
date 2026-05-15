@@ -74,7 +74,11 @@ const TENANT_MODELS = new Set<string>([
     'Reservation',
     'SalesOrder',
     'SalesOrderItem',
-    'SalesOrderPayment',
+    // NOTA: SalesOrderPayment NO está aquí — el modelo en schema.prisma
+    // NO tiene columna `tenantId`. La aislación se hereda por FK a
+    // SalesOrder. Incluir este modelo causa: Unknown argument `tenantId`
+    // al hacer createMany/create. Bug introducido en PR #181 + propagado
+    // a este set. Ver fix #187.
     'ServiceZone',
     'SkuCreationTemplate',
     'Supplier',
