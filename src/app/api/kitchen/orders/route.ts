@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { withTenant } from '@/lib/prisma-tenant-client';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -9,13 +12,23 @@ const BAR_CATEGORIES = ['Bebidas'];
 // GET: Obtener órdenes pendientes para cocina o barra
 // ?station=kitchen (default) → excluye Bebidas
 // ?station=bar              → solo Bebidas
+//
+// CRÍTICO: requiere sesión activa y filtra por tenant del usuario. Antes
+// retornaba órdenes de TODOS los tenants sin auth — IDOR cross-tenant.
 export async function GET(request: NextRequest) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
         const { searchParams } = new URL(request.url);
         const station = searchParams.get('station') ?? 'kitchen'; // 'kitchen' | 'bar'
         const isBar = station === 'bar';
 
-        const orders = await prisma.salesOrder.findMany({
+        const orders = await db.salesOrder.findMany({
             where: {
                 status: { in: ['PENDING', 'CONFIRMED', 'PREPARING'] },
                 kitchenStatus: 'SENT',
@@ -69,9 +82,15 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// PATCH: Actualizar estado de orden
+// PATCH: Actualizar estado de orden — solo del tenant del usuario.
 export async function PATCH(request: NextRequest) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+        const { tenantId } = await resolveTenantContext();
+
         const body = await request.json();
         const { orderId, status } = body;
 
@@ -79,12 +98,18 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
         }
 
-        const order = await prisma.salesOrder.update({
-            where: { id: orderId },
-            data: { status }
+        // Validar ownership: la orden debe pertenecer al tenant del session.
+        // updateMany con filtro de tenant evita IDOR cross-tenant.
+        const result = await prisma.salesOrder.updateMany({
+            where: { id: orderId, tenantId },
+            data: { status },
         });
 
-        return NextResponse.json({ success: true, order });
+        if (result.count === 0) {
+            return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error updating order:', error);
         return NextResponse.json({ error: 'Error interno' }, { status: 500 });
