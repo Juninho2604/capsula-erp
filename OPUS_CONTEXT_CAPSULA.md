@@ -5567,18 +5567,38 @@ main. Los previews siguen sirviendo como QA visual del UI sin tocar BD.
 - Ningún server action importa los módulos Fase 3 todavía.
 - Sitio operó normal durante todos los merges (cero downtime).
 
-### 28.8 Pendientes Fase 2.B y activación de Fase 3
+### 28.8 Estado real Fase 2.B y Fase 3 (snapshot 2026-05-16)
 
-- **Fase 2.B**: cambiar uniques globales a compuestos
-  `(tenantId, X)` en User.email, MenuItem.sku, Supplier.code,
+- **Fase 2.B — ✅ COMPLETADA**: los uniques compuestos `(tenantId, X)` ya
+  están en schema para User.email, MenuItem.sku, Supplier.code,
   ProductFamily.code, GameType.code, GameStation.code, WristbandPlan.code,
-  Branch.code, SystemConfig.key, InvoiceCounter.channel. Refactor
-  acompañante de `findUnique → findFirst` en código existente. Hacer
-  con restaurante cerrado.
-- **Activación Fase 3**: middleware que importa
-  `resolveTenantContext()`, migración gradual de actions al
-  `defineAction` wrapper, conexión del cliente extendido. Requiere
-  dominio kpsula.app + DNS wildcard configurado.
+  Branch.code, SystemConfig.key, InvoiceCounter.channel, InventoryItem.sku.
+  Verificable con `awk '/^model (User|Branch|...)/ {f=$2; pr=1} pr && /@@unique/ {print f}' prisma/schema.prisma`.
+  Caveat: `IntercompanySettlement.code` sigue siendo `@unique` global sin
+  `tenantId` — si dos tenants generan IC-2026-0001 simultáneamente, colisión.
+  No bloqueante hasta que un segundo tenant use intercompany settlements.
+- **`defineAction` wrapper — ❌ NO IMPLEMENTADO**: documentado en §28.5.2
+  pero ninguna server action lo usa. El patrón vigente en `src/app/actions/**`
+  es `resolveTenantContext()` + `withTenant(tenantId)` manual en cada
+  función. Funciona en práctica, pero deja huecos cuando una acción olvida
+  uno de los dos pasos. Refactor a `defineAction` queda como nice-to-have,
+  no como blocker.
+- **Multi-tenant hardening 2026-05-16** (PR Cloudflare branch): cerrados
+  4 huecos descubiertos en auditoría: (1) `/api/kitchen/orders` GET/PATCH
+  ahora requiere session + filtra por tenantId; (2) `/api/print-agent/*`
+  resuelve tenantId por API key del agent (env `PRINT_AGENT_TENANT_KEYS`
+  JSON), ignora header `X-Tenant-Id` del cliente; (3) IDOR en 6 acciones
+  de subAccount (rename/delete/assign/unassign/pay/voidPayment) — todas
+  ahora joinean `openTab.tenantId` en el findFirst; (4) `createTenantAction`
+  ahora siembra áreas básicas (Almacén / Cocina / Bar / Producción) por
+  default, para que el OWNER no aterrice en un sistema vacío.
+- **Activación Fase 3 (subdomain routing) — pendiente**: el resolver
+  por subdominio existe (`extractTenantSlugFromHost` con sufijo
+  `.kpsula.app`) pero el código corre en modo fallback
+  (`FALLBACK_TENANT_ID='tnt_shanklish_caracas'` en `tenant-context.ts:18`).
+  Para SaaS real hace falta: DNS wildcard `*.kpsula.app`, quitar el
+  fallback (o limitar a dev), verificar que JWT + middleware lean el slug
+  del host antes que el del JWT.
 
 ---
 

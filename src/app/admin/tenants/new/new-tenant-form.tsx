@@ -19,6 +19,7 @@ export default function NewTenantForm() {
     const [ownerFirstName, setOwnerFirstName] = useState('');
     const [ownerLastName, setOwnerLastName] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [seedDefaults, setSeedDefaults] = useState(true);
 
     const slugPreview = slug
         ? `https://${slug}.${TENANT_ROOT_DOMAIN}`
@@ -36,6 +37,7 @@ export default function NewTenantForm() {
                 ownerPassword,
                 ownerFirstName,
                 ownerLastName,
+                seedDefaults,
             });
             if (res.success && res.tenantId) {
                 router.push(`/admin/tenants/${res.tenantId}`);
@@ -189,6 +191,30 @@ export default function NewTenantForm() {
                         </button>
                     </div>
                 </Field>
+            </section>
+
+            <section className="rounded-3xl border border-capsula-line bg-capsula-ivory-surface p-5 space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                    Seed inicial
+                </h2>
+                <label className="flex items-start gap-3 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={seedDefaults}
+                        onChange={(e) => setSeedDefaults(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-capsula-line accent-capsula-navy-deep"
+                    />
+                    <span className="flex-1">
+                        <span className="font-semibold text-capsula-ink">
+                            Crear áreas básicas (recomendado)
+                        </span>
+                        <span className="block text-xs text-capsula-ink-muted mt-0.5">
+                            Almacén · Cocina · Bar · Producción. Sin estas el OWNER no puede
+                            recibir mercancía ni abrir inventarios diarios. Se pueden editar /
+                            agregar más después.
+                        </span>
+                    </span>
+                </label>
             </section>
 
             <div className="flex justify-end gap-2">

@@ -250,6 +250,18 @@ export interface CreateTenantState extends AdminActionState {
     tenantId?: string;
 }
 
+/**
+ * Áreas default que se siembran al crear un tenant nuevo (si seedDefaults=true).
+ * Sin estas, el OWNER loggea y no puede operar (no hay InventoryLocation, no
+ * hay daily inventory, no hay destino para requisitions ni procesamientos).
+ */
+const DEFAULT_SEED_AREAS = [
+    { name: 'Almacén',     description: 'Stock principal' },
+    { name: 'Cocina',      description: 'Producción de comida caliente' },
+    { name: 'Bar',         description: 'Bebidas y bar' },
+    { name: 'Producción',  description: 'Procesamiento y preparación' },
+];
+
 export async function createTenantAction(input: {
     slug: string;
     name: string;
@@ -257,6 +269,8 @@ export async function createTenantAction(input: {
     ownerPassword: string;
     ownerFirstName: string;
     ownerLastName: string;
+    /** Por default true: siembra áreas básicas para que el OWNER pueda operar. */
+    seedDefaults?: boolean;
 }): Promise<CreateTenantState> {
     const auth = await requireSuperAdmin();
     if (!auth.ok) return auth.state;
@@ -324,7 +338,7 @@ export async function createTenantAction(input: {
                     isActive: true,
                 },
             });
-            await tx.branch.create({
+            const branch = await tx.branch.create({
                 data: {
                     tenantId: tenant.id,
                     code: 'MAIN',
@@ -333,7 +347,24 @@ export async function createTenantAction(input: {
                     currencyCode: 'USD',
                     isActive: true,
                 },
+                select: { id: true },
             });
+
+            // Seed mínimo: áreas básicas para que el OWNER pueda operar de una.
+            // Sin esto loggea y ve todo vacío — no puede ni recibir mercancía.
+            const shouldSeed = input.seedDefaults !== false;
+            if (shouldSeed) {
+                await tx.area.createMany({
+                    data: DEFAULT_SEED_AREAS.map((a) => ({
+                        tenantId: tenant.id,
+                        branchId: branch.id,
+                        name: a.name,
+                        description: a.description,
+                        isActive: true,
+                    })),
+                });
+            }
+
             return tenant;
         });
 

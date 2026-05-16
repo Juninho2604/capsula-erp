@@ -2570,18 +2570,23 @@ export async function renameSubAccountAction(
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
 
         const trimmed = label.trim();
         if (!trimmed) return { success: false, message: 'El nombre no puede estar vacío' };
 
-        const updated = await prisma.tabSubAccount.update({
-            where: { id: subAccountId },
+        // updateMany con filtro de tenant evita IDOR cross-tenant.
+        const result = await prisma.tabSubAccount.updateMany({
+            where: { id: subAccountId, openTab: { tenantId } },
             data: { label: trimmed },
         });
+        if (result.count === 0) {
+            return { success: false, message: 'Subcuenta no encontrada' };
+        }
 
         revalidatePath('/dashboard/pos/restaurante');
         revalidatePath('/dashboard/pos/mesero');
-        return { success: true, message: 'Subcuenta renombrada', data: updated };
+        return { success: true, message: 'Subcuenta renombrada' };
     } catch (error) {
         console.error('Error renaming sub account:', error);
         return { success: false, message: 'Error renombrando subcuenta' };
@@ -2596,8 +2601,13 @@ export async function deleteSubAccountAction(subAccountId: string): Promise<Acti
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
 
-        const sub = await prisma.tabSubAccount.findUnique({ where: { id: subAccountId } });
+        // findFirst con join al openTab.tenantId: si la sub pertenece a otro
+        // tenant, devuelve null igual que si no existiera.
+        const sub = await prisma.tabSubAccount.findFirst({
+            where: { id: subAccountId, openTab: { tenantId } },
+        });
         if (!sub) return { success: false, message: 'Subcuenta no encontrada' };
         if (sub.status === 'PAID') {
             return { success: false, message: 'No se puede eliminar una subcuenta ya cobrada' };
@@ -2624,7 +2634,7 @@ export async function assignItemToSubAccountAction(data: {
     subAccountId: string;
     quantity: number;
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -2635,7 +2645,9 @@ export async function assignItemToSubAccountAction(data: {
         });
         if (!item) return { success: false, message: 'Item no encontrado' };
 
-        const sub = await prisma.tabSubAccount.findUnique({ where: { id: data.subAccountId } });
+        const sub = await prisma.tabSubAccount.findFirst({
+            where: { id: data.subAccountId, openTab: { tenantId } },
+        });
         if (!sub || sub.status !== 'OPEN') {
             return { success: false, message: 'Subcuenta no disponible' };
         }
@@ -2693,12 +2705,14 @@ export async function unassignItemFromSubAccountAction(data: {
     salesOrderItemId: string;
     subAccountId: string;
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        const sub = await prisma.tabSubAccount.findUnique({ where: { id: data.subAccountId } });
+        const sub = await prisma.tabSubAccount.findFirst({
+            where: { id: data.subAccountId, openTab: { tenantId } },
+        });
         if (!sub || sub.status === 'PAID') {
             return { success: false, message: 'No se puede modificar una subcuenta cobrada' };
         }
@@ -2845,15 +2859,15 @@ export async function paySubAccountAction(data: {
      */
     discountType?: 'NONE' | 'DIVISAS_33';
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
         if (data.amount <= 0) return { success: false, message: 'El monto debe ser mayor a cero' };
 
-        const sub = await prisma.tabSubAccount.findUnique({
-            where: { id: data.subAccountId },
+        const sub = await prisma.tabSubAccount.findFirst({
+            where: { id: data.subAccountId, openTab: { tenantId } },
             include: {
                 openTab: {
                     include: { subAccounts: true },
@@ -3014,7 +3028,7 @@ export async function voidSubAccountAction(params: {
     authorizedById: string;
     authorizedByName: string;
 }): Promise<ActionResult> {
-    const db = await getTenantDb();
+    const { db, tenantId } = await getTenantCtx();
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
@@ -3022,8 +3036,8 @@ export async function voidSubAccountAction(params: {
             return { success: false, message: 'Debes indicar el motivo de anulación' };
         }
 
-        const sub = await prisma.tabSubAccount.findUnique({
-            where: { id: params.subAccountId },
+        const sub = await prisma.tabSubAccount.findFirst({
+            where: { id: params.subAccountId, openTab: { tenantId } },
             include: {
                 openTab: { include: { subAccounts: true } },
                 paymentSplits: true,
