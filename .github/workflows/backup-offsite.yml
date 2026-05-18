@@ -1,0 +1,145 @@
+name: Backup — Off-site upload
+
+# Sube el dump más reciente del VPS a S3 / R2.
+#
+# ESTADO INICIAL: solo workflow_dispatch (manual). NO arranca scheduled
+# hasta que se valide en dry-run y se confirme.
+#
+# Para activar el cron diario, descomentar el `schedule:` abajo.
+#
+# Secrets requeridos en el repo:
+#   CONTABO_HOST                    (ya existe, mismo del deploy)
+#   CONTABO_USER                    (ya existe)
+#   CONTABO_SSH_KEY                 (ya existe)
+#   BACKUP_S3_BUCKET                NUEVO — ej. capsula-backups
+#   BACKUP_S3_ACCESS_KEY_ID         NUEVO
+#   BACKUP_S3_SECRET_ACCESS_KEY     NUEVO
+#   BACKUP_S3_ENDPOINT              OPCIONAL — para R2: https://<acc>.r2.cloudflarestorage.com
+#   BACKUP_S3_REGION                OPCIONAL — para AWS: us-east-2, etc. R2 ignora.
+
+on:
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: 'Dry-run (no sube, solo verifica)'
+                required: false
+                default: 'true'
+                type: choice
+                options:
+                    - 'true'
+                    - 'false'
+    # Descomentar cuando esté validado:
+    # schedule:
+    #     - cron: '0 12 * * *'   # 12:00 UTC = 8am Caracas (post-cron VPS 7am)
+
+jobs:
+    upload:
+        name: Upload dump to off-site storage
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        steps:
+            - name: Validate secrets
+              run: |
+                  missing=()
+                  for v in CONTABO_HOST CONTABO_USER CONTABO_SSH_KEY \
+                           BACKUP_S3_BUCKET BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY; do
+                      if [[ -z "${!v:-}" ]]; then missing+=("$v"); fi
+                  done
+                  if (( ${#missing[@]} > 0 )); then
+                      echo "::error::Faltan secrets: ${missing[*]}"
+                      exit 1
+                  fi
+              env:
+                  CONTABO_HOST: ${{ secrets.CONTABO_HOST }}
+                  CONTABO_USER: ${{ secrets.CONTABO_USER }}
+                  CONTABO_SSH_KEY: ${{ secrets.CONTABO_SSH_KEY }}
+                  BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+                  BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+                  BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+
+            - name: Setup SSH
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "${{ secrets.CONTABO_SSH_KEY }}" > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  ssh-keyscan -H "${{ secrets.CONTABO_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+            - name: Locate latest dump on VPS
+              id: dump
+              run: |
+                  LATEST=$(ssh -i ~/.ssh/id_ed25519 \
+                      "${{ secrets.CONTABO_USER }}@${{ secrets.CONTABO_HOST }}" \
+                      "ls -1t /var/lib/postgresql/backups/*.dump 2>/dev/null | head -1")
+                  if [[ -z "$LATEST" ]]; then
+                      echo "::error::No se encontró ningún .dump en el VPS"
+                      exit 1
+                  fi
+                  SIZE=$(ssh -i ~/.ssh/id_ed25519 \
+                      "${{ secrets.CONTABO_USER }}@${{ secrets.CONTABO_HOST }}" \
+                      "stat -c%s '$LATEST'")
+                  NAME=$(basename "$LATEST")
+                  echo "name=$NAME" >> "$GITHUB_OUTPUT"
+                  echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+                  echo "path=$LATEST" >> "$GITHUB_OUTPUT"
+                  echo "Dump: $NAME ($SIZE bytes)"
+
+            - name: Download dump from VPS
+              if: ${{ inputs.dry_run != 'true' }}
+              run: |
+                  scp -i ~/.ssh/id_ed25519 \
+                      "${{ secrets.CONTABO_USER }}@${{ secrets.CONTABO_HOST }}:${{ steps.dump.outputs.path }}" \
+                      "./${{ steps.dump.outputs.name }}"
+                  LOCAL_SIZE=$(stat -c%s "./${{ steps.dump.outputs.name }}")
+                  if [[ "$LOCAL_SIZE" != "${{ steps.dump.outputs.size }}" ]]; then
+                      echo "::error::scp truncado: vps=${{ steps.dump.outputs.size }} local=$LOCAL_SIZE"
+                      exit 1
+                  fi
+
+            - name: Configure AWS CLI for S3 / R2
+              if: ${{ inputs.dry_run != 'true' }}
+              run: |
+                  aws configure set aws_access_key_id "${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}"
+                  aws configure set aws_secret_access_key "${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}"
+                  if [[ -n "${{ secrets.BACKUP_S3_REGION }}" ]]; then
+                      aws configure set region "${{ secrets.BACKUP_S3_REGION }}"
+                  fi
+
+            - name: Upload to off-site
+              if: ${{ inputs.dry_run != 'true' }}
+              run: |
+                  EXTRA=""
+                  if [[ -n "${{ secrets.BACKUP_S3_ENDPOINT }}" ]]; then
+                      EXTRA="--endpoint-url ${{ secrets.BACKUP_S3_ENDPOINT }}"
+                  fi
+                  aws $EXTRA s3 cp \
+                      "./${{ steps.dump.outputs.name }}" \
+                      "s3://${{ secrets.BACKUP_S3_BUCKET }}/full/${{ steps.dump.outputs.name }}" \
+                      --storage-class STANDARD_IA \
+                      --only-show-errors
+
+            - name: Verify upload
+              if: ${{ inputs.dry_run != 'true' }}
+              run: |
+                  EXTRA=""
+                  if [[ -n "${{ secrets.BACKUP_S3_ENDPOINT }}" ]]; then
+                      EXTRA="--endpoint-url ${{ secrets.BACKUP_S3_ENDPOINT }}"
+                  fi
+                  REMOTE_SIZE=$(aws $EXTRA s3api head-object \
+                      --bucket "${{ secrets.BACKUP_S3_BUCKET }}" \
+                      --key "full/${{ steps.dump.outputs.name }}" \
+                      --query 'ContentLength' --output text)
+                  if [[ "$REMOTE_SIZE" != "${{ steps.dump.outputs.size }}" ]]; then
+                      echo "::error::Upload sin verificar: vps=${{ steps.dump.outputs.size }} remote=$REMOTE_SIZE"
+                      exit 1
+                  fi
+                  echo "::notice::Upload OK: ${{ steps.dump.outputs.name }} ($REMOTE_SIZE bytes)"
+
+            - name: Cleanup local copy
+              if: ${{ inputs.dry_run != 'true' && always() }}
+              run: rm -f "./${{ steps.dump.outputs.name }}"
+
+            - name: Dry-run summary
+              if: ${{ inputs.dry_run == 'true' }}
+              run: |
+                  echo "::notice::DRY-RUN OK. Subiría: ${{ steps.dump.outputs.name }} (${{ steps.dump.outputs.size }} bytes)"
