@@ -22,7 +22,7 @@ SaaS multi-tenant llamado **Cápsula**.
 | Capa | Tecnología |
 |------|-----------|
 | Framework | Next.js 14 App Router, Server Actions, TypeScript |
-| Base de datos | PostgreSQL (Google Cloud SQL) + Prisma ORM 5.10 |
+| Base de datos | PostgreSQL 18.3 self-hosted en VPS Contabo (`localhost:5433/capsula_erp_prod`) + Prisma ORM 5.10 |
 | Autenticación | JWT custom con `jose` (sesiones 24h, cookie httpOnly) |
 | UI | Tailwind CSS 3.4 + Radix UI primitives + Lucide icons |
 | State management | Zustand 4.5 + React Query (TanStack) |
@@ -33,7 +33,40 @@ SaaS multi-tenant llamado **Cápsula**.
 | OCR | Google Cloud Vision API |
 | Validación | Zod |
 | Charts | Recharts |
-| Deploy | Vercel (`vercel-build`: prisma generate + migrate deploy + next build) |
+| Deploy app | **VPS Contabo** vía GitHub Actions SSH (`/root/deploy-capsula.sh`). Vercel queda como fallback dormant pendiente apagar — ver §1.2. |
+| Reverse proxy | nginx en VPS (termina SSL wildcard `*.kpsula.app` con Let's Encrypt) |
+| DNS | Cloudflare (`kpsula.app` y `*.kpsula.app` → VPS) |
+| Proceso runtime | pm2 con `node .next/standalone/server.js` |
+| Backups BD | Cron diario 7am en VPS (`/usr/local/bin/capsula-backup.sh` → `/var/lib/postgresql/backups/`, retención 30 días). **Pendiente off-site copy.** |
+
+### 1.2 Infraestructura productiva — fuente única de verdad (2026-05-18)
+
+**Regla operativa (no negociable):** toda la stack de producción vive en el
+**VPS Contabo**. BD, app server, reverse proxy, backups — todo en el mismo
+host. AWS RDS quedó desconectado tras el cutover documentado en §18.43
+(2026-05-08); el `.env.example` apunta a AWS RDS solo como referencia
+histórica, no se carga en runtime. Cualquier dev/admin que vaya a crear
+deploys nuevos, jobs, crons, backups o cualquier infra adicional → debe
+ir al mismo VPS, no a otros providers.
+
+| Pieza | Ubicación | Detalle |
+|---|---|---|
+| BD productiva | VPS Contabo `147.93.6.70:5433` (interno `localhost:5433`) | `capsula_erp_prod`, owner `capsula`, SSL self-signed `sslmode=require` |
+| App Next.js | VPS Contabo, pm2 process | `/var/www/capsula-erp/.next/standalone/server.js` en `localhost:3000` |
+| Reverse proxy | VPS Contabo, nginx | `*.kpsula.app` → SSL wildcard → `localhost:3000` |
+| Cron jobs (outbox retry, backups) | VPS Contabo, crontab del root | Ver `crontab -l` |
+| Deploy CI/CD | GitHub Actions → SSH al VPS | `.github/workflows/ci.yml` job `deploy`. Secrets: `CONTABO_HOST`, `CONTABO_USER`, `CONTABO_SSH_KEY` |
+| Backups locales | VPS Contabo `/var/lib/postgresql/backups/` | Cron 7am, 30 días retención. **Falta: copia off-site.** |
+| AWS RDS | **Desconectado** | Snapshot final pendiente bajar a S3/storage antes de terminate (ver pendientes §35) |
+| Vercel | **Dormant** | Sigue corriendo pero ya nadie le pega tráfico desde el cutover de DNS. Apagado completo pendiente (ver pendientes §35) |
+
+**Confirmado en VPS** (2026-05-18 con `grep DATABASE_URL /var/www/capsula-erp/.env`):
+```
+DATABASE_URL=postgresql://capsula:***@localhost:5433/capsula_erp_prod?sslmode=require
+```
+Sin variables `_REPLICA`, `_BACKUP`, ni referencias a `amazonaws` en el `.env` activo.
+
+Para detalle completo del cutover histórico y razón de las decisiones, ver §18.43.
 
 ### Mapa de carpetas del proyecto
 ```
@@ -7408,3 +7441,93 @@ DEFAULT_STATION=kitchen-1
 - **WebSocket en lugar de polling** (v0.2.0): latencia <100ms.
 - **Multi-tenant**: el `PrintJob` ya tiene `tenantId`. Falta auth de agent por tenant (`PRINT_AGENT_API_KEY_<slug>`) cuando arranque Fase 3.
 - **Otras 6 impresoras**: agregar progresivamente a `PRINTERS_JSON` y el ERP enruta por `station`.
+
+---
+
+## 40. Infraestructura — pendientes operativos (snapshot 2026-05-18)
+
+Tareas concretas a ejecutar en sesiones futuras sin tocar producción hoy.
+El negocio está abierto y operando; cualquier acción debe ser reversible
+y no causar downtime. Si una tarea requiere ventana de mantenimiento, se
+agenda y confirma con el operador antes.
+
+### 40.1 Backups — off-site (alta prioridad)
+
+**Estado actual**: cron diario en VPS a las 7am (`/usr/local/bin/capsula-backup.sh`)
+deja dumps en `/var/lib/postgresql/backups/` con retención 30 días.
+
+**Hueco**: los dumps viven en el MISMO host físico que la BD. Si el VPS
+muere (disco, hack, error humano que borre `/var/lib/postgresql`),
+perdemos BD y backup en un solo evento.
+
+**Plan** (~2h trabajo, cero impacto producción):
+1. Crear bucket S3 / Cloudflare R2 dedicado (`capsula-backups`).
+2. Script `scripts/upload-backup-offsite.sh` que toma el dump del día y
+   lo sube. Idempotente: si ya existe, no re-sube.
+3. Workflow GitHub Actions diario (8am Caracas, post-cron del VPS) que
+   ejecuta el upload vía SSH al VPS. Notifica fallo a un canal.
+4. Lifecycle policy en el bucket: 90 días retención hot, archive a
+   Glacier después de 90, delete a 365 días.
+5. Smoke test de restore: 1 vez por mes, descargar el dump más reciente
+   y restaurarlo a `capsula_erp_smoketest` en el VPS, verificar row
+   counts, dropear. Workflow separado, manual o cron mensual.
+
+### 40.2 Per-tenant backup (media prioridad)
+
+**Por qué**: cuando haya ≥2 tenants, "exportame mi data" o "restaurame
+solo a mí sin tocar a los otros" requiere dump filtrado por tenantId.
+
+**Plan**:
+- Script `scripts/backup-tenant.ts`: itera modelos tenant-aware, dumpea
+  `WHERE tenantId='X'`, output SQL o JSON.
+- Sube a `s3://capsula-backups/tenants/<slug>/<date>.sql.gz`.
+- Workflow Actions con input `tenant-slug`.
+
+### 40.3 Apagar Vercel (baja prioridad, alta visibilidad)
+
+**Estado**: Vercel sigue corriendo pero el DNS de `kpsula.app` ya apunta
+al VPS (cutover completo en §18.43, 2026-05-08). Nadie le pega tráfico
+productivo desde entonces.
+
+**Plan** (revisar mañana — bloque dedicado):
+1. Confirmar 7+ días seguidos sin tráfico productivo a Vercel (Vercel
+   Analytics → si está vacío salvo health checks ocasionales, OK).
+2. Validar que las features críticas del último mes funcionan en VPS:
+   POS mesero, restaurante, cierre de caja, reportes Z, impresión
+   térmica vía print-agent, inventario diario.
+3. Si todo OK: pausar el proyecto en Vercel (no eliminar, solo pausar).
+   Si nada se queja en 48h, eliminar.
+4. Eliminar variables de entorno de Vercel del repo (`vercel.json` si
+   aplica, `vercel-build` script en `package.json`).
+
+**No tocar nada de esto sin antes**:
+- Off-site backups activos (§40.1).
+- Confirmación operador.
+- Ventana de bajo tráfico.
+
+### 40.4 AWS RDS — dump final + terminate (baja prioridad)
+
+**Estado**: la instancia RDS `shanklisherp.cbau4e08oxxx.us-east-2.rds.amazonaws.com`
+existe en AWS pero no recibe queries desde el cutover. Posiblemente
+sigue facturando ~$15-20/mes.
+
+**Plan**:
+1. `pg_dump` final de RDS, comprimido, subir a S3 archive
+   (`s3://capsula-archive/aws-rds-final/`). Costo ~$0.10/mes en IA.
+2. STOP (no terminate) la instancia RDS durante 7 días → confirma que
+   nada externo la usa.
+3. Si OK pasados 7 días: terminate + bajar snapshots de RDS a S3 antes
+   de borrarlos.
+4. Rotar credenciales del role `juninho26` que sigue activo en RDS
+   (Pendiente §18.43.2).
+
+### 40.5 Test de restore documentado
+
+**Por qué**: backup no probado = no backup. Hoy nunca corrimos un
+restore completo.
+
+**Plan**:
+- Doc `docs/BACKUP_RESTORE.md` con procedimiento exacto: cómo bajar un
+  dump, restaurar a una BD escratch, verificar row counts.
+- Correrlo 1 vez con el operador presente para confirmar tiempos.
+- Repetir mensualmente como parte del smoke test §40.1.5.
