@@ -9,8 +9,10 @@ import {
     toggleMenuItemStatusAction,
     ensureBasicCategoriesAction,
     getCategoriesAction,
-    createRecipeStubForMenuItemAction
+    createRecipeStubForMenuItemAction,
+    createResaleProductAction,
 } from '@/app/actions/menu.actions';
+import { getAreasAction } from '@/app/actions/areas.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
 
 export default function MenuManagementPage() {
@@ -18,7 +20,7 @@ export default function MenuManagementPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Estado para Modal Nuevo Producto
+    // Estado para Modal Nuevo Producto (plato preparado — el original)
     const [showModal, setShowModal] = useState(false);
     const [newItem, setNewItem] = useState({
         name: '',
@@ -27,6 +29,23 @@ export default function MenuManagementPage() {
         description: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Estado para Modal "Producto de reventa rápido" (Pepsi, agua, etc.) —
+    // crea MenuItem + InventoryItem + Recipe 1:1 + stock inicial en UN SOLO
+    // formulario.
+    const [showResaleModal, setShowResaleModal] = useState(false);
+    const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
+    const [resaleItem, setResaleItem] = useState({
+        name: '',
+        categoryId: '',
+        salePrice: '',
+        unitCost: '',
+        initialStock: '',
+        baseUnit: 'UNIT',
+        areaId: '',
+        description: '',
+    });
+    const [isSavingResale, setIsSavingResale] = useState(false);
 
     // Estado para edición inline de nombre
     const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -55,6 +74,16 @@ export default function MenuManagementPage() {
 
     useEffect(() => {
         loadData();
+        // Cargar áreas para el modal de producto de reventa
+        (async () => {
+            const res = await getAreasAction();
+            if (res.success && res.data) {
+                setAreas(res.data);
+                if (res.data.length > 0) {
+                    setResaleItem(prev => ({ ...prev, areaId: res.data![0].id }));
+                }
+            }
+        })();
     }, []);
 
     // Manejadores
@@ -115,6 +144,50 @@ export default function MenuManagementPage() {
         setIsSaving(false);
     };
 
+    // Crea producto de reventa en un solo paso (MenuItem + InventoryItem +
+    // Recipe 1:1 + stock inicial). Para personas no técnicas.
+    const handleCreateResaleProduct = async () => {
+        if (!resaleItem.name.trim()) { alert('Falta el nombre del producto.'); return; }
+        if (!resaleItem.categoryId) { alert('Falta la categoría del menú.'); return; }
+        if (!resaleItem.areaId) { alert('Falta el área de stock.'); return; }
+        const salePrice = parseFloat(resaleItem.salePrice);
+        const unitCost = parseFloat(resaleItem.unitCost || '0');
+        const initialStock = parseFloat(resaleItem.initialStock || '0');
+        if (!(salePrice > 0)) { alert('El precio de venta debe ser mayor a 0.'); return; }
+        if (unitCost < 0 || isNaN(unitCost)) { alert('Costo unitario inválido.'); return; }
+        if (initialStock < 0 || isNaN(initialStock)) { alert('Stock inicial inválido.'); return; }
+
+        setIsSavingResale(true);
+        const result = await createResaleProductAction({
+            name: resaleItem.name.trim(),
+            categoryId: resaleItem.categoryId,
+            salePrice,
+            unitCost,
+            initialStock,
+            baseUnit: resaleItem.baseUnit,
+            areaId: resaleItem.areaId,
+            description: resaleItem.description.trim() || undefined,
+        });
+        if (result.success) {
+            setShowResaleModal(false);
+            setResaleItem({
+                name: '',
+                categoryId: categories[0]?.id || '',
+                salePrice: '',
+                unitCost: '',
+                initialStock: '',
+                baseUnit: 'UNIT',
+                areaId: areas[0]?.id || '',
+                description: '',
+            });
+            loadData();
+            alert(result.message);
+        } else {
+            alert(result.message);
+        }
+        setIsSavingResale(false);
+    };
+
     const handleToggleStatus = async (itemId: string, currentStatus: boolean) => {
         await toggleMenuItemStatusAction(itemId, !currentStatus);
         loadData();
@@ -161,12 +234,29 @@ export default function MenuManagementPage() {
                     <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Gestión de menú</h1>
                     <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
-                >
-                    <span className="text-xl">+</span> Nuevo Plato
-                </button>
+                <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={() => {
+                            setResaleItem(prev => ({
+                                ...prev,
+                                categoryId: prev.categoryId || categories[0]?.id || '',
+                                areaId: prev.areaId || areas[0]?.id || '',
+                            }));
+                            setShowResaleModal(true);
+                        }}
+                        className="bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-cream px-5 py-3 rounded-xl font-semibold shadow-sm transition-all flex items-center gap-2"
+                        title="Crear un producto que se compra y se revende tal cual (bebidas, snacks, etc). Carga inventario + menú + receta en un solo paso."
+                    >
+                        <span className="text-xl">+</span> Producto de reventa
+                    </button>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+                        title="Crear un plato preparado (con receta multi-ingrediente que se completa después)"
+                    >
+                        <span className="text-xl">+</span> Plato preparado
+                    </button>
+                </div>
             </div>
 
             {/* Barra de búsqueda + filtros */}
@@ -373,6 +463,173 @@ export default function MenuManagementPage() {
                                 className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold flex justify-center items-center"
                             >
                                 {isSaving ? 'Guardando...' : 'Crear Plato'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Producto de Reventa Rápido */}
+            {showResaleModal && (
+                <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="border-b border-capsula-line p-5">
+                            <h2 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink">
+                                Producto de reventa
+                            </h2>
+                            <p className="text-xs text-capsula-ink-muted mt-1">
+                                Para productos que se compran y se venden tal cual (bebidas, snacks, etc).
+                                Carga menú + inventario + stock inicial en un solo paso.
+                            </p>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                    Nombre del producto *
+                                </label>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={resaleItem.name}
+                                    onChange={e => setResaleItem({ ...resaleItem, name: e.target.value })}
+                                    className="pos-input w-full"
+                                    placeholder="Ej: Pepsi 355ml"
+                                    maxLength={100}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Categoría del menú *
+                                    </label>
+                                    <select
+                                        value={resaleItem.categoryId}
+                                        onChange={e => setResaleItem({ ...resaleItem, categoryId: e.target.value })}
+                                        className="pos-input w-full"
+                                    >
+                                        <option value="">— Elegir —</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Área de stock *
+                                    </label>
+                                    <select
+                                        value={resaleItem.areaId}
+                                        onChange={e => setResaleItem({ ...resaleItem, areaId: e.target.value })}
+                                        className="pos-input w-full"
+                                    >
+                                        <option value="">— Elegir —</option>
+                                        {areas.map(area => (
+                                            <option key={area.id} value={area.id}>{area.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Precio de venta (USD) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={resaleItem.salePrice}
+                                        onChange={e => setResaleItem({ ...resaleItem, salePrice: e.target.value })}
+                                        className="pos-input w-full font-mono"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Costo unitario (USD)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={resaleItem.unitCost}
+                                        onChange={e => setResaleItem({ ...resaleItem, unitCost: e.target.value })}
+                                        className="pos-input w-full font-mono"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Stock inicial
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        value={resaleItem.initialStock}
+                                        onChange={e => setResaleItem({ ...resaleItem, initialStock: e.target.value })}
+                                        className="pos-input w-full font-mono"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Unidad
+                                    </label>
+                                    <select
+                                        value={resaleItem.baseUnit}
+                                        onChange={e => setResaleItem({ ...resaleItem, baseUnit: e.target.value })}
+                                        className="pos-input w-full"
+                                    >
+                                        <option value="UNIT">Unidad</option>
+                                        <option value="L">Litro</option>
+                                        <option value="ML">Mililitro</option>
+                                        <option value="KG">Kilogramo</option>
+                                        <option value="G">Gramo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                    Descripción (opcional)
+                                </label>
+                                <textarea
+                                    value={resaleItem.description}
+                                    onChange={e => setResaleItem({ ...resaleItem, description: e.target.value })}
+                                    className="pos-input w-full h-16 resize-none"
+                                    placeholder="Notas internas, marca, presentación..."
+                                />
+                            </div>
+
+                            <div className="rounded-xl bg-[#E6ECF4] dark:bg-[#1A2636] text-[#2A4060] dark:text-[#D1DCE9] p-3 text-xs">
+                                <strong>Qué se va a crear automáticamente:</strong>
+                                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                                    <li>Producto en el menú (visible en el POS)</li>
+                                    <li>Insumo en el inventario con el stock indicado</li>
+                                    <li>Receta 1:1 para descontar al vender</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
+                            <button
+                                onClick={() => setShowResaleModal(false)}
+                                disabled={isSavingResale}
+                                className="pos-btn-secondary flex-1 py-3"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleCreateResaleProduct}
+                                disabled={isSavingResale || !resaleItem.name || !resaleItem.salePrice}
+                                className="pos-btn flex-[2] py-3 disabled:opacity-50"
+                            >
+                                {isSavingResale ? 'Creando…' : 'Crear producto'}
                             </button>
                         </div>
                     </div>
