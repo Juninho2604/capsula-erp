@@ -349,6 +349,197 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
 }
 
 // ============================================================================
+// QUICK-ADD: PRODUCTO DE REVENTA (Pepsi, agua, bebidas, snacks, etc.)
+// ============================================================================
+//
+// Para productos que se compran y se revenden tal cual (no preparados), crea
+// en una sola transacción: InventoryItem + InventoryLocation + CostHistory +
+// Recipe (self-referencing 1:1) + MenuItem con recipeId vinculado.
+//
+// Pensado para que personas no técnicas carguen "Pepsi 355ml" desde UNA
+// pantalla en lugar de las 4 actuales (inventario / menú / receta / link).
+//
+// Cuando se vende, el flujo de descuento existente (sales-entry.actions.ts)
+// resta 1 unidad del InventoryItem automáticamente — sin código nuevo allí.
+//
+// Idempotencia: si el SKU autogenerado ya existe, falla con mensaje claro.
+// El operador puede pasar `sku` explícito o cambiar el `name`.
+
+export interface CreateResaleProductInput {
+    name: string;                     // "Pepsi 355ml"
+    categoryId: string;               // Categoría del menú (Bebidas)
+    salePrice: number;                // Precio de venta en USD
+    unitCost: number;                 // Costo unitario actual
+    initialStock: number;             // Stock físico al momento de cargar
+    baseUnit: string;                 // 'UNIT' | 'L' | 'ML' | 'G' | 'KG'
+    areaId: string;                   // Dónde está guardado el stock
+    sku?: string;                     // Auto si no se pasa
+    description?: string;
+    inventoryCategory?: string;       // Categoría del inventario (default: igual al menú)
+}
+
+function autoSkuFromName(name: string): string {
+    const cleaned = name
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+    const prefix = cleaned.split(/\s+/).slice(0, 3).map(w => w.slice(0, 4)).join('-');
+    const suffix = Date.now().toString().slice(-4);
+    return `${prefix}-${suffix}`.slice(0, 40);
+}
+
+export async function createResaleProductAction(
+    input: CreateResaleProductInput,
+): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // ── Validaciones de entrada ──────────────────────────────────────────
+        const name = (input.name || '').trim();
+        if (name.length < 2 || name.length > 100) {
+            return { success: false, message: 'Nombre inválido (2-100 caracteres).' };
+        }
+        if (!input.categoryId) return { success: false, message: 'Falta categoría del menú.' };
+        if (!input.areaId) return { success: false, message: 'Falta área de stock.' };
+        if (!(input.salePrice > 0)) return { success: false, message: 'Precio de venta debe ser > 0.' };
+        if (input.unitCost < 0) return { success: false, message: 'Costo no puede ser negativo.' };
+        if (input.initialStock < 0) return { success: false, message: 'Stock no puede ser negativo.' };
+        const baseUnit = (input.baseUnit || 'UNIT').toUpperCase();
+
+        // ── Validar FKs antes de tocar nada ──────────────────────────────────
+        const [category, area] = await Promise.all([
+            db.menuCategory.findFirst({ where: { id: input.categoryId } }),
+            db.area.findFirst({ where: { id: input.areaId } }),
+        ]);
+        if (!category) return { success: false, message: 'Categoría del menú no encontrada.' };
+        if (!area) return { success: false, message: 'Área no encontrada.' };
+
+        const sku = (input.sku?.trim() || autoSkuFromName(name)).toUpperCase();
+
+        // ── Chequear que no haya colisión de SKU (menú o inventario) ─────────
+        const [existingMenu, existingInv] = await Promise.all([
+            db.menuItem.findFirst({ where: { sku } }),
+            db.inventoryItem.findFirst({ where: { sku } }),
+        ]);
+        if (existingMenu) {
+            return { success: false, message: `Ya existe un plato con SKU "${sku}". Cambiá el nombre o pasá un SKU distinto.` };
+        }
+        if (existingInv) {
+            return { success: false, message: `Ya existe un item de inventario con SKU "${sku}". Cambiá el nombre o pasá un SKU distinto.` };
+        }
+
+        // ── Crear todo en transacción ────────────────────────────────────────
+        const result = await db.$transaction(async (tx) => {
+            // 1. InventoryItem (lo que está físicamente en stock)
+            const invItem = await tx.inventoryItem.create({
+                data: {
+                    tenantId,
+                    name,
+                    sku,
+                    type: 'RAW_MATERIAL',
+                    baseUnit,
+                    isActive: true,
+                    category: input.inventoryCategory ?? category.name,
+                    description: input.description ?? null,
+                },
+            });
+
+            // 2. Stock inicial en el área indicada
+            await tx.inventoryLocation.create({
+                data: {
+                    inventoryItemId: invItem.id,
+                    areaId: input.areaId,
+                    currentStock: input.initialStock,
+                },
+            });
+
+            // 3. Costo unitario (CostHistory abre un periodo "vigente")
+            if (input.unitCost > 0) {
+                await tx.costHistory.create({
+                    data: {
+                        inventoryItemId: invItem.id,
+                        costPerUnit: input.unitCost,
+                        currency: 'USD',
+                        isCalculated: false,
+                        effectiveFrom: new Date(),
+                        effectiveTo: null,
+                        reason: 'Quick-add producto de reventa',
+                        createdById: session.id,
+                    },
+                });
+            }
+
+            // 4. Recipe self-referencing 1:1 (output = mismo item, ingrediente = mismo item).
+            //    Esto hace que al vender, el flujo de descuento existente
+            //    (sales-entry.actions.ts) reste 1 unidad del InventoryItem.
+            const recipe = await tx.recipe.create({
+                data: {
+                    tenantId,
+                    name: `Receta ${name}`,
+                    description: `Producto de reventa 1:1 — vender 1 ${baseUnit.toLowerCase()} consume 1 ${baseUnit.toLowerCase()} de stock`,
+                    outputItemId: invItem.id,
+                    outputQuantity: 1,
+                    outputUnit: baseUnit,
+                    yieldPercentage: 100,
+                    isApproved: true,
+                    isActive: true,
+                    createdById: session.id,
+                },
+            });
+            await tx.recipeIngredient.create({
+                data: {
+                    recipeId: recipe.id,
+                    ingredientItemId: invItem.id,
+                    quantity: 1,
+                    unit: baseUnit,
+                },
+            });
+
+            // 5. MenuItem vinculado a la recipe
+            const menuItem = await tx.menuItem.create({
+                data: {
+                    tenantId,
+                    sku,
+                    name,
+                    price: input.salePrice,
+                    cost: input.unitCost > 0 ? input.unitCost : null,
+                    categoryId: input.categoryId,
+                    recipeId: recipe.id,
+                    isActive: true,
+                    isAvailable: true,
+                    description: input.description ?? null,
+                },
+            });
+
+            return {
+                menuItemId: menuItem.id,
+                inventoryItemId: invItem.id,
+                recipeId: recipe.id,
+                sku,
+            };
+        });
+
+        revalidatePath('/dashboard/menu');
+        revalidatePath('/dashboard/inventario');
+        revalidatePath('/dashboard/recetas');
+
+        return {
+            success: true,
+            message: `"${name}" creado. Stock inicial: ${input.initialStock} ${baseUnit.toLowerCase()}. Precio venta: $${input.salePrice.toFixed(2)}.`,
+            data: result,
+        };
+    } catch (err) {
+        console.error('[createResaleProductAction]', err);
+        return {
+            success: false,
+            message: `Error creando producto: ${err instanceof Error ? err.message : 'desconocido'}.`,
+        };
+    }
+}
+
+// ============================================================================
 // UTILIDAD: SEED CATEGORÍAS (Si está vacío)
 // ============================================================================
 
