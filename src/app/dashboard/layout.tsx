@@ -1,9 +1,11 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { OfflineBanner } from '@/components/offline-banner';
+import { TenantSubdomainBanner } from '@/components/layout/TenantSubdomainBanner';
 import { getSession } from '@/lib/auth';
 import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 import { visibleModules } from '@/lib/permissions/has-permission';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import prisma from '@/server/db';
 
 // Layout dinámico SIEMPRE — el sidebar depende del session + módulos
@@ -46,6 +48,17 @@ export default async function DashboardLayout({
         });
     }
 
+    // Slug del tenant — para el banner de sub-dominio. Si falla la
+    // resolución (cosa rara, no debería), el banner simplemente no se
+    // muestra. Cero impacto en el resto del layout.
+    let tenantSlug: string | null = null;
+    try {
+        const ctx = await resolveTenantContext();
+        tenantSlug = ctx.slug;
+    } catch {
+        // ignore — banner se oculta solo
+    }
+
     const sidebar = (
         <Sidebar initialUser={session} enabledModuleIds={enabledModuleIds} userAllowedModules={userAllowedModules} />
     );
@@ -53,6 +66,10 @@ export default async function DashboardLayout({
     return (
         <>
             <OfflineBanner />
+            <TenantSubdomainBanner
+                tenantSlug={tenantSlug}
+                userRole={session?.role ?? null}
+            />
             <DashboardShell sidebar={sidebar}>
                 {children}
             </DashboardShell>
