@@ -265,13 +265,13 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard/recetas"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
                     >
                         ←
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>
-                        <p className="text-gray-500">
+                        <p className="text-capsula-ink-muted">
                             {initialData ? `Editando: ${initialData.name}` : `Creando como: ${user?.firstName}`}
                         </p>
                     </div>
@@ -282,12 +282,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 {/* Formulario Principal */}
                 <div className="space-y-6 lg:col-span-2">
                     {/* Info básica */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-6 shadow-sm">
                         <h2 className="mb-4 font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Información Básica</h2>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Nombre de la Receta *
                                 </label>
                                 <input
@@ -295,18 +295,18 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     value={recipeName}
                                     onChange={(e) => setRecipeName(e.target.value)}
                                     placeholder="Ej: Salsa de Ajo de la Casa"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                 />
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Categoría
                                 </label>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                 >
                                     <option value="RECETAS CREMAS">Cremas</option>
                                     <option value="RECETAS PANTRY">Pantry</option>
@@ -317,7 +317,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Tipo de Producción
                                 </label>
                                 <div className="flex gap-4">
@@ -328,7 +328,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             value="SUB_RECIPE"
                                             checked={type === 'SUB_RECIPE'}
                                             onChange={() => setType('SUB_RECIPE')}
-                                            className="text-amber-600 focus:ring-amber-500"
+                                            className="accent-capsula-navy-deep focus:ring-capsula-navy-deep/20"
                                         />
                                         <span className="text-sm">Sub-receta (Intermedio)</span>
                                     </label>
@@ -339,7 +339,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             value="FINISHED_GOOD"
                                             checked={type === 'FINISHED_GOOD'}
                                             onChange={() => setType('FINISHED_GOOD')}
-                                            className="text-amber-600 focus:ring-amber-500"
+                                            className="accent-capsula-navy-deep focus:ring-capsula-navy-deep/20"
                                         />
                                         <span className="text-sm">Producto Final (Venta)</span>
                                     </label>
@@ -347,7 +347,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Descripción
                                 </label>
                                 <textarea
@@ -355,12 +355,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Instrucciones breves o descripción..."
                                     rows={2}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Cantidad Producida *
                                 </label>
                                 <div className="flex gap-2">
@@ -370,12 +370,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         onChange={(e) => setOutputQuantity(parseFloat(e.target.value) || 0)}
                                         min="0"
                                         step="0.1"
-                                        className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="w-24 rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                     />
                                     <select
                                         value={outputUnit}
                                         onChange={(e) => setOutputUnit(e.target.value as UnitOfMeasure)}
-                                        className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="flex-1 rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                     >
                                         {UNITS.map(u => (
                                             <option key={u.value} value={u.value}>{u.label}</option>
@@ -385,7 +385,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Rendimiento (Yield) %
                                 </label>
                                 <div className="relative">
@@ -395,17 +395,17 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         onChange={(e) => setYieldPercentage(parseFloat(e.target.value) || 100)}
                                         min="1"
                                         max="100"
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 pr-10 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        className="w-full rounded-lg border border-capsula-line bg-white px-4 py-2.5 pr-10 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-capsula-ink-muted">%</span>
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-1 text-xs text-capsula-ink-muted">
                                     Real: {formatNumber(effectiveOutput)} {outputUnit}
                                 </p>
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Tiempo Prep. (min)
                                 </label>
                                 <input
@@ -413,12 +413,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     value={prepTime}
                                     onChange={(e) => setPrepTime(parseInt(e.target.value) || 0)}
                                     min="0"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">
                                     Tiempo Cocción (min)
                                 </label>
                                 <input
@@ -426,24 +426,24 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     value={cookTime}
                                     onChange={(e) => setCookTime(parseInt(e.target.value) || 0)}
                                     min="0"
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Ingredientes */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface shadow-sm">
+                        <div className="flex items-center justify-between border-b border-capsula-line px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Ingredientes</h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-capsula-ink-muted">
                                     {ingredients.length} items
                                 </p>
                             </div>
                             <button
                                 onClick={() => setShowAddIngredient(true)}
-                                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600"
+                                className="inline-flex items-center gap-2 rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy"
                             >
                                 ➕ Agregar
                             </button>
@@ -453,20 +453,20 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                         <div className="divide-y divide-gray-200 dark:divide-gray-700">
                             {ingredientCosts.map((ing, index) => (
                                 <div key={ing.id} className="flex items-center gap-4 px-6 py-4">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-soft text-sm font-semibold text-capsula-ink">
                                         {index + 1}
                                     </div>
 
                                     <div className="flex-1">
-                                        <p className="font-medium text-gray-900 dark:text-white">
+                                        <p className="font-medium text-capsula-ink">
                                             {ing.itemName}
                                         </p>
-                                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <div className="flex items-center gap-2 text-sm text-capsula-ink-muted">
                                             <span>
                                                 {formatNumber(ing.quantity)} {ing.unit}
                                             </span>
                                             {ing.wastePercentage > 0 && (
-                                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                                <span className="rounded bg-[#F3EAD6] px-1.5 py-0.5 text-xs text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
                                                     {ing.wastePercentage}% merma
                                                 </span>
                                             )}
@@ -478,7 +478,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             <p className="font-mono text-sm font-semibold text-lg tracking-[-0.01em] text-capsula-ink">
                                                 {formatCurrency(ing.totalCost)}
                                             </p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-xs text-capsula-ink-muted">
                                                 {(ing.unitCost).toFixed(2)}/u
                                             </p>
                                         </div>
@@ -486,7 +486,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                     <button
                                         onClick={() => removeIngredient(ing.id)}
-                                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                        className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
                                     >
                                         🗑️
                                     </button>
@@ -496,7 +496,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             {ingredients.length === 0 && !showAddIngredient && (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <span className="text-4xl"></span>
-                                    <p className="mt-2 text-gray-500">
+                                    <p className="mt-2 text-capsula-ink-muted">
                                         No hay ingredientes. Agrega el primero.
                                     </p>
                                 </div>
@@ -505,13 +505,13 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                         {/* Modal para agregar ingrediente */}
                         {showAddIngredient && (
-                            <div className="border-t border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/50">
+                            <div className="border-t border-capsula-line bg-capsula-ivory-alt p-6">
                                 <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="font-medium text-gray-900 dark:text-white">Agregar Ingrediente</h3>
+                                    <h3 className="font-medium text-capsula-ink">Agregar Ingrediente</h3>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#A8C8B0] bg-[#E5EDE7] px-3 py-1.5 text-xs font-semibold text-[#2F6B4E] transition-colors hover:opacity-80 dark:border-[#2A4D38] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
                                     >
                                         {showCreateItem ? '✕ Cerrar' : '＋ Crear Insumo Nuevo'}
                                     </button>
@@ -519,13 +519,13 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                 {/* Mini-formulario para crear insumo nuevo */}
                                 {showCreateItem && (
-                                    <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/10">
-                                        <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-400">
+                                    <div className="mb-5 rounded-lg border border-capsula-line bg-capsula-ivory p-4">
+                                        <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-capsula-ink">
                                             🆕 Crear Insumo Nuevo
                                         </h4>
                                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                             <div className="sm:col-span-2">
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <label className="mb-1 block text-xs font-medium text-capsula-ink-muted">
                                                     Nombre del insumo *
                                                 </label>
                                                 <input
@@ -533,18 +533,18 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                     value={newItemName}
                                                     onChange={(e) => setNewItemName(e.target.value)}
                                                     placeholder="Ej: Aceite de Oliva, Harina de Trigo..."
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                                     autoFocus
                                                 />
                                             </div>
                                             <div>
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <label className="mb-1 block text-xs font-medium text-capsula-ink-muted">
                                                     Unidad base *
                                                 </label>
                                                 <select
                                                     value={newItemUnit}
                                                     onChange={(e) => setNewItemUnit(e.target.value)}
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                                 >
                                                     {UNITS.map(u => (
                                                         <option key={u.value} value={u.value}>{u.label}</option>
@@ -552,13 +552,13 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <label className="mb-1 block text-xs font-medium text-capsula-ink-muted">
                                                     Tipo
                                                 </label>
                                                 <select
                                                     value={newItemType}
                                                     onChange={(e) => setNewItemType(e.target.value)}
-                                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                                 >
                                                     <option value="RAW_MATERIAL">Materia Prima</option>
                                                     <option value="SUB_RECIPE">Sub-Receta</option>
@@ -566,14 +566,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             </div>
                                         </div>
                                         <div className="mt-3 flex items-center justify-between">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            <p className="text-xs text-capsula-ink-muted dark:text-capsula-ink-muted">
                                                 Se creará en el inventario y podrás darle entrada (compras) luego.
                                             </p>
                                             <button
                                                 type="button"
                                                 onClick={handleCreateItem}
                                                 disabled={!newItemName.trim() || isCreatingItem}
-                                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 {isCreatingItem ? '⏳ Creando...' : '✓ Crear Insumo'}
                                             </button>
@@ -583,7 +583,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="sm:col-span-2">
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+                                        <label className="mb-1 block text-sm text-capsula-ink-muted">
                                             Insumo / Sub-receta
                                         </label>
                                         <Combobox
@@ -607,7 +607,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+                                        <label className="mb-1 block text-sm text-capsula-ink-muted">
                                             Cantidad
                                         </label>
                                         <div className="flex gap-2">
@@ -618,12 +618,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="1"
-                                                className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="w-20 rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
                                             />
                                             <select
                                                 value={newIngredient.unit}
                                                 onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value as UnitOfMeasure })}
-                                                className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="flex-1 rounded-lg border border-capsula-line bg-white px-2 py-2 text-sm"
                                             >
                                                 {UNITS.map(u => (
                                                     <option key={u.value} value={u.value}>{u.label}</option>
@@ -633,7 +633,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+                                        <label className="mb-1 block text-sm text-capsula-ink-muted">
                                             Merma %
                                         </label>
                                         <input
@@ -643,7 +643,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             min="0"
                                             max="99"
                                             placeholder="0"
-                                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            className="w-full rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
                                         />
                                     </div>
                                 </div>
@@ -651,14 +651,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                 <div className="mt-4 flex justify-end gap-2">
                                     <button
                                         onClick={() => setShowAddIngredient(false)}
-                                        className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                                        className="rounded-lg px-4 py-2 text-sm font-semibold text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={addIngredient}
                                         disabled={!newIngredient.inventoryItemId || !newIngredient.quantity}
-                                        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         Agregar
                                     </button>
@@ -672,7 +672,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 <div className="space-y-4">
                     {/* Costo Total Card */}
                     {showCosts ? (
-                        <div className="sticky top-24 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                        <div className="sticky top-24 rounded-xl border border-capsula-line bg-capsula-navy-soft p-6 shadow-sm">
                             <div className="mb-4 flex items-center gap-2">
                                 <span className="text-2xl"></span>
                                 <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resumen Estimado</h3>
@@ -680,25 +680,25 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Costo ingredientes:</span>
-                                    <span className="font-mono font-medium text-gray-900 dark:text-white">
+                                    <span className="text-capsula-ink-muted">Costo ingredientes:</span>
+                                    <span className="font-mono font-medium text-capsula-ink">
                                         {formatCurrency(totalIngredientsCost)}
                                     </span>
                                 </div>
 
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-400">Producción efectiva:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="text-capsula-ink-muted">Producción efectiva:</span>
+                                    <span className="font-medium text-capsula-ink">
                                         {formatNumber(effectiveOutput)} {outputUnit}
                                     </span>
                                 </div>
 
-                                <div className="border-t border-amber-200 pt-3 dark:border-amber-700">
+                                <div className="border-t border-capsula-line pt-3">
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-capsula-ink">
                                             Costo por unidad:
                                         </span>
-                                        <span className="font-semibold text-xl tracking-[-0.02em] text-amber-600 dark:text-amber-400">
+                                        <span className="font-semibold text-xl tracking-[-0.02em] text-capsula-coral">
                                             {formatCurrency(costPerUnit)}
                                         </span>
                                     </div>
@@ -706,9 +706,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800">
+                        <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 text-center">
                             <span className="text-4xl"></span>
-                            <p className="mt-2 text-sm text-gray-500">
+                            <p className="mt-2 text-sm text-capsula-ink-muted">
                                 Los costos no están disponibles para tu rol.
                             </p>
                         </div>

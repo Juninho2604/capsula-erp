@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import {
+    Plus as PlusIcon,
+    Search,
+    AlertTriangle,
+    Check,
+    X as XIcon,
+    Pencil,
+    RefreshCw,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
     getFullMenuAction,
     updateMenuItemPriceAction,
     updateMenuItemNameAction,
@@ -224,11 +234,15 @@ export default function MenuManagementPage() {
     })).filter(cat => cat.items.length > 0);
 
     if (isLoading) {
-        return <div className="p-8 text-center text-white">Cargando menú...</div>;
+        return (
+            <div className="p-8 text-center text-capsula-ink-muted">
+                Cargando menú...
+            </div>
+        );
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto text-white">
+        <div className="p-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">Gestión de menú</h1>
@@ -244,17 +258,17 @@ export default function MenuManagementPage() {
                             }));
                             setShowResaleModal(true);
                         }}
-                        className="bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-cream px-5 py-3 rounded-xl font-semibold shadow-sm transition-all flex items-center gap-2"
+                        className="pos-btn-secondary px-5 py-3 text-sm inline-flex items-center gap-2"
                         title="Crear un producto que se compra y se revende tal cual (bebidas, snacks, etc). Carga inventario + menú + receta en un solo paso."
                     >
-                        <span className="text-xl">+</span> Producto de reventa
+                        <PlusIcon className="h-4 w-4" /> Producto de reventa
                     </button>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+                        className="pos-btn px-5 py-3 text-sm inline-flex items-center gap-2"
                         title="Crear un plato preparado (con receta multi-ingrediente que se completa después)"
                     >
-                        <span className="text-xl">+</span> Plato preparado
+                        <PlusIcon className="h-4 w-4" /> Plato preparado
                     </button>
                 </div>
             </div>
@@ -262,40 +276,55 @@ export default function MenuManagementPage() {
             {/* Barra de búsqueda + filtros */}
             <div className="mb-6 flex gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                    <span className="absolute left-4 top-3 text-gray-500"></span>
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-capsula-ink-muted pointer-events-none" />
                     <input
                         type="text"
                         placeholder="Buscar plato..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        className="pos-input w-full pl-10"
                     />
                 </div>
                 <button
                     onClick={() => setShowOnlyNoRecipe(!showOnlyNoRecipe)}
-                    className={`px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border ${showOnlyNoRecipe ? 'bg-red-500/20 border-red-500 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500/50'}`}
+                    className={cn(
+                        "px-4 py-3 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition-all border",
+                        showOnlyNoRecipe
+                            ? "bg-[#F7E3DB] text-[#B04A2E] border-[#EFD2C8] dark:bg-[#3B1F14] dark:text-[#EFD2C8] dark:border-[#5A2E1F]"
+                            : "bg-capsula-ivory-surface border-capsula-line text-capsula-ink-muted hover:border-capsula-coral/40"
+                    )}
                 >
-                    ⚠️ Sin Receta
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${itemsWithoutRecipe > 0 ? 'bg-red-500 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                    <AlertTriangle className="h-4 w-4" />
+                    Sin Receta
+                    <span className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums",
+                        itemsWithoutRecipe > 0
+                            ? "bg-capsula-coral text-capsula-cream"
+                            : "bg-capsula-navy-soft text-capsula-ink-muted"
+                    )}>
                         {itemsWithoutRecipe}
                     </span>
                 </button>
             </div>
 
             {/* Lista por Categorías */}
-            <div className="space-y-8">
+            <div className="space-y-6">
                 {filteredCategories.map(category => (
-                    <div key={category.id} className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
-                        <div className="px-6 py-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
-                            <span className="text-2xl">{category.name.includes('Bebida') ? '' : ''}</span>
-                            <h2 className="font-semibold text-xl tracking-[-0.02em] text-gray-200">{category.name}</h2>
-                            <span className="text-gray-500 text-sm ml-auto">{category.items.length} items</span>
+                    <div key={category.id} className="bg-capsula-ivory-surface border border-capsula-line rounded-2xl overflow-hidden">
+                        <div className="px-6 py-4 bg-capsula-ivory-alt border-b border-capsula-line flex items-center gap-3">
+                            <h2 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">{category.name}</h2>
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted ml-auto tabular-nums">
+                                {category.items.length} {category.items.length === 1 ? 'item' : 'items'}
+                            </span>
                         </div>
 
-                        <div className="divide-y divide-gray-700">
+                        <div className="divide-y divide-capsula-line">
                             {category.items.map((item: any) => (
-                                <div key={item.id} className={`flex items-center justify-between p-4 hover:bg-gray-700/50 transition-colors ${!item.isActive ? 'opacity-50 grayscale' : ''}`}>
-                                    <div className="flex-1">
+                                <div key={item.id} className={cn(
+                                    "flex items-center justify-between p-4 transition-colors hover:bg-capsula-ivory-alt",
+                                    !item.isActive && "opacity-50"
+                                )}>
+                                    <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             {editingNameId === item.id ? (
                                                 <input
@@ -308,86 +337,103 @@ export default function MenuManagementPage() {
                                                         if (e.key === 'Enter') handleNameChange(item.id, editingNameValue);
                                                         if (e.key === 'Escape') setEditingNameId(null);
                                                     }}
-                                                    className="bg-gray-900 border border-amber-500 rounded px-2 py-1 text-lg font-semibold text-white focus:outline-none w-full max-w-md"
+                                                    className="bg-capsula-ivory border border-capsula-coral rounded-lg px-2 py-1 text-base font-semibold text-capsula-ink focus:outline-none w-full max-w-md"
                                                 />
                                             ) : (
                                                 <>
-                                                    <div className="font-semibold text-lg">{item.name}</div>
+                                                    <div className="font-semibold text-base text-capsula-ink truncate">{item.name}</div>
                                                     <button
                                                         onClick={() => {
                                                             setEditingNameId(item.id);
                                                             setEditingNameValue(item.name);
                                                         }}
-                                                        className="text-gray-500 hover:text-amber-400 transition-colors text-sm"
+                                                        className="text-capsula-ink-muted hover:text-capsula-coral transition-colors p-1 rounded-full hover:bg-capsula-coral/10"
                                                         title="Editar nombre"
                                                     >
-                                                        ✏️
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </button>
                                                 </>
                                             )}
                                         </div>
-                                        <div className="text-sm text-gray-400">{item.description || 'Sin descripción'}</div>
+                                        <div className="text-xs text-capsula-ink-muted mt-0.5 truncate">
+                                            {item.description || 'Sin descripción'}
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3 flex-wrap justify-end">
+                                    <div className="flex items-center gap-3 flex-wrap justify-end shrink-0">
                                         {/* Receta Status — 3 estados */}
                                         {(() => {
                                             const rs = getRecipeStatus(item);
                                             if (rs === 'COMPLETE') return (
-                                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1">
-                                                    ✅ Receta lista
+                                                <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
+                                                    <Check className="h-3 w-3" /> Receta lista
                                                 </span>
                                             );
                                             if (rs === 'STUB') return (
                                                 <a
                                                     href={`/dashboard/recetas`}
-                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors flex items-center gap-1"
+                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] hover:opacity-80"
                                                     title="Receta creada pero sin ingredientes — complétala en Recetas"
                                                 >
-                                                    🟡 Receta vacía
+                                                    <AlertTriangle className="h-3 w-3" /> Receta vacía
                                                 </a>
                                             );
                                             return (
                                                 <button
                                                     onClick={() => handleCreateRecipeStub(item.id)}
                                                     disabled={creatingRecipeFor === item.id}
-                                                    className="px-2 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8] hover:opacity-80 disabled:opacity-50"
                                                     title="Sin receta — click para crear estructura vacía"
                                                 >
-                                                    {creatingRecipeFor === item.id ? '⏳' : '❌'} Sin receta
+                                                    {creatingRecipeFor === item.id ? (
+                                                        <RefreshCw className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <XIcon className="h-3 w-3" />
+                                                    )}
+                                                    Sin receta
                                                 </button>
                                             );
                                         })()}
 
                                         {/* Precio Editable */}
                                         <div className="flex items-center gap-2">
-                                            <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-1">
-                                                <span className="text-amber-500 font-bold mr-1">$</span>
+                                            <div className="flex items-center bg-capsula-ivory rounded-lg border border-capsula-line px-3 py-1">
+                                                <span className="text-capsula-coral font-semibold mr-1">$</span>
                                                 <input
                                                     type="number"
                                                     defaultValue={item.price}
                                                     onBlur={(e) => handlePriceChange(item.id, e.target.value)}
-                                                    className="bg-transparent w-20 text-white font-mono font-bold focus:outline-none"
+                                                    className="bg-transparent w-20 text-capsula-ink font-mono font-semibold focus:outline-none tabular-nums"
                                                 />
                                             </div>
-                                            <div className="flex items-center bg-orange-500/10 rounded-lg border border-orange-500/30 px-2 py-1 gap-1" title="Precio PedidosYA (~-33%)">
-                                                <span className="text-orange-400 text-xs">PYA</span>
-                                                <span className="text-orange-500 font-mono font-bold text-xs">${(item.pedidosYaPrice ?? calcPedidosYaPrice(item.price)).toFixed(2)}</span>
+                                            <div
+                                                className="flex items-center bg-capsula-ivory-alt rounded-lg border border-capsula-line px-2 py-1 gap-1"
+                                                title="Precio PedidosYA (~-33%)"
+                                            >
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-capsula-ink-muted">PYA</span>
+                                                <span className="text-capsula-ink-soft font-mono font-semibold text-xs tabular-nums">
+                                                    ${(item.pedidosYaPrice ?? calcPedidosYaPrice(item.price)).toFixed(2)}
+                                                </span>
                                             </div>
                                         </div>
 
                                         {/* Switch Activo/Inactivo */}
                                         <button
                                             onClick={() => handleToggleStatus(item.id, item.isActive)}
-                                            className={`px-3 py-1 rounded-full text-xs font-bold ${item.isActive ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}
+                                            className={cn(
+                                                "px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                                                item.isActive
+                                                    ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
+                                                    : "bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]"
+                                            )}
                                         >
-                                            {item.isActive ? 'ACTIVO' : 'INACTIVO'}
+                                            {item.isActive ? 'Activo' : 'Inactivo'}
                                         </button>
                                     </div>
                                 </div>
                             ))}
                             {category.items.length === 0 && (
-                                <div className="p-8 text-center text-gray-500">
+                                <div className="p-8 text-center text-sm text-capsula-ink-muted">
                                     No hay productos en esta categoría
                                 </div>
                             )}
@@ -398,37 +444,51 @@ export default function MenuManagementPage() {
 
             {/* Modal Nuevo Producto */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-700 shadow-2xl">
-                        <h2 className="font-semibold text-2xl tracking-[-0.02em] mb-6">Nuevo Producto</h2>
+                <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+                            <h2 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Nuevo plato preparado</h2>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center transition"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
 
-                        <div className="space-y-4">
+                        <div className="p-5 space-y-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Nombre</label>
+                                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                    Nombre
+                                </label>
                                 <input
                                     autoFocus
-                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none"
+                                    className="pos-input w-full"
                                     value={newItem.name}
                                     onChange={e => setNewItem({ ...newItem, name: e.target.value })}
                                     placeholder="Ej. Shawarma Mixto"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Precio ($)</label>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Precio ($)
+                                    </label>
                                     <input
                                         type="number"
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none font-mono"
+                                        className="pos-input w-full font-mono"
                                         value={newItem.price}
                                         onChange={e => setNewItem({ ...newItem, price: e.target.value })}
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Categoría</label>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                        Categoría
+                                    </label>
                                     <select
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none"
+                                        className="pos-input w-full"
                                         value={newItem.categoryId}
                                         onChange={e => setNewItem({ ...newItem, categoryId: e.target.value })}
                                     >
@@ -440,9 +500,11 @@ export default function MenuManagementPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Descripción (Opcional)</label>
+                                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                                    Descripción (opcional)
+                                </label>
                                 <textarea
-                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 focus:border-amber-500 focus:outline-none resize-none h-24"
+                                    className="pos-input w-full h-20 resize-none"
                                     value={newItem.description}
                                     onChange={e => setNewItem({ ...newItem, description: e.target.value })}
                                     placeholder="Ingredientes..."
@@ -450,19 +512,30 @@ export default function MenuManagementPage() {
                             </div>
                         </div>
 
-                        <div className="flex gap-3 mt-8">
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-medium"
+                                disabled={isSaving}
+                                className="pos-btn-secondary flex-1 py-3"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleCreateItem}
-                                disabled={isSaving}
-                                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold flex justify-center items-center"
+                                disabled={isSaving || !newItem.name || !newItem.price}
+                                className="pos-btn flex-[2] py-3 disabled:opacity-50 inline-flex items-center justify-center gap-2"
                             >
-                                {isSaving ? 'Guardando...' : 'Crear Plato'}
+                                {isSaving ? (
+                                    <>
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        Guardando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="h-4 w-4" />
+                                        Crear plato
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
