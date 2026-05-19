@@ -548,6 +548,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   pedidosya: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   sales_entry: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   sales_history: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF', 'CASHIER'],
+  sold_items_report: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF'],
   kitchen_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF'],
   barra_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF', 'AREA_LEAD', 'CASHIER'],
   pos_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER'],
