@@ -8,6 +8,8 @@ import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
+import { SinConToggle } from '@/components/pos/SinConToggle';
+import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import toast from 'react-hot-toast';
 
 interface ModifierOption {
@@ -130,6 +132,27 @@ export default function POSPedidosYAPage() {
             mods = newQty === 0 ? mods.filter(m => !(m.id === modifier.id && m.groupId === group.id)) : mods.map(m => (m.id === modifier.id && m.groupId === group.id ? { ...m, quantity: newQty } : m));
         } else if (newQty > 0) {
             mods.push({ groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: newQty });
+        }
+        setCurrentModifiers(mods);
+    };
+
+    // Toggle SIN/CON/NEUTRAL agrupado por ingrediente (mutua exclusión).
+    const setIngredientToggleState = (
+        group: ModifierGroup,
+        toggle: IngredientToggle,
+        target: 'SIN' | 'CON' | 'NEUTRAL',
+    ) => {
+        const sinId = toggle.sin?.id;
+        const conId = toggle.con?.id;
+        let mods = currentModifiers.filter(m => {
+            const isThisIngredient =
+                m.groupId === group.id && ((sinId && m.id === sinId) || (conId && m.id === conId));
+            return !isThisIngredient;
+        });
+        if (target === 'SIN' && toggle.sin) {
+            mods.push({ groupId: group.id, groupName: group.name, id: toggle.sin.id, name: toggle.sin.name, priceAdjustment: toggle.sin.priceAdjustment, quantity: 1 });
+        } else if (target === 'CON' && toggle.con) {
+            mods.push({ groupId: group.id, groupName: group.name, id: toggle.con.id, name: toggle.con.name, priceAdjustment: toggle.con.priceAdjustment, quantity: 1 });
         }
         setCurrentModifiers(mods);
     };
@@ -504,31 +527,46 @@ export default function POSPedidosYAPage() {
                                             </span>
                                         </div>
                                         <div className="grid gap-2">
-                                            {group.modifiers.filter(m => m.isAvailable).map(mod => {
-                                                const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
-                                                const qty = existing ? existing.quantity : 0;
-                                                const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
-                                                const isRadio = group.maxSelections === 1;
+                                            {(() => {
+                                                const { toggles, passThrough } = groupModifiersForSinCon(group.modifiers as any);
+                                                const selectedIdSet = new Set(
+                                                    currentModifiers.filter(m => m.groupId === group.id).map(m => m.id),
+                                                );
                                                 return (
-                                                    <div
-                                                        key={mod.id}
-                                                        className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
-                                                            qty > 0
-                                                                ? 'border-capsula-navy-deep bg-capsula-navy-soft'
-                                                                : 'border-capsula-line bg-capsula-ivory'
-                                                        }`}
-                                                    >
-                                                        <span className="text-sm text-capsula-ink">
-                                                            {mod.name}
-                                                            {mod.priceAdjustment !== 0 && (
-                                                                <span className="ml-1 text-xs tabular-nums text-capsula-coral">
-                                                                    {mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}
-                                                                </span>
-                                                            )}
-                                                        </span>
+                                                    <>
+                                                        {toggles.map(toggle => (
+                                                            <SinConToggle
+                                                                key={toggle.key}
+                                                                toggle={toggle}
+                                                                state={toggleStateFor(toggle, selectedIdSet)}
+                                                                onChange={(target) => setIngredientToggleState(group, toggle, target)}
+                                                            />
+                                                        ))}
+                                                        {passThrough.map(mod => {
+                                                            const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
+                                                            const qty = existing ? existing.quantity : 0;
+                                                            const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
+                                                            const isRadio = group.maxSelections === 1;
+                                                            return (
+                                                                <div
+                                                                    key={mod.id}
+                                                                    className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
+                                                                        qty > 0
+                                                                            ? 'border-capsula-navy-deep bg-capsula-navy-soft'
+                                                                            : 'border-capsula-line bg-capsula-ivory'
+                                                                    }`}
+                                                                >
+                                                                    <span className="text-sm text-capsula-ink">
+                                                                        {mod.name}
+                                                                        {mod.priceAdjustment !== 0 && (
+                                                                            <span className="ml-1 text-xs tabular-nums text-capsula-coral">
+                                                                                {mod.priceAdjustment > 0 ? '+' : ''}${mod.priceAdjustment.toFixed(2)}
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
                                                         {isRadio ? (
                                                             <button
-                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                onClick={() => updateModifierQuantity(group, mod as any, 1)}
                                                                 className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs transition-colors ${
                                                                     qty > 0
                                                                         ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
@@ -541,7 +579,7 @@ export default function POSPedidosYAPage() {
                                                         ) : (
                                                             <div className="flex gap-1 rounded-lg border border-capsula-line bg-capsula-ivory p-1">
                                                                 <button
-                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
+                                                                    onClick={() => updateModifierQuantity(group, mod as any, -1)}
                                                                     disabled={qty === 0}
                                                                     className={`h-7 w-7 rounded-lg text-base font-medium transition-colors ${
                                                                         qty === 0
@@ -555,7 +593,7 @@ export default function POSPedidosYAPage() {
                                                                     {qty}
                                                                 </span>
                                                                 <button
-                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
+                                                                    onClick={() => updateModifierQuantity(group, mod as any, 1)}
                                                                     disabled={isMax}
                                                                     className={`h-7 w-7 rounded-lg text-base font-medium transition-colors ${
                                                                         isMax
@@ -570,6 +608,9 @@ export default function POSPedidosYAPage() {
                                                     </div>
                                                 );
                                             })}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 );
