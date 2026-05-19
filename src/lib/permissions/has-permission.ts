@@ -129,6 +129,18 @@ export function assertPermission(user: PermUser, permission: PermKey): void {
  * Si allowedModules es null: devuelve null (el caller debe usar filtrado por rol).
  */
 export function visibleModules(user: PermUser): string[] | null {
+    // OWNER siempre tiene acceso completo a todos los módulos. Si por
+    // alguna razón histórica tiene `allowedModules` seteado (config
+    // heredada, granularidad accidental), ignoramos esa restricción.
+    // Devolver null = "sin filtro por usuario, usar defaults del rol",
+    // que para OWNER equivale a TODO el registry.
+    //
+    // Sin este short-circuit, agregar un módulo nuevo al MODULE_REGISTRY
+    // lo dejaba invisible para OWNERs que hubieran tenido allowedModules
+    // explícito en algún momento (caso reportado 2026-05-19: el módulo
+    // 'sold_items_report' no aparecía).
+    if (user.role === 'OWNER') return null;
+
     const base = parseAllowedModules(user.allowedModules);
     if (base === null) return null;  // sin override → caller usa defaults del rol
 

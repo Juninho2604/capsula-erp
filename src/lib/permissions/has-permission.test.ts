@@ -236,9 +236,46 @@ describe('visibleModules', () => {
         expect(visibleModules(user({ allowedModules: null }))).toBeNull();
     });
 
-    it('Retorna los allowedModules tal cual si no hay grantedPerms', () => {
+    it('Retorna los allowedModules tal cual si no hay grantedPerms (rol no-OWNER)', () => {
         const u = user({ allowedModules: JSON.stringify(['pos_waiter']) });
         expect(visibleModules(u)).toEqual(['pos_waiter']);
+    });
+
+    // ── OWNER siempre tiene acceso completo ────────────────────────────────
+    // Bug encontrado 2026-05-19: si un OWNER tenía allowedModules seteado
+    // por una config heredada y agregamos un módulo nuevo al registry, ese
+    // módulo quedaba invisible. Fix: para OWNER, ignorar allowedModules.
+
+    it('OWNER con allowedModules=null → null (sin restricción)', () => {
+        const u = user({ role: 'OWNER', allowedModules: null });
+        expect(visibleModules(u)).toBeNull();
+    });
+
+    it('OWNER con allowedModules seteado a lista limitada → null igualmente', () => {
+        const u = user({
+            role: 'OWNER',
+            allowedModules: JSON.stringify(['pos_waiter']),
+        });
+        // Aunque tenga allowedModules limitado, devuelve null → caller usa
+        // defaults del rol OWNER → todos los módulos del registry.
+        expect(visibleModules(u)).toBeNull();
+    });
+
+    it('OWNER con allowedModules=[] → null (sin restricción)', () => {
+        const u = user({
+            role: 'OWNER',
+            allowedModules: JSON.stringify([]),
+        });
+        expect(visibleModules(u)).toBeNull();
+    });
+
+    it('No-OWNER con allowedModules=[] → array vacío (restricción aplica)', () => {
+        const u = user({
+            role: 'CASHIER',
+            allowedModules: JSON.stringify([]),
+        });
+        // Para roles no-OWNER, una lista vacía sigue siendo restricción.
+        expect(visibleModules(u)).toEqual([]);
     });
 
     it('Agrega módulos derivados de grantedPerms (bypass Capa 2)', () => {
