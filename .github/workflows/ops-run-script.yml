@@ -15,6 +15,7 @@ name: Ops — Run Script on VPS
 #   - inspect-neon-schema       → inspecciona BD origen para migración
 #   - migrate-from-neon         → migra datos de Neon
 #   - create-tenant             → crea tenant nuevo (requiere args)
+#   - sync-modifier-groups-tablas → corrige modifier groups faltantes en Tablas (dry-run por default)
 #
 # Nota: si querés agregar un script nuevo a esta lista, edita el `case` abajo.
 
@@ -31,6 +32,7 @@ on:
                     - inspect-neon-schema
                     - migrate-from-neon
                     - create-tenant
+                    - sync-modifier-groups-tablas
             args:
                 description: 'Argumentos extra (ej: --reset, --apply, --slug=tablepong)'
                 required: false
@@ -61,7 +63,7 @@ jobs:
                       cd /var/www/capsula-erp
                       set -a && source .env && set +a
                       case "$SCRIPT_NAME" in
-                          seed-demo-tenant|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant)
+                          seed-demo-tenant|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant|sync-modifier-groups-tablas)
                               echo ">>> Ejecutando: npx tsx scripts/${SCRIPT_NAME}.ts $SCRIPT_ARGS"
                               npx tsx "scripts/${SCRIPT_NAME}.ts" $SCRIPT_ARGS
                               ;;
