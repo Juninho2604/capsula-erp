@@ -277,6 +277,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 240,
   },
   {
+    id: 'sold_items_report',
+    label: 'Platos Vendidos',
+    description: 'Reporte de unidades vendidas y modificadores por rango de fecha',
+    icon: '🍽️',
+    href: '/dashboard/sales/items',
+    section: 'sales',
+    enabledByDefault: true,
+    sortOrder: 245,
+  },
+  {
     id: 'kitchen_display',
     label: 'Comandera Cocina',
     description: 'Pantalla de órdenes para cocina',
