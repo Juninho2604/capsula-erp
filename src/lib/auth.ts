@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 // Fallback degradado: si JWT_SECRET no existe o es débil, logueamos warning
@@ -80,9 +80,40 @@ export async function getSession() {
     return await decrypt(sessionCookie);
 }
 
+/**
+ * Determina el `domain` correcto para la cookie de sesión.
+ *
+ * - En producción Y host bajo `kpsula.app` → `.kpsula.app` (la cookie viaja
+ *   a cualquier subdominio: kpsula.app, shanklish.kpsula.app, etc.). Esto
+ *   permite redirect post-login del root al subdomain sin perder sesión.
+ *
+ * - En dev (localhost, vercel preview, etc.) → undefined (host-only). Setear
+ *   `.kpsula.app` en localhost rompe la cookie porque el browser rechaza
+ *   domains que no matchean el host.
+ *
+ * Defensa: si por algún motivo `headers()` falla, devolvemos undefined y
+ * la cookie queda host-only — comportamiento histórico que sabemos que
+ * funciona. Cero downgrade a producción.
+ */
+async function resolveCookieDomain(): Promise<string | undefined> {
+    if (process.env.NODE_ENV !== 'production') return undefined;
+    try {
+        const h = await headers();
+        const host = (h.get('host') ?? '').split(':')[0].toLowerCase();
+        if (host === 'kpsula.app' || host.endsWith('.kpsula.app')) {
+            return '.kpsula.app';
+        }
+    } catch {
+        // headers() puede fallar si createSession se llama fuera de un
+        // request context. En ese caso, mejor host-only que romper.
+    }
+    return undefined;
+}
+
 export async function createSession(payload: SessionPayload) {
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 día
     const session = await encrypt(payload);
+    const domain = await resolveCookieDomain();
 
     (await cookies()).set('session', session, {
         expires,
@@ -90,11 +121,31 @@ export async function createSession(payload: SessionPayload) {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
+        ...(domain ? { domain } : {}),
     });
 }
 
 export async function deleteSession() {
-    (await cookies()).delete('session');
+    // Borramos en BOTH scopes: domain compartido (.kpsula.app) Y host-only.
+    // Esto cubre sesiones creadas antes del cambio de cookie domain
+    // (host-only viejas) Y sesiones nuevas (domain compartido). Sin esto,
+    // un logout podría dejar la cookie vieja viva por su scope distinto.
+    const domain = await resolveCookieDomain();
+    const ck = await cookies();
+    ck.delete('session');
+    if (domain) {
+        // Para borrar una cookie con domain debemos volver a setearla con
+        // expiración pasada y el mismo domain. Un delete() simple no
+        // alcanza si la cookie tiene domain explícito.
+        ck.set('session', '', {
+            expires: new Date(0),
+            httpOnly: true,
+            secure: true,
+            sameSite: 'lax',
+            path: '/',
+            domain,
+        });
+    }
 }
 
 /**

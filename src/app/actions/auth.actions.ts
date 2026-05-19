@@ -47,19 +47,60 @@ export async function loginAction(prevState: any, formData: FormData) {
     }
 
     try {
-        // CRÍTICO: filtramos por tenantId del subdominio para evitar tomar
-        // control cross-tenant si el mismo email existe en varios tenants.
-        // El compound unique (tenantId, email) garantiza max 1 match per tenant.
-        const { tenantId } = await resolveTenantContext();
+        // Estrategia de búsqueda según contexto:
+        //
+        //  A) Host es <slug>.kpsula.app → tenantContext.source === 'subdomain'.
+        //     Filtramos estrictamente por ese tenantId. Si el email no existe
+        //     ahí, falla con credencial inválida. Previene cross-tenant login.
+        //
+        //  B) Host es kpsula.app (root) → tenantContext.source === 'fallback'
+        //     o 'session' pre-login no resuelve. Buscamos el email en TODOS
+        //     los tenants:
+        //        - 0 matches  → credencial inválida
+        //        - 1 match    → loggea ese user, redirect al subdomain del
+        //                       tenant (lo decide el cliente con tenantSlug)
+        //        - 2+ matches → error explícito pidiendo entrar por el
+        //                       subdomain correcto. (Caso real: mismo email
+        //                       admin@gmail.com en varios tenants.)
+        const tenantCtx = await resolveTenantContext();
+        const isRootLogin = tenantCtx.source !== 'subdomain';
 
-        // Búsqueda case-insensitive: cubre tanto emails ya normalizados a
-        // lowercase como usuarios viejos guardados con mixed-case en BD.
-        // findFirst en lugar de findUnique porque el unique constraint de
-        // Prisma no soporta mode:'insensitive' (es a nivel DB).
-        const user = await prisma.user.findFirst({
-            where: { tenantId, email: { equals: email, mode: 'insensitive' } },
-            select: { id: true, email: true, firstName: true, lastName: true, role: true, passwordHash: true, isActive: true, allowedModules: true, grantedPerms: true, revokedPerms: true, tokenVersion: true, tenantId: true },
-        });
+        // Búsqueda case-insensitive: cubre emails normalizados Y users
+        // viejos guardados con mixed-case. findFirst/findMany en lugar de
+        // findUnique porque mode:'insensitive' es a nivel DB y solo
+        // soportado en where genérico.
+        const USER_SELECT = {
+            id: true, email: true, firstName: true, lastName: true, role: true,
+            passwordHash: true, isActive: true, allowedModules: true,
+            grantedPerms: true, revokedPerms: true, tokenVersion: true,
+            tenantId: true,
+        } as const;
+
+        let user: any = null;
+        if (isRootLogin) {
+            // Modo root: buscar en cualquier tenant.
+            const matches = await prisma.user.findMany({
+                where: { email: { equals: email, mode: 'insensitive' } },
+                select: USER_SELECT,
+            });
+            if (matches.length > 1) {
+                // Anti-enumeración: igual corremos verifyPassword contra
+                // dummy para no leakear timing.
+                await verifyPassword(password, DUMMY_HASH);
+                return {
+                    success: false,
+                    message:
+                        'Este email existe en varios negocios. Iniciá sesión desde el subdominio de tu negocio (ej. tunegocio.kpsula.app).',
+                };
+            }
+            user = matches[0] ?? null;
+        } else {
+            // Modo subdomain: estricto por tenantId.
+            user = await prisma.user.findFirst({
+                where: { tenantId: tenantCtx.tenantId, email: { equals: email, mode: 'insensitive' } },
+                select: USER_SELECT,
+            });
+        }
 
         // Comparar SIEMPRE contra un hash (real o dummy) para evitar enumeración
         // por timing. Si el usuario no existe el PBKDF2 corre igual y el atacante
@@ -112,6 +153,21 @@ export async function loginAction(prevState: any, formData: FormData) {
         });
 
         // Retornar datos reales del usuario para que el cliente sincronice el store Zustand
+        // Resolver slug del tenant para que el client decida si redirige a
+        // <slug>.kpsula.app post-login. Defensive: si por alguna razón la
+        // query falla, devolvemos slug=null y el client se queda en el
+        // host actual (comportamiento previo, no rompe nada).
+        let tenantSlug: string | null = null;
+        try {
+            const t = await prisma.tenant.findUnique({
+                where: { id: user.tenantId },
+                select: { slug: true },
+            });
+            tenantSlug = t?.slug ?? null;
+        } catch {
+            // ignore
+        }
+
         return {
             success: true,
             user: {
@@ -121,6 +177,7 @@ export async function loginAction(prevState: any, formData: FormData) {
                 lastName: user.lastName,
                 role: user.role as import('@/types').UserRole,
             },
+            tenantSlug,
         };
     } catch (error) {
         console.error('Login error:', error);
