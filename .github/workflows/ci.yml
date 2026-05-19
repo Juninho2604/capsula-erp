@@ -101,8 +101,11 @@ jobs:
           key: ${{ secrets.CONTABO_SSH_KEY }}
           script_stop: true
           command_timeout: 15m
+          envs: GITHUB_SHA
           script: |
             set -e
-            echo ">>> Ejecutando deploy-capsula.sh"
+            export BUILD_SHA="$GITHUB_SHA"
+            export BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            echo ">>> Ejecutando deploy-capsula.sh (SHA: $BUILD_SHA)"
             bash /root/deploy-capsula.sh main
             echo ">>> Deploy completado OK"
