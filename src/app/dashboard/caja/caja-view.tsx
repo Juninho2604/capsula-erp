@@ -203,7 +203,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
   const diffTrend = [...closedRegisters]
     .sort((a, b) => new Date(a.shiftDate).getTime() - new Date(b.shiftDate).getTime())
     .map(r => ({
-      date: new Date(r.shiftDate).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }),
+      date: new Date(r.shiftDate).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }),
       name: r.registerName,
       difference: r.difference ?? 0,
     }));
@@ -234,7 +234,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-bold text-foreground">{r.registerName}</p>
-                    <p className="text-xs text-muted-foreground">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label} · {new Date(r.shiftDate).toLocaleDateString('es-VE')}</p>
+                    <p className="text-xs text-muted-foreground">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label} · {new Date(r.shiftDate).toLocaleDateString('es-VE', { timeZone: 'UTC' })}</p>
                   </div>
                   <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-bold px-2 py-0.5">ABIERTA</span>
                 </div>
@@ -251,7 +251,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Hora apertura</span>
-                    <span className="text-foreground">{new Date(r.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-foreground">{new Date(r.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Caracas' })}</span>
                   </div>
                   {/* Cajeras activas en el turno */}
                   <div className="pt-2 border-t border-emerald-500/20 mt-2">
@@ -412,7 +412,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
                         )}
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">
-                        <div>{new Date(r.shiftDate).toLocaleDateString('es-VE')}</div>
+                        <div>{new Date(r.shiftDate).toLocaleDateString('es-VE', { timeZone: 'UTC' })}</div>
                         <div className="text-xs">{SHIFT_TYPES.find(s => s.value === r.shiftType)?.label}</div>
                       </td>
                       <td className="px-5 py-3 text-right text-foreground">${fmt(r.totalSalesUsd ?? 0)}</td>
@@ -502,7 +502,7 @@ export function CajaView({ initialRegisters, currentUserRole, currentMonth, curr
           <form onSubmit={handleClose} className="space-y-4">
             <div className="rounded-xl bg-muted/30 p-4 text-sm space-y-1">
               <div className="flex justify-between"><span className="text-muted-foreground">Fondo apertura</span><span className="font-semibold text-foreground">${fmt(closeTarget.openingCashUsd)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Apertura</span><span className="text-foreground">{new Date(closeTarget.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Apertura</span><span className="text-foreground">{new Date(closeTarget.openedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Caracas' })}</span></div>
               {shiftTips && shiftTips.propinas > 0 && (
                 <div className="flex justify-between border-t border-border/50 pt-1 mt-1">
                   <span className="text-amber-400/80">🪙 Propinas{shiftTips.propinaCount > 1 ? ` (${shiftTips.propinaCount})` : ''}</span>
