@@ -1,5 +1,7 @@
 'use client';
 
+import { computePostLoginUrl } from '@/lib/post-login-redirect';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/actions/auth.actions';
@@ -51,9 +53,22 @@ export default function LoginForm() {
         } else if (result?.success && result.user) {
             // Sincronizar Zustand con el usuario real del JWT antes de navegar
             login(result.user);
-            // Aterriza en el "Inicio" (launchpad role-based). Para CASHIER/WAITER
-            // el propio home detecta el rol y redirige automáticamente al POS.
-            router.push('/dashboard/home');
+
+            // ── Redirect inteligente al subdomain del tenant ────────────
+            // Si el user pertenece a un tenant con slug y estamos en root
+            // (kpsula.app), navegamos a <slug>.kpsula.app. La cookie usa
+            // domain=.kpsula.app en producción (src/lib/auth.ts), así
+            // viaja al subdomain sin reloggear.
+            //
+            // Defensa: si la URL no se puede calcular (sin slug, host
+            // no-kpsula, dev mode), caemos al router.push de toda la vida.
+            // Cero downgrade si algo falla.
+            const target = computePostLoginUrl(result.tenantSlug ?? null);
+            if (target) {
+                window.location.href = target;
+            } else {
+                router.push('/dashboard/home');
+            }
         }
     };
 
