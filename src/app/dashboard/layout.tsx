@@ -6,6 +6,14 @@ import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 import { visibleModules } from '@/lib/permissions/has-permission';
 import prisma from '@/server/db';
 
+// Layout dinámico SIEMPRE — el sidebar depende del session + módulos
+// habilitados, ambos varían por request/usuario. Sin esto, Next.js puede
+// servir un render cacheado tras deploys que cambian el MODULE_REGISTRY
+// (caso reportado 2026-05-19: módulo nuevo no aparecía aunque el deploy
+// se había hecho).
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DashboardLayout({
     children,
 }: {
