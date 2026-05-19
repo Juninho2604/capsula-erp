@@ -10,6 +10,8 @@ import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt } from '@/lib/print-command';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
+import { SinConToggle } from '@/components/pos/SinConToggle';
+import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import { searchCustomersAction, type CustomerSummary } from '@/app/actions/customer.actions';
 import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
@@ -237,6 +239,27 @@ export default function POSDeliveryPage() {
             newModifiers.push({ groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: newQty });
         }
         setCurrentModifiers(newModifiers);
+    };
+
+    // Toggle SIN/CON/NEUTRAL agrupado por ingrediente (mutua exclusión).
+    const setIngredientToggleState = (
+        group: ModifierGroup,
+        toggle: IngredientToggle,
+        target: 'SIN' | 'CON' | 'NEUTRAL',
+    ) => {
+        const sinId = toggle.sin?.id;
+        const conId = toggle.con?.id;
+        let mods = currentModifiers.filter(m => {
+            const isThisIngredient =
+                m.groupId === group.id && ((sinId && m.id === sinId) || (conId && m.id === conId));
+            return !isThisIngredient;
+        });
+        if (target === 'SIN' && toggle.sin) {
+            mods.push({ groupId: group.id, groupName: group.name, id: toggle.sin.id, name: toggle.sin.name, priceAdjustment: toggle.sin.priceAdjustment, quantity: 1 });
+        } else if (target === 'CON' && toggle.con) {
+            mods.push({ groupId: group.id, groupName: group.name, id: toggle.con.id, name: toggle.con.name, priceAdjustment: toggle.con.priceAdjustment, quantity: 1 });
+        }
+        setCurrentModifiers(mods);
     };
 
     const isGroupValid = (group: ModifierGroup) => {
@@ -1033,63 +1056,86 @@ export default function POSDeliveryPage() {
                                             </span>
                                         </div>
                                         <div className="grid gap-2">
-                                            {group.modifiers.map(mod => {
-                                                const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
-                                                const qty = existing ? existing.quantity : 0;
-                                                const isMax = group.maxSelections > 1 && totalSelector >= group.maxSelections;
-                                                const isRadio = group.maxSelections === 1;
-                                                return (
-                                                    <div
-                                                        key={mod.id}
-                                                        className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
-                                                            qty > 0
-                                                                ? 'border-capsula-navy-deep bg-capsula-navy-soft'
-                                                                : 'border-capsula-line bg-capsula-ivory'
-                                                        }`}
-                                                    >
-                                                        <div className="text-sm font-medium text-capsula-ink">{mod.name}</div>
-                                                        {isRadio ? (
-                                                            <button
-                                                                onClick={() => updateModifierQuantity(group, mod, 1)}
-                                                                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
-                                                                    qty > 0
-                                                                        ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
-                                                                        : 'border-capsula-line text-transparent hover:border-capsula-navy-deep'
-                                                                }`}
-                                                                aria-label="Seleccionar"
-                                                            >
-                                                                {qty > 0 && <CheckCircle2 className="h-4 w-4" />}
-                                                            </button>
-                                                        ) : (
-                                                            <div className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface p-1">
-                                                                <button
-                                                                    onClick={() => updateModifierQuantity(group, mod, -1)}
-                                                                    disabled={qty === 0}
-                                                                    className={`h-8 w-8 rounded-lg font-medium transition-colors ${
-                                                                        qty === 0
-                                                                            ? 'text-capsula-ink-faint'
-                                                                            : 'text-capsula-ink hover:bg-capsula-ivory-alt'
-                                                                    }`}
-                                                                >
-                                                                    −
-                                                                </button>
-                                                                <span className="w-6 text-center text-base font-medium tabular-nums text-capsula-ink">{qty}</span>
-                                                                <button
-                                                                    onClick={() => updateModifierQuantity(group, mod, 1)}
-                                                                    disabled={isMax}
-                                                                    className={`h-8 w-8 rounded-lg font-medium transition-colors ${
-                                                                        isMax
-                                                                            ? 'text-capsula-ink-faint'
-                                                                            : 'bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy'
-                                                                    }`}
-                                                                >
-                                                                    +
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                            {(() => {
+                                                const { toggles, passThrough } = groupModifiersForSinCon(group.modifiers as any);
+                                                const selectedIdSet = new Set(
+                                                    currentModifiers.filter(m => m.groupId === group.id).map(m => m.id),
                                                 );
-                                            })}
+                                                return (
+                                                    <>
+                                                        {toggles.map(toggle => (
+                                                            <SinConToggle
+                                                                key={toggle.key}
+                                                                toggle={toggle}
+                                                                state={toggleStateFor(toggle, selectedIdSet)}
+                                                                onChange={(target) => setIngredientToggleState(group, toggle, target)}
+                                                            />
+                                                        ))}
+                                                        {passThrough.map(mod => {
+                                                            const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
+                                                            const qty = existing ? existing.quantity : 0;
+                                                            const isMax = group.maxSelections > 1 && totalSelector >= group.maxSelections;
+                                                            const isRadio = group.maxSelections === 1;
+                                                            return (
+                                                                <div
+                                                                    key={mod.id}
+                                                                    className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
+                                                                        qty > 0
+                                                                            ? 'border-capsula-navy-deep bg-capsula-navy-soft'
+                                                                            : 'border-capsula-line bg-capsula-ivory'
+                                                                    }`}
+                                                                >
+                                                                    <div>
+                                                                        <div className="text-sm font-medium text-capsula-ink">{mod.name}</div>
+                                                                        {mod.priceAdjustment !== 0 && (
+                                                                            <div className="text-xs text-capsula-ink-muted tabular-nums">+${mod.priceAdjustment.toFixed(2)}</div>
+                                                                        )}
+                                                                    </div>
+                                                                    {isRadio ? (
+                                                                        <button
+                                                                            onClick={() => updateModifierQuantity(group, mod as any, 1)}
+                                                                            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
+                                                                                qty > 0
+                                                                                    ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                                                                    : 'border-capsula-line text-transparent hover:border-capsula-navy-deep'
+                                                                            }`}
+                                                                            aria-label="Seleccionar"
+                                                                        >
+                                                                            {qty > 0 && <CheckCircle2 className="h-4 w-4" />}
+                                                                        </button>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface p-1">
+                                                                            <button
+                                                                                onClick={() => updateModifierQuantity(group, mod as any, -1)}
+                                                                                disabled={qty === 0}
+                                                                                className={`h-8 w-8 rounded-lg font-medium transition-colors ${
+                                                                                    qty === 0
+                                                                                        ? 'text-capsula-ink-faint'
+                                                                                        : 'text-capsula-ink hover:bg-capsula-ivory-alt'
+                                                                                }`}
+                                                                            >
+                                                                                −
+                                                                            </button>
+                                                                            <span className="w-6 text-center text-base font-medium tabular-nums text-capsula-ink">{qty}</span>
+                                                                            <button
+                                                                                onClick={() => updateModifierQuantity(group, mod as any, 1)}
+                                                                                disabled={isMax}
+                                                                                className={`h-8 w-8 rounded-lg font-medium transition-colors ${
+                                                                                    isMax
+                                                                                        ? 'text-capsula-ink-faint'
+                                                                                        : 'bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy'
+                                                                                }`}
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 );

@@ -29,6 +29,8 @@ import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
+import { SinConToggle } from "@/components/pos/SinConToggle";
+import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
@@ -686,6 +688,47 @@ export default function POSSportBarPage() {
         name: modifier.name,
         priceAdjustment: modifier.priceAdjustment,
         quantity: newQty,
+      });
+    }
+    setCurrentModifiers(mods);
+  };
+
+  /**
+   * Maneja el toggle SIN/CON/NEUTRAL para un ingrediente agrupado.
+   * Aplica mutua exclusión: si se elige SIN, des-selecciona el CON del mismo
+   * ingrediente, y viceversa. NEUTRAL des-selecciona ambos.
+   */
+  const setIngredientToggleState = (
+    group: ModifierGroup,
+    toggle: IngredientToggle,
+    target: 'SIN' | 'CON' | 'NEUTRAL',
+  ) => {
+    const sinId = toggle.sin?.id;
+    const conId = toggle.con?.id;
+    let mods = currentModifiers.filter((m) => {
+      // Sacar SIEMPRE las entradas del par sin/con de este ingrediente.
+      // Después agregamos solo la que corresponde al target.
+      const isThisIngredient =
+        m.groupId === group.id && ((sinId && m.id === sinId) || (conId && m.id === conId));
+      return !isThisIngredient;
+    });
+    if (target === 'SIN' && toggle.sin) {
+      mods.push({
+        groupId: group.id,
+        groupName: group.name,
+        id: toggle.sin.id,
+        name: toggle.sin.name,
+        priceAdjustment: toggle.sin.priceAdjustment,
+        quantity: 1,
+      });
+    } else if (target === 'CON' && toggle.con) {
+      mods.push({
+        groupId: group.id,
+        groupName: group.name,
+        id: toggle.con.id,
+        name: toggle.con.name,
+        priceAdjustment: toggle.con.priceAdjustment,
+        quantity: 1,
       });
     }
     setCurrentModifiers(mods);
@@ -3466,50 +3509,73 @@ export default function POSSportBarPage() {
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {group.modifiers
-                        .filter((m) => m.isAvailable)
-                        .map((modifier) => {
-                          const sel = currentModifiers.find((m) => m.id === modifier.id && m.groupId === group.id);
-                          const qty = sel?.quantity || 0;
-                          const isRadio = group.maxSelections === 1;
-                          return (
-                            <div
-                              key={modifier.id}
-                              className={`flex items-center justify-between rounded-lg px-3 py-2 border transition ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line"}`}
-                            >
-                              <div>
-                                <div className="text-sm font-semibold text-capsula-ink">{modifier.name}</div>
-                                {modifier.priceAdjustment !== 0 && (
-                                  <div className="text-xs text-capsula-ink-muted tabular-nums">+${modifier.priceAdjustment.toFixed(2)}</div>
-                                )}
-                              </div>
-                              {isRadio ? (
-                                <button
-                                  onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                  className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${qty > 0 ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream" : "border-capsula-line hover:border-capsula-navy-deep"}`}
+                      {(() => {
+                        // Agrupar modifiers en toggles SIN/CON cuando los
+                        // nombres siguen la convención (ver pos-modifier-grouping).
+                        // El resto se renderiza como antes (passThrough).
+                        const { toggles, passThrough } = groupModifiersForSinCon(
+                          group.modifiers as any,
+                        );
+                        const selectedIdSet = new Set(
+                          currentModifiers
+                            .filter((m) => m.groupId === group.id)
+                            .map((m) => m.id),
+                        );
+                        return (
+                          <>
+                            {toggles.map((toggle) => (
+                              <SinConToggle
+                                key={toggle.key}
+                                toggle={toggle}
+                                state={toggleStateFor(toggle, selectedIdSet)}
+                                onChange={(target) => setIngredientToggleState(group, toggle, target)}
+                              />
+                            ))}
+                            {passThrough.map((modifier) => {
+                              const sel = currentModifiers.find((m) => m.id === modifier.id && m.groupId === group.id);
+                              const qty = sel?.quantity || 0;
+                              const isRadio = group.maxSelections === 1;
+                              return (
+                                <div
+                                  key={modifier.id}
+                                  className={`flex items-center justify-between rounded-lg px-3 py-2 border transition ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line"}`}
                                 >
-                                  {qty > 0 && <Check className="h-3.5 w-3.5" />}
-                                </button>
-                              ) : (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => updateModifierQuantity(group, modifier, -1)}
-                                      className="h-8 w-8 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
-                                    >
-                                      −
-                                    </button>
-                                    <span className="w-5 text-center font-semibold text-capsula-ink tabular-nums">{qty}</span>
-                                    <button
-                                      onClick={() => updateModifierQuantity(group, modifier, 1)}
-                                      className="h-8 w-8 rounded-lg bg-capsula-navy-deep font-semibold text-capsula-cream hover:bg-capsula-navy-deep/90 transition"
-                                    >
-                                      +
-                                    </button>
+                                  <div>
+                                    <div className="text-sm font-semibold text-capsula-ink">{modifier.name}</div>
+                                    {modifier.priceAdjustment !== 0 && (
+                                      <div className="text-xs text-capsula-ink-muted tabular-nums">+${modifier.priceAdjustment.toFixed(2)}</div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                          );
-                        })}
+                                  {isRadio ? (
+                                    <button
+                                      onClick={() => updateModifierQuantity(group, modifier as any, 1)}
+                                      className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${qty > 0 ? "border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream" : "border-capsula-line hover:border-capsula-navy-deep"}`}
+                                    >
+                                      {qty > 0 && <Check className="h-3.5 w-3.5" />}
+                                    </button>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => updateModifierQuantity(group, modifier as any, -1)}
+                                        className="h-8 w-8 rounded-lg bg-capsula-ivory border border-capsula-line font-semibold text-capsula-ink hover:border-capsula-coral/40 hover:text-capsula-coral transition"
+                                      >
+                                        −
+                                      </button>
+                                      <span className="w-5 text-center font-semibold text-capsula-ink tabular-nums">{qty}</span>
+                                      <button
+                                        onClick={() => updateModifierQuantity(group, modifier as any, 1)}
+                                        className="h-8 w-8 rounded-lg bg-capsula-navy-deep font-semibold text-capsula-cream hover:bg-capsula-navy-deep/90 transition"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
