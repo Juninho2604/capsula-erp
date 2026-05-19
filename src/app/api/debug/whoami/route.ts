@@ -25,6 +25,7 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { visibleModules } from '@/lib/permissions/has-permission';
 import { MODULE_REGISTRY, getVisibleModules } from '@/lib/constants/modules-registry';
+import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -73,6 +74,21 @@ export async function GET() {
         revokedPerms: (session as any).revokedPerms ?? null,
     });
 
+    // ── getEnabledModulesFromDB: lo que el layout dashboard pasa al Sidebar ─
+    let enabledModulesFromDb: string[] = [];
+    try {
+        enabledModulesFromDb = await getEnabledModulesFromDB();
+    } catch (e) {
+        enabledModulesFromDb = [`ERROR: ${e instanceof Error ? e.message : String(e)}`];
+    }
+
+    // ── getVisibleModules: resultado FINAL que renderiza el sidebar ────────
+    const finalSidebarModules = getVisibleModules(
+        session.role,
+        enabledModulesFromDb,
+        userVisibleModules,
+    ).map((m) => ({ id: m.id, label: m.label, section: m.section }));
+
     // ── Módulos del registry incluidos en esta build ─────────────────────
     const registryIds = MODULE_REGISTRY.map((m) => ({
         id: m.id,
@@ -81,6 +97,8 @@ export async function GET() {
         enabledByDefault: m.enabledByDefault,
     }));
     const hasSoldItemsReport = registryIds.some((m) => m.id === 'sold_items_report');
+    const soldItemsInEnabled = enabledModulesFromDb.includes('sold_items_report');
+    const soldItemsInFinal = finalSidebarModules.some((m) => m.id === 'sold_items_report');
 
     return NextResponse.json({
         version: {
@@ -92,7 +110,7 @@ export async function GET() {
             id: session.id,
             email: (session as any).email ?? null,
             role: session.role,
-            jwtAllowedModules: (session as any).allowedModules ?? null, // del JWT directo
+            jwtAllowedModules: (session as any).allowedModules ?? null,
         },
         tenant: {
             id: tenantId,
@@ -104,7 +122,11 @@ export async function GET() {
         },
         computed: {
             userVisibleModules,
+            enabledModulesFromDb,
+            finalSidebarModules,
             soldItemsReportInRegistry: hasSoldItemsReport,
+            soldItemsReportInEnabledModules: soldItemsInEnabled,
+            soldItemsReportInFinalSidebar: soldItemsInFinal,
             registryCount: registryIds.length,
         },
         registryIds,
