@@ -84,9 +84,13 @@ export default async function HomePage() {
 
     const role = session.role ?? 'OWNER';
 
-    // CASHIER y WAITER NO ven el home: se redirigen directo a su primer módulo
-    // (el POS típicamente). Mismo comportamiento que tenía /dashboard antes
-    // de que el home fuera el destino post-login.
+    // CASHIER y WAITER NO ven el home: se redirigen directo a su POS.
+    // Cada rol tiene un POS por default explícito (no dependemos del orden
+    // del registry, que podría cambiar y romper el comportamiento):
+    //   - CASHIER → POS Restaurante (caja del salón, cobros directos)
+    //   - WAITER  → POS Mesero (órdenes por mesa)
+    // Si por alguna restricción individual (allowedModules) el rol no
+    // tiene acceso a su POS por default, fallback al primer módulo visible.
     if (role === 'CASHIER' || role === 'WAITER') {
         let userAllowedModules: string[] | null = null;
         if (session.id) {
@@ -100,6 +104,19 @@ export default async function HomePage() {
         }
         const enabledIds = await getEnabledModulesFromDB();
         const visible = getVisibleModules(role, enabledIds, userAllowedModules);
+
+        const DEFAULT_POS: Record<string, string> = {
+            CASHIER: '/dashboard/pos/restaurante',
+            WAITER:  '/dashboard/pos/mesero',
+        };
+        const defaultHref = DEFAULT_POS[role];
+        const visibleHrefs = new Set(visible.map((m) => m.href));
+
+        // Si el rol tiene acceso a su POS por default → ahí va
+        if (defaultHref && visibleHrefs.has(defaultHref)) {
+            redirect(defaultHref);
+        }
+        // Fallback: primer módulo visible (comportamiento anterior)
         const first = visible[0];
         redirect(first?.href ?? '/dashboard/pos/restaurante');
     }
