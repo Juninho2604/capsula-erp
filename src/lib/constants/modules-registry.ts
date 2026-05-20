@@ -542,7 +542,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   asistente: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
   menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
-  pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'],
+  pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER'],
   pos_waiter: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'WAITER', 'CASHIER', 'AREA_LEAD'],
   pos_delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   pedidosya: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
