@@ -94,13 +94,31 @@ npm run build
 
 # 7. Assets al standalone
 echo ""
-echo "[6/9] Copiar public/ y .next/static al standalone..."
+echo "[6/10] Copiar public/ y .next/static al standalone..."
 cp -r public .next/standalone/
 cp -r .next/static .next/standalone/.next/
 
+# 7.5 Aplicar migraciones Prisma pendientes ANTES del smoke test y del swap.
+# Crítico: si el código nuevo agrega columnas o tablas, la BD debe tenerlas
+# antes de que pm2 reciba la primera request. `prisma migrate deploy` solo
+# aplica migraciones NUEVAS (las ya aplicadas las saltea), así que es
+# idempotente y safe correrlo en cada deploy.
+# Si una migración falla, abortamos antes del swap — la app vieja sigue
+# atendiendo tráfico sin downtime.
+# Historial: PR #216 (21 mayo 2026) agregó scheduledDeliveryTime — la
+# migración no corrió en el deploy original y la cajera vio el error
+# "column does not exist" al cobrar. Fix retroactivo en este commit.
+echo ""
+echo "[7/10] prisma migrate deploy..."
+set -a; source .env; set +a
+if ! npx prisma migrate deploy; then
+    echo "ERROR: migración Prisma falló. Abort sin swap. $NEW_DIR queda para inspección."
+    exit 1
+fi
+
 # 8. Smoke test Prisma
 echo ""
-echo "[7/9] Smoke test Prisma vs BD..."
+echo "[8/10] Smoke test Prisma vs BD..."
 unset DATABASE_URL
 if ! node --env-file="$NEW_DIR/.env" -e '
 const { PrismaClient } = require("./.next/standalone/node_modules/@prisma/client");
@@ -113,7 +131,7 @@ fi
 
 # 9. Swap
 echo ""
-echo "[8/9] Swap directorios + restart pm2..."
+echo "[9/10] Swap directorios + restart pm2..."
 pm2 stop capsula-erp
 mv "$APP_DIR" "$OLD_BACKUP"
 mv "$NEW_DIR" "$APP_DIR"
@@ -128,7 +146,7 @@ sleep 5
 
 # 10. Verificación
 echo ""
-echo "[9/9] Verificación post-swap..."
+echo "[10/10] Verificación post-swap..."
 pm2 status | grep capsula-erp
 echo ""
 echo "--- Curl ---"

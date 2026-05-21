@@ -166,6 +166,23 @@ App corre en VPS Contabo detrás de nginx → pm2 → Next.js standalone bindead
 
 Historial: PR #189 (15 mayo) lo "arregló" con `nextUrl.clone()` — se rompió con un update de Next.js. PR #214 (21 mayo) fix definitivo leyendo headers. **Detalle completo en OPUS_CONTEXT §41**.
 
+### 9. 🚨 Migraciones Prisma — siempre `migrate deploy` en cada deploy
+
+**Si agregás un campo nuevo al schema** (o cualquier cambio que genere migración en `prisma/migrations/`), **el deploy DEBE aplicar la migración** además de buildear el código. El cliente Prisma generado en build queda referenciando columnas que no existen en la BD si la migración no corre → cualquier `prisma.xxx.create()` falla con `The column "X" does not exist in the current database` y la cajera no puede cobrar.
+
+**Reglas duras**:
+- `scripts/deploy-vps.sh` ya incluye `npx prisma migrate deploy` en el step [7/10] (antes del swap atómico, después del build). No modifiques ese orden — si una migración falla, el deploy aborta y la app vieja sigue atendiendo sin downtime.
+- Antes de mergear cualquier PR que toque `prisma/schema.prisma`, verificá que generaste la migración con `npx prisma migrate dev --name <descripcion>` y que el archivo `prisma/migrations/<timestamp>_<nombre>/migration.sql` está commiteado.
+- Migraciones **safe en producción viva**: `ADD COLUMN NULLABLE`, `CREATE TABLE`, `CREATE INDEX CONCURRENTLY`, `ADD COLUMN ... DEFAULT ... NULLABLE`.
+- Migraciones **peligrosas** que necesitan plan de despliegue separado: `DROP COLUMN`, `NOT NULL` sin default, `RENAME COLUMN/TABLE`, `ALTER TYPE`, foreign keys nuevas con tabla grande. Para esas: dos PRs (uno que añade campo nuevo + backfill, otro que dropea el viejo).
+- Test manual post-deploy:
+  ```bash
+  cd /var/www/capsula-erp
+  npx prisma migrate status   # debe decir "Database schema is up to date!"
+  ```
+
+Historial: PR #216 (21 mayo) agregó `scheduledDeliveryTime` y la migración no corrió en el deploy original → cajera no podía cobrar a las 13:26. Fix retroactivo + deploy script actualizado en mismo bloque de trabajo. **Detalle en OPUS_CONTEXT §44**.
+
 ---
 
 ## ✅ Gates antes de commitear

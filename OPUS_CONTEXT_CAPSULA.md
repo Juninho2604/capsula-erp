@@ -7761,3 +7761,124 @@ receta como un todo (cuando esté hecha) o se contabiliza por el
 modificador SIN/CON (§ ese tema). Próximo paso si se necesita: linkear
 cada modifier a su MenuItem-ingrediente equivalente para que la cocina
 vea el SIN/CON real reflejado en stock.
+---
+
+## 44. 🚨 Migraciones Prisma — deploy DEBE correr `migrate deploy`
+
+**TL;DR**: cada PR que toca `prisma/schema.prisma` genera una migración en
+`prisma/migrations/`. El script `scripts/deploy-vps.sh` ahora corre
+`npx prisma migrate deploy` ANTES del swap atómico. Si una migración
+falla, el deploy aborta — la app vieja sigue atendiendo sin downtime.
+
+### 42.1 El bug que descubrió la regla (21 mayo 2026)
+
+PR #216 (`feat(pos): hora de entrega en pickup/delivery`) agregó la
+columna `SalesOrder.scheduledDeliveryTime` con su migración
+`20260521163926_add_scheduled_delivery_time/migration.sql`. El deploy
+ejecutó:
+- `npm ci`
+- `npm run build` (que incluye `prisma generate` → cliente Prisma con
+  el campo nuevo en sus tipos TS)
+- swap + pm2 restart
+
+**Pero NO ejecutó `npx prisma migrate deploy`**, así que la columna nunca
+se agregó a la BD productiva. Al primer cobro:
+
+```
+Error al crear la orden: Invalid `prisma.salesOrder.create()` invocation:
+The column `SalesOrder.scheduledDeliveryTime` does not exist in the current database.
+```
+
+La cajera no podía cobrar ninguna orden. Fix manual en producción:
+```bash
+cd /var/www/capsula-erp
+npx prisma migrate deploy
+pm2 reload capsula-erp
+```
+
+Tiempo de resolución: 2 minutos (incluyendo diagnóstico).
+
+### 42.2 Fix del script de deploy
+
+`scripts/deploy-vps.sh` agrega el step `[7/10] prisma migrate deploy`
+entre el copy de assets y el smoke test:
+
+```bash
+set -a; source .env; set +a
+if ! npx prisma migrate deploy; then
+    echo "ERROR: migración Prisma falló. Abort sin swap."
+    exit 1
+fi
+```
+
+Orden completo del deploy ahora:
+1. Backup BD
+2. Clone fresh
+3. Copy .env/ecosystem/start-server
+4. `npm ci --include=dev`
+5. `npm run build` (incluye `prisma generate`)
+6. Copy public/ + .next/static al standalone
+7. **`npx prisma migrate deploy`** ← nuevo
+8. Smoke test Prisma vs BD
+9. Swap atómico + pm2 restart
+10. Verificación curl
+
+Si el paso 7 falla, los pasos 8-10 no corren — la app vieja sigue viva.
+
+### 42.3 Reglas para migraciones safe en producción viva
+
+**Safe** (zero-downtime, aplicar sin ceremonia):
+- `ADD COLUMN ... NULLABLE` (Postgres: instant, no rewrite)
+- `ADD COLUMN ... NULLABLE DEFAULT '<const>'` (en Postgres 11+: instant)
+- `CREATE TABLE`
+- `CREATE INDEX CONCURRENTLY`
+- `ADD CONSTRAINT ... NOT VALID` + `VALIDATE CONSTRAINT` aparte
+
+**Peligrosas** — necesitan plan separado:
+- `DROP COLUMN` — primero deshacer todas las referencias en código + deploy,
+  luego en un PR aparte dropear la columna
+- `NOT NULL` sin default — primero backfill, luego constraint en PR aparte
+- `RENAME COLUMN/TABLE` — primero crear el nuevo + dual-write, luego
+  migrar lectores, finalmente dropear el viejo
+- `ALTER TYPE` que cambia representación binaria — table rewrite, lock
+  largo en tablas grandes (SalesOrder, InventoryMovement)
+- Foreign key nueva sobre tabla grande — usar `NOT VALID` + `VALIDATE`
+  por separado
+
+### 42.4 Cómo verificar post-deploy
+
+```bash
+cd /var/www/capsula-erp
+npx prisma migrate status
+# Esperado:
+#   Database schema is up to date!
+```
+
+Si dice "Following migration have not yet been applied:" → corré
+`npx prisma migrate deploy` manualmente.
+
+### 42.5 Cómo verificar ANTES de mergear un PR con schema change
+
+```bash
+# En tu rama local:
+ls prisma/migrations/ | tail -3
+# Debe estar la migración nueva. Si no, generarla:
+npx prisma migrate dev --name <descripcion-corta>
+
+# Commitea TANTO el schema.prisma COMO la carpeta de migración
+git add prisma/schema.prisma prisma/migrations/
+git commit -m "..."
+```
+
+Sin la migración committeada en el PR, el deploy va a fallar.
+
+### 42.6 Auditoría rápida
+
+```bash
+# ¿Hay diferencia entre el schema y la BD?
+cd /var/www/capsula-erp && npx prisma migrate status
+
+# Ver últimas 5 migraciones aplicadas
+DB_URL=$(grep -E '^DATABASE_URL=' .env | cut -d= -f2- | tr -d '"' | tr -d "'")
+psql "$DB_URL" -c 'SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC LIMIT 5;'
+```
