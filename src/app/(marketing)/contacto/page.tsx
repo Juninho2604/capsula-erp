@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Linkedin, MapPin, Briefcase, LifeBuoy, Megaphone } from 'lucide-react';
+import {
+    WHATSAPP_SALES_LINK,
+    WHATSAPP_SALES_DISPLAY,
+    WHATSAPP_DEMO_LINK,
+} from '@/config/marketing-contact';
 
 export const metadata: Metadata = {
     title: 'Contacto · CÁPSULA',
@@ -20,8 +25,8 @@ const CANALES = [
         icon: MessageCircle,
         title: 'WhatsApp',
         desc: 'Respuesta rápida en horario operativo (8 AM – 8 PM).',
-        action: 'Abrir WhatsApp',
-        href: 'https://wa.me/584000000000',
+        action: WHATSAPP_SALES_DISPLAY,
+        href: WHATSAPP_SALES_LINK,
     },
     {
         icon: Linkedin,
@@ -37,8 +42,9 @@ const RUTAS = [
         icon: Briefcase,
         title: '¿Quieres una demo?',
         desc: 'Agendamos 30 minutos con un especialista, sobre los datos reales de tu restaurante.',
-        cta: 'Solicitar demo',
-        href: '/login',
+        cta: 'Solicitar demo por WhatsApp',
+        href: WHATSAPP_DEMO_LINK,
+        external: true,
     },
     {
         icon: LifeBuoy,
@@ -46,6 +52,7 @@ const RUTAS = [
         desc: 'Soporte técnico para clientes activos. Tiempo de respuesta según plan contratado.',
         cta: 'Centro de ayuda',
         href: '/ayuda',
+        external: false,
     },
     {
         icon: Megaphone,
@@ -53,6 +60,7 @@ const RUTAS = [
         desc: 'Para entrevistas, colaboraciones y acuerdos institucionales.',
         cta: 'prensa@capsula.app',
         href: 'mailto:prensa@capsula.app',
+        external: true,
     },
 ];
 
@@ -98,8 +106,9 @@ export default function ContactoPage() {
                 </div>
 
                 <p className="cap-text-soft mx-auto mt-6 max-w-[1100px] text-[12px]">
-                    {/* TODO: reemplazar el número de WhatsApp +58 400 000 0000 y el handle de LinkedIn con los reales. */}
-                    [Pendiente — número de WhatsApp y handle de LinkedIn definitivos]
+                    {/* TODO: reemplazar el handle de LinkedIn con el real cuando esté listo. */}
+                    Respondemos lo más rápido posible. Para urgencias operativas de clientes activos,
+                    WhatsApp es el canal más rápido.
                 </p>
             </section>
 
@@ -119,20 +128,41 @@ export default function ContactoPage() {
                 </div>
 
                 <div className="relative z-[1] mx-auto grid max-w-[1100px] gap-[18px] md:grid-cols-3">
-                    {RUTAS.map((r) => (
-                        <Link key={r.title} href={r.href} className="cap-card block">
-                            <span className="cap-icon">
-                                <r.icon className="h-[22px] w-[22px]" strokeWidth={1.5} style={{ color: 'var(--cap-accent)' }} />
-                            </span>
-                            <div className="mt-[22px] mb-[10px] text-[16px] font-semibold tracking-[-0.01em] text-[color:var(--cap-ink)]">
-                                {r.title}
-                            </div>
-                            <p className="cap-text-dim mb-4 text-[13px] leading-[1.6]">{r.desc}</p>
-                            <div className="cap-text-blue inline-flex items-center gap-2 text-[13px] font-medium">
-                                {r.cta} <ArrowRight className="h-3.5 w-3.5" />
-                            </div>
-                        </Link>
-                    ))}
+                    {RUTAS.map((r) => {
+                        const cardInner = (
+                            <>
+                                <span className="cap-icon">
+                                    <r.icon className="h-[22px] w-[22px]" strokeWidth={1.5} style={{ color: 'var(--cap-accent)' }} />
+                                </span>
+                                <div className="mt-[22px] mb-[10px] text-[16px] font-semibold tracking-[-0.01em] text-[color:var(--cap-ink)]">
+                                    {r.title}
+                                </div>
+                                <p className="cap-text-dim mb-4 text-[13px] leading-[1.6]">{r.desc}</p>
+                                <div className="cap-text-blue inline-flex items-center gap-2 text-[13px] font-medium">
+                                    {r.cta} <ArrowRight className="h-3.5 w-3.5" />
+                                </div>
+                            </>
+                        );
+                        if (r.external) {
+                            const isHttp = r.href.startsWith('http');
+                            return (
+                                <a
+                                    key={r.title}
+                                    href={r.href}
+                                    target={isHttp ? '_blank' : undefined}
+                                    rel={isHttp ? 'noopener noreferrer' : undefined}
+                                    className="cap-card block"
+                                >
+                                    {cardInner}
+                                </a>
+                            );
+                        }
+                        return (
+                            <Link key={r.title} href={r.href} className="cap-card block">
+                                {cardInner}
+                            </Link>
+                        );
+                    })}
                 </div>
             </section>
 

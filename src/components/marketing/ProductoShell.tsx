@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Box, BookOpen, Coins, BarChart3, type LucideIcon } from 'lucide-react';
+import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
 
 type ModuleSlug = 'inventario' | 'recetas' | 'costos' | 'analitica';
 
@@ -57,9 +58,9 @@ export default function ProductoShell({ slug, Icon, title, tagline, intro, featu
                     </div>
 
                     <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <Link href="/login" className="cap-btn cap-btn--primary">
+                        <a href={WHATSAPP_DEMO_LINK} target="_blank" rel="noopener noreferrer" className="cap-btn cap-btn--primary">
                             Solicitar demo <ArrowRight className="h-4 w-4" />
-                        </Link>
+                        </a>
                         <Link href="/dashboard" className="cap-btn cap-btn--ghost">
                             Ver dashboard
                         </Link>
@@ -168,9 +169,9 @@ export default function ProductoShell({ slug, Icon, title, tagline, intro, featu
                         30 minutos con un especialista, sobre los datos reales de tu restaurante.
                     </p>
                     <div className="relative z-[1] flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <Link href="/login" className="cap-btn cap-btn--primary">
+                        <a href={WHATSAPP_DEMO_LINK} target="_blank" rel="noopener noreferrer" className="cap-btn cap-btn--primary">
                             Solicitar demo <ArrowRight className="h-4 w-4" />
-                        </Link>
+                        </a>
                         <Link href="/contacto" className="cap-btn cap-btn--ghost">
                             Hablar con ventas
                         </Link>
