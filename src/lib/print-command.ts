@@ -376,6 +376,21 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
             margin: 4px 0 2px;
             letter-spacing: 1px;
         }
+        .scheduled {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 900;
+            margin: 4px 0;
+            padding: 4px 0;
+            border: 2px solid #000;
+            letter-spacing: 2px;
+        }
+        .scheduled-label {
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            display: block;
+        }
         .correlativo {
             text-align: center;
             font-size: 11px;
@@ -404,6 +419,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     }</div>
     <div class="sep">--------------------------------</div>
     <div class="meta">${formattedTime}</div>
+    ${data.scheduledDeliveryTime ? `<div class="scheduled"><span class="scheduled-label">ENTREGAR A LAS</span>${new Date(data.scheduledDeliveryTime).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false })}</div>` : ''}
     ${data.customerName ? `<div class="customer">${data.customerName}</div>` : ''}
     ${waiterLabel ? `<div style="text-align:center;font-size:13px;font-weight:bold;margin:2px 0;">‍${waiterLabel}</div>` : ''}
     ${data.address ? `<div style="text-align:center;font-size:12px;font-weight:normal;margin:2px 4px;">${data.address}</div>` : ''}

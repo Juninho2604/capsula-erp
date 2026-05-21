@@ -79,6 +79,13 @@ export interface KitchenPayload {
     tabCode?: string;
     tableName?: string | null;
     customerName?: string | null;
+    customerAddress?: string | null;
+    /**
+     * Hora de entrega solicitada (ISO). Si está presente, la comanda la
+     * imprime grande para que cocina/barra priorice vs. los "ASAP".
+     * Aplica a PICKUP y DELIVERY.
+     */
+    scheduledDeliveryTime?: string | null;
     items: Array<{
         name: string;
         quantity: number;
@@ -297,6 +304,19 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     printer.println(`Hora:   ${formatDateTime(p.createdAt)}`);
     if (p.tableName) printer.println(`Mesa:   ${p.tableName}`);
     if (p.customerName) printer.println(`Cliente: ${p.customerName}`);
+    if (p.customerAddress) printer.println(`Direcc.: ${p.customerAddress}`);
+    if (p.scheduledDeliveryTime) {
+        // Hora de entrega solicitada — recuadro grande en negrita para que
+        // cocina/barra prioricen vs. los "ASAP". Pickup y Delivery.
+        printer.drawLine();
+        printer.alignCenter();
+        printer.bold(true);
+        printer.setTextSize(1, 1);
+        printer.println(`ENTREGAR ${formatTime(p.scheduledDeliveryTime)}`);
+        printer.setTextNormal();
+        printer.bold(false);
+        printer.alignLeft();
+    }
     if (isVoid && p.voidReason) {
         printer.bold(true);
         printer.println(`Motivo: ${p.voidReason}`);
@@ -354,4 +374,9 @@ function formatDateTime(iso: string): string {
     const date = d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const time = d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
     return `${date} ${time}`;
+}
+
+function formatTime(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
