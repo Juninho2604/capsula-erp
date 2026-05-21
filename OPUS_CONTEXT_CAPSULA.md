@@ -7531,3 +7531,119 @@ restore completo.
   dump, restaurar a una BD escratch, verificar row counts.
 - Correrlo 1 vez con el operador presente para confirmar tiempos.
 - Repetir mensualmente como parte del smoke test §40.1.5.
+
+---
+
+## 41. 🚨 REGLA DURA — Nunca redirigir a localhost en producción
+
+**TL;DR**: cualquier `redirect()` / `rewrite()` en código que corra detrás
+de nginx **DEBE construir la URL absoluta leyendo los headers** que el
+proxy forwardea (`X-Forwarded-Host` / `Host` / `X-Forwarded-Proto`).
+Usar `request.url` o `request.nextUrl` **rompe** y manda al browser a
+`http://localhost:3000/...`.
+
+### 41.1 Por qué — la trampa de Next.js 14 standalone
+
+En `output: "standalone"` (que es lo que corre en el VPS Contabo vía
+pm2), el server bindea a `127.0.0.1:3000`. Cuando middleware o un route
+handler hace:
+
+```ts
+new URL('/login', request.url)        // ❌
+request.nextUrl.clone()                // ❌
+```
+
+…ambas resuelven a `http://localhost:3000/login` **aunque el browser
+hubiera pegado a `https://kpsula.app/dashboard`** y aunque nginx tenga
+`proxy_set_header Host $host`. Next.js construye `request.url` desde el
+bind address, **no del header `Host`**.
+
+Resultado: `NextResponse.redirect(...)` manda `Location: http://localhost:3000/...`
+y el browser muestra "no se puede conectar al servidor".
+
+### 41.2 Patrón correcto — helper `siteUrl(request, target)`
+
+Vive en `src/middleware.ts` y replicado en `src/app/auth/bootstrap/route.ts`.
+Lee `X-Forwarded-Host` / `Host` directamente. Solo confía si el host
+está en la familia `kpsula.app` (defensa anti Host Header injection):
+
+```ts
+function siteUrl(request: NextRequest, target: string): URL {
+    const rawHost =
+        request.headers.get('x-forwarded-host') ??
+        request.headers.get('host') ??
+        '';
+    const host = rawHost.split(',')[0].trim().toLowerCase();
+    const proto =
+        (request.headers.get('x-forwarded-proto') ?? '').split(',')[0].trim() ||
+        request.nextUrl.protocol.replace(':', '') ||
+        'https';
+
+    const [pathname, search] = target.split('?');
+    const isTrustedHost = host === 'kpsula.app' || host.endsWith('.kpsula.app');
+
+    if (isTrustedHost) {
+        const u = new URL(`${proto}://${host}${pathname}`);
+        if (search) u.search = `?${search}`;
+        return u;
+    }
+    // Fallback dev/local: comportamiento previo.
+    const u = request.nextUrl.clone();
+    u.pathname = pathname;
+    u.search = search ? `?${search}` : '';
+    return u;
+}
+```
+
+### 41.3 Reglas de oro al tocar middleware / route handlers
+
+1. **Nunca** uses `new URL('/x', request.url)` ni `new URL('/x', req.url)`
+   para `redirect()` o `rewrite()`. Es el patrón que rompe.
+2. **Nunca** uses `request.nextUrl.clone()` solo para construir un
+   redirect absoluto. En standalone se evalúa al bind address.
+3. **Siempre** usa el helper `siteUrl(request, '/path')` para redirects/
+   rewrites del middleware. Si el archivo no es middleware, copia el
+   helper local (como hicimos en `bootstrap/route.ts`).
+4. **Redirects relativos** (`return redirect('/dashboard')` desde
+   `next/navigation` en server components / actions) **son seguros** —
+   no construyen URL absoluta, el browser resuelve relativo al host
+   actual. NO requieren `siteUrl`.
+5. **El allowlist de hosts en `siteUrl` debe incluir cualquier dominio
+   raíz nuevo** que demos de alta. Hoy: `kpsula.app` + subdomains. Si
+   en el futuro agregamos `capsula.io` u otro, actualizar el check.
+
+### 41.4 Historial del bug (no repetirlo)
+
+- **PR #189 (15 mayo 2026)**: primer fix — cambió `new URL(t, request.url)`
+  por `request.nextUrl.clone()`. Funcionó un tiempo. **No es el fix
+  correcto**: depende de cómo Next.js construye `nextUrl` internamente,
+  que cambió con upgrades menores.
+- **PR #214 (21 mayo 2026)**: fix definitivo — `siteUrl` lee headers
+  directamente. Cubre middleware y `auth/bootstrap`. **Este es el
+  patrón a copiar a futuro.**
+
+### 41.5 Test manual rápido (5 segundos)
+
+Cuando toques redirects, antes de mergear ejecuta en el VPS post-deploy:
+
+```bash
+# Debe responder con kpsula.app, NUNCA con localhost:
+curl -sI -H 'Host: kpsula.app' http://localhost:3000/dashboard | grep -i location
+# → location: http://kpsula.app/login   ✅
+
+# Vía nginx (lo que ve el browser real):
+curl -sI https://kpsula.app/dashboard | grep -i location
+# → location: https://kpsula.app/login  ✅
+```
+
+Si CUALQUIER `Location:` muestra `localhost:3000` → no mergees, el bug
+volvió.
+
+### 41.6 Auditoría periódica
+
+`grep -rn "new URL.*req.*\.url\|new URL.*request.*\.url\|nextUrl\.clone()" src/`
+no debería matchear nada en código que se ejecute en request context.
+Hits en route handlers / middleware / server actions deben migrarse a
+`siteUrl`. Hits en tests o utilidades fuera de request (como `searchParams`
+de un URL) son seguros — solo es problema cuando se construye una URL
+para `Location:`.
