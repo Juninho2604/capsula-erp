@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
+import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
 
 export default function AuroraNav() {
     return (
@@ -13,8 +14,10 @@ export default function AuroraNav() {
                     <Link href="/login" className="cap-link text-[13px]">
                         Iniciar sesión
                     </Link>
-                    <Link
-                        href="/login"
+                    <a
+                        href={WHATSAPP_DEMO_LINK}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="cap-btn cap-btn--ghost !py-[9px] !px-4 text-[13px]"
                         style={{
                             borderColor: 'rgba(122, 167, 255, 0.35)',
@@ -25,7 +28,7 @@ export default function AuroraNav() {
                         }}
                     >
                         Solicitar demo <ArrowRight className="h-3.5 w-3.5 opacity-85" />
-                    </Link>
+                    </a>
                 </div>
             </div>
         </nav>

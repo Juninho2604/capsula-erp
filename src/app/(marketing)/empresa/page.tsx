@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Compass, Eye, Heart, Users } from 'lucide-react';
+import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
 
 export const metadata: Metadata = {
     title: 'Sobre nosotros · CÁPSULA',
@@ -171,9 +172,9 @@ export default function EmpresaPage() {
                         <Link href="/contacto" className="cap-btn cap-btn--primary">
                             Contactar al equipo <ArrowRight className="h-4 w-4" />
                         </Link>
-                        <Link href="/login" className="cap-btn cap-btn--ghost">
+                        <a href={WHATSAPP_DEMO_LINK} target="_blank" rel="noopener noreferrer" className="cap-btn cap-btn--ghost">
                             Solicitar demo
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </section>

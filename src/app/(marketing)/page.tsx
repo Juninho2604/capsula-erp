@@ -7,6 +7,7 @@ import {
     BarChart3,
 } from 'lucide-react';
 import CapsulaAnimatedMark from '@/components/brand/CapsulaAnimatedMark';
+import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
 
 export default function HomePage() {
     const features = [
@@ -123,9 +124,9 @@ export default function HomePage() {
                         30 minutos con un especialista, sobre los datos reales de tu restaurante.
                     </p>
                     <div className="relative z-[1] flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <Link href="/login" className="cap-btn cap-btn--primary">
+                        <a href={WHATSAPP_DEMO_LINK} target="_blank" rel="noopener noreferrer" className="cap-btn cap-btn--primary">
                             Solicitar demo <ArrowRight className="h-4 w-4" />
-                        </Link>
+                        </a>
                         <Link href="/contacto" className="cap-btn cap-btn--ghost">
                             Hablar con ventas
                         </Link>
