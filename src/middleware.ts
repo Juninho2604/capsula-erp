@@ -6,16 +6,48 @@ import { extractTenantSlugFromHost } from './lib/tenant-context';
 import { isSuperAdmin } from './lib/super-admin';
 
 /**
- * Construye una URL absoluta para redirect/rewrite usando el HOST real
- * del request (kpsula.app, foo.kpsula.app, etc) en lugar de `request.url`
- * que en Next.js detrás de un proxy reverso (nginx en el VPS) puede
- * resolver a `http://localhost:3000`. Bug observado: al hacer
- * `siteUrl(request, '/login')` el redirect mandaba a localhost.
- * `request.nextUrl` siempre respeta el host externo correcto.
+ * Construye una URL absoluta para redirect/rewrite usando el HOST público
+ * real del request (kpsula.app, foo.kpsula.app) en lugar de `request.url`
+ * o `request.nextUrl` que en Next.js 14 standalone detrás de un proxy
+ * reverso (nginx en el VPS) resuelven a `http://localhost:3000` porque
+ * el server bindea a ese host y NO honra el header `Host` para construir
+ * la URL del request.
+ *
+ * Bug histórico: PR #189 (15 mayo 2026) intentó arreglarlo cambiando
+ * `new URL('/x', request.url)` por `request.nextUrl.clone()`. Funcionó
+ * un tiempo pero volvió a romperse (probablemente al actualizar Next.js
+ * o por cómo se construye `nextUrl` en standalone mode).
+ *
+ * Fix definitivo: leer headers `X-Forwarded-Host` / `Host` directamente
+ * — nginx los forwardea correctamente (`proxy_set_header Host $host`).
+ * Solo aceptamos hosts conocidos (kpsula.app y subdominios) para
+ * defenderse de Host Header injection. Cualquier otro host cae al
+ * comportamiento previo (request.nextUrl) — útil en dev/local.
  */
 function siteUrl(request: NextRequest, target: string): URL {
-    const u = request.nextUrl.clone();
+    const rawHost =
+        request.headers.get('x-forwarded-host') ??
+        request.headers.get('host') ??
+        '';
+    const host = rawHost.split(',')[0].trim().toLowerCase();
+    const proto =
+        (request.headers.get('x-forwarded-proto') ?? '').split(',')[0].trim() ||
+        request.nextUrl.protocol.replace(':', '') ||
+        'https';
+
     const [pathname, search] = target.split('?');
+    const isTrustedHost =
+        host === 'kpsula.app' ||
+        host.endsWith('.kpsula.app');
+
+    if (isTrustedHost) {
+        const u = new URL(`${proto}://${host}${pathname}`);
+        if (search) u.search = `?${search}`;
+        return u;
+    }
+
+    // Fallback dev/local: comportamiento histórico (nextUrl).
+    const u = request.nextUrl.clone();
     u.pathname = pathname;
     u.search = search ? `?${search}` : '';
     return u;
