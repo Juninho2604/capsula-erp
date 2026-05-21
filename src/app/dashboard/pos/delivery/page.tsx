@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2, Delete, Menu, ClipboardList } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2, Delete, Menu, ClipboardList, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -67,6 +67,11 @@ export default function POSDeliveryPage() {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+    // Hora de entrega solicitada por el cliente. Formato 'HH:MM' (24h)
+    // del input nativo type="time". Si queda vacío, la cocina lo trata
+    // como "lo antes posible". Se persiste como DateTime en SalesOrder
+    // (fecha = hoy) y se imprime en grande en la comanda.
+    const [scheduledTime, setScheduledTime] = useState('');
     // Autocomplete de clientes recurrentes (Customer). El query es local
     // y dispara `searchCustomersAction` con debounce mínimo. Al seleccionar
     // un resultado se autollena nombre/teléfono/dirección.
@@ -284,6 +289,19 @@ export default function POSDeliveryPage() {
         setShowModifierModal(false); setSelectedItemForModifier(null);
     };
 
+    // Convierte 'HH:MM' (input nativo type=time) a un ISO string anclado a
+    // HOY en la zona local del navegador. Si la hora ya pasó (ej. cajera
+    // marcó 14:30 y son las 15:00), asumimos que es para MAÑANA — la
+    // cocina necesita esa info para no priorizar mal.
+    const scheduledTimeToISO = (hhmm: string): string | undefined => {
+        if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return undefined;
+        const [h, m] = hhmm.split(':').map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
+        return d.toISOString();
+    };
+
     const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
     // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
     const roundToWhole = (amount: number, method: string): number =>
@@ -342,10 +360,12 @@ export default function POSDeliveryPage() {
         if (cart.length === 0) return;
         setIsProcessing(true);
         try {
+            const scheduledISO = scheduledTimeToISO(scheduledTime);
             const result = await createSalesOrderAction({
                 orderType: 'DELIVERY',
                 customerName: customerName || 'Delivery',
                 customerPhone, customerAddress: customerAddress || 'N/A',
+                scheduledDeliveryTime: scheduledISO,
                 items: cart,
                 ...(isMixedMode
                     ? { payments: mixedPayments.length > 0 ? mixedPayments : [{ method: 'TRANSFER', amountUSD: finalTotal }],
@@ -390,6 +410,8 @@ export default function POSDeliveryPage() {
                     orderType: 'DELIVERY',
                     orderTypeLabel: 'DELIVERY',
                     customerName: `${customerName} (${customerPhone})`,
+                    customerAddress: customerAddress || null,
+                    scheduledDeliveryTime: scheduledISO ?? null,
                     items: buildKitchenItems(cart, menuItemCategoryMap),
                     createdAt: new Date().toISOString(),
                 });
@@ -431,6 +453,7 @@ export default function POSDeliveryPage() {
                     printReceipt(receiptData);
                 }
                 setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress('');
+                setScheduledTime('');
                 setPaymentMethod('PDV_SHANKLISH'); setAmountReceived('');
                 setMixedPayments([]); setMixedPaymentsComplete(false); setIsMixedMode(false);
                 setDiscountType('NONE'); setAuthorizedManager(null);
@@ -517,9 +540,9 @@ export default function POSDeliveryPage() {
                     <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory-alt px-4 py-3">
                         <div className="mb-2 flex items-center gap-2">
                             <span className="pos-kicker">Datos del cliente</span>
-                            {(customerName || customerPhone || customerAddress) && (
+                            {(customerName || customerPhone || customerAddress || scheduledTime) && (
                                 <button
-                                    onClick={() => { setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); }}
+                                    onClick={() => { setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setScheduledTime(''); }}
                                     className="inline-flex items-center gap-1 text-[11px] font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
                                 >
                                     Limpiar
@@ -590,15 +613,26 @@ export default function POSDeliveryPage() {
                                 />
                             </div>
                         </div>
-                        <div className="relative">
-                            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
-                            <input
-                                type="text"
-                                value={customerAddress}
-                                onChange={e => setCustomerAddress(e.target.value)}
-                                placeholder="Dirección exacta de entrega…"
-                                className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
-                            />
+                        <div className="grid grid-cols-[1fr_140px] gap-2">
+                            <div className="relative">
+                                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                                <input
+                                    type="text"
+                                    value={customerAddress}
+                                    onChange={e => setCustomerAddress(e.target.value)}
+                                    placeholder="Dirección exacta de entrega…"
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                                />
+                            </div>
+                            <div className="relative" title="Hora de entrega solicitada — opcional. Se imprime grande en la comanda de cocina/barra.">
+                                <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                                <input
+                                    type="time"
+                                    value={scheduledTime}
+                                    onChange={e => setScheduledTime(e.target.value)}
+                                    className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-2 text-sm font-semibold text-capsula-ink transition-colors focus:border-capsula-navy-deep focus:outline-none tabular-nums"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -709,11 +743,17 @@ export default function POSDeliveryPage() {
                     </div>
 
                     {/* ── Resumen cliente (readonly, visible cuando hay datos) ── */}
-                    {(customerName || customerPhone || customerAddress) && (
+                    {(customerName || customerPhone || customerAddress || scheduledTime) && (
                         <div className="shrink-0 border-b border-capsula-line bg-capsula-ivory-alt/60 px-4 py-2">
                             <div className="truncate text-[11px] font-medium leading-snug text-capsula-ink-soft">
                                 {[customerName, customerPhone, customerAddress].filter(Boolean).join(' · ')}
                             </div>
+                            {scheduledTime && (
+                                <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-capsula-coral">
+                                    <Clock className="h-3 w-3" />
+                                    Entregar {scheduledTime}
+                                </div>
+                            )}
                         </div>
                     )}
 

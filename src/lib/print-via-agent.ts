@@ -86,6 +86,19 @@ export interface AgentKitchenPayload {
     tabCode?: string;
     tableName?: string | null;
     customerName?: string | null;
+    /**
+     * Dirección de entrega — solo aplica a DELIVERY. Si está presente,
+     * la comanda la imprime debajo del nombre del cliente. Hoy delivery
+     * la enviaba en `customerName` concatenada con teléfono; este campo
+     * existe para futura migración limpia.
+     */
+    customerAddress?: string | null;
+    /**
+     * Hora de entrega solicitada (ISO). Si está presente, la comanda la
+     * imprime en grande para que cocina/barra prioricen vs. los "ASAP".
+     * Aplica a PICKUP y DELIVERY.
+     */
+    scheduledDeliveryTime?: string | null;
     items: AgentKitchenItem[];
     createdAt: string; // ISO
     voidReason?: string;

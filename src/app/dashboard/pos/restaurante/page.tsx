@@ -132,6 +132,9 @@ interface PickupTabLocal {
   pickupNumber: string;
   customerName: string;
   customerPhone: string;
+  // Hora de entrega solicitada por el cliente. Formato 'HH:MM' (24h).
+  // Se imprime grande en la comanda de cocina/barra para priorizar.
+  scheduledTime: string;
   cart: CartItem[];
 }
 interface ZoneSummary {
@@ -195,6 +198,24 @@ function formatDateTime(d: string | Date) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Convierte 'HH:MM' (input nativo type=time) a un ISO string anclado a HOY
+ * en la zona local. Si la hora ya pasó (ej. son las 15:00 y se marca 14:30)
+ * asumimos que es para MAÑANA para que cocina priorice correctamente.
+ */
+function scheduledTimeToISO(hhmm: string): string | undefined {
+  if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return undefined;
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
+  return d.toISOString();
 }
 
 // ============================================================================
@@ -308,6 +329,7 @@ export default function POSSportBarPage() {
   const [newPickupNumber, setNewPickupNumber] = useState("");
   const [newPickupName, setNewPickupName] = useState("");
   const [newPickupPhone, setNewPickupPhone] = useState("");
+  const [newPickupTime, setNewPickupTime] = useState("");
 
   // ── Copia de consumos a portapapeles (envío por WhatsApp) ────────────────
   // Para que la cajera/mesonero pueda compartir los consumos en el grupo de
@@ -835,6 +857,7 @@ export default function POSSportBarPage() {
     setNewPickupNumber("PK-…");   // placeholder mientras carga
     setNewPickupName("");
     setNewPickupPhone("");
+    setNewPickupTime("");
     setShowPickupOpenModal(true);
     // Pasar los números de los tabs abiertos en memoria para que la action
     // pueda buscar el primer hueco combinando BD + estado local.
@@ -854,6 +877,7 @@ export default function POSSportBarPage() {
       pickupNumber: newPickupNumber.trim() || `PK-${(pickupTabs.length + 1).toString().padStart(2, "0")}`,
       customerName: newPickupName.trim(),
       customerPhone: newPickupPhone.trim(),
+      scheduledTime: newPickupTime.trim(),
       cart: [],
     };
     setPickupTabs((prev) => [...prev, newTab]);
@@ -1374,9 +1398,11 @@ export default function POSSportBarPage() {
         : 0;
       const finalTotal = roundToWhole(Math.max(0, cartTotal - pickupDiscount), paymentMethod);
 
+      const pickupScheduledISO = scheduledTimeToISO(activeTabSnap?.scheduledTime ?? "");
       const result = await createSalesOrderAction({
         orderType: "RESTAURANT",
         customerName: pickupCustomerName || "Cliente en Caja",
+        scheduledDeliveryTime: pickupScheduledISO,
         items: cart,
         ...(isPickupMixedMode
           ? { payments: mixedPaymentsPickup.length > 0 ? mixedPaymentsPickup : [{ method: "CASH", amountUSD: finalTotal }],
@@ -1409,6 +1435,7 @@ export default function POSSportBarPage() {
           orderTypeLabel: "PICKUP",
           tableName: null,
           customerName: pickupCustomerName || "Cliente Caja",
+          scheduledDeliveryTime: pickupScheduledISO ?? null,
           items: buildKitchenItems(cart, menuItemCategoryMap),
           createdAt: new Date().toISOString(),
         });
@@ -2056,22 +2083,39 @@ export default function POSSportBarPage() {
                     </span>
                   )}
                 </div>
-                <input
-                  type="text"
-                  value={pickupCustomerName}
-                  onChange={(e) => {
-                    setPickupCustomerName(e.target.value);
-                    if (activePickupTabId) {
+                <div className="grid grid-cols-[1fr_110px] gap-2">
+                  <input
+                    type="text"
+                    value={pickupCustomerName}
+                    onChange={(e) => {
+                      setPickupCustomerName(e.target.value);
+                      if (activePickupTabId) {
+                        setPickupTabs((prev) =>
+                          prev.map((t) =>
+                            t.id === activePickupTabId ? { ...t, customerName: e.target.value } : t,
+                          ),
+                        );
+                      }
+                    }}
+                    placeholder="Nombre del cliente…"
+                    className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
+                  />
+                  <input
+                    type="time"
+                    value={activePickupTab?.scheduledTime ?? ""}
+                    onChange={(e) => {
+                      if (!activePickupTabId) return;
+                      const v = e.target.value;
                       setPickupTabs((prev) =>
                         prev.map((t) =>
-                          t.id === activePickupTabId ? { ...t, customerName: e.target.value } : t,
+                          t.id === activePickupTabId ? { ...t, scheduledTime: v } : t,
                         ),
                       );
-                    }
-                  }}
-                  placeholder="Nombre del cliente…"
-                  className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
-                />
+                    }}
+                    title="Hora de entrega solicitada — se imprime grande en la comanda."
+                    className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-2 text-sm font-semibold tabular-nums focus:border-capsula-navy-deep focus:outline-none transition"
+                  />
+                </div>
                 {/* Copia a portapapeles (envío por WhatsApp) — dedupe por
                     cantidad de ítems ya copiados de este pickup tab. */}
                 {(() => {
@@ -3067,6 +3111,20 @@ export default function POSSportBarPage() {
                   placeholder="Ej: 0414-1234567"
                   className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
+                  Hora de entrega <span className="text-capsula-ink-faint font-normal normal-case">(opcional)</span>
+                </label>
+                <input
+                  type="time"
+                  value={newPickupTime}
+                  onChange={(e) => setNewPickupTime(e.target.value)}
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-semibold tabular-nums placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
+                />
+                <p className="mt-1 text-[10px] font-medium text-capsula-ink-muted">
+                  Si la captura, se imprime grande en la comanda de cocina/barra.
+                </p>
               </div>
             </div>
             <div className="border-t border-capsula-line p-4 flex gap-3">

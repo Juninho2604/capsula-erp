@@ -995,6 +995,11 @@ model SalesOrder {
   sentToKitchenAt DateTime?
   closedAt        DateTime?
 
+  // Hora de entrega solicitada (PICKUP/DELIVERY). Si la cajera la captura,
+  // la cocina la ve en la comanda y prioriza vs los "ASAP". Null = lo antes
+  // posible.
+  scheduledDeliveryTime DateTime?
+
   // Cajera que creÃ³ la orden
   createdById String
   createdBy   User   @relation("SalesOrderCreator", fields: [createdById], references: [id])

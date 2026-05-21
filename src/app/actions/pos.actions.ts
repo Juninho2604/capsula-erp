@@ -94,6 +94,10 @@ export interface CreateOrderData {
     discountType?: string; // 'DIVISAS_33', 'CORTESIA_100', 'CORTESIA_PERCENT', 'NONE'
     discountPercent?: number;
     authorizedById?: string;
+    // Hora de entrega solicitada (PICKUP/DELIVERY). ISO string desde el
+    // cliente; la action la persiste como DateTime y la encola a la
+    // comanda de cocina vía `enqueueKitchenCommand` cuando esté seteada.
+    scheduledDeliveryTime?: string;
 }
 
 export interface OpenTabInput {
@@ -1236,6 +1240,7 @@ export async function createSalesOrderAction(
                             : (data.paymentMethod || 'CASH'),
                         kitchenStatus: 'SENT',
                         sentToKitchenAt: new Date(),
+                        scheduledDeliveryTime: data.scheduledDeliveryTime ? new Date(data.scheduledDeliveryTime) : undefined,
 
                         subtotal,
                         discount,

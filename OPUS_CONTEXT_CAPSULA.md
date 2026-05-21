@@ -7647,3 +7647,117 @@ Hits en route handlers / middleware / server actions deben migrarse a
 `siteUrl`. Hits en tests o utilidades fuera de request (como `searchParams`
 de un URL) son seguros — solo es problema cuando se construye una URL
 para `Location:`.
+
+## 42. Hora de entrega solicitada en PICKUP / DELIVERY (2026-05-21)
+
+### 42.1 Contexto
+
+Pedido de la visita SHANKLISH: la cajera necesitaba poder marcar la hora
+exacta a la que el cliente quiere recibir su pickup o delivery, y que esa
+hora se imprima grande en la comanda de cocina/barra para que prioricen
+vs. los pedidos "ASAP".
+
+Hasta ahora la cocina recibía todo igual y tenía que adivinar por orden
+de llegada al ticket — funcionaba mal cuando un cliente pedía a las 4pm
+para retirar a las 7pm: la cocina lo cocinaba a las 4 y se enfriaba.
+
+### 42.2 Modelo de datos
+
+Campo nuevo en `SalesOrder`:
+
+```prisma
+scheduledDeliveryTime DateTime?
+```
+
+Nullable: si la cajera no lo captura, la cocina lo trata como "lo antes
+posible" (comportamiento histórico). Migración:
+`prisma/migrations/20260521163926_add_scheduled_delivery_time/migration.sql`.
+
+### 42.3 Flujo
+
+1. **POS Delivery** (`src/app/dashboard/pos/delivery/page.tsx`):
+   input `type="time"` al lado de la dirección. El helper
+   `scheduledTimeToISO(hhmm)` convierte `HH:MM` (local) a ISO anclado a HOY
+   — si la hora ya pasó (cajera marca 14:30 y son las 15:00), salta al día
+   siguiente automáticamente.
+2. **POS Pickup** (sección pickup de `pos/restaurante/page.tsx`):
+   input `type="time"` en el modal de "Nueva venta Pickup" + input editable
+   en el panel derecho (para corregir al vuelo si la cajera lo olvidó al
+   crear el tab). Se persiste en el `PickupTabLocal` por tab — cada tab
+   tiene su propia hora.
+3. **`createSalesOrderAction`** recibe `scheduledDeliveryTime?: string`
+   (ISO) en `CreateOrderData` y lo persiste como DateTime.
+4. **Comanda cocina/barra** (`enqueueKitchenCommand` → `printKitchenCommand`
+   y `print-agent/printer-adapter.ts`): si la orden tiene
+   `scheduledDeliveryTime`, se imprime en un recuadro grande con
+   "ENTREGAR A LAS HH:MM" debajo del header y antes de la lista de items.
+
+### 42.4 Por qué un input `type="time"` y no datetime
+
+La hora siempre es del día actual (o del siguiente si ya pasó). No tiene
+sentido pedirle a la cajera teclear la fecha — la app la infiere. El
+input nativo `type="time"` es perfecto: 5 keystrokes max (`19:30`), valida
+formato sin JS, y los browsers móviles renderizan un picker táctil.
+
+### 42.5 Helpers compartidos
+
+`scheduledTimeToISO(hhmm: string): string | undefined`
+- En `pos/delivery/page.tsx` y `pos/restaurante/page.tsx` (copia local).
+- Acepta `'HH:MM'`, devuelve ISO o `undefined` si vacío/inválido.
+- Si la hora ya pasó (> 1 min atrás), salta a mañana.
+
+Si más pantallas necesitan capturar hora de entrega, mover a
+`src/lib/scheduled-time.ts`.
+
+## 43. Tablas — modifier group "Platos Principales" (2026-05-21)
+
+### 43.1 Contexto
+
+Las Tablas (`TABLA-X1`, `TABLA-X2`, `TABLA-X4`) son combos cuya
+descripción dice "3 principales, 2 cremas, 1 shanklish, 1 ensalada y pan"
+(x1/x2) o "3 principales, 4 cremas, 2 shanklish, 1 ensalada y pan" (x4).
+Hasta ahora sólo el grupo "Cremas" estaba vinculado (fix de cremas en x4
+en §18.x / PR #197). Los "3 principales" no estaban en el menú — la
+cajera los anotaba a mano y la cocina los improvisaba.
+
+### 43.2 Solución
+
+Script:
+`scripts/add-platos-principales-to-tablas.ts`
+
+Crea (idempotente) un grupo `MenuModifierGroup` "Platos Principales (Tabla)"
+con `minSelections=3`, `maxSelections=3`, `isRequired=true`, lo puebla con
+los 10 principales por defecto (Falafel, Kibbe Crudo, Kibbe Horneado,
+Kibbe Frito, Mini Kibbe Frito, Pinchos de Pollo/Carne/Kafta/Mixto, Arroz
+con Pollo Libanés — todos con `priceAdjustment: 0` porque el costo va
+contra el precio de la Tabla) y lo vincula a las 3 Tablas.
+
+Uso:
+```bash
+# Dry-run (ver qué hará):
+npx tsx scripts/add-platos-principales-to-tablas.ts --tenant-slug=shanklish
+
+# Aplicar:
+npx tsx scripts/add-platos-principales-to-tablas.ts --tenant-slug=shanklish --apply
+```
+
+Después de correrlo, el POS al agregar una Tabla muestra el grupo "Platos
+Principales (Tabla)" como obligatorio con exactamente 3 selecciones. La
+lista se puede editar luego desde `/dashboard/menu/modificadores`.
+
+### 43.3 Por qué priceAdjustment=0
+
+El precio de la Tabla ya incluye los 3 principales. Cobrar extra por
+elegir Kibbe Crudo vs Falafel sería incorrecto — el cliente paga el
+combo, elige las opciones internas. Si en el futuro algún principal es
+"premium" (ej. carne especial), se sube el `priceAdjustment` de ese
+modifier individual desde la UI; el resto queda en 0.
+
+### 43.4 Compatibilidad con descargo de inventario
+
+Estos modifiers nuevos NO tienen `linkedMenuItemId` configurado todavía,
+así que NO descuentan inventario por sí solos. La Tabla descuenta su
+receta como un todo (cuando esté hecha) o se contabiliza por el
+modificador SIN/CON (§ ese tema). Próximo paso si se necesita: linkear
+cada modifier a su MenuItem-ingrediente equivalente para que la cocina
+vea el SIN/CON real reflejado en stock.
