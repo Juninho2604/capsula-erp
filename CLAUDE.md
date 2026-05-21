@@ -148,6 +148,24 @@ No añadir clases `shadow-*` dramáticas (`shadow-2xl`, `shadow-lg shadow-primar
 
 Respetar el z-index stack (sección 18.1 de OPUS_CONTEXT): modales POS en `z-[60]`, BellPanel/HelpPanel en `z-[70]`.
 
+### 8. 🚨 Redirects: NUNCA a localhost en producción
+
+App corre en VPS Contabo detrás de nginx → pm2 → Next.js standalone bindeado a `127.0.0.1:3000`. En este setup, **`request.url` y `request.nextUrl` resuelven al bind address, NO al host público** que el browser pegó. Cualquier `redirect()` / `rewrite()` que use esos como base manda al browser a `http://localhost:3000/...` → "no se puede conectar".
+
+**Reglas duras**:
+- Usá **siempre** el helper `siteUrl(request, '/path')` en middleware y route handlers para construir URLs absolutas de redirect/rewrite. Está en `src/middleware.ts` y `src/app/auth/bootstrap/route.ts`.
+- **Prohibido** en código nuevo:
+  - `new URL('/x', request.url)` o `new URL('/x', req.url)` para Location
+  - `request.nextUrl.clone()` como base de un redirect absoluto
+- Redirects **relativos** (`return redirect('/dashboard')` de `next/navigation` en server components/actions) son seguros — el browser resuelve relativo al host actual.
+- Test manual post-deploy (5 seg):
+  ```bash
+  curl -sI -H 'Host: kpsula.app' http://localhost:3000/dashboard | grep -i location
+  # Debe ser kpsula.app, NUNCA localhost
+  ```
+
+Historial: PR #189 (15 mayo) lo "arregló" con `nextUrl.clone()` — se rompió con un update de Next.js. PR #214 (21 mayo) fix definitivo leyendo headers. **Detalle completo en OPUS_CONTEXT §41**.
+
 ---
 
 ## ✅ Gates antes de commitear
