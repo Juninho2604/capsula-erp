@@ -110,6 +110,32 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(siteUrl(request, '/login'));
     }
 
+    // 1.a Cross-tenant guard — defensa contra el robo de sesión vía
+    // cookie cross-subdomain.
+    //
+    // Cookie de sesión tiene domain=.kpsula.app → viaja a CUALQUIER
+    // subdomain. Sin este chequeo, un user logueado en shanklish.kpsula.app
+    // podría visitar tenantB.kpsula.app/dashboard con su cookie y todas
+    // las queries server-side terminarían operando sobre tenantB (porque
+    // resolveTenantContext() prioriza el subdomain del host).
+    //
+    // Comparamos a nivel de SLUG (no tenantId) porque middleware corre en
+    // Edge runtime sin Prisma. El slug viaja en el JWT desde login (campo
+    // session.tenantSlug); el slug del host viene del header. Si difieren
+    // y el user NO es super admin, redirect a /login + clear cookie.
+    //
+    // Si el JWT es viejo y no tiene tenantSlug (compatibilidad pre-Fase 3),
+    // dejamos pasar — resolveTenantContext() en server-side validará
+    // tenantId contra DB y rechazará si corresponde.
+    if (session && tenantSlug && session.tenantSlug && !isSuperAdmin(session.email)) {
+        if (session.tenantSlug !== tenantSlug) {
+            const redirectUrl = siteUrl(request, '/login?error=wrong_tenant');
+            const res = NextResponse.redirect(redirectUrl);
+            res.cookies.delete('session');
+            return res;
+        }
+    }
+
     // 1.b /admin/* — solo emails en SUPER_ADMIN_EMAILS. Sin sesión o sin
     // estar en la allowlist responde 404 directo (no leakeamos que la ruta
     // existe). El layout además repite el chequeo defense-in-depth.

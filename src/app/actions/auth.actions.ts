@@ -142,10 +142,26 @@ export async function loginAction(prevState: any, formData: FormData) {
             }
         }
 
+        // Resolver slug del tenant del usuario. Lo necesitamos en el JWT
+        // (para el middleware cross-tenant guard) y como retorno para que
+        // el client decida si redirige a <slug>.kpsula.app post-login.
+        // Defensive: si la query falla, slug=null y el middleware no
+        // bloquea (cae al chequeo server-side de resolveTenantContext).
+        let tenantSlug: string | null = null;
+        try {
+            const t = await prisma.tenant.findUnique({
+                where: { id: user.tenantId },
+                select: { slug: true },
+            });
+            tenantSlug = t?.slug ?? null;
+        } catch {
+            // ignore
+        }
+
         // Crear sesión segura. tokenVersion permite invalidar JWTs vivos
         // cuando se cambia rol/permisos/password en user.actions.
-        // tenantId viaja en el JWT desde Fase 3 (Paso A) — JWTs viejos sin
-        // este campo caen al fallback Shanklish vía resolveTenantContext().
+        // tenantId + tenantSlug viajan en el JWT desde Fase 3 — JWTs viejos
+        // sin estos campos caen al fallback Shanklish vía resolveTenantContext().
         await createSession({
             id: user.id,
             email: user.email,
@@ -157,23 +173,8 @@ export async function loginAction(prevState: any, formData: FormData) {
             revokedPerms: user.revokedPerms ?? null,
             tokenVersion: user.tokenVersion,
             tenantId: user.tenantId,
+            tenantSlug: tenantSlug ?? undefined,
         });
-
-        // Retornar datos reales del usuario para que el cliente sincronice el store Zustand
-        // Resolver slug del tenant para que el client decida si redirige a
-        // <slug>.kpsula.app post-login. Defensive: si por alguna razón la
-        // query falla, devolvemos slug=null y el client se queda en el
-        // host actual (comportamiento previo, no rompe nada).
-        let tenantSlug: string | null = null;
-        try {
-            const t = await prisma.tenant.findUnique({
-                where: { id: user.tenantId },
-                select: { slug: true },
-            });
-            tenantSlug = t?.slug ?? null;
-        } catch {
-            // ignore
-        }
 
         return {
             success: true,

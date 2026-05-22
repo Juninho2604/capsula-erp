@@ -21,6 +21,7 @@ import 'server-only';
 import { headers } from 'next/headers';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { isSuperAdmin } from '@/lib/super-admin';
 import {
     extractTenantSlugFromHost,
     FALLBACK_TENANT_SLUG,
@@ -35,6 +36,26 @@ export class TenantContextUnresolvedError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'TenantContextUnresolvedError';
+    }
+}
+
+/**
+ * Lanzada cuando la sesión del usuario pertenece a un tenant distinto al
+ * del subdomain que está pegando. Caller (middleware / server action /
+ * route handler) debe convertirla en 403 o redirect a /login para que
+ * el atacante no se filtre a otro tenant con su cookie.
+ */
+export class CrossTenantAccessError extends Error {
+    readonly sessionTenantId: string;
+    readonly hostTenantId: string;
+    constructor(sessionTenantId: string, hostTenantId: string) {
+        super(
+            `Cross-tenant access blocked: session.tenantId=${sessionTenantId} ` +
+                `≠ host.tenantId=${hostTenantId}`,
+        );
+        this.name = 'CrossTenantAccessError';
+        this.sessionTenantId = sessionTenantId;
+        this.hostTenantId = hostTenantId;
     }
 }
 
@@ -65,6 +86,28 @@ export async function resolveTenantContext(): Promise<TenantContext> {
             select: { id: true, slug: true },
         });
         if (tenant) {
+            // 1.b Defensa cross-subdomain — crítica para evitar fugas.
+            //
+            // La cookie de sesión tiene domain=.kpsula.app y viaja a TODOS
+            // los subdomains. Un user logueado en shanklish.kpsula.app que
+            // navega a tenantB.kpsula.app trae su cookie intacta. Si no
+            // chequeamos pertenencia, el resolver devolvería tenantB y
+            // todas las queries traerían data de tenantB → fuga total.
+            //
+            // Excepción: super admins pueden operar como cualquier tenant
+            // por diseño (soporte, impersonation futura). El allowlist es
+            // SUPER_ADMIN_EMAILS — verificado server-side cada request.
+            const session = await getSession();
+            if (session) {
+                const sessionTenantId = (session as { tenantId?: string }).tenantId;
+                if (
+                    sessionTenantId &&
+                    sessionTenantId !== tenant.id &&
+                    !isSuperAdmin(session.email)
+                ) {
+                    throw new CrossTenantAccessError(sessionTenantId, tenant.id);
+                }
+            }
             return { tenantId: tenant.id, slug: tenant.slug, source: 'subdomain' };
         }
         // Slug en host pero no en BD. En strict mode esto es un 404 hard
@@ -76,7 +119,7 @@ export async function resolveTenantContext(): Promise<TenantContext> {
         }
     }
 
-    // 2. JWT session
+    // 2. JWT session (host sin subdomain, e.g. kpsula.app root)
     const session = await getSession();
     if (session) {
         const tenantIdFromJwt = (session as { tenantId?: string }).tenantId;
@@ -86,10 +129,6 @@ export async function resolveTenantContext(): Promise<TenantContext> {
                 select: { id: true, slug: true },
             });
             if (tenant) {
-                // Defensa cross-subdomain: si el host resolvió un slug pero
-                // pertenece a OTRO tenant, no dejamos que la sesión opere
-                // como ese otro tenant. La sesión solo aplica cuando el
-                // host no resolvió tenant (kpsula.app root o local).
                 return { tenantId: tenant.id, slug: tenant.slug, source: 'session' };
             }
         }
