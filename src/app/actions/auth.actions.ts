@@ -5,7 +5,7 @@ import { createSession, deleteSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { isSuperAdmin } from '@/lib/super-admin';
-import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { resolveTenantContext, TenantContextUnresolvedError } from '@/lib/tenant-context.server';
 import { redirect } from 'next/navigation';
 
 // Hash con formato válido (saltHex:hashHex) que nunca matchea ningún password
@@ -63,13 +63,24 @@ export async function loginAction(prevState: any, formData: FormData) {
         //        - 2+ matches → error explícito pidiendo entrar por el
         //                       subdomain correcto. (Caso real: mismo email
         //                       admin@gmail.com en varios tenants.)
-        const tenantCtx = await resolveTenantContext();
-        // Super admins (`SUPER_ADMIN_EMAILS`) viven en `tnt_kpsula_admin`,
-        // un tenant que NO tiene subdomain de cliente. Si caen en
-        // <slug>.kpsula.app/login por PWA cache, autocomplete o un link
-        // viejo, el filtro estricto por tenantId los bloquearía. La
-        // allowlist se controla por env var, así que no es bypass-able
-        // por un atacante; el password sigue verificándose normalmente.
+        //
+        // El flujo de login es el PUNTO DE ENTRADA al sistema: el usuario
+        // aún no ha probado quién es (no hay sesión activa) y puede no
+        // venir por un subdomain válido. Si `resolveTenantContext()` lanza
+        // `TenantContextUnresolvedError` (modo strict + sin contexto), lo
+        // tratamos como root login — la búsqueda multi-tenant del email
+        // ya cubre el caso de manera segura, y el password sigue
+        // verificándose normalmente con anti-enumeration.
+        let tenantCtx;
+        try {
+            tenantCtx = await resolveTenantContext();
+        } catch (err) {
+            if (err instanceof TenantContextUnresolvedError) {
+                tenantCtx = { source: 'fallback' as const, tenantId: '', slug: '' };
+            } else {
+                throw err;
+            }
+        }
         const isRootLogin = tenantCtx.source !== 'subdomain' || isSuperAdmin(email);
 
         // Búsqueda case-insensitive: cubre emails normalizados Y users
