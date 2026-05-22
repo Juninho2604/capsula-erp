@@ -13,7 +13,7 @@ import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 import { getVisibleModules, type ModuleDefinition } from '@/lib/constants/modules-registry';
 import { MODULE_ICONS, SUBGROUP_ICONS } from '@/lib/module-icons';
 import { CapsulaNavbarLogo } from '@/components/ui/CapsulaLogo';
-import { X, User, LogOut, Search } from 'lucide-react';
+import { X, User, LogOut, Search, ShieldCheck } from 'lucide-react';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ interface SidebarProps {
     initialUser?: any; // SessionPayload
     enabledModuleIds?: string[]; // Viene de la BD vía DashboardLayout
     userAllowedModules?: string[] | null; // Permisos individuales del usuario (null = sin restricción)
+    isSuperAdmin?: boolean; // Activa el atajo "Panel KPSULA" arriba del menú
 }
 
 // ── Tree types ─────────────────────────────────────────────────────────────────
@@ -520,7 +521,7 @@ function SearchResults({
 
 // ── Main Sidebar ───────────────────────────────────────────────────────────────
 
-export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: SidebarProps) {
+export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules, isSuperAdmin = false }: SidebarProps) {
     const pathname = usePathname();
     const { user, login } = useAuthStore();
     const setPermissions = useAuthStore(s => s.setPermissions);
@@ -665,6 +666,31 @@ export function Sidebar({ initialUser, enabledModuleIds, userAllowedModules }: S
                         <X className="h-4 w-4" strokeWidth={1.75} />
                     </button>
                 </div>
+
+                {/* Atajo Panel KPSULA — solo super admins. Acceso al
+                    panel global del SaaS (métricas cross-tenant, gestión
+                    de tenants, pagos). El middleware permite /admin en
+                    cualquier host, así que no hace falta absolute URL. */}
+                {isSuperAdmin && (
+                    <div className="shrink-0 border-b border-capsula-line px-2 py-2">
+                        <Link
+                            href="/admin"
+                            onClick={closeSidebar}
+                            className={cn(
+                                'group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                                pathname.startsWith('/admin')
+                                    ? 'bg-capsula-navy-deep text-capsula-cream'
+                                    : 'bg-capsula-navy-deep/95 text-capsula-cream hover:bg-capsula-navy-deep',
+                            )}
+                        >
+                            <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />
+                            <span className="flex-1">Panel KPSULA</span>
+                            <span className="rounded-full bg-capsula-cream/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-capsula-cream">
+                                Admin
+                            </span>
+                        </Link>
+                    </div>
+                )}
 
                 {/* Search */}
                 <div className="shrink-0 border-b border-capsula-line px-2 py-2">

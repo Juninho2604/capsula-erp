@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth';
 import { getEnabledModulesFromDB } from '@/app/actions/system-config.actions';
 import { visibleModules } from '@/lib/permissions/has-permission';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { isSuperAdmin } from '@/lib/super-admin';
 import prisma from '@/server/db';
 
 // Layout dinámico SIEMPRE — el sidebar depende del session + módulos
@@ -60,7 +61,12 @@ export default async function DashboardLayout({
     }
 
     const sidebar = (
-        <Sidebar initialUser={session} enabledModuleIds={enabledModuleIds} userAllowedModules={userAllowedModules} />
+        <Sidebar
+            initialUser={session}
+            enabledModuleIds={enabledModuleIds}
+            userAllowedModules={userAllowedModules}
+            isSuperAdmin={isSuperAdmin(session?.email)}
+        />
     );
 
     return (
