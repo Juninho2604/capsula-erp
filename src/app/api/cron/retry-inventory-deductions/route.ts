@@ -23,9 +23,23 @@ const BATCH_SIZE = 25;
  * Aceptamos GET (Vercel Cron usa GET por default) y POST (manual / debugging).
  */
 async function handler(request: NextRequest) {
-    // Auth: en prod requerimos el secret. En dev (sin secret configurado) lo permitimos.
+    // Auth: CRON_SECRET es OBLIGATORIO en producción. Si no está seteado,
+    // rechazamos por default — antes el endpoint pasaba sin auth si la
+    // env var faltaba, lo que era un foot-gun (cualquiera podía dispararlo
+    // si la config del VPS estaba incompleta). En dev local, exportá
+    // CRON_SECRET=test para correrlo manualmente con
+    // `curl -H 'authorization: Bearer test'`.
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret) {
+    if (!cronSecret) {
+        if (process.env.NODE_ENV === 'production') {
+            console.error('[CRON_OUTBOX] CRON_SECRET no está seteado en producción. Rechazando request.');
+            return NextResponse.json(
+                { error: 'CRON_SECRET not configured' },
+                { status: 503 },
+            );
+        }
+        console.warn('[CRON_OUTBOX] CRON_SECRET no seteado — modo dev sin auth.');
+    } else {
         const authHeader = request.headers.get('authorization');
         if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

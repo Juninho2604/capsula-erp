@@ -59,8 +59,48 @@ export class CrossTenantAccessError extends Error {
     }
 }
 
-function isStrictMode(): boolean {
-    return process.env.MULTI_TENANT_STRICT === 'true';
+/**
+ * Cache del count de tenants en BD. Se llena la primera vez que
+ * `resolveTenantContext()` necesita evaluar strict mode y persiste hasta
+ * el restart del proceso (en práctica ~24h en pm2). Si el count cambia
+ * por encima de 1, strict mode se activa automáticamente para todas las
+ * requests subsiguientes — sin necesidad de configurar la env var.
+ *
+ * Por qué: el fallback Shanklish es seguro mientras solo exista UN tenant.
+ * En cuanto se crea un segundo tenant (vía /admin/tenants/new) el fallback
+ * es peligroso: cualquier request sin contexto explícito termina operando
+ * sobre Shanklish, posiblemente filtrando o contaminando data. Auto-strict
+ * elimina el foot-gun de "olvidar setear MULTI_TENANT_STRICT".
+ *
+ * La env var explícita sigue ganando — útil para forzar strict en CI/dev
+ * single-tenant para detectar regressions.
+ */
+let cachedTenantCount: number | null = null;
+let cachedTenantCountAt = 0;
+const TENANT_COUNT_TTL_MS = 60_000;
+
+async function getTenantCount(): Promise<number> {
+    const now = Date.now();
+    if (cachedTenantCount !== null && now - cachedTenantCountAt < TENANT_COUNT_TTL_MS) {
+        return cachedTenantCount;
+    }
+    try {
+        cachedTenantCount = await prisma.tenant.count();
+        cachedTenantCountAt = now;
+        return cachedTenantCount;
+    } catch {
+        // Si la BD está caída, no decimos "strict mode" — la query igual
+        // va a fallar después y el caller verá un error claro.
+        return cachedTenantCount ?? 1;
+    }
+}
+
+async function isStrictMode(): Promise<boolean> {
+    if (process.env.MULTI_TENANT_STRICT === 'true') return true;
+    // Auto-strict: si hay ≥2 tenants, ya no hay tenant histórico "obvio"
+    // al que caer. Bloqueamos el fallback silencioso.
+    const count = await getTenantCount();
+    return count > 1;
 }
 
 /**
@@ -112,7 +152,7 @@ export async function resolveTenantContext(): Promise<TenantContext> {
         }
         // Slug en host pero no en BD. En strict mode esto es un 404 hard
         // (host de tenant inexistente, no debería caer a Shanklish).
-        if (isStrictMode()) {
+        if (await isStrictMode()) {
             throw new TenantContextUnresolvedError(
                 `Host "${host}" tiene slug "${slug}" pero no existe en BD.`,
             );
@@ -135,10 +175,10 @@ export async function resolveTenantContext(): Promise<TenantContext> {
     }
 
     // 3. Fallback — Shanklish mientras hay un solo tenant.
-    if (isStrictMode()) {
+    if (await isStrictMode()) {
         throw new TenantContextUnresolvedError(
             'No se pudo resolver tenant: ni subdomain ni session con tenantId válido. ' +
-                'Strict mode activo (MULTI_TENANT_STRICT=true).',
+                'Strict mode activo (env var o auto-detect por ≥2 tenants en BD).',
         );
     }
 
