@@ -21,6 +21,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { isSuperAdmin } from '@/lib/super-admin';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { visibleModules } from '@/lib/permissions/has-permission';
@@ -34,6 +35,14 @@ export async function GET() {
     const session = await getSession();
     if (!session) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+    // Restricción a super admins: el endpoint expone metadata interna
+    // (allowedModules de BD, SystemConfig parseado, MODULE_REGISTRY,
+    // build SHA). Útil para diagnóstico pero no debe ser público —
+    // un user normal no necesita ver el registro completo del build
+    // ni el set de módulos habilitados de su tenant a nivel system.
+    if (!isSuperAdmin(session.email)) {
+        return new NextResponse('Not Found', { status: 404 });
     }
 
     let tenantId: string | null = null;

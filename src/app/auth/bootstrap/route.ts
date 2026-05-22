@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
             revokedPerms: true,
             tokenVersion: true,
             tenantId: true,
+            tenant: { select: { slug: true } },
         },
     });
     if (!user) {
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
         revokedPerms: user.revokedPerms ?? null,
         tokenVersion: user.tokenVersion,
         tenantId: user.tenantId,
+        tenantSlug: user.tenant?.slug ?? undefined,
     });
 
     return NextResponse.redirect(siteUrl(req, '/dashboard'));

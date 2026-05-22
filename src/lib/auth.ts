@@ -52,6 +52,14 @@ export interface SessionPayload {
      * vía resolveTenantContext(). JWTs nuevos siempre lo incluyen.
      */
     tenantId?: string;
+    /**
+     * Slug del tenant del usuario. Viaja en el JWT para que el middleware
+     * (Edge runtime, sin Prisma) pueda comparar contra el slug del host y
+     * detectar cross-subdomain takeover sin hits a BD. Opcional por compat
+     * con JWTs viejos — esos no son bloqueados por el middleware pero sí
+     * por `resolveTenantContext()` en server-side.
+     */
+    tenantSlug?: string;
 }
 
 export async function encrypt(payload: SessionPayload) {

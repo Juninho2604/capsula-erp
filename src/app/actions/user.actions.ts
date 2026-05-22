@@ -228,10 +228,21 @@ export async function changePasswordAction(currentPassword: string, newPassword:
                 passwordHash: hashed,
                 tokenVersion: { increment: 1 },
             },
-            select: { tokenVersion: true },
+            select: {
+                tokenVersion: true,
+                tenantId: true,
+                tenant: { select: { slug: true } },
+            },
         });
 
-        await createSession({ ...session, tokenVersion: updated.tokenVersion });
+        // Re-emitir cookie con la versión bumpeada + refrescar tenantSlug
+        // por si el JWT actual viene de antes del cross-tenant guard.
+        await createSession({
+            ...session,
+            tokenVersion: updated.tokenVersion,
+            tenantId: updated.tenantId,
+            tenantSlug: updated.tenant?.slug ?? session.tenantSlug,
+        });
 
         return { success: true, message: 'Contraseña actualizada correctamente' };
 

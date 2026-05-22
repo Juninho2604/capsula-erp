@@ -21,6 +21,7 @@ import 'server-only';
 import { headers } from 'next/headers';
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
+import { isSuperAdmin } from '@/lib/super-admin';
 import {
     extractTenantSlugFromHost,
     FALLBACK_TENANT_SLUG,
@@ -38,8 +39,68 @@ export class TenantContextUnresolvedError extends Error {
     }
 }
 
-function isStrictMode(): boolean {
-    return process.env.MULTI_TENANT_STRICT === 'true';
+/**
+ * Lanzada cuando la sesión del usuario pertenece a un tenant distinto al
+ * del subdomain que está pegando. Caller (middleware / server action /
+ * route handler) debe convertirla en 403 o redirect a /login para que
+ * el atacante no se filtre a otro tenant con su cookie.
+ */
+export class CrossTenantAccessError extends Error {
+    readonly sessionTenantId: string;
+    readonly hostTenantId: string;
+    constructor(sessionTenantId: string, hostTenantId: string) {
+        super(
+            `Cross-tenant access blocked: session.tenantId=${sessionTenantId} ` +
+                `≠ host.tenantId=${hostTenantId}`,
+        );
+        this.name = 'CrossTenantAccessError';
+        this.sessionTenantId = sessionTenantId;
+        this.hostTenantId = hostTenantId;
+    }
+}
+
+/**
+ * Cache del count de tenants en BD. Se llena la primera vez que
+ * `resolveTenantContext()` necesita evaluar strict mode y persiste hasta
+ * el restart del proceso (en práctica ~24h en pm2). Si el count cambia
+ * por encima de 1, strict mode se activa automáticamente para todas las
+ * requests subsiguientes — sin necesidad de configurar la env var.
+ *
+ * Por qué: el fallback Shanklish es seguro mientras solo exista UN tenant.
+ * En cuanto se crea un segundo tenant (vía /admin/tenants/new) el fallback
+ * es peligroso: cualquier request sin contexto explícito termina operando
+ * sobre Shanklish, posiblemente filtrando o contaminando data. Auto-strict
+ * elimina el foot-gun de "olvidar setear MULTI_TENANT_STRICT".
+ *
+ * La env var explícita sigue ganando — útil para forzar strict en CI/dev
+ * single-tenant para detectar regressions.
+ */
+let cachedTenantCount: number | null = null;
+let cachedTenantCountAt = 0;
+const TENANT_COUNT_TTL_MS = 60_000;
+
+async function getTenantCount(): Promise<number> {
+    const now = Date.now();
+    if (cachedTenantCount !== null && now - cachedTenantCountAt < TENANT_COUNT_TTL_MS) {
+        return cachedTenantCount;
+    }
+    try {
+        cachedTenantCount = await prisma.tenant.count();
+        cachedTenantCountAt = now;
+        return cachedTenantCount;
+    } catch {
+        // Si la BD está caída, no decimos "strict mode" — la query igual
+        // va a fallar después y el caller verá un error claro.
+        return cachedTenantCount ?? 1;
+    }
+}
+
+async function isStrictMode(): Promise<boolean> {
+    if (process.env.MULTI_TENANT_STRICT === 'true') return true;
+    // Auto-strict: si hay ≥2 tenants, ya no hay tenant histórico "obvio"
+    // al que caer. Bloqueamos el fallback silencioso.
+    const count = await getTenantCount();
+    return count > 1;
 }
 
 /**
@@ -65,18 +126,40 @@ export async function resolveTenantContext(): Promise<TenantContext> {
             select: { id: true, slug: true },
         });
         if (tenant) {
+            // 1.b Defensa cross-subdomain — crítica para evitar fugas.
+            //
+            // La cookie de sesión tiene domain=.kpsula.app y viaja a TODOS
+            // los subdomains. Un user logueado en shanklish.kpsula.app que
+            // navega a tenantB.kpsula.app trae su cookie intacta. Si no
+            // chequeamos pertenencia, el resolver devolvería tenantB y
+            // todas las queries traerían data de tenantB → fuga total.
+            //
+            // Excepción: super admins pueden operar como cualquier tenant
+            // por diseño (soporte, impersonation futura). El allowlist es
+            // SUPER_ADMIN_EMAILS — verificado server-side cada request.
+            const session = await getSession();
+            if (session) {
+                const sessionTenantId = (session as { tenantId?: string }).tenantId;
+                if (
+                    sessionTenantId &&
+                    sessionTenantId !== tenant.id &&
+                    !isSuperAdmin(session.email)
+                ) {
+                    throw new CrossTenantAccessError(sessionTenantId, tenant.id);
+                }
+            }
             return { tenantId: tenant.id, slug: tenant.slug, source: 'subdomain' };
         }
         // Slug en host pero no en BD. En strict mode esto es un 404 hard
         // (host de tenant inexistente, no debería caer a Shanklish).
-        if (isStrictMode()) {
+        if (await isStrictMode()) {
             throw new TenantContextUnresolvedError(
                 `Host "${host}" tiene slug "${slug}" pero no existe en BD.`,
             );
         }
     }
 
-    // 2. JWT session
+    // 2. JWT session (host sin subdomain, e.g. kpsula.app root)
     const session = await getSession();
     if (session) {
         const tenantIdFromJwt = (session as { tenantId?: string }).tenantId;
@@ -86,20 +169,16 @@ export async function resolveTenantContext(): Promise<TenantContext> {
                 select: { id: true, slug: true },
             });
             if (tenant) {
-                // Defensa cross-subdomain: si el host resolvió un slug pero
-                // pertenece a OTRO tenant, no dejamos que la sesión opere
-                // como ese otro tenant. La sesión solo aplica cuando el
-                // host no resolvió tenant (kpsula.app root o local).
                 return { tenantId: tenant.id, slug: tenant.slug, source: 'session' };
             }
         }
     }
 
     // 3. Fallback — Shanklish mientras hay un solo tenant.
-    if (isStrictMode()) {
+    if (await isStrictMode()) {
         throw new TenantContextUnresolvedError(
             'No se pudo resolver tenant: ni subdomain ni session con tenantId válido. ' +
-                'Strict mode activo (MULTI_TENANT_STRICT=true).',
+                'Strict mode activo (env var o auto-detect por ≥2 tenants en BD).',
         );
     }
 

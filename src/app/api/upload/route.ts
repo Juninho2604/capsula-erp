@@ -2,65 +2,98 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
+import { getSession } from '@/lib/auth';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 
-// Directorio donde se guardan los uploads
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'notas-entrega');
+/**
+ * Endpoint de subida de archivos (notas de entrega, soportes, etc.).
+ *
+ * Requiere sesión autenticada. El archivo se guarda en un path
+ * tenant-scoped FUERA de `public/` para que nginx no lo sirva
+ * directamente — la URL pública generada apunta a `/api/files/...`
+ * que valida la sesión + ownership antes de streamear el contenido.
+ *
+ * Path en disco:  STORAGE_ROOT/uploads/<tenantId>/notas-entrega/<uuid>.<ext>
+ * URL pública:    /api/files/<tenantId>/notas-entrega/<uuid>.<ext>
+ *
+ * Filename con UUID v4 para que no sea guessable (defensa en profundidad
+ * frente al GET endpoint).
+ */
+
+const STORAGE_ROOT = path.join(process.cwd(), 'storage');
+const UPLOADS_SUBDIR = 'uploads';
+const NOTAS_SUBDIR = 'notas-entrega';
+
+const ALLOWED_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+]);
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+const EXT_BY_TYPE: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf',
+};
 
 export async function POST(request: NextRequest) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json(
+                { success: false, error: 'No autenticado' },
+                { status: 401 },
+            );
+        }
+
+        const { tenantId } = await resolveTenantContext();
+
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
-        const referenceNumber = formData.get('referenceNumber') as string | null;
 
         if (!file) {
             return NextResponse.json(
                 { success: false, error: 'No se recibió ningún archivo' },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
-        // Validar tipo de archivo
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-        if (!allowedTypes.includes(file.type)) {
+        if (!ALLOWED_TYPES.has(file.type)) {
             return NextResponse.json(
                 { success: false, error: 'Tipo de archivo no permitido. Use JPG, PNG, WebP o PDF.' },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
-        // Validar tamaño (máximo 5MB)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
+        if (file.size > MAX_SIZE) {
             return NextResponse.json(
                 { success: false, error: 'El archivo excede el tamaño máximo de 5MB' },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
-        // Crear directorio si no existe
-        if (!existsSync(UPLOAD_DIR)) {
-            await mkdir(UPLOAD_DIR, { recursive: true });
+        // Path en disco: storage/uploads/<tenantId>/notas-entrega/
+        const tenantDir = path.join(STORAGE_ROOT, UPLOADS_SUBDIR, tenantId, NOTAS_SUBDIR);
+        if (!existsSync(tenantDir)) {
+            await mkdir(tenantDir, { recursive: true });
         }
 
-        // Generar nombre único
-        const timestamp = Date.now();
-        const extension = file.name.split('.').pop() || 'jpg';
-        const sanitizedRef = referenceNumber?.replace(/[^a-zA-Z0-9]/g, '-') || 'sin-ref';
-        const fileName = `nota-${sanitizedRef}-${timestamp}.${extension}`;
-        const filePath = path.join(UPLOAD_DIR, fileName);
+        // Filename con UUID — no derivado de input del cliente (evita path
+        // traversal y predicción). Extension SOLO del MIME validado, no del
+        // file.name del cliente (que podría ser .php, .sh, etc.).
+        const ext = EXT_BY_TYPE[file.type] ?? 'bin';
+        const fileName = `${randomUUID()}.${ext}`;
+        const filePath = path.join(tenantDir, fileName);
 
-        // Guardar archivo
         const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await writeFile(filePath, buffer);
+        await writeFile(filePath, Buffer.from(bytes));
 
-        const publicUrl = `/uploads/notas-entrega/${fileName}`;
-
-        console.log('✅ Archivo guardado:', {
-            fileName,
-            size: file.size,
-            path: publicUrl,
-        });
+        // URL pública: pasa por /api/files que re-valida sesión + tenant
+        const publicUrl = `/api/files/${tenantId}/${NOTAS_SUBDIR}/${fileName}`;
 
         return NextResponse.json({
             success: true,
@@ -72,12 +105,11 @@ export async function POST(request: NextRequest) {
                 type: file.type,
             },
         });
-
     } catch (error) {
-        console.error('❌ Error al subir archivo:', error);
+        console.error('[api/upload] error:', error);
         return NextResponse.json(
             { success: false, error: 'Error interno al procesar el archivo' },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }
