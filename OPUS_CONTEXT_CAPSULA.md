@@ -7882,3 +7882,107 @@ cd /var/www/capsula-erp && npx prisma migrate status
 DB_URL=$(grep -E '^DATABASE_URL=' .env | cut -d= -f2- | tr -d '"' | tr -d "'")
 psql "$DB_URL" -c 'SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC LIMIT 5;'
 ```
+
+## §43 Sprint de aislamiento tenant (2026-05-22, PR #221)
+
+Auditoría completa pre-onboarding del segundo tenant. Hallazgos críticos
+cerrados antes de que se vuelvan explotables.
+
+### 43.1 Cross-tenant context guard
+
+**Bug**: la cookie de sesión (`domain=.kpsula.app`) viaja a todos los
+subdomains. `resolveTenantContext()` priorizaba el slug del host SIN
+validar que `session.tenantId` coincidiera — un user de tenant A podía
+operar como tenant B simplemente navegando al subdomain ajeno con su
+cookie intacta.
+
+**Fix** (`src/lib/tenant-context.server.ts`, `src/middleware.ts`):
+- Resolver lanza `CrossTenantAccessError` si `session.tenantId !==
+  host.tenantId` y `!isSuperAdmin(session.email)`.
+- Middleware (Edge runtime) compara a nivel slug usando un nuevo campo
+  `tenantSlug` del JWT — sin tocar Prisma. Si difieren, redirect a
+  `/login?error=wrong_tenant` + clear cookie.
+
+**JWT change**: `SessionPayload.tenantSlug?: string` (auth.ts). Populado
+en `loginAction` (auth.actions.ts), `/auth/bootstrap`, y
+`changePasswordAction` (user.actions.ts) leyendo `tenant.slug` desde DB.
+JWTs viejos sin `tenantSlug` no son bloqueados por middleware (compat)
+pero `resolveTenantContext()` server-side sí valida vía DB.
+
+**Excepción super admins**: por diseño operan como cualquier tenant
+(impersonation natural). El allowlist `SUPER_ADMIN_EMAILS` (env var, ver
+§38.17) es la única forma de cruzar tenants.
+
+### 43.2 Uploads seguros + endpoint protegido `/api/files`
+
+**Bug**: `/api/upload` POST sin auth + archivos en `public/uploads/notas-
+entrega/` (sin namespace por tenant). URL guessable.
+
+**Fix**:
+- POST require sesión + tenantId del context.
+- Path en disco: `storage/uploads/<tenantId>/notas-entrega/<uuid>.<ext>`
+  (FUERA de `public/` — nginx no sirve).
+- Filename con `crypto.randomUUID()`. Extension SOLO del MIME validado.
+- Nuevo GET `/api/files/[...path]/route.ts`: valida sesión + tenant
+  ownership (primer segmento del path debe ser `ctx.tenantId` o
+  super admin). Defensa anti path-traversal vía `path.normalize` +
+  `startsWith(tenantDir + sep)`.
+- Script one-off: `scripts/migrate-uploads-to-tenant-scoped.ts` mueve
+  archivos existentes + reescribe `InventoryMovement.documentUrl` en DB.
+  Soporta `--dry-run`. Aborta si hay >1 tenant en BD (requiere
+  clasificación manual).
+
+### 43.3 IDORs por id sin filtro tenant
+
+`withTenant()` no filtra `findUnique/update/delete` (uniques globales).
+4 actions arregladas:
+
+| Archivo:línea | Modelo | Fix |
+|---|---|---|
+| `audit.actions.ts:163-176` | InventoryAuditItem | `db.findFirst` + `updateMany` con id |
+| `pos.actions.ts:deleteSubAccountAction` | TabSubAccount | `deleteMany` con `openTab: { tenantId }` |
+| `pos.actions.ts:retryInventoryDeductionFromOutbox` | InventoryDeductionRetry | Carga `salesOrder.tenantId`; si difiere de ctx → SKIPPED + warn + back to PENDING |
+| `inventory-daily.actions.ts:369,398` | DailyInventoryItem | Filtro `dailyInventory: { tenantId }` en delete/update |
+
+`InventoryDeductionRetry` y `DailyInventoryItem` NO son tenant-aware en
+schema — su aislación se hereda por FK al modelo padre que sí lo es.
+Las queries deben filtrar por la relación.
+
+### 43.4 Strict mode auto-detect
+
+`MULTI_TENANT_STRICT=true` no estaba seteada en VPS → fallback Shanklish
+silencioso seguía activo. `isStrictMode()` ahora chequea env var **O**
+`prisma.tenant.count() > 1` con cache de 60s. El día que se crea el
+segundo tenant, strict mode entra solo — sin necesidad de tocar `.env`.
+
+### 43.5 Endpoints lockdown
+
+- `/api/cron/retry-inventory-deductions`: en `NODE_ENV=production`, sin
+  `CRON_SECRET` configurado → 503 + log error. Antes pasaba sin auth.
+- `/api/debug/whoami`: 404 si `!isSuperAdmin`. Antes leakeaba
+  `MODULE_REGISTRY` + `SystemConfig` parseado a cualquier user logueado.
+
+### 43.6 Deploy notes
+
+Post-merge del PR #221:
+
+```bash
+# En el VPS, una vez:
+cd /var/www/capsula-erp
+npx tsx scripts/migrate-uploads-to-tenant-scoped.ts --dry-run
+npx tsx scripts/migrate-uploads-to-tenant-scoped.ts
+
+# Verificar:
+grep '^SUPER_ADMIN_EMAILS' .env       # solo Omar + Gustavo
+grep '^CRON_SECRET' .env              # debe existir y ser ≥32 chars
+```
+
+### 43.7 Pendientes para sprint futuro
+
+- **RLS Postgres**: defensa-en-profundidad a nivel BD. 47 modelos ×
+  `ALTER TABLE ENABLE ROW LEVEL SECURITY` + policies + middleware
+  Prisma que setea `SET app.current_tenant`. ~1-2 días.
+- **Refactor multi-tenant del cron de retries**: hoy el guard
+  (§43.3) detecta y skipea cross-tenant. Para que procese correctamente
+  retries de cualquier tenant: pasar `tenantId` por argumento o usar
+  AsyncLocalStorage en `getTenantDb()`.
