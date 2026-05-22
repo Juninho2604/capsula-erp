@@ -4,6 +4,7 @@ import prisma from '@/server/db';
 import { createSession, deleteSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
+import { isSuperAdmin } from '@/lib/super-admin';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { redirect } from 'next/navigation';
 
@@ -63,7 +64,13 @@ export async function loginAction(prevState: any, formData: FormData) {
         //                       subdomain correcto. (Caso real: mismo email
         //                       admin@gmail.com en varios tenants.)
         const tenantCtx = await resolveTenantContext();
-        const isRootLogin = tenantCtx.source !== 'subdomain';
+        // Super admins (`SUPER_ADMIN_EMAILS`) viven en `tnt_kpsula_admin`,
+        // un tenant que NO tiene subdomain de cliente. Si caen en
+        // <slug>.kpsula.app/login por PWA cache, autocomplete o un link
+        // viejo, el filtro estricto por tenantId los bloquearía. La
+        // allowlist se controla por env var, así que no es bypass-able
+        // por un atacante; el password sigue verificándose normalmente.
+        const isRootLogin = tenantCtx.source !== 'subdomain' || isSuperAdmin(email);
 
         // Búsqueda case-insensitive: cubre emails normalizados Y users
         // viejos guardados con mixed-case. findFirst/findMany en lugar de
