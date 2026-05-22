@@ -94,6 +94,15 @@ export interface CreateOrderData {
     discountType?: string; // 'DIVISAS_33', 'CORTESIA_100', 'CORTESIA_PERCENT', 'NONE'
     discountPercent?: number;
     authorizedById?: string;
+    /**
+     * Promo "Delivery Gratis" — exonera el costo de envío sin afectar el precio
+     * de los productos. Solo aplica a orderType = DELIVERY. Compatible con
+     * cualquier `discountType` existente: si hay otro descuento activo, el fee
+     * remanente se waivea por encima. El monto exonerado se suma a `discount`
+     * y se anota en `discountReason` para trazabilidad. Default `false`/
+     * `undefined` → comportamiento idéntico al previo.
+     */
+    freeDelivery?: boolean;
     // Hora de entrega solicitada (PICKUP/DELIVERY). ISO string desde el
     // cliente; la action la persiste como DateTime y la encola a la
     // comanda de cocina vía `enqueueKitchenCommand` cuando esté seteada.
@@ -345,7 +354,7 @@ function roundToWhole(amount: number, paymentMethod?: string): number {
     return amount;
 }
 
-function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod'>) {
+function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery'>) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
     // DELIVERY: $4.5 fee normal, $3 en divisas. Sin 10% servicio.
@@ -379,6 +388,33 @@ function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' |
             subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
             discount = 0;
             total = subtotal;
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // PROMO "Delivery Gratis" — aditivo. Calcula el fee REMANENTE después
+        // de aplicar el descuento previo, y lo waivea sumándolo a `discount`.
+        // El `subtotal` se mantiene (sigue incluyendo el fee bruto, para no
+        // distorsionar reportes de "precio de lista"). Solo se mueve el
+        // `discount`, `total` y `discountReason`. Si freeDelivery está
+        // off/undefined, este bloque es no-op total.
+        if (data.freeDelivery === true) {
+            const pct = data.discountType === 'CORTESIA_PERCENT' && data.discountPercent != null
+                ? Math.min(100, Math.max(0, data.discountPercent)) / 100
+                : null;
+            const remainingFee =
+                data.discountType === 'CORTESIA_100' ? 0                                  // ya está todo descontado
+                : data.discountType === 'DIVISAS_33' ? DELIVERY_FEE_DIVISAS                // queda el fee divisas
+                : pct !== null ? roundCents(DELIVERY_FEE_NORMAL * (1 - pct))               // queda lo no descontado
+                : DELIVERY_FEE_NORMAL;                                                     // sin descuento previo
+
+            if (remainingFee > 0) {
+                discount = roundCents(discount + remainingFee);
+                total = roundCents(total - remainingFee);
+                if (total < 0) total = 0;
+                discountReason = discountReason
+                    ? `${discountReason} + Delivery Gratis (Promo)`
+                    : 'Delivery Gratis (Promo)';
+            }
         }
 
         total = roundToWhole(total, data.paymentMethod);

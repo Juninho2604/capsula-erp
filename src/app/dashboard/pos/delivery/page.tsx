@@ -105,6 +105,10 @@ export default function POSDeliveryPage() {
     const [pinInput, setPinInput] = useState('');
     const [pinError, setPinError] = useState('');
     const [cortesiaPercent, setCortesiaPercent] = useState('100');
+    // Promo "Delivery Gratis" — exonera SOLO el costo de envío ($4.50 / $3 en
+    // divisas). Compatible con cualquier `discountType`. Default OFF: si no se
+    // activa, la lógica de cálculo se comporta idéntico al previo.
+    const [freeDelivery, setFreeDelivery] = useState(false);
 
     // PROPINA COLECTIVA
     const [showTipModal, setShowTipModal] = useState(false);
@@ -319,7 +323,9 @@ export default function POSDeliveryPage() {
         ? mixedPayments.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
         : undefined; // undefined = full total gets -33%
     const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
-    const deliveryFee = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    const deliveryFeeBase = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    // Si freeDelivery está activo el fee efectivo es 0 (la promo lo waivea).
+    const deliveryFee = freeDelivery ? 0 : deliveryFeeBase;
     const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas
         ? cartSubtotal - (isMixedMode ? (divisasUsdAmount ?? 0) / 3 : cartSubtotal / 3)
         : discountType === 'CORTESIA_100' ? 0
@@ -395,6 +401,7 @@ export default function POSDeliveryPage() {
                     })()),
                 discountType,
                 discountPercent: discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum : undefined,
+                freeDelivery,
                 authorizedById: authorizedManager?.id,
                 notes: `Dirección: ${customerAddress}`
             });
@@ -432,21 +439,34 @@ export default function POSDeliveryPage() {
                     })),
                     subtotal: cartSubtotal,
                     discount: (() => {
+                        // Sumar fee waiveado si la promo está activa (excepto cuando
+                        // CORTESIA_100 ya descontó todo, o cuando NO había cargo previo)
+                        const freeDeliveryDelta = freeDelivery && discountType !== 'CORTESIA_100'
+                            ? (discountType === 'DIVISAS_33'
+                                ? DELIVERY_FEE_DIVISAS
+                                : discountType === 'CORTESIA_PERCENT'
+                                    ? DELIVERY_FEE_NORMAL * (1 - cortesiaPercentNum / 100)
+                                    : DELIVERY_FEE_NORMAL)
+                            : 0;
                         if (discountType === 'DIVISAS_33' && isPagoDivisas) {
                             const base = isMixedMode ? (divisasUsdAmount ?? cartSubtotal) : cartSubtotal;
-                            return base / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS);
+                            return base / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS) + freeDeliveryDelta;
                         }
                         if (discountType === 'CORTESIA_100') return cartSubtotal + DELIVERY_FEE_NORMAL;
-                        if (discountType === 'CORTESIA_PERCENT') return (cartSubtotal * cortesiaPercentNum / 100);
-                        return 0;
+                        if (discountType === 'CORTESIA_PERCENT') return (cartSubtotal * cortesiaPercentNum / 100) + freeDeliveryDelta;
+                        return 0 + freeDeliveryDelta;
                     })(),
                     hideDiscount: discountType === 'DIVISAS_33',
                     discountReason: (() => {
-                        if (discountType === 'CORTESIA_100') return 'Cortesía Autorizada (100%)';
-                        if (discountType === 'CORTESIA_PERCENT') return `Cortesía Autorizada (${cortesiaPercentNum}%)`;
-                        return undefined;
+                        const base = discountType === 'CORTESIA_100' ? 'Cortesía Autorizada (100%)'
+                            : discountType === 'CORTESIA_PERCENT' ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
+                            : undefined;
+                        if (freeDelivery && discountType !== 'CORTESIA_100') {
+                            return base ? `${base} + Delivery Gratis (Promo)` : 'Delivery Gratis (Promo)';
+                        }
+                        return base;
                     })(),
-                    deliveryFee: discountType === 'CORTESIA_100' ? 0 : deliveryFee,
+                    deliveryFee: (discountType === 'CORTESIA_100' || freeDelivery) ? 0 : deliveryFee,
                     total: finalTotal
                 };
                 if (cfg.printReceiptOnDelivery) {
@@ -457,6 +477,7 @@ export default function POSDeliveryPage() {
                 setPaymentMethod('PDV_SHANKLISH'); setAmountReceived('');
                 setMixedPayments([]); setMixedPaymentsComplete(false); setIsMixedMode(false);
                 setDiscountType('NONE'); setAuthorizedManager(null);
+                setFreeDelivery(false);
             } else toast.error(result.message ?? 'Error al procesar el pedido');
         } catch (e) { console.error(e); toast.error('Error al procesar el pedido'); } finally { setIsProcessing(false); }
     };
@@ -815,7 +836,14 @@ export default function POSDeliveryPage() {
                                     <Bike className="h-3 w-3" />
                                     Delivery
                                 </span>
-                                <span className="tabular-nums text-capsula-ink">+${deliveryFee.toFixed(2)}</span>
+                                {freeDelivery ? (
+                                    <span className="tabular-nums">
+                                        <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>{' '}
+                                        <span className="font-semibold text-[#2F6B4E]">GRATIS</span>
+                                    </span>
+                                ) : (
+                                    <span className="tabular-nums text-capsula-ink">+${deliveryFee.toFixed(2)}</span>
+                                )}
                             </div>
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
                                 <div className="flex justify-between rounded-lg border border-[#D3E2D8] bg-[#E5EDE7]/40 px-2 py-1 text-xs font-medium text-[#2F6B4E]">
@@ -885,6 +913,21 @@ export default function POSDeliveryPage() {
                                     Auth: {authorizedManager.name}
                                 </div>
                             )}
+
+                            {/* Toggle promo "Delivery Gratis" */}
+                            <button
+                                type="button"
+                                onClick={() => setFreeDelivery(v => !v)}
+                                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                    freeDelivery
+                                        ? 'border-[#2F6B4E] bg-[#E5EDE7] text-[#2F6B4E]'
+                                        : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-[#2F6B4E] hover:text-[#2F6B4E]'
+                                }`}
+                                aria-pressed={freeDelivery}
+                            >
+                                <Bike className="h-3.5 w-3.5" />
+                                {freeDelivery ? 'Delivery GRATIS aplicado' : 'Aplicar Delivery Gratis (Promo)'}
+                            </button>
 
                             {/* Modo de pago */}
                             <div className="grid grid-cols-2 gap-1.5">
