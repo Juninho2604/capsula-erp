@@ -160,19 +160,25 @@ export async function updateAuditItemAction(input: UpdateAuditItemInput) {
     try {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
-        const item = await prisma.inventoryAuditItem.findUnique({ where: { id: input.itemId }, include: { audit: true } });
+        // Validar ownership por tenantId — el unique de InventoryAuditItem
+        // es global (id) y `withTenant().update()` no filtra. Sin esto,
+        // conocer un id permitiría editar items de otros tenants.
+        const item = await db.inventoryAuditItem.findFirst({
+            where: { id: input.itemId },
+            include: { audit: true },
+        });
         if (!item) return { success: false, message: 'Item no encontrado' };
         if (item.audit.status !== 'DRAFT') return { success: false, message: 'Auditoría cerrada' };
 
         const difference = input.countedStock - item.systemStock;
 
-        await prisma.inventoryAuditItem.update({
+        await db.inventoryAuditItem.updateMany({
             where: { id: input.itemId },
             data: {
                 countedStock: input.countedStock,
                 difference: difference,
-                notes: input.notes
-            }
+                notes: input.notes,
+            },
         });
 
         revalidatePath(`/dashboard/inventario/auditorias`);

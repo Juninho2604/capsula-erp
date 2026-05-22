@@ -366,8 +366,14 @@ export async function getDailyInventoryAction(
             const nonCriticalDailyItems = daily.items.filter((i: any) => !criticalIds.has(i.inventoryItemId));
 
             if (nonCriticalDailyItems.length > 0) {
+                // DailyInventoryItem NO es tenant-aware en schema; filtro
+                // por relación dailyInventory.tenantId para evitar IDOR si
+                // los ids vinieran (en un futuro) de otro tenant.
                 await prisma.dailyInventoryItem.deleteMany({
-                    where: { id: { in: nonCriticalDailyItems.map((i: any) => i.id) } }
+                    where: {
+                        id: { in: nonCriticalDailyItems.map((i: any) => i.id) },
+                        dailyInventory: { tenantId },
+                    },
                 });
             }
 
@@ -395,8 +401,10 @@ export async function getDailyInventoryAction(
                     ditem.waste !== newWaste ||
                     (ditem.theoreticalInitialCount ?? 0) !== newTheoreticalInit
                 ) {
-                    await prisma.dailyInventoryItem.update({
-                        where: { id: ditem.id },
+                    // updateMany con filtro de tenant — defensa redundante
+                    // sobre la pre-validación de ownership de areaId.
+                    await prisma.dailyInventoryItem.updateMany({
+                        where: { id: ditem.id, dailyInventory: { tenantId } },
                         data: {
                             entries: newEntries,
                             sales: newSales,

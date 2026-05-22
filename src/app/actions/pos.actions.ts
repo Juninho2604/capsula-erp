@@ -846,7 +846,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
     status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'SKIPPED';
     error?: string;
 }> {
-    const db = await getTenantDb();
+    const ctxTenantId = (await resolveTenantContext()).tenantId;
     // 1. CLAIM optimista: solo si todavía está PENDING y nextRetryAt <= NOW
     const claim = await prisma.inventoryDeductionRetry.updateMany({
         where: {
@@ -866,6 +866,9 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
     }
 
     // 2. Cargar el registro ya claimeado para conocer attempts/maxAttempts/payload
+    // InventoryDeductionRetry NO es tenant-aware en schema — la pertenencia
+    // se deriva por FK a SalesOrder. Cargamos `salesOrder.tenantId` para
+    // validar que coincide con el contexto antes de ejecutar la deducción.
     const row = await prisma.inventoryDeductionRetry.findUnique({
         where: { id: retryId },
         select: {
@@ -874,6 +877,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
             payload: true,
             attempts: true,
             maxAttempts: true,
+            salesOrder: { select: { tenantId: true, status: true } },
         },
     });
 
@@ -882,12 +886,30 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
         return { id: retryId, status: 'SKIPPED' };
     }
 
+    // 2.b Cross-tenant guard. El cron procesa cross-tenant a nivel `findMany`,
+    // pero `getTenantDb()` resuelve el tenantId del contexto del request
+    // (que para un cron sin sesión cae al fallback Shanklish). Si el retry
+    // pertenece a OTRO tenant, ejecutar la deducción contra el `db` de
+    // Shanklish sería corruptivo. SKIPPED + log para refactor posterior.
+    if (row.salesOrder && row.salesOrder.tenantId !== ctxTenantId) {
+        console.warn(
+            `[outbox-retry] retry ${retryId} pertenece a tenant ` +
+                `${row.salesOrder.tenantId} pero el contexto resolvió ` +
+                `${ctxTenantId}. Skip — el cron necesita refactor para ` +
+                `procesar retries cross-tenant correctamente.`,
+        );
+        // Devolver el registro a PENDING para que un futuro worker tenant-
+        // aware lo procese.
+        await prisma.inventoryDeductionRetry.update({
+            where: { id: row.id },
+            data: { status: 'PENDING' },
+        });
+        return { id: row.id, status: 'SKIPPED' };
+    }
+
     // 3. Validación: si el SalesOrder fue cancelado o no existe, no descargar.
     if (row.salesOrderId) {
-        const order = await db.salesOrder.findUnique({
-            where: { id: row.salesOrderId },
-            select: { status: true },
-        });
+        const order = row.salesOrder; // ya lo cargamos arriba con tenantId
         if (!order || order.status === 'CANCELLED') {
             await prisma.inventoryDeductionRetry.update({
                 where: { id: row.id },
@@ -2654,7 +2676,15 @@ export async function deleteSubAccountAction(subAccountId: string): Promise<Acti
             return { success: false, message: 'No se puede eliminar una subcuenta ya cobrada' };
         }
 
-        await prisma.tabSubAccount.delete({ where: { id: subAccountId } });
+        // deleteMany con filtro de tenant — cierra la race condition entre
+        // el findFirst y el delete (si el id fuera de otro tenant entre las
+        // dos llamadas, no se borraría nada).
+        const del = await prisma.tabSubAccount.deleteMany({
+            where: { id: subAccountId, openTab: { tenantId } },
+        });
+        if (del.count === 0) {
+            return { success: false, message: 'Subcuenta no encontrada' };
+        }
 
         revalidatePath('/dashboard/pos/restaurante');
         revalidatePath('/dashboard/pos/mesero');
