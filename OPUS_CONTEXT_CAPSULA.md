@@ -7986,3 +7986,139 @@ grep '^CRON_SECRET' .env              # debe existir y ser ≥32 chars
   (§43.3) detecta y skipea cross-tenant. Para que procese correctamente
   retries de cualquier tenant: pasar `tenantId` por argumento o usar
   AsyncLocalStorage en `getTenantDb()`.
+
+### 43.8 Deploy confirmado en producción (2026-05-22 20:26)
+
+Sprint deployado al VPS Contabo vía `scripts/deploy-vps.sh`:
+
+- Commit en HEAD: `d163623` (incluye PR #221 + #222 + #223 hotfix)
+- BUILD_ID nuevo: `UuOWypQhZNLi5BjJj_vWh` (anterior: `6DjpuZ84sm...`)
+- `prisma migrate deploy` → "No pending migrations to apply" (el sprint
+  no tocó schema, riesgo BD cero)
+- Smoke test post-swap: HTTP 200 en `/`, `/login`, `https://kpsula.app`;
+  `curl /api/files/test/foo.jpg` → 401 (endpoint nuevo activo).
+
+Migración de uploads viejos (`scripts/migrate-uploads-to-tenant-scoped.ts`)
+**no necesaria** — query post-deploy mostró 0 rows de
+`InventoryMovement.documentUrl LIKE '/uploads/notas-entrega/%'`. No hay
+deuda técnica de uploads legacy; la estructura nueva
+`/uploads/notas-entrega/<tenantId>/<archivo>` arranca limpia.
+
+---
+
+## §44 Estado de tenants en producción (2026-05-22)
+
+Cuatro tenants viven en BD. Hasta hoy yo creía que solo había uno
+(Shanklish) y eso me llevó a desarrollar features sin estricto
+aislamiento. El sprint §43 cerró los huecos. Esta sección documenta
+qué es cada tenant para no volver a asumir mal.
+
+### 44.1 Inventario
+
+| ID | Slug | Nombre | Users | Propósito |
+|---|---|---|---|---|
+| `tnt_shanklish_caracas` | `shanklish` | Shanklish Caracas | 25 | Producción real, cliente activo |
+| `tnt_kpsula_admin` | `admin` | KPSULA Admin | 2 | Hogar de super admins (omar@, gustavo@) |
+| `cmp5y3f4w000011mxdzvwqyls` | `demo` | Capsula Demo Bistró | 5 | Sandbox público para prospectos |
+| `cmp4ap2bt0001rof8px6bs7f8` | (testtenant) | Test Tenant | 1 | Test seed temprano, candidato a borrar |
+
+Importante: el slug se lee del subdomain (`<slug>.kpsula.app`). El
+campo en `Tenant` se llama **`slug`**, NO `subdomain` (un error
+común — la query falló al usar `subdomain`).
+
+### 44.2 Super admins viven en su propio tenant
+
+Los super admins (`omar@kpsula.app`, `gustavo@kpsula.app`) son users
+con `tenantId = tnt_kpsula_admin`. Su email aparece en la env var
+`SUPER_ADMIN_EMAILS` (allowlist, NO un rol de BD).
+
+Implicancias:
+
+- Pueden loguear desde cualquier subdomain (root o `<slug>.kpsula.app`):
+  el filtro estricto por tenantId se relaja para emails en la allowlist
+  (`auth.actions.ts` línea 73). Fix histórico: PR #218.
+- Su tenant `tnt_kpsula_admin` no tiene branch, productos ni ventas
+  reales — es solo el "container" para el user. Si caen a `/dashboard`
+  van a ver vistas vacías.
+- Por eso post-login con `isSuperAdmin === true` el cliente redirige
+  a `/admin` (no a `/dashboard/home`). Ver §44.4.
+
+### 44.3 Demo tenant — sandbox para prospectos
+
+`scripts/seed-demo-tenant.ts` deja el tenant listo con data sintética
+creíble (no datos reales de Shanklish):
+
+- 5 users con todos los roles del POS (OWNER, ADMIN_MANAGER, CASHIER,
+  CHEF, WAITER)
+- Branch + 4 áreas + 3 zonas + 12 mesas
+- 20 InventoryItems con stock realista + cost history
+- 25 MenuItems en 5 categorías
+- ~30 SalesOrders distribuidas en los últimos 14 días
+- 5 Expenses de muestra + 2 Suppliers + 1 ExchangeRate
+
+**Credenciales públicas (hardcoded en el seed Y en el cartelito del
+login)**:
+
+| Rol | Email | PIN |
+|---|---|---|
+| Dueño | `owner@demo.kpsula.app` | 1234 |
+| Gerente | `admin@demo.kpsula.app` | 2345 |
+| Cajera | `caja@demo.kpsula.app` | 3456 |
+| Chef | `chef@demo.kpsula.app` | 4567 |
+| Mesero | `mesero@demo.kpsula.app` | 5678 |
+
+**Password único**: `Demo2026!`. Si se cambia, sincronizar **DOS
+lugares**: `scripts/seed-demo-tenant.ts` línea 155 (constante `password`
+en `usersToCreate`) Y `src/app/login/demo-credentials-card.tsx`
+constante `DEMO_PASSWORD`.
+
+**Reseed**: si el demo se contamina (prospectos crearon basura, ventas
+viejas, stock raro), `npx tsx scripts/seed-demo-tenant.ts --slug=demo
+--reset` borra todo y rebuilda. El script lo hace transaccionalmente.
+
+**Cartelito visible**: `demo.kpsula.app/login` muestra las credenciales
+en una card amarilla con copy-to-clipboard (solo si
+`resolveTenantContext().slug === 'demo'`). En otros subdomains no
+aparece nada.
+
+### 44.4 Redirect post-login del super admin
+
+Implementación (esta sesión):
+
+1. `loginAction` devuelve `isSuperAdmin: boolean` en el response —
+   computado server-side llamando a `isSuperAdmin(user.email)` contra
+   la env var. El cliente nunca ve la lista.
+2. `login-form-client.tsx` chequea ese flag ANTES del redirect normal:
+   - `true` → `window.location.href = '/admin'` (reload completo para
+     que el middleware recoja la cookie). NO usa `router.push` para
+     evitar problemas de hidratación de cookie.
+   - `false` → flujo normal (`computePostLoginUrl` o fallback a
+     `/dashboard/home`).
+3. `/admin/layout.tsx` agrega botón "Ver dashboard" en el header (al
+   lado del email) como toggle al dashboard del tenant del propio
+   user. Cuando se implemente impersonar (sesión futura), se reemplaza
+   por un selector de tenants.
+
+### 44.5 Panel SUPER_ADMIN — estado y roadmap
+
+Hoy en `/admin`:
+
+- Dashboard con KPIs globales (tenants activos, ventas 7/30/90d,
+  cobrado al SaaS)
+- Tendencia diaria 30d (SVG inline, sin libs)
+- Ranking por tenant (revenue 30d)
+- Últimos pagos al SaaS
+- CRUD básico de tenants (`/admin/tenants`, `/admin/tenants/new`,
+  `/admin/tenants/[id]`)
+
+Roadmap acordado para sesiones futuras (cada bullet es un PR aparte
+por tamaño):
+
+- **Impersonar un tenant**: botón "Entrar como [X]" → abre dashboard
+  del cliente sin pedir password. Con audit log obligatorio.
+- **CRUD completo de tenants**: editar slug/plan/estado, desactivar,
+  reset password masivo.
+- **Cobros y planes de subscripción**: registrar pagos desde UI,
+  historial por tenant, flag de moroso, billing automático.
+- **Health checks y logs por tenant**: última actividad, errores
+  recientes, jobs colgados, uso de uploads/disco.

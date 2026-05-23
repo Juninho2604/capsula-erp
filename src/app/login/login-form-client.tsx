@@ -54,6 +54,14 @@ export default function LoginForm() {
             // Sincronizar Zustand con el usuario real del JWT antes de navegar
             login(result.user);
 
+            // Super admin → directo al Panel KPSULA. Toggle al dashboard
+            // disponible en el header de /admin. Reload completo para que
+            // el middleware recoja la cookie de sesión recién creada.
+            if (result.isSuperAdmin) {
+                window.location.href = '/admin';
+                return;
+            }
+
             // ── Redirect inteligente al subdomain del tenant ────────────
             // Si el user pertenece a un tenant con slug y estamos en root
             // (kpsula.app), navegamos a <slug>.kpsula.app. La cookie usa

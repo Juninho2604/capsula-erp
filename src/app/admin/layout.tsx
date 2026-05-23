@@ -2,7 +2,7 @@ import { getSession } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/super-admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, LayoutDashboard, Users } from 'lucide-react';
+import { ShieldCheck, LayoutDashboard, Users, ArrowUpRight } from 'lucide-react';
 
 /**
  * Layout de /admin/*. Doble check del middleware: rechaza render server-side
@@ -39,9 +39,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                             Tenants
                         </Link>
                     </nav>
-                    <span className="text-[11px] uppercase tracking-[0.14em] text-capsula-cream/70">
-                        {session.email}
-                    </span>
+                    <div className="inline-flex items-center gap-3">
+                        <Link
+                            href="/dashboard/home"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-capsula-cream/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-cream/80 hover:bg-capsula-cream/10 hover:text-capsula-cream"
+                            title="Salir del panel SUPER_ADMIN y entrar al dashboard del tenant del usuario"
+                        >
+                            Ver dashboard
+                            <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                        <span className="text-[11px] uppercase tracking-[0.14em] text-capsula-cream/70">
+                            {session.email}
+                        </span>
+                    </div>
                 </div>
             </header>
             <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
