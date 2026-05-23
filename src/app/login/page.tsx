@@ -1,5 +1,7 @@
 import LoginForm from './login-form-client';
+import DemoCredentialsCard from './demo-credentials-card';
 import { getSession } from '@/lib/auth';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { redirect } from 'next/navigation';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
 
@@ -8,6 +10,17 @@ export default async function LoginPage() {
     const session = await getSession();
     if (session) {
         redirect('/dashboard');
+    }
+
+    // Detectar si estamos en el subdomain de demo para mostrar cartelito de
+    // credenciales públicas. resolveTenantContext devuelve el slug del host
+    // server-side; el cartelito sólo se renderiza si slug === 'demo'.
+    let demoMode = false;
+    try {
+        const ctx = await resolveTenantContext();
+        demoMode = ctx.source === 'subdomain' && ctx.slug === 'demo';
+    } catch {
+        // Si no se puede resolver, no es demo. Continuar sin cartelito.
     }
 
     return (
@@ -65,6 +78,8 @@ export default async function LoginPage() {
                     </div>
 
                     <LoginForm />
+
+                    {demoMode && <DemoCredentialsCard />}
 
                     <div className="mt-6 border-t border-gray-100 pt-5">
                         <p className="text-center text-xs text-gray-400">
