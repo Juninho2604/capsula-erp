@@ -155,6 +155,18 @@ curl -s -o /dev/null -w "GET /login :3000      HTTP %{http_code}\n" http://127.0
 curl -s -o /dev/null -w "GET https://kpsula.app HTTP %{http_code}\n" https://kpsula.app/
 
 echo ""
+echo "[11/11] Cleanup de artefactos acumulados..."
+# Limpia builds OLD/NEW residuales y backups viejos. Retiene los últimos
+# 3 builds y 14 backups por seguridad de rollback. Si falla, NO bloquea
+# el éxito del deploy — solo loggea.
+if [[ -x "$APP_DIR/scripts/cleanup-deploy-artifacts.sh" ]]; then
+    bash "$APP_DIR/scripts/cleanup-deploy-artifacts.sh" --apply || \
+        echo "[!] Cleanup falló pero deploy OK — revisar manualmente."
+else
+    echo "[!] scripts/cleanup-deploy-artifacts.sh no encontrado o no ejecutable, skip."
+fi
+
+echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  ✓ Deploy completado"
 echo "  Commit:    $COMMIT"
