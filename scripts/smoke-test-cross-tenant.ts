@@ -258,7 +258,11 @@ async function main() {
             name: 'A5. Cookie atacante: /api/files/<victim_tenant_id>/test.png',
             url: `${victimHostBase}/api/files/${victim.id}/test.png`,
             cookie,
-            expectStatus: [401, 403, 404],
+            // Aceptamos 307 también porque el middleware puede patear el
+            // request ANTES de que llegue al endpoint de files (defensa en
+            // profundidad — mejor que el endpoint validando solo).
+            expectStatus: [307, 302, 303, 401, 403, 404],
+            redirectMustGoTo: ['/login', '/api/files'],
         },
         {
             name: 'A6. Sanity: cookie atacante en su PROPIO subdomain → debe funcionar',
