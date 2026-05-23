@@ -84,7 +84,12 @@ async function handler(request: NextRequest) {
 
         for (const candidate of candidates) {
             try {
-                const result = await retryInventoryDeductionFromOutbox(candidate.id);
+                // source: 'cron' → no se llama a resolveTenantContext (no hay
+                // sesión HTTP). El tenant del retry se deriva del salesOrder
+                // asociado, permitiendo procesar el outbox cross-tenant en un
+                // único lote. Antes el cron solo procesaba retries del tenant
+                // fallback (Shanklish) y skipeaba el resto.
+                const result = await retryInventoryDeductionFromOutbox(candidate.id, { source: 'cron' });
                 switch (result.status) {
                     case 'COMPLETED': results.completed++; break;
                     case 'PENDING': results.pending++; if (result.error) errors.push({ id: result.id, error: result.error }); break;
