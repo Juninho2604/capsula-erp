@@ -68,18 +68,25 @@ export default function MenuManagementPage() {
     // Cargar datos
     const loadData = async () => {
         setIsLoading(true);
-        // Intentar asegurar categorías primero
-        await ensureBasicCategoriesAction();
+        try {
+            // Intentar asegurar categorías primero. Si falla, seguimos
+            // igual — el usuario verá el menú vacío con opción de crear
+            // categorías manualmente en lugar de loading infinito.
+            await ensureBasicCategoriesAction();
 
-        const result = await getFullMenuAction();
-        if (result.success && result.data) {
-            setCategories(result.data);
-            // Pre-seleccionar primera categoría para el modal
-            if (result.data.length > 0 && !newItem.categoryId) {
-                setNewItem(prev => ({ ...prev, categoryId: result.data[0].id }));
+            const result = await getFullMenuAction();
+            if (result.success && result.data) {
+                setCategories(result.data);
+                // Pre-seleccionar primera categoría para el modal
+                if (result.data.length > 0 && !newItem.categoryId) {
+                    setNewItem(prev => ({ ...prev, categoryId: result.data[0].id }));
+                }
             }
+        } catch (err) {
+            console.error('[menu/page] loadData failed:', err);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     useEffect(() => {

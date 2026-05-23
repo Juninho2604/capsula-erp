@@ -544,22 +544,33 @@ export async function createResaleProductAction(
 // ============================================================================
 
 export async function ensureBasicCategoriesAction() {
-    const { tenantId } = await resolveTenantContext();
-    const db = withTenant(tenantId);
-    const count = await db.menuCategory.count();
-    if (count === 0) {
-        const basicCats = [
-            { name: 'Shawarmas', sortOrder: 1, icon: '🥙' },
-            { name: 'Platos Mixtos', sortOrder: 2, icon: '🍛' },
-            { name: 'Raciones', sortOrder: 3, icon: '🥟' },
-            { name: 'Ensaladas', sortOrder: 4, icon: '🥗' },
-            { name: 'Bebidas', sortOrder: 5, icon: '🥤' }
-        ];
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const count = await db.menuCategory.count();
+        if (count === 0) {
+            // Categorías base para un tenant nuevo. Nombres genéricos —
+            // el cliente las renombra/elimina desde la UI. NO incluir
+            // campos que no existan en schema (ej. `icon`) o Prisma lanza
+            // "Unknown argument" y la action revienta el flow del frontend.
+            const basicCats = [
+                { name: 'Platos', sortOrder: 1 },
+                { name: 'Acompañantes', sortOrder: 2 },
+                { name: 'Bebidas', sortOrder: 3 },
+                { name: 'Postres', sortOrder: 4 },
+            ];
 
-        for (const cat of basicCats) {
-            await db.menuCategory.create({ data: { tenantId, ...cat } });
+            for (const cat of basicCats) {
+                await db.menuCategory.create({ data: { tenantId, ...cat } });
+            }
+            return { success: true, message: 'Categorías base creadas' };
         }
-        return { success: true, message: 'Categorías base creadas' };
+        return { success: true, message: 'Categorías ya existen' };
+    } catch (error) {
+        console.error('[ensureBasicCategories] error:', error);
+        // No lanzamos — el caller (page del módulo de menú) debe poder
+        // mostrar UI vacía aunque el seed falle. Mejor menú vacío con botón
+        // "Crear categoría" que loading infinito.
+        return { success: false, message: 'Error inicializando categorías base' };
     }
-    return { success: true, message: 'Categorías ya existen' };
 }
