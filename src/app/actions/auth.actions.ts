@@ -197,6 +197,7 @@ export async function loginAction(prevState: any, formData: FormData) {
                 role: user.role as import('@/types').UserRole,
             },
             tenantSlug,
+            isSuperAdmin: isSuperAdmin(user.email),
         };
     } catch (error) {
         console.error('Login error:', error);
