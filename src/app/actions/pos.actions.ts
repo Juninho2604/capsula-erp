@@ -679,8 +679,14 @@ async function registerInventoryForCartItems(params: {
     areaId: string;
     orderId: string;
     userId: string;
+    /**
+     * Tenant explícito para callers sin sesión HTTP (cron, workers). Si se
+     * pasa, se usa directamente y NO se consulta resolveTenantContext.
+     * Si se omite, el tenant se resuelve del contexto del request (POS).
+     */
+    tenantId?: string;
 }): Promise<void> {
-    const db = await getTenantDb();
+    const db = params.tenantId ? withTenant(params.tenantId) : await getTenantDb();
     // ── FASE 1: Lecturas (sin escrituras) ────────────────────────────────────
     // Recopilar todas las operaciones de descuento necesarias antes de escribir.
     type DeductOp = {
@@ -692,10 +698,12 @@ async function registerInventoryForCartItems(params: {
 
     const ops: DeductOp[] = [];
 
-    // Cache para no consultar la misma receta dos veces dentro de una venta
+    // Cache para no consultar la misma receta dos veces dentro de una venta.
+    // `loadRecipe` reutiliza el `db` outer (closure) — antes hacía una
+    // llamada extra a `getTenantDb()` que rompía el path cross-tenant
+    // del cron (re-resolvía contexto y caía al fallback Shanklish).
     const recipeCache = new Map<string, { isActive: boolean; ingredients: { ingredientItemId: string; quantity: number; unit: string }[] }>();
     async function loadRecipe(recipeId: string) {
-        const db = await getTenantDb();
         if (recipeCache.has(recipeId)) return recipeCache.get(recipeId)!;
         const recipe = await db.recipe.findUnique({
             where: { id: recipeId },
@@ -826,27 +834,47 @@ function computeNextRetryAt(attempts: number): Date {
 /**
  * Toma un registro del outbox `InventoryDeductionRetry` y reintenta el
  * descargo de inventario asociado. Diseñada para ser invocada desde el
- * cron `/api/cron/retry-inventory-deductions`.
+ * cron `/api/cron/retry-inventory-deductions` o desde la UI de manager
+ * (debug / forzar reintento manual).
+ *
+ * Multi-tenant: el tenant del retry se deriva de `row.salesOrder.tenantId`
+ * (InventoryDeductionRetry no tiene columna tenantId directa, hereda por
+ * FK al SalesOrder). El caller indica su `source`:
+ *
+ *  - `source: 'cron'`     → cron sin sesión HTTP. Se confía en el tenant
+ *                           del retry y se ejecuta la deducción contra
+ *                           ese tenant. Permite procesar el outbox
+ *                           cross-tenant en un único lote.
+ *  - `source: 'authenticated'` (default) → caller con sesión. Validamos
+ *                           que el tenantId del contexto coincida con el
+ *                           del retry — anti cross-tenant manual desde
+ *                           UI. Si no coincide, se devuelve a PENDING y
+ *                           SKIPPED para que el cron lo tome después.
  *
  * Flujo:
  *  1. **Claim optimista**: `updateMany` con WHERE id+status=PENDING. Si
  *     0 filas afectadas, otro worker ya tomó este registro → return.
- *  2. Parse del payload (items, areaId, userId).
- *  3. Validación del SalesOrder asociado (si fue cancelado → CANCELLED).
- *  4. Llamada a `registerInventoryForCartItems` (la misma lógica que el
- *     POS usa de primer intento).
- *  5. Update final: COMPLETED si OK, PENDING (con nextRetryAt) o FAILED
+ *  2. Cargar el retry + `salesOrder.tenantId` (source of truth).
+ *  3. Si source=authenticated, validar contexto coincide con retry.
+ *  4. Validación del SalesOrder asociado (si fue cancelado → CANCELLED).
+ *  5. Llamada a `registerInventoryForCartItems` pasando el `tenantId`
+ *     explícito (no resolveTenantContext interno).
+ *  6. Update final: COMPLETED si OK, PENDING (con nextRetryAt) o FAILED
  *     según attempts vs maxAttempts.
  *
  * **Nunca lanza** — siempre retorna un objeto resultado para que el cron
  * pueda procesar el lote completo sin romperse.
  */
-export async function retryInventoryDeductionFromOutbox(retryId: string): Promise<{
+export async function retryInventoryDeductionFromOutbox(
+    retryId: string,
+    opts: { source?: 'cron' | 'authenticated' } = {},
+): Promise<{
     id: string;
     status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'SKIPPED';
     error?: string;
 }> {
-    const ctxTenantId = (await resolveTenantContext()).tenantId;
+    const source = opts.source ?? 'authenticated';
+
     // 1. CLAIM optimista: solo si todavía está PENDING y nextRetryAt <= NOW
     const claim = await prisma.inventoryDeductionRetry.updateMany({
         where: {
@@ -866,9 +894,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
     }
 
     // 2. Cargar el registro ya claimeado para conocer attempts/maxAttempts/payload
-    // InventoryDeductionRetry NO es tenant-aware en schema — la pertenencia
-    // se deriva por FK a SalesOrder. Cargamos `salesOrder.tenantId` para
-    // validar que coincide con el contexto antes de ejecutar la deducción.
+    // y derivar el tenantId vía salesOrder.tenantId (source of truth).
     const row = await prisma.inventoryDeductionRetry.findUnique({
         where: { id: retryId },
         select: {
@@ -886,41 +912,49 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
         return { id: retryId, status: 'SKIPPED' };
     }
 
-    // 2.b Cross-tenant guard. El cron procesa cross-tenant a nivel `findMany`,
-    // pero `getTenantDb()` resuelve el tenantId del contexto del request
-    // (que para un cron sin sesión cae al fallback Shanklish). Si el retry
-    // pertenece a OTRO tenant, ejecutar la deducción contra el `db` de
-    // Shanklish sería corruptivo. SKIPPED + log para refactor posterior.
-    if (row.salesOrder && row.salesOrder.tenantId !== ctxTenantId) {
-        console.warn(
-            `[outbox-retry] retry ${retryId} pertenece a tenant ` +
-                `${row.salesOrder.tenantId} pero el contexto resolvió ` +
-                `${ctxTenantId}. Skip — el cron necesita refactor para ` +
-                `procesar retries cross-tenant correctamente.`,
-        );
-        // Devolver el registro a PENDING para que un futuro worker tenant-
-        // aware lo procese.
+    // 2.b Sin salesOrder no tenemos forma de derivar tenant — registros
+    // huérfanos no pueden reintentarse de forma segura. Marcar FAILED.
+    if (!row.salesOrder) {
         await prisma.inventoryDeductionRetry.update({
             where: { id: row.id },
-            data: { status: 'PENDING' },
+            data: {
+                status: 'FAILED',
+                lastError: 'Retry huérfano: salesOrder no existe, no se puede derivar tenant',
+            },
         });
-        return { id: row.id, status: 'SKIPPED' };
+        return { id: row.id, status: 'FAILED', error: 'orphan retry' };
     }
 
-    // 3. Validación: si el SalesOrder fue cancelado o no existe, no descargar.
-    if (row.salesOrderId) {
-        const order = row.salesOrder; // ya lo cargamos arriba con tenantId
-        if (!order || order.status === 'CANCELLED') {
+    const retryTenantId = row.salesOrder.tenantId;
+
+    // 2.c Anti cross-tenant manual: si el caller tiene sesión y su tenant
+    // del contexto NO coincide con el del retry, devolvemos a PENDING para
+    // que el cron lo procese y respondemos SKIPPED. Esto previene que un
+    // user de tenant A triggeree retries de tenant B vía UI/debug.
+    if (source === 'authenticated') {
+        const ctxTenantId = (await resolveTenantContext()).tenantId;
+        if (ctxTenantId !== retryTenantId) {
             await prisma.inventoryDeductionRetry.update({
                 where: { id: row.id },
-                data: {
-                    status: 'CANCELLED',
-                    cancelledAt: new Date(),
-                    notes: 'SalesOrder no existe o fue cancelado antes del reintento',
-                },
+                data: { status: 'PENDING' },
             });
-            return { id: row.id, status: 'CANCELLED' };
+            return { id: row.id, status: 'SKIPPED' };
         }
+    }
+
+    // 3. Validación: si el SalesOrder fue cancelado, no descargar. La
+    // existencia ya está garantizada por el guard 2.b arriba (sin
+    // salesOrder no hay tenant, return FAILED).
+    if (row.salesOrder.status === 'CANCELLED') {
+        await prisma.inventoryDeductionRetry.update({
+            where: { id: row.id },
+            data: {
+                status: 'CANCELLED',
+                cancelledAt: new Date(),
+                notes: 'SalesOrder cancelado antes del reintento',
+            },
+        });
+        return { id: row.id, status: 'CANCELLED' };
     }
 
     // 4. Parse del payload + ejecutar deducción
@@ -949,6 +983,7 @@ export async function retryInventoryDeductionFromOutbox(retryId: string): Promis
             areaId: parsed.areaId,
             orderId: row.salesOrderId ?? '',
             userId: parsed.userId,
+            tenantId: retryTenantId,
         });
 
         await prisma.inventoryDeductionRetry.update({

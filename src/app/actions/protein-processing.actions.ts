@@ -714,9 +714,14 @@ export async function getProcessingTemplatesAction() {
 export async function getTemplateBySourceItemAction(sourceItemId: string, processingStep?: string) {
     const { tenantId } = await resolveTenantContext();
     try {
+        // ProcessingTemplate no tiene tenantId directo — hereda vía
+        // sourceItem (InventoryItem). Filtrar por `sourceItem.tenantId`
+        // evita que un user de tenant A acceda al template de tenant B
+        // adivinando un sourceItemId.
         const where: any = {
             sourceItemId,
-            isActive: true
+            isActive: true,
+            sourceItem: { tenantId },
         };
         if (processingStep) {
             where.processingStep = processingStep;
@@ -815,6 +820,30 @@ export async function createProcessingTemplateAction(input: {
     if (!session?.id) return { success: false, message: 'No autorizado' };
 
     try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        // Validar que sourceItem y todos los outputItems pertenecen al tenant
+        // del caller. Sin esto, un user del tenant A podría crear un template
+        // colgando de un InventoryItem de tenant B (corrompe data de B).
+        const sourceItem = await db.inventoryItem.findFirst({
+            where: { id: input.sourceItemId },
+            select: { id: true },
+        });
+        if (!sourceItem) {
+            return { success: false, message: 'Item fuente no encontrado' };
+        }
+        const outputIds = input.outputs.map(o => o.outputItemId);
+        if (outputIds.length > 0) {
+            const validOutputs = await db.inventoryItem.findMany({
+                where: { id: { in: outputIds } },
+                select: { id: true },
+            });
+            if (validOutputs.length !== new Set(outputIds).size) {
+                return { success: false, message: 'Uno o más items de salida no encontrados' };
+            }
+        }
+
         await prisma.processingTemplate.create({
             data: {
                 name: input.name,
@@ -848,10 +877,17 @@ export async function deleteProcessingTemplateAction(templateId: string): Promis
     if (!session?.id) return { success: false, message: 'No autorizado' };
 
     try {
-        await prisma.processingTemplate.update({
-            where: { id: templateId },
+        const { tenantId } = await resolveTenantContext();
+        // Validar ownership: el template debe colgar de un sourceItem del
+        // tenant del caller. updateMany con filtro indirecto vía sourceItem
+        // hace el guard atómico (0 filas afectadas → not found).
+        const result = await prisma.processingTemplate.updateMany({
+            where: { id: templateId, sourceItem: { tenantId } },
             data: { isActive: false }
         });
+        if (result.count === 0) {
+            return { success: false, message: 'Plantilla no encontrada' };
+        }
 
         revalidatePath('/dashboard/proteinas');
         return { success: true, message: 'Plantilla eliminada' };

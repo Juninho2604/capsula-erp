@@ -8162,3 +8162,109 @@ npx tsx scripts/delete-tenant.ts --id=cmp4ap2bt0001rof8px6bs7f8 --apply
 Después de borrar, remover el ID de `ALLOWED_TENANTS` en el código y
 mergear — la allowlist debe quedar vacía después de cada cleanup para
 evitar acumulación de "puertas abiertas".
+
+## §45 Pre-flight onboarding Sello Criollo + Table Pong (2026-05-23)
+
+Sprint específico para validar que el aislamiento multi-tenant es seguro
+para incorporar dos clientes nuevos en simultáneo. Resultado: **sistema
+safe en código** después de arreglar 4 bugs encontrados durante el audit.
+
+### 45.1 Audit estático — `scripts/audit-tenant-isolation.ts`
+
+Script que escanea todos los archivos de `src/app/actions/*.actions.ts`
+y `src/app/api/**/route.ts` y clasifica el uso de Prisma en 5 categorías:
+
+| Clasif | Significa |
+|--------|-----------|
+| OK | Usa `withTenant` exclusivamente, sin queries `prisma.<modelo>` directas |
+| WHITELIST | Cross-tenant legítimo (login, signup, super admin, cron, files con guard propio) |
+| MANUAL | Hace `prisma.<modelo>` directo PERO con filtro manual de tenantId visible en ±15 líneas |
+| REVIEW | Importa `withTenant` pero hace `prisma.<modelo>` directo sin filtro detectable. **Validar manualmente** |
+| DANGER | No usa `withTenant` ni filtro manual → bug cross-tenant casi seguro |
+
+Estado actual (2026-05-23): 38 OK / 14 WHITELIST / 5 MANUAL / 5 REVIEW
+(todos validados como FK upstream o tx-scoped) / **0 DANGER**.
+
+Uso:
+```bash
+npx tsx scripts/audit-tenant-isolation.ts            # report
+npx tsx scripts/audit-tenant-isolation.ts --strict   # exit 1 si hay REVIEW/DANGER
+```
+
+Para CI: cuando el equipo migre los 5 REVIEW restantes a `withTenant`,
+agregar `--strict` al pipeline y el script bloqueará cualquier PR que
+introduzca regresión.
+
+### 45.2 Bug crítico — cron retry de outbox solo procesaba Shanklish
+
+Síntoma: la función `retryInventoryDeductionFromOutbox` resolvía el
+tenant del contexto del request. El cron corre sin sesión → caía al
+fallback Shanklish → los retries de otros tenants se rechazaban con un
+guard cross-tenant y quedaban en PENDING para siempre. Impacto: Sello
+Criollo o Table Pong podrían tener una venta donde la deducción de
+inventario falla por timeout y el reintento automático **nunca corre**.
+
+Fix (`src/app/actions/pos.actions.ts` + cron route):
+
+- `retryInventoryDeductionFromOutbox(retryId, { source })` acepta ahora
+  un `source` explícito: `'cron'` o `'authenticated'`.
+- En path cron, NO llama `resolveTenantContext` — el tenant viene del
+  `salesOrder.tenantId` del retry (source of truth).
+- En path authenticated, valida que el ctx del request coincide con el
+  tenant del retry. Si no, devuelve a PENDING + SKIPPED. Anti
+  cross-tenant manual desde UI/debug.
+- `registerInventoryForCartItems` acepta `tenantId?: string` opcional
+  para callers sin sesión HTTP. Internal helper `loadRecipe` ahora usa
+  el `db` outer (closure) en vez de re-llamar `getTenantDb` (bug latente
+  que doble-resolvía contexto).
+
+Tests: `src/app/actions/pos.actions.retry-isolation.test.ts` cubre
+los 4 paths críticos con mocks de Prisma.
+
+### 45.3 Bugs cross-tenant en `protein-processing.actions.ts`
+
+ProcessingTemplate no tiene `tenantId` directo en schema — hereda vía
+`sourceItem` (InventoryItem). Tres actions hacían queries sin filtrar
+por ese FK:
+
+- `getTemplateBySourceItemAction`: leía templates por `sourceItemId` sin
+  validar tenant. Fix: agregado `sourceItem: { tenantId }` al `where`.
+- `createProcessingTemplateAction`: creaba templates colgando de
+  `sourceItemId` del input sin validar ownership. Fix: valida que
+  `sourceItem` y todos los `outputItemId` pertenecen al tenant ANTES
+  del create. Si no, devuelve "not found".
+- `deleteProcessingTemplateAction`: soft-delete por `id` sin validar.
+  Fix: `updateMany` con `where: { id, sourceItem: { tenantId } }` →
+  si count=0, retorna "not found".
+
+### 45.4 Print Agent — multi-tenant en código, pendiente operativo
+
+Print Agent (`/api/print-agent/*`) **es multi-tenant safe en código**:
+
+- API key per-tenant via `PRINT_AGENT_TENANT_KEYS` (JSON `{tenantId: key}`)
+- Header `X-Tenant-Id` se IGNORA — no se acepta input del cliente
+- Cada update filtra por `tenantId: auth.tenantId` en el `where`
+
+**Antes de meter Sello Criollo / Table Pong** con impresoras térmicas:
+
+1. Generar API key para cada tenant: `openssl rand -hex 32`
+2. Agregar al JSON en `/var/www/capsula-erp/.env`:
+   ```
+   PRINT_AGENT_TENANT_KEYS='{"tnt_shanklish_caracas":"<key>","tnt_sellocriollo":"<key>","tnt_tablepong":"<key>"}'
+   ```
+3. Configurar el daemon `print-agent` en cada PC del restaurante con su
+   key correspondiente
+4. Eliminar `PRINT_AGENT_API_KEY` legacy single-tenant para evitar fallback
+
+### 45.5 Pendientes operativos antes de onboarding
+
+| # | Acción | Riesgo si se omite |
+|---|--------|--------------------|
+| 1 | Verificar cron real corriendo en VPS contra `/api/cron/retry-inventory-deductions` | Ningún tenant procesa retries (Shanklish incluido) |
+| 2 | Configurar `PRINT_AGENT_TENANT_KEYS` JSON con todas las keys | Solo Shanklish puede imprimir |
+| 3 | Smoke test multi-tenant con tenant temporal "smoketest" → eliminar | Sin validación end-to-end del aislamiento |
+| 4 | Borrar testtenant (allowlist ya configurada) | Tenant huérfano en BD |
+| 5 | Audit log central de cross-tenant attempts | Sin visibilidad si alguien intenta cross-tenant |
+
+Los puntos 1-4 son **bloqueantes**. El punto 5 es mejora — defensa en
+profundidad pero el código ya bloquea los intentos.
