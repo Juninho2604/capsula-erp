@@ -151,12 +151,17 @@ async function main() {
                 data: { slug: args.slug, name: 'Capsula Demo Bistró' },
             });
 
+        // Password público del demo. Si cambia, sincronizar con
+        // src/app/login/demo-credentials-card.tsx (constante DEMO_PASSWORD)
+        // y correr `npx tsx scripts/reset-demo-password.ts` en el VPS para
+        // actualizar hashes sin perder data sintética.
+        const DEMO_PASSWORD = 'kpsula-demo';
         const usersToCreate = [
-            { email: 'owner@demo.kpsula.app', password: 'Demo2026!', firstName: 'Ana',     lastName: 'Demo',    role: 'OWNER',          pin: '1234' },
-            { email: 'admin@demo.kpsula.app', password: 'Demo2026!', firstName: 'Carlos',  lastName: 'Demo',    role: 'ADMIN_MANAGER',  pin: '2345' },
-            { email: 'caja@demo.kpsula.app',  password: 'Demo2026!', firstName: 'María',   lastName: 'Cajera',  role: 'CASHIER',        pin: '3456' },
-            { email: 'chef@demo.kpsula.app',  password: 'Demo2026!', firstName: 'Jorge',   lastName: 'Chef',    role: 'CHEF',           pin: '4567' },
-            { email: 'mesero@demo.kpsula.app',password: 'Demo2026!', firstName: 'Luis',    lastName: 'Mesero',  role: 'WAITER',         pin: '5678' },
+            { email: 'owner@demo.kpsula.app', password: DEMO_PASSWORD, firstName: 'Ana',     lastName: 'Demo',    role: 'OWNER',          pin: '1234' },
+            { email: 'admin@demo.kpsula.app', password: DEMO_PASSWORD, firstName: 'Carlos',  lastName: 'Demo',    role: 'ADMIN_MANAGER',  pin: '2345' },
+            { email: 'caja@demo.kpsula.app',  password: DEMO_PASSWORD, firstName: 'María',   lastName: 'Cajera',  role: 'CASHIER',        pin: '3456' },
+            { email: 'chef@demo.kpsula.app',  password: DEMO_PASSWORD, firstName: 'Jorge',   lastName: 'Chef',    role: 'CHEF',           pin: '4567' },
+            { email: 'mesero@demo.kpsula.app',password: DEMO_PASSWORD, firstName: 'Luis',    lastName: 'Mesero',  role: 'WAITER',         pin: '5678' },
         ];
 
         const users: Record<string, { id: string }> = {};

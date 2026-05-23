@@ -8067,14 +8067,25 @@ login)**:
 | Chef | `chef@demo.kpsula.app` | 4567 |
 | Mesero | `mesero@demo.kpsula.app` | 5678 |
 
-**Password único**: `Demo2026!`. Si se cambia, sincronizar **DOS
-lugares**: `scripts/seed-demo-tenant.ts` línea 155 (constante `password`
-en `usersToCreate`) Y `src/app/login/demo-credentials-card.tsx`
-constante `DEMO_PASSWORD`.
+**Password único**: `kpsula-demo`. Si se cambia, sincronizar **DOS
+lugares**: `scripts/seed-demo-tenant.ts` (constante `DEMO_PASSWORD` en
+`main()`) Y `src/app/login/demo-credentials-card.tsx` constante
+`DEMO_PASSWORD`. Después, en el VPS:
 
-**Reseed**: si el demo se contamina (prospectos crearon basura, ventas
-viejas, stock raro), `npx tsx scripts/seed-demo-tenant.ts --slug=demo
---reset` borra todo y rebuilda. El script lo hace transaccionalmente.
+```bash
+set -a && source /var/www/capsula-erp/.env && set +a
+npx tsx scripts/reset-demo-password.ts --dry-run       # verificar
+npx tsx scripts/reset-demo-password.ts                 # aplicar
+```
+
+`reset-demo-password.ts` actualiza los hashes en BD SIN borrar la data
+sintética (ventas, inventario, menú, mesas). Bumpea `tokenVersion`
+para invalidar sessions activas → forzar relogin.
+
+**Reseed completo**: si el demo se contamina (prospectos crearon basura,
+ventas viejas, stock raro), `npx tsx scripts/seed-demo-tenant.ts
+--slug=demo --reset` borra todo y rebuilda. El script lo hace
+transaccionalmente.
 
 **Cartelito visible**: `demo.kpsula.app/login` muestra las credenciales
 en una card amarilla con copy-to-clipboard (solo si
@@ -8122,3 +8133,32 @@ por tamaño):
   historial por tenant, flag de moroso, billing automático.
 - **Health checks y logs por tenant**: última actividad, errores
   recientes, jobs colgados, uso de uploads/disco.
+
+### 44.6 Borrar un tenant (testtenant cleanup)
+
+`scripts/delete-tenant.ts` borra un tenant + toda su data en cascada.
+**Solo para tenants de test o demo abandonado.** Defensas:
+
+- HARD BLOCK en código: `tnt_shanklish_caracas`, `tnt_kpsula_admin`,
+  `cmp5y3f4w...` (demo) → nunca se borran, no importa qué flags se pasen.
+- ALLOWLIST explícita: solo IDs listados en `ALLOWED_TENANTS` pueden
+  borrarse. Agregar uno requiere PR.
+- Backup check: en `--apply`, aborta si no hay backup `/root/backups/*.dump`
+  de las últimas 24h.
+- Default `--dry-run`: muestra counts por tabla sin tocar BD.
+
+Uso típico:
+
+```bash
+set -a && source /var/www/capsula-erp/.env && set +a
+
+# Ver qué se borraría (dry-run, default)
+npx tsx scripts/delete-tenant.ts --id=cmp4ap2bt0001rof8px6bs7f8
+
+# Aplicar (requiere backup BD reciente)
+npx tsx scripts/delete-tenant.ts --id=cmp4ap2bt0001rof8px6bs7f8 --apply
+```
+
+Después de borrar, remover el ID de `ALLOWED_TENANTS` en el código y
+mergear — la allowlist debe quedar vacía después de cada cleanup para
+evitar acumulación de "puertas abiertas".
