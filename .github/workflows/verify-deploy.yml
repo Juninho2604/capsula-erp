@@ -1,0 +1,232 @@
+name: Verify Deploy
+
+# Verifica post-deploy que:
+#   1) El commit SHA en el VPS coincide con el que se deployó
+#   2) Todas las migraciones Prisma están aplicadas
+#   3) El branding de Shanklish quedó intacto (displayName/taxId/logoUrl)
+#   4) La app responde en localhost:3000
+#   5) Los redirects respetan el Host header (anti-localhost-leak)
+#
+# Postea el resultado como comment del commit. Si algo falla, el workflow
+# queda rojo en GitHub.
+#
+# Trigger: workflow_run después del CI exitoso en main. Manual también
+# via workflow_dispatch.
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # para postear commit comments
+
+jobs:
+  verify:
+    name: Verify production state on VPS
+    runs-on: ubuntu-latest
+    # Solo correr si el CI fue exitoso (o si es manual)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    timeout-minutes: 5
+
+    steps:
+      - name: Resolve target commit SHA
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CONTABO_SSH_KEY }}
+
+      - name: Trust VPS host key
+        env:
+          HOST: ${{ secrets.CONTABO_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run verification on VPS
+        id: verify
+        env:
+          HOST: ${{ secrets.CONTABO_HOST }}
+          USER: ${{ secrets.CONTABO_USER }}
+          EXPECTED_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set +e   # capturar todo, decidir al final si falló
+          ssh "$USER@$HOST" "EXPECTED_SHA=$EXPECTED_SHA bash -s" <<'REMOTE' > verify.log 2>&1
+          set +e
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  Verify deploy — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+
+          cd /var/www/capsula-erp || { echo "FATAL: /var/www/capsula-erp no existe"; exit 1; }
+
+          # ── 1. Commit SHA deployado ───────────────────────────────────────
+          echo "[1/5] Commit SHA"
+          DEPLOYED_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+          echo "  Esperado:  $EXPECTED_SHA"
+          echo "  Deployado: $DEPLOYED_SHA"
+          if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
+              echo "  ✓ Match"
+              SHA_OK=1
+          else
+              echo "  ✗ MISMATCH — el deploy no completó o quedó atrás"
+              SHA_OK=0
+          fi
+          echo ""
+
+          # Cargar .env para DATABASE_URL
+          set -a
+          source .env 2>/dev/null || true
+          set +a
+
+          # ── 2. Migraciones Prisma ─────────────────────────────────────────
+          echo "[2/5] Estado de migraciones Prisma"
+          MIGRATE_OUT=$(npx prisma migrate status 2>&1)
+          if echo "$MIGRATE_OUT" | grep -q "Database schema is up to date"; then
+              echo "  ✓ Todas las migraciones aplicadas"
+              MIGRATE_OK=1
+          else
+              echo "  ✗ Migraciones pendientes o desync"
+              MIGRATE_OK=0
+          fi
+          # Mostrar últimas 3 líneas relevantes
+          echo "$MIGRATE_OUT" | tail -5 | sed 's/^/    /'
+          echo ""
+
+          # Verificar las 2 migraciones nuevas específicamente
+          echo "  Migraciones nuevas que deberían estar:"
+          for MIG in "20260523180000_add_tenant_branding" "20260523200000_add_tenant_display_name"; do
+              if [ -d "prisma/migrations/$MIG" ]; then
+                  APPLIED=$(psql "$DATABASE_URL" -t -A -c "SELECT migration_name FROM _prisma_migrations WHERE migration_name='$MIG' AND finished_at IS NOT NULL;" 2>/dev/null)
+                  if [ -n "$APPLIED" ]; then
+                      echo "    ✓ $MIG"
+                  else
+                      echo "    ✗ $MIG NO aplicada en BD"
+                      MIGRATE_OK=0
+                  fi
+              fi
+          done
+          echo ""
+
+          # ── 3. Branding de Shanklish (intacto) ────────────────────────────
+          echo "[3/5] Branding de Shanklish en BD"
+          SHANKLISH=$(psql "$DATABASE_URL" -t -A -F'|' -c "SELECT slug, name, COALESCE(\"displayName\",'<NULL>'), COALESCE(\"legalName\",'<NULL>'), COALESCE(\"taxId\",'<NULL>'), COALESCE(\"logoUrl\",'<NULL>') FROM \"Tenant\" WHERE slug='shanklish';" 2>/dev/null)
+          if [ -z "$SHANKLISH" ]; then
+              echo "  ✗ Query falló o no hay tenant 'shanklish'"
+              SHANKLISH_OK=0
+          else
+              echo "  Datos: $SHANKLISH"
+              IFS='|' read -r S_SLUG S_NAME S_DISPLAY S_LEGAL S_TAX S_LOGO <<< "$SHANKLISH"
+              SHANKLISH_OK=1
+              [ "$S_DISPLAY" = "Shanklish" ]                  || { echo "    ✗ displayName='$S_DISPLAY' (esperado 'Shanklish')"; SHANKLISH_OK=0; }
+              [ "$S_LEGAL"   = "Shanklish Caracas, C.A." ]    || { echo "    ✗ legalName='$S_LEGAL' (esperado 'Shanklish Caracas, C.A.')"; SHANKLISH_OK=0; }
+              [ "$S_TAX"     = "J413087278" ]                 || { echo "    ✗ taxId='$S_TAX' (esperado 'J413087278')"; SHANKLISH_OK=0; }
+              [ "$S_LOGO"    = "/logo-shanklish.png" ]        || { echo "    ✗ logoUrl='$S_LOGO' (esperado '/logo-shanklish.png')"; SHANKLISH_OK=0; }
+              [ $SHANKLISH_OK -eq 1 ] && echo "    ✓ Los 4 campos coinciden con el estado pre-PR"
+          fi
+          echo ""
+
+          # ── 4. App responde ──────────────────────────────────────────────
+          echo "[4/5] App responde en localhost:3000"
+          HTTP_CODE=$(curl -sI -H 'Host: kpsula.app' http://localhost:3000/login -o /dev/null -w '%{http_code}' --max-time 5 2>/dev/null || echo "FAIL")
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "307" ]; then
+              echo "  ✓ HTTP $HTTP_CODE"
+              HTTP_OK=1
+          else
+              echo "  ✗ HTTP $HTTP_CODE"
+              HTTP_OK=0
+          fi
+          echo ""
+
+          # ── 5. Redirect respeta Host (anti localhost-leak — CLAUDE.md §8) ─
+          echo "[5/5] Redirect /dashboard respeta Host header"
+          LOCATION=$(curl -sI -H 'Host: shanklish.kpsula.app' http://localhost:3000/dashboard 2>/dev/null | grep -i '^location:' | head -1 | tr -d '\r' || echo "")
+          echo "  Location: ${LOCATION:-<vacío>}"
+          if echo "$LOCATION" | grep -qi "localhost"; then
+              echo "  ✗ REGRESIÓN: redirect a localhost (bug histórico §41)"
+              REDIRECT_OK=0
+          elif echo "$LOCATION" | grep -qi "shanklish.kpsula.app"; then
+              echo "  ✓ Redirect respeta el Host original"
+              REDIRECT_OK=1
+          else
+              # No hay redirect significa que /dashboard responde directo o
+              # devuelve otro código. Aceptable.
+              echo "  ~ Sin redirect (puede ser 200 directo o 401)"
+              REDIRECT_OK=1
+          fi
+          echo ""
+
+          echo "════════════════════════════════════════════════════════════════"
+          if [ "$SHA_OK" = "1" ] && [ "$MIGRATE_OK" = "1" ] && [ "$SHANKLISH_OK" = "1" ] && [ "$HTTP_OK" = "1" ] && [ "$REDIRECT_OK" = "1" ]; then
+              echo "  ✓✓✓ TODOS LOS CHECKS PASARON ✓✓✓"
+              echo "════════════════════════════════════════════════════════════════"
+              exit 0
+          else
+              echo "  ✗✗✗ ALGÚN CHECK FALLÓ — ver detalle arriba ✗✗✗"
+              echo "════════════════════════════════════════════════════════════════"
+              exit 1
+          fi
+          REMOTE
+          SSH_EXIT=$?
+          echo "ssh_exit=$SSH_EXIT" >> "$GITHUB_OUTPUT"
+          # Mostrar el log también en el log del workflow
+          cat verify.log
+          exit $SSH_EXIT
+
+      - name: Build comment markdown
+        if: always()
+        id: comment
+        run: |
+          STATUS="${{ steps.verify.outcome }}"
+          if [ "$STATUS" = "success" ]; then
+              EMOJI="✅"
+              TITLE="Deploy verificado"
+          else
+              EMOJI="❌"
+              TITLE="Deploy con problemas"
+          fi
+          {
+              echo "## $EMOJI $TITLE"
+              echo ""
+              echo "Commit: \`${{ steps.target.outputs.sha }}\`"
+              echo "Workflow: [run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              echo ""
+              echo "<details><summary>Detalle de verificación (5 checks)</summary>"
+              echo ""
+              echo '```'
+              # Truncar log a 4000 chars para no exceder el límite de comments
+              head -c 4000 verify.log
+              echo ""
+              echo '```'
+              echo ""
+              echo "</details>"
+          } > comment.md
+
+      - name: Post comment on commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          BODY=$(cat comment.md)
+          # Usar curl directo a la API. gh CLI también sirve pero no requiere
+          # extra setup. POST a /repos/{owner}/{repo}/commits/{sha}/comments
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
+            -d "$(jq -nc --arg b "$BODY" '{body: $b}')" \
+            | jq -r '.html_url // .message'
