@@ -153,7 +153,7 @@ export function printReceipt(data: ReceiptData) {
 <body>
     <div class="header text-center">
         ${data.branding?.logoUrl
-            ? `<img src="${escHtml(data.branding.logoUrl)}" alt="${escHtml(data.branding.legalName ?? data.branding.name)}" style="max-width: 120px; height: auto; margin-bottom: 8px;">`
+            ? `<img src="${escHtml(data.branding.logoUrl)}" alt="${escHtml(data.branding.name)}" style="max-width: 120px; height: auto; margin-bottom: 8px;">`
             : ''}
         ${(!data.branding?.logoUrl && data.branding?.legalName)
             ? `<div style="font-size: 13px; font-weight: 900;">${escHtml(data.branding.legalName)}</div>`

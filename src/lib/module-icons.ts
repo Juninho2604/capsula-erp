@@ -5,7 +5,7 @@ import {
     Palette, Wand2, UtensilsCrossed, Settings2, Salad, Smartphone, Bike, Monitor,
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
-    Flag, Wallet, Receipt, Banknote, FileText, ClipboardList,
+    Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag,
 } from 'lucide-react';
 
 /**
@@ -63,6 +63,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     modulos_usuario:   UserCog,
     roles_config:      KeyRound,
     module_config:     SlidersHorizontal,
+    branding_config:   Tag,
     almacenes:         Warehouse,
     tasa_cambio:       RefreshCw,
     anuncios:          Megaphone,

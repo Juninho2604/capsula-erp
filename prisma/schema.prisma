@@ -35,12 +35,17 @@ model Tenant {
   // migration `20260523180000_add_tenant_branding` con los valores que
   // estaban hardcoded en print-command.ts.
   //
-  // legalName: razón social impresa en recibos (ej. "Shanklish Caracas, C.A.")
-  // taxId:     RIF/NIT/CIF (texto libre, ej. "J413087278" o "J-41308727-8")
-  // logoUrl:   path relativo (/logo-x.png en public/) o absoluto (https://...)
-  legalName String?
-  taxId     String?
-  logoUrl   String?
+  // legalName:   razón social impresa en recibos (ej. "Shanklish Caracas, C.A.")
+  // taxId:       RIF/NIT/CIF (texto libre, ej. "J413087278" o "J-41308727-8")
+  // logoUrl:     path relativo (/logo-x.png en public/) o absoluto (https://...)
+  // displayName: nombre corto para headers de UI (POS Delivery, filename
+  //              de exports). Si null, fallback a `name`. Permite mostrar
+  //              "Shanklish" en headers donde el name completo
+  //              "Shanklish Caracas" sería redundante.
+  legalName   String?
+  taxId       String?
+  logoUrl     String?
+  displayName String?
 
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá

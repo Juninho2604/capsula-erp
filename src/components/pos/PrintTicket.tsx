@@ -75,7 +75,7 @@ const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data, brandi
             {/* Header */}
             <div className="text-center mb-4">
                 {branding?.logoUrl && (
-                    <img src={branding.logoUrl} alt={branding.legalName ?? branding.name} className="max-w-[120px] mx-auto mb-2" />
+                    <img src={branding.logoUrl} alt={branding.name} className="max-w-[120px] mx-auto mb-2" />
                 )}
                 {!branding?.logoUrl && (branding?.legalName || branding?.name) && (
                     <div className="font-bold text-[13px]">{branding.legalName ?? branding.name}</div>
