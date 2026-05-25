@@ -8,6 +8,7 @@ import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction,
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt } from '@/lib/print-command';
+import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
@@ -58,6 +59,7 @@ interface SelectedModifier {
 
 export default function POSDeliveryPage() {
     const { posFullscreen } = useUIStore();
+    const branding = useTenantBranding();
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -470,7 +472,7 @@ export default function POSDeliveryPage() {
                     total: finalTotal
                 };
                 if (cfg.printReceiptOnDelivery) {
-                    printReceipt(receiptData);
+                    printReceipt({ ...receiptData, branding });
                 }
                 setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress('');
                 setScheduledTime('');
@@ -517,7 +519,7 @@ export default function POSDeliveryPage() {
                     </div>
                     <div>
                         <h1 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink md:text-3xl">
-                            Shanklish <span className="text-capsula-coral">Delivery</span>
+                            {branding?.name ?? ''} <span className="text-capsula-coral">Delivery</span>
                         </h1>
                         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
                             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />

@@ -13,6 +13,7 @@ import {
     getInventoryCategoriesAction,
     type CriticalFilters,
 } from '@/app/actions/inventory-daily.actions';
+import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { toast } from 'react-hot-toast';
 import {
     Search,
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export default function DailyInventoryManager({ initialAreas }: Props) {
+    const branding = useTenantBranding();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedArea, setSelectedArea] = useState(initialAreas[0]?.id || '');
     const [loading, setLoading] = useState(false);
@@ -217,8 +219,12 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         });
         const statusLabel = data?.status === 'CLOSED' ? 'CERRADO' : 'BORRADOR';
 
+        // Usar tenant.name (sin sufijo legal) para mantener el header igual
+        // al actual de Shanklish: "SHANKLISH CARACAS — INVENTARIO DIARIO".
+        // legalName añadiría ", C.A." que ensucia el header del Excel.
+        const headerLabel = (branding?.name ?? 'INVENTARIO').toUpperCase();
         const metaRows = [
-            ['SHANKLISH CARACAS — INVENTARIO DIARIO'],
+            [`${headerLabel} — INVENTARIO DIARIO`],
             [`Área: ${selectedAreaName}`, '', '', `Fecha: ${dateLabel}`, '', '', `Estado: ${statusLabel}`],
             [],
         ];

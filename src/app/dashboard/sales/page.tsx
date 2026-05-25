@@ -9,10 +9,12 @@ import { voidSalesOrderAction } from '@/app/actions/sales/void.actions';
 import { getSalesAuditAction } from '@/app/actions/sales/audit-export.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
+import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { exportZReportToExcel } from '@/lib/export-z-report';
 import { exportSalesAuditToExcel } from '@/lib/export-sales-audit';
 
 export default function SalesHistoryPage() {
+    const branding = useTenantBranding();
     const [sales, setSales] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [zReport, setZReport] = useState<ZReportData | null>(null);
@@ -106,7 +108,11 @@ export default function SalesHistoryPage() {
             }
             const blob = await res.blob();
             const contentDisposition = res.headers.get('Content-Disposition');
-            let fileName = `Arqueo_Caja_Shanklish_${dateParam}.xlsx`;
+            // Si el server response trae Content-Disposition con filename
+            // (caso del endpoint /api/arqueo en producción), se sobreescribe
+            // abajo. Este fallback solo se usa si el header no llega.
+            const safeName = (branding?.name ?? 'tenant').replace(/[^a-zA-Z0-9]/g, '_');
+            let fileName = `Arqueo_Caja_${safeName}_${dateParam}.xlsx`;
             if (contentDisposition) {
                 const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/);
                 if (utf8Match) fileName = decodeURIComponent(utf8Match[1]);
@@ -873,7 +879,7 @@ export default function SalesHistoryPage() {
                         <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-capsula-ink-muted hover:text-[#B04A2E] dark:text-[#EFD2C8] font-semibold text-2xl tracking-[-0.02em] no-print">×</button>
                         <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
                             <h2 className="font-semibold text-2xl tracking-[-0.02em]">REPORTE Z</h2>
-                            <p className="text-sm">SHANKLISH CARACAS</p>
+                            <p className="text-sm">{(branding?.name ?? '').toUpperCase()}</p>
                             <p className="text-sm">{new Date().toLocaleString()}</p>
                             <p className="text-sm mt-1 font-semibold">CIERRE DE CAJA DIARIO</p>
                         </div>

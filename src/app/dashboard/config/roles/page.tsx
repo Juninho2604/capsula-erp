@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 export const metadata = {
-    title: 'Configuración de Roles | Shanklish App',
+    title: 'Configuración de Roles | KPSULA',
     description: 'Gestión de roles y permisos de usuarios',
 };
 

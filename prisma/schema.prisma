@@ -28,6 +28,20 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Branding fiscal/visual del tenant ────────────────────────────────────
+  // Todos OPCIONALES — un tenant nuevo arranca con null y NO imprime nada
+  // en esos campos en recibos. Backfill manual desde panel admin (futuro)
+  // o vía SQL update por ahora. Para Shanklish se backfillean en la
+  // migration `20260523180000_add_tenant_branding` con los valores que
+  // estaban hardcoded en print-command.ts.
+  //
+  // legalName: razón social impresa en recibos (ej. "Shanklish Caracas, C.A.")
+  // taxId:     RIF/NIT/CIF (texto libre, ej. "J413087278" o "J-41308727-8")
+  // logoUrl:   path relativo (/logo-x.png en public/) o absoluto (https://...)
+  legalName String?
+  taxId     String?
+  logoUrl   String?
+
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.

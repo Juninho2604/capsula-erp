@@ -22,6 +22,7 @@ import {
 import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
@@ -223,6 +224,8 @@ function scheduledTimeToISO(hhmm: string): string | undefined {
 // ============================================================================
 
 export default function POSSportBarPage() {
+  // ── Branding del tenant para recibos (logo + RIF) ────────────────────────
+  const branding = useTenantBranding();
   // ── Data ──────────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -1098,6 +1101,7 @@ export default function POSSportBarPage() {
         total: totalAntesServicio,
         serviceFee,
         tipAmount: tipVal > 0 ? tipVal : undefined,
+        branding,
       });
       }
       // Registrar propina si la cajera la capturó durante el cobro
@@ -1182,6 +1186,7 @@ export default function POSSportBarPage() {
       serviceFee: svcFee > 0 ? svcFee : undefined,
       total: afterDiscount,  // printReceipt suma serviceFee internamente para el total final
       isPrecuenta: true,
+      branding,
     });
   };
 
@@ -1472,7 +1477,7 @@ export default function POSSportBarPage() {
           tipAmount: pickupTipVal > 0 ? pickupTipVal : undefined,
         };
         if (getPOSConfig().printReceiptOnRestaurant) {
-          printReceipt(pickupReceiptData);
+          printReceipt({ ...pickupReceiptData, branding });
         }
         setLastPickupOrder({
           orderNumber: result.data.orderNumber,
@@ -2409,6 +2414,7 @@ export default function POSSportBarPage() {
                         discountReason: lastPickupOrder.discount > 0 && !lastPickupOrder.hideDiscount ? "Descuento aplicado" : undefined,
                         total: lastPickupOrder.total,
                         serviceFee: 0,
+                        branding,
                       });
                     }}
                     className="pos-btn-secondary w-full py-3 text-sm inline-flex items-center justify-center gap-2"

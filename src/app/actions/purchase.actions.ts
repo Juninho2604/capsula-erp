@@ -978,7 +978,12 @@ export async function exportPurchaseOrderTextAction(orderId: string): Promise<st
             text += `\n*Notas:* ${order.notes}\n`;
         }
 
-        text += `\n_Shanklish Caracas ERP_`;
+        // Footer con el nombre del tenant en vez del hardcoded Shanklish.
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { name: true },
+        });
+        text += `\n_${tenant?.name ?? 'KPSULA'} ERP_`;
 
         return text;
     } catch (error) {

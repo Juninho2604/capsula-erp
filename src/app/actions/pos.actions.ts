@@ -168,7 +168,9 @@ async function ensureBaseSalesArea() {
     const { db, tenantId } = await getTenantCtx();
     const whereActive = { isActive: true };
 
-    // 1. SHANKLISH SERVICIO (almacén preferido)
+    // 1. Área preferida: SHANKLISH SERVICIO (nombre histórico que Shanklish
+    //    creó manualmente). Se sigue buscando por compatibilidad — si existe
+    //    para algún tenant (caso: Shanklish), se prioriza.
     let area = await db.area.findFirst({
         where: { ...whereActive, name: { contains: 'SHANKLISH SERVICIO', mode: 'insensitive' } },
     });
@@ -200,9 +202,14 @@ async function ensureBaseSalesArea() {
     area = await db.area.findFirst();
     if (area) return area;
 
-    // 7. Crear área SHANKLISH SERVICIO por defecto
+    // 7. Crear área de servicio por defecto con nombre genérico.
+    //    ANTES: se creaba 'SHANKLISH SERVICIO' para cualquier tenant nuevo
+    //    que llegara a este fallback → leak de branding directo en BD.
+    //    Para Shanklish este paso 7 nunca corre (siempre encuentra una en
+    //    los pasos 1-6 porque ya tiene 9 áreas). Para tenants nuevos sin
+    //    áreas previas, se crea con nombre neutral.
     return db.area.create({
-        data: { tenantId, name: 'SHANKLISH SERVICIO', isActive: true }
+        data: { tenantId, name: 'Servicio General', isActive: true }
     });
 }
 
@@ -215,8 +222,29 @@ async function ensureRestaurantSetup() {
     // Ensure branch
     let branch = await db.branch.findFirst();
     if (!branch) {
+        // Fallback: si el tenant no tiene Branch, creamos uno con el nombre
+        // del propio tenant (NO el de Shanklish). ANTES estaba hardcoded
+        // 'Shanklish Caracas' / 'SHK-CCS' / 'Shanklish Caracas, C.A.' — leak
+        // crítico de branding fiscal en tenants nuevos.
+        //
+        // Para Shanklish este fallback nunca corre — ya tiene su Branch
+        // SHK-CCS creado hace meses, findFirst() lo retorna y skip al create.
+        // Para tenants creados con scripts/create-tenant.ts o desde el panel
+        // admin, ya viene su Branch MAIN, así que este create también se
+        // skipea. El path acá solo se ejecuta si alguien borra todos los
+        // branches del tenant (escenario muy raro).
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { name: true, legalName: true },
+        });
+        const tenantName = tenant?.name ?? 'Sucursal Principal';
         branch = await db.branch.create({
-            data: { tenantId, code: 'SHK-CCS', name: 'Shanklish Caracas', legalName: 'Shanklish Caracas, C.A.' }
+            data: {
+                tenantId,
+                code: 'MAIN',
+                name: tenantName,
+                legalName: tenant?.legalName ?? null,
+            },
         });
     }
 
