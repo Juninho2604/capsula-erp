@@ -22,9 +22,20 @@ export default async function TenantDetailPage({
 }) {
     const { tenantId } = await params;
 
+    // Select EXPLÍCITO (no `include` con findUnique sin select) para no
+    // traer columnas nuevas del Tenant (displayName/taxId/legalName/logoUrl
+    // — PRs #233, #234) que este detalle no usa. Si por algún motivo la
+    // migration de esas columnas no está aplicada en BD, un `findUnique`
+    // que devuelve all-fields-by-default genera SQL con columnas
+    // inexistentes y el query crashea. Con select explícito esta página
+    // queda desacoplada del schema.
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        include: {
+        select: {
+            id: true,
+            slug: true,
+            name: true,
+            createdAt: true,
             users: {
                 orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
                 select: {
