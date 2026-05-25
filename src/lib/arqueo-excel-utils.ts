@@ -587,6 +587,15 @@ export async function buildArqueoWorkbookFromTemplate(
     return buffer as ExcelJS.Buffer;
 }
 
-export function getArqueoFileName(dateStr: string): string {
-    return `Arqueo_Caja_Shanklish_${dateStr.replace(/\//g, '-')}.xlsx`;
+/**
+ * Filename del arqueo Excel. Usa el nombre del tenant slug-safe (sin
+ * espacios ni caracteres especiales). ANTES era hardcoded "Shanklish".
+ *
+ * @param dateStr  Fecha en formato es-VE (ej. "23/5/2026")
+ * @param tenantName  Nombre del tenant. Default 'Comercio' para no
+ *                    romper si el caller no lo pasa.
+ */
+export function getArqueoFileName(dateStr: string, tenantName: string = 'Comercio'): string {
+    const safeName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
+    return `Arqueo_Caja_${safeName}_${dateStr.replace(/\//g, '-')}.xlsx`;
 }

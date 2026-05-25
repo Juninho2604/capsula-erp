@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getSalesForArqueoAction } from '@/app/actions/sales/arqueo.actions';
 import { buildArqueoWorkbookFromTemplate, getArqueoFileName } from '@/lib/arqueo-excel-utils';
+import { resolveTenantContext } from '@/lib/tenant-context.server';
+import prisma from '@/server/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +28,15 @@ export async function GET(request: NextRequest) {
 
         const dateStr = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
         const buffer = await buildArqueoWorkbookFromTemplate(result.data, dateStr);
-        const fileName = getArqueoFileName(dateStr);
+        // Filename con nombre del tenant. ANTES "Shanklish" hardcoded para
+        // todos los tenants. Para Shanklish: "Arqueo_Caja_Shanklish_Caracas_..."
+        // (más completo que "Shanklish" pelado).
+        const tenantCtx = await resolveTenantContext();
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantCtx.tenantId },
+            select: { name: true },
+        });
+        const fileName = getArqueoFileName(dateStr, tenant?.name);
         const encodedFileName = encodeURIComponent(fileName);
 
         return new NextResponse(buffer, {
