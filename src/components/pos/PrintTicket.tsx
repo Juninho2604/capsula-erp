@@ -26,11 +26,21 @@ interface TicketData {
     date: Date;
 }
 
-interface PrintTicketProps {
-    data: TicketData;
+interface TicketBranding {
+    name: string;
+    legalName: string | null;
+    taxId: string | null;
+    logoUrl: string | null;
 }
 
-const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data }, ref) => {
+interface PrintTicketProps {
+    data: TicketData;
+    /** Branding del tenant. Si null o sus fields null, no se muestra logo/RIF.
+     *  Obtener con getTenantBrandingAction(). */
+    branding?: TicketBranding | null;
+}
+
+const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data, branding }, ref) => {
     const formatDate = (date: Date) => {
         return date.toLocaleDateString('es-VE', {
             weekday: 'long',
@@ -64,8 +74,15 @@ const PrintTicket = forwardRef<HTMLDivElement, PrintTicketProps>(({ data }, ref)
         >
             {/* Header */}
             <div className="text-center mb-4">
-                <img src="/logo-shanklish.png" alt="Shanklish Caracas" className="max-w-[120px] mx-auto mb-2" />
-                <div className="font-bold text-[12px]">RIF: J413087278</div>
+                {branding?.logoUrl && (
+                    <img src={branding.logoUrl} alt={branding.legalName ?? branding.name} className="max-w-[120px] mx-auto mb-2" />
+                )}
+                {!branding?.logoUrl && (branding?.legalName || branding?.name) && (
+                    <div className="font-bold text-[13px]">{branding.legalName ?? branding.name}</div>
+                )}
+                {branding?.taxId && (
+                    <div className="font-bold text-[12px]">RIF: {branding.taxId}</div>
+                )}
                 <div className="font-bold text-[12px] mt-2">RECIBO DE PAGO</div>
             </div>
 

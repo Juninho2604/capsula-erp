@@ -23,6 +23,7 @@ import {
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
 import { printReceipt } from '@/lib/print-command';
+import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
 
@@ -555,6 +556,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const [tab, setTab] = useState<TabWithSubs | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
+    const branding = useTenantBranding();
 
     // New subcuenta form
     const [newLabel, setNewLabel] = useState('');
@@ -780,6 +782,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             total: subtotalAfterDiscount,
             serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
             isPrecuenta: sub.status !== 'PAID',
+            branding,
         });
     }
 

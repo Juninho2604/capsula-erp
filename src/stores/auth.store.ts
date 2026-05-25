@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, UserRole, canViewCosts } from '@/types';
-import { mockCurrentUser } from '@/lib/mock-data';
+
+// mockCurrentUser fue removido del estado inicial: antes se cargaba como
+// estado por default lo que causaba que un user nuevo (Delia/Carlos) viera
+// "Omar Admin / admin@shanklish.com" en el Navbar por un instante hasta que
+// Sidebar.useEffect sincronizaba con su user real del JWT. Sin el mock, el
+// Navbar muestra "KPSULA" hasta que se hidrate. mockCurrentUser sigue
+// exportado en @/lib/mock-data por si se usa en tests (no en prod).
 
 /**
  * Bolsillo de permisos del usuario actual — sincronizado desde la session JWT.
@@ -48,9 +54,12 @@ const ROLE_LEVELS: Record<UserRole, number> = {
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
-            // Estado inicial - usuario mock para desarrollo
-            user: mockCurrentUser,
-            isAuthenticated: true, // En desarrollo, siempre autenticado
+            // Estado inicial vacío. Se hidrata desde la cookie JWT vía
+            // Sidebar.useEffect → login(initialUser). Hasta entonces el
+            // user es null y los components que lo usan deben manejar el
+            // caso (todos lo hacen con optional chaining).
+            user: null,
+            isAuthenticated: false,
             isLoading: false,
             permissions: null,
 

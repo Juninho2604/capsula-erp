@@ -47,6 +47,26 @@ interface ReceiptData {
     isPrecuenta?: boolean;
     /** Cuando true no muestra la línea de descuento (ej: pago en divisas — solo muestra el total neto) */
     hideDiscount?: boolean;
+    /** Branding fiscal/visual del tenant. Si null o sus fields null, el recibo
+     *  omite logo y RIF. Mejor un recibo sin datos fiscales que con datos
+     *  de OTRO restaurante. Obtener con getTenantBrandingAction(). */
+    branding?: {
+        name: string;
+        legalName: string | null;
+        taxId: string | null;
+        logoUrl: string | null;
+    } | null;
+}
+
+/**
+ * Escapa texto para insertarlo dentro de HTML. Evita XSS si en algún
+ * momento el branding o el customerName llega del usuario.
+ */
+function escHtml(s: string | null | undefined): string {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 export function printReceipt(data: ReceiptData) {
@@ -132,8 +152,16 @@ export function printReceipt(data: ReceiptData) {
 </head>
 <body>
     <div class="header text-center">
-        <img src="/logo-shanklish.png" alt="Shanklish Caracas" style="max-width: 120px; height: auto; margin-bottom: 8px;">
-        <div style="font-size: 10px;">RIF: J413087278</div>
+        ${data.branding?.logoUrl
+            ? `<img src="${escHtml(data.branding.logoUrl)}" alt="${escHtml(data.branding.legalName ?? data.branding.name)}" style="max-width: 120px; height: auto; margin-bottom: 8px;">`
+            : ''}
+        ${(!data.branding?.logoUrl && data.branding?.legalName)
+            ? `<div style="font-size: 13px; font-weight: 900;">${escHtml(data.branding.legalName)}</div>`
+            : ''}
+        ${(!data.branding?.logoUrl && !data.branding?.legalName && data.branding?.name)
+            ? `<div style="font-size: 13px; font-weight: 900;">${escHtml(data.branding.name)}</div>`
+            : ''}
+        ${data.branding?.taxId ? `<div style="font-size: 10px;">RIF: ${escHtml(data.branding.taxId)}</div>` : ''}
         <div class="doc-title" style="margin-top: 8px;">${data.isPrecuenta ? 'PRE-CUENTA' : data.orderType === 'DELIVERY' ? 'NOTA DE ENTREGA' : 'RECIBO DE PAGO'}</div>
         ${data.isPrecuenta ? '<div style="font-size:10px;font-style:italic;margin-top:2px;">Documento informativo — no es factura definitiva</div>' : ''}
     </div>
