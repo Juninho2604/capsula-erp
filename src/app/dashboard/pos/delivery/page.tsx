@@ -519,7 +519,7 @@ export default function POSDeliveryPage() {
                     </div>
                     <div>
                         <h1 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink md:text-3xl">
-                            {branding?.name ?? ''} <span className="text-capsula-coral">Delivery</span>
+                            {branding?.displayName ?? branding?.name ?? ''} <span className="text-capsula-coral">Delivery</span>
                         </h1>
                         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.1em] text-capsula-ink-muted">
                             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-capsula-coral" />

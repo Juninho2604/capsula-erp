@@ -115,7 +115,7 @@ const SIDEBAR_TREE: SectionDef[] = [
             {
                 // D3: 'modulos' (typo legacy) corregido a 'module_config'; 'modulos_usuario' explícito
                 kind: 'subgroup', id: 'sg-config-admin', label: 'Configuración', icon: '⚙️',
-                items: ['roles_config', 'module_config', 'modulos_usuario'],
+                items: ['roles_config', 'module_config', 'branding_config', 'modulos_usuario'],
             },
             {
                 kind: 'subgroup', id: 'sg-gestion', label: 'Gestión', icon: '🏢',

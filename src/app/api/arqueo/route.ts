@@ -29,14 +29,16 @@ export async function GET(request: NextRequest) {
         const dateStr = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
         const buffer = await buildArqueoWorkbookFromTemplate(result.data, dateStr);
         // Filename con nombre del tenant. ANTES "Shanklish" hardcoded para
-        // todos los tenants. Para Shanklish: "Arqueo_Caja_Shanklish_Caracas_..."
-        // (más completo que "Shanklish" pelado).
+        // todos los tenants. Ahora usa displayName ?? name del tenant.
+        // Para Shanklish, displayName='Shanklish' (backfilleado en
+        // migration 20260523200000) → mantiene "Arqueo_Caja_Shanklish_*.xlsx"
+        // exactamente igual al historial.
         const tenantCtx = await resolveTenantContext();
         const tenant = await prisma.tenant.findUnique({
             where: { id: tenantCtx.tenantId },
-            select: { name: true },
+            select: { name: true, displayName: true },
         });
-        const fileName = getArqueoFileName(dateStr, tenant?.name);
+        const fileName = getArqueoFileName(dateStr, tenant?.displayName ?? tenant?.name);
         const encodedFileName = encodeURIComponent(fileName);
 
         return new NextResponse(buffer, {

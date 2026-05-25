@@ -424,6 +424,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 520,
   },
   {
+    id: 'branding_config',
+    label: 'Identidad del Negocio',
+    description: 'Logo, RIF, razón social y nombre para recibos y headers',
+    icon: '🏷️',
+    href: '/dashboard/config/branding',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 525,
+  },
+  {
     id: 'almacenes',
     label: 'Almacenes',
     description: 'Gestión de áreas de almacenamiento: crear, activar/desactivar y detectar duplicados.',
