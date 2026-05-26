@@ -1732,11 +1732,11 @@ export default function POSSportBarPage() {
           <button
             type="button"
             onClick={() => setShowComandasModal(true)}
-            title="Ver y reimprimir comandas del día"
+            title="Reimprimir comandas de cocina o recibos del día"
             className="px-3 py-2 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-capsula-ink text-xs font-semibold uppercase tracking-wider hover:bg-capsula-navy-soft transition inline-flex items-center gap-1.5"
           >
-            <ReceiptIcon className="h-3.5 w-3.5" />
-            Comandas
+            <Printer className="h-3.5 w-3.5" />
+            Imprimir
           </button>
           <button
             type="button"
