@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, X as XIcon, ShoppingBag, Bike, Printer, ClipboardList } from 'lucide-react';
+import { Search, X as XIcon, ShoppingBag, Bike, Printer } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
 import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
 import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
@@ -287,11 +287,11 @@ export default function POSPedidosYAPage() {
                     <button
                         type="button"
                         onClick={() => setShowComandasModal(true)}
-                        title="Ver y reimprimir comandas del día"
+                        title="Reimprimir comandas de cocina o recibos del día"
                         className="inline-flex items-center gap-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
                     >
-                        <ClipboardList className="h-3.5 w-3.5" />
-                        Comandas
+                        <Printer className="h-3.5 w-3.5" />
+                        Imprimir
                     </button>
                     <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft">
                         {new Date().toLocaleDateString('es-VE')}

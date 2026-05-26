@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2, Delete, Menu, ClipboardList, Clock } from 'lucide-react';
+import { Bike, MessageCircle, Plus as PlusIcon, User, Phone, MapPin, Search, X as XIcon, Lightbulb, ShoppingCart, MessageSquare, Gift, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, CheckCircle2, Delete, Menu, ClipboardList, Clock, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
@@ -544,11 +544,11 @@ export default function POSDeliveryPage() {
                     <button
                         type="button"
                         onClick={() => setShowComandasModal(true)}
-                        title="Ver y reimprimir comandas del día"
+                        title="Reimprimir comandas de cocina o recibos del día"
                         className="inline-flex items-center gap-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
                     >
-                        <ClipboardList className="h-3.5 w-3.5" />
-                        Comandas
+                        <Printer className="h-3.5 w-3.5" />
+                        Imprimir
                     </button>
                     <button
                         type="button"

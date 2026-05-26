@@ -23,13 +23,14 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { X as XIcon, Receipt, Printer, Search, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X as XIcon, Receipt, Printer, Search, Loader2, RefreshCw, CheckCircle2, ChefHat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
     getComandasDelDiaAction,
     type ComandaOrder,
 } from '@/app/actions/sales/comandas-del-dia.actions';
 import { enqueueKitchenCommand } from '@/lib/print-via-agent';
+import { printReceipt } from '@/lib/print-command';
 
 interface ComandasDelDiaModalProps {
     isOpen: boolean;
@@ -100,10 +101,14 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    // Track por orderId qué órdenes están en cooldown post-reimpresión
+    // Track por orderId qué órdenes están en cooldown post-reimpresión de comanda
     const [reprintingIds, setReprintingIds] = useState<Set<string>>(new Set());
-    // Track por orderId qué órdenes ya fueron reimpresas (para feedback visual)
+    // Track por orderId qué órdenes ya fueron reimpresas como comanda (feedback visual)
     const [reprintedIds, setReprintedIds] = useState<Set<string>>(new Set());
+    // Mismo concepto pero para recibos (tracking separado para que la UI muestre
+    // ambas acciones de forma independiente)
+    const [reprintingReceiptIds, setReprintingReceiptIds] = useState<Set<string>>(new Set());
+    const [reprintedReceiptIds, setReprintedReceiptIds] = useState<Set<string>>(new Set());
 
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
@@ -132,6 +137,8 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
             // Reset estados visuales al abrir
             setReprintedIds(new Set());
             setReprintingIds(new Set());
+            setReprintedReceiptIds(new Set());
+            setReprintingReceiptIds(new Set());
             setSearch('');
         }
     }, [isOpen, fetchOrders]);
@@ -189,6 +196,92 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
         }, 3000);
     }, [reprintingIds]);
 
+    /**
+     * Reimprime el recibo de pago del cliente. Replica la lógica de
+     * reconstrucción de `handleReprint` de `/dashboard/sales` (page.tsx)
+     * para mantener consistencia visual y de cálculo entre ambas vías.
+     *
+     * Para mesas (orderType=RESTAURANT con openTabId) imprime el recibo
+     * a nivel orden (no se desglosa por sub-cuenta). Esta es una decisión
+     * consciente: el 95% de los casos no usa sub-cuentas y el handler
+     * queda simple. Si en el futuro hace falta, se agrega.
+     */
+    const handleReprintRecibo = useCallback(async (order: ComandaOrder) => {
+        if (reprintingReceiptIds.has(order.id)) return;
+
+        const confirmed = window.confirm(
+            `¿Reimprimir recibo ${order.orderNumber}?\n\n` +
+                `Cliente: ${getCustomerLabel(order)}\n` +
+                `Total: $${order.total.toFixed(2)}\n\n` +
+                `Solo úsalo si el cliente no recibió el ticket original.`,
+        );
+        if (!confirmed) return;
+
+        setReprintingReceiptIds((prev) => new Set(prev).add(order.id));
+
+        try {
+            // Reconstrucción del payload (misma lógica que /dashboard/sales:handleReprint)
+            const itemsSubtotal = order.items.reduce((s, i) => s + (i.lineTotal || 0), 0);
+            const orderTypeForReceipt: 'RESTAURANT' | 'DELIVERY' =
+                deriveOrderType(order) === 'DELIVERY' ? 'DELIVERY' : 'RESTAURANT';
+            // Delivery fee: si es delivery y el subtotal de la orden es mayor
+            // a la suma de items, ese exceso es el fee de envío.
+            const deliveryFee =
+                orderTypeForReceipt === 'DELIVERY' && order.subtotal != null
+                    ? Math.max(0, order.subtotal - itemsSubtotal)
+                    : undefined;
+            // Service fee: si la orden tiene service charge a nivel tab
+            // (mesa con 10%), lo pasamos al recibo.
+            const serviceFee = order.serviceCharge > 0 ? order.serviceCharge : 0;
+            const saleDiscount = order.discount ?? 0;
+            const discountReason = saleDiscount > 0
+                ? (order.discountReason || 'Descuento aplicado')
+                : undefined;
+            const isDivisasDiscount = order.discountType === 'DIVISAS_33';
+
+            printReceipt({
+                orderNumber: order.orderNumber,
+                orderType: orderTypeForReceipt,
+                date: order.createdAt,
+                cashierName: order.cashierName || 'Cajera',
+                customerName: order.customerName ?? undefined,
+                customerPhone: order.customerPhone ?? undefined,
+                customerAddress: order.customerAddress ?? undefined,
+                subtotal:
+                    orderTypeForReceipt === 'DELIVERY' && deliveryFee
+                        ? itemsSubtotal
+                        : (order.subtotal ?? itemsSubtotal),
+                discount: saleDiscount,
+                discountReason,
+                hideDiscount: isDivisasDiscount,
+                deliveryFee,
+                total: order.total,
+                serviceFee,
+                items: order.items.map((i) => ({
+                    name: i.itemName,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice ?? (i.lineTotal / (i.quantity || 1)),
+                    total: i.lineTotal,
+                    modifiers: i.modifiers.map((m) => m.name),
+                })),
+            });
+            toast.success(`Recibo ${order.orderNumber} reimprimiendo…`);
+            setReprintedReceiptIds((prev) => new Set(prev).add(order.id));
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            toast.error(`Error reimprimiendo recibo: ${msg}`);
+        }
+
+        // Cooldown 3s, mismo patrón que comanda
+        setTimeout(() => {
+            setReprintingReceiptIds((prev) => {
+                const next = new Set(prev);
+                next.delete(order.id);
+                return next;
+            });
+        }, 3000);
+    }, [reprintingReceiptIds]);
+
     const filteredOrders = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return orders;
@@ -216,9 +309,9 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                 {/* Header */}
                 <div className="border-b border-capsula-line p-5 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
-                        <Receipt className="h-5 w-5 text-capsula-coral" />
+                        <Printer className="h-5 w-5 text-capsula-coral" />
                         <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">
-                            Comandas del día
+                            Reimprimir del día
                         </h3>
                         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                             ({filteredOrders.length}{search ? ` de ${orders.length}` : ''})
@@ -280,6 +373,8 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                                 const label = deriveOrderTypeLabel(order);
                                 const isReprinting = reprintingIds.has(order.id);
                                 const wasReprinted = reprintedIds.has(order.id);
+                                const isReprintingReceipt = reprintingReceiptIds.has(order.id);
+                                const wasReprintedReceipt = reprintedReceiptIds.has(order.id);
                                 return (
                                     <div
                                         key={order.id}
@@ -317,26 +412,49 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                                             ${order.total.toFixed(2)}
                                         </div>
 
-                                        {/* Botón reimprimir */}
-                                        <button
-                                            onClick={() => handleReprint(order)}
-                                            disabled={isReprinting}
-                                            title={isReprinting ? 'Reimprimiendo…' : 'Reimprimir comanda de cocina/barra'}
-                                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold uppercase tracking-[0.04em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-                                                wasReprinted && !isReprinting
-                                                    ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]'
-                                                    : 'bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90'
-                                            }`}
-                                        >
-                                            {isReprinting ? (
-                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            ) : wasReprinted ? (
-                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                            ) : (
-                                                <Printer className="h-3.5 w-3.5" />
-                                            )}
-                                            {isReprinting ? 'Enviando' : wasReprinted ? 'Reimprimida' : 'Reimprimir'}
-                                        </button>
+                                        {/* Botones de acción — comanda y recibo */}
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            {/* Botón reimprimir COMANDA (cocina/barra) */}
+                                            <button
+                                                onClick={() => handleReprint(order)}
+                                                disabled={isReprinting}
+                                                title={isReprinting ? 'Reimprimiendo comanda…' : 'Reimprimir comanda de cocina/barra'}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                    wasReprinted && !isReprinting
+                                                        ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]'
+                                                        : 'bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90'
+                                                }`}
+                                            >
+                                                {isReprinting ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : wasReprinted ? (
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                ) : (
+                                                    <ChefHat className="h-3.5 w-3.5" />
+                                                )}
+                                                {isReprinting ? '...' : wasReprinted ? 'Lista' : 'Comanda'}
+                                            </button>
+                                            {/* Botón reimprimir RECIBO (cliente) */}
+                                            <button
+                                                onClick={() => handleReprintRecibo(order)}
+                                                disabled={isReprintingReceipt}
+                                                title={isReprintingReceipt ? 'Reimprimiendo recibo…' : 'Reimprimir recibo del cliente'}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                    wasReprintedReceipt && !isReprintingReceipt
+                                                        ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]'
+                                                        : 'bg-capsula-coral text-white hover:bg-capsula-coral/90'
+                                                }`}
+                                            >
+                                                {isReprintingReceipt ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : wasReprintedReceipt ? (
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                ) : (
+                                                    <Receipt className="h-3.5 w-3.5" />
+                                                )}
+                                                {isReprintingReceipt ? '...' : wasReprintedReceipt ? 'Listo' : 'Recibo'}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -347,7 +465,7 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                 {/* Footer */}
                 <div className="border-t border-capsula-line p-4 shrink-0 flex items-center justify-between gap-3">
                     <span className="text-[11px] text-capsula-ink-muted">
-                        Día actual (zona Caracas). Excluye anuladas.
+                        Día actual (Caracas). Botones reimprimen comanda (cocina) o recibo (cliente). Excluye anuladas.
                     </span>
                     <button
                         onClick={onClose}
