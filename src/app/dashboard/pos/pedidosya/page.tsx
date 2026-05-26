@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, X as XIcon, ShoppingBag, Bike, Printer } from 'lucide-react';
+import { Search, X as XIcon, ShoppingBag, Bike, Printer, ClipboardList } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
 import { getMenuForPOSAction, type CartItem } from '@/app/actions/pos.actions';
 import { createPedidosYAOrderAction } from '@/app/actions/pedidosya.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
+import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
@@ -56,6 +57,8 @@ export default function POSPedidosYAPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isReprintingComanda, setIsReprintingComanda] = useState(false);
+    // Modal de comandas del día (reimpresión histórica)
+    const [showComandasModal, setShowComandasModal] = useState(false);
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [customerName, setCustomerName] = useState('');
@@ -280,8 +283,19 @@ export default function POSPedidosYAPage() {
                         </p>
                     </div>
                 </div>
-                <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft">
-                    {new Date().toLocaleDateString('es-VE')}
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowComandasModal(true)}
+                        title="Ver y reimprimir comandas del día"
+                        className="inline-flex items-center gap-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
+                    >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Comandas
+                    </button>
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt px-3 py-2 text-xs font-medium tabular-nums text-capsula-ink-soft">
+                        {new Date().toLocaleDateString('es-VE')}
+                    </div>
                 </div>
             </div>
 
@@ -663,6 +677,12 @@ export default function POSPedidosYAPage() {
                     </div>
                 </div>
             )}
+
+            {/* Modal de comandas del día (reimpresión) */}
+            <ComandasDelDiaModal
+                isOpen={showComandasModal}
+                onClose={() => setShowComandasModal(false)}
+            />
         </div>
     );
 }
