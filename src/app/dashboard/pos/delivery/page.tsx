@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 import { PriceDisplay } from '@/components/pos/PriceDisplay';
 import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
+import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 
 const DELIVERY_FEE_NORMAL = 4.5;
 const DELIVERY_FEE_DIVISAS = 3;
@@ -114,6 +115,8 @@ export default function POSDeliveryPage() {
 
     // PROPINA COLECTIVA
     const [showTipModal, setShowTipModal] = useState(false);
+    // Modal de comandas del día (reimpresión)
+    const [showComandasModal, setShowComandasModal] = useState(false);
     const [tipAmount, setTipAmount] = useState('');
     const [tipMethod, setTipMethod] = useState<string>('CASH_USD');
     const [tipClientRef, setTipClientRef] = useState('');
@@ -537,6 +540,15 @@ export default function POSDeliveryPage() {
                     >
                         <MessageCircle className="h-4 w-4" />
                         WhatsApp
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowComandasModal(true)}
+                        title="Ver y reimprimir comandas del día"
+                        className="inline-flex items-center gap-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-capsula-ink transition-colors hover:bg-capsula-navy-soft"
+                    >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Comandas
                     </button>
                     <button
                         type="button"
@@ -1387,6 +1399,12 @@ export default function POSDeliveryPage() {
                     </div>
                 </div>
             )}
+            {/* ── MODAL: COMANDAS DEL DÍA (reimpresión) ────────────────────────── */}
+            <ComandasDelDiaModal
+                isOpen={showComandasModal}
+                onClose={() => setShowComandasModal(false)}
+            />
+
             {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
             {showTipModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-capsula-navy-deep/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">

@@ -28,6 +28,7 @@ import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { CurrencyCalculator } from "@/components/pos/CurrencyCalculator";
+import ComandasDelDiaModal from "@/components/pos/ComandasDelDiaModal";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
@@ -352,6 +353,9 @@ export default function POSSportBarPage() {
   const [subAccountsCount, setSubAccountsCount] = useState(0);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
   const [checkoutTip, setCheckoutTip] = useState(''); // propina en el momento del cobro
+
+  // ── Modal de comandas del día (reimpresión) ──────────────────────────────
+  const [showComandasModal, setShowComandasModal] = useState(false);
 
   // ── Propina colectiva ─────────────────────────────────────────────────────
   const [showTipModal, setShowTipModal] = useState(false);
@@ -1620,6 +1624,12 @@ export default function POSSportBarPage() {
         }}
       />
 
+      {/* ── MODAL: COMANDAS DEL DÍA (reimpresión) ────────────────────────── */}
+      <ComandasDelDiaModal
+        isOpen={showComandasModal}
+        onClose={() => setShowComandasModal(false)}
+      />
+
       {/* ── MODAL: PROPINA COLECTIVA ─────────────────────────────────────── */}
       {showTipModal && (
         <div className="fixed inset-0 bg-capsula-ink/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -1719,6 +1729,15 @@ export default function POSSportBarPage() {
                <CurrencyCalculator totalUsd={Number(activeTab.balanceDue.toFixed(2))} onRateUpdated={setExchangeRate} />
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setShowComandasModal(true)}
+            title="Ver y reimprimir comandas del día"
+            className="px-3 py-2 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-capsula-ink text-xs font-semibold uppercase tracking-wider hover:bg-capsula-navy-soft transition inline-flex items-center gap-1.5"
+          >
+            <ReceiptIcon className="h-3.5 w-3.5" />
+            Comandas
+          </button>
           <button
             type="button"
             onClick={() => setShowTipModal(true)}
