@@ -50,18 +50,28 @@ export async function getTenantBrandingAction(): Promise<TenantBranding | null> 
     }
     if (!ctx.tenantId) return null;
 
-    const tenant = await prisma.tenant.findUnique({
-        where: { id: ctx.tenantId },
-        select: {
-            name: true,
-            slug: true,
-            displayName: true,
-            legalName: true,
-            taxId: true,
-            logoUrl: true,
-        },
-    });
-    return tenant;
+    try {
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: ctx.tenantId },
+            select: {
+                name: true,
+                slug: true,
+                displayName: true,
+                legalName: true,
+                taxId: true,
+                logoUrl: true,
+            },
+        });
+        return tenant;
+    } catch (err) {
+        // Defensivo: si las columnas de branding no existen en BD (race entre
+        // migrate deploy y swap, o migration silently skipped), Prisma tira
+        // P2022 "column does not exist". En vez de propagar el error al
+        // Server Component y mostrar "Algo salió mal", logueamos y devolvemos
+        // null — la página redirige a /dashboard.
+        console.error('[getTenantBranding] query failed:', err);
+        return null;
+    }
 }
 
 // ─── UPDATE ────────────────────────────────────────────────────────────────
