@@ -1,0 +1,99 @@
+name: Apply Prisma Migrations (manual)
+
+# Workflow MANUAL para aplicar migraciones Prisma pendientes en el VPS.
+#
+# Cuándo se usa:
+#   El deploy script `/root/deploy-capsula.sh` históricamente NO corría
+#   `prisma migrate deploy` en cada deploy (la versión versionada
+#   `scripts/deploy-vps.sh` sí lo hace, pero el VPS quedó con una versión
+#   vieja). Resultado: PRs que agregaron columnas a Tenant deployaron el
+#   código nuevo pero sin las columnas en BD → SELECTs crashean.
+#
+#   Este workflow es el escape-hatch: lo disparás desde la pestaña Actions
+#   ("Apply Prisma Migrations (manual)" → "Run workflow") y aplica las
+#   migraciones pendientes contra la BD productiva.
+#
+# Idempotente: si no hay migraciones pendientes, no hace nada.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Apply migrations on VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CONTABO_SSH_KEY }}
+
+      - name: Trust VPS host key
+        env:
+          HOST: ${{ secrets.CONTABO_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Backup BD antes de migrar
+        env:
+          HOST: ${{ secrets.CONTABO_HOST }}
+          USER: ${{ secrets.CONTABO_USER }}
+        run: |
+          ssh "$USER@$HOST" bash -s <<'REMOTE'
+          set -e
+          TS=$(date +%Y%m%d-%H%M%S)
+          mkdir -p /root/backups
+          BACKUP_FILE="/root/backups/capsula_erp_prod-pre-migrate-$TS.dump"
+          echo "Backup BD → $BACKUP_FILE"
+          sudo -u postgres pg_dump -p 5433 -Fc capsula_erp_prod > "$BACKUP_FILE"
+          ls -lh "$BACKUP_FILE"
+          REMOTE
+
+      - name: Apply migrations
+        env:
+          HOST: ${{ secrets.CONTABO_HOST }}
+          USER: ${{ secrets.CONTABO_USER }}
+        run: |
+          ssh "$USER@$HOST" bash -s <<'REMOTE'
+          set -e
+          cd /var/www/capsula-erp
+
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  prisma migrate status (antes)"
+          echo "════════════════════════════════════════════════════════════════"
+          set -a; source .env; set +a
+          npx prisma migrate status || true
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  prisma migrate deploy"
+          echo "════════════════════════════════════════════════════════════════"
+          npx prisma migrate deploy
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  prisma migrate status (después)"
+          echo "════════════════════════════════════════════════════════════════"
+          npx prisma migrate status
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  Verificación de columnas en Tenant"
+          echo "════════════════════════════════════════════════════════════════"
+          psql "$DATABASE_URL" -c "\d \"Tenant\"" | grep -E "displayName|legalName|taxId|logoUrl|^Indexes" || true
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  Restart pm2 para que el cliente Prisma recargue"
+          echo "════════════════════════════════════════════════════════════════"
+          pm2 restart capsula-erp --update-env
+          sleep 3
+          pm2 status capsula-erp
+          REMOTE
