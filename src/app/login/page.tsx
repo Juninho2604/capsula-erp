@@ -4,6 +4,11 @@ import { getSession } from '@/lib/auth';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { redirect } from 'next/navigation';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
+import { WHATSAPP_SALES_LINK } from '@/config/marketing-contact';
+
+/** Link a WhatsApp del administrador con un mensaje de ayuda de acceso pre-cargado. */
+const ADMIN_SUPPORT_MESSAGE = 'Hola, necesito ayuda para acceder a mi cuenta de KPSULA.';
+const ADMIN_WHATSAPP_LINK = `${WHATSAPP_SALES_LINK}?text=${encodeURIComponent(ADMIN_SUPPORT_MESSAGE)}`;
 
 export default async function LoginPage() {
     // Si ya existe sesión, redirigir al dashboard
@@ -84,9 +89,14 @@ export default async function LoginPage() {
                     <div className="mt-6 border-t border-gray-100 pt-5">
                         <p className="text-center text-xs text-gray-400">
                             ¿Olvidaste tu contraseña?{' '}
-                            <span className="font-medium text-gray-500">
+                            <a
+                                href={ADMIN_WHATSAPP_LINK}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-gray-600 underline underline-offset-2 transition hover:text-gray-900"
+                            >
                                 Contacta al administrador del sistema.
-                            </span>
+                            </a>
                         </p>
                     </div>
                 </div>
