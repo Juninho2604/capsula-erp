@@ -1,21 +1,26 @@
 /**
  * Calcula la URL de redirect post-login al subdomain del tenant.
  *
- * ⚠️ DESHABILITADO TEMPORALMENTE (2026-05-20):
- *   El redirect a `<slug>.kpsula.app` causaba bucle/404 a cajeras
- *   cuando su cookie de sesión no viajaba al subdomain (cookies viejas
- *   sin `domain=.kpsula.app`, políticas del browser, etc.).
- *   Por ahora retornamos null → cliente cae al `router.push('/dashboard/home')`
- *   de toda la vida (sin redirect cross-host).
+ * Si el usuario hizo login desde el root `kpsula.app` (o desde un subdomain
+ * que no es el suyo), lo mandamos a `<slug>.kpsula.app/dashboard/home`.
+ * La cookie usa `domain=.kpsula.app` en producción (ver src/lib/auth.ts),
+ * así viaja al subdominio sin reloggear.
  *
- *   Para re-habilitar: descomentar el bloque de abajo. Antes asegurarse
- *   de que TODAS las cookies de session activas tengan domain=.kpsula.app
- *   (forzar logout masivo + relogin, o bumpear tokenVersion).
+ * Reglas:
+ *   - Sin slug válido / regex inválida → null (cae al fallback del cliente).
+ *   - Host no-kpsula (localhost, vercel preview, IP raw) → null.
+ *   - Slug ya matchea el host → null (no redirige innecesariamente).
+ *   - Root o subdominio incorrecto → URL absoluta al subdomain del tenant.
  *
- * Reglas (cuando estaba habilitado):
- *   - Devuelve null si no hay slug válido, host no es kpsula.app/subdomain,
- *     o ya estamos en el subdomain correcto.
- *   - Devuelve `https://<slug>.kpsula.app/dashboard/home` cuando aplica.
+ * Defensa-en-profundidad: si por cualquier motivo no podemos calcular un
+ * target seguro, devolvemos null. El cliente cae a `router.push('/dashboard/home')`
+ * — comportamiento histórico que sabemos que funciona.
+ *
+ * Si una cookie pre-mayo (host-only, sin domain=.kpsula.app) no viaja al
+ * subdominio, el middleware del subdominio la trata como "sin sesión" y
+ * redirige a /login. El usuario reloguea una vez y la cookie nueva ya
+ * viaja para siempre. No hay bucle ni pérdida de datos — el cross-tenant
+ * guard en middleware (src/middleware.ts) cubre el caso degradado.
  *
  * Pura, sin dependencias. Testeable en isolation.
  */
@@ -23,29 +28,29 @@ export function computePostLoginUrl(
     tenantSlug: string | null,
     hostOverride?: string,
 ): string | null {
-    // ⚠️ Disabled — ver comentario arriba.
-    void tenantSlug;
-    void hostOverride;
-    return null;
+    if (!tenantSlug || tenantSlug.length < 2) return null;
+    if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(tenantSlug)) return null;
 
-    // === Bloque deshabilitado, mantener por si se re-habilita ===
-    // if (!tenantSlug || tenantSlug.length < 2) return null;
-    // if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(tenantSlug)) return null;
-    //
-    // const host =
-    //     hostOverride !== undefined
-    //         ? hostOverride
-    //         : typeof window !== 'undefined'
-    //             ? window.location.host.split(':')[0].toLowerCase()
-    //             : '';
-    // if (!host) return null;
-    //
-    // const ROOT = 'kpsula.app';
-    // const isRoot = host === ROOT;
-    // const isOtherSubdomain = host.endsWith('.' + ROOT) && host !== `${tenantSlug}.${ROOT}`;
-    // if (!isRoot && !isOtherSubdomain) {
-    //     return null;
-    // }
-    //
-    // return `https://${tenantSlug}.${ROOT}/dashboard/home`;
+    const host =
+        hostOverride !== undefined
+            ? hostOverride
+            : typeof window !== 'undefined'
+                ? window.location.host.split(':')[0].toLowerCase()
+                : '';
+    if (!host) return null;
+
+    const ROOT = 'kpsula.app';
+    const expectedHost = `${tenantSlug}.${ROOT}`;
+
+    // Ya estamos en el subdomain correcto → no redirigir.
+    if (host === expectedHost) return null;
+
+    // Solo redirigimos desde el root o desde otro subdominio de kpsula.app.
+    // Hosts ajenos (localhost, vercel previews, IPs) → null para no romper
+    // ambientes de desarrollo ni hacer redirects cross-host inesperados.
+    const isRoot = host === ROOT;
+    const isOtherSubdomain = host.endsWith('.' + ROOT) && host !== expectedHost;
+    if (!isRoot && !isOtherSubdomain) return null;
+
+    return `https://${expectedHost}/dashboard/home`;
 }
