@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { signupTenantAction, type SignupState } from '@/app/actions/signup.actions';
 import { Check, ExternalLink } from 'lucide-react';
@@ -21,10 +21,23 @@ function SubmitButton() {
 }
 
 export default function SignupForm() {
-    const [state, formAction] = useActionState<SignupState, FormData>(
-        signupTenantAction,
-        null,
-    );
+    // Replica el patrón de `useActionState` (React 19 / react-dom 19) con
+    // primitivas de React 18: `useState` para mantener el resultado de la
+    // última acción + una función `formAction` que invoca al server action
+    // y propaga el resultado al state. El componente `SubmitButton` sigue
+    // usando `useFormStatus` (disponible en react-dom 18.3+) sin cambios,
+    // así el botón sigue mostrando el estado de "pending" mientras se
+    // resuelve el server action.
+    //
+    // Background: el archivo importaba `useActionState` de 'react', pero
+    // esa función solo existe en React 19+. La instalación es React 18.3.1
+    // (Next.js 14.1.0). El build emitía un warning y el runtime fallaba
+    // al abrir /signup. Fix aplicado en sesión 26/05/2026.
+    const [state, setState] = useState<SignupState | null>(null);
+    const formAction = async (formData: FormData) => {
+        const result = await signupTenantAction(state, formData);
+        setState(result);
+    };
     const [slugPreview, setSlugPreview] = useState('mitiendaa');
 
     // Auto-redirect cross-subdomain tras éxito. El token de bootstrap (60s)
