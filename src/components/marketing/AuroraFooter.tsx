@@ -21,6 +21,7 @@ const COLUMNS: { h: string; items: { label: string; href: string }[] }[] = [
     {
         h: 'Recursos',
         items: [
+            { label: 'Descargar app',      href: '/descargar' },
             { label: 'Centro de ayuda',   href: '/ayuda' },
             { label: 'Estado del sistema', href: '/estado' },
         ],

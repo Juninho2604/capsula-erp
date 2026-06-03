@@ -5,6 +5,7 @@ import {
     BookOpen,
     Coins,
     BarChart3,
+    Download,
 } from 'lucide-react';
 import CapsulaAnimatedMark from '@/components/brand/CapsulaAnimatedMark';
 import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
@@ -50,8 +51,8 @@ export default function HomePage() {
                         <Link href="/login" className="cap-btn cap-btn--primary">
                             Entrar al sistema <ArrowRight className="h-4 w-4" />
                         </Link>
-                        <Link href="/dashboard" className="cap-btn cap-btn--ghost">
-                            Ver dashboard
+                        <Link href="/descargar" className="cap-btn cap-btn--ghost inline-flex items-center gap-2">
+                            <Download className="h-4 w-4" /> Descargar app
                         </Link>
                     </div>
                 </div>

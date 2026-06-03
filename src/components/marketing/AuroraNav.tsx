@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Download } from 'lucide-react';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
 import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
 import AuroraThemeToggle from './AuroraThemeToggle';
@@ -13,6 +13,12 @@ export default function AuroraNav() {
                 </Link>
                 <div className="flex items-center gap-5">
                     <AuroraThemeToggle />
+                    <Link
+                        href="/descargar"
+                        className="cap-link hidden items-center gap-1.5 text-[13px] sm:inline-flex"
+                    >
+                        <Download className="h-3.5 w-3.5" /> Descargar app
+                    </Link>
                     <Link href="/login" className="cap-link text-[13px]">
                         Iniciar sesión
                     </Link>
