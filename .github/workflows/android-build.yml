@@ -136,14 +136,19 @@ jobs:
 
           node -e "const fs=require('fs'),os=require('os'),path=require('path');const dir=path.join(os.homedir(),'.bubblewrap');fs.mkdirSync(dir,{recursive:true});const cfg={jdkPath:process.env.JAVA_HOME,androidSdkPath:process.env.SDK_PATH};fs.writeFileSync(path.join(dir,'config.json'),JSON.stringify(cfg,null,2));console.log('Bubblewrap config written:',JSON.stringify(cfg));"
 
-      - name: Bubblewrap init (scaffold Gradle project from manifest)
+      - name: Bubblewrap update (scaffold Android project from twa-manifest.json)
         working-directory: android
         run: |
           set -euo pipefail
-          bubblewrap init --manifest=./twa-manifest.json --directory=. || true
-          # `bubblewrap init` is idempotent for re-scaffolding; failures here are usually
-          # benign (project already exists). We rely on `bubblewrap build` below to fail
-          # on real errors.
+          # NO usamos `bubblewrap init`: trata --manifest como un WEB manifest (lo
+          # fetchea) y es 100% interactivo (confirmTwaConfig pregunta host, nombre,
+          # íconos, key, etc.) sin modo no-interactivo → en CI aborta con exit 130.
+          #
+          # Para un twa-manifest.json ya completo, `update` es la vía no-interactiva:
+          # lee el TWA manifest local (fromFile), regenera el proyecto Android desde
+          # cero y escribe manifest-checksum.txt, así `build` no pregunta por regenerar.
+          # --skipVersionUpgrade preserva el appVersionCode que seteamos en el patch.
+          bubblewrap update --skipVersionUpgrade
 
       - name: Bubblewrap build (assembles signed APK)
         working-directory: android
@@ -154,10 +159,14 @@ jobs:
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          # stdin desde /dev/null: si por algo apareciera un prompt inesperado,
+          # falla rápido (EOF → exit 130) en vez de colgarse hasta el timeout.
+          # Las passwords NO van por stdin: vienen de BUBBLEWRAP_*_PASSWORD (env).
           bubblewrap build \
             --skipPwaValidation \
             --signingKeyPath=./android.keystore \
-            --signingKeyAlias=kpsula
+            --signingKeyAlias=kpsula \
+            < /dev/null
 
       - name: Locate built APK
         id: apk
