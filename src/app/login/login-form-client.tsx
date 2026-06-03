@@ -49,19 +49,34 @@ export default function LoginForm() {
         const result: any = await loginAction(null, formData);
 
         // [DEBUG redirect — borrar tras diagnosticar]
-        // eslint-disable-next-line no-console
-        console.log('[login-debug] loginAction result:', {
-            success: result?.success,
-            isSuperAdmin: result?.isSuperAdmin,
-            tenantSlug: result?.tenantSlug,
-            userRole: result?.user?.role,
-            message: result?.message,
-            host: typeof window !== 'undefined' ? window.location.host : '(ssr)',
-        });
+        // Calculamos target acá para incluirlo en el alert junto con el result.
+        const debugHost = typeof window !== 'undefined' ? window.location.host : '(ssr)';
+        let debugTarget: string | null = null;
+        let debugBranch = 'unknown';
+        if (result?.success === false) {
+            debugBranch = 'error';
+        } else if (result?.success && result.user) {
+            if (result.isSuperAdmin) {
+                debugBranch = 'superAdmin → /admin';
+            } else {
+                debugTarget = computePostLoginUrl(result.tenantSlug ?? null);
+                debugBranch = debugTarget ? `redirect → ${debugTarget}` : 'fallback → /dashboard/home';
+            }
+        }
+        // eslint-disable-next-line no-alert
+        alert(
+            '🔍 LOGIN DEBUG (sacale foto y mandala)\n\n' +
+                'host: ' + debugHost + '\n' +
+                'success: ' + JSON.stringify(result?.success) + '\n' +
+                'tenantSlug: ' + JSON.stringify(result?.tenantSlug) + '\n' +
+                'isSuperAdmin: ' + JSON.stringify(result?.isSuperAdmin) + '\n' +
+                'userRole: ' + JSON.stringify(result?.user?.role) + '\n' +
+                'message: ' + JSON.stringify(result?.message) + '\n' +
+                'computePostLoginUrl: ' + JSON.stringify(debugTarget) + '\n' +
+                'branch: ' + debugBranch
+        );
 
         if (result?.success === false) {
-            // eslint-disable-next-line no-console
-            console.log('[login-debug] branch=error, message:', result.message);
             setError(result.message);
         } else if (result?.success && result.user) {
             // Sincronizar Zustand con el usuario real del JWT antes de navegar
@@ -71,8 +86,6 @@ export default function LoginForm() {
             // disponible en el header de /admin. Reload completo para que
             // el middleware recoja la cookie de sesión recién creada.
             if (result.isSuperAdmin) {
-                // eslint-disable-next-line no-console
-                console.log('[login-debug] branch=superAdmin → /admin');
                 window.location.href = '/admin';
                 return;
             }
@@ -87,15 +100,9 @@ export default function LoginForm() {
             // no-kpsula, dev mode), caemos al router.push de toda la vida.
             // Cero downgrade si algo falla.
             const target = computePostLoginUrl(result.tenantSlug ?? null);
-            // eslint-disable-next-line no-console
-            console.log('[login-debug] computePostLoginUrl returned:', target);
             if (target) {
-                // eslint-disable-next-line no-console
-                console.log('[login-debug] branch=redirect → window.location.href =', target);
                 window.location.href = target;
             } else {
-                // eslint-disable-next-line no-console
-                console.log('[login-debug] branch=fallback → router.push(/dashboard/home)');
                 router.push('/dashboard/home');
             }
         }
