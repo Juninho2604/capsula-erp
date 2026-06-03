@@ -116,6 +116,24 @@ jobs:
           SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           : "${SDK_PATH:?ANDROID_HOME/ANDROID_SDK_ROOT no está seteado (setup-android falló?)}"
           export SDK_PATH
+
+          # Bubblewrap.validatePath() exige que exista ${SDK}/tools o ${SDK}/bin.
+          # Un SDK moderno (instalado vía cmdline-tools) no tiene el dir legacy `tools`,
+          # así que bubblewrap rechaza el SDK con "The provided androidSdk isn't correct".
+          # Symlink tools -> cmdline-tools/latest para satisfacer la validación (y de paso
+          # bubblewrap encuentra sdkmanager en tools/bin/sdkmanager).
+          if [ ! -e "$SDK_PATH/tools" ]; then
+            if [ -d "$SDK_PATH/cmdline-tools/latest" ]; then
+              ln -s "$SDK_PATH/cmdline-tools/latest" "$SDK_PATH/tools"
+            else
+              CLT_DIR=$(find "$SDK_PATH/cmdline-tools" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -1 || true)
+              [ -n "$CLT_DIR" ] && ln -s "$CLT_DIR" "$SDK_PATH/tools"
+            fi
+          fi
+          echo "== SDK_PATH=$SDK_PATH =="
+          ls -la "$SDK_PATH"
+          ls -la "$SDK_PATH/tools" || echo "(sin tools/)"
+
           node -e "const fs=require('fs'),os=require('os'),path=require('path');const dir=path.join(os.homedir(),'.bubblewrap');fs.mkdirSync(dir,{recursive:true});const cfg={jdkPath:process.env.JAVA_HOME,androidSdkPath:process.env.SDK_PATH};fs.writeFileSync(path.join(dir,'config.json'),JSON.stringify(cfg,null,2));console.log('Bubblewrap config written:',JSON.stringify(cfg));"
 
       - name: Bubblewrap init (scaffold Gradle project from manifest)
