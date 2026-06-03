@@ -2,13 +2,41 @@ import LoginForm from './login-form-client';
 import DemoCredentialsCard from './demo-credentials-card';
 import { getSession } from '@/lib/auth';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { isSuperAdmin } from '@/lib/super-admin';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
 
 export default async function LoginPage() {
-    // Si ya existe sesión, redirigir al dashboard
+    // Si ya existe sesión, redirigir al destino correcto según tenant.
+    //
+    // POR QUÉ EL REDIRECT VIVE ACÁ (server-side) Y NO EN EL CLIENTE:
+    // Cuando loginAction (server action) termina, Next.js auto-revalida el
+    // path actual (/login). Esta revalidación dispara un fetch RSC interno
+    // que ejecuta de nuevo este server component — el redirect que devolvemos
+    // acá es lo que el cliente sigue. Si intentábamos hacer
+    // `window.location.href = subdomain` desde el cliente, competía con la
+    // navegación interna que Next.js disparaba por la revalidación y ganaba
+    // la RSC (que iba a `/dashboard` sin slug) → race condition + React
+    // error #310. Server-side el redirect es atómico, sin race.
     const session = await getSession();
     if (session) {
+        // Super admin → siempre /admin.
+        if (isSuperAdmin(session.email)) {
+            redirect('/admin');
+        }
+        // Si tenemos slug en el JWT Y estamos en el host raíz kpsula.app,
+        // redirigir al subdomain del tenant. La cookie usa domain=.kpsula.app
+        // (src/lib/auth.ts:111-112) así viaja al subdomain sin reloggear.
+        const tenantSlug = (session as { tenantSlug?: string }).tenantSlug;
+        const rawHost =
+            headers().get('x-forwarded-host') ?? headers().get('host') ?? '';
+        const host = rawHost.split(',')[0].split(':')[0].trim().toLowerCase();
+        if (tenantSlug && host === 'kpsula.app') {
+            redirect(`https://${tenantSlug}.kpsula.app/dashboard/home`);
+        }
+        // Cualquier otro caso (ya en subdomain correcto, host de dev, etc.)
+        // → dashboard normal.
         redirect('/dashboard');
     }
 
