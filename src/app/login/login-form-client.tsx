@@ -1,7 +1,5 @@
 'use client';
 
-import { computePostLoginUrl } from '@/lib/post-login-redirect';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/actions/auth.actions';
@@ -48,63 +46,29 @@ export default function LoginForm() {
         setError(null);
         const result: any = await loginAction(null, formData);
 
-        // [DEBUG redirect — borrar tras diagnosticar]
-        // Calculamos target acá para incluirlo en el alert junto con el result.
-        const debugHost = typeof window !== 'undefined' ? window.location.host : '(ssr)';
-        let debugTarget: string | null = null;
-        let debugBranch = 'unknown';
-        if (result?.success === false) {
-            debugBranch = 'error';
-        } else if (result?.success && result.user) {
-            if (result.isSuperAdmin) {
-                debugBranch = 'superAdmin → /admin';
-            } else {
-                debugTarget = computePostLoginUrl(result.tenantSlug ?? null);
-                debugBranch = debugTarget ? `redirect → ${debugTarget}` : 'fallback → /dashboard/home';
-            }
-        }
-        // eslint-disable-next-line no-alert
-        alert(
-            '🔍 LOGIN DEBUG (sacale foto y mandala)\n\n' +
-                'host: ' + debugHost + '\n' +
-                'success: ' + JSON.stringify(result?.success) + '\n' +
-                'tenantSlug: ' + JSON.stringify(result?.tenantSlug) + '\n' +
-                'isSuperAdmin: ' + JSON.stringify(result?.isSuperAdmin) + '\n' +
-                'userRole: ' + JSON.stringify(result?.user?.role) + '\n' +
-                'message: ' + JSON.stringify(result?.message) + '\n' +
-                'computePostLoginUrl: ' + JSON.stringify(debugTarget) + '\n' +
-                'branch: ' + debugBranch
-        );
-
         if (result?.success === false) {
             setError(result.message);
-        } else if (result?.success && result.user) {
-            // Sincronizar Zustand con el usuario real del JWT antes de navegar
+            return;
+        }
+        if (result?.success && result.user) {
+            // Sincronizar Zustand con el usuario real del JWT antes de navegar.
             login(result.user);
 
-            // Super admin → directo al Panel KPSULA. Toggle al dashboard
-            // disponible en el header de /admin. Reload completo para que
-            // el middleware recoja la cookie de sesión recién creada.
-            if (result.isSuperAdmin) {
-                window.location.href = '/admin';
-                return;
-            }
-
-            // ── Redirect inteligente al subdomain del tenant ────────────
-            // Si el user pertenece a un tenant con slug y estamos en root
-            // (kpsula.app), navegamos a <slug>.kpsula.app. La cookie usa
-            // domain=.kpsula.app en producción (src/lib/auth.ts), así
-            // viaja al subdomain sin reloggear.
+            // Todo el redirect (super admin → /admin, root + tenantSlug →
+            // subdomain del tenant, resto → /dashboard) vive server-side en
+            // `src/app/login/page.tsx` y se dispara cuando ese server component
+            // detecta sesión. Acá solo refrescamos el path para que el server
+            // vea la session recién creada y devuelva el redirect.
             //
-            // Defensa: si la URL no se puede calcular (sin slug, host
-            // no-kpsula, dev mode), caemos al router.push de toda la vida.
-            // Cero downgrade si algo falla.
-            const target = computePostLoginUrl(result.tenantSlug ?? null);
-            if (target) {
-                window.location.href = target;
-            } else {
-                router.push('/dashboard/home');
-            }
+            // POR QUÉ NO HACEMOS `window.location.href = ...` ACÁ:
+            // Cuando un server action termina, Next.js auto-revalida el path
+            // actual. Esa revalidación re-ejecuta el server component de /login
+            // y devuelve el redirect. Si además hacíamos `window.location.href`
+            // desde el cliente, las dos navegaciones competían (race condition
+            // entre el RSC fetch interno y la navegación browser cross-origin),
+            // crashea React #310 y el browser quedaba en kpsula.app sin
+            // redirigir al subdomain. Detalle en el commit de este fix.
+            router.refresh();
         }
     };
 
