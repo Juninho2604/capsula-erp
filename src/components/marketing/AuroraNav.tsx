@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import CapsulaLogo from '@/components/ui/CapsulaLogo';
 import { WHATSAPP_DEMO_LINK } from '@/config/marketing-contact';
+import AuroraThemeToggle from './AuroraThemeToggle';
 
 export default function AuroraNav() {
     return (
@@ -11,6 +12,7 @@ export default function AuroraNav() {
                     <CapsulaLogo variant="full" size={22} />
                 </Link>
                 <div className="flex items-center gap-5">
+                    <AuroraThemeToggle />
                     <Link href="/login" className="cap-link text-[13px]">
                         Iniciar sesión
                     </Link>
