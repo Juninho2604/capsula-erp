@@ -54,7 +54,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+          packages: 'cmdline-tools;latest platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
@@ -104,6 +104,19 @@ jobs:
           fi
           echo "$KEYSTORE_B64" | base64 -d > android/android.keystore
           test -s android/android.keystore || { echo "::error::Decoded keystore is empty"; exit 1; }
+
+      # Bubblewrap prompts interactively ("Do you want to install the JDK? (Y/n)")
+      # cuando no encuentra ~/.bubblewrap/config.json. En CI ese prompt recibe EOF
+      # y aborta con exit 130. Escribimos el config apuntando al JDK (setup-java) y
+      # al Android SDK (setup-android) ya instalados para que corra sin interacción.
+      - name: Configure Bubblewrap (non-interactive JDK + Android SDK)
+        run: |
+          set -euo pipefail
+          : "${JAVA_HOME:?JAVA_HOME no está seteado (setup-java falló?)}"
+          SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          : "${SDK_PATH:?ANDROID_HOME/ANDROID_SDK_ROOT no está seteado (setup-android falló?)}"
+          export SDK_PATH
+          node -e "const fs=require('fs'),os=require('os'),path=require('path');const dir=path.join(os.homedir(),'.bubblewrap');fs.mkdirSync(dir,{recursive:true});const cfg={jdkPath:process.env.JAVA_HOME,androidSdkPath:process.env.SDK_PATH};fs.writeFileSync(path.join(dir,'config.json'),JSON.stringify(cfg,null,2));console.log('Bubblewrap config written:',JSON.stringify(cfg));"
 
       - name: Bubblewrap init (scaffold Gradle project from manifest)
         working-directory: android
