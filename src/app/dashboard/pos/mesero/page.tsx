@@ -154,6 +154,22 @@ function formatTime(d: string | Date) {
   });
 }
 
+/**
+ * "hace X min" desde un timestamp ISO. Se usa en cada pedido cargado del
+ * POS Mesero para que el mesonero sepa cuánto lleva en cocina y pueda
+ * presionar el ritmo. Se recalcula en cada render; el auto-polling cada
+ * 15 s mantiene el valor fresco sin necesidad de un ticker dedicado.
+ */
+function formatElapsed(iso: string | Date): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms)) return "";
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "recién";
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  return `hace ${hrs} h ${mins % 60} min`;
+}
+
 // ============================================================================
 // COMPONENTE PRINCIPAL — POS MESERO (sin cobro)
 // ============================================================================
@@ -509,6 +525,14 @@ export default function POSMeseroPage() {
   const cartTotal = cart.reduce((s, i) => s + i.lineTotal, 0);
   const cartBadgeCount = cart.length;
 
+  // Elimina UN solo item del carrito por índice (antes de enviar a cocina).
+  // El cliente puede cambiar de opinión a última hora o el mesero puede
+  // haber tocado un producto por error — borrar solo ese ítem evita tener
+  // que limpiar todo el carrito y re-tomar la orden completa.
+  const removeCartItem = (index: number) => {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // ── Persistencia offline del carrito por mesa ────────────────────────────────
   // Cada `activeTab.id` tiene su propio carrito persistido en IndexedDB. Caso
   // crítico: mesero en mesa 25 sin WiFi anota 5 ítems → si la app se recarga
@@ -536,8 +560,11 @@ export default function POSMeseroPage() {
   }, [activeTab?.id]);
 
   // Al abrir "Mostrar cuenta al cliente": setear propina 10% por defecto
-  // si la tab aún no tiene propina configurada. El mesero/cliente puede
-  // cambiarlo a Sin propina, 15%, 20%, etc. desde los botones del modal.
+  // si la tab aún no tiene propina configurada O está en 0. La opción
+  // "Sin propina" fue removida del modal a pedido del operador, así que
+  // al mostrarle la cuenta al cliente siempre hay una propina sugerida
+  // (10% por default; el mesero puede subir a 15% o 20%). Incluimos el
+  // caso `=== 0` para cubrir tabs viejas creadas antes de este cambio.
   // También resetear el preview Divisas y la vista de sub-cuenta al
   // cerrar para no llevar el flag a otra mesa.
   useEffect(() => {
@@ -547,7 +574,7 @@ export default function POSMeseroPage() {
       setTabSubAccountsDetail([]);
       return;
     }
-    if (activeTab && (activeTab.tipPercent == null) && !isTipSetting) {
+    if (activeTab && (activeTab.tipPercent == null || activeTab.tipPercent === 0) && !isTipSetting) {
       void handleSetTip(10);
     }
     // Cargar detalle fresco de sub-cuentas (con items por sub) al abrir
@@ -1379,6 +1406,16 @@ export default function POSMeseroPage() {
                       <span className="text-capsula-ink font-semibold">x{item.quantity}</span> {item.name}
                     </span>
                     <span className="text-capsula-ink font-semibold ml-2 tabular-nums">${item.lineTotal.toFixed(2)}</span>
+                    {/* Borrar este item sin limpiar todo el carrito */}
+                    <button
+                      type="button"
+                      onClick={() => removeCartItem(i)}
+                      title="Quitar este artículo del pedido"
+                      aria-label={`Quitar ${item.name}`}
+                      className="ml-2 h-6 w-6 shrink-0 rounded-md text-capsula-ink-faint hover:bg-capsula-coral/10 hover:text-capsula-coral flex items-center justify-center transition-colors active:scale-90"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1492,7 +1529,15 @@ export default function POSMeseroPage() {
                 {activeTab.orders.map((order) => (
                   <div key={order.id} className="bg-capsula-ivory rounded-2xl overflow-hidden border border-capsula-line">
                     <div className="flex items-center justify-between px-3 py-2 bg-capsula-ivory-alt border-b border-capsula-line">
-                      <span className="text-[10px] font-semibold text-capsula-ink uppercase tracking-wider">#{order.orderNumber}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-semibold text-capsula-ink uppercase tracking-wider">#{order.orderNumber}</span>
+                        {/* Hora de carga + tiempo transcurrido — el mesonero usa
+                            esto para llevar el control del tiempo y presionar a
+                            cocina si un pedido lleva mucho rato. */}
+                        <span className="text-[9px] font-semibold text-capsula-ink-muted tabular-nums">
+                          {formatTime(order.createdAt)} · {formatElapsed(order.createdAt)}
+                        </span>
+                      </div>
                       <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
                         order.kitchenStatus === "SENT" ? "bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]" :
                         order.kitchenStatus === "READY" ? "bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]" :
@@ -1852,8 +1897,12 @@ export default function POSMeseroPage() {
                 {(() => {
                   const currentTipPct = activeTab.tipPercent;
                   const currentTipAmt = activeTab.tipAmount;
+                  // "Sin propina" removido a pedido del operador: al mostrar la
+                  // cuenta al cliente solo se ofrecen porcentajes. El default
+                  // 10% se auto-setea al abrir el modal (ver useEffect arriba).
+                  // El ajuste a 0 (si excepcionalmente hace falta) lo gestiona
+                  // el cajero al momento del cobro real.
                   const tipOptions = [
-                    { label: 'Sin propina', pct: 0 },
                     { label: '10%', pct: 10 },
                     { label: '15%', pct: 15 },
                     { label: '20%', pct: 20 },
@@ -1861,7 +1910,7 @@ export default function POSMeseroPage() {
                   return (
                     <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-3 space-y-2">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propina</p>
-                      <div className="grid grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-3 gap-1.5">
                         {tipOptions.map(({ label, pct }) => {
                           const isActive = currentTipPct !== null && currentTipPct !== undefined && currentTipPct === pct;
                           return (
@@ -1885,9 +1934,6 @@ export default function POSMeseroPage() {
                           <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-wider">Propina {currentTipPct}%</span>
                           <span className="text-sm font-semibold text-[#2F6B4E] dark:text-[#6FB88F] tabular-nums">${currentTipAmt.toFixed(2)}</span>
                         </div>
-                      )}
-                      {currentTipPct === 0 && (
-                        <p className="text-[10px] text-capsula-ink-muted font-semibold">Cliente indicó: sin propina</p>
                       )}
                     </div>
                   );
