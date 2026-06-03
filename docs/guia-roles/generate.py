@@ -76,7 +76,7 @@ def cover_page():
   </div>
   <div class="meta">
     <div class="item"><div class="l">Versión</div><div class="v">1.0 · Junio 2026</div></div>
-    <div class="item"><div class="l">Alcance</div><div class="v">10 roles · 47 módulos</div></div>
+    <div class="item"><div class="l">Alcance</div><div class="v">9 roles · 47 módulos</div></div>
     <div class="item"><div class="l">Confidencial</div><div class="v">Uso interno</div></div>
   </div>
 </section>'''
