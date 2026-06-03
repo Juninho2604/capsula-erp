@@ -27,19 +27,19 @@
       "name": "POS Restaurante",
       "shortName": "Restaurante",
       "url": "/dashboard/pos/restaurante",
-      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+      "chosenIconUrl": "https://kpsula.app/icons/icon-192.png"
     },
     {
       "name": "POS Mesero",
       "shortName": "Mesero",
       "url": "/dashboard/pos/mesero",
-      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+      "chosenIconUrl": "https://kpsula.app/icons/icon-192.png"
     },
     {
       "name": "POS Delivery",
       "shortName": "Delivery",
       "url": "/dashboard/pos/delivery",
-      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+      "chosenIconUrl": "https://kpsula.app/icons/icon-192.png"
     }
   ],
   "generatorApp": "bubblewrap-cli",
