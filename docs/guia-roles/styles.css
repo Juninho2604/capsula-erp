@@ -1,0 +1,254 @@
+/* ============================================================================
+   KPSULA — Guía de Uso por Rol
+   Sistema de diseño para PDF (weasyprint). Paleta Minimal Navy.
+   ============================================================================ */
+
+/* ---- Fuente de marca: Inter Tight (incrustada) ---- */
+@font-face { font-family: 'Inter Tight'; font-weight: 400; src: url('fonts/InterTight-Regular.ttf'); }
+@font-face { font-family: 'Inter Tight'; font-weight: 500; src: url('fonts/InterTight-Medium.ttf'); }
+@font-face { font-family: 'Inter Tight'; font-weight: 600; src: url('fonts/InterTight-SemiBold.ttf'); }
+@font-face { font-family: 'Inter Tight'; font-weight: 700; src: url('fonts/InterTight-Bold.ttf'); }
+@font-face { font-family: 'Inter Tight'; font-weight: 800; src: url('fonts/InterTight-ExtraBold.ttf'); }
+
+/* ---- Tokens de color (Minimal Navy) ---- */
+:root {
+  --navy-deep:    #0B1727;
+  --navy:         #1B2A3A;
+  --navy-light:   #253D5C;
+  --navy-soft:    #E6EAEF;
+  --coral:        #F25C3B;
+  --coral-hover:  #D84A2A;
+  --coral-subtle: #F5E4DD;
+  --ivory:        #F7F5F0;
+  --ivory-surface:#FDFBF7;
+  --ivory-alt:    #EFECE5;
+  --line:         #E7E2D7;
+  --line-strong:  #D8D2C3;
+  --ink:          #0F1A2A;
+  --ink-soft:     #3A4656;
+  --ink-muted:    #6B7584;
+  --ink-faint:    #94A0B0;
+  --cream:        #F7F5F0;
+  --gold:         #FFD93D;
+
+  --ok-bg:#E5EDE7; --ok-fg:#2F6B4E;
+  --warn-bg:#F3EAD6; --warn-fg:#946A1C;
+  --danger-bg:#F7E3DB; --danger-fg:#B04A2E;
+  --info-bg:#E6ECF4; --info-fg:#2A4060;
+}
+
+/* ============================================================================
+   PÁGINA / IMPRESIÓN
+   ============================================================================ */
+@page {
+  size: A4;
+  margin: 20mm 18mm 18mm 18mm;
+  @bottom-left {
+    content: "KPSULA · Guía de uso por rol";
+    font-family: 'Inter Tight'; font-size: 7.5pt; color: #94A0B0;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  @bottom-right {
+    content: counter(page);
+    font-family: 'Inter Tight'; font-size: 8pt; font-weight: 600; color: #6B7584;
+  }
+}
+
+/* Portada y secciones a sangre completa: sin márgenes ni footer */
+@page cover { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page nofooter { @bottom-left { content: none; } @bottom-right { content: none; } }
+
+/* ============================================================================
+   BASE
+   ============================================================================ */
+* { box-sizing: border-box; }
+html { font-family: 'Inter Tight', sans-serif; color: var(--ink); }
+body { margin: 0; font-size: 10pt; line-height: 1.5; -weasy-hyphens: none; }
+
+h1,h2,h3,h4 { font-weight: 600; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+p { margin: 0 0 0.6em 0; }
+strong { font-weight: 600; }
+em { font-style: normal; color: var(--coral); font-weight: 600; }
+
+.kicker {
+  font-size: 8pt; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--ink-muted); margin: 0 0 4pt 0;
+}
+.coral-kicker { color: var(--coral); }
+
+/* ============================================================================
+   PORTADA
+   ============================================================================ */
+.cover {
+  page: cover; page-break-after: always;
+  background: var(--navy-deep); color: var(--cream);
+  height: 297mm; width: 210mm; position: relative; overflow: hidden;
+  padding: 28mm 22mm;
+}
+.cover .glow {
+  position: absolute; width: 320mm; height: 320mm; border-radius: 50%;
+  background: radial-gradient(circle, rgba(242,92,59,0.22) 0%, rgba(242,92,59,0) 62%);
+  top: -120mm; right: -120mm;
+}
+.cover .logo { display: flex; align-items: center; gap: 10pt; position: relative; }
+.cover .logo .mark {
+  width: 30pt; height: 19pt; border-radius: 10pt; background: var(--coral);
+  display: inline-flex; align-items: center; gap: 2.5pt; padding: 0 5pt;
+}
+.cover .logo .mark span { width: 3pt; border-radius: 2pt; background: rgba(255,255,255,0.92); }
+.cover .logo .mark span:nth-child(1){ height: 8pt; }
+.cover .logo .mark span:nth-child(2){ height: 12pt; opacity: 0.78; }
+.cover .logo .mark span:nth-child(3){ height: 6pt; opacity: 0.55; }
+.cover .logo .word { font-size: 17pt; font-weight: 800; letter-spacing: -0.02em; color: var(--cream); }
+.cover .logo .word b { color: var(--coral); font-weight: 800; }
+
+.cover .center { position: absolute; left: 22mm; right: 22mm; top: 110mm; }
+.cover h1 {
+  color: var(--cream); font-size: 40pt; font-weight: 800; line-height: 1.02;
+  letter-spacing: -0.03em; margin: 0 0 10pt 0;
+}
+.cover h1 .accent { color: var(--coral); }
+.cover .sub { font-size: 12.5pt; color: #AEB9C6; max-width: 130mm; line-height: 1.45; }
+.cover .meta {
+  position: absolute; left: 22mm; right: 22mm; bottom: 26mm;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  border-top: 1px solid rgba(255,255,255,0.14); padding-top: 9pt;
+}
+.cover .meta .item .l { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.14em; color: #6E7C8C; }
+.cover .meta .item .v { font-size: 10pt; font-weight: 600; color: var(--cream); margin-top: 2pt; }
+
+/* ============================================================================
+   ENCABEZADOS DE SECCIÓN
+   ============================================================================ */
+.section-open { page-break-before: always; }
+.h2-band {
+  display: flex; align-items: baseline; gap: 10pt;
+  border-bottom: 2px solid var(--ink); padding-bottom: 7pt; margin: 0 0 14pt 0;
+}
+.h2-band .num {
+  font-size: 11pt; font-weight: 800; color: var(--coral);
+  font-variant-numeric: tabular-nums;
+}
+.h2-band h2 { font-size: 20pt; font-weight: 700; }
+
+h3 { font-size: 13pt; font-weight: 600; margin: 16pt 0 6pt 0; }
+h3.with-rule { border-left: 3px solid var(--coral); padding-left: 8pt; }
+h4 { font-size: 11pt; font-weight: 600; margin: 12pt 0 4pt 0; color: var(--ink-soft); }
+
+/* ============================================================================
+   COMPONENTES
+   ============================================================================ */
+
+/* --- Lead / intro de sección --- */
+.lead { font-size: 11.5pt; color: var(--ink-soft); line-height: 1.55; max-width: 165mm; }
+
+/* --- Card de rol (cabecera de cada sección de rol) --- */
+.role-card {
+  background: var(--navy-deep); color: var(--cream); border-radius: 14pt;
+  padding: 16pt 18pt; margin: 0 0 14pt 0; position: relative; overflow: hidden;
+}
+.role-card .rk { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.16em; color: var(--coral); font-weight: 600; }
+.role-card .rname { font-size: 22pt; font-weight: 800; letter-spacing: -0.02em; margin: 3pt 0 2pt 0; color: var(--cream); }
+.role-card .rdesc { font-size: 10pt; color: #AEB9C6; max-width: 140mm; }
+.role-card .rlevel {
+  position: absolute; top: 14pt; right: 16pt; text-align: right;
+}
+.role-card .rlevel .ll { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.12em; color: #6E7C8C; }
+.role-card .rlevel .lv { font-size: 24pt; font-weight: 800; color: var(--gold); line-height: 1; }
+
+/* --- Chips de módulo --- */
+.chips { display: flex; flex-wrap: wrap; gap: 5pt; margin: 6pt 0 4pt 0; }
+.chip {
+  font-size: 8.5pt; font-weight: 600; padding: 3pt 8pt; border-radius: 20pt;
+  background: var(--ivory-alt); color: var(--ink-soft); border: 1px solid var(--line);
+}
+.chip.on { background: var(--coral-subtle); color: var(--coral-hover); border-color: #EFD2C8; }
+
+/* --- Pasos numerados (tutorial) --- */
+.steps { counter-reset: step; margin: 8pt 0 4pt 0; padding: 0; list-style: none; }
+.steps > li {
+  counter-increment: step; position: relative; padding: 0 0 9pt 26pt; margin: 0;
+  break-inside: avoid;
+}
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: -1pt;
+  width: 17pt; height: 17pt; border-radius: 50%;
+  background: var(--navy-deep); color: var(--cream);
+  font-size: 9pt; font-weight: 700; text-align: center; line-height: 17pt;
+}
+.steps > li::after {
+  content: ''; position: absolute; left: 8pt; top: 18pt; bottom: 2pt; width: 1.5px;
+  background: var(--line-strong);
+}
+.steps > li:last-child::after { display: none; }
+.steps > li .st { font-weight: 600; color: var(--ink); }
+.steps > li .sd { color: var(--ink-soft); font-size: 9.5pt; }
+
+/* --- Callouts (ok/warn/danger/info) --- */
+.callout {
+  border-radius: 10pt; padding: 9pt 12pt 9pt 12pt; margin: 9pt 0; font-size: 9.5pt;
+  border: 1px solid transparent; break-inside: avoid; line-height: 1.45;
+}
+.callout .ct { font-weight: 600; display: block; margin-bottom: 1pt; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.1em; }
+.callout.ok     { background: var(--ok-bg); color: var(--ok-fg); border-color: #CFE0D6; }
+.callout.warn   { background: var(--warn-bg); color: var(--warn-fg); border-color: #E7D7B6; }
+.callout.danger { background: var(--danger-bg); color: var(--danger-fg); border-color: #ECC9BC; }
+.callout.info   { background: var(--info-bg); color: var(--info-fg); border-color: #CDD9E8; }
+
+/* --- Tabla de capacidades / permisos --- */
+table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 9pt; }
+thead th {
+  font-size: 7.5pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-muted); text-align: left; padding: 5pt 7pt; border-bottom: 1.5px solid var(--ink);
+}
+tbody td { padding: 5pt 7pt; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-soft); }
+tbody tr:nth-child(even) td { background: var(--ivory-surface); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.yes { color: var(--ok-fg); font-weight: 700; }
+.no  { color: var(--danger-fg); font-weight: 700; }
+.ro  { color: var(--info-fg); font-weight: 600; }
+
+/* --- "Puede / No puede" dos columnas --- */
+.cando { display: flex; gap: 10pt; margin: 8pt 0; break-inside: avoid; }
+.cando .col { flex: 1; border-radius: 10pt; padding: 9pt 11pt; }
+.cando .col.can { background: var(--ok-bg); }
+.cando .col.cant { background: var(--danger-bg); }
+.cando .col h5 { margin: 0 0 4pt 0; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.1em; }
+.cando .col.can h5 { color: var(--ok-fg); }
+.cando .col.cant h5 { color: var(--danger-fg); }
+.cando .col ul { margin: 0; padding-left: 12pt; }
+.cando .col li { font-size: 9pt; margin-bottom: 2pt; color: var(--ink-soft); }
+
+/* --- Mockup esquemático de pantalla --- */
+.mock {
+  border: 1px solid var(--line-strong); border-radius: 10pt; overflow: hidden;
+  margin: 9pt 0; break-inside: avoid; background: var(--ivory-surface);
+}
+.mock .bar { background: var(--navy-deep); color: var(--cream); padding: 6pt 10pt; font-size: 8.5pt; font-weight: 600; display: flex; align-items: center; gap: 6pt; }
+.mock .bar .dot { width: 6pt; height: 6pt; border-radius: 50%; background: var(--coral); }
+.mock .body { padding: 10pt; font-size: 8.5pt; color: var(--ink-soft); }
+.mock .row { display: flex; gap: 6pt; margin-bottom: 6pt; }
+.mock .tile { flex: 1; background: var(--ivory-alt); border: 1px solid var(--line); border-radius: 6pt; padding: 7pt; text-align: center; font-size: 8pt; font-weight: 600; color: var(--ink-soft); }
+.mock .tile.accent { background: var(--coral); color: #fff; border-color: var(--coral); }
+
+/* --- Pills inline (teclas/botones) --- */
+.pill {
+  display: inline-block; font-size: 8.5pt; font-weight: 600; padding: 1pt 6pt;
+  border-radius: 5pt; background: var(--navy-soft); color: var(--navy-light); border: 1px solid var(--line);
+}
+
+/* --- Índice (TOC) --- */
+.toc { margin-top: 8pt; }
+.toc .row { display: flex; align-items: baseline; gap: 8pt; padding: 5pt 0; border-bottom: 1px dotted var(--line-strong); }
+.toc .row .n { font-weight: 800; color: var(--coral); width: 22pt; font-variant-numeric: tabular-nums; }
+.toc .row .t { font-weight: 600; color: var(--ink); flex: 1; }
+.toc .row .t .sub { font-weight: 400; color: var(--ink-muted); font-size: 9pt; }
+
+/* --- Separadores y utilidades --- */
+.divider { height: 1px; background: var(--line); margin: 12pt 0; border: none; }
+.muted { color: var(--ink-muted); }
+.small { font-size: 8.5pt; }
+.center { text-align: center; }
+.avoid { break-inside: avoid; }
+.grid2 { display: flex; gap: 12pt; }
+.grid2 > * { flex: 1; }
