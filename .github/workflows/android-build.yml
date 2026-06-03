@@ -1,0 +1,164 @@
+name: Android APK Build
+
+# Buildea el APK Trusted Web Activity (TWA) desde android/twa-manifest.json
+# usando Bubblewrap CLI y lo firma con el keystore guardado en secrets.
+#
+# Secrets requeridos (creados por android-keystore-bootstrap.yml):
+#   ANDROID_KEYSTORE_BASE64
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_PASSWORD
+#   ANDROID_KEY_ALIAS
+#
+# Triggers:
+#   - workflow_dispatch (manual desde la pestaña Actions)
+#   - push de tag vX.Y.Z (genera release de GitHub con el APK adjunto)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (semver, ej: 1.0.0)'
+        required: true
+        default: '1.0.0'
+        type: string
+      version_code:
+        description: 'Version code (entero monotónico)'
+        required: true
+        default: '1'
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build signed TWA APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Determine version (from tag or input)
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+            VERSION_CODE=$(date +%s)
+          else
+            VERSION_NAME="${{ inputs.version_name }}"
+            VERSION_CODE="${{ inputs.version_code }}"
+          fi
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "Building KPSULA ERP v$VERSION_NAME (code $VERSION_CODE)"
+
+      - name: Patch twa-manifest with version + signing key
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          cd android
+          # Apunta la ruta del keystore al workspace y aplica versiones
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('twa-manifest.json','utf8'));
+            m.appVersionName = process.env.VERSION_NAME;
+            m.appVersionCode = parseInt(process.env.VERSION_CODE, 10);
+            m.signingKey = { path: './android.keystore', alias: process.env.KEY_ALIAS };
+            fs.writeFileSync('twa-manifest.json', JSON.stringify(m, null, 2));
+            console.log('twa-manifest.json patched: v' + m.appVersionName + ' (code ' + m.appVersionCode + ')');
+          "
+
+      - name: Restore keystore from secret
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_B64:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. Run android-keystore-bootstrap.yml first."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/android.keystore
+          test -s android/android.keystore || { echo "::error::Decoded keystore is empty"; exit 1; }
+
+      - name: Bubblewrap init (scaffold Gradle project from manifest)
+        working-directory: android
+        run: |
+          set -euo pipefail
+          bubblewrap init --manifest=./twa-manifest.json --directory=. || true
+          # `bubblewrap init` is idempotent for re-scaffolding; failures here are usually
+          # benign (project already exists). We rely on `bubblewrap build` below to fail
+          # on real errors.
+
+      - name: Bubblewrap build (assembles signed APK)
+        working-directory: android
+        env:
+          # Bubblewrap reads these env vars when present and skips the interactive
+          # password prompts.
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          bubblewrap build \
+            --skipPwaValidation \
+            --signingKeyPath=./android.keystore \
+            --signingKeyAlias=kpsula
+
+      - name: Locate built APK
+        id: apk
+        working-directory: android
+        run: |
+          set -euo pipefail
+          APK_PATH=$(find . -name "app-release-signed.apk" -type f | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::Signed APK not found after build."
+            find . -name "*.apk" -type f
+            exit 1
+          fi
+          FINAL_NAME="kpsula-erp-v${{ steps.version.outputs.name }}.apk"
+          cp "$APK_PATH" "$FINAL_NAME"
+          echo "path=android/$FINAL_NAME" >> "$GITHUB_OUTPUT"
+          echo "name=$FINAL_NAME" >> "$GITHUB_OUTPUT"
+          ls -la "$FINAL_NAME"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Create GitHub Release (on tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: KPSULA ERP ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.apk.outputs.path }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true

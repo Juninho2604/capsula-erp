@@ -1,0 +1,11 @@
+# Bubblewrap / TWA build artifacts — never commit
+android.keystore
+android.keystore.b64
+keystore-info.txt
+app-release-bundle.aab
+app-release-signed.apk
+app-release-unsigned.apk
+build/
+.gradle/
+app/build/
+local.properties
