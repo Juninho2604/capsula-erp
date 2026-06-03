@@ -1,0 +1,60 @@
+{
+  "packageId": "app.kpsula.erp",
+  "host": "kpsula.app",
+  "name": "KPSULA ERP",
+  "launcherName": "KPSULA",
+  "display": "standalone",
+  "orientation": "any",
+  "themeColor": "#1B2438",
+  "navigationColor": "#1B2438",
+  "navigationColorDark": "#1B2438",
+  "navigationDividerColor": "#1B2438",
+  "navigationDividerColorDark": "#1B2438",
+  "backgroundColor": "#1B2438",
+  "enableNotifications": true,
+  "startUrl": "/dashboard",
+  "iconUrl": "https://kpsula.app/icons/icon-512.png",
+  "maskableIconUrl": "https://kpsula.app/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "kpsula"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "POS Restaurante",
+      "shortName": "Restaurante",
+      "url": "/dashboard/pos/restaurante",
+      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+    },
+    {
+      "name": "POS Mesero",
+      "shortName": "Mesero",
+      "url": "/dashboard/pos/mesero",
+      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+    },
+    {
+      "name": "POS Delivery",
+      "shortName": "Delivery",
+      "url": "/dashboard/pos/delivery",
+      "iconUrl": "https://kpsula.app/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://kpsula.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://kpsula.app/",
+  "minSdkVersion": 21,
+  "orientationLockOptions": {
+    "lockOrientation": false
+  }
+}
