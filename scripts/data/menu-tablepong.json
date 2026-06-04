@@ -1,0 +1,3504 @@
+{
+  "source": "neon combined shanklish+tablepong (pre-multitenant DB) — full menu served at Table Pong",
+  "extractedAt": "2026-06-01",
+  "totalCategories": 28,
+  "totalItems": 330,
+  "categories": [
+    {
+      "name": "Cocteles y Tragos",
+      "sortOrder": 10,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "COC-AMARETTO",
+          "name": "Amaretto (2 Oz)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-APEROL-SPRITZ",
+          "name": "Aperol Spritz",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-BERLIN-MULE",
+          "name": "Berlin Mule",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-CLOVER-CLUB",
+          "name": "Clover Club",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-COSMOPOLITAN",
+          "name": "Cosmopolitan",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-DAIQUIRI",
+          "name": "Daiquiri",
+          "description": null,
+          "price": 8,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-DISARONNO-SOUR",
+          "name": "Disaronno Sour",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-ESPRESSO-MARTINI",
+          "name": "Espresso Martini",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-GIN-TONIC",
+          "name": "Gin Tonic",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-GINEBRA",
+          "name": "Ginebra (2 Oz)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-JAGGER-MOJITO",
+          "name": "Jagger Mojito",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-KAIPIROSKA",
+          "name": "Kaipiroska",
+          "description": null,
+          "price": 8,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-MOJITO",
+          "name": "Mojito",
+          "description": null,
+          "price": 8,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-MOSCOW-MULE",
+          "name": "Moscow Mule",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-NEGRONI",
+          "name": "Negroni",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-ORGASMO",
+          "name": "Orgasmo",
+          "description": null,
+          "price": 10,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-PALOMA",
+          "name": "Paloma",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-PINA-COLADA",
+          "name": "Piña Colada",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-RON",
+          "name": "Ron (2 Oz)",
+          "description": null,
+          "price": 5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-SAMBUCA",
+          "name": "Sambuca (2 Oz)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-TINTO-VERANO",
+          "name": "Tinto de Verano",
+          "description": null,
+          "price": 7,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-VODKA",
+          "name": "Vodka (2 Oz)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COC-WHISKEY",
+          "name": "Whiskey (2 Oz)",
+          "description": null,
+          "price": 8,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "ESPECIALIDADES DE LA CASA",
+      "sortOrder": 10,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "ALB-316",
+          "name": "ALBUM PANINI TAPA BLANDA",
+          "description": null,
+          "price": 7,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ALB-319",
+          "name": "ALBUM PANINI TAPA BLANDA (CASH)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ALB-314",
+          "name": "ALBUM PANINI TAPA DURA",
+          "description": null,
+          "price": 25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ALB-321",
+          "name": "ALBUM PANINI TAPA DURA (CASH)",
+          "description": null,
+          "price": 21,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ALB-315",
+          "name": "ALBUM PANINI TAPA DURA GOLD",
+          "description": null,
+          "price": 30,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ALB-320",
+          "name": "ALBUM PANINI TAPA DURA GOLD (CASH)",
+          "description": null,
+          "price": 25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ARM-299",
+          "name": "ARMA TU TABLA",
+          "description": null,
+          "price": 37.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ARM-155",
+          "name": "Arma Tu Shanklish",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "BUR-160",
+          "name": "Burger Pong",
+          "description": null,
+          "price": 15,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAJ-317",
+          "name": "CAJA DE 104 SOBRES PANINI",
+          "description": null,
+          "price": 228.8,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAJ-322",
+          "name": "CAJA DE 104 SOBRES PANINI (CASH)",
+          "description": null,
+          "price": 190,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COV-325",
+          "name": "COVER INTERCAMBIO DE BARAJITAS",
+          "description": null,
+          "price": 5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CACHAPA-QUE",
+          "name": "Cachapa con Queso",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "DEL-330",
+          "name": "Delivery",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "HOT-297",
+          "name": "Hot Dog Premium",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "INS-324",
+          "name": "INSCRIPCION TORNEO DE POOL INDIVIDUAL",
+          "description": null,
+          "price": 10,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-308",
+          "name": "MITAD PISO DE ABAJO- MEDIA HORA",
+          "description": null,
+          "price": 37.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-309",
+          "name": "MITAD PISO DE ABAJO- MEDIA HORA  (VIERNES Y SABADO ENTRE 7:00 P.M a 2:00 A.M.)",
+          "description": null,
+          "price": 56.25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-306",
+          "name": "MITAD PISO DE ARRIBA- MEDIA HORA",
+          "description": null,
+          "price": 37.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-302",
+          "name": "MITAD PISO DE ARRIBA- MEDIA HORA  (VIERNES Y SABADO ENTRE 7:00 P.M a 2:00 A.M.)",
+          "description": null,
+          "price": 56.25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIN-296",
+          "name": "Mini Cachapa",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-305",
+          "name": "Mitad Piso - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIT-304",
+          "name": "Mitad Piso Abajo - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 56.25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "NUG-255",
+          "name": "Nuggets",
+          "description": null,
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PIS-310",
+          "name": "PISO DE ABAJO - MEDIA HORA",
+          "description": null,
+          "price": 75,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PIS-311",
+          "name": "PISO DE ABAJO- MEDIA HORA (VIERNES Y SABADO ENTRE 7:00 P.M a 2:00 A.M.)",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PIS-307",
+          "name": "PISO DE ARRIBA - MEDIA HORA",
+          "description": null,
+          "price": 75,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PIS-303",
+          "name": "PISO DE ARRIBA - MEDIA HORA (VIERNES Y SABADO ENTRE 7:00 P.M a 2:00 A.M.)",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PRO-271",
+          "name": "PROMO 1 CACHAPA 1 REFRESCO",
+          "description": null,
+          "price": 7,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PRO-312",
+          "name": "PROMO 2X1 Hot Dog Premium",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PRO-313",
+          "name": "PROMO 2X1 Hot Dog TRADICIONAL",
+          "description": null,
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PRO-270",
+          "name": "PROMO MIERCOLES 2 PERROS Y 1 REFRESCO",
+          "description": null,
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PAS-159",
+          "name": "Pastelitos (Pollo o Carne)",
+          "description": "5und",
+          "price": 7.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SOB-318",
+          "name": "SOBRE PANINI 7 BARAJITAS",
+          "description": null,
+          "price": 2.2,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SOB-323",
+          "name": "SOBRE PANINI 7 BARAJITAS (CASH)",
+          "description": null,
+          "price": 2,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TEQ-158",
+          "name": "Tequeños",
+          "description": "5und",
+          "price": 7.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "HOT DOGS",
+      "sortOrder": 20,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-HOTDOG-TRAD",
+          "name": "Hot Dog Tradicional",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "Shanklish Caracas",
+      "sortOrder": 20,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "SHNK-ARROZ-250",
+          "name": "Arroz con Pollo Libanés 250gr",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-ARROZ-500",
+          "name": "Arroz con Pollo Libanés 500gr",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BABA-125",
+          "name": "Babaganoush 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BABA-250",
+          "name": "Babaganoush 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BAKLAVA-3",
+          "name": "Baklava (3 und)",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BAKLAVA-5",
+          "name": "Baklava (5 und)",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BAST-GRD",
+          "name": "Basturma Porción Grande",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BAST-PEQ",
+          "name": "Basturma Porción Pequeña",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BROOKIE",
+          "name": "Brookie",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-BURGER-350",
+          "name": "Burger Árabe Shanklish (350gr)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-CHEESEC-FRESA",
+          "name": "Cheese Cake Fresa",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-CHEESEC-PIST",
+          "name": "Cheese Cake Pistacho",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-FALAFEL-14",
+          "name": "Falafel (14 und)",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-FALAFEL-7",
+          "name": "Falafel (7 und)",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-FATTOUSH-125",
+          "name": "Fattoush 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-FATTOUSH-250",
+          "name": "Fattoush 250gr",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-FATULE-250",
+          "name": "Fatule 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HELADO-GRD",
+          "name": "Helado Lata Grande",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HELADO-PEQ",
+          "name": "Helado Lata Pequeña",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HUMMESP-125",
+          "name": "Hummus Especial 125gr",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HUMMESP-250",
+          "name": "Hummus Especial 250gr",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HUMMTRAD-125",
+          "name": "Hummus Tradicional 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-HUMMTRAD-250",
+          "name": "Hummus Tradicional 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBCR-250",
+          "name": "Kibbe Crudo 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBCR-500",
+          "name": "Kibbe Crudo 500gr",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBFR-10",
+          "name": "Kibbe Frito (10 und)",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBFR-5",
+          "name": "Kibbe Frito (5 und)",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBHORNO-250",
+          "name": "Kibbe Horneado 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBHORNO-500",
+          "name": "Kibbe Horneado 500gr",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-LABANKHIAR-125",
+          "name": "Laban bi Khiar 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-LABANKHIAR-250",
+          "name": "Laban bi Khiar 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-LABNEH-125",
+          "name": "Labneh 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-LABNEH-250",
+          "name": "Labneh 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBMINI-10",
+          "name": "Mini Kibbe Frito (10 und)",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-KIBMINI-20",
+          "name": "Mini Kibbe Frito (20 und)",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PIZZA-5",
+          "name": "Mini Pizza Zaatar (5 und)",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PIZZA-8",
+          "name": "Mini Pizza Zaatar (8 und)",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-MUHAM-125",
+          "name": "Muhammara 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-MUHAM-250",
+          "name": "Muhammara 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAN-1",
+          "name": "Pan Árabe (1 und)",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAN-BOLSA",
+          "name": "Pan Árabe (bolsa)",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAN-FRITO",
+          "name": "Pan Árabe Frito",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAN-TOST",
+          "name": "Pan Árabe Tostado",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAPAS",
+          "name": "Papas Fritas",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PAPAS-TRUF",
+          "name": "Papas Fritas Truffle",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PINCHO-CARNE",
+          "name": "Pincho Carne (x3)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PINCHO-MIXTO",
+          "name": "Pincho Mixto (x3)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PINCHO-POLLO",
+          "name": "Pincho Pollo (x3)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHA-295",
+          "name": "SHAWARMA MIXTO 250GR",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SAMBOU-3",
+          "name": "Sambousek (3 und)",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SAMBOU-5",
+          "name": "Sambousek (5 und)",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-ORIG-12",
+          "name": "Shanklish (12\")",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PESTO-125",
+          "name": "Shanklish Pesto 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PESTO-250",
+          "name": "Shanklish Pesto 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PICA-12",
+          "name": "Shanklish Picante (12\")",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PICAP-125",
+          "name": "Shanklish Picante 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-PICAP-250",
+          "name": "Shanklish Picante 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TOMATE-125",
+          "name": "Shanklish Tomato Seco 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TOMATE-250",
+          "name": "Shanklish Tomato Seco 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TRAD-125",
+          "name": "Shanklish Traditional 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TRAD-250",
+          "name": "Shanklish Traditional 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TRAD-500",
+          "name": "Shanklish Traditional 500gr",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-MEREY-125",
+          "name": "Shanklish con Merey 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-MEREY-250",
+          "name": "Shanklish con Merey 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWCARNE-350",
+          "name": "Shawarma Carne 350gr",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWCARNE-FULL",
+          "name": "Shawarma Carne Full",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWCARNE-HALF",
+          "name": "Shawarma Carne Half",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWFLFL-350",
+          "name": "Shawarma Falafel 350gr",
+          "description": null,
+          "price": 13.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWFLFL-FULL",
+          "name": "Shawarma Falafel Full",
+          "description": null,
+          "price": 18,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWFLFL-HALF",
+          "name": "Shawarma Falafel Half",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWMIX-350",
+          "name": "Shawarma Mixto 350gr",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWMIX-FULL",
+          "name": "Shawarma Mixto Full",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWMIX-HALF",
+          "name": "Shawarma Mixto Half",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWPOLLO-350",
+          "name": "Shawarma Pollo 350gr",
+          "description": null,
+          "price": 13.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWPOLLO-FULL",
+          "name": "Shawarma Pollo Full",
+          "description": null,
+          "price": 18,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWPOLLO-HALF",
+          "name": "Shawarma Pollo Half",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSKFL-350",
+          "name": "Shawarma Shakifel 350gr",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSKFL-FULL",
+          "name": "Shawarma Shakifel Full",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSKFL-HALF",
+          "name": "Shawarma Shakifel Half",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSC-350",
+          "name": "Shawarma Shanklish Caracas 350gr",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSC-FULL",
+          "name": "Shawarma Shanklish Caracas Full",
+          "description": null,
+          "price": 19.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-SHWSC-HALF",
+          "name": "Shawarma Shanklish Caracas Half",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TABAQ-14",
+          "name": "Tabaquitos (14 und)",
+          "description": null,
+          "price": 16.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TABAQ-7",
+          "name": "Tabaquitos (7 und)",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TABU-125",
+          "name": "Tabule 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TABU-250",
+          "name": "Tabule 250gr",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TARATOR-125",
+          "name": "Tarator (Crema Ajonjolí) 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TARATOR-250",
+          "name": "Tarator (Crema Ajonjolí) 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TOUM-125",
+          "name": "Toum (Crema de Ajo) 125gr",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SHNK-TOUM-250",
+          "name": "Toum (Crema de Ajo) 250gr",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "SNACKS",
+      "sortOrder": 30,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-COTUFAS-G",
+          "name": "Cotufas Grandes",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COTUFAS-P",
+          "name": "Cotufas Pequeñas",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "DOR-157",
+          "name": "Doritos",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CHUCHERIAS",
+          "name": "Ruffles",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "ARGUILE",
+      "sortOrder": 40,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-ARGUILE-REC",
+          "name": "Recarga Narguile",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ARGUILE-SERV",
+          "name": "Servicio de Narguile",
+          "description": null,
+          "price": 30,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "CERVEZAS",
+      "sortOrder": 50,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-CERV-BUD",
+          "name": "Budweiser lata 269ml",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-CORONA",
+          "name": "Corona lata 269ml",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-HEINE",
+          "name": "Heineken",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MIC-156",
+          "name": "Michelada",
+          "description": null,
+          "price": 1,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-MOD",
+          "name": "Modelo",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-POLAR",
+          "name": "Polarcita",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-PRES",
+          "name": "Presidente",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-SOL-A",
+          "name": "Solera Azul",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-SOL-V",
+          "name": "Solera Verde",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-STELLA",
+          "name": "Stella",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TOB-298",
+          "name": "TOBO PROMO CHAMPIONS",
+          "description": null,
+          "price": 10,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CERV-TOBO",
+          "name": "Tobo de Cervezas (Polar/Solera)",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "BEBIDAS",
+      "sortOrder": 60,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-BEB-7UP",
+          "name": "7UP",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "7UP-251",
+          "name": "7UP 2L",
+          "description": null,
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-AGUA-G",
+          "name": "Agua Grande",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-AGUA-P",
+          "name": "Agua Pequeña",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-AGUA-SP",
+          "name": "Agua Sparkling",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "AGU-153",
+          "name": "Aguakina",
+          "description": "lata de aguakina",
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAR-252",
+          "name": "Caroreña Mojito",
+          "description": null,
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-GATOR",
+          "name": "Gatorade",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-JUGOS",
+          "name": "Jugos",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-LIMON",
+          "name": "Limonada con Hierbabuena",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-LIPT-D",
+          "name": "Lipton Durazno",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-LIPT-L",
+          "name": "Lipton Limón",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MAL-148",
+          "name": "Malta",
+          "description": null,
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "PEP-250",
+          "name": "PEPSI 2L",
+          "description": null,
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-BEB-PEPSI",
+          "name": "Pepsi",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "SOD-152",
+          "name": "Soda",
+          "description": "Lata de Soda 355ml",
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "CAFÉS",
+      "sortOrder": 70,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-CAF-AMER-G",
+          "name": "Americano Grande",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-AMER-P",
+          "name": "Americano Pequeño",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-ARAB",
+          "name": "Café Árabe",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-CAP-G",
+          "name": "Cappuccino Grande",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-CAP-P",
+          "name": "Cappuccino Pequeño",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CHO-301",
+          "name": "Chocolate Caliente",
+          "description": null,
+          "price": 3,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-EXP-D",
+          "name": "Expresso Doble",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-EXP-S",
+          "name": "Expresso Simple",
+          "description": null,
+          "price": 3,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-LATTE",
+          "name": "Latte",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-MACCH",
+          "name": "Macchiato",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-CAF-MOCA",
+          "name": "Moccaccino",
+          "description": null,
+          "price": 4.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "POSTRES",
+      "sortOrder": 80,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "HEL-253",
+          "name": "Helado Mixto",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-POST-CHOC",
+          "name": "Helado de Chocolate",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-POST-MANT",
+          "name": "Helado de Mantecado",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "FOOD",
+          "kitchenRouting": "KITCHEN",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "EXTRAS",
+      "sortOrder": 90,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-EXT-CARORE",
+          "name": "Caroreña de Lata",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "LUC-154",
+          "name": "Cigarros Lucky Strike",
+          "description": "caja de cigarros",
+          "price": 6,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EXT-POLAR-P",
+          "name": "Polar Pilsen de Lata",
+          "description": null,
+          "price": 1.5,
+          "serviceCategory": "PACKAGED_DRINK",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "VODKA",
+      "sortOrder": 100,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-VOD-DESCOR",
+          "name": "Descorche de Vodka",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-GORDON-S",
+          "name": "Gordon's - Servicio",
+          "description": null,
+          "price": 30,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-GORDON-T",
+          "name": "Gordon's - Trago",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-GREY-S",
+          "name": "Grey Goose - Servicio",
+          "description": null,
+          "price": 120,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-GREY-T",
+          "name": "Grey Goose - Trago",
+          "description": null,
+          "price": 13.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-STOLI-S",
+          "name": "Stolichnaya - Servicio",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VOD-STOLI-T",
+          "name": "Stolichnaya - Trago",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "RON",
+      "sortOrder": 110,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-RON-CAC-500-S",
+          "name": "Cacique 500 - Servicio",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-CAC-500-T",
+          "name": "Cacique 500 - Trago",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-DESCOR",
+          "name": "Descorche de Ron",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-1796-S",
+          "name": "Santa Teresa 1796 - Servicio",
+          "description": null,
+          "price": 75,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-1796-T",
+          "name": "Santa Teresa 1796 - Trago",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-GR-S",
+          "name": "Santa Teresa Gran Reserva - Servicio",
+          "description": null,
+          "price": 30,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-GR-T",
+          "name": "Santa Teresa Gran Reserva - Trago",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-LIN-S",
+          "name": "Santa Teresa Linaje - Servicio",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-RON-ST-LIN-T",
+          "name": "Santa Teresa Linaje - Trago",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "WHISKY",
+      "sortOrder": 120,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-WHIS-BUCH-S",
+          "name": "Buchanans 12 Años - Servicio",
+          "description": null,
+          "price": 75,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-WHIS-BUCH-T",
+          "name": "Buchanans 12 Años - Trago",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-WHIS-DESCOR",
+          "name": "Descorche de Whisky",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-WHIS-OLD-S",
+          "name": "Old Parr 12 Años - Servicio",
+          "description": null,
+          "price": 67.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-WHIS-OLD-T",
+          "name": "Old Parr 12 Años - Trago",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "ESPECIALES",
+      "sortOrder": 130,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-ESP-DESCOR",
+          "name": "Descorche Tequila/Jäger",
+          "description": null,
+          "price": 22.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERV-R-SV",
+          "name": "Jose Cuervo Reposado - Servicio",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERV-R-S",
+          "name": "Jose Cuervo Reposado - Shot",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERV-R-T",
+          "name": "Jose Cuervo Reposado - Trago",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERVO-SV",
+          "name": "Jose Cuervo Silver - Servicio",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERVO-S",
+          "name": "Jose Cuervo Silver - Shot",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-CUERVO-T",
+          "name": "Jose Cuervo Silver - Trago",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-JAGER-SV",
+          "name": "Jägermeister - Servicio",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-JAGER-S",
+          "name": "Jägermeister - Shot",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ESP-JAGER-T",
+          "name": "Jägermeister - Trago",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "VINOS Y ESPUMANTES",
+      "sortOrder": 140,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-VINO-BENJ-C",
+          "name": "Benjamin Malbec - Copa",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-BENJ-S",
+          "name": "Benjamin Malbec - Servicio",
+          "description": null,
+          "price": 40,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-DESCOR",
+          "name": "Descorche de Vino",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-MAX-C",
+          "name": "Maximilian I Prosecco - Copa",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-MAX-S",
+          "name": "Maximilian I Prosecco - Servicio",
+          "description": null,
+          "price": 37.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-PINOT-C",
+          "name": "Pinot Grigio - Copa",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-PINOT-S",
+          "name": "Pinot Grigio - Servicio",
+          "description": null,
+          "price": 37.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-LINDA-C",
+          "name": "Vino Linda Mora - Copa",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-VINO-LINDA-S",
+          "name": "Vino Linda Mora - Servicio",
+          "description": null,
+          "price": 30,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "CÓCTELES",
+      "sortOrder": 150,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-COC-APEROL",
+          "name": "Aperol Spritz",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-BERLIN",
+          "name": "Berlin Mule",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-CLOVER",
+          "name": "Clover Club",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-COSMO",
+          "name": "Cosmopolitan",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-DAIQ",
+          "name": "Daiquirí",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-GIN-T",
+          "name": "Gin Tonic",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-JAGER-M",
+          "name": "Jäger Mojito",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-KAIP",
+          "name": "Kaipiroska",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-MARG",
+          "name": "Margarita",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-MOJITO",
+          "name": "Mojito",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-MOSCOW",
+          "name": "Moscow Mule",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-NEGRONI",
+          "name": "Negroni",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-ORGASMO",
+          "name": "Orgasmo",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-PALOMA",
+          "name": "Paloma",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-PINA",
+          "name": "Piña Colada",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COC-TINTO",
+          "name": "Tinto de Verano",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "DIGESTIVOS",
+      "sortOrder": 160,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-DIG-AMAR",
+          "name": "Amaretto",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-DIG-DAISAR",
+          "name": "Daisaronno Sawer",
+          "description": null,
+          "price": 10.5,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-DIG-EXP-M",
+          "name": "Expresso Martini",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-DIG-LIMON",
+          "name": "Limoncello",
+          "description": null,
+          "price": 12,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-DIG-SAMB",
+          "name": "Sambuca",
+          "description": null,
+          "price": 6,
+          "serviceCategory": "COCKTAIL",
+          "kitchenRouting": "BAR",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "COVER Y ALQUILER",
+      "sortOrder": 170,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "COV-327",
+          "name": "COVER BARRA LIBRE HOMBRE (JUEVES)",
+          "description": null,
+          "price": 25,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COV-329",
+          "name": "COVER BARRA LIBRE HOMBRE (VIERNES-SABADO)",
+          "description": null,
+          "price": 30,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COV-326",
+          "name": "COVER BARRA LIBRE MUJER (JUEVES)",
+          "description": null,
+          "price": 5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COV-328",
+          "name": "COVER BARRA LIBRE MUJER (VIERNES-SABADO)",
+          "description": null,
+          "price": 10,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COVER-DJ",
+          "name": "Cover Dom-Jue",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "COV-254",
+          "name": "Cover Jueves Barra Libre",
+          "description": null,
+          "price": 30,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-COVER-VS",
+          "name": "Cover Vier-Sáb",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-ENSAMB",
+          "name": "Ensamblaje Raqueta (2 gomas + pala)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-RAQ",
+          "name": "Raqueta Profesional Ping Pong (1h)",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "GAME",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ROB-300",
+          "name": "Robot Tenis de Mesa (1H)",
+          "description": null,
+          "price": 15,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-ROBOT",
+          "name": "Robot Tenis de Mesa (30min)",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "GAME",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "EVENTOS PRIVADOS",
+      "sortOrder": 180,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-EV-LOCAL",
+          "name": "Local Completo - Hora",
+          "description": null,
+          "price": 600,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-MITAD-ABAJO",
+          "name": "Mitad Piso Abajo - Hora",
+          "description": null,
+          "price": 75,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-MITAD-ABAJO-VS",
+          "name": "Mitad Piso Abajo - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-MITAD-ARRIBA",
+          "name": "Mitad Piso Arriba - Hora",
+          "description": null,
+          "price": 75,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-MITAD-ARRIBA-VS",
+          "name": "Mitad Piso Arriba - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-PISO-ABAJO",
+          "name": "Piso Abajo - Hora",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-PISO-ABAJO-VS",
+          "name": "Piso Abajo - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 225,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-PISO-ARRIBA",
+          "name": "Piso Arriba - Hora",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-EV-PISO-ARRIBA-VS",
+          "name": "Piso Arriba - Hora (Vie-Sáb 7PM-2AM)",
+          "description": null,
+          "price": 225,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "MEMBRESÍAS",
+      "sortOrder": 190,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-MEMB-MENSUAL",
+          "name": "Membresía Mensual Table Pong",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "ALQUILER EVENTOS FUERA",
+      "sortOrder": 200,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-ALQ-TENIS",
+          "name": "Cancha Tenis Mesa + 4 Raquetas + 4 Pelotas",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-CAMP",
+          "name": "Cancha Tenis Mesa Campeonato",
+          "description": null,
+          "price": 375,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-BEERPONG",
+          "name": "Mesa Beer Pong + 20 Vasos + 2 Pelotas",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-DOMINO",
+          "name": "Mesa Domino + 4 Sillas",
+          "description": null,
+          "price": 112.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-FUTBOL",
+          "name": "Mesa Futbolito + 1 Pelota",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-ALQ-PAQ",
+          "name": "Paquete Especial (1 Tenis 1 Beer Pong 1 Futbolito 2 Domino)",
+          "description": null,
+          "price": 525,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "EVENTOS LALIGA",
+      "sortOrder": 210,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-LALIGA-INSCR",
+          "name": "Inscripción Laliga Table Pong (por atleta)",
+          "description": null,
+          "price": 10,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "INS-149",
+          "name": "Inscripción torneo pool (por pareja)",
+          "description": null,
+          "price": 20,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TOR-150",
+          "name": "TORNEO POR EQUIPO",
+          "description": null,
+          "price": 20,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "STORE - MESAS",
+      "sortOrder": 220,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-STORE-MESA-CAMP",
+          "name": "Mesa Campeonato Profesional DHS Golden Rainbow (25mm ITFF)",
+          "description": null,
+          "price": 4500,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MESA-PRO",
+          "name": "Mesa Profesional DHS (25mm ITFF)",
+          "description": null,
+          "price": 2250,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "STORE - PELOTAS",
+      "sortOrder": 230,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "CAJ-151",
+          "name": "CAJA DE PELOTAS 1 ESTRELLA DHS (10UND)",
+          "description": null,
+          "price": 9,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAJ-267",
+          "name": "Caja de Pelotas 1 Estrella Dhs",
+          "description": null,
+          "price": 9,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAJ-269",
+          "name": "Caja de Pelotas 1 Estrella Dhs (120 und)",
+          "description": null,
+          "price": 105,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CAJ-268",
+          "name": "Caja de Pelotas 3 Estrella Dhs",
+          "description": null,
+          "price": 15,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-PEL-1E-10",
+          "name": "Pelotas DHS 1 Estrella - Paq. 10 und",
+          "description": null,
+          "price": 9,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-PEL-1E-120",
+          "name": "Pelotas DHS 1 Estrella - Paq. 120 und",
+          "description": null,
+          "price": 105,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-PEL-3E-10",
+          "name": "Pelotas DHS 3 Estrellas - Paq. 10 und",
+          "description": null,
+          "price": 15,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "STORE - ACCESORIOS",
+      "sortOrder": 240,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-STORE-ATTACH-GLUE",
+          "name": "Attach Power Glue",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-BOLSO-DHS",
+          "name": "Bolso DHS",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-BOLSO-STIGA",
+          "name": "Bolso STIGA",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-BOND-GLUE",
+          "name": "Bond Glue STIGA",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "CUE-256",
+          "name": "Cuenta Puntos",
+          "description": null,
+          "price": 75,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "ESP-257",
+          "name": "Esponja",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-ESPONJA",
+          "name": "Esponja para Limpiar Gomas DHS",
+          "description": null,
+          "price": 7.5,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "EST-258",
+          "name": "Estuche Dhs",
+          "description": null,
+          "price": 45,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "EST-261",
+          "name": "Estuche Stiga",
+          "description": null,
+          "price": 60,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MALLA",
+          "name": "Malla DHS",
+          "description": null,
+          "price": 30,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MAL-259",
+          "name": "Malla Dhs",
+          "description": null,
+          "price": 30,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MARCADOR",
+          "name": "Marcador de Puntos DHS",
+          "description": null,
+          "price": 75,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "POS-260",
+          "name": "Poste con Malla Dhs",
+          "description": null,
+          "price": 60,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-POSTE-MALLA",
+          "name": "Poste de Malla + Malla DHS",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-RECOGEPELOTAS",
+          "name": "Recoge Pelotas STIGA",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-TOALLA",
+          "name": "Toalla STIGA",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "STORE - MANGOS",
+      "sortOrder": 250,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-STORE-MANGO-KORBEL",
+          "name": "Butterfly Petr Korbel",
+          "description": null,
+          "price": 135,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MANGO-PRIMORAC",
+          "name": "Butterfly Primorac",
+          "description": null,
+          "price": 150,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "MAN-266",
+          "name": "Mango Power G Dhs",
+          "description": null,
+          "price": 60,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MANGO-CYBER",
+          "name": "STIGA Cybershape Wood",
+          "description": null,
+          "price": 210,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-MANGO-PG12",
+          "name": "borrar",
+          "description": null,
+          "price": 60,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "name": "STORE - GOMAS",
+      "sortOrder": 260,
+      "isActive": true,
+      "items": [
+        {
+          "sku": "TP-STORE-GOMA-DIGNICS",
+          "name": "Butterfly Dignics 05",
+          "description": null,
+          "price": 180,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-GOMA-ROZENA",
+          "name": "Butterfly Rozena",
+          "description": null,
+          "price": 90,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-GOMA-NH3",
+          "name": "DHS Hurricane 3 (NH3) 2.2mm",
+          "description": null,
+          "price": 45,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "GOM-262",
+          "name": "Goma Cross",
+          "description": null,
+          "price": 45,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "GOM-263",
+          "name": "Goma Dhs",
+          "description": null,
+          "price": 90,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "GOM-264",
+          "name": "Goma Hurricane Negra",
+          "description": null,
+          "price": 45,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "GOM-265",
+          "name": "Goma Hurricane Roja",
+          "description": null,
+          "price": 45,
+          "serviceCategory": null,
+          "kitchenRouting": "AUTO",
+          "isAvailable": true,
+          "isActive": true
+        },
+        {
+          "sku": "TP-STORE-GOMA-DRAGON",
+          "name": "STIGA Dragon Power",
+          "description": null,
+          "price": 120,
+          "serviceCategory": "SERVICE",
+          "kitchenRouting": "NONE",
+          "isAvailable": true,
+          "isActive": true
+        }
+      ]
+    }
+  ]
+}

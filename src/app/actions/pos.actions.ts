@@ -1049,9 +1049,10 @@ export async function getMenuForPOSAction() {
     const db = await getTenantDb();
     try {
         const categories = await db.menuCategory.findMany({
+            where: { deletedAt: null, isActive: true },
             include: {
                 items: {
-                    where: { isActive: true },
+                    where: { isActive: true, deletedAt: null },
                     orderBy: { name: 'asc' },
                     include: {
                         modifierGroups: {
@@ -1062,7 +1063,7 @@ export async function getMenuForPOSAction() {
                                 modifierGroup: {
                                     include: {
                                         modifiers: {
-                                            where: { isAvailable: true },
+                                            where: { isAvailable: true, deletedAt: null },
                                             orderBy: { sortOrder: 'asc' }
                                         }
                                     }
