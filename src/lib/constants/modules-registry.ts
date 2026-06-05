@@ -210,6 +210,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     enabledByDefault: true,
     sortOrder: 115,
   },
+  {
+    id: 'promotions',
+    label: 'Promociones',
+    description: 'Happy hour y descuentos automáticos por día/horario',
+    icon: '🏷️',
+    href: '/dashboard/promociones',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 117,
+  },
 
   // ═══════════════════════════════════════════
   // VENTAS / POS
@@ -562,6 +572,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   asistente: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'],
   menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  promotions: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER'],
   pos_waiter: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'WAITER', 'CASHIER', 'AREA_LEAD'],
   pos_delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],

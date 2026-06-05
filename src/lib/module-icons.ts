@@ -39,6 +39,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     asistente:         Wand2,
     menu:              UtensilsCrossed,
     modifiers:         Settings2,
+    promotions:        Tag,
 
     // VENTAS & POS
     pos_restaurant:    Salad,

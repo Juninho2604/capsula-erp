@@ -43,6 +43,7 @@ import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
 import { updateSessionCashier } from '@/lib/auth';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
+import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCart } from '@/lib/promotions/server';
 
 // ============================================================================
 // TIPOS
@@ -1045,8 +1046,8 @@ export async function retryInventoryDeductionFromOutbox(
 // LECTURA DE MENÚ PARA POS
 // ============================================================================
 
-export async function getMenuForPOSAction() {
-    const db = await getTenantDb();
+export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean }) {
+    const { db, tenantId } = await getTenantCtx();
     try {
         const categories = await db.menuCategory.findMany({
             where: { deletedAt: null, isActive: true },
@@ -1075,6 +1076,31 @@ export async function getMenuForPOSAction() {
             },
             orderBy: { sortOrder: 'asc' }
         });
+
+        // Promociones (happy hour): aplican al precio mostrado/cobrado en el
+        // POS. Opt-out para PedidosYA (usa su propio pricing). Gated por flag.
+        const applyPromos = opts?.applyPromotions !== false;
+        if (applyPromos) {
+            const rules = await loadActivePromotionRules(db, tenantId);
+            if (rules.length > 0) {
+                const now = new Date();
+                for (const cat of categories) {
+                    for (const item of cat.items as any[]) {
+                        const priced = priceItemWithPromotions(item.price, item.id, cat.id, rules, now);
+                        if (priced.appliedPromotionId) {
+                            item.listPrice = item.price;          // precio original (para mostrar tachado)
+                            item.price = priced.unitPrice;        // precio con descuento (lo usa el carrito)
+                            item.appliedPromotion = {
+                                id: priced.appliedPromotionId,
+                                name: priced.appliedPromotionName,
+                                discountPerUnit: priced.discountPerUnit,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
         return { success: true, data: categories };
     } catch (error) {
         console.error('Error fetching menu for POS:', error);
@@ -1331,6 +1357,12 @@ export async function createSalesOrderAction(
 
         const salesArea = await ensureBaseSalesArea();
         const areaId = salesArea.id;
+
+        // Promociones: re-aplicación autoritativa desde el precio base de BD.
+        // (PedidosYA usa su propia action, no pasa por acá.) Muta data.items y
+        // devuelve auditoría por índice para snapshot en SalesOrderItem.
+        const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
+
         const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data);
 
         let finalNotes = data.notes || '';
@@ -1385,7 +1417,7 @@ export async function createSalesOrderAction(
                         areaId: areaId,
 
                         items: {
-                            create: data.items.map(item => ({
+                            create: data.items.map((item, idx) => ({
                                 tenantId,
                                 menuItemId: item.menuItemId,
                                 itemName: item.name,
@@ -1393,6 +1425,10 @@ export async function createSalesOrderAction(
                                 unitPrice: item.unitPrice,
                                 lineTotal: item.lineTotal,
                                 notes: item.notes,
+                                appliedPromotionId: promoAudit[idx]?.appliedPromotionId ?? null,
+                                appliedPromotionName: promoAudit[idx]?.appliedPromotionName ?? null,
+                                originalUnitPrice: promoAudit[idx]?.originalUnitPrice ?? null,
+                                promotionDiscount: promoAudit[idx]?.promotionDiscount ?? null,
                                 modifiers: {
                                     create: item.modifiers?.map(m => ({
                                         name: m.name,
@@ -1726,6 +1762,11 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
         }
 
         const salesArea = await resolveSalesAreaForBranch(openTab.branchId);
+
+        // Promociones: re-aplicación autoritativa desde el precio base de BD
+        // antes de calcular totales. Muta data.items + auditoría por índice.
+        const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
+
         const { subtotal, total } = calculateCartTotals({
             orderType: 'RESTAURANT',
             items: data.items,
@@ -1797,7 +1838,7 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     notes: data.notes,
                     createdById: session.activeCashierId ?? session.id,
                     items: {
-                        create: data.items.map(item => ({
+                        create: data.items.map((item, idx) => ({
                             tenantId,
                             menuItemId: item.menuItemId,
                             itemName: item.name,
@@ -1805,6 +1846,10 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                             unitPrice: item.unitPrice,
                             lineTotal: item.lineTotal,
                             notes: item.notes,
+                            appliedPromotionId: promoAudit[idx]?.appliedPromotionId ?? null,
+                            appliedPromotionName: promoAudit[idx]?.appliedPromotionName ?? null,
+                            originalUnitPrice: promoAudit[idx]?.originalUnitPrice ?? null,
+                            promotionDiscount: promoAudit[idx]?.promotionDiscount ?? null,
                             modifiers: {
                                 create: item.modifiers?.map(modifier => ({
                                     modifierId: modifier.modifierId,

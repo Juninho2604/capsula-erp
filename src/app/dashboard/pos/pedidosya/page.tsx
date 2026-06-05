@@ -79,7 +79,7 @@ export default function POSPedidosYAPage() {
     const [lastOrder, setLastOrder] = useState<{ orderNumber: string; items: CartItem[]; customerName: string } | null>(null);
 
     useEffect(() => {
-        getMenuForPOSAction().then(res => {
+        getMenuForPOSAction({ applyPromotions: false }).then(res => {
             if (res.success && res.data) {
                 setCategories(res.data);
                 if (res.data.length > 0) setSelectedCategory(res.data[0].id);
