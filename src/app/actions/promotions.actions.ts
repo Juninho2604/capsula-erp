@@ -141,11 +141,26 @@ function validateInput(input: PromotionInput): string | null {
     if (input.discountType !== 'PERCENT' && input.discountType !== 'FIXED') return 'Tipo de descuento inválido.';
     if (!Number.isFinite(input.discountValue) || input.discountValue <= 0) return 'El descuento debe ser mayor a 0.';
     if (input.discountType === 'PERCENT' && input.discountValue > 100) return 'El porcentaje no puede superar 100%.';
+    if (input.maxDiscountPerUnit != null && (!Number.isFinite(input.maxDiscountPerUnit) || input.maxDiscountPerUnit < 0)) {
+        return 'El tope de descuento debe ser un número ≥ 0.';
+    }
     const re = /^(\d{1,2}):(\d{2})$/;
     if (input.startTime && !re.test(input.startTime)) return 'Hora de inicio inválida (HH:MM).';
     if (input.endTime && !re.test(input.endTime)) return 'Hora de fin inválida (HH:MM).';
     if ((input.startTime && !input.endTime) || (!input.startTime && input.endTime)) {
         return 'Indicá hora de inicio Y fin, o ninguna (todo el día).';
+    }
+    // Días de la semana válidos (0-6, 0=domingo).
+    if (input.daysOfWeek && input.daysOfWeek.some(d => !Number.isInteger(d) || d < 0 || d > 6)) {
+        return 'Días de la semana inválidos.';
+    }
+    // Rango de fechas coherente — sin esto la promo "muere" en silencio.
+    if (input.startDate && input.endDate) {
+        const s = new Date(input.startDate).getTime();
+        const e = new Date(input.endDate).getTime();
+        if (Number.isFinite(s) && Number.isFinite(e) && s > e) {
+            return 'La fecha de inicio no puede ser posterior a la de fin.';
+        }
     }
     return null;
 }

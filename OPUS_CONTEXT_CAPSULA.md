@@ -883,6 +883,34 @@ requieren visto bueno porque cambian números del cierre): reconciliación
 órdenes no-tab que ignora `tipAtCheckout`/pago mixto; modelo "confiar en el
 precio del cliente" para items sin promo.
 
+### 6.0.2.b Auditoría 2026-06-05 — segunda pasada (PR #265)
+
+Barrido de áreas no cubiertas en la primera. Confirmado OK: las 3 migraciones
+matchean el schema; aislamiento por tenant correcto en promotions/server/link;
+promos NO se re-aplican en los reintentos del create (están fuera del loop y
+del $transaction); cache de feature flags bien particionado por tenantId.
+
+Corregido:
+- **CRÍTICO — fuga de tenant en escritura de clientes** (pre-existente, anterior
+  a #263). `updateCustomerAction`/`deactivate`/`reactivate` usaban
+  `db.customer.update({where:{id}})`; `withTenant` NO inyecta tenantId en
+  `update`/`findUnique`/`delete` (uniques globales, ver prisma-tenant-client.ts:158)
+  → un tenant podía editar/desactivar fichas de otro conociendo el id. Fix:
+  `updateMany({where:{id,tenantId}})` + `findFirst` (scopeado) + chequeo de count.
+- **MEDIO — motor de promos podía cobrar NaN.** `discountValue` no finito en BD
+  (import/SQL crudo) producía `unitPrice`/`lineTotal` = NaN (el guard
+  `discount<=0` no descarta NaN). Fix: guard `Number.isFinite` en
+  `discountPerUnitFor` (engine.ts) → descuento 0 ante datos corruptos. + tests.
+- **MEDIO — validación de promos incompleta.** Faltaba validar `startDate<=endDate`
+  (promo "muerta" en silencio), `daysOfWeek∈0-6`, y `maxDiscountPerUnit≥0`. Fix
+  en `validateInput` (promotions.actions.ts).
+
+Notas (NO corregidas, bajo impacto / por diseño): `setTenantFeatureFlag` es
+read-modify-write no atómico (lost-update si dos OWNER togglean a la vez —
+raro); en pm2 cluster el `cache.delete` solo afecta al worker que togglea (los
+demás sirven stale ≤30s, ya documentado); `window.location.reload()` tras
+guardar promo (UX, no datos).
+
 ### 6.0.1 Cartera de Clientes (CRM) — módulo (2026-06-05)
 
 Primera versión: **CRM (historial + análisis), solo de ahora en adelante**

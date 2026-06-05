@@ -137,17 +137,23 @@ export function promotionApplies(item: ItemForPricing, promo: PromotionRule, at:
 
 /** Descuento por unidad que produce una promo sobre un precio base. */
 export function discountPerUnitFor(promo: PromotionRule, basePrice: number): number {
+    // Guard de robustez: datos no finitos en BD (NaN/Infinity por import o SQL
+    // crudo) no deben producir un precio NaN al cobrar. Sin promo si algo no
+    // es número finito.
+    if (!Number.isFinite(promo.discountValue) || !Number.isFinite(basePrice) || basePrice <= 0) {
+        return 0;
+    }
     let d: number;
     if (promo.discountType === 'PERCENT') {
         const pct = Math.max(0, Math.min(100, promo.discountValue));
         d = basePrice * (pct / 100);
-        if (promo.maxDiscountPerUnit != null && promo.maxDiscountPerUnit >= 0) {
+        if (promo.maxDiscountPerUnit != null && Number.isFinite(promo.maxDiscountPerUnit) && promo.maxDiscountPerUnit >= 0) {
             d = Math.min(d, promo.maxDiscountPerUnit);
         }
     } else {
         d = Math.max(0, promo.discountValue);
     }
-    // nunca por debajo de 0
+    // nunca por debajo de 0 ni por encima del precio base
     d = Math.min(d, basePrice);
     return Math.round(d * 100) / 100;
 }

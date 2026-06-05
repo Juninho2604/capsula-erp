@@ -57,6 +57,22 @@ describe('discountPerUnitFor', () => {
         expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: 100 }), 10)).toBe(10);
     });
 
+    it('datos no finitos (NaN/Infinity) o precio base inválido → descuento 0 (nunca NaN)', () => {
+        expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: NaN }), 10)).toBe(0);
+        expect(discountPerUnitFor(promo({ discountType: 'FIXED', discountValue: NaN }), 10)).toBe(0);
+        expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: Infinity }), 10)).toBe(0);
+        expect(discountPerUnitFor(promo({ discountType: 'FIXED', discountValue: 5 }), NaN)).toBe(0);
+        expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: 50 }), 0)).toBe(0);
+        // maxDiscountPerUnit no finito no rompe el cálculo del porcentaje.
+        expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: 50, maxDiscountPerUnit: NaN }), 10)).toBe(5);
+    });
+
+    it('resolveBestPromotion nunca devuelve finalUnitPrice NaN ante discountValue corrupto', () => {
+        const r = resolveBestPromotion(item({ basePrice: 10 }), [promo({ discountValue: NaN })], caracas('2026-06-05', '12:00'));
+        // discount 0 → no aplica promo (discount <= 0)
+        expect(r).toBeNull();
+    });
+
     it('redondea a centavos', () => {
         expect(discountPerUnitFor(promo({ discountType: 'PERCENT', discountValue: 33.33 }), 10)).toBe(3.33);
     });
