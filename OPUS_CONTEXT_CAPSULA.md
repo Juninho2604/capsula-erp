@@ -2100,13 +2100,9 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 
 #### Historial de Ventas (`sales/page.tsx`)
 - Filtro "Tipo → 🍽️ Mesa / Pickup" incluye `orderType='RESTAURANT'` Y `'PICKUP'` (ambos)
-- Filtro "Tipo → Propinas" (desde 2026-06-05) incluye **dos fuentes** de propinas:
-  1. **Colectivas**: `customerName === 'PROPINA COLECTIVA'` (PKP creadas por `recordCollectiveTipAction`).
-  2. **Embebidas**: cualquier sale con `propina > 0.01` (excedente del cliente sobre lo facturado, calculado en `history.actions.ts` líneas 207 y 247 — incluye splits de mesa donde `paidAmount > runningTotal + serviceCharge` y pedidos directos donde `amountPaid - change > total`).
-- Filas PROPINA COLECTIVA: badge ámbar "Propina", correlativo en ámbar, fila con fondo dorado claro.
-- Filas con propina embebida + filtro Propinas activo: badge contorneado "+ Propina".
-- Columna "Total Factura" muestra `—` para colectivas (su total es $0); para embebidas muestra el facturado normal.
-- Cuando el filtro Propinas está activo, la tarjeta "Facturado" del resumen se reemplaza por "Total propinas" (mostrando colectivas + embebidas desglosadas) y aparece un panel adicional con el desglose por método de pago (prorrateado para embebidas con paymentBreakdown mixto).
+- Filtro "Tipo → 🪙 Propinas" filtra por `customerName === 'PROPINA COLECTIVA'`
+- Filas PROPINA COLECTIVA: badge ámbar "🪙 PROPINA", correlativo en ámbar, fila con fondo `bg-amber-950/20`
+- Columna "Total Factura" muestra `—` (el total es $0), columna "Cobrado" muestra `amountPaid` en ámbar
 
 #### Reporte Z (`getDailyZReportAction` en `sales.actions.ts`)
 - `totalTips` acumula: para mesas (tab) → `totalCobrado - totalFactura`; para órdenes sueltas → `amountPaid - total` cuando `change=0` y `amountPaid > total`
