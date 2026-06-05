@@ -2091,8 +2091,16 @@ export default function POSSportBarPage() {
                   className="pos-tile group flex flex-col justify-between p-3 md:p-4 text-left disabled:opacity-30 disabled:grayscale h-28 md:h-32 active:scale-[0.98] transition-transform"
                 >
                   <div className="text-sm font-semibold text-capsula-ink group-hover:text-capsula-ink transition-colors leading-tight line-clamp-2 uppercase tracking-[-0.01em]">{item.name}</div>
+                  {(item as any).appliedPromotion && (
+                    <span className="mt-1 inline-flex items-center gap-1 self-start text-[9px] font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-capsula-coral/10 text-capsula-coral">
+                      <Tag className="h-2.5 w-2.5" /> Promo
+                    </span>
+                  )}
                   <div className="flex items-end justify-between mt-2">
                     <div className="text-xl font-semibold text-capsula-ink tabular-nums">
+                      {(item as any).listPrice != null && (
+                        <span className="mr-1 text-xs text-capsula-ink-faint line-through tabular-nums">${(item as any).listPrice.toFixed(2)}</span>
+                      )}
                       <PriceDisplay usd={item.price} rate={exchangeRate} size="sm" showBs={false} />
                     </div>
                     <div className="h-8 w-8 rounded-full bg-capsula-navy-deep text-capsula-cream flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all lg:group-hover:translate-y-[-4px]">

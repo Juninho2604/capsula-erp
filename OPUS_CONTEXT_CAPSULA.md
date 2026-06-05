@@ -807,6 +807,48 @@ Proteínas ──→ InventoryMovement (salida source, entrada subproductos) ─
 
 ## 6. Módulos de VENTAS / POS (9 módulos)
 
+### 6.0 Promociones (happy hour por horario) — módulo (2026-06-05)
+
+Descuento automático (% o monto fijo) sobre categorías/items en días y horas
+específicas. Primera versión: **solo happy hour automático por horario**
+(sin 2x1 ni combos todavía).
+
+**Modelo** `Promotion` (`prisma/schema.prisma`): discountType `PERCENT|FIXED`,
+discountValue, maxDiscountPerUnit?, applicableCategoryIds/applicableItemIds
+(JSON arrays; ambos vacíos = todo el menú; unión si hay ambos), daysOfWeek
+(JSON 0-6, 0=domingo), startTime/endTime ("HH:MM", soporta cruce de
+medianoche), startDate/endDate?, priority (mayor gana; no se acumulan),
+isActive, soft delete. Snapshot en `SalesOrderItem`: `appliedPromotionId`,
+`appliedPromotionName`, `originalUnitPrice`, `promotionDiscount` (sin FK, para
+no afectar ventas históricas al editar/borrar promos).
+
+**Motor** `src/lib/promotions/engine.ts` — función PURA y testeada (19 tests):
+`resolveBestPromotion(item, rules, at)`. Timezone Caracas vía Intl. Misma
+lógica en cliente y servidor.
+
+**Gating**: flag tenant `promotionsEnabled`. Sin el flag, ninguna promo se
+aplica aunque existan cargadas.
+
+**Aplicación**:
+- `getMenuForPOSAction({ applyPromotions })` (`pos.actions.ts`): cuando el flag
+  está activo, sobrescribe `item.price` con el precio con descuento y deja
+  `item.listPrice` (original) + `item.appliedPromotion`. Así el POS muestra y
+  cobra el precio correcto sin tocar el add-to-cart. **PedidosYA y el
+  WhatsApp parser pasan `applyPromotions: false`** (usan su propio pricing).
+- Re-aplicación AUTORITATIVA en `createSalesOrderAction` y
+  `addItemsToOpenTabAction` vía `applyPromotionsToCart(db, tenantId, items)`
+  (`src/lib/promotions/server.ts`): recalcula desde el precio base de BD al
+  momento del cobro (corrige desfase de horario, bloquea manipulación) y
+  guarda el snapshot de auditoría. Solo toca items con promo activa; el resto
+  del pricing queda intacto. **Sin doble descuento**: el server siempre parte
+  del precio base de lista, no del precio que mandó el cliente.
+
+**Admin**: `/dashboard/promociones` (page + `promociones-view.tsx`), CRUD en
+`promotions.actions.ts` (gated OWNER/ADMIN_MANAGER/OPS_MANAGER). Toggle del
+flag `promotionsEnabled` desde la misma vista (solo OWNER) o desde
+`/dashboard/config/feature-flags`. Módulo registrado en `modules-registry.ts`
+(id `promotions`, sección operations, sortOrder 117, icon lucide `Tag`).
+
 ### 6.1 POS Restaurante
 
 - **Ruta**: `/dashboard/pos/restaurante`

@@ -182,7 +182,7 @@ export default function WhatsAppOrderParser({ onOrderReady }: WhatsAppParserProp
     useEffect(() => {
         async function loadMenu() {
             try {
-                const result = await getMenuForPOSAction();
+                const result = await getMenuForPOSAction({ applyPromotions: false });
                 if (result.success && result.data) {
                     const items: MenuItem[] = [];
                     for (const cat of result.data) {

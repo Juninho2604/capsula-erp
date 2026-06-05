@@ -107,6 +107,7 @@ model Tenant {
   // SaaS billing — pagos del tenant al operador del SaaS. NO multi-tenant
   // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
   tenantPayments       TenantPayment[]
+  promotions           Promotion[]
 }
 
 model User {
@@ -895,6 +896,67 @@ model MenuItem {
   @@index([tenantId])
 }
 
+// ============================================================================
+// PROMOCIONES (happy hour por horario)
+// ============================================================================
+//
+// Descuento automático (% o monto fijo) sobre ciertas categorías/items en
+// días y horas específicas. Lo aplica el POS al armar el carrito y lo
+// re-valida el servidor al crear la venta (solo toca items con promo activa;
+// el resto del pricing queda intacto). Gateado por el flag tenant
+// `promotionsEnabled` — sin el flag, ninguna promo se aplica.
+//
+// Reglas de alcance (scope):
+//   - applicableCategoryIds + applicableItemIds son JSON arrays de ids.
+//   - Si ambos están vacíos/null → la promo aplica a TODO el menú.
+//   - Si hay categorías → aplica a items de esas categorías.
+//   - Si hay items → aplica a esos items (unión con categorías).
+//
+// Reglas de tiempo (timezone Caracas):
+//   - daysOfWeek: JSON array de números 0-6 (0=domingo). Vacío/null = todos.
+//   - startTime/endTime: "HH:MM" 24h. Null = todo el día. Soporta cruce de
+//     medianoche (ej. 22:00–02:00).
+//   - startDate/endDate: rango de fechas opcional. Null = sin límite.
+model Promotion {
+  id          String  @id @default(cuid())
+  name        String // Ej: "Happy Hour Cervezas"
+  description String?
+
+  // Descuento
+  discountType  String // 'PERCENT' (discountValue = % 0-100) | 'FIXED' (discountValue = USD por unidad)
+  discountValue Float
+  maxDiscountPerUnit Float? // tope opcional de descuento por unidad (solo PERCENT)
+
+  // Alcance (JSON arrays de ids; vacío = todo el menú)
+  applicableCategoryIds String? @default("[]")
+  applicableItemIds     String? @default("[]")
+
+  // Ventana de tiempo (Caracas)
+  daysOfWeek String?   @default("[]") // JSON array de 0-6 (0=domingo)
+  startTime  String? // "HH:MM" 24h, null = todo el día
+  endTime    String? // "HH:MM" 24h
+  startDate  DateTime? // rango de fechas opcional
+  endDate    DateTime?
+
+  // Si dos promos aplican al mismo item, gana la de mayor priority (no se
+  // acumulan, para evitar descuentos descontrolados). Empate → mayor descuento.
+  priority Int @default(0)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Soft delete
+  deletedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
+  @@index([isActive])
+}
+
 model MenuModifierGroup {
   id          String  @id @default(cuid())
   name        String // Ej: "AcompaÃ±antes", "TamaÃ±o", "Extras"
@@ -1106,6 +1168,15 @@ model SalesOrderItem {
 
   // Subtotal de esta lÃ­nea (unitPrice * quantity + modificadores)
   lineTotal Float
+
+  // ── Promoción aplicada (happy hour por horario) ──────────────────────────
+  // Snapshot — NO hay FK a Promotion para que borrar/editar una promo no
+  // afecte ventas históricas. unitPrice ya viene con el descuento aplicado;
+  // estos campos son solo para auditoría y reporte. Null = sin promo.
+  appliedPromotionId   String? // id de la Promotion vigente al cobrar
+  appliedPromotionName String? // nombre snapshot para mostrar sin join
+  originalUnitPrice    Float?  // precio de lista antes de la promo
+  promotionDiscount    Float?  // descuento total de la línea por la promo (≥0)
 
   // Notas especiales (Ej: "Sin cebolla")
   notes String?
