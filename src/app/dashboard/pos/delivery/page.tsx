@@ -89,6 +89,9 @@ export default function POSDeliveryPage() {
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [customerName, setCustomerName] = useState('');
+    // CRM: id de la ficha de cliente elegida del buscador. Se limpia si la
+    // cajera edita nombre/teléfono a mano (para no vincular a otro cliente).
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
     // Hora de entrega solicitada por el cliente. Formato 'HH:MM' (24h)
@@ -208,6 +211,7 @@ export default function POSDeliveryPage() {
         setCustomerName(c.fullName);
         setCustomerPhone(c.phone ?? '');
         setCustomerAddress(c.address ?? '');
+        setSelectedCustomerId(c.id);
         setCustomerSearch('');
         setCustomerSearchResults([]);
         setShowCustomerDropdown(false);
@@ -397,6 +401,7 @@ export default function POSDeliveryPage() {
                 orderType: 'DELIVERY',
                 customerName: customerName || 'Delivery',
                 customerPhone, customerAddress: customerAddress || 'N/A',
+                customerId: selectedCustomerId ?? undefined,
                 scheduledDeliveryTime: scheduledISO,
                 items: cart,
                 ...(isMixedMode
@@ -498,7 +503,7 @@ export default function POSDeliveryPage() {
                 if (cfg.printReceiptOnDelivery) {
                     printReceipt({ ...receiptData, branding });
                 }
-                setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress('');
+                setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setSelectedCustomerId(null);
                 setScheduledTime('');
                 setPaymentMethod('PDV_SHANKLISH'); setAmountReceived('');
                 setMixedPayments([]); setMixedPaymentsComplete(false); setIsMixedMode(false);
@@ -653,7 +658,7 @@ export default function POSDeliveryPage() {
                                 <input
                                     type="text"
                                     value={customerName}
-                                    onChange={e => setCustomerName(e.target.value)}
+                                    onChange={e => { setCustomerName(e.target.value); setSelectedCustomerId(null); }}
                                     placeholder="Nombre del cliente"
                                     className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                                 />
@@ -663,7 +668,7 @@ export default function POSDeliveryPage() {
                                 <input
                                     type="tel"
                                     value={customerPhone}
-                                    onChange={e => setCustomerPhone(e.target.value)}
+                                    onChange={e => { setCustomerPhone(e.target.value); setSelectedCustomerId(null); }}
                                     placeholder="Teléfono"
                                     className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-3 text-sm font-medium text-capsula-ink transition-colors placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
                                 />

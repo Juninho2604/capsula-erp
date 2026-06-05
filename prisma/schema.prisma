@@ -1047,6 +1047,11 @@ model SalesOrder {
   customerPhone   String?
   customerAddress String? // Para delivery
 
+  // Vínculo a la ficha de cliente (CRM). Nullable: ventas anónimas (mesa sin
+  // cliente) o históricas quedan sin vincular. Se setea de ahora en adelante.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Estado
   status        String @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY, DELIVERED, CANCELLED
   kitchenStatus String @default("NOT_SENT") // NOT_SENT, SENT, IN_PROGRESS, READY, NOT_REQUIRED
@@ -1150,6 +1155,7 @@ model SalesOrder {
   @@index([tableOrStationId])
   @@index([openTabId])
   @@index([tenantId])
+  @@index([customerId])
 }
 
 model SalesOrderItem {
@@ -2722,6 +2728,10 @@ model Customer {
   updatedAt   DateTime @updatedAt
   createdById String?
   createdBy   User?    @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Ventas vinculadas (CRM — Cartera de Clientes). Las stats cacheadas de
+  // arriba se actualizan al cobrar; el historial real se lee desde acá.
+  salesOrders SalesOrder[]
 
   @@unique([tenantId, idDocument])
   @@index([tenantId])

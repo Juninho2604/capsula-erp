@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { Plus as PlusIcon, Search, X as XIcon, Pencil, Phone, MapPin, Mail, CreditCard, Check } from 'lucide-react';
+import Link from 'next/link';
+import { Plus as PlusIcon, Search, X as XIcon, Pencil, Phone, MapPin, Mail, CreditCard, Check, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
     createCustomerAction,
@@ -149,7 +150,10 @@ export function ClientesView({ initialCustomers, currentUserRole: _currentUserRo
                         >
                             <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                    <h3 className="font-semibold text-capsula-ink truncate">{c.fullName}</h3>
+                                    <Link href={`/dashboard/clientes/${c.id}`} className="font-semibold text-capsula-ink truncate hover:text-capsula-coral inline-flex items-center gap-1 group">
+                                        <span className="truncate">{c.fullName}</span>
+                                        <ChevronRight className="h-3.5 w-3.5 text-capsula-ink-muted group-hover:text-capsula-coral shrink-0" />
+                                    </Link>
                                     {c.idDocument && (
                                         <p className="text-[11px] text-capsula-ink-muted font-semibold tabular-nums mt-0.5 inline-flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" /> {c.idDocument}

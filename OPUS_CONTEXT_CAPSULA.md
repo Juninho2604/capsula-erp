@@ -849,6 +849,50 @@ flag `promotionsEnabled` desde la misma vista (solo OWNER) o desde
 `/dashboard/config/feature-flags`. Módulo registrado en `modules-registry.ts`
 (id `promotions`, sección operations, sortOrder 117, icon lucide `Tag`).
 
+### 6.0.1 Cartera de Clientes (CRM) — módulo (2026-06-05)
+
+Primera versión: **CRM (historial + análisis), solo de ahora en adelante**
+(sin crédito/fiado todavía; sin backfill de ventas históricas).
+
+**Base ya existente** (no se tocó): modelo `Customer` (`schema.prisma:2701`)
+con `fullName`, `idDocument` (unique por tenant), `phone`, `email`, `address`,
+`notes`, stats cacheadas `totalOrders`/`totalSpent`/`lastOrderAt`, `isActive`.
+CRUD en `customer.actions.ts` + UI `/dashboard/clientes`. El POS Delivery ya
+buscaba clientes (`searchCustomersAction`).
+
+**Lo nuevo:**
+- `SalesOrder.customerId` (nullable, FK SET NULL, índice) — vínculo CRM.
+  Migración safe (ADD COLUMN nullable). Relación inversa `Customer.salesOrders`.
+- `resolveCustomerForOrder` + `bumpCustomerStats` (`src/lib/customers/link.ts`):
+  en `createSalesOrderAction`, si llega `customerId` explícito se vincula; si
+  no y es DELIVERY/PICKUP con teléfono/nombre real, se hace **upsert por
+  teléfono** (match por dígitos, tolera formato) y se crea ficha liviana si no
+  existe → la cartera se llena sola con cada delivery. Mesas (RESTAURANT sin
+  customerId) NO auto-crean (customerName suele ser la mesa). Nombres
+  placeholder ("Cliente en Caja", etc.) no generan ficha. No bloquea el cobro
+  si falla (devuelve null).
+- Stats cacheadas: se incrementan al cobrar (`totalOrders`, `totalSpent`,
+  `lastOrderAt`). **Antes nunca se actualizaban.** Son cache para ordenar/
+  listar; los agregados EXACTOS de la ficha se calculan on-demand desde las
+  ventas vinculadas (sin drift por anulaciones; excluye CANCELLED y PROPINA
+  COLECTIVA).
+- POS Delivery (`delivery/page.tsx`): estado `selectedCustomerId`, se setea al
+  elegir del buscador, se limpia si la cajera edita nombre/teléfono a mano, y
+  se pasa a `createSalesOrderAction` como `customerId`.
+- Ficha de cliente `/dashboard/clientes/[id]` (`getCustomerDetailAction`):
+  datos + agregados exactos (pedidos, total gastado, ticket promedio, primera/
+  última visita) + historial de las últimas 100 órdenes. Nombre clickeable en
+  la lista.
+- `getTopCustomersAction(limit)` — top clientes por gasto (para análisis).
+- Módulo registrado en `modules-registry.ts` (id `clientes`, sección
+  operations, sortOrder 118, icon `UserCircle2`); **antes el módulo existía
+  pero NO estaba en el registry → invisible en el sidebar.** Roles:
+  OWNER/ADMIN_MANAGER/OPS_MANAGER/CASHIER/CHEF.
+
+Sin flag: es additivo y de bajo riesgo. Limitación conocida: las anulaciones
+no decrementan las stats cacheadas (la ficha usa el agregado exacto, que sí
+las excluye). Crédito/fiado y backfill quedan para iteraciones futuras.
+
 ### 6.1 POS Restaurante
 
 - **Ruta**: `/dashboard/pos/restaurante`

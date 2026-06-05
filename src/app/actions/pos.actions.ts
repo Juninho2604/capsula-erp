@@ -44,6 +44,7 @@ import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
 import { updateSessionCashier } from '@/lib/auth';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCart } from '@/lib/promotions/server';
+import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
 
 // ============================================================================
 // TIPOS
@@ -80,6 +81,8 @@ export interface CreateOrderData {
     customerName?: string;
     customerPhone?: string;
     customerAddress?: string;
+    /** CRM: id de la ficha de cliente elegida en el POS (delivery). Opcional. */
+    customerId?: string;
     items: CartItem[];
     // Legacy single-method fields (kept for backwards compat)
     paymentMethod?: POSPaymentMethod;
@@ -1363,6 +1366,17 @@ export async function createSalesOrderAction(
         // devuelve auditoría por índice para snapshot en SalesOrderItem.
         const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
 
+        // CRM: resolver/crear ficha de cliente (delivery/pickup o id explícito).
+        // No bloquea el cobro si falla → devuelve null.
+        const linkedCustomerId = await resolveCustomerForOrder(db, tenantId, {
+            explicitCustomerId: data.customerId,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            customerAddress: data.customerAddress,
+            orderType: data.orderType,
+            createdById: session.activeCashierId ?? session.id,
+        });
+
         const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data);
 
         let finalNotes = data.notes || '';
@@ -1385,6 +1399,7 @@ export async function createSalesOrderAction(
                         customerName: data.customerName,
                         customerPhone: data.customerPhone,
                         customerAddress: data.customerAddress,
+                        customerId: linkedCustomerId,
                         status: 'CONFIRMED',
                         serviceFlow: 'DIRECT_SALE',
                         sourceChannel: data.orderType === 'DELIVERY' ? 'POS_DELIVERY' : 'POS_RESTAURANT',
@@ -1449,6 +1464,11 @@ export async function createSalesOrderAction(
         }
 
         if (!newOrder) throw new Error('No se pudo crear la orden tras reintentos');
+
+        // CRM: actualizar stats cacheadas del cliente vinculado. No bloquea.
+        if (linkedCustomerId) {
+            await bumpCustomerStats(db, tenantId, linkedCustomerId, total, newOrder.createdAt);
+        }
 
         // ====================================================================
         // REGISTRAR LÍNEAS DE PAGO MIXTO
