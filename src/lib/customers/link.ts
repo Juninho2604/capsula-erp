@@ -26,7 +26,7 @@ function normalizePhone(raw?: string | null): string | null {
 }
 
 const REAL_CUSTOMER_ORDER_TYPES = new Set(['DELIVERY', 'PICKUP']);
-const PLACEHOLDER_NAMES = new Set(['', 'cliente en caja', 'cliente', 'consumidor final', 'propina colectiva']);
+const PLACEHOLDER_NAMES = new Set(['', 'cliente en caja', 'cliente', 'consumidor final', 'propina colectiva', 'delivery']);
 
 export interface ResolveCustomerArgs {
     explicitCustomerId?: string | null;
@@ -64,28 +64,34 @@ export async function resolveCustomerForOrder(
         const name = (args.customerName || '').trim();
         const nameIsPlaceholder = PLACEHOLDER_NAMES.has(name.toLowerCase());
 
-        // Sin teléfono usable y sin nombre real → no creamos nada.
-        if (!phone && nameIsPlaceholder) return null;
+        // Requerimos teléfono para auto-vincular/crear: es la única clave de
+        // deduplicación. Sin teléfono no podemos evitar duplicados (cada orden
+        // crearía una ficha nueva), así que no creamos nada. (Igual criterio
+        // que el upsert histórico, que exigía customerPhone.)
+        if (!phone) return null;
 
-        // 3. Buscar por teléfono (match por dígitos). Trae candidatos y compara
-        //    normalizado para tolerar "0424-123..." vs "0424123...".
-        if (phone) {
-            const candidates = await db.customer.findMany({
-                where: { isActive: true, phone: { not: null } },
-                select: { id: true, phone: true },
-                take: 200,
-            });
-            const match = candidates.find(c => normalizePhone(c.phone) === phone);
-            if (match) return match.id;
-        }
+        // 3. Buscar por teléfono. Para no traer toda la tabla (el take:200 viejo
+        //    perdía clientes y duplicaba cuando había >200), narrowamos por los
+        //    últimos 7 dígitos vía `contains` y confirmamos con match normalizado.
+        //    Como los teléfonos se guardan ya normalizados (solo dígitos, abajo),
+        //    el `contains` es confiable.
+        const tail = phone.slice(-7);
+        const candidates = await db.customer.findMany({
+            where: { isActive: true, phone: { contains: tail } },
+            select: { id: true, phone: true },
+            take: 50,
+        });
+        const match = candidates.find(c => normalizePhone(c.phone) === phone);
+        if (match) return match.id;
 
-        // 4. Crear cliente liviano. Nombre real o, si falta, derivado del tel.
-        if (nameIsPlaceholder && !phone) return null;
+        // 4. Crear cliente liviano. Guardamos el teléfono NORMALIZADO (solo
+        //    dígitos) para que el match por `contains` funcione siempre y no se
+        //    generen duplicados por formato.
         const created = await db.customer.create({
             data: {
                 tenantId,
                 fullName: nameIsPlaceholder ? `Cliente ${phone}` : name,
-                phone: args.customerPhone?.trim() || null,
+                phone,
                 address: args.customerAddress?.trim() || null,
                 createdById: args.createdById ?? null,
             },

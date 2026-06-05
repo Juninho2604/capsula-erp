@@ -371,27 +371,34 @@ export async function getCustomerDetailAction(id: string): Promise<{ success: bo
         const customer = await db.customer.findFirst({ where: { id } });
         if (!customer) return { success: false, message: 'Cliente no encontrado' };
 
-        const orders = await db.salesOrder.findMany({
-            where: {
-                customerId: id,
-                status: { not: 'CANCELLED' },
-                customerName: { not: 'PROPINA COLECTIVA' },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: {
-                id: true, orderNumber: true, createdAt: true, orderType: true,
-                status: true, total: true,
-                _count: { select: { items: true } },
-            },
-            take: 100,
-        });
+        const where = {
+            customerId: id,
+            status: { not: 'CANCELLED' },
+            customerName: { not: 'PROPINA COLECTIVA' },
+        } as const;
 
-        const orderCount = orders.length;
-        const totalSpent = orders.reduce((s, o) => s + (o.total || 0), 0);
+        // Agregados EXACTOS sobre TODAS las ventas (no capadas). La lista de
+        // historial sí se limita a 100 para no traer demasiadas filas.
+        const [agg, firstOrder, orders] = await Promise.all([
+            db.salesOrder.aggregate({ where, _count: { _all: true }, _sum: { total: true } }),
+            db.salesOrder.findFirst({ where, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+            db.salesOrder.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true, orderNumber: true, createdAt: true, orderType: true,
+                    status: true, total: true,
+                    _count: { select: { items: true } },
+                },
+                take: 100,
+            }),
+        ]);
+
+        const orderCount = agg._count._all;
+        const totalSpent = agg._sum.total ?? 0;
         const avgTicket = orderCount > 0 ? totalSpent / orderCount : 0;
-        const dates = orders.map(o => o.createdAt);
-        const lastOrderAt = dates.length ? dates[0] : null;
-        const firstOrderAt = dates.length ? dates[dates.length - 1] : null;
+        const lastOrderAt = orders.length ? orders[0].createdAt : null;
+        const firstOrderAt = firstOrder?.createdAt ?? null;
 
         return {
             success: true,
