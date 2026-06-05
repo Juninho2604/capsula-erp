@@ -29,7 +29,7 @@ type MethodDef = {
   Icon: React.ComponentType<{ className?: string }>;
 };
 
-const METHODS: readonly MethodDef[] = [
+export const METHODS: readonly MethodDef[] = [
   { id: 'CASH_USD',       label: 'Cash $',        Icon: DollarSign },
   { id: 'CASH_EUR',       label: 'Cash €',        Icon: Euro },
   { id: 'ZELLE',          label: 'Zelle',         Icon: Zap },
@@ -41,10 +41,14 @@ const METHODS: readonly MethodDef[] = [
 ];
 
 /** These methods are paid in Bs — show conversion when exchangeRate available */
-const BS_METHODS = new Set(['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'MOBILE_PAY', 'CARD', 'TRANSFER']);
+export const BS_METHODS = new Set(['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'MOBILE_PAY', 'CARD', 'TRANSFER']);
 
-function methodLabel(id: string) {
+export function methodLabel(id: string) {
   return METHODS.find((m) => m.id === id)?.label ?? id;
+}
+
+export function methodIcon(id: string): React.ComponentType<{ className?: string }> | null {
+  return METHODS.find((m) => m.id === id)?.Icon ?? null;
 }
 
 export default function MixedPaymentSelector({

@@ -18,6 +18,25 @@ function isOwner(role: string | undefined): boolean {
     return role === 'OWNER';
 }
 
+/**
+ * Versión pública: cualquier usuario autenticado puede leer el estado
+ * actual de los flags del tenant. Lo usan las pages del POS para saber
+ * si tienen que mostrar el modal de confirmación de pago, etc.
+ *
+ * No expone metadata (label/description) — solo el booleano. Para la
+ * UI de configuración usar `getFeatureFlagsForCurrentTenantAction`.
+ */
+export async function getActiveFeatureFlagsAction(): Promise<{
+    success: boolean;
+    data?: Record<FeatureFlagKey, boolean>;
+}> {
+    const session = await getSession();
+    if (!session) return { success: false };
+    const { tenantId } = await resolveTenantContext();
+    const flags = await getTenantFeatureFlags(tenantId);
+    return { success: true, data: flags };
+}
+
 export type FeatureFlagRow = {
     key: FeatureFlagKey;
     label: string;

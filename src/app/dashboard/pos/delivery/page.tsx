@@ -6,9 +6,11 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
+import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
+import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
@@ -61,6 +63,25 @@ interface SelectedModifier {
 export default function POSDeliveryPage() {
     const { posFullscreen } = useUIStore();
     const branding = useTenantBranding();
+    // Feature flag `requirePaymentConfirmation`: cuando está activo, antes
+    // de invocar createSalesOrderAction se muestra un modal con resumen.
+    const featureFlags = useTenantFeatureFlags();
+    const [paymentConfirmationPending, setPaymentConfirmationPending] = useState<{
+        lines: PaymentConfirmationLine[];
+        totalUSD: number;
+        onConfirm: () => void;
+    } | null>(null);
+    const requestPaymentConfirmation = (
+        lines: PaymentConfirmationLine[],
+        totalUSD: number,
+        onConfirm: () => void,
+    ) => {
+        if (!featureFlags.requirePaymentConfirmation) {
+            onConfirm();
+            return;
+        }
+        setPaymentConfirmationPending({ lines, totalUSD, onConfirm });
+    };
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -1056,7 +1077,12 @@ export default function POSDeliveryPage() {
                             )}
 
                             <button
-                                onClick={handleCheckout}
+                                onClick={() => {
+                                    const linesForConfirmation: PaymentConfirmationLine[] = isMixedMode
+                                        ? mixedPayments.map(p => ({ method: p.method, amountUSD: p.amountUSD, amountBS: p.amountBS }))
+                                        : [{ method: paymentMethod, amountUSD: finalTotal }];
+                                    requestPaymentConfirmation(linesForConfirmation, finalTotal, handleCheckout);
+                                }}
                                 disabled={cart.length === 0 || isProcessing}
                                 className="pos-btn w-full !min-h-0 py-5 text-lg tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -1526,6 +1552,19 @@ export default function POSDeliveryPage() {
                     )}
                 </button>
             </nav>
+
+            {/* Modal de confirmación pre-cobro (flag requirePaymentConfirmation) */}
+            <PaymentConfirmationModal
+                open={paymentConfirmationPending !== null}
+                totalUSD={paymentConfirmationPending?.totalUSD ?? 0}
+                lines={paymentConfirmationPending?.lines ?? []}
+                onCancel={() => setPaymentConfirmationPending(null)}
+                onConfirm={() => {
+                    const pending = paymentConfirmationPending;
+                    setPaymentConfirmationPending(null);
+                    pending?.onConfirm();
+                }}
+            />
         </div>
     );
 }
