@@ -27,7 +27,7 @@ export const FEATURE_FLAGS = {
     unifyTipReporting: {
         label: 'Unificar propinas en el cierre (excedente + colectiva)',
         description:
-            'Cuando está activo, la línea "Propina" del Report Z y del cierre del día suma TODO lo que excede al 10% de servicio: tanto el excedente al cobrar (cliente paga de más) como las propinas colectivas registradas aparte. El 10% de servicio sigue siendo una línea separada e intacta. Sin el flag, las propinas colectivas quedan fuera del total de propinas del cierre (comportamiento histórico).',
+            'Cuando está activo, la línea "Propina" del Report Z y del cierre del día suma TODO lo que excede al 10% de servicio: el excedente al cobrar (cliente paga de más), las propinas colectivas registradas aparte, Y las propinas explícitas de delivery/pickup que la cajera marcó al cobrar (estas últimas las daba en cero el cálculo histórico cuando había vuelto). El 10% de servicio sigue siendo una línea separada e intacta. Sin el flag, comportamiento histórico.',
     },
     promotionsEnabled: {
         label: 'Activar promociones (happy hour por horario)',

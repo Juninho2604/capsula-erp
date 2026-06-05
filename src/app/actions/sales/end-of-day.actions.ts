@@ -10,6 +10,7 @@ import { getCaracasDayRange } from '@/lib/datetime';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
+import { inferOrderTip } from '@/lib/sales/infer-tip';
 
 export interface EndOfDaySummary {
     date: string;
@@ -177,7 +178,10 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
 
             const amountPaid = o.amountPaid || o.total;
             const netReceived = amountPaid - (o.change || 0);
-            const tip = (o.change === 0 && amountPaid > o.total) ? Math.max(0, amountPaid - o.total) : 0;
+            // Fórmula UNIFICADA: ver inferOrderTip + comentario en z-report.
+            const tip = tipsUnified
+                ? inferOrderTip(o)
+                : ((o.change === 0 && amountPaid > o.total) ? Math.max(0, amountPaid - o.total) : 0);
 
             totalDiscounts += o.discount;
             propinas += tip;
