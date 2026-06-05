@@ -13,6 +13,7 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
+import { inferOrderTip } from '@/lib/sales/infer-tip';
 
 export interface ZReportData {
     period: string;
@@ -208,8 +209,13 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
 
             const amountPaid = o.amountPaid || o.total;
             const netReceived = amountPaid - (o.change || 0);
-            const orderTip = (o.change === 0 && amountPaid > o.total)
-                ? Math.max(0, amountPaid - o.total) : 0;
+            // Fórmula UNIFICADA (cubre los 3 casos): max(0, amountPaid - change - total).
+            // Con flag OFF mantenemos la fórmula histórica (subreportaba el
+            // Caso C: propina explícita con vuelto), para no mover los números
+            // del cierre hasta que el OWNER active la unificación.
+            const orderTip = tipsUnified
+                ? inferOrderTip(o)
+                : ((o.change === 0 && amountPaid > o.total) ? Math.max(0, amountPaid - o.total) : 0);
             totalTips += orderTip;
             if (orderTip > 0) tipCount++;
 

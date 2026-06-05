@@ -883,6 +883,28 @@ requieren visto bueno porque cambian números del cierre): reconciliación
 órdenes no-tab que ignora `tipAtCheckout`/pago mixto; modelo "confiar en el
 precio del cliente" para items sin promo.
 
+### 6.0.2.c Fix: propinas explícitas de delivery/pickup subreportadas (PR #266)
+
+Tercera auditoría: confirmado bug histórico en Z report y End-of-day. La fórmula
+de propina para órdenes no-tab exigía `change === 0`, así que el **Caso C**
+(cliente paga $25, cajera marca $3 de propina con `tipAtCheckout`, sistema
+guarda `change=2`) quedaba en **$0** aunque los $3 estuvieran físicamente en
+caja. Los Casos A y B (paga justo / "quedate con el vuelto") sí se contaban.
+
+El dato real ya estaba en BD — no hizo falta columna nueva: la fórmula
+correcta es `max(0, amountPaid - change - total)`, idéntica a la que usa
+`history.actions.ts:255`. Extraída a `src/lib/sales/infer-tip.ts` (función
+pura) con tests de los 3 casos + pago mixto + nulls.
+
+Aplicada en `z-report.actions.ts` y `end-of-day.actions.ts`, gateada por el
+mismo flag `unifyTipReporting` (sin flag = fórmula vieja, para no mover los
+números sin que el OWNER decida). La descripción del flag se actualizó para
+mencionar explícitamente este caso.
+
+Efecto al prender el flag: la línea PROPINAS sube por las propinas explícitas
+que antes quedaban invisibles; el efectivo en caja por fin reconcilia con el
+arqueo.
+
 ### 6.0.2.b Auditoría 2026-06-05 — segunda pasada (PR #265)
 
 Barrido de áreas no cubiertas en la primera. Confirmado OK: las 3 migraciones
