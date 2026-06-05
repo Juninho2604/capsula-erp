@@ -116,26 +116,6 @@ function rowToDTO(p: PromoRow): PromotionDTO {
     };
 }
 
-/** Convierte una fila de BD a la regla pura que consume el motor. */
-export function rowToRule(p: PromoRow): PromotionRule {
-    return {
-        id: p.id,
-        name: p.name,
-        discountType: p.discountType === 'FIXED' ? 'FIXED' : 'PERCENT',
-        discountValue: p.discountValue,
-        maxDiscountPerUnit: p.maxDiscountPerUnit,
-        applicableCategoryIds: parseJsonArray(p.applicableCategoryIds),
-        applicableItemIds: parseJsonArray(p.applicableItemIds),
-        daysOfWeek: parseNumArray(p.daysOfWeek),
-        startTime: p.startTime,
-        endTime: p.endTime,
-        startDate: p.startDate,
-        endDate: p.endDate,
-        priority: p.priority,
-        isActive: p.isActive,
-    };
-}
-
 function validateInput(input: PromotionInput): string | null {
     if (!input.name?.trim()) return 'El nombre es obligatorio.';
     if (input.discountType !== 'PERCENT' && input.discountType !== 'FIXED') return 'Tipo de descuento inválido.';
