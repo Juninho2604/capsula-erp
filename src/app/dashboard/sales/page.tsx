@@ -292,7 +292,12 @@ export default function SalesHistoryPage() {
         }
         // Tipo de orden
         if (filterOrderType === 'PROPINAS') {
-            if ((s.customerName || '') !== 'PROPINA COLECTIVA') return false;
+            // Muestra propinas colectivas (PKP "PROPINA COLECTIVA") + propinas
+            // embebidas en splits de mesas y excedentes en pedidos directos
+            // (donde el cliente pagó más que lo facturado).
+            const isColectiva = (s.customerName || '') === 'PROPINA COLECTIVA';
+            const hasEmbeddedTip = (s.propina ?? 0) > 0.01;
+            if (!isColectiva && !hasEmbeddedTip) return false;
         } else if (filterOrderType === 'RESTAURANT') {
             // Mesa/Pickup: incluye RESTAURANT y PICKUP (propinas colectivas son PICKUP)
             const ot = (s.orderType || '').toUpperCase();
@@ -319,6 +324,45 @@ export default function SalesHistoryPage() {
         },
         { invoiced: 0, collected: 0, discounts: 0 }
     );
+
+    // Cuando el filtro Propinas está activo: total de propinas (colectivas +
+    // embebidas) y desglose por método de pago. Las colectivas suman el
+    // amountPaid completo (la fila entera es propina). Las embebidas suman
+    // sólo el campo `propina` (excedente del cliente sobre lo facturado).
+    const tipsBreakdown = filterOrderType === 'PROPINAS'
+        ? filteredSales.reduce((acc, s) => {
+            if (s.status === 'CANCELLED') return acc;
+            const isColectiva = (s.customerName || '') === 'PROPINA COLECTIVA';
+            const tipAmount = isColectiva
+                ? (s.totalCobrado ?? s.amountPaid ?? s.total ?? 0)
+                : (s.propina ?? 0);
+            if (tipAmount <= 0.01) return acc;
+            acc.total += tipAmount;
+            if (isColectiva) acc.colectivas += tipAmount;
+            else acc.embebidas += tipAmount;
+            // Desglose por método: para colectivas usa paymentMethod de la
+            // venta; para embebidas, intenta primero paymentBreakdown (si hay
+            // pagos mixtos prorratea proporcional); si no, usa paymentMethod.
+            const breakdown: { method: string; amount: number }[] = s.paymentBreakdown || [];
+            if (breakdown.length > 0) {
+                const totalBreakdown = breakdown.reduce((sum, p) => sum + (p.amount || 0), 0);
+                if (totalBreakdown > 0) {
+                    for (const p of breakdown) {
+                        const share = (p.amount || 0) / totalBreakdown;
+                        const m = (p.method || 'CASH').toUpperCase();
+                        acc.byMethod[m] = (acc.byMethod[m] || 0) + tipAmount * share;
+                    }
+                } else {
+                    const m = (s.paymentMethod || 'CASH').toUpperCase();
+                    acc.byMethod[m] = (acc.byMethod[m] || 0) + tipAmount;
+                }
+            } else {
+                const m = (s.paymentMethod || 'CASH').toUpperCase();
+                acc.byMethod[m] = (acc.byMethod[m] || 0) + tipAmount;
+            }
+            return acc;
+        }, { total: 0, colectivas: 0, embebidas: 0, byMethod: {} as Record<string, number> })
+        : null;
 
     // Anulaciones del día (sobre el total del día, no sobre el filtro)
     const todayVoids = sales.filter(s => s.status === 'CANCELLED');
@@ -510,10 +554,20 @@ export default function SalesHistoryPage() {
                     <p className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink tabular-nums">{shownCount}</p>
                     {shownCount !== totalCount && <p className="text-xs text-capsula-ink-faint tabular-nums">de {totalCount} total</p>}
                 </div>
-                <div className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 shadow-cap-soft">
-                    <p className="text-[10px] text-capsula-ink-muted uppercase font-semibold tracking-[0.14em] mb-1">Facturado</p>
-                    <p className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink tabular-nums">{formatMoney(filteredTotals.invoiced)}</p>
-                </div>
+                {tipsBreakdown ? (
+                    <div className="rounded-xl border border-[#E8D9B8] bg-[#F3EAD6]/40 dark:border-[#5b4a28] dark:bg-[#3B2F15]/40 px-4 py-3">
+                        <p className="text-[10px] text-[#946A1C] dark:text-[#E8D9B8] uppercase font-semibold tracking-[0.14em] mb-1">Total propinas</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-[#946A1C] dark:text-[#E8D9B8] tabular-nums">{formatMoney(tipsBreakdown.total)}</p>
+                        <p className="text-[10px] text-[#946A1C]/80 dark:text-[#E8D9B8]/80 tabular-nums mt-0.5">
+                            Colect. {formatMoney(tipsBreakdown.colectivas)} · Embeb. {formatMoney(tipsBreakdown.embebidas)}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 shadow-cap-soft">
+                        <p className="text-[10px] text-capsula-ink-muted uppercase font-semibold tracking-[0.14em] mb-1">Facturado</p>
+                        <p className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink tabular-nums">{formatMoney(filteredTotals.invoiced)}</p>
+                    </div>
+                )}
                 <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#244935] dark:bg-[#1E3B2C]/40 px-4 py-3">
                     <p className="text-[10px] text-[#2F6B4E] dark:text-[#6FB88F] uppercase font-semibold tracking-[0.14em] mb-1">Cobrado</p>
                     <p className="font-semibold text-2xl tracking-[-0.02em] text-[#2F6B4E] dark:text-[#6FB88F] tabular-nums">{formatMoney(filteredTotals.collected)}</p>
@@ -530,6 +584,23 @@ export default function SalesHistoryPage() {
                     {voidAmount > 0 && <p className="text-xs font-semibold tabular-nums text-[#B04A2E]/80 dark:text-[#EFD2C8]/80">{formatMoney(voidAmount)}</p>}
                 </div>
             </div>
+
+            {/* Desglose de propinas por método (sólo cuando filtro = Propinas) */}
+            {tipsBreakdown && Object.keys(tipsBreakdown.byMethod).length > 0 && (
+                <div className="rounded-xl border border-[#E8D9B8] bg-[#F3EAD6]/30 dark:border-[#5b4a28] dark:bg-[#3B2F15]/30 px-4 py-3 mb-4">
+                    <p className="text-[10px] text-[#946A1C] dark:text-[#E8D9B8] uppercase font-semibold tracking-[0.14em] mb-2">Propinas por método de pago</p>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+                        {(Object.entries(tipsBreakdown.byMethod) as [string, number][])
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([method, amount]) => (
+                                <div key={method} className="flex items-center gap-2">
+                                    <span className="text-xs uppercase tracking-[0.12em] text-[#946A1C]/80 dark:text-[#E8D9B8]/80">{method.replace(/_/g, ' ')}</span>
+                                    <span className="font-mono font-semibold tabular-nums text-[#946A1C] dark:text-[#E8D9B8]">{formatMoney(amount)}</span>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+            )}
 
             {/* TABLA */}
             <div className="rounded-2xl border border-capsula-line bg-capsula-ivory overflow-x-auto shadow-cap-soft">
@@ -568,6 +639,7 @@ export default function SalesHistoryPage() {
                             const totalFactura = sale.totalFactura ?? sale.total;
                             const totalCobrado = sale.totalCobrado ?? sale.total;
                             const propina = sale.propina ?? 0;
+                            const hasEmbeddedTip = !isPropina && propina > 0.01;
                             const saleDate = sale.createdAt
                                 ? new Date(sale.createdAt).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: 'numeric', year: 'numeric' })
                                 : '-';
@@ -590,6 +662,9 @@ export default function SalesHistoryPage() {
                                                 </span>
                                                 {isPropina && (
                                                     <span className="rounded bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-[0.14em]">Propina</span>
+                                                )}
+                                                {hasEmbeddedTip && filterOrderType === 'PROPINAS' && (
+                                                    <span className="rounded border border-[#E8D9B8] text-[#946A1C] dark:border-[#5b4a28] dark:text-[#E8D9B8] text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-[0.14em]">+ Propina</span>
                                                 )}
                                                 {isVoided && (
                                                     <span className="rounded bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8] text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-[0.14em]">Anulada</span>
