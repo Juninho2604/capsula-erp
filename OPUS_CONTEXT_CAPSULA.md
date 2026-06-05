@@ -1952,6 +1952,25 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 #### Regla permanente
 > **PROPINA COLECTIVA siempre usa `amountPaid`, nunca `total`.** El campo `total` es 0 por diseño (no es una venta de producto). Cualquier lógica que agregue ingresos de propina debe usar `_sum.amountPaid` filtrado por `customerName='PROPINA COLECTIVA'`, no `_sum.total`.
 
+#### Unificación de propinas en el cierre — flag `unifyTipReporting` (2026-06-05)
+
+**Problema histórico:** el Z report y el Cierre del Día **excluían** las propinas colectivas (`customerName: { not: 'PROPINA COLECTIVA' }`), así que la línea `(+) PROPINAS` solo sumaba el **excedente** al cobrar en pickup/delivery. Las propinas de **mesa** (que se graban como PROPINA COLECTIVA, ver flujo §18.8) y las colectivas manuales quedaban **fuera** del total de propinas del cierre. Esto las hacía sentir como una "cuenta aparte". Inconsistente además con el arqueo de caja (`closeCashRegisterAction`), que **sí** las contaba en `expectedCash` vía `tipsAgg`.
+
+**Modelo correcto (confirmado por el dueño):**
+- **10% servicio** = una cosa, su propia línea (`totalServiceFee`). Intacto.
+- **Propina** = TODO lo que excede al 10%. Si el cliente deja 15%, ese 5% es propina, aparte del 10%.
+- La propina extra llega por dos caminos que deben **unificarse en un solo número**: (B) excedente al cobrar, (C) propina colectiva registrada aparte.
+
+**Implementación (flag-gated, sin cambio de schema):**
+- Flag por tenant `unifyTipReporting` (catálogo en `src/lib/feature-flags.ts`). OFF por default = comportamiento histórico.
+- Con el flag ON, `getDailyZReportAction` (`z-report.actions.ts`) trae las órdenes PROPINA COLECTIVA en una query aparte (`collectiveTipOrders`, `select amountPaid + paymentMethod`) — aparte para **no inflar** conteos por canal ni ventas brutas — y suma su `amountPaid` a `totalTips`, `tipCount`, `totalCollected` y al arqueo (`pay`/paymentBreakdown). El 10% (`totalServiceFee`) queda separado e intacto.
+- `getEndOfDaySummaryAction` (`end-of-day.actions.ts`) hace lo mismo sobre `propinas`/`propinaCount`/`totalUSD`.
+- `ZReportData.tipsUnified?: boolean` señala al cliente que `totalTips` ya incluye colectivas.
+- **Sin doble-conteo:** en mesa el tip va 100% por la orden colectiva (el `paidAmount` del split es el total factura sin propina → excedente del split = 0); en pickup/delivery va por excedente y no se crea orden colectiva. Caminos disjuntos.
+- El export a Excel (`export-z-report.ts`) lee `totalTips` → correcto automáticamente.
+- `estadisticas`/`metas`/`comandas-del-dia` **siguen excluyendo** PROPINA COLECTIVA (una propina no es venta). No se tocan.
+- Activación: `/dashboard/config/feature-flags` (solo OWNER) → "Unificar propinas en el cierre". Efectivo en ≤30s (cache TTL).
+
 ### 18.9 Correcciones Responsive — RedmiPad 2 + Desktop (2026-04-11)
 
 **Target devices**: RedmiPad 2 landscape 1200×2000px, Desktop 1920×1080px.

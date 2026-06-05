@@ -9,6 +9,7 @@ import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 export interface EndOfDaySummary {
     date: string;
@@ -53,28 +54,39 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
         const { tenantId } = await resolveTenantContext();
+        const tipsUnified = await tenantFeatureEnabled(tenantId, 'unifyTipReporting');
         const db = withTenant(tenantId);
-        const orders = await db.salesOrder.findMany({
-            where: { createdAt: { gte: startOfDay, lte: endOfDay }, customerName: { not: 'PROPINA COLECTIVA' } },
-            include: {
-                orderPayments: { select: { method: true, amountUSD: true } },
-                openTab: {
-                    select: {
-                        runningTotal: true,
-                        runningSubtotal: true,
-                        runningDiscount: true,
-                        totalServiceCharge: true,
-                        paymentSplits: {
-                            where: { status: 'PAID' },
-                            select: { paymentMethod: true, paidAmount: true },
-                        },
-                        subAccounts: {
-                            select: { id: true, status: true },
+        const [orders, collectiveTipOrders] = await Promise.all([
+            db.salesOrder.findMany({
+                where: { createdAt: { gte: startOfDay, lte: endOfDay }, customerName: { not: 'PROPINA COLECTIVA' } },
+                include: {
+                    orderPayments: { select: { method: true, amountUSD: true } },
+                    openTab: {
+                        select: {
+                            runningTotal: true,
+                            runningSubtotal: true,
+                            runningDiscount: true,
+                            totalServiceCharge: true,
+                            paymentSplits: {
+                                where: { status: 'PAID' },
+                                select: { paymentMethod: true, paidAmount: true },
+                            },
+                            subAccounts: {
+                                select: { id: true, status: true },
+                            },
                         },
                     },
                 },
-            },
-        });
+            }),
+            db.salesOrder.findMany({
+                where: {
+                    createdAt: { gte: startOfDay, lte: endOfDay },
+                    status: { notIn: ['CANCELLED'] },
+                    customerName: 'PROPINA COLECTIVA',
+                },
+                select: { amountPaid: true, paymentMethod: true },
+            }),
+        ]);
 
         const DIVISAS_METHODS = new Set(['CASH', 'CASH_USD', 'CASH_EUR', 'ZELLE']);
 
@@ -181,6 +193,20 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
                 for (const p of mixedLines) classifyPayment(p.method, p.amountUSD);
             } else {
                 classifyPayment(o.paymentMethod ?? '', netReceived);
+            }
+        }
+
+        // Propinas colectivas — con flag unifyTipReporting suman a la propina
+        // total y al dinero recibido (está físicamente en caja). El 10% de
+        // servicio queda intacto y separado.
+        if (tipsUnified) {
+            for (const o of collectiveTipOrders) {
+                const tip = o.amountPaid || 0;
+                if (tip <= 0) continue;
+                propinas += tip;
+                propinaCount++;
+                totalUSD += tip;
+                classifyPayment(o.paymentMethod ?? '', tip);
             }
         }
 
