@@ -19,6 +19,12 @@ export default function SalesHistoryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [zReport, setZReport] = useState<ZReportData | null>(null);
     const [showZReport, setShowZReport] = useState(false);
+    // Blindaje cajera: si el feature flag `hideCashierPaymentMethod` está
+    // activo en el tenant y el rol del usuario no es OWNER/ADMIN_MANAGER,
+    // el server ya stripeó los métodos del response. Acá ocultamos también
+    // las columnas/filtros/secciones del UI para que no quede el header
+    // vacío ni el filtro inútil.
+    const [hidePaymentMethod, setHidePaymentMethod] = useState(false);
     const [daySummary, setDaySummary] = useState<EndOfDaySummary | null>(null);
     const [showDaySummary, setShowDaySummary] = useState(false);
 
@@ -51,6 +57,7 @@ export default function SalesHistoryPage() {
         setIsLoading(true);
         const result = await getSalesHistoryAction(date || undefined);
         if (result.success && result.data) setSales(result.data as any[]);
+        setHidePaymentMethod(Boolean((result as { hidePaymentMethod?: boolean }).hidePaymentMethod));
         setIsLoading(false);
     };
 
@@ -253,7 +260,7 @@ export default function SalesHistoryPage() {
         setCancelledFilter('active');
     };
 
-    const hasActiveFilters = filterSearch !== '' || filterPaymentMethod !== 'ALL' || filterOrderType !== 'ALL' || filterHasDiscount || cancelledFilter !== 'active';
+    const hasActiveFilters = filterSearch !== '' || (!hidePaymentMethod && filterPaymentMethod !== 'ALL') || filterOrderType !== 'ALL' || filterHasDiscount || cancelledFilter !== 'active';
 
     // La fecha ya se filtra en el servidor (getSalesHistoryAction). Aquí solo filtros adicionales.
     const allFilteredSales = sales.filter(s => {
@@ -270,8 +277,8 @@ export default function SalesHistoryPage() {
             const matchesPhone = (s.customerPhone || '').toLowerCase().includes(q);
             if (!matchesOrder && !matchesCustomer && !matchesPhone) return false;
         }
-        // Método de pago
-        if (filterPaymentMethod !== 'ALL') {
+        // Método de pago — skip si el blindaje está activo (no hay dato).
+        if (!hidePaymentMethod && filterPaymentMethod !== 'ALL') {
             const breakdown: { method: string }[] = s.paymentBreakdown || [];
             if (filterPaymentMethod === 'MIXED') {
                 if (breakdown.length <= 1) return false;
@@ -412,28 +419,30 @@ export default function SalesHistoryPage() {
                         />
                     </div>
                 </div>
-                {/* Método de pago */}
-                <div>
-                    <label className="text-[10px] text-capsula-ink-muted uppercase font-semibold mb-1.5 block tracking-[0.14em]">Método</label>
-                    <select
-                        value={filterPaymentMethod}
-                        onChange={e => setFilterPaymentMethod(e.target.value)}
-                        className="pos-input text-sm cursor-pointer"
-                    >
-                        <option value="ALL">Todos</option>
-                        <option value="CASH_USD">Cash $</option>
-                        <option value="CASH_EUR">€ Cash €</option>
-                        <option value="ZELLE">Zelle</option>
-                        <option value="PDV_SHANKLISH">PDV Shanklish</option>
-                        <option value="PDV_SUPERFERRO">PDV Superferro</option>
-                        <option value="MOBILE_PAY">Pago Móvil</option>
-                        <option value="MOVIL_NG">Móvil NG</option>
-                        <option value="TRANSFER">Transferencia</option>
-                        <option value="CASH_BS">Efectivo Bs</option>
-                        <option value="CORTESIA">Cortesía</option>
-                        <option value="MIXED">Pago Mixto</option>
-                    </select>
-                </div>
+                {/* Método de pago — oculto si el tenant tiene blindaje activo y el rol no puede ver método */}
+                {!hidePaymentMethod && (
+                    <div>
+                        <label className="text-[10px] text-capsula-ink-muted uppercase font-semibold mb-1.5 block tracking-[0.14em]">Método</label>
+                        <select
+                            value={filterPaymentMethod}
+                            onChange={e => setFilterPaymentMethod(e.target.value)}
+                            className="pos-input text-sm cursor-pointer"
+                        >
+                            <option value="ALL">Todos</option>
+                            <option value="CASH_USD">Cash $</option>
+                            <option value="CASH_EUR">€ Cash €</option>
+                            <option value="ZELLE">Zelle</option>
+                            <option value="PDV_SHANKLISH">PDV Shanklish</option>
+                            <option value="PDV_SUPERFERRO">PDV Superferro</option>
+                            <option value="MOBILE_PAY">Pago Móvil</option>
+                            <option value="MOVIL_NG">Móvil NG</option>
+                            <option value="TRANSFER">Transferencia</option>
+                            <option value="CASH_BS">Efectivo Bs</option>
+                            <option value="CORTESIA">Cortesía</option>
+                            <option value="MIXED">Pago Mixto</option>
+                        </select>
+                    </div>
+                )}
                 {/* Tipo de orden */}
                 <div>
                     <label className="text-[10px] text-capsula-ink-muted uppercase font-semibold mb-1.5 block tracking-[0.14em]">Tipo</label>
@@ -531,7 +540,7 @@ export default function SalesHistoryPage() {
                             <th className="px-4 py-3">Fecha</th>
                             <th className="px-4 py-3">Hora</th>
                             <th className="px-4 py-3">Cliente</th>
-                            <th className="px-4 py-3">Método</th>
+                            {!hidePaymentMethod && <th className="px-4 py-3">Método</th>}
                             <th className="px-4 py-3 text-right">Total factura</th>
                             <th className="px-4 py-3 text-right">Cobrado</th>
                             <th className="px-4 py-3 text-center">10% serv.</th>
@@ -659,20 +668,22 @@ export default function SalesHistoryPage() {
                                                 );
                                             })()}
                                         </td>
-                                        {/* MÉTODO */}
-                                        <td className="px-4 py-3">
-                                            {(sale.paymentBreakdown || []).length > 1 ? (
-                                                <div className="flex flex-wrap gap-1" title={(sale.paymentBreakdown || []).map((p: { method: string; amount: number }) => `${p.method}: $${p.amount.toFixed(2)}`).join(' | ')}>
-                                                    {(sale.paymentBreakdown || []).map((p: { method: string; amount: number }, i: number) => (
-                                                        <span key={i} className="flex items-center gap-0.5">
-                                                            {getPaymentBadge(p.method)}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                getPaymentBadge(sale.paymentMethod)
-                                            )}
-                                        </td>
+                                        {/* MÉTODO — oculto bajo blindaje cajera */}
+                                        {!hidePaymentMethod && (
+                                            <td className="px-4 py-3">
+                                                {(sale.paymentBreakdown || []).length > 1 ? (
+                                                    <div className="flex flex-wrap gap-1" title={(sale.paymentBreakdown || []).map((p: { method: string; amount: number }) => `${p.method}: $${p.amount.toFixed(2)}`).join(' | ')}>
+                                                        {(sale.paymentBreakdown || []).map((p: { method: string; amount: number }, i: number) => (
+                                                            <span key={i} className="flex items-center gap-0.5">
+                                                                {getPaymentBadge(p.method)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    getPaymentBadge(sale.paymentMethod)
+                                                )}
+                                            </td>
+                                        )}
                                         {/* TOTAL FACTURA */}
                                         <td className="px-4 py-3 text-right text-capsula-ink-muted text-sm font-mono">
                                             {isPropina ? <span className="text-capsula-ink-soft">—</span> : formatMoney(totalFactura)}
@@ -816,8 +827,8 @@ export default function SalesHistoryPage() {
                                                     )}
                                                 </div>
 
-                                                {/* Desglose de pagos */}
-                                                {(sale.paymentBreakdown || []).length > 0 && (
+                                                {/* Desglose de pagos — oculto bajo blindaje cajera */}
+                                                {!hidePaymentMethod && (sale.paymentBreakdown || []).length > 0 && (
                                                     <div className="mt-2 text-xs text-capsula-ink-muted">
                                                         <span className="font-semibold uppercase text-capsula-ink-soft">Desglose de pagos: </span>
                                                         {(sale.paymentBreakdown || []).map((p: { method: string; amount: number; amountBS?: number; exchangeRate?: number; label?: string }, i: number) => (
@@ -913,19 +924,21 @@ export default function SalesHistoryPage() {
                             )}
                         </div>
 
-                        {/* ── ARQUEO DE CAJA ── */}
-                        <div className="mb-4 border-b-2 border-dashed border-black pb-4">
-                            <h3 className="font-semibold underline mb-2">ARQUEO DE CAJA</h3>
-                            <div className="space-y-0.5 text-sm">
-                                {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
-                                {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
-                                {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
-                                {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
-                                {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
-                                {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
-                                {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-muted"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                        {/* ── ARQUEO DE CAJA — oculto bajo blindaje cajera ── */}
+                        {!zReport.hidePaymentMethod && (
+                            <div className="mb-4 border-b-2 border-dashed border-black pb-4">
+                                <h3 className="font-semibold underline mb-2">ARQUEO DE CAJA</h3>
+                                <div className="space-y-0.5 text-sm">
+                                    {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
+                                    {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
+                                    {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
+                                    {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
+                                    {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
+                                    {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
+                                    {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-muted"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* ── PEDIDOS POR CANAL ── */}
                         <div className="mb-4 text-sm border-b-2 border-dashed border-black pb-4">

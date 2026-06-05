@@ -11,6 +11,9 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { getSession } from '@/lib/auth';
+import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 export interface SalesFilter {
     startDate?: Date;
@@ -35,6 +38,10 @@ export async function getSalesHistoryAction(date?: string) {
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(queryDate);
 
         const { tenantId } = await resolveTenantContext();
+        const session = await getSession();
+        const hidePaymentMethod =
+            !canViewPaymentMethod(session?.role) &&
+            (await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod'));
         const db = withTenant(tenantId);
         const orders = await db.salesOrder.findMany({
             where: { createdAt: { gte: startOfDay, lte: endOfDay } },
@@ -263,7 +270,18 @@ export async function getSalesHistoryAction(date?: string) {
         }
 
         result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return { success: true, data: result };
+
+        if (hidePaymentMethod) {
+            // Strip server-side — no enviar el método de pago al cliente.
+            // Así no se filtra ni siquiera vía DevTools en el response.
+            for (const r of result) {
+                r.paymentMethod = null;
+                r.paymentBreakdown = [];
+                if (Array.isArray(r.orderPayments)) r.orderPayments = [];
+            }
+        }
+
+        return { success: true, data: result, hidePaymentMethod };
     } catch (error) {
         console.error('Error fetching sales:', error);
         return { success: false, message: 'Error cargando historial' };
