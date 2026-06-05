@@ -31,8 +31,16 @@ export interface ZReportData {
     totalDiscounts: number;
     netTotal: number;
     totalServiceFee: number;
+    /**
+     * Total de PROPINA (todo lo que excede al 10% de servicio). Con el flag
+     * `unifyTipReporting` activo incluye tanto el excedente al cobrar como
+     * las propinas colectivas registradas aparte. Sin el flag, solo el
+     * excedente (comportamiento histórico).
+     */
     totalTips: number;
     tipCount: number;
+    /** True cuando el flag `unifyTipReporting` está activo (totalTips ya incluye colectivas). */
+    tipsUnified?: boolean;
     totalCollected: number;
     openTabsPending: { count: number; total: number };
 
@@ -72,8 +80,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const hidePaymentMethod =
             !canViewPaymentMethod(session?.role) &&
             (await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod'));
+        const tipsUnified = await tenantFeatureEnabled(tenantId, 'unifyTipReporting');
         const db = withTenant(tenantId);
-        const [orders, cancelledAgg] = await Promise.all([
+        const [orders, cancelledAgg, collectiveTipOrders] = await Promise.all([
             db.salesOrder.findMany({
                 where: {
                     createdAt:    { gte: startOfDay, lte: endOfDay },
@@ -103,6 +112,16 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 where: cancelledWhere(startOfDay, endOfDay),
                 _count: { id: true },
                 _sum: { total: true },
+            }),
+            // Propinas colectivas — órdenes ficticias (total=0, amountPaid=propina).
+            // Se traen aparte para no inflar conteos por canal ni ventas brutas.
+            db.salesOrder.findMany({
+                where: {
+                    createdAt:    { gte: startOfDay, lte: endOfDay },
+                    status:       { notIn: ['CANCELLED'] },
+                    customerName: 'PROPINA COLECTIVA',
+                },
+                select: { amountPaid: true, paymentMethod: true },
             }),
         ]);
 
@@ -212,6 +231,20 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             else                                                     byType.restaurant++;
         }
 
+        // ── Propinas colectivas ──────────────────────────────────────────────
+        // Con el flag `unifyTipReporting` activo, las propinas colectivas
+        // (registradas como órdenes ficticias aparte) suman al total de
+        // PROPINA, junto al excedente al cobrar. El 10% de servicio queda
+        // intacto y separado. También entran al arqueo (pay) y a totalCollected
+        // para que el cierre reconcilie: ese dinero está físicamente en caja.
+        const collectiveTipsTotal = collectiveTipOrders.reduce((s, o) => s + (o.amountPaid || 0), 0);
+        const collectiveTipCount = collectiveTipOrders.filter(o => (o.amountPaid || 0) > 0).length;
+        if (tipsUnified && collectiveTipsTotal > 0) {
+            totalTips += collectiveTipsTotal;
+            tipCount  += collectiveTipCount;
+            for (const o of collectiveTipOrders) addPayment(o.paymentMethod, o.amountPaid || 0);
+        }
+
         const netTotal       = grossTotal - totalDiscounts;
         const totalCollected = netTotal + totalServiceFee + totalTips;
 
@@ -234,6 +267,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 totalServiceFee,
                 totalTips,
                 tipCount,
+                tipsUnified,
                 totalCollected,
                 discountBreakdown: disc,
                 paymentBreakdown:  exposedPaymentBreakdown,
