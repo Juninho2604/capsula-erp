@@ -64,6 +64,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     roles_config:      KeyRound,
     module_config:     SlidersHorizontal,
     branding_config:   Tag,
+    feature_flags:     Flag,
     almacenes:         Warehouse,
     tasa_cambio:       RefreshCw,
     anuncios:          Megaphone,

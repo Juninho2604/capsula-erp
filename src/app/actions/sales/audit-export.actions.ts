@@ -14,6 +14,9 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { getSession } from '@/lib/auth';
+import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 export interface SalesAuditItem {
     orderNumber: string;
@@ -77,6 +80,10 @@ export async function getSalesAuditAction(date?: string): Promise<{
         const dateStamp = getCaracasDateStamp(queryDate);
 
         const { tenantId } = await resolveTenantContext();
+        const session = await getSession();
+        const hidePaymentMethod =
+            !canViewPaymentMethod(session?.role) &&
+            (await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod'));
         const db = withTenant(tenantId);
 
         const orders = await db.salesOrder.findMany({
@@ -113,7 +120,7 @@ export async function getSalesAuditAction(date?: string): Promise<{
                 customerName: o.customerName ?? null,
                 customerPhone: o.customerPhone ?? null,
                 cashier,
-                paymentMethod: o.paymentMethod || '-',
+                paymentMethod: hidePaymentMethod ? '-' : (o.paymentMethod || '-'),
                 subtotal: o.subtotal || 0,
                 discount: o.discount || 0,
                 total: o.total || 0,

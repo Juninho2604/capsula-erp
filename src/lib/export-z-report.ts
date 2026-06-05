@@ -36,25 +36,27 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['TOTAL COBRADO',                    fmt(zReport.totalCollected)],
         ['', ''],
 
-        // ── arqueo por método de pago ────────────────────────────────────────
-        ['══ ARQUEO DE CAJA ══════════════════════', ''],
-        ['Efectivo USD',                     fmtOpt(zReport.paymentBreakdown.cash)],
-        ['Zelle',                            fmtOpt(zReport.paymentBreakdown.zelle)],
-        ['Punto PDV',                        fmtOpt(zReport.paymentBreakdown.card)],
-        ['Pago Móvil',                       fmtOpt(zReport.paymentBreakdown.mobile)],
-        ['Transferencia',                    fmtOpt(zReport.paymentBreakdown.transfer)],
-        ['PedidosYA / Externo',              fmtOpt(zReport.paymentBreakdown.external)],
-        ['Otros',                            fmtOpt(zReport.paymentBreakdown.other)],
-        ['SUMA MÉTODOS DE PAGO',             fmt(
-            zReport.paymentBreakdown.cash +
-            zReport.paymentBreakdown.zelle +
-            zReport.paymentBreakdown.card +
-            zReport.paymentBreakdown.mobile +
-            zReport.paymentBreakdown.transfer +
-            zReport.paymentBreakdown.external +
-            zReport.paymentBreakdown.other
-        )],
-        ['', ''],
+        // ── arqueo por método de pago — omitido bajo blindaje cajera ────────
+        ...(zReport.hidePaymentMethod ? [] : [
+            ['══ ARQUEO DE CAJA ══════════════════════', ''],
+            ['Efectivo USD',                     fmtOpt(zReport.paymentBreakdown.cash)],
+            ['Zelle',                            fmtOpt(zReport.paymentBreakdown.zelle)],
+            ['Punto PDV',                        fmtOpt(zReport.paymentBreakdown.card)],
+            ['Pago Móvil',                       fmtOpt(zReport.paymentBreakdown.mobile)],
+            ['Transferencia',                    fmtOpt(zReport.paymentBreakdown.transfer)],
+            ['PedidosYA / Externo',              fmtOpt(zReport.paymentBreakdown.external)],
+            ['Otros',                            fmtOpt(zReport.paymentBreakdown.other)],
+            ['SUMA MÉTODOS DE PAGO',             fmt(
+                zReport.paymentBreakdown.cash +
+                zReport.paymentBreakdown.zelle +
+                zReport.paymentBreakdown.card +
+                zReport.paymentBreakdown.mobile +
+                zReport.paymentBreakdown.transfer +
+                zReport.paymentBreakdown.external +
+                zReport.paymentBreakdown.other
+            )],
+            ['', ''],
+        ] as [string, string][]),
 
         // ── pedidos por canal ────────────────────────────────────────────────
         ['══ PEDIDOS POR CANAL ═══════════════════', ''],

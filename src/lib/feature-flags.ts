@@ -1,0 +1,85 @@
+/**
+ * Feature flags por tenant.
+ *
+ * Cada flag vive en `Tenant.featureFlags` (JSONB). El catálogo de claves
+ * válidas está acá — agregar una clave nueva no requiere migración, solo
+ * tipa el record. Default: `false` (flag apagado) para todos los tenants.
+ *
+ * Lectura: `tenantFeatureEnabled(tenantId, 'flagX')` con cache de 30s.
+ * Escritura: `setTenantFeatureFlag(tenantId, 'flagX', true)` (invalida cache).
+ *
+ * UI admin: `/dashboard/config/feature-flags` (solo OWNER).
+ */
+
+import prisma from '@/server/db';
+
+export const FEATURE_FLAGS = {
+    hideCashierPaymentMethod: {
+        label: 'Ocultar método de pago a cajera/mesero',
+        description:
+            'Cuando está activo, los roles sin permiso (todos excepto OWNER y ADMIN_MANAGER) no pueden ver el método de pago en el historial de ventas, en el detalle de cada venta ni en el desglose del Report Z. Recomendado para blindar el cierre de caja.',
+    },
+} as const;
+
+export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
+
+const CACHE_TTL_MS = 30_000;
+type CacheEntry = { flags: Record<string, boolean>; expiresAt: number };
+const cache = new Map<string, CacheEntry>();
+
+async function readFlagsFromDB(tenantId: string): Promise<Record<string, boolean>> {
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { featureFlags: true },
+    });
+    if (!tenant) return {};
+    const raw = tenant.featureFlags as unknown;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        return raw as Record<string, boolean>;
+    }
+    return {};
+}
+
+export async function tenantFeatureEnabled(
+    tenantId: string,
+    flag: FeatureFlagKey,
+): Promise<boolean> {
+    const now = Date.now();
+    let entry = cache.get(tenantId);
+    if (!entry || entry.expiresAt < now) {
+        const flags = await readFlagsFromDB(tenantId);
+        entry = { flags, expiresAt: now + CACHE_TTL_MS };
+        cache.set(tenantId, entry);
+    }
+    return entry.flags[flag] === true;
+}
+
+export async function getTenantFeatureFlags(
+    tenantId: string,
+): Promise<Record<FeatureFlagKey, boolean>> {
+    const stored = await readFlagsFromDB(tenantId);
+    const result = {} as Record<FeatureFlagKey, boolean>;
+    for (const key of Object.keys(FEATURE_FLAGS) as FeatureFlagKey[]) {
+        result[key] = stored[key] === true;
+    }
+    return result;
+}
+
+export async function setTenantFeatureFlag(
+    tenantId: string,
+    flag: FeatureFlagKey,
+    enabled: boolean,
+): Promise<void> {
+    const stored = await readFlagsFromDB(tenantId);
+    const next = { ...stored, [flag]: enabled };
+    await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { featureFlags: next },
+    });
+    cache.delete(tenantId);
+}
+
+export function invalidateTenantFeatureFlagsCache(tenantId?: string): void {
+    if (tenantId) cache.delete(tenantId);
+    else cache.clear();
+}

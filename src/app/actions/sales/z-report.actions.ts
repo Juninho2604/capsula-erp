@@ -10,6 +10,9 @@ import { getCaracasDayRange } from '@/lib/datetime';
 import { cancelledWhere } from '@/lib/sales-where';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { getSession } from '@/lib/auth';
+import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 export interface ZReportData {
     period: string;
@@ -51,6 +54,8 @@ export interface ZReportData {
 
     ordersByStatus: Record<string, number>;
     cancelledTotal: number;
+    /** Cuando true, el desglose de pagos viene en cero y el cliente NO debe renderizarlo. */
+    hidePaymentMethod?: boolean;
 }
 
 /**
@@ -63,6 +68,10 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);
 
         const { tenantId } = await resolveTenantContext();
+        const session = await getSession();
+        const hidePaymentMethod =
+            !canViewPaymentMethod(session?.role) &&
+            (await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod'));
         const db = withTenant(tenantId);
         const [orders, cancelledAgg] = await Promise.all([
             db.salesOrder.findMany({
@@ -206,6 +215,13 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const netTotal       = grossTotal - totalDiscounts;
         const totalCollected = netTotal + totalServiceFee + totalTips;
 
+        // Strip server-side: si el rol no debe ver el método y el flag está
+        // activo, devolvemos el desglose en cero para que ni siquiera viaje
+        // al cliente (no se filtra en DevTools).
+        const exposedPaymentBreakdown = hidePaymentMethod
+            ? { cash: 0, zelle: 0, card: 0, mobile: 0, transfer: 0, external: 0, other: 0 }
+            : pay;
+
         return {
             success: true,
             data: {
@@ -220,7 +236,8 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 tipCount,
                 totalCollected,
                 discountBreakdown: disc,
-                paymentBreakdown:  pay,
+                paymentBreakdown:  exposedPaymentBreakdown,
+                hidePaymentMethod,
                 ordersByStatus: {
                     PAID:      byType.restaurant + byType.delivery + byType.pickup + byType.pedidosya + byType.wink + byType.evento + byType.tablePong - openTabsPending.count,
                     CANCELLED: cancelledAgg._count.id,
