@@ -19,6 +19,11 @@ export const FEATURE_FLAGS = {
         description:
             'Cuando está activo, los roles sin permiso (todos excepto OWNER y ADMIN_MANAGER) no pueden ver el método de pago en el historial de ventas, en el detalle de cada venta ni en el desglose del Report Z. Recomendado para blindar el cierre de caja.',
     },
+    requirePaymentConfirmation: {
+        label: 'Pedir confirmación de método de pago antes de cobrar',
+        description:
+            'Cuando está activo, en POS Restaurante (mesa y pickup) y POS Delivery aparece un modal pre-cobro con resumen "Vas a cobrar $X.XX con [Método]". La cajera tiene que tocar "Confirmar". Reduce errores al elegir método. En pago mixto, el modal lista cada línea con su monto y método.',
+    },
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

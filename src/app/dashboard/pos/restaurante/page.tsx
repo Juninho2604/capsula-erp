@@ -20,9 +20,11 @@ import {
   type ModifyTabItemModification,
 } from "@/app/actions/pos.actions";
 import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
+import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
+import { useTenantFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import toast from "react-hot-toast";
@@ -227,6 +229,27 @@ function scheduledTimeToISO(hhmm: string): string | undefined {
 export default function POSSportBarPage() {
   // ── Branding del tenant para recibos (logo + RIF) ────────────────────────
   const branding = useTenantBranding();
+  // ── Feature flags del tenant (kill switch sin redeploy). El modal de
+  //    confirmación pre-cobro se activa con `requirePaymentConfirmation`.
+  const featureFlags = useTenantFeatureFlags();
+  // ── Modal de confirmación pre-cobro: cuando flag activo, antes de
+  //    invocar la action (table/pickup) se abre este modal con resumen.
+  const [paymentConfirmationPending, setPaymentConfirmationPending] = useState<{
+    lines: PaymentConfirmationLine[];
+    totalUSD: number;
+    onConfirm: () => void;
+  } | null>(null);
+  const requestPaymentConfirmation = (
+    lines: PaymentConfirmationLine[],
+    totalUSD: number,
+    onConfirm: () => void,
+  ) => {
+    if (!featureFlags.requirePaymentConfirmation) {
+      onConfirm();
+      return;
+    }
+    setPaymentConfirmationPending({ lines, totalUSD, onConfirm });
+  };
   // ── Data ──────────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -2403,7 +2426,12 @@ export default function POSSportBarPage() {
                               </div>
                             )}
                             <button
-                              onClick={handleCheckoutPickup}
+                              onClick={() => {
+                                const linesForConfirmation: PaymentConfirmationLine[] = isPickupMixedMode
+                                  ? mixedPaymentsPickup.map(p => ({ method: p.method, amountUSD: p.amountUSD, amountBS: p.amountBS }))
+                                  : [{ method: paymentMethod, amountUSD: paidAmount > 0 ? paidAmount : pickupTotal }];
+                                requestPaymentConfirmation(linesForConfirmation, pickupTotal, handleCheckoutPickup);
+                              }}
                               disabled={cart.length === 0 || isProcessing || needsAmount || needsMethod}
                               className="pos-btn w-full py-5 text-lg disabled:opacity-40 disabled:cursor-not-allowed"
                             >
@@ -2939,13 +2967,19 @@ export default function POSSportBarPage() {
                   {/* Register payment (requiere PIN) */}
                   <button
                     onClick={() => {
-                      setPaymentPin("");
-                      setPaymentPinError("");
-                      // Pre-fill tip from mesero selection if cashier hasn't entered one yet
-                      if (!checkoutTip && activeTab.tipAmount != null && activeTab.tipAmount > 0) {
-                        setCheckoutTip(activeTab.tipAmount.toFixed(2));
-                      }
-                      setShowPaymentPinModal(true);
+                      const linesForConfirmation: PaymentConfirmationLine[] = isTableMixedMode
+                        ? mixedPaymentsTable.map(p => ({ method: p.method, amountUSD: p.amountUSD, amountBS: p.amountBS }))
+                        : [{ method: paymentMethod, amountUSD: paidAmount }];
+                      const totalForConfirmation = isTableMixedMode ? totalMixedTablePaid : paidAmount;
+                      requestPaymentConfirmation(linesForConfirmation, totalForConfirmation, () => {
+                        setPaymentPin("");
+                        setPaymentPinError("");
+                        // Pre-fill tip from mesero selection if cashier hasn't entered one yet
+                        if (!checkoutTip && activeTab.tipAmount != null && activeTab.tipAmount > 0) {
+                          setCheckoutTip(activeTab.tipAmount.toFixed(2));
+                        }
+                        setShowPaymentPinModal(true);
+                      });
                     }}
                     disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing || !paymentMethodTouched)}
                     className="pos-btn w-full py-5 text-base disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
@@ -3756,6 +3790,19 @@ export default function POSSportBarPage() {
           );
         })}
       </nav>
+
+      {/* Modal de confirmación pre-cobro (flag requirePaymentConfirmation) */}
+      <PaymentConfirmationModal
+        open={paymentConfirmationPending !== null}
+        totalUSD={paymentConfirmationPending?.totalUSD ?? 0}
+        lines={paymentConfirmationPending?.lines ?? []}
+        onCancel={() => setPaymentConfirmationPending(null)}
+        onConfirm={() => {
+          const pending = paymentConfirmationPending;
+          setPaymentConfirmationPending(null);
+          pending?.onConfirm();
+        }}
+      />
     </div>
   );
 }
