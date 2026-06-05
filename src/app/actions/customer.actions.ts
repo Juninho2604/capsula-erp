@@ -323,3 +323,137 @@ export async function reactivateCustomerAction(id: string): Promise<{ success: b
         return { success: false, message: 'Error reactivando cliente' };
     }
 }
+
+// ── CRM: ficha de cliente con historial y agregados exactos ───────────────────
+
+export interface CustomerOrderRow {
+    id: string;
+    orderNumber: string;
+    createdAt: Date;
+    orderType: string | null;
+    status: string;
+    total: number;
+    itemCount: number;
+}
+
+export interface CustomerDetail {
+    id: string;
+    fullName: string;
+    idDocument: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    notes: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    // Agregados EXACTOS (calculados desde las ventas vinculadas, no el cache).
+    orderCount: number;
+    totalSpent: number;
+    avgTicket: number;
+    firstOrderAt: Date | null;
+    lastOrderAt: Date | null;
+    orders: CustomerOrderRow[];
+}
+
+/**
+ * Ficha completa de un cliente: datos + agregados exactos calculados desde
+ * las SalesOrder vinculadas (excluye anuladas y propinas colectivas) +
+ * historial de las últimas órdenes.
+ */
+export async function getCustomerDetailAction(id: string): Promise<{ success: boolean; data?: CustomerDetail; message?: string }> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const customer = await db.customer.findFirst({ where: { id } });
+        if (!customer) return { success: false, message: 'Cliente no encontrado' };
+
+        const orders = await db.salesOrder.findMany({
+            where: {
+                customerId: id,
+                status: { not: 'CANCELLED' },
+                customerName: { not: 'PROPINA COLECTIVA' },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true, orderNumber: true, createdAt: true, orderType: true,
+                status: true, total: true,
+                _count: { select: { items: true } },
+            },
+            take: 100,
+        });
+
+        const orderCount = orders.length;
+        const totalSpent = orders.reduce((s, o) => s + (o.total || 0), 0);
+        const avgTicket = orderCount > 0 ? totalSpent / orderCount : 0;
+        const dates = orders.map(o => o.createdAt);
+        const lastOrderAt = dates.length ? dates[0] : null;
+        const firstOrderAt = dates.length ? dates[dates.length - 1] : null;
+
+        return {
+            success: true,
+            data: {
+                id: customer.id,
+                fullName: customer.fullName,
+                idDocument: customer.idDocument,
+                phone: customer.phone,
+                email: customer.email,
+                address: customer.address,
+                notes: customer.notes,
+                isActive: customer.isActive,
+                createdAt: customer.createdAt,
+                orderCount,
+                totalSpent: Math.round(totalSpent * 100) / 100,
+                avgTicket: Math.round(avgTicket * 100) / 100,
+                firstOrderAt,
+                lastOrderAt,
+                orders: orders.map(o => ({
+                    id: o.id,
+                    orderNumber: o.orderNumber,
+                    createdAt: o.createdAt,
+                    orderType: o.orderType,
+                    status: o.status,
+                    total: o.total || 0,
+                    itemCount: o._count.items,
+                })),
+            },
+        };
+    } catch (err) {
+        console.error('getCustomerDetailAction error', err);
+        return { success: false, message: 'Error cargando la ficha del cliente' };
+    }
+}
+
+export interface TopCustomerRow {
+    id: string;
+    fullName: string;
+    phone: string | null;
+    totalOrders: number;
+    totalSpent: number;
+    lastOrderAt: Date | null;
+}
+
+/**
+ * Top clientes por gasto acumulado (cache). Para el panel de análisis.
+ */
+export async function getTopCustomersAction(limit = 10): Promise<{ success: boolean; data?: TopCustomerRow[] }> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false };
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const rows = await db.customer.findMany({
+            where: { isActive: true, totalSpent: { gt: 0 } },
+            orderBy: { totalSpent: 'desc' },
+            take: Math.min(50, Math.max(1, limit)),
+            select: { id: true, fullName: true, phone: true, totalOrders: true, totalSpent: true, lastOrderAt: true },
+        });
+        return { success: true, data: rows };
+    } catch (err) {
+        console.error('getTopCustomersAction error', err);
+        return { success: false };
+    }
+}

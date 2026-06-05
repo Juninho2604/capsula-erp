@@ -220,6 +220,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     enabledByDefault: true,
     sortOrder: 117,
   },
+  {
+    id: 'clientes',
+    label: 'Clientes',
+    description: 'Cartera de clientes: ficha, historial de compras y análisis',
+    icon: '👤',
+    href: '/dashboard/clientes',
+    section: 'operations',
+    enabledByDefault: true,
+    sortOrder: 118,
+  },
 
   // ═══════════════════════════════════════════
   // VENTAS / POS
@@ -573,6 +583,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   menu: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   modifiers: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   promotions: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
+  clientes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'CHEF'],
   pos_restaurant: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER'],
   pos_waiter: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'WAITER', 'CASHIER', 'AREA_LEAD'],
   pos_delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],

@@ -5,7 +5,7 @@ import {
     Palette, Wand2, UtensilsCrossed, Settings2, Salad, Smartphone, Bike, Monitor,
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
-    Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag,
+    Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag, UserCircle2,
 } from 'lucide-react';
 
 /**
@@ -40,6 +40,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     menu:              UtensilsCrossed,
     modifiers:         Settings2,
     promotions:        Tag,
+    clientes:          UserCircle2,
 
     // VENTAS & POS
     pos_restaurant:    Salad,
