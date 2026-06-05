@@ -14,6 +14,7 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
+import { scrubPaymentMethodFromHistory } from '@/lib/sales/scrub-payment';
 
 export interface SalesFilter {
     startDate?: Date;
@@ -272,13 +273,10 @@ export async function getSalesHistoryAction(date?: string) {
         result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         if (hidePaymentMethod) {
-            // Strip server-side — no enviar el método de pago al cliente.
-            // Así no se filtra ni siquiera vía DevTools en el response.
-            for (const r of result) {
-                r.paymentMethod = null;
-                r.paymentBreakdown = [];
-                if (Array.isArray(r.orderPayments)) r.orderPayments = [];
-            }
+            // Strip server-side — no enviar el método de pago al cliente, ni en
+            // los SalesOrder crudos anidados en orders[] (que de otro modo lo
+            // filtran vía DevTools). Ver scrub-payment.ts + sus tests.
+            scrubPaymentMethodFromHistory(result);
         }
 
         return { success: true, data: result, hidePaymentMethod };

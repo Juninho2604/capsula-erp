@@ -849,6 +849,40 @@ flag `promotionsEnabled` desde la misma vista (solo OWNER) o desde
 `/dashboard/config/feature-flags`. Módulo registrado en `modules-registry.ts`
 (id `promotions`, sección operations, sortOrder 117, icon lucide `Tag`).
 
+### 6.0.2 Auditoría 2026-06-05 — correcciones a PRs #259–#263
+
+Auditoría adversarial de los 5 PRs. Bugs encontrados y corregidos (PR #264):
+- **#259 CRÍTICO — fuga del método de pago.** El strip del historial limpiaba
+  solo el nivel superior; las filas adjuntan `orders[]` (SalesOrder crudos) con
+  `paymentMethod`, `orderPayments` y `openTab.paymentSplits/subAccounts` →
+  legible en DevTools. Fix: `scrubPaymentMethodFromHistory` (deep-strip) en
+  `src/lib/sales/scrub-payment.ts` + tests. Usado en `history.actions.ts`.
+- **#260 CRÍTICO — doble cobro.** El `PaymentConfirmationModal` no se
+  deshabilitaba al confirmar (`loading` nunca se pasaba); doble-tap táctil
+  disparaba dos `createSalesOrderAction`. Fix: guard interno `busy` que bloquea
+  el segundo disparo y resetea al reabrir.
+- **#263 ALTO — doble-conteo de stats.** Coexistían DOS caminos de upsert de
+  cliente: el pre-existente `upsertCustomerFromOrder` (que el Explore inicial no
+  reportó) y el nuevo `resolveCustomerForOrder`+`bumpCustomerStats`. Ambos
+  incrementaban `totalOrders`/`totalSpent` → doble. Fix: se eliminó
+  `upsertCustomerFromOrder`; UN solo camino, invocado **después** de crear la
+  orden (evita además clientes huérfanos si la orden fallaba) y que setea
+  `customerId` vía update + bump.
+- **#263 ALTO — agregados de la ficha mal.** `getCustomerDetailAction` calculaba
+  total/conteo/ticket/primera-visita sobre las 100 órdenes capadas. Fix:
+  `aggregate` sin cap + `findFirst` para la primera visita; `take:100` solo para
+  la lista visible.
+- **#263 MEDIO — duplicados de cliente.** Match por teléfono con `take:200`
+  arbitrario (perdía clientes con >200 fichas) y normalización divergente entre
+  los dos caminos. Fix: match por `contains` de los últimos 7 dígitos +
+  teléfono guardado normalizado (solo dígitos) + auto-create exige teléfono.
+
+Pre-existentes detectados, NO corregidos (no son regresión de estos PRs;
+requieren visto bueno porque cambian números del cierre): reconciliación
+`totalCollected` vs arqueo bajo redondeo DIVISAS; detección de propina en
+órdenes no-tab que ignora `tipAtCheckout`/pago mixto; modelo "confiar en el
+precio del cliente" para items sin promo.
+
 ### 6.0.1 Cartera de Clientes (CRM) — módulo (2026-06-05)
 
 Primera versión: **CRM (historial + análisis), solo de ahora en adelante**

@@ -1283,66 +1283,11 @@ function isOrderNumberUniqueError(err: unknown): boolean {
     return msg.includes('Unique constraint failed') && msg.includes('orderNumber');
 }
 
-/**
- * Busca un Customer recurrente por teléfono (match exacto en este tenant).
- * Si existe, incrementa stats (totalOrders++, totalSpent +=, lastOrderAt = ahora)
- * y actualiza dirección si era distinta. Si no existe, lo crea con stats=1.
- *
- * Pensado para llamarse desde `createSalesOrderAction` cuando es DELIVERY
- * con `customerPhone + customerName`. No lanza si el upsert falla — la
- * orden ya está guardada y no queremos romper el flujo crítico de venta.
- *
- * Normaliza el phone removiendo espacios y guiones para que "0424-1234567"
- * matchee "04241234567".
- */
-async function upsertCustomerFromOrder(
-    db: ReturnType<typeof withTenant>,
-    tenantId: string,
-    p: {
-        name: string;
-        phone: string;
-        address?: string;
-        orderTotal: number;
-        userId: string;
-    },
-): Promise<void> {
-    const normalizedPhone = p.phone.replace(/[\s-]/g, '');
-    if (!normalizedPhone) return;
-
-    // Buscar por phone normalizado (cualquier registro activo).
-    const existing = await db.customer.findFirst({
-        where: { phone: normalizedPhone, isActive: true },
-    });
-
-    const now = new Date();
-    if (existing) {
-        await db.customer.update({
-            where: { id: existing.id },
-            data: {
-                totalOrders: { increment: 1 },
-                totalSpent: { increment: p.orderTotal },
-                lastOrderAt: now,
-                // Solo actualizamos dirección si no había una y ahora viene.
-                ...(existing.address ? {} : p.address ? { address: p.address } : {}),
-            },
-        });
-        return;
-    }
-
-    // No existe → crear nuevo.
-    await db.customer.create({
-        data: {
-            tenantId,
-            fullName: p.name.trim(),
-            phone: normalizedPhone,
-            address: p.address?.trim() ?? null,
-            totalOrders: 1,
-            totalSpent: p.orderTotal,
-            lastOrderAt: now,
-            createdById: p.userId,
-        },
-    });
-}
+// NOTA: el upsert de cliente por teléfono vivía acá (`upsertCustomerFromOrder`).
+// Se eliminó en la auditoría 2026-06-05: coexistía con el nuevo camino CRM
+// (`resolveCustomerForOrder` + `bumpCustomerStats` en src/lib/customers/link.ts)
+// y ambos incrementaban las stats → doble-conteo. Ahora hay UN solo camino,
+// invocado tras crear la orden. Ver §6.0.1 de OPUS_CONTEXT.
 
 // ============================================================================
 // ACTION: CREAR ORDEN DE VENTA
@@ -1366,17 +1311,6 @@ export async function createSalesOrderAction(
         // devuelve auditoría por índice para snapshot en SalesOrderItem.
         const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
 
-        // CRM: resolver/crear ficha de cliente (delivery/pickup o id explícito).
-        // No bloquea el cobro si falla → devuelve null.
-        const linkedCustomerId = await resolveCustomerForOrder(db, tenantId, {
-            explicitCustomerId: data.customerId,
-            customerName: data.customerName,
-            customerPhone: data.customerPhone,
-            customerAddress: data.customerAddress,
-            orderType: data.orderType,
-            createdById: session.activeCashierId ?? session.id,
-        });
-
         const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data);
 
         let finalNotes = data.notes || '';
@@ -1399,7 +1333,6 @@ export async function createSalesOrderAction(
                         customerName: data.customerName,
                         customerPhone: data.customerPhone,
                         customerAddress: data.customerAddress,
-                        customerId: linkedCustomerId,
                         status: 'CONFIRMED',
                         serviceFlow: 'DIRECT_SALE',
                         sourceChannel: data.orderType === 'DELIVERY' ? 'POS_DELIVERY' : 'POS_RESTAURANT',
@@ -1465,11 +1398,6 @@ export async function createSalesOrderAction(
 
         if (!newOrder) throw new Error('No se pudo crear la orden tras reintentos');
 
-        // CRM: actualizar stats cacheadas del cliente vinculado. No bloquea.
-        if (linkedCustomerId) {
-            await bumpCustomerStats(db, tenantId, linkedCustomerId, total, newOrder.createdAt);
-        }
-
         // ====================================================================
         // REGISTRAR LÍNEAS DE PAGO MIXTO
         // ====================================================================
@@ -1528,23 +1456,29 @@ export async function createSalesOrderAction(
             } catch { /* best effort */ }
         }
 
-        // Upsert Customer si la orden es de DELIVERY con teléfono + nombre.
-        // Aprovechamos el flujo para mantener viva la tabla de clientes
-        // recurrentes (totalOrders, totalSpent, lastOrderAt). Si ya existe
-        // un Customer con ese phone, sumamos; si no, lo creamos. No
-        // bloqueamos la respuesta — si falla, log y seguimos.
-        if (data.orderType === 'DELIVERY' && data.customerPhone && data.customerName) {
-            try {
-                await upsertCustomerFromOrder(db, tenantId, {
-                    name: data.customerName,
-                    phone: data.customerPhone,
-                    address: data.customerAddress,
-                    orderTotal: newOrder.total,
-                    userId: session.id,
+        // CRM: vincular la venta a la ficha de cliente + actualizar stats.
+        // Se hace DESPUÉS de que la orden existe (evita clientes huérfanos si
+        // la creación fallaba) y por UN SOLO camino (resolveCustomerForOrder),
+        // para no doble-contar las stats. Vincula por id explícito (buscador
+        // del POS) o, en delivery/pickup, upsert por teléfono. No bloquea.
+        try {
+            const linkedCustomerId = await resolveCustomerForOrder(db, tenantId, {
+                explicitCustomerId: data.customerId,
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
+                customerAddress: data.customerAddress,
+                orderType: data.orderType,
+                createdById: session.activeCashierId ?? session.id,
+            });
+            if (linkedCustomerId) {
+                await db.salesOrder.updateMany({
+                    where: { id: newOrder.id, tenantId },
+                    data: { customerId: linkedCustomerId },
                 });
-            } catch (custErr) {
-                console.error('[CUSTOMER UPSERT] no crítico:', custErr);
+                await bumpCustomerStats(db, tenantId, linkedCustomerId, newOrder.total, newOrder.createdAt);
             }
+        } catch (custErr) {
+            console.error('[CRM] vínculo de cliente no crítico:', custErr);
         }
 
         revalidatePath('/dashboard/pos/restaurante');

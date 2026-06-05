@@ -12,6 +12,7 @@
  * Soporta pago simple (un método) y pago mixto (lista de líneas).
  */
 
+import { useEffect, useState } from 'react';
 import { Check, X as XIcon, Loader2 } from 'lucide-react';
 import { methodLabel, methodIcon } from './MixedPaymentSelector';
 
@@ -68,10 +69,26 @@ export function PaymentConfirmationModal({
     onCancel,
     onConfirm,
 }: Props) {
+    // Guard anti doble-tap: en pantalla táctil, dos toques rápidos sobre
+    // "Confirmar" disparan dos onClick antes de que el modal se desmonte →
+    // doble cobro. Este flag bloquea el segundo disparo dentro de la misma
+    // apertura del modal. Se resetea cada vez que el modal se vuelve a abrir.
+    const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        if (open) setBusy(false);
+    }, [open]);
+
     if (!open) return null;
 
     const isSingle = lines.length === 1;
     const single = lines[0];
+    const disabled = loading || busy;
+
+    const handleConfirm = () => {
+        if (busy) return;
+        setBusy(true);
+        onConfirm();
+    };
 
     return (
         <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
@@ -82,7 +99,7 @@ export function PaymentConfirmationModal({
                     </h3>
                     <button
                         onClick={onCancel}
-                        disabled={loading}
+                        disabled={disabled}
                         className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center disabled:opacity-50"
                         aria-label="Cancelar"
                     >
@@ -133,17 +150,17 @@ export function PaymentConfirmationModal({
                 <div className="border-t border-capsula-line p-4 flex gap-3">
                     <button
                         onClick={onCancel}
-                        disabled={loading}
+                        disabled={disabled}
                         className="pos-btn-secondary flex-1 py-3 disabled:opacity-50"
                     >
                         Cancelar
                     </button>
                     <button
-                        onClick={onConfirm}
-                        disabled={loading}
+                        onClick={handleConfirm}
+                        disabled={disabled}
                         className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-wait"
                     >
-                        {loading ? (
+                        {disabled ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                             <>
