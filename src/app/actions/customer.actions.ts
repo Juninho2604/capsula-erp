@@ -243,7 +243,7 @@ export async function updateCustomerAction(id: string, input: CustomerInput): Pr
             return { success: false, message: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
         }
 
-        const current = await db.customer.findUnique({ where: { id } });
+        const current = await db.customer.findFirst({ where: { id } });
         if (!current) return { success: false, message: 'Cliente no encontrado' };
 
         // Si cambia la cédula, verificar que no choque con otro registro.
@@ -259,8 +259,11 @@ export async function updateCustomerAction(id: string, input: CustomerInput): Pr
             }
         }
 
-        await db.customer.update({
-            where: { id },
+        // updateMany con {id, tenantId} — withTenant NO inyecta tenantId en
+        // update({where:{id}}) (uniques globales), así que un id de otro tenant
+        // podría escribirse. updateMany SÍ recibe el filtro de tenant.
+        await db.customer.updateMany({
+            where: { id, tenantId },
             data: {
                 fullName: parsed.data.fullName,
                 idDocument: parsed.data.idDocument ?? null,
@@ -292,10 +295,11 @@ export async function deactivateCustomerAction(id: string): Promise<{ success: b
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
 
-        await db.customer.update({
-            where: { id },
+        const res = await db.customer.updateMany({
+            where: { id, tenantId },
             data: { isActive: false },
         });
+        if (res.count === 0) return { success: false, message: 'Cliente no encontrado' };
         revalidatePath('/dashboard/clientes');
         return { success: true };
     } catch (err) {
@@ -312,10 +316,11 @@ export async function reactivateCustomerAction(id: string): Promise<{ success: b
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
 
-        await db.customer.update({
-            where: { id },
+        const res = await db.customer.updateMany({
+            where: { id, tenantId },
             data: { isActive: true },
         });
+        if (res.count === 0) return { success: false, message: 'Cliente no encontrado' };
         revalidatePath('/dashboard/clientes');
         return { success: true };
     } catch (err) {
