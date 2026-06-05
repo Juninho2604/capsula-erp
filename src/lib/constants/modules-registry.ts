@@ -434,6 +434,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 525,
   },
   {
+    id: 'feature_flags',
+    label: 'Feature Flags',
+    description: 'Kill switch por tenant para features con riesgo. Solo OWNER.',
+    icon: '🚩',
+    href: '/dashboard/config/feature-flags',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 526,
+  },
+  {
     id: 'almacenes',
     label: 'Almacenes',
     description: 'Gestión de áreas de almacenamiento: crear, activar/desactivar y detectar duplicados.',
@@ -575,6 +585,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   modulos_usuario: ['OWNER', 'ADMIN_MANAGER'],
   roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   module_config: ['OWNER'], // Solo el OWNER puede activar/desactivar módulos
+  feature_flags: ['OWNER'], // Solo el OWNER puede prender/apagar features con riesgo
   almacenes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   tasa_cambio: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   anuncios: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],

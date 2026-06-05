@@ -47,6 +47,13 @@ model Tenant {
   logoUrl     String?
   displayName String?
 
+  // Feature flags por tenant. Catálogo de claves válidas en
+  // `src/lib/feature-flags.ts` (FEATURE_FLAGS). Default `{}` = todo apagado.
+  // Los flags se prenden/apagan en `/dashboard/config/feature-flags` (solo
+  // OWNER). Sirven como kill switch sin redeploy: si una feature nueva
+  // rompe en producción, se baja el flag desde la UI.
+  featureFlags Json @default("{}")
+
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.
