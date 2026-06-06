@@ -25,10 +25,14 @@
  */
 
 import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { hasPermission } from '@/lib/permissions/has-permission';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getCaracasDayRange } from '@/lib/datetime';
+import { getSession } from '@/lib/auth';
+import { shouldHidePaymentMethod } from '@/lib/permissions/payment-method';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 export interface ComandaItem {
     itemName: string;
@@ -84,6 +88,13 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
         const { start, end } = getCaracasDayRange();
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
+
+        // Política método de pago: misma que historial — la cajera no lo ve
+        // ni siquiera vía DevTools llamando esta action (§47 / shouldHidePaymentMethod).
+        const session = await getSession();
+        const canExport = hasPermission(guard.user, PERM.EXPORT_SALES);
+        const flagOn = await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod');
+        const hidePaymentMethod = shouldHidePaymentMethod({ role: session?.role, canExport, flagOn });
 
         const orders = await db.salesOrder.findMany({
             where: {
@@ -156,7 +167,7 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
             openTabId: o.openTabId,
             tabCode: o.openTab?.tabCode ?? null,
             tabCustomerLabel: o.openTab?.customerLabel ?? null,
-            paymentMethod: o.paymentMethod,
+            paymentMethod: hidePaymentMethod ? null : o.paymentMethod,
             subtotal: o.subtotal,
             discount: o.discount,
             discountReason: o.discountReason,
