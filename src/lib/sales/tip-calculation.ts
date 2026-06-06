@@ -36,3 +36,30 @@ export function cappedTipForPayment(args: {
     const capped = Math.min(intended, realExcess);
     return capped > 0 ? capped : 0;
 }
+
+/**
+ * Monto que el split de la mesa debe registrar como `paidAmount`: el dinero
+ * RETENIDO por el local = factura + propina, NO el bruto recibido.
+ *
+ * Por qué: el historial y el Z report calculan la propina de la mesa como
+ * `paidAmount − factura` (excedente del split). Si el split guarda el bruto
+ * recibido (incluyendo el vuelto a devolver en efectivo), ese vuelto se cuenta
+ * como propina. Registrando solo lo retenido, el excedente del split == la
+ * propina real, y NO hace falta crear una propina colectiva aparte (que
+ * doble-contaba). Caso TAB-2433.
+ *
+ *   - Sobrepago: min(recibido, factura) = factura → retenido = factura + tip.
+ *   - Pago justo o parcial: min(recibido, factura) = recibido, y tip=0
+ *     (cappedTipForPayment lo capa al excedente=0) → retenido = recibido.
+ */
+export function keptAmountForSplit(args: {
+    amountPaid: number;
+    totalAntesServicio: number;
+    serviceFee: number;
+    tip: number;
+}): number {
+    const factura = (args.totalAntesServicio || 0) + (args.serviceFee || 0);
+    const received = Math.max(0, args.amountPaid || 0);
+    const tip = Math.max(0, args.tip || 0);
+    return Math.min(received, factura) + tip;
+}

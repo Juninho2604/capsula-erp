@@ -35,7 +35,7 @@ import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { cappedTipForPayment } from "@/lib/sales/tip-calculation";
+import { cappedTipForPayment, keptAmountForSplit } from "@/lib/sales/tip-calculation";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
@@ -1018,10 +1018,11 @@ export default function POSSportBarPage() {
   // ============================================================================
 
   const handlePaymentPinConfirm = async () => {
-    const effectiveAmount = isTableMixedMode
+    // Monto BRUTO recibido del cliente (mixto = suma de líneas).
+    const rawReceived = isTableMixedMode
       ? mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0)
       : paidAmount; // paidAmount already in USD (Bs methods auto-converted above)
-    if (!activeTab || effectiveAmount <= 0) return;
+    if (!activeTab || rawReceived <= 0) return;
     setPaymentPinError("");
     setIsProcessing(true);
     try {
@@ -1080,6 +1081,28 @@ export default function POSSportBarPage() {
       const effectiveDiscountType = discountAmount > 0 && discountType !== "NONE"
         ? discountType
         : undefined;
+
+      // ── PROPINA Y MONTO RETENIDO (§46 — fix definitivo TAB-2433) ──────────
+      // Factura real (post-descuento) = total antes de servicio + 10% servicio.
+      const totalAntesServicio = Math.max(0, activeTab.balanceDue - discountAmount);
+      const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
+      // Propina = lo que el cliente pagó por encima de la factura, capado al
+      // excedente real (el prefill del mesero NO puede inventar propina).
+      const tipVal = cappedTipForPayment({
+        intendedTip: parseFloat(checkoutTip) || 0,
+        amountPaid: rawReceived,
+        totalAntesServicio,
+        serviceFee,
+      });
+      // El split registra el monto RETENIDO (factura + propina), no el bruto:
+      // así el excedente del split == propina real (que historial y Z report ya
+      // cuentan UNA vez) y el vuelto en efectivo no se cuenta como propina. NO
+      // se crea propina colectiva aparte → se elimina el doble-conteo/fantasma.
+      // En mixto no hay vuelto físico: se registra la suma de líneas.
+      const effectiveAmount = isTableMixedMode
+        ? rawReceived
+        : keptAmountForSplit({ amountPaid: rawReceived, totalAntesServicio, serviceFee, tip: tipVal });
+
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
         amount: effectiveAmount,
@@ -1095,11 +1118,12 @@ export default function POSSportBarPage() {
         toast.error(result.message);
         return;
       }
-      // Imprimir factura: correlativo fijo por mesa (tabCode), 10% servicio solo si el cliente lo pagó
+      // Imprimir factura: correlativo fijo por mesa (tabCode), 10% servicio solo si el cliente lo pagó.
+      // La propina (tipVal) YA quedó registrada en el split como excedente del
+      // monto retenido — NO se crea propina colectiva aparte (eso doble-contaba
+      // y generaba fantasmas, §46). El recibo solo la muestra para el cliente.
       const subtotal = activeTab.runningTotal;
       const discount = discountAmount > 0 ? discountAmount : ((activeTab as any).runningDiscount ?? 0);
-      const totalAntesServicio = Math.max(0, activeTab.balanceDue - discountAmount);
-      const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
       const allItems = activeTab.orders.flatMap((o) =>
         (o.items || []).map((i: any) => ({
           name: i.itemName,
@@ -1109,22 +1133,6 @@ export default function POSSportBarPage() {
           modifiers: (i.modifiers || []).map((m: any) => m.name),
         }))
       );
-      // Calcular propina antes de imprimir para incluirla en el recibo.
-      // GUARD ANTI PROPINA-FANTASMA (§46 Bug B): la propina registrada NUNCA
-      // puede exceder el excedente REALMENTE cobrado (lo que el cliente pagó
-      // por encima de la factura). El campo `checkoutTip` puede venir
-      // pre-rellenado con la propina sugerida por el mesero (activeTab.tipAmount)
-      // que el cliente quizá NO pagó; sin este cap, esa sugerencia se persistía
-      // como propina colectiva fantasma (caso TAB-2433: factura $52.80, pagó
-      // $53 Zelle, pero se registró $7.20 de propina inexistente).
-      // En pagos no-efectivo la cajera no tiene campo de propina visible, así
-      // que `checkoutTip` siempre es el prefill; capar al excedente es seguro.
-      const tipVal = cappedTipForPayment({
-        intendedTip: parseFloat(checkoutTip) || 0,
-        amountPaid: effectiveAmount,
-        totalAntesServicio,
-        serviceFee,
-      });
       if (getPOSConfig().printReceiptOnRestaurant) {
       printReceipt({
         orderNumber: activeTab.tabCode,
@@ -1145,16 +1153,6 @@ export default function POSSportBarPage() {
         tipAmount: tipVal > 0 ? tipVal : undefined,
         branding,
       });
-      }
-      // Registrar propina si hubo excedente real (tipVal ya viene capado al
-      // excedente cobrado arriba). El umbral de 1¢ evita propinas-polvo por
-      // redondeo de flotantes.
-      if (tipVal >= 0.01) {
-        await recordCollectiveTipAction({
-          tipAmount: tipVal,
-          paymentMethod: effectiveMethod,
-          note: `Propina colectiva — Mesa/Ref: ${activeTab.customerLabel}`,
-        });
       }
       setAmountReceived("");
       setPaymentPin("");
