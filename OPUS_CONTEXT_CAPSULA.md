@@ -8739,3 +8739,34 @@ fichas basura). 6 tests.
   (`registerOpenTabPaymentAction`) NO se vincula al cliente. Se puede agregar
   en una iteración futura — patrón idéntico (resolveCustomerForOrder + bump).
 - Backfill histórico de ventas previas: el dueño dijo "no necesito" (§6.0.1).
+
+## §49 POS Mesero — cuenta al cliente: 10% siempre visible + propina sobre neto (2026-06-06)
+
+Bug detectado durante el servicio del 6/6 (foto IMG_2614 vs IMG_2615): el POS
+Mesero le muestra al cliente un total **distinto** al que la cajera cobra.
+
+**Caso real (mesa Yair):**
+- Items: $72 (Té $12 + Tabla x2 $60)
+- Descuento DIVISAS_33 (preview): -$24 → neto $48
+- Mesero pickeó 10% propina
+- **Mesero le mostraba al cliente**: $72 − $24 + $7.20 = **$55.20** (sin línea de 10% servicio, propina sobre el bruto $72)
+- **Cajera veía**: $48 + 10% servicio = $52.80 → redondeo Cash/Zelle = **$53**
+- Diferencia: $2.20 + propina mal calculada
+
+Causas:
+1. `serviceCharge` en el preview leía `activeTab.totalServiceCharge` que es
+   0 hasta el primer cobro → no aparecía la línea del 10%.
+2. Para vistas de subcuenta, `tipAmount` se recalculaba client-side sobre
+   `subtotal` BRUTO (mesero/page.tsx:1688) — el fix de §46 era server-side
+   sobre `setOpenTabTipAction` y no tocaba ese camino.
+
+Fix (PR #276):
+- `src/lib/sales/tab-preview.ts` — función pura `computeTabPreviewTotals` con
+  8 tests. Calcula: subtotal − descuentos = neto; servicio = neto × 10% (si
+  TABLE_SERVICE y no hay acumulado por cobros parciales); propina = neto ×
+  tipPercent (no bruto); grandTotal = neto + servicio + propina; saldo =
+  grandTotal − pagado.
+- `mesero/page.tsx` usa la función → el cliente ahora ve el 10% siempre y la
+  propina sobre el neto. Coincide con lo que la cajera va a cobrar.
+- `OpenTabSummary` ahora declara `serviceType`. Default `TABLE_SERVICE` por
+  defensa si el campo no llegara (sesiones cacheadas).

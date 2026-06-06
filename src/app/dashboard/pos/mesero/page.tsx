@@ -21,6 +21,7 @@ import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategory
 import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
+import { computeTabPreviewTotals } from "@/lib/sales/tab-preview";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
@@ -112,6 +113,8 @@ interface OpenTabSummary {
   customerPhone?: string;
   guestCount: number;
   status: string;
+  /** TABLE_SERVICE (lleva 10%), BAR_TAB, EVENT, etc. */
+  serviceType?: string | null;
   runningSubtotal: number;
   runningDiscount: number;
   runningTotal: number;
@@ -1669,37 +1672,54 @@ export default function POSMeseroPage() {
             ? tabSubAccountsDetail.find(s => s.id === billSubAccountView) ?? null
             : null;
 
-        // Subtotal/items dependen de la vista. Para vista general usamos
-        // los runnings de la tab (que ya consideran toda la mesa). Para
-        // una sub específica usamos los datos de esa SubAccount.
+        // Cálculo de la cuenta — función pura `computeTabPreviewTotals`
+        // (§46 + conversación 6/6 sobre imagen mesero vs restaurante):
+        //   - 10% servicio se muestra SIEMPRE en TABLE_SERVICE (antes solo
+        //     aparecía si la mesa ya estaba cobrada → el cliente veía menos
+        //     de lo que cobraba la cajera).
+        //   - Propina se calcula sobre el NETO post-descuento (antes en
+        //     subcuenta era sobre el bruto → 10% × $72 = $7.20 en vez de
+        //     $4.80 sobre $48 neto).
         const subtotal      = selectedSub
             ? selectedSub.subtotal
             : activeTab.runningSubtotal;
-        const discount      = selectedSub
+        const discountAccum = selectedSub
             ? 0  // descuento global de la tab no se distribuye automático
             : activeTab.runningDiscount;
-        const serviceCharge = selectedSub
+        const serviceAccum = selectedSub
             ? (selectedSub.serviceCharge ?? 0)
             : (activeTab.totalServiceCharge ?? 0);
-        // Propina: el % se mantiene global, pero el monto se recalcula
-        // proporcional al subtotal de la sub-cuenta.
-        const tipPct = activeTab.tipPercent ?? 0;
-        const tipAmount = selectedSub
-            ? subtotal * (tipPct / 100)
-            : (activeTab.tipAmount ?? 0);
-        const paidSplits    = selectedSub
-            ? []  // los paidSplits a nivel sub son distintos; simplificamos: no mostramos saldo parcial en vista sub
+        const tipPct       = activeTab.tipPercent ?? 0;
+        const paidSplits   = selectedSub
+            ? []
             : (activeTab.paymentSplits ?? []).filter(s => s.status === 'PAID');
-        const paidTotal     = selectedSub
+        const paidPartial  = selectedSub
             ? (selectedSub.paidAmount ?? 0)
             : paidSplits.reduce((s, p) => s + p.paidAmount, 0);
-        // Preview Divisas −33.33%: descuento de 1/3 sobre el subtotal.
         const divisasDiscount = divisasPreview ? subtotal / 3 : 0;
-        const grandTotal    = subtotal - discount + serviceCharge + tipAmount - divisasDiscount;
-        const saldoBruto    = Math.max(0, grandTotal - paidTotal);
-        const amountToShow  = saldoBruto > 0.01 ? saldoBruto : grandTotal;
-        const totalBs       = exchangeRate ? grandTotal * exchangeRate : null;
-        const saldoBs       = exchangeRate ? amountToShow * exchangeRate : null;
+        // Default a TABLE_SERVICE si el campo no está poblado (compat con sesiones
+        // antiguas y por seguridad — todas las mesas regulares llevan 10%).
+        const isTableService = (activeTab.serviceType ?? 'TABLE_SERVICE') === 'TABLE_SERVICE';
+
+        const totals = computeTabPreviewTotals({
+            subtotal,
+            discount: discountAccum,
+            serviceChargeAccumulated: serviceAccum,
+            isTableService,
+            tipPercent: tipPct,
+            divisasPreviewDiscount: divisasDiscount,
+            paidPartial,
+        });
+
+        const discount     = totals.discountTotal - divisasDiscount; // descuento "fijo" (sin preview) para mostrar separado
+        const serviceCharge = totals.serviceCharge;
+        const tipAmount    = totals.tipAmount;
+        const paidTotal    = paidPartial;
+        const grandTotal   = totals.grandTotal;
+        const saldoBruto   = totals.saldoPendiente;
+        const amountToShow = saldoBruto > 0.01 ? saldoBruto : grandTotal;
+        const totalBs      = exchangeRate ? grandTotal * exchangeRate : null;
+        const saldoBs      = exchangeRate ? amountToShow * exchangeRate : null;
         const formatBs = (n: number) =>
             `Bs ${n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
