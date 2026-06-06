@@ -8,11 +8,12 @@
 import prisma from '@/server/db';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { hasPermission } from '@/lib/permissions/has-permission';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
-import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
+import { canViewPaymentMethod, shouldHidePaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { scrubPaymentMethodFromHistory } from '@/lib/sales/scrub-payment';
 
@@ -31,7 +32,9 @@ export interface SalesFilter {
  * Mesas sin subcuentas producen una fila consolidada (comportamiento anterior).
  */
 export async function getSalesHistoryAction(date?: string) {
-    const guard = await checkActionPermission(PERM.EXPORT_SALES);
+    // Gate de VISTA (solo lectura). La cajera lo tiene; exportar/anular/Z
+    // siguen gated por EXPORT_SALES / VOID_ORDER en sus propias actions.
+    const guard = await checkActionPermission(PERM.VIEW_SALES_HISTORY);
     if (!guard.ok) return { success: false, message: guard.message, orders: [] };
 
     try {
@@ -40,9 +43,21 @@ export async function getSalesHistoryAction(date?: string) {
 
         const { tenantId } = await resolveTenantContext();
         const session = await getSession();
-        const hidePaymentMethod =
-            !canViewPaymentMethod(session?.role) &&
-            (await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod'));
+
+        // Capacidades de gestión del usuario (para que el cliente muestre/oculte
+        // exportar, Reporte Z, anular, auditoría). La cajera no las tiene.
+        const canExport = hasPermission(guard.user, PERM.EXPORT_SALES);
+        const canVoid = hasPermission(guard.user, PERM.VOID_ORDER);
+
+        // Ocultar método de pago:
+        //  - OWNER / ADMIN_MANAGER siempre lo ven (canViewPaymentMethod).
+        //  - Roles de gestión que exportan (OPS_MANAGER, AUDITOR): según el flag
+        //    `hideCashierPaymentMethod` (comportamiento histórico).
+        //  - Roles de solo-vista (cajera/mesero, sin EXPORT_SALES): SIEMPRE oculto
+        //    — no hay forma de que vean el método (requerimiento del dueño).
+        const flagOn = await tenantFeatureEnabled(tenantId, 'hideCashierPaymentMethod');
+        const hidePaymentMethod = shouldHidePaymentMethod({ role: session?.role, canExport, flagOn });
+
         const db = withTenant(tenantId);
         const orders = await db.salesOrder.findMany({
             where: { createdAt: { gte: startOfDay, lte: endOfDay } },
@@ -279,7 +294,7 @@ export async function getSalesHistoryAction(date?: string) {
             scrubPaymentMethodFromHistory(result);
         }
 
-        return { success: true, data: result, hidePaymentMethod };
+        return { success: true, data: result, hidePaymentMethod, canExport, canVoid };
     } catch (error) {
         console.error('Error fetching sales:', error);
         return { success: false, message: 'Error cargando historial' };

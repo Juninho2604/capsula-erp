@@ -17,6 +17,7 @@ export const PERM = {
   APPLY_DISCOUNT:       'APPLY_DISCOUNT',        // Seleccionar tipo de descuento en POS
   APPROVE_DISCOUNT:     'APPROVE_DISCOUNT',      // Autorizar descuento/cortesía con PIN gerencial
   VIEW_ALL_ORDERS:      'VIEW_ALL_ORDERS',       // Ver órdenes de todas las cajeras (no solo las propias)
+  VIEW_SALES_HISTORY:   'VIEW_SALES_HISTORY',    // Ver el historial de ventas (solo lectura — sin exportar/anular)
   REPRINT_COMANDA:      'REPRINT_COMANDA',       // Re-imprimir comanda de cocina
 
   // Inventario
@@ -49,6 +50,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
 
   AUDITOR: [
     PERM.VIEW_ALL_ORDERS,
+    PERM.VIEW_SALES_HISTORY,
     PERM.EXPORT_SALES,
     PERM.VIEW_COSTS,
     PERM.VIEW_FINANCES,
@@ -59,6 +61,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.APPLY_DISCOUNT,
     PERM.APPROVE_DISCOUNT,
     PERM.VIEW_ALL_ORDERS,
+    PERM.VIEW_SALES_HISTORY,
     PERM.REPRINT_COMANDA,
     PERM.EXPORT_SALES,
     PERM.VIEW_COSTS,
@@ -75,6 +78,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.APPLY_DISCOUNT,
     PERM.APPROVE_DISCOUNT,
     PERM.VIEW_ALL_ORDERS,
+    PERM.VIEW_SALES_HISTORY,
     PERM.REPRINT_COMANDA,
     PERM.ADJUST_STOCK,
     PERM.APPROVE_TRANSFER,
@@ -107,6 +111,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
   CASHIER: [
     PERM.APPLY_DISCOUNT,
     PERM.REPRINT_COMANDA,
+    PERM.VIEW_SALES_HISTORY, // historial solo lectura — sin método de pago, sin exportar/anular
     PERM.OPEN_CASH_REGISTER,
     PERM.CLOSE_CASH_REGISTER,
   ],
@@ -127,6 +132,7 @@ export const PERM_GROUPS: { key: string; label: string; icon: string; perms: Per
       PERM.APPLY_DISCOUNT,
       PERM.APPROVE_DISCOUNT,
       PERM.VIEW_ALL_ORDERS,
+      PERM.VIEW_SALES_HISTORY,
       PERM.REPRINT_COMANDA,
     ],
   },
@@ -172,6 +178,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.APPLY_DISCOUNT]:      { label: 'Aplicar descuentos',    description: 'Seleccionar tipo de descuento en POS' },
   [PERM.APPROVE_DISCOUNT]:    { label: 'Aprobar descuentos',    description: 'Autorizar cortesías con PIN gerencial' },
   [PERM.VIEW_ALL_ORDERS]:     { label: 'Ver todas las órdenes', description: 'Ver historial de todas las cajeras' },
+  [PERM.VIEW_SALES_HISTORY]:  { label: 'Ver historial de ventas', description: 'Historial de órdenes en solo lectura (sin método de pago, sin exportar ni anular)' },
   [PERM.REPRINT_COMANDA]:     { label: 'Re-imprimir comanda',   description: 'Volver a imprimir comanda de cocina' },
   [PERM.ADJUST_STOCK]:        { label: 'Ajustar inventario',    description: 'Crear ajuste manual de stock' },
   [PERM.APPROVE_TRANSFER]:    { label: 'Aprobar transferencias',description: 'Aprobar requisición de transferencia entre áreas' },
