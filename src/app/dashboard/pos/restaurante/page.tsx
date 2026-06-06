@@ -35,6 +35,7 @@ import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
+import { cappedTipForPayment } from "@/lib/sales/tip-calculation";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
@@ -1108,8 +1109,22 @@ export default function POSSportBarPage() {
           modifiers: (i.modifiers || []).map((m: any) => m.name),
         }))
       );
-      // Calcular propina antes de imprimir para incluirla en el recibo
-      const tipVal = parseFloat(checkoutTip) || 0;
+      // Calcular propina antes de imprimir para incluirla en el recibo.
+      // GUARD ANTI PROPINA-FANTASMA (§46 Bug B): la propina registrada NUNCA
+      // puede exceder el excedente REALMENTE cobrado (lo que el cliente pagó
+      // por encima de la factura). El campo `checkoutTip` puede venir
+      // pre-rellenado con la propina sugerida por el mesero (activeTab.tipAmount)
+      // que el cliente quizá NO pagó; sin este cap, esa sugerencia se persistía
+      // como propina colectiva fantasma (caso TAB-2433: factura $52.80, pagó
+      // $53 Zelle, pero se registró $7.20 de propina inexistente).
+      // En pagos no-efectivo la cajera no tiene campo de propina visible, así
+      // que `checkoutTip` siempre es el prefill; capar al excedente es seguro.
+      const tipVal = cappedTipForPayment({
+        intendedTip: parseFloat(checkoutTip) || 0,
+        amountPaid: effectiveAmount,
+        totalAntesServicio,
+        serviceFee,
+      });
       if (getPOSConfig().printReceiptOnRestaurant) {
       printReceipt({
         orderNumber: activeTab.tabCode,
@@ -1131,9 +1146,10 @@ export default function POSSportBarPage() {
         branding,
       });
       }
-      // Registrar propina si la cajera la capturó durante el cobro
-      // (tipVal ya calculado arriba)
-      if (tipVal > 0) {
+      // Registrar propina si hubo excedente real (tipVal ya viene capado al
+      // excedente cobrado arriba). El umbral de 1¢ evita propinas-polvo por
+      // redondeo de flotantes.
+      if (tipVal >= 0.01) {
         await recordCollectiveTipAction({
           tipAmount: tipVal,
           paymentMethod: effectiveMethod,

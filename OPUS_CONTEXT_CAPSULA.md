@@ -8457,3 +8457,156 @@ Print Agent (`/api/print-agent/*`) **es multi-tenant safe en código**:
 
 Los puntos 1-4 son **bloqueantes**. El punto 5 es mejora — defensa en
 profundidad pero el código ya bloquea los intentos.
+
+## §46 🚨 BUG TAB-2433 — propina fantasma con descuentos + mesero
+
+**Estado**: ✅ **CÓDIGO CORREGIDO (PR #270, 2026-06-06)**. Bug A y Bug B
+arreglados con tests. PENDIENTE de ejecución manual en el VPS: la limpieza
+del dato puntual PKP-0866 y el audit retroactivo del día (Pasos 5 y 6, SQL
+abajo — correr con el sitio cerrado).
+
+### El caso: orden TAB-2433 (Luis caculler, cobrada por Nazareth, 2026-06-05)
+
+| Concepto | Monto | Notas |
+|---|---|---|
+| Items (AYRAN x2 + Tabla x2) | $72.00 | subtotal bruto |
+| Descuento divisas (-33.33%) | −$24.00 | autorizado por Omar Operaciones |
+| Total neto (post-descuento) | $48.00 | |
+| Servicio 10% sobre neto | $4.80 | correcto |
+| **Factura real** | **$52.80** | |
+| Cliente envió por Zelle | $53.00 | factura + $0.20 de redondeo |
+| Split registrado en la mesa | $53.00 Zelle | ✓ coincide con banco |
+| **PKP-0866 propina colectiva** | **+$7.20 Zelle** | ⚠️ **FANTASMA — el cliente NO envió esos $7.20** |
+| Recibo impreso al cliente | "cobrado $60 / propina $7.20" | $52.80 + $7.20 sumado en el front |
+
+### Causa raíz — son DOS bugs encadenados
+
+#### Bug A (ESTRUCTURAL) — `setOpenTabTipAction` calcula la propina sobre el SUBTOTAL bruto
+
+`src/app/actions/pos.actions.ts:2095`:
+```ts
+const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
+```
+
+Y el schema lo documenta así también (`prisma/schema.prisma`, comentario de
+`OpenTab.tipAmount`): `tipPercent/100 × runningSubtotal`.
+
+Cuando la mesa tiene descuento (DIVISAS_33, CORTESIA_PERCENT, CORTESIA_100),
+`runningSubtotal` ≠ `runningTotal`. La propina sugerida del mesero queda
+calculada sobre el monto **antes** del descuento → infla la propina en proporción
+al descuento. Para TAB-2433: 10% × $72 = $7.20 cuando debería ser 10% × $48 = $4.80.
+
+**El bug se dispara en TODA mesa con descuento + propina sugerida del mesero.**
+
+#### Bug B — la propina sugerida se persiste como cobro real sin validar
+
+Cuando la cajera abre el modal de cobro, `restaurante/page.tsx:2986-2987`
+pre-rellena `checkoutTip` con `activeTab.tipAmount` (el valor que el mesero
+seteó). Si la cajera no lo borra antes de confirmar, `handlePaymentPinConfirm`
+(`restaurante/page.tsx:1112-1142`):
+1. Imprime el recibo con `tipAmount` sumado al total → el ticket muestra "cobrado $60".
+2. Llama `recordCollectiveTipAction({ tipAmount: 7.20, paymentMethod: 'ZELLE' })`
+   → crea un `SalesOrder` ficticio con `customerName='PROPINA COLECTIVA'`,
+   `amountPaid: 7.20`, método Zelle. Esa propina **nunca se cobró**.
+
+No hay guard que valide que `amountReceived + checkoutTip ≤ entrega real`.
+Si el cobro real es menor al esperado, el sistema **no avisa**.
+
+### Que NO fue error manual de la cajera (descartado con prueba)
+
+`OpenTab.tipAmount` solo se setea por `setOpenTabTipAction` (línea 2080), que
+se invoca **únicamente** desde el POS Mesero (`mesero/page.tsx:954`). La cajera
+no tiene UI para escribir directamente ese campo de la mesa. Si Nazareth
+hubiera tipeado $7.20 a mano, habría quedado en `splitNotes` o en el tip del
+split, NO en `OpenTab.tipAmount`. En la BD de TAB-2433 vimos
+`OpenTab.tipAmount = 7.20` y `propina_split = 0.00` — esa asimetría solo se
+explica si el mesero la seteó antes del cobro.
+
+### Plan de fix
+
+**✅ Paso 1 — Fix Bug A (HECHO, PR #270)**
+- `setOpenTabTipAction` (`pos.actions.ts`) ahora usa `suggestedTipAmount(openTab.runningTotal, tipPercent)`
+  (total neto) en vez de `runningSubtotal`.
+- Comentario de `OpenTab.tipAmount` en `schema.prisma` actualizado a `runningTotal`.
+
+**✅ Paso 2 — Fix Bug B (HECHO, PR #270)**
+- En `handlePaymentPinConfirm` (`restaurante/page.tsx`) la propina se capa con
+  `cappedTipForPayment({ intendedTip, amountPaid: effectiveAmount, totalAntesServicio, serviceFee })`
+  → nunca excede el excedente realmente cobrado. El recibo y
+  `recordCollectiveTipAction` usan ese valor capado (umbral 1¢). Para TAB-2433:
+  $7.20 prefill → $0.20 real (factura $52.80, pagó $53).
+- Observación clave que valida el cap: en pagos NO-efectivo la cajera no tiene
+  campo de propina visible (solo el prefill del mesero), y en efectivo el campo
+  inline ya capa al vuelto → capar al excedente nunca pierde propina legítima.
+
+**✅ Paso 3 — Tests (HECHO, PR #270)**
+- `src/lib/sales/tip-calculation.ts` (funciones puras `suggestedTipAmount` +
+  `cappedTipForPayment`, usadas por el código de producción) + tests en
+  `tip-calculation.test.ts`: 4 escenarios de descuento (sin, DIVISAS_33,
+  CORTESIA_PERCENT, CORTESIA_100) + guard de Bug B (incluye el caso TAB-2433
+  exacto).
+
+**Paso 4 — PR + merge a main + deploy**
+- Confirmar `prisma migrate status` post-deploy (no hay migración en este fix,
+  pero por reflejo).
+
+**Paso 5 — Limpieza retroactiva del caso puntual**
+
+Anular PKP-0866 ($7.20 Zelle fantasma de Luis caculler) con SQL en transacción:
+```sql
+BEGIN;
+-- Inspeccionar antes de commit
+SELECT id, "orderNumber", "customerName", "amountPaid", "paymentMethod", notes
+FROM "SalesOrder"
+WHERE "orderNumber" = 'PKP-0866' AND "amountPaid" = 7.20;
+
+-- Anular (soft-delete con voidReason)
+UPDATE "SalesOrder"
+SET status = 'CANCELLED',
+    "voidReason" = 'Propina fantasma TAB-2433 — bug runningSubtotal vs runningTotal (§46)',
+    "voidedAt" = NOW()
+WHERE "orderNumber" = 'PKP-0866' AND "amountPaid" = 7.20;
+
+-- Verificar
+SELECT id, "orderNumber", status, "voidReason"
+FROM "SalesOrder"
+WHERE "orderNumber" = 'PKP-0866';
+
+-- Solo si todo cuadra:
+COMMIT;
+```
+
+**Paso 6 — Audit retroactivo del día 2026-06-05**
+
+Buscar otras mesas con descuento + propina sugerida que hayan generado
+propinas fantasma. Query candidata para el audit:
+```sql
+-- Propinas colectivas del 2026-06-05 que pudieron ser fantasma por el bug A.
+-- Match: notas con "Mesa/Ref" + tenant Shanklish + día de Caracas.
+SELECT so.id, so."orderNumber", so."amountPaid", so."paymentMethod",
+       so.notes, so."createdAt"
+FROM "SalesOrder" so
+WHERE so."customerName" = 'PROPINA COLECTIVA'
+  AND so."createdAt" >= '2026-06-05 04:00:00'  -- inicio día Caracas en UTC
+  AND so."createdAt" <  '2026-06-06 04:00:00'
+ORDER BY so."createdAt";
+```
+Cruzar caso por caso contra el extracto del banco / cierres físicos antes
+de decidir anulación.
+
+### Mitigación temporal (hasta el fix)
+
+Mientras se hace el deploy mañana, las cajeras pueden seguir cobrando con
+esta regla: **en mesas con descuento de divisas (DIVISAS_33) o cortesía,
+borrar manualmente el campo "Propina" del modal de cobro si el cliente no
+dejó propina explícita**. Si la mesa no tiene descuento, el cálculo es
+correcto y el campo se puede dejar como está.
+
+### Por qué no se aplica HOY (acordado)
+
+El sitio está en operación activa post-emergencia (las 3 migraciones del día
+recién se aplicaron en el VPS). Cualquier deploy nuevo podría volver a fallar
+en build y dejar la web caída por horas. Se acordó esperar al cierre de hoy
+y aplicar todo mañana cuando el sitio esté cerrado y se pueda tolerar el
+redeploy.
+

@@ -1985,7 +1985,7 @@ model OpenTab {
   totalServiceCharge Float           @default(0) // Service charge acumulado de la mesa
   totalTip           Float           @default(0) // Propina voluntaria acumulada
   tipPercent         Float? // Propina seleccionada por el cliente (0, 10, 15, 20)
-  tipAmount          Float? // tipPercent/100 × runningSubtotal
+  tipAmount          Float? // tipPercent/100 × runningTotal (neto post-descuento) — ver §46
   version            Int             @default(0)
   openedAt           DateTime        @default(now())
   closedAt           DateTime?
