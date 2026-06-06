@@ -2091,6 +2091,24 @@ fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4   ← back
 
 ### 18.8 Flujo Completo de Propina Colectiva (resuelto 2026-04-11)
 
+> **ACTUALIZACIÓN 2026-06-06 (§46 + PR propina-colectiva-vinculada):**
+> La propina colectiva ahora es EXCLUSIVAMENTE para propina dejada DESPUÉS de
+> cerrar la mesa (la auto-creación en el cobro se eliminó — esa propina ya
+> queda en el excedente del split, ver §46). El modal de propina colectiva:
+> - Carga las mesas CERRADAS de hoy vía `getClosedTabsTodayAction()` y obliga
+>   a elegir una (o escribir referencia manual si no está en la lista).
+> - Guarda el correlativo vinculado dentro de `notes` con el marcador estable
+>   `[tab:<tabCode>]` (helpers puros en `src/lib/sales/collective-tip-ref.ts`:
+>   `embedTabCode`/`extractTabCode`/`stripTabMarker`, con tests). NO hay columna
+>   nueva (se evitó migración).
+> - El historial de ventas muestra ese correlativo como badge junto al PKP
+>   (`extractTabCode(sale.notes)` en sales/page.tsx).
+> Modelo de cuentas separadas: **10% servicio** (`totalServiceFee`) — **propina
+> al cerrar** (excedente del split) — **propina colectiva posterior** (PKP).
+> Las dos propinas hoy se suman en la línea `PROPINAS` del Z report cuando
+> `unifyTipReporting` está ON; si se quiere separarlas en dos líneas del cierre,
+> es un follow-up chico.
+
 #### Creación
 - Botón "🪙 PROPINA" en POS Restaurante → modal → `handleRecordTip` (restaurante/page.tsx)
 - Si método es Bs (`CASH_BS`, `PDV_SHANKLISH`, `PDV_SUPERFERRO`, `MOVIL_NG`): convierte `tipAmountUSD = Math.round(amount / exchangeRate * 100) / 100`

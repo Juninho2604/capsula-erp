@@ -11,6 +11,7 @@ import {
   registerOpenTabPaymentAction,
   createSalesOrderAction,
   recordCollectiveTipAction,
+  getClosedTabsTodayAction,
   modifyTabItemAction,
   validateManagerPinAction,
   getDailyPickupCountAction,
@@ -386,6 +387,10 @@ export default function POSSportBarPage() {
   const [tipAmount, setTipAmount] = useState('');
   const [tipMethod, setTipMethod] = useState<string>('CASH_USD');
   const [tipTableRef, setTipTableRef] = useState('');
+  // Mesas cerradas de hoy (para vincular la propina colectiva a su correlativo).
+  type ClosedTab = { id: string; tabCode: string; label: string; tableName: string | null; total: number; closedAt: string };
+  const [closedTabs, setClosedTabs] = useState<ClosedTab[]>([]);
+  const [tipSelectedTabCode, setTipSelectedTabCode] = useState<string>(''); // '' = otra/manual
   const [isTipProcessing, setIsTipProcessing] = useState(false);
 
   const [lastPickupOrder, setLastPickupOrder] = useState<{
@@ -1390,18 +1395,40 @@ export default function POSSportBarPage() {
   // CHECKOUT PICKUP
   // ============================================================================
 
+  // Abre el modal de propina colectiva y carga las mesas cerradas de hoy
+  // para poder vincular la propina a su correlativo.
+  const openCollectiveTipModal = async () => {
+    setShowTipModal(true);
+    setTipSelectedTabCode('');
+    setTipTableRef('');
+    try {
+      const res = await getClosedTabsTodayAction();
+      if (res.success && Array.isArray(res.data)) setClosedTabs(res.data as ClosedTab[]);
+    } catch { /* el modal sigue usable con referencia manual */ }
+  };
+
   const handleRecordTip = async () => {
     const amount = parseFloat(tipAmount);
     if (!amount || amount <= 0) return;
+    // Debe indicarse de qué mesa fue: una mesa cerrada o una referencia manual.
+    const selectedTab = closedTabs.find(t => t.tabCode === tipSelectedTabCode);
+    const manualRef = tipTableRef.trim();
+    if (!selectedTab && !manualRef) {
+      toast.error('Indica de qué mesa es la propina (elige una mesa cerrada o escribe la referencia).');
+      return;
+    }
     setIsTipProcessing(true);
     try {
-      const note = tipTableRef.trim()
-        ? `Propina colectiva — Mesa/Ref: ${tipTableRef.trim()}`
-        : 'Propina colectiva';
+      // Etiqueta legible + correlativo vinculado (si se eligió una mesa).
+      const refLabel = selectedTab
+        ? `${selectedTab.label} · ${selectedTab.tabCode}`
+        : manualRef;
+      const note = `Propina colectiva — Mesa/Ref: ${refLabel}`;
+      const relatedTabCode = selectedTab?.tabCode;
       const isBsMethod = ['CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG'].includes(tipMethod);
       // Si el monto está en Bs, convertir a USD antes de guardar en BD
       const tipAmountUSD = isBsMethod && exchangeRate ? Math.round(amount / exchangeRate * 100) / 100 : amount;
-      const result = await recordCollectiveTipAction({ tipAmount: tipAmountUSD, paymentMethod: tipMethod, note });
+      const result = await recordCollectiveTipAction({ tipAmount: tipAmountUSD, paymentMethod: tipMethod, note, relatedTabCode });
       if (result.success) {
         const displayStr = isBsMethod
           ? `Bs ${amount.toFixed(2)} ($${tipAmountUSD.toFixed(2)}) registrada`
@@ -1411,6 +1438,7 @@ export default function POSSportBarPage() {
         setTipAmount('');
         setTipMethod('CASH_USD');
         setTipTableRef('');
+        setTipSelectedTabCode('');
       } else {
         toast.error(result.message || 'Error al registrar propina');
       }
@@ -1677,15 +1705,33 @@ export default function POSSportBarPage() {
                 <XIcon className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-xs text-capsula-ink-muted">Propina recibida después del cobro. Indica la mesa o cliente para trazabilidad.</p>
-            {/* Mesa / referencia */}
-            <input
-              type="text"
-              value={tipTableRef}
-              onChange={e => setTipTableRef(e.target.value)}
-              placeholder="Mesa o cliente (ej: Mesa 5, Juan Pérez)"
-              className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-capsula-navy-deep placeholder:text-capsula-ink-muted transition"
-            />
+            <p className="text-xs text-capsula-ink-muted">Propina dejada <span className="font-semibold">después</span> de cerrar la mesa. Indica de qué mesa fue para vincular el correlativo.</p>
+            {/* Mesa cerrada (vincula el correlativo) */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Mesa cerrada de hoy</label>
+              <select
+                value={tipSelectedTabCode}
+                onChange={e => { setTipSelectedTabCode(e.target.value); if (e.target.value) setTipTableRef(''); }}
+                className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-capsula-navy-deep transition"
+              >
+                <option value="">— Elegir mesa cerrada —</option>
+                {closedTabs.map(t => (
+                  <option key={t.id} value={t.tabCode}>
+                    {t.tabCode} · {t.label}{t.total > 0 ? ` · $${t.total.toFixed(2)}` : ''}
+                  </option>
+                ))}
+              </select>
+              {/* Fallback: referencia manual si la mesa no está en la lista */}
+              {!tipSelectedTabCode && (
+                <input
+                  type="text"
+                  value={tipTableRef}
+                  onChange={e => setTipTableRef(e.target.value)}
+                  placeholder="…o escribe la referencia (ej: Mesa 5, Juan Pérez)"
+                  className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-2xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-capsula-navy-deep placeholder:text-capsula-ink-muted transition"
+                />
+              )}
+            </div>
             {/* Method */}
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -1777,7 +1823,7 @@ export default function POSSportBarPage() {
           </button>
           <button
             type="button"
-            onClick={() => setShowTipModal(true)}
+            onClick={openCollectiveTipModal}
             className="px-3 py-2 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-capsula-ink text-xs font-semibold uppercase tracking-wider hover:bg-capsula-navy-soft transition inline-flex items-center gap-1.5"
           >
             <PlusIcon className="h-3.5 w-3.5" />
