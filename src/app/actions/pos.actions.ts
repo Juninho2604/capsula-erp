@@ -45,6 +45,7 @@ import { updateSessionCashier } from '@/lib/auth';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCart } from '@/lib/promotions/server';
 import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
+import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
 
 // ============================================================================
 // TIPOS
@@ -2092,7 +2093,12 @@ export async function setOpenTabTipAction(data: { openTabId: string; tipPercent:
             return { success: false, message: 'Cuenta no disponible' };
         }
 
-        const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
+        // Propina sugerida = tipPercent sobre el TOTAL NETO (post-descuento),
+        // NO sobre el subtotal bruto. Con descuentos de mesa (DIVISAS_33,
+        // CORTESIA_*) runningSubtotal ≠ runningTotal; usar el bruto inflaba la
+        // propina en proporción al descuento (bug TAB-2433 §46). El 10% sobre
+        // $48 neto debe dar $4.80, no $7.20 sobre $72 bruto.
+        const tipAmount = suggestedTipAmount(openTab.runningTotal, data.tipPercent);
 
         const updated = await db.openTab.update({
             where: { id: data.openTabId },
