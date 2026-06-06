@@ -4,12 +4,13 @@
  * Lo usa `createSalesOrderAction` al cobrar:
  *   - Si llega `customerId` explícito (la cajera eligió un cliente del
  *     buscador), se vincula a ese.
- *   - Si no, pero hay teléfono y el tipo de orden es de cliente real
- *     (delivery/pickup), se hace upsert por teléfono: se busca un cliente
- *     activo con ese teléfono y, si no existe, se crea uno liviano. Así la
- *     cartera se va llenando sola con cada delivery.
- *   - Mesas (RESTAURANT sin customerId) NO auto-crean cliente: `customerName`
- *     suele ser la etiqueta de la mesa, no una persona.
+ *   - Si no, pero hay teléfono usable y nombre real (no placeholder), se
+ *     hace upsert por teléfono: se busca un cliente activo con ese teléfono
+ *     y, si no existe, se crea uno liviano. Así la cartera se va llenando
+ *     sola con cada venta que tenga datos del cliente (delivery, pickup del
+ *     POS Restaurante, etc.).
+ *   - Mesas (OpenTab) NO pasan por acá: cierran por
+ *     `registerOpenTabPaymentAction` y no llaman a esta función.
  *
  * Las stats (`totalOrders`, `totalSpent`, `lastOrderAt`) se incrementan acá.
  * Son un cache para ordenar/listar; el historial real y los agregados exactos
@@ -18,15 +19,20 @@
 
 import type { TenantPrismaClient } from '@/lib/prisma-tenant-client';
 
-/** Normaliza teléfono a solo dígitos para matchear con tolerancia a formato. */
-function normalizePhone(raw?: string | null): string | null {
+const PLACEHOLDER_NAMES = new Set(['', 'cliente en caja', 'cliente', 'consumidor final', 'propina colectiva', 'delivery']);
+
+/** Normaliza teléfono a solo dígitos. null si no llega a 7 dígitos (no usable). */
+export function normalizePhone(raw?: string | null): string | null {
     if (!raw) return null;
     const digits = raw.replace(/\D+/g, '');
     return digits.length >= 7 ? digits : null;
 }
 
-const REAL_CUSTOMER_ORDER_TYPES = new Set(['DELIVERY', 'PICKUP']);
-const PLACEHOLDER_NAMES = new Set(['', 'cliente en caja', 'cliente', 'consumidor final', 'propina colectiva', 'delivery']);
+/** Un nombre es placeholder si es vacío o uno de los nombres genéricos. */
+export function isPlaceholderName(name?: string | null): boolean {
+    if (!name) return true;
+    return PLACEHOLDER_NAMES.has(name.trim().toLowerCase());
+}
 
 export interface ResolveCustomerArgs {
     explicitCustomerId?: string | null;
@@ -57,12 +63,14 @@ export async function resolveCustomerForOrder(
             if (found) return found.id;
         }
 
-        // 2. Solo auto-vinculamos en órdenes de cliente real (delivery/pickup).
-        if (!REAL_CUSTOMER_ORDER_TYPES.has((args.orderType || '').toUpperCase())) return null;
+        // 2. Auto-vincular en órdenes de cliente real: cualquier orderType es
+        //    candidato, lo que decide es que haya teléfono usable y nombre real.
+        //    Mesas (OpenTab) NO pasan por acá — el cierre va por
+        //    registerOpenTabPaymentAction y no llama esta función.
 
         const phone = normalizePhone(args.customerPhone);
         const name = (args.customerName || '').trim();
-        const nameIsPlaceholder = PLACEHOLDER_NAMES.has(name.toLowerCase());
+        const nameIsPlaceholder = isPlaceholderName(name);
 
         // Requerimos teléfono para auto-vincular/crear: es la única clave de
         // deduplicación. Sin teléfono no podemos evitar duplicados (cada orden
