@@ -8707,3 +8707,35 @@ de la cajera (`caja-view.tsx`) y NO expone métodos (solo divisas/Bs agregado).
 OWNER → `/dashboard/config/modulos-usuario` → activar el módulo "Historial de
 ventas" para ese usuario cajera. (El permiso de rol ya lo tiene; falta el
 módulo en sus allowedModules.)
+
+## §48 Cartera de clientes — captura ampliada (2026-06-06)
+
+Estado pedido por el dueño: "que el módulo de clientes vaya guardando a los
+clientes" + "ver cada cliente y poder ver su historial al darle click".
+**El listado, la ficha (`/dashboard/clientes/[id]`) y el módulo ya existen
+desde §6.0.1 (PR #263).** Lo que faltaba era que se llenara desde más fuentes.
+
+### Cambio: regla de auto-vínculo simplificada
+`src/lib/customers/link.ts` ya no exige `orderType ∈ {DELIVERY, PICKUP}`. La
+regla de oro queda: **hay teléfono usable + hay nombre real** → upsert por
+teléfono. Esto cubre delivery, pickup del POS Restaurante (orderType
+`RESTAURANT`) y cualquier flujo futuro que pase por `createSalesOrderAction`.
+Las mesas siguen sin pasar por acá (cierran por `registerOpenTabPaymentAction`).
+
+### Pickup del POS Restaurante ahora captura cliente
+Se agregó un campo **Teléfono (opcional)** en el panel de pickup del POS
+Restaurante (`pickupCustomerPhone`). Si la cajera lo escribe, la venta queda
+vinculada al cliente y el cliente se guarda/actualiza en la cartera con sus
+stats. Si no, la venta queda anónima como antes (sin romper nada). Se resetea
+al cerrar el pickup tab.
+
+### Tests
+`src/lib/customers/link.test.ts` — `normalizePhone` (dedupe por teléfono
+robusto a formato) e `isPlaceholderName` (nombres genéricos del POS no crean
+fichas basura). 6 tests.
+
+### Lo que queda pendiente (no se hizo hoy)
+- Mesas: si una mesa tiene customerPhone en su OpenTab, al cerrarla
+  (`registerOpenTabPaymentAction`) NO se vincula al cliente. Se puede agregar
+  en una iteración futura — patrón idéntico (resolveCustomerForOrder + bump).
+- Backfill histórico de ventas previas: el dueño dijo "no necesito" (§6.0.1).

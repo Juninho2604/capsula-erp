@@ -377,6 +377,9 @@ export default function POSSportBarPage() {
   const [subAccountMode, setSubAccountMode] = useState(false);
   const [subAccountsCount, setSubAccountsCount] = useState(0);
   const [pickupCustomerName, setPickupCustomerName] = useState("");
+  // Teléfono opcional del cliente de pickup. Si se ingresa, el server enlaza
+  // (o crea) la ficha en /dashboard/clientes (mismo upsert que delivery).
+  const [pickupCustomerPhone, setPickupCustomerPhone] = useState("");
   const [checkoutTip, setCheckoutTip] = useState(''); // propina en el momento del cobro
 
   // ── Modal de comandas del día (reimpresión) ──────────────────────────────
@@ -1476,6 +1479,7 @@ export default function POSSportBarPage() {
       const result = await createSalesOrderAction({
         orderType: "RESTAURANT",
         customerName: pickupCustomerName || "Cliente en Caja",
+        customerPhone: pickupCustomerPhone.trim() || undefined,
         scheduledDeliveryTime: pickupScheduledISO,
         items: cart,
         ...(isPickupMixedMode
@@ -1577,6 +1581,7 @@ export default function POSSportBarPage() {
           // Keep isPickupMode=true so the reprint button remains visible in the panel.
           // The user exits pickup mode by clicking a zone button in the left column.
           setPickupCustomerName("");
+          setPickupCustomerPhone("");
         }
         setMixedPaymentsPickup([]); setIsPickupMixedMode(false);
         setCheckoutTip('');
@@ -2229,6 +2234,17 @@ export default function POSSportBarPage() {
                     }}
                     title="Hora de entrega solicitada — se imprime grande en la comanda."
                     className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-2 text-sm font-semibold tabular-nums focus:border-capsula-navy-deep focus:outline-none transition"
+                  />
+                </div>
+                {/* Teléfono opcional — si se ingresa, el cliente queda guardado en la cartera. */}
+                <div className="relative">
+                  <PhoneIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-capsula-ink-muted" />
+                  <input
+                    type="tel"
+                    value={pickupCustomerPhone}
+                    onChange={(e) => setPickupCustomerPhone(e.target.value)}
+                    placeholder="Teléfono (opcional — guarda al cliente)"
+                    className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 pl-8 pr-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                   />
                 </div>
                 {/* Copia a portapapeles (envío por WhatsApp) — dedupe por
