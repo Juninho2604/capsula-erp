@@ -11,6 +11,8 @@ import { cancelledWhere } from '@/lib/sales-where';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { inferOrderTip } from '@/lib/sales/infer-tip';
@@ -72,6 +74,11 @@ export interface ZReportData {
  * @param date  Fecha en formato "YYYY-MM-DD". Si se omite, usa hoy.
  */
 export async function getDailyZReportAction(date?: string): Promise<{ success: boolean; data?: ZReportData; message?: string }> {
+    // El Report Z (arqueo por método de pago) es función de gestión/cierre.
+    // Gated por EXPORT_SALES para que un rol de solo-lectura (cajera) no pueda
+    // obtener el desglose por método llamando la action directamente (DevTools).
+    const guard = await checkActionPermission(PERM.EXPORT_SALES);
+    if (!guard.ok) return { success: false, message: guard.message };
     try {
         const today = date ? new Date(date + 'T12:00:00') : new Date();
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);

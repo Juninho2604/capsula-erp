@@ -8662,3 +8662,48 @@ en build y dejar la web caída por horas. Se acordó esperar al cierre de hoy
 y aplicar todo mañana cuando el sitio esté cerrado y se pueda tolerar el
 redeploy.
 
+
+## §47 Historial de ventas para cajera — solo lectura, sin método de pago (2026-06-06)
+
+Requerimiento del dueño: el rol cajera debe poder ver el historial de cada
+orden (tipo: pickup/delivery/mesa + monto) PERO sin ver el método de pago, y
+sin acciones de gestión.
+
+### Permiso nuevo `VIEW_SALES_HISTORY`
+- En `permissions-registry.ts`. Otorgado a OWNER, AUDITOR, ADMIN_MANAGER,
+  OPS_MANAGER y **CASHIER**. Mapea al módulo `sales_history` en
+  `perm-to-modules.ts` (Capa 2: la cajera necesita el módulo `sales_history`
+  habilitado en sus `allowedModules` — se activa por usuario en
+  `/dashboard/config/modulos-usuario`).
+- `getSalesHistoryAction` ahora gatea por `VIEW_SALES_HISTORY` (antes
+  `EXPORT_SALES`, que la cajera no tiene). Exportar / Reporte Z / auditoría /
+  anular siguen gated por `EXPORT_SALES` / `VOID_ORDER`.
+
+### Solo lectura en la UI
+- `getSalesHistoryAction` devuelve `canExport` (EXPORT_SALES) y `canVoid`
+  (VOID_ORDER). `sales/page.tsx` oculta los botones de gestión (Auditoría,
+  Exportar Excel, Reporte Z, Cierre del día) cuando `!canExport`, y el botón
+  Anular cuando `!canVoid`. Reimprimir queda (la cajera tiene REPRINT_COMANDA;
+  los datos ya vienen sin método).
+- Default defensivo: si la respuesta no trae las capacidades, se asumen
+  `false` (no exponer gestión por error).
+
+### Método de pago — política (función pura `shouldHidePaymentMethod`)
+`src/lib/permissions/payment-method.ts` (con tests):
+- OWNER / ADMIN_MANAGER → nunca se oculta.
+- Roles que exportan (OPS_MANAGER, AUDITOR) → oculto solo si el flag
+  `hideCashierPaymentMethod` está ON (histórico).
+- Roles de solo-lectura (cajera/mesero, sin EXPORT_SALES) → **SIEMPRE oculto**,
+  independiente del flag. El strip server-side (deep, ver §259/scrub-payment)
+  elimina el método de todo el payload (incluido `orders[]` anidado).
+
+### Hueco cerrado
+`getDailyZReportAction` no tenía gate de permiso → una cajera podía pedir el
+arqueo (desglose por método) por DevTools. Ahora gateado por `EXPORT_SALES`.
+`getEndOfDaySummaryAction` se deja sin ese gate porque lo usa el cierre de caja
+de la cajera (`caja-view.tsx`) y NO expone métodos (solo divisas/Bs agregado).
+
+### Para habilitarlo a una cajera
+OWNER → `/dashboard/config/modulos-usuario` → activar el módulo "Historial de
+ventas" para ese usuario cajera. (El permiso de rol ya lo tiene; falta el
+módulo en sus allowedModules.)

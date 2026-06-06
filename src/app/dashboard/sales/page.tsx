@@ -26,6 +26,10 @@ export default function SalesHistoryPage() {
     // las columnas/filtros/secciones del UI para que no quede el header
     // vacío ni el filtro inútil.
     const [hidePaymentMethod, setHidePaymentMethod] = useState(false);
+    // Capacidades de gestión (vienen del server según el rol). La cajera entra
+    // en modo solo-lectura: ve el historial pero no exporta/anula/genera Z.
+    const [canExport, setCanExport] = useState(true);
+    const [canVoid, setCanVoid] = useState(true);
     const [daySummary, setDaySummary] = useState<EndOfDaySummary | null>(null);
     const [showDaySummary, setShowDaySummary] = useState(false);
 
@@ -58,7 +62,12 @@ export default function SalesHistoryPage() {
         setIsLoading(true);
         const result = await getSalesHistoryAction(date || undefined);
         if (result.success && result.data) setSales(result.data as any[]);
-        setHidePaymentMethod(Boolean((result as { hidePaymentMethod?: boolean }).hidePaymentMethod));
+        const r = result as { hidePaymentMethod?: boolean; canExport?: boolean; canVoid?: boolean };
+        setHidePaymentMethod(Boolean(r.hidePaymentMethod));
+        // Si el server no manda la capacidad (respuesta vieja), default a false
+        // para no exponer acciones de gestión por error.
+        setCanExport(r.canExport ?? false);
+        setCanVoid(r.canVoid ?? false);
         setIsLoading(false);
     };
 
@@ -370,37 +379,42 @@ export default function SalesHistoryPage() {
                     >
                         Ayer
                     </button>
-                    <button
-                        onClick={handleExportAudit}
-                        title={`Descargar auditoría de inventario (detalle por producto) — ${displayDate || 'hoy'}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
-                    >
-                        <ClipboardCheck className="h-3.5 w-3.5" />
-                        Auditoría {displayDate ? `· ${displayDate}` : ''}
-                    </button>
-                    <button
-                        onClick={handleExportArqueo}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
-                    >
-                        <Download className="h-3.5 w-3.5" />
-                        Exportar Excel
-                    </button>
-                    <button
-                        onClick={handleGenerateZReport}
-                        title={`Generar reporte Z para ${displayDate || 'hoy'}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
-                    >
-                        <Printer className="h-3.5 w-3.5" />
-                        Reporte Z {displayDate ? `· ${displayDate}` : '(hoy)'}
-                    </button>
-                    <button
-                        onClick={handleDaySummary}
-                        title={`Resumen de cierre del día para ${displayDate || 'hoy'}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90 px-4 py-2 text-xs font-semibold transition-colors"
-                    >
-                        <BarChart3 className="h-3.5 w-3.5" />
-                        Cierre del día {displayDate ? `· ${displayDate}` : '(hoy)'}
-                    </button>
+                    {/* Acciones de gestión — ocultas para roles de solo lectura (cajera) */}
+                    {canExport && (
+                        <>
+                            <button
+                                onClick={handleExportAudit}
+                                title={`Descargar auditoría de inventario (detalle por producto) — ${displayDate || 'hoy'}`}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
+                            >
+                                <ClipboardCheck className="h-3.5 w-3.5" />
+                                Auditoría {displayDate ? `· ${displayDate}` : ''}
+                            </button>
+                            <button
+                                onClick={handleExportArqueo}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                Exportar Excel
+                            </button>
+                            <button
+                                onClick={handleGenerateZReport}
+                                title={`Generar reporte Z para ${displayDate || 'hoy'}`}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:bg-capsula-ivory-alt px-4 py-2 text-xs font-semibold transition-colors"
+                            >
+                                <Printer className="h-3.5 w-3.5" />
+                                Reporte Z {displayDate ? `· ${displayDate}` : '(hoy)'}
+                            </button>
+                            <button
+                                onClick={handleDaySummary}
+                                title={`Resumen de cierre del día para ${displayDate || 'hoy'}`}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90 px-4 py-2 text-xs font-semibold transition-colors"
+                            >
+                                <BarChart3 className="h-3.5 w-3.5" />
+                                Cierre del día {displayDate ? `· ${displayDate}` : '(hoy)'}
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -766,7 +780,7 @@ export default function SalesHistoryPage() {
                                                 >
                                                     🖨️ Imprimir
                                                 </button>
-                                                {!isVoided && (
+                                                {!isVoided && canVoid && (
                                                     <button
                                                         onClick={(e) => openVoidModal(sale, e)}
                                                         title="Anular venta"

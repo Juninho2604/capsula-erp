@@ -22,6 +22,7 @@ export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     [PERM.APPLY_DISCOUNT]:      ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
     [PERM.APPROVE_DISCOUNT]:    ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
     [PERM.VIEW_ALL_ORDERS]:     ['sales_history'],
+    [PERM.VIEW_SALES_HISTORY]:  ['sales_history'],
     [PERM.REPRINT_COMANDA]:     ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'sales_history'],
 
     // ── Inventario ───────────────────────────────────────────────────────────
