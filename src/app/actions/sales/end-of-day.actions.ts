@@ -11,6 +11,8 @@ import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { inferOrderTip } from '@/lib/sales/infer-tip';
+import { checkAnyActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 
 export interface EndOfDaySummary {
     date: string;
@@ -50,6 +52,11 @@ export interface EndOfDaySummary {
  * @param date  Fecha "YYYY-MM-DD" en timezone Caracas. Si se omite, usa hoy.
  */
 export async function getEndOfDaySummaryAction(date?: string): Promise<{ success: boolean; data?: EndOfDaySummary; message?: string }> {
+    // Gate: EXPORT_SALES (gestión/historial) o CLOSE_CASH_REGISTER (cierre de
+    // caja de la cajera — la cajera SÍ necesita estos agregados para cuadrar,
+    // pero la action no debe ser llamable por cualquier sesión).
+    const guard = await checkAnyActionPermission([PERM.EXPORT_SALES, PERM.CLOSE_CASH_REGISTER]);
+    if (!guard.ok) return { success: false, message: guard.message };
     try {
         const today = date ? new Date(date + 'T12:00:00') : new Date();
         const { start: startOfDay, end: endOfDay } = getCaracasDayRange(today);

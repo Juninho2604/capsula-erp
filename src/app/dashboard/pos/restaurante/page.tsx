@@ -922,6 +922,7 @@ export default function POSSportBarPage() {
     setPickupTabs((prev) => [...prev, newTab]);
     setActivePickupTabId(newTab.id);
     setPickupCustomerName(newTab.customerName);
+    setPickupCustomerPhone(newTab.customerPhone);
     setCart([]);
     setDiscountType("NONE");
     setAuthorizedManager(null);
@@ -949,6 +950,7 @@ export default function POSSportBarPage() {
     setCart(tab.cart);
     setActivePickupTabId(tabId);
     setPickupCustomerName(tab.customerName);
+    setPickupCustomerPhone(tab.customerPhone);
     setDiscountType("NONE");
     setAuthorizedManager(null);
     // Limpiar monto y propina al cambiar de tab — evita arrastre entre tabs
@@ -973,6 +975,7 @@ export default function POSSportBarPage() {
         setCart(next.cart);
         setActivePickupTabId(next.id);
         setPickupCustomerName(next.customerName);
+        setPickupCustomerPhone(next.customerPhone);
       } else {
         setActivePickupTabId(null);
         setIsPickupMode(false);
@@ -1106,10 +1109,15 @@ export default function POSSportBarPage() {
       // así el excedente del split == propina real (que historial y Z report ya
       // cuentan UNA vez) y el vuelto en efectivo no se cuenta como propina. NO
       // se crea propina colectiva aparte → se elimina el doble-conteo/fantasma.
-      // En mixto no hay vuelto físico: se registra la suma de líneas.
-      const effectiveAmount = isTableMixedMode
-        ? rawReceived
-        : keptAmountForSplit({ amountPaid: rawReceived, totalAntesServicio, serviceFee, tip: tipVal });
+      // En mixto aplicamos el mismo cap: si la suma de líneas supera factura+tip
+      // (típicamente por error de tecleo: cliente paga $25, cajera teclea $30),
+      // NO inflamos el cobro. Sin esto, el bug raíz de TAB-2433 reaparece en mixto.
+      const effectiveAmount = keptAmountForSplit({
+        amountPaid: rawReceived,
+        totalAntesServicio,
+        serviceFee,
+        tip: tipVal,
+      });
 
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
@@ -1575,6 +1583,7 @@ export default function POSSportBarPage() {
           setCart(next.cart);
           setActivePickupTabId(next.id);
           setPickupCustomerName(next.customerName);
+          setPickupCustomerPhone(next.customerPhone);
         } else {
           setCart([]);
           setActivePickupTabId(null);
@@ -2242,7 +2251,16 @@ export default function POSSportBarPage() {
                   <input
                     type="tel"
                     value={pickupCustomerPhone}
-                    onChange={(e) => setPickupCustomerPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPickupCustomerPhone(e.target.value);
+                      if (activePickupTabId) {
+                        setPickupTabs((prev) =>
+                          prev.map((t) =>
+                            t.id === activePickupTabId ? { ...t, customerPhone: e.target.value } : t,
+                          ),
+                        );
+                      }
+                    }}
                     placeholder="Teléfono (opcional — guarda al cliente)"
                     className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 pl-8 pr-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                   />
