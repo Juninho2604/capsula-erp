@@ -8460,10 +8460,44 @@ profundidad pero el código ya bloquea los intentos.
 
 ## §46 🚨 BUG TAB-2433 — propina fantasma con descuentos + mesero
 
-**Estado**: ✅ **CÓDIGO CORREGIDO (PR #270, 2026-06-06)**. Bug A y Bug B
-arreglados con tests. PENDIENTE de ejecución manual en el VPS: la limpieza
-del dato puntual PKP-0866 y el audit retroactivo del día (Pasos 5 y 6, SQL
-abajo — correr con el sitio cerrado).
+**Estado**: ✅ **CÓDIGO CORREGIDO (PR #270 parcial + PR #271 definitivo, 2026-06-06).**
+La auditoría de las 10 PKP del día (query de Paso 6) reveló que el problema
+era MÁS profundo que el prefill: la propina de mesa se **doble-contaba** (una
+vez en el excedente del split, otra en la PKP colectiva creada en el cobro).
+PR #271 lo resuelve de raíz (ver "Causa raíz REAL" abajo). Limpieza de datos
+históricos: el dueño decidió NO anular (no necesario); de acá en adelante NO
+se generan PKP fantasma y el cierre cuenta la propina UNA sola vez.
+
+### Causa raíz REAL (descubierta en la auditoría de datos, PR #271)
+
+`history.actions.ts:214-215` y `z-report.actions.ts:198-200` ya calculan la
+propina de mesa como `Σ split.paidAmount − factura` (excedente del split).
+PERO `handlePaymentPinConfirm` ADEMÁS creaba una PKP "PROPINA COLECTIVA" con
+el `checkoutTip`. Resultado:
+- **Doble-conteo**: el excedente real se contaba 2 veces (split + PKP).
+- **Fantasma**: el prefill del mesero (que el cliente no pagó) se sumaba como
+  PKP encima. En pagos NO-efectivo la cajera ni ve un campo de propina, así
+  que el prefill pasaba directo.
+El cap de #270 redujo la fantasma pero seguía doble-contando el excedente chico.
+
+### Fix definitivo (PR #271)
+
+1. **Se eliminó la creación automática de PKP colectiva en el cobro de mesa.**
+   La propina queda registrada en el **excedente del split**, que historial y
+   Z report ya cuentan UNA vez (independiente del flag `unifyTipReporting`).
+   El modal MANUAL de "Registrar Propina Colectiva" (para propinas en efectivo
+   que entran aparte / pooled) se mantiene intacto.
+2. **El split registra el monto RETENIDO** (`keptAmountForSplit` = factura +
+   propina capada), no el bruto recibido. Así el excedente del split == propina
+   real y el vuelto en efectivo deja de contarse como propina (arreglo bonus
+   del over-count de cash). El arqueo también mejora: suma lo que queda en caja,
+   no el bruto con vuelto.
+3. Funciones puras `suggestedTipAmount`, `cappedTipForPayment`, `keptAmountForSplit`
+   en `src/lib/sales/tip-calculation.ts`, usadas por el código de producción,
+   con 17 tests (incluye TAB-2433 exacto, efectivo con vuelto, parcial).
+
+Resultado TAB-2433: split retiene $53 → excedente $0.20 (propina/redondeo real),
+contado una vez. Sin PKP fantasma de $7.20. Recibo muestra $53, no $60.
 
 ### El caso: orden TAB-2433 (Luis caculler, cobrada por Nazareth, 2026-06-05)
 

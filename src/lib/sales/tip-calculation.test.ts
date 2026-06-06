@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggestedTipAmount, cappedTipForPayment } from './tip-calculation';
+import { suggestedTipAmount, cappedTipForPayment, keptAmountForSplit } from './tip-calculation';
 
 describe('suggestedTipAmount — Bug A (§46): propina sobre total NETO, no bruto', () => {
     it('sin descuento: 10% de $48 = $4.80', () => {
@@ -82,5 +82,37 @@ describe('cappedTipForPayment — Bug B (§46): propina capada al excedente real
 
     it('pagó menos que la factura (no debería pasar) → 0, nunca negativo', () => {
         expect(cappedTipForPayment({ intendedTip: 7.2, amountPaid: 40, totalAntesServicio: 48, serviceFee: 4.8 })).toBe(0);
+    });
+});
+
+describe('keptAmountForSplit — el split registra lo retenido (factura + propina), no el bruto', () => {
+    it('TAB-2433 Zelle: recibido $53, factura $52.80, propina $0.20 → retenido $53 (excedente = $0.20 = propina)', () => {
+        const tip = cappedTipForPayment({ intendedTip: 7.2, amountPaid: 53, totalAntesServicio: 48, serviceFee: 4.8 });
+        const kept = keptAmountForSplit({ amountPaid: 53, totalAntesServicio: 48, serviceFee: 4.8, tip });
+        expect(kept).toBeCloseTo(53, 2);
+        expect(kept - (48 + 4.8)).toBeCloseTo(0.2, 2); // excedente del split == propina, contado UNA vez
+    });
+
+    it('efectivo: recibido $60, factura $52.80, propina $4 → retenido $56.80 (vuelto $3.20 NO se cuenta)', () => {
+        const kept = keptAmountForSplit({ amountPaid: 60, totalAntesServicio: 48, serviceFee: 4.8, tip: 4 });
+        expect(kept).toBeCloseTo(56.8, 2);
+        expect(kept - 52.8).toBeCloseTo(4, 2); // excedente = propina real, no el vuelto de $7.20
+    });
+
+    it('efectivo sobrepago SIN propina (cliente quiere todo el vuelto): retenido = factura', () => {
+        const tip = cappedTipForPayment({ intendedTip: 0, amountPaid: 60, totalAntesServicio: 48, serviceFee: 4.8 });
+        const kept = keptAmountForSplit({ amountPaid: 60, totalAntesServicio: 48, serviceFee: 4.8, tip });
+        expect(kept).toBeCloseTo(52.8, 2); // sin propina; el $7.20 sobrante es vuelto, no propina
+    });
+
+    it('pago justo: retenido = recibido = factura', () => {
+        const kept = keptAmountForSplit({ amountPaid: 52.8, totalAntesServicio: 48, serviceFee: 4.8, tip: 0 });
+        expect(kept).toBeCloseTo(52.8, 2);
+    });
+
+    it('pago parcial (recibido < factura): retenido = recibido, sin inflar', () => {
+        const tip = cappedTipForPayment({ intendedTip: 5, amountPaid: 30, totalAntesServicio: 48, serviceFee: 4.8 });
+        const kept = keptAmountForSplit({ amountPaid: 30, totalAntesServicio: 48, serviceFee: 4.8, tip });
+        expect(kept).toBeCloseTo(30, 2);
     });
 });
