@@ -8272,3 +8272,154 @@ Print Agent (`/api/print-agent/*`) **es multi-tenant safe en código**:
 
 Los puntos 1-4 son **bloqueantes**. El punto 5 es mejora — defensa en
 profundidad pero el código ya bloquea los intentos.
+
+---
+
+## 46. PENDIENTE — Bug propina sugerida sobre subtotal bruto (descubierto 2026-06-05)
+
+**Estado**: agendado para ventana de mantenimiento (sitio cerrado, mañana 6/6 AM).
+**Severidad**: alto (cobra propina fantasma cuando hay descuento de mesa).
+**Bloqueante**: no (solo afecta mesas con descuento; sin descuento, `runningSubtotal === runningTotal` y el resultado es correcto).
+
+### 46.1 Síntoma
+
+Mesa con descuento de divisas (33,33%) o cualquier descuento de mesa cobra una propina mayor a la real cuando el mesero selecciona "Propina sugerida 10%" en su tablet. El recibo muestra un total inflado y el sistema registra una propina colectiva PKP fantasma que **no entró al banco**.
+
+**Caso patrón (auditado en TAB-2433 — Luis caculler, 5/6/2026)**:
+
+| Concepto | Sistema | Real |
+|---|---|---|
+| Items | $72,00 | $72,00 |
+| Descuento divisas (-33,33%) | −$24,00 | −$24,00 |
+| Neto (`runningTotal`) | $48,00 | $48,00 |
+| Servicio 10% sobre neto | $4,80 | $4,80 |
+| Factura | $52,80 | $52,80 |
+| Cliente pagó (Zelle) | — | **$53,00** |
+| `tipAmount` calculado y mostrado en recibo | **$7,20** ❌ | $4,80 esperado |
+| Split en mesa | $53 ZELLE | $53 ZELLE ✓ |
+| **PKP-0866 fantasma** | **$7,20 ZELLE** | **no existe en banco** |
+
+### 46.2 Causa raíz (Bug A)
+
+`src/app/actions/pos.actions.ts:2095`:
+
+```typescript
+const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
+```
+
+Usa `runningSubtotal` (bruto antes de descuento) en vez de `runningTotal` (neto post descuento). El servicio 10% sí usa neto (`registerOpenTabPaymentAction` línea 1960), generando una **asimetría**: para una mesa con descuento, el servicio se calcula sobre el neto pero la propina sobre el bruto inflado.
+
+**Para TAB-2433**: `72 × 10% = $7,20` cuando lo correcto sería `48 × 10% = $4,80`.
+
+### 46.3 Causa secundaria (Bug B — flujo amplifica el A)
+
+`src/app/dashboard/pos/restaurante/page.tsx:2945-2947`:
+
+```typescript
+// Pre-fill tip from mesero selection if cashier hasn't entered one yet
+if (!checkoutTip && activeTab.tipAmount != null && activeTab.tipAmount > 0) {
+  setCheckoutTip(activeTab.tipAmount.toFixed(2));
+}
+```
+
+Al abrir el modal de cobro, el `checkoutTip` se pre-llena con `OpenTab.tipAmount` (que viene calculado mal). Cuando la cajera confirma sin tocar ese campo, `handlePaymentPinConfirm` ejecuta:
+
+```typescript
+if (tipVal > 0) {
+  await recordCollectiveTipAction({ tipAmount: tipVal, paymentMethod: effectiveMethod, ... });
+}
+```
+
+→ Crea un PKP "PROPINA COLECTIVA" por el monto inflado **sin verificar si el cliente efectivamente lo pagó** (no compara contra `amountReceived - factura`).
+
+### 46.4 Patch propuesto — FIX A (bug raíz)
+
+```diff
+- const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningSubtotal * (data.tipPercent / 100);
++ const tipAmount = data.tipPercent === 0 ? 0 : openTab.runningTotal * (data.tipPercent / 100);
+```
+
+**Decisión**: la propina sugerida se calcula sobre el **neto post-descuento**, coherente con el servicio 10%.
+
+Alternativa que descartamos: calcular sobre `runningTotal + totalServiceCharge` (incluyendo servicio). Razón: la convención en restaurantes locales es 10% del neto consumido, no del neto + servicio. Coincide con el comportamiento esperado por mesoneros.
+
+### 46.5 Patch propuesto — FIX B (defensa en profundidad)
+
+En `handlePaymentPinConfirm` agregar guard antes de `recordCollectiveTipAction`:
+
+```typescript
+const factura = totalAntesServicio + serviceFee;
+const cobrado = effectiveAmount; // amountReceived parseado
+const excedenteReal = Math.max(0, cobrado - factura);
+const tipEffective = Math.min(tipVal, excedenteReal);
+
+if (tipEffective > 0.01) {
+  await recordCollectiveTipAction({ tipAmount: tipEffective, ... });
+}
+```
+
+Eso evita que se cree propina fantasma cuando el cliente no la pagó. Si pagó $53 y la factura es $52,80, el excedente real es $0,20 — no $7,20.
+
+### 46.6 Tests a agregar
+
+`src/app/actions/pos.actions.tip-calculation.test.ts` (nuevo):
+
+- Mesa sin descuento, runningSubtotal=$100, tipPercent=10 → tipAmount=$10 ✓ (ya pasa antes y después).
+- Mesa con descuento 33%, runningSubtotal=$72, runningTotal=$48, tipPercent=10 → tipAmount=$4,80 (no $7,20).
+- Mesa con cortesía 100%, runningTotal=$0, tipPercent=10 → tipAmount=$0.
+- tipPercent=0 → tipAmount=0 (preserva comportamiento de "Sin propina" en POS Mesero).
+
+### 46.7 Plan de ejecución mañana (sitio cerrado)
+
+1. **Antes**: verificar `pm2 status` y `npx prisma migrate status` limpios.
+2. **Fix A**: aplicar diff en `pos.actions.ts:2095`.
+3. **Fix B**: aplicar guard en `restaurante/page.tsx` (`handlePaymentPinConfirm`).
+4. **Tests**: crear `pos.actions.tip-calculation.test.ts`. Correr `npx tsc --noEmit` y `npx vitest run`.
+5. **Smoke manual en dev local** antes de mergear: simular tab con descuento + propina 10%, verificar que `tipAmount` sea sobre neto.
+6. **Commit + PR + merge a main**. Render auto-deploy.
+7. **Limpieza data caso TAB-2433** (manual, transacción con backup):
+
+```sql
+BEGIN;
+-- Backup snapshot
+SELECT * FROM "SalesOrder" WHERE "orderNumber" = 'PKP-0866';
+-- Soft delete (preferible a DROP — preserva auditoría)
+UPDATE "SalesOrder"
+SET "status" = 'CANCELLED',
+    "voidedAt" = NOW(),
+    "voidReason" = 'Propina fantasma — bug propina sugerida sobre subtotal bruto. TAB-2433. Cliente solo pagó $53 Zelle (factura $52.80). Detalle en OPUS_CONTEXT §46.'
+WHERE "tenantId" = 'tnt_shanklish_caracas'
+  AND "orderNumber" = 'PKP-0866'
+  AND "amountPaid" = 7.20
+  AND "customerName" = 'PROPINA COLECTIVA';
+-- Verificar que solo afectó UNA fila
+-- COMMIT;  ← solo si el SELECT y el UPDATE rowcount son correctos
+-- ROLLBACK; ← si algo no cuadra
+```
+
+8. **Audit retroactivo**: buscar OTRAS PKP propinas fantasma del 5/6 generadas por el mismo bug (mesas con descuento + propina sugerida):
+
+```sql
+SELECT s."orderNumber", s."amountPaid", s."paymentMethod", s."notes", s."createdAt",
+       t."tabCode", t."customerLabel", t."runningSubtotal", t."runningDiscount", t."runningTotal", t."tipAmount"
+FROM "SalesOrder" s
+JOIN "OpenTab" t ON t."customerLabel" = REPLACE(s."notes", 'Propina colectiva — Mesa/Ref: ', '')
+WHERE s."tenantId" = 'tnt_shanklish_caracas'
+  AND s."customerName" = 'PROPINA COLECTIVA'
+  AND s."createdAt" >= '2026-06-05 04:00:00'
+  AND t."runningDiscount" > 0
+  AND ABS(s."amountPaid" - t."runningSubtotal" * 0.10) < 0.05  -- coincide con bug formula
+ORDER BY s."createdAt" DESC;
+```
+
+Cada resultado revisar contra extracto del banco y decidir caso a caso.
+
+### 46.8 Riesgo y rollback
+
+- **Riesgo del Fix A**: cambia el valor sugerido al mesero. Mesas SIN descuento: idéntico comportamiento (runningSubtotal == runningTotal). Mesas CON descuento: propina más baja (correcta). No rompe nada.
+- **Riesgo del Fix B**: si la lógica de excedente está mal, podríamos suprimir propinas reales. Mitigación: tests unitarios + smoke manual con caso real (mesa $50 facturada, cliente paga $60 → propina $10 debe crearse).
+- **Rollback si hace falta**: `git revert <commit>`. Vuelve a comportamiento previo en 1 deploy.
+
+### 46.9 Por qué no se arregla hoy
+
+Decisión del owner (5/6/2026 noche): el sitio está operando, no hay otras propinas fantasma reportadas en el día, y prefiere ejecutar el fix con la web cerrada por la mañana 6/6 para tener margen ante cualquier comportamiento inesperado del POS Mesero / Restaurante. Mientras tanto: las cajeras pueden seguir cobrando normal — solo deben **borrar manualmente el campo de propina prellenado** en el modal de cobro si la mesa tiene descuento de divisas y el cliente no dejó propina explícita.
