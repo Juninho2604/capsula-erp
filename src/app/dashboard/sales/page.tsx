@@ -12,6 +12,7 @@ import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { exportZReportToExcel } from '@/lib/export-z-report';
 import { exportSalesAuditToExcel } from '@/lib/export-sales-audit';
+import { extractTabCode } from '@/lib/sales/collective-tip-ref';
 
 export default function SalesHistoryPage() {
     const branding = useTenantBranding();
@@ -590,6 +591,11 @@ export default function SalesHistoryPage() {
                                                 </span>
                                                 {isPropina && (
                                                     <span className="rounded bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-[0.14em]">Propina</span>
+                                                )}
+                                                {isPropina && extractTabCode(sale.notes) && (
+                                                    <span className="rounded bg-capsula-navy-soft text-capsula-ink text-[10px] px-1.5 py-0.5 font-semibold font-mono tabular-nums inline-flex items-center gap-1" title={`Propina vinculada a la mesa ${extractTabCode(sale.notes)}`}>
+                                                        <Tag className="h-2.5 w-2.5" /> {extractTabCode(sale.notes)}
+                                                    </span>
                                                 )}
                                                 {isVoided && (
                                                     <span className="rounded bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8] text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-[0.14em]">Anulada</span>

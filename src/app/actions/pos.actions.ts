@@ -46,6 +46,7 @@ import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCart } from '@/lib/promotions/server';
 import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
 import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
+import { embedTabCode } from '@/lib/sales/collective-tip-ref';
 
 // ============================================================================
 // TIPOS
@@ -1507,13 +1508,64 @@ export async function createSalesOrderAction(
 // ============================================================================
 
 /**
+ * Lista las mesas CERRADAS de hoy (Caracas) para el selector de propina
+ * colectiva — la propina posterior se vincula a una de estas mesas para
+ * trazabilidad (de qué mesa fue + correlativo). Tenant-scoped.
+ */
+export async function getClosedTabsTodayAction(): Promise<ActionResult> {
+    const { db } = await getTenantCtx();
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+
+        const { start, end } = getCaracasDayRange(new Date());
+        const tabs = await db.openTab.findMany({
+            where: { status: 'CLOSED', closedAt: { gte: start, lte: end } },
+            select: {
+                id: true,
+                tabCode: true,
+                customerLabel: true,
+                runningTotal: true,
+                totalServiceCharge: true,
+                closedAt: true,
+                tableOrStation: { select: { name: true } },
+            },
+            orderBy: { closedAt: 'desc' },
+            take: 80,
+        });
+
+        return {
+            success: true,
+            message: 'ok',
+            data: tabs.map(t => ({
+                id: t.id,
+                tabCode: t.tabCode,
+                label: t.customerLabel || t.tableOrStation?.name || t.tabCode,
+                tableName: t.tableOrStation?.name ?? null,
+                total: (t.runningTotal ?? 0) + (t.totalServiceCharge ?? 0),
+                closedAt: t.closedAt,
+            })),
+        };
+    } catch (error) {
+        console.error('[getClosedTabsTodayAction]', error);
+        return { success: false, message: 'Error cargando mesas cerradas' };
+    }
+}
+
+/**
  * Records a collective (post-payment) tip as a zero-total sales order.
  * total=0, amountPaid=tipAmount → Z report picks it up as tip correctly.
+ *
+ * `relatedTabCode` vincula la propina a la mesa cerrada de la que provino
+ * (trazabilidad). Se persiste dentro de `notes` con un marcador estable
+ * `[tab:<code>]` que el historial parsea para mostrar el correlativo (sin
+ * necesidad de columna nueva).
  */
 export async function recordCollectiveTipAction(data: {
     tipAmount: number;
     paymentMethod: string;
     note?: string;
+    relatedTabCode?: string;
 }): Promise<ActionResult> {
     const { db, tenantId } = await getTenantCtx();
     try {
@@ -1521,6 +1573,10 @@ export async function recordCollectiveTipAction(data: {
         if (!session) return { success: false, message: 'No autorizado' };
 
         const salesArea = await ensureBaseSalesArea();
+
+        // Nota con marcador estable [tab:<code>] para que el historial muestre
+        // el correlativo vinculado sin parsear texto libre.
+        const finalNote = embedTabCode(data.note?.trim() || 'Propina colectiva', data.relatedTabCode);
 
         let order;
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -1545,7 +1601,7 @@ export async function recordCollectiveTipAction(data: {
                         total: 0,
                         amountPaid: data.tipAmount,
                         change: 0,
-                        notes: data.note || 'Propina colectiva',
+                        notes: finalNote,
                         createdById: session.activeCashierId ?? session.id,
                         areaId: salesArea.id,
                     },
