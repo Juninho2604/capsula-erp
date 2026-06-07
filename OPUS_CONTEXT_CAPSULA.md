@@ -8802,3 +8802,41 @@ se registra después por "Propina colectiva" vinculada a la mesa (§18.8 + PR
 
 **No se renombra el campo de BD** `OpenTab.tipPercent` / `tipAmount` (eso
 requeriría migración). Es solo una etiqueta semántica en la UI.
+
+---
+
+### §49.1 Congruencia POS Mesero ↔ POS Restaurante (2026-06-07, PR #278)
+
+El POS Restaurante (cajera) tenía la **misma duplicación visual** que tenía el
+mesero antes del fix: encima del "A cobrar" mostraba DOS bloques de colores:
+
+```
+[10% Servicio incluido]  ✓
+[Propina 10% (cliente)]  $16.05    ← duplicado visual, NO se cobraba realmente
+A cobrar                  $176.55
+```
+
+El monto real a cobrar (`paymentAmountToCharge`) estaba bien calculado (un
+solo 10% en `registerOpenTabPaymentAction` línea 1961), pero la línea amarilla
+"Propina X% (cliente)" hacía creer a la cajera que iba a cobrar AMBOS.
+
+**Fix (PR #278):** eliminada la línea informativa "Propina X% (cliente)" del
+POS Restaurante. La cajera ahora ve solo el chip verde "10% Servicio incluido"
++ el total — mismo concepto que el cliente ve en el POS Mesero.
+
+**Estado final de congruencia** (auditado 2026-06-07):
+
+| Vista | Línea del 10% | Cálculo | Etiqueta |
+|---|---|---|---|
+| POS Mesero (cliente)        | UNA | neto × tipPercent (§46)         | "Servicio (10%)" |
+| POS Mesero (selector)        | UN selector | botones 10/15/20%       | "Servicio"        |
+| POS Restaurante (cajera)    | UN chip verde   | `appliedAmount × 0.10`     | "10% Servicio incluido" |
+| Precuenta impresa            | UNA línea       | `serviceFee` solamente     | "Servicio"        |
+| Recibo final                  | UNA línea       | `totalServiceCharge` server | "Servicio 10%"   |
+
+**Punto abierto a confirmar con el dueño:** el selector del mesero ofrece
+botones 10/15/20%. Si "solo hay 10% servicio", los botones 15% y 20%
+introducen inconsistencia con la cajera (que SIEMPRE cobra 10% fijo). Las
+opciones son: (a) dejar solo "10% Servicio" en el selector del mesero;
+(b) hacer que el % del mesero también pilote el cálculo de la cajera. Por
+ahora se dejaron los 3 botones tal cual.
