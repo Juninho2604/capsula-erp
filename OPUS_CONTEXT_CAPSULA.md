@@ -9339,3 +9339,93 @@ En `applyPhysicalCountAction` (PR #286):
 muestra resumen del WeeklyCount creado + tarjeta explicativa "Qué pasó en
 el sistema" + dos CTAs (Ver inventario actualizado / Reporte completo) +
 botón "Empezar otro conteo".
+
+---
+
+## §51.B Variación semana vs semana — vista UI (2026-06-07)
+
+Implementación del segundo reporte del módulo Reportes solicitado por el
+dueño tras la conversación sobre WeeklyCount (§51.A):
+
+> "Quiero ver la comparativa de semana 1 contra semana 2 si quiero ver que
+> variaciones hubo: Conteo Rápido S1 Domingo, entradas de mercancía durante
+> la semana transferencias y ventas luego conteo rápido S2 Domingo."
+
+Backend ya existía en §51.A (`compareWeeklyCountsAction`). Este PR cierra el
+ciclo con la vista UI y el export Excel.
+
+### 51.B.1 Función pura
+
+`src/lib/reports/weekly-variation-helpers.ts`:
+- `computeComparisonMetrics(rows)` → items con caída/subida/sin cambio +
+  totales agregados (totalDecrease, totalIncrease, totalNetDelta).
+- `groupComparisonByCategory(rows)` → buckets por categoría con
+  subtotales (netDelta, decrease, increase por grupo).
+- `topDecreases(rows, n)` y `topIncreases(rows, n)` → ordenados por
+  magnitud para "Top mermas" / "Top entradas".
+- `filterComparisonRows(rows, query)` → filtro SKU+nombre+categoría.
+
+**11 tests** cubren epsilon de redondeo, NaN/Infinity defensivo, items
+solo-en-uno-de-los-dos-conteos, agrupación correcta.
+
+### 51.B.2 Vista UI
+
+`/dashboard/reportes/variacion-semanal`:
+- **Server component** carga lista de WeeklyCount disponibles (últimos 50).
+- **Client component** con:
+  - Dos selectores de conteo (Previo y Actual). Excluye el opuesto del
+    dropdown contrario para evitar comparar consigo mismo.
+  - Toggle Principal / Producción (warehouse).
+  - Botón "Generar comparativa".
+  - Si hay menos de 2 conteos: tarjeta warn con CTA a Conteo Rápido y
+    Conteo Semanal Excel.
+
+Resultados:
+- **4 métricas**: Items con caída (danger), con subida (ok), sin cambio
+  (neutral), Neto agregado (color según signo).
+- **Toolbar**: buscador en vivo + filtro segmentado (Todas / Solo caídas /
+  Solo subidas / Con cambios) + botón Excel.
+- **Tabla agrupada por categoría** con: SKU, Producto, Unidad, cant.
+  previa, → (flecha), cant. actual, delta (con icono trending up/down y
+  color tonal), % cambio.
+- **Footer navy** con totales agregados.
+
+### 51.B.3 Export Excel
+
+`variacion_<PREV>_vs_<CURR>.xlsx` con:
+- Header con countNumbers y fechas
+- Tabla agrupada por categoría con separadores `## CATEGORÍA ##`
+- Subtotales por grupo
+- Footer con totales (caídas, subidas, neto)
+- Anchos de columna ajustados
+
+### 51.B.4 Tile habilitado
+
+`/dashboard/reportes` ahora muestra "Variación semana vs semana" como
+**disponible** (status: 'available'). Quedan dos reportes "Próximamente":
+movimientos por rango y ventas+costos+margen.
+
+### 51.B.5 Próxima evolución (roadmap)
+
+Lo que pidió el dueño explícitamente para el reporte ideal:
+> "Conteo Rápido S1 + entradas durante la semana + transferencias - ventas
+> = Conteo esperado S2"
+
+Eso es un **segundo nivel** de análisis que cruza WeeklyCount con
+InventoryMovement entre las dos fechas. Permite calcular:
+- **Merma desconocida** = real - esperado
+- Identifica items donde el conteo cuadra (sin merma) vs no cuadra (pérdida
+  no registrada o doble cuenta).
+
+Backend para esta fase: una action nueva que reciba
+`(previousCountId, currentCountId)` y agregue:
+- Sum de `InventoryMovement(TRANSFER_IN)` entre fechas
+- Sum de `InventoryMovement(SALE)` entre fechas
+- Sum de `InventoryMovement(WASTE)` entre fechas
+- Sum de `InventoryMovement(PURCHASE_RECEIVE)` entre fechas
+
+Frontend: agregar columnas "Entradas / Salidas / Esperado / Merma
+desconocida" a la tabla. Lo dejo para PR siguiente cuando tengamos al
+menos 2 WeeklyCount reales en producción para validar la fórmula.
+
+tsc 0, vitest 323 passed (+11 de weekly-variation-helpers).
