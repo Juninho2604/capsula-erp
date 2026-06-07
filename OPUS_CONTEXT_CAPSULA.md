@@ -8953,3 +8953,93 @@ Devuelve también:
   rechaza con código `ALL_AT_ZERO` si aplica.
 - Con `force: true`, salta validación (caso legítimo: área que efectivamente
   terminó sin stock).
+
+---
+
+## §51 Conteo físico semanal — plantilla masiva con todos los SKU (2026-06-07)
+
+Fase A.1 de la auditoría de inventarios solicitada por el dueño: poder
+descargar un Excel pre-llenado con TODOS los SKU activos para conteo físico
+y posterior carga masiva. Antes la "plantilla" eran solo dos headers vacíos
+y el match era fuzzy por nombre — inviable para >300 SKU.
+
+### 51.1 Cambios aplicados (PR #281)
+
+**Parser actualizado (`src/lib/inventory-excel-parse.ts`):**
+- Detecta columnas por etiqueta de encabezado, no por orden fijo.
+- Soporta `SKU` / `CODIGO` / `COD` para identificador único.
+- Soporta `PRODUCTO` / `NOMBRE` / `DESCRIPCION` para nombre.
+- Soporta aliases de cantidad: `CANTIDAD`, `CANT.`, `STOCK`, `PRINCIPAL`,
+  `PRODUCCION`, `COCINA`.
+- Ignora filas separadoras de categoría `## CATEGORIA ##`.
+- Backward compat: si solo hay `PRODUCTO` + col cantidad sin etiqueta clara,
+  usa el comportamiento legacy (orden hardcoded).
+- 10 tests en `src/lib/inventory-excel-parse.test.ts` cubren legacy,
+  formato nuevo con SKU, dual, separadores de categoría, aliases, etc.
+
+**Server action nueva — `getInventoryCountTemplateAction(principalAreaId,
+productionAreaId?)`** en `src/app/actions/inventory-count.actions.ts`:
+- Carga todos los `InventoryItem` activos con `sku`, `name`, `category`,
+  `baseUnit`.
+- Trae `InventoryLocation.currentStock` para el/los área(s) pedidos.
+- Devuelve `CountTemplateRow[]` con stock pre-cargado. Idempotente, solo
+  lectura.
+- Validación de ownership multi-tenant del area(s).
+
+**`previewPhysicalCountFromExcelAction` mejorada:**
+- Si `PreviewRow.sku` viene del parser, intenta match exacto por SKU primero
+  (Map<sku→item> O(1)) ANTES del fuzzy por nombre.
+- Resultado: la plantilla pre-llenada hace match 100% confiable; solo cae a
+  fuzzy si el usuario sube su Excel propio sin SKU.
+
+**UI nueva — `PhysicalCountClient.tsx`:**
+- Dos botones nuevos "Descargar plantilla completa (1 / 2 almacenes)" que
+  llaman a la action y construyen el Excel agrupado por categoría con filas
+  separadoras `## CATEGORIA ##`.
+- Columnas: `SKU | PRODUCTO | CATEGORÍA | UNIDAD | STOCK SISTEMA | CANTIDAD`
+  (la última vacía para llenar). Modo dual agrega `STOCK SISTEMA (Producción)
+  | PRODUCCIÓN`.
+- Anchos de columna ajustados para imprimir / leer cómodo.
+- Nombre del archivo: `conteo_completo_YYYY-MM-DD.xlsx`.
+- Botones legacy "plantilla vacía" siguen ahí, separados, para usuarios que
+  ya tienen su Excel propio.
+
+### 51.2 Flujo recomendado al cliente
+
+1. Seleccionar almacén principal (y producción si aplica) en la sección 3.
+2. Descargar la plantilla completa (botón navy oscuro arriba).
+3. Imprimir o usar en tablet/laptop, ir contando y llenando la columna
+   CANTIDAD.
+4. Volver a subir en la sección 4. El sistema hace match por SKU (no fuzzy)
+   → todas las filas coinciden si vienen de la plantilla descargada.
+5. Aplicar conteo → registra `ADJUSTMENT_IN/OUT` por la diferencia con el
+   stock previo.
+
+### 51.3 Confirmación de carryover diario → siguiente día
+
+Auditado y confirmado: `getDailyInventoryAction`
+(`src/app/actions/inventory-daily.actions.ts:302-419`) ya implementa el
+arrastre cierre N → apertura N+1:
+- Al **crear** un daily nuevo: lee `finalCount` del daily del día anterior
+  (mismo área) y lo escribe en `theoreticalInitialCount` E `initialCount` del
+  nuevo (líneas 318-319).
+- Si el daily ya existe y status ≠ CLOSED: **recalcula**
+  `theoreticalInitialCount` cada vez que se carga (líneas 386-417) → siempre
+  refleja el cierre del día anterior aunque ese se haya editado.
+- Suma además entradas/salidas/merma del rango (transferencias completadas,
+  producciones, requisiciones — líneas 200-234).
+
+Esto es la respuesta a la pregunta del dueño: **sí, el cierre del día es la
+apertura teórica del día siguiente, automáticamente, sin intervención
+manual**. Lo único: solo arrastra los items que están en la lista crítica
+del nuevo día. Para arrastre de TODOS los SKU se usa el módulo
+conteo-semanal (§5.5) que opera sobre `InventoryLocation.currentStock`.
+
+### 51.4 Roadmap restante (no en este PR)
+
+- **§51.A** Modelo `WeeklyCount` + `WeeklyCountItem` para persistir conteos
+  semanales como entidad y soportar comparativa semana N vs N-1.
+- **§51.B** Comparativa "Conteo semanal vs Inventario diario" — detección
+  de varianzas que el diario no capturó.
+- **§51.C** Módulo Reportes (`/dashboard/reportes`) con: inventario completo,
+  variación semanal, movimientos por rango, ventas + costos + margen.
