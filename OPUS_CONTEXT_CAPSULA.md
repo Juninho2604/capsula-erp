@@ -9190,3 +9190,75 @@ Los siguientes reportes consumirán actions ya implementadas:
   rango de fechas configurable.
 - **Ventas + costos + margen** → consume `SalesOrder` + `Recipe`/`CostHistory`,
   agrega por categoría de menú y por período (día/semana/mes).
+
+---
+
+## §52 Conteo Rápido — tipear conteo físico directo al sistema (2026-06-07)
+
+Flujo B del §51 (planificado tras conversación con dueño Shanklish, 6/6):
+una pantalla para que el personal tipee directamente al sistema desde la
+hoja impresa, sin pasar por Excel intermedio.
+
+### 52.1 Contexto del cliente
+
+Shanklish hace conteo semanal **todos los domingos** con flujo:
+1. Imprimen hoja con SKU + Producto + columnas en blanco
+2. Personal cuenta y anota a mano
+3. Alguien transcribe al sistema
+
+El problema histórico era que el orden de la hoja y el orden del Excel
+no coincidían → buscar producto por producto. Con §51 ya quedó alineado
+(ambos: categoría alfabética → nombre alfabético). Esta pantalla cierra
+el ciclo: una persona dicta de la hoja, otra tipea, **Tab/Enter avanza
+al siguiente input**, sin Excel intermedio.
+
+### 52.2 Ruta y archivos
+
+- `/dashboard/inventario/conteo-rapido` — nueva ruta
+- `page.tsx` server component (auth + carga áreas default)
+- `quick-count-view.tsx` client component (estado completo)
+- Reusa backend existente:
+  - `getInventoryCountTemplateAction` (§51) — devuelve todos los SKU del área
+  - `applyPhysicalCountAction` (§51.A) — crea WeeklyCount + ajusta stock
+
+**Cambio menor en backend**: `CountTemplateRow` ahora incluye `id`
+(inventoryItemId real), necesario para que `applyPhysicalCountAction` pueda
+escribir los ajustes sin lookup adicional.
+
+### 52.3 Características de UX
+
+- **Auto-save local** (`localStorage`, debounced 500ms) — si se cierra la
+  pestaña o se refresca, recupera el borrador al volver a abrir si
+  (principalId + productionId + dualMode) coinciden con la sesión anterior.
+- **Progreso visible**: header sticky con barra de progreso + contador
+  "X de Y items contados".
+- **Filtros**: buscador en vivo (SKU + nombre + categoría) + toggle
+  "Solo pendientes".
+- **Agrupación por categoría** con contador por grupo `n/total`.
+- **Modal de confirmación pre-aplicación**: aclara cuántos items se cuentan
+  como 0 (los que quedaron sin valor), permite cancelar y filtrar
+  "Solo pendientes".
+- **Modo dual**: dos columnas de input (Principal + Producción/Cocina),
+  ambas opcionales por item.
+- **Link "Imprimir hoja"** en header → abre `/inventario/imprimir?layout=count`
+  en pestaña nueva (mismo orden categoría/alfabético).
+
+### 52.4 Module registry
+
+- `MODULE_REGISTRY`: `inventory_quick_count` con icono ⌨️, sortOrder 22
+  (justo después de `inventory`).
+- `MODULE_ROLE_ACCESS`: OWNER, ADMIN_MANAGER, OPS_MANAGER, CHEF, AREA_LEAD,
+  AUDITOR (mismos que conteo-semanal).
+- `SIDEBAR_TREE`: agregado al subgroup 'sg-inventario' entre
+  `inventory_count` y `audits`.
+- `MODULE_ICONS`: `ClipboardList` (lucide-react).
+
+### 52.5 Roadmap (próximos refinamientos)
+
+- Tab/Enter keyboard nav explícito (hoy Tab funciona por orden natural de
+  los inputs en el DOM; podría hacerse Enter→siguiente con `onKeyDown`).
+- Modo "uno a uno" para tablets (un solo item grande en pantalla, swipe o
+  flecha pasa al siguiente).
+- Detección automática de "doble registro" (si el SKU ya tiene valor y se
+  vuelve a tipear, advertir).
+- Botón "Saltar este" explícito para items que no se cuentan.
