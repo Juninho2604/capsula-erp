@@ -8770,3 +8770,35 @@ Fix (PR #276):
   propina sobre el neto. Coincide con lo que la cajera va a cobrar.
 - `OpenTabSummary` ahora declara `serviceType`. Default `TABLE_SERVICE` por
   defensa si el campo no llegara (sesiones cacheadas).
+
+## §49 (corregido) POS Mesero — UNA sola línea del 10% servicio, no duplicado
+
+**Bug del PR #276 (mi fix anterior):** agregué una línea NUEVA "Servicio (10%)"
+al preview del mesero porque pensé que faltaba. Pero la línea "Propina (10%)"
+que ya existía ERA el servicio (con cálculo malo sobre el bruto). Resultado:
+mostraba DOS líneas del 10% (foto IMG_2615 mesa Carmen: subtotal $160.50,
+servicio $16.05, propina $16.05, total $192.60 — duplicado).
+
+**Modelo correcto (confirmado por el dueño):** solo existe **el 10% servicio
+del local** (no hay propina inmediata adicional). La propina extra al equipo
+se registra después por "Propina colectiva" vinculada a la mesa (§18.8 + PR
+#272). El selector del mesero (10/15/20%) ofrece el % de servicio sugerido.
+
+**Fix (PR #277):**
+- `src/lib/sales/tab-preview.ts` simplificada: `computeTabPreviewTotals`
+  devuelve una sola línea `serviceCharge` (= neto × tipPercent). Sin servicio
+  adicional, sin propina separada. 8 tests reescritos.
+- POS Mesero: línea única renombrada **"Servicio (10%)"** en el preview de
+  la cuenta, en el selector ("Servicio" en vez de "Propina") y en el bloque
+  de copia para WhatsApp. La precuenta impresa pasa solo `serviceFee`, no
+  `tipAmount`.
+- Coincide con lo que la cajera cobra (`appliedAmount × 0.10` en
+  `registerOpenTabPaymentAction` líneas 1961+).
+
+**Validación con las dos mesas reales:**
+- **Yair** (subtotal $72, divisas −$24, 10%): $48 + $4.80 = **$52.80** ✓
+- **Carmen** (subtotal $160.50, 10%): $160.50 + $16.05 = **$176.55** ✓
+  (antes mostraba $192.60 con duplicación).
+
+**No se renombra el campo de BD** `OpenTab.tipPercent` / `tipAmount` (eso
+requeriría migración). Es solo una etiqueta semántica en la UI.

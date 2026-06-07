@@ -1673,22 +1673,14 @@ export default function POSMeseroPage() {
             : null;
 
         // Cálculo de la cuenta — función pura `computeTabPreviewTotals`
-        // (§46 + conversación 6/6 sobre imagen mesero vs restaurante):
-        //   - 10% servicio se muestra SIEMPRE en TABLE_SERVICE (antes solo
-        //     aparecía si la mesa ya estaba cobrada → el cliente veía menos
-        //     de lo que cobraba la cajera).
-        //   - Propina se calcula sobre el NETO post-descuento (antes en
-        //     subcuenta era sobre el bruto → 10% × $72 = $7.20 en vez de
-        //     $4.80 sobre $48 neto).
+        // (§46 + conversación 6/6: la "propina" del mesero ES el servicio 10%,
+        // no una propina adicional. UNA sola línea del 10%, sobre el NETO).
         const subtotal      = selectedSub
             ? selectedSub.subtotal
             : activeTab.runningSubtotal;
         const discountAccum = selectedSub
             ? 0  // descuento global de la tab no se distribuye automático
             : activeTab.runningDiscount;
-        const serviceAccum = selectedSub
-            ? (selectedSub.serviceCharge ?? 0)
-            : (activeTab.totalServiceCharge ?? 0);
         const tipPct       = activeTab.tipPercent ?? 0;
         const paidSplits   = selectedSub
             ? []
@@ -1697,29 +1689,23 @@ export default function POSMeseroPage() {
             ? (selectedSub.paidAmount ?? 0)
             : paidSplits.reduce((s, p) => s + p.paidAmount, 0);
         const divisasDiscount = divisasPreview ? subtotal / 3 : 0;
-        // Default a TABLE_SERVICE si el campo no está poblado (compat con sesiones
-        // antiguas y por seguridad — todas las mesas regulares llevan 10%).
-        const isTableService = (activeTab.serviceType ?? 'TABLE_SERVICE') === 'TABLE_SERVICE';
 
         const totals = computeTabPreviewTotals({
             subtotal,
             discount: discountAccum,
-            serviceChargeAccumulated: serviceAccum,
-            isTableService,
             tipPercent: tipPct,
             divisasPreviewDiscount: divisasDiscount,
             paidPartial,
         });
 
-        const discount     = totals.discountTotal - divisasDiscount; // descuento "fijo" (sin preview) para mostrar separado
-        const serviceCharge = totals.serviceCharge;
-        const tipAmount    = totals.tipAmount;
-        const paidTotal    = paidPartial;
-        const grandTotal   = totals.grandTotal;
-        const saldoBruto   = totals.saldoPendiente;
-        const amountToShow = saldoBruto > 0.01 ? saldoBruto : grandTotal;
-        const totalBs      = exchangeRate ? grandTotal * exchangeRate : null;
-        const saldoBs      = exchangeRate ? amountToShow * exchangeRate : null;
+        const discount      = discountAccum;        // descuento fijo (no preview), para mostrar como línea separada
+        const serviceCharge = totals.serviceCharge; // ÚNICA línea del 10% — antes se llamaba "tipAmount"
+        const paidTotal     = paidPartial;
+        const grandTotal    = totals.grandTotal;
+        const saldoBruto    = totals.saldoPendiente;
+        const amountToShow  = saldoBruto > 0.01 ? saldoBruto : grandTotal;
+        const totalBs       = exchangeRate ? grandTotal * exchangeRate : null;
+        const saldoBs       = exchangeRate ? amountToShow * exchangeRate : null;
         const formatBs = (n: number) =>
             `Bs ${n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -1887,18 +1873,14 @@ export default function POSMeseroPage() {
                       <span className="font-semibold tabular-nums">−${divisasDiscount.toFixed(2)}</span>
                     </div>
                   )}
+                  {/* Servicio del local (lo que la cajera va a cobrar sobre el neto).
+                      UNA sola línea — no se duplica con "propina" (ver §49 + foto Carmen). */}
                   {serviceCharge > 0.001 && (
                     <div className="flex justify-between text-xs text-capsula-ink-muted">
-                      <span className="font-semibold uppercase tracking-wider">Servicio (10%)</span>
-                      <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {tipAmount > 0.001 && (
-                    <div className="flex justify-between text-xs text-capsula-ink-muted">
                       <span className="font-semibold uppercase tracking-wider">
-                        Propina{activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` (${activeTab.tipPercent}%)` : ''}
+                        Servicio{activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` (${activeTab.tipPercent}%)` : ''}
                       </span>
-                      <span className="font-semibold text-capsula-ink tabular-nums">${tipAmount.toFixed(2)}</span>
+                      <span className="font-semibold text-capsula-ink tabular-nums">${serviceCharge.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-baseline border-t border-capsula-line pt-2">
@@ -1913,10 +1895,14 @@ export default function POSMeseroPage() {
                   )}
                 </div>
 
-                {/* Propina */}
+                {/* Servicio (selector del mesero). El % seleccionado se cobra como 10% servicio del local
+                    sobre el neto. NO es propina adicional (ver §49). La propina extra queda para
+                    "Propina colectiva" después del cierre (PR #272). */}
                 {(() => {
                   const currentTipPct = activeTab.tipPercent;
-                  const currentTipAmt = activeTab.tipAmount;
+                  // Usamos el cálculo unificado de totals para que el valor mostrado en el
+                  // selector coincida con el de la línea de SUBTOTAL arriba.
+                  const currentTipAmt = serviceCharge;
                   // "Sin propina" removido a pedido del operador: al mostrar la
                   // cuenta al cliente solo se ofrecen porcentajes. El default
                   // 10% se auto-setea al abrir el modal (ver useEffect arriba).
@@ -1929,7 +1915,7 @@ export default function POSMeseroPage() {
                   ];
                   return (
                     <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-3 space-y-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Propina</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Servicio</p>
                       <div className="grid grid-cols-3 gap-1.5">
                         {tipOptions.map(({ label, pct }) => {
                           const isActive = currentTipPct !== null && currentTipPct !== undefined && currentTipPct === pct;
@@ -1951,7 +1937,7 @@ export default function POSMeseroPage() {
                       </div>
                       {currentTipPct !== null && currentTipPct !== undefined && currentTipPct > 0 && currentTipAmt !== null && currentTipAmt !== undefined && (
                         <div className="flex items-center justify-between pt-0.5">
-                          <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-wider">Propina {currentTipPct}%</span>
+                          <span className="text-[11px] font-semibold text-[#2F6B4E] dark:text-[#6FB88F] uppercase tracking-wider">Servicio {currentTipPct}%</span>
                           <span className="text-sm font-semibold text-[#2F6B4E] dark:text-[#6FB88F] tabular-nums">${currentTipAmt.toFixed(2)}</span>
                         </div>
                       )}
@@ -2015,8 +2001,8 @@ export default function POSMeseroPage() {
                         '',
                         `Subtotal:       $${subtotal.toFixed(2)}`,
                         ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
-                        ...(serviceCharge > 0.001 ? [`Servicio 10%:  $${serviceCharge.toFixed(2)}`] : []),
-                        ...(tipAmount > 0.001 ? [`Propina${activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` ${activeTab.tipPercent}%` : ''}:  $${tipAmount.toFixed(2)}`] : []),
+                        ...(divisasDiscount > 0.001 ? [`Divisas -33,33%: -$${divisasDiscount.toFixed(2)}`] : []),
+                        ...(serviceCharge > 0.001 ? [`Servicio${activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` ${activeTab.tipPercent}%` : ''}:  $${serviceCharge.toFixed(2)}`] : []),
                         `TOTAL USD:      $${grandTotal.toFixed(2)}`,
                         ...(totalBs !== null ? [`Bs equiv.:      ${formatBs(totalBs)}`] : []),
                         ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldoBruto.toFixed(2)}`] : []),
@@ -2051,11 +2037,12 @@ export default function POSMeseroPage() {
                         items,
                         subtotal,
                         discount: discount > 0.001 ? discount : 0,
-                        // print-command espera `total` como base (post-discount, pre-service,
-                        // pre-tip); luego suma serviceFee + tipAmount internamente.
+                        // print-command espera `total` como base (post-discount, pre-service);
+                        // luego suma serviceFee internamente. tipAmount queda undefined porque
+                        // ahora el 10% del mesero ES el servicio (una sola línea, §49).
                         total: subtotal - discount - divisasDiscount,
                         serviceFee: serviceCharge > 0.001 ? serviceCharge : undefined,
-                        tipAmount: tipAmount > 0.001 ? tipAmount : undefined,
+                        tipAmount: undefined,
                         isPrecuenta: true,
                       });
                     }}
