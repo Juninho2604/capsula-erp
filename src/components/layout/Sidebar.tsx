@@ -49,7 +49,7 @@ const SIDEBAR_TREE: SectionDef[] = [
             { kind: 'link', moduleId: 'dashboard' },
             {
                 kind: 'subgroup', id: 'sg-inventario', label: 'Inventario', icon: '📦',
-                items: ['inventory', 'inventory_daily', 'inventory_count', 'audits', 'transfers', 'inventory_history'],
+                items: ['inventory', 'inventory_daily', 'inventory_count', 'inventory_quick_count', 'audits', 'transfers', 'inventory_history'],
             },
             {
                 kind: 'subgroup', id: 'sg-produccion', label: 'Producción', icon: '🏭',

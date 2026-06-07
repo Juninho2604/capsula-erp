@@ -195,6 +195,8 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
 // y vuelve a subir. La columna SKU permite match exacto (sin fuzzy).
 // ============================================================================
 export type CountTemplateRow = {
+  /** inventoryItemId real — necesario para applyPhysicalCountAction (Conteo rápido) */
+  id: string;
   sku: string;
   productName: string;
   category: string;
@@ -258,6 +260,7 @@ export async function getInventoryCountTemplateAction(
   const rows: CountTemplateRow[] = items.map(i => {
     const stock = stockMap.get(i.id) ?? { principal: 0, production: 0 };
     return {
+      id: i.id,
       sku: i.sku,
       productName: i.name,
       category: i.category || 'Sin categoría',

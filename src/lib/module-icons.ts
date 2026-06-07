@@ -25,6 +25,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     inventory_daily:   CalendarDays,
     inventory:         Package,
     inventory_count:   ClipboardCheck,
+    inventory_quick_count: ClipboardList,
     audits:            Shield,
     transfers:         ArrowLeftRight,
     inventory_history: History,
