@@ -8840,3 +8840,83 @@ introducen inconsistencia con la cajera (que SIEMPRE cobra 10% fijo). Las
 opciones son: (a) dejar solo "10% Servicio" en el selector del mesero;
 (b) hacer que el % del mesero también pilote el cálculo de la cajera. Por
 ahora se dejaron los 3 botones tal cual.
+
+---
+
+## §50 Inventario Diario — auditoría profunda y mejora del sync de ventas POS (2026-06-07)
+
+Inicio de la auditoría profunda módulo por módulo solicitada por el dueño.
+Primer módulo: **Inventario Diario** (§5.3). El dueño reportó dolor en los 4
+ejes: lentitud, datos incorrectos, falta de visibilidad y flujos rotos.
+
+### 50.1 Hallazgos relevantes del módulo (radiografía completa)
+
+Auditados los 14 actions de `src/app/actions/inventory-daily.actions.ts` y los
+client components `daily-manager.tsx`, `sales-entry-modal.tsx`,
+`critical-list-manager.tsx`. Reporte priorizado:
+
+**Datos incorrectos / bugs:**
+- `syncSalesFromOrdersAction`: filtro por `setHours UTC` (line 663) en vez
+  de Caracas → ventas de 00:00-04:00 / 20:00-24:00 caen en el día equivocado
+  en servers no-Caracas. **FIX en este PR**.
+- `syncSalesFromOrdersAction`: NO excluye órdenes con `voidedAt != null` ni
+  `deletedAt != null` → consumos de órdenes anuladas se sumaban al teórico.
+  **FIX en este PR**.
+- `syncSalesFromOrdersAction`: N+1 query (línea 685, `findFirst(recipe)` por
+  cada `orderItem`). 100 órdenes × 5 items = 500 queries. **FIX en este PR**
+  con batch fetch `findMany({ id: { in: recipeIds } })`.
+- `syncSalesFromOrdersAction` línea 706: `sales: consumption` (overwrite, no
+  increment). Es idempotente CONSIGO mismo (recalcula igual si re-corro),
+  pero si el usuario mete ventas con `processManualSalesAction` y luego
+  sincroniza, el sync sobrescribe lo manual. **NO se arregla hoy** — requiere
+  schema change (columnas separadas `salesFromPOS` + `salesManual`).
+
+**Falta visibilidad:**
+- No hay alerta visual de stock bajo / críticos no contados antes de cerrar
+  el día. Cierre es "ciego" — no resumen de varianzas.
+- `getInventorySummaryByRangeAction` mezcla días DRAFT y CLOSED sin
+  diferenciar, da números acumulados engañosos.
+
+**Flujos rotos:**
+- `closeDailyInventoryAction` no valida `items.some(finalCount === null)` →
+  permite cerrar día con items sin contar.
+- `reopenDailyInventoryAction` no cascada al día siguiente (D2 puede tener
+  apertura distinta al cierre reabierto de D1).
+- `InventoryLocation.currentStock` NUNCA se actualiza al cerrar daily →
+  desincronizado con requisiciones/transferencias.
+
+**UX:**
+- Sin keyboard nav (Tab/Enter entre conteos).
+- Sin tests para el módulo entero (0 tests pre-auditoría).
+- Tabla con 10 columnas, sin scroll horizontal en mobile.
+
+### 50.2 Lo aplicado en PR #279
+
+1. **Función pura `computeConsumptionFromOrders`** en
+   `src/lib/inventory/consumption.ts` con 8 tests. Recibe `orders` y un
+   `Map<recipeId, recipe>` (batch fetcheado por el caller) y devuelve
+   `Map<inventoryItemId, totalConsumption>`. Defensiva contra qty 0/negativa,
+   ingredientes con qty 0, recetas referenciadas pero faltantes.
+2. **Helper `collectReferencedRecipeIds`** para batch fetch.
+3. **`syncSalesFromOrdersAction` refactorizada**:
+   - Usa `getCaracasDayRange(daily.date)` en vez de `setHours` UTC.
+   - Filtra `voidedAt: null, deletedAt: null` además del status COMPLETED.
+   - Batch fetch de TODAS las recetas en una sola query (eliminó N+1).
+   - Delega el cálculo a la función pura testeada.
+
+**Resultado:** sync correcto en cualquier timezone server, sin contar
+anuladas, queries reducidas de 1+N a 2 (orders + recipes). Tests cubren el
+cálculo de consumo aislado de Prisma.
+
+### 50.3 Roadmap siguiente del módulo (no en este PR)
+
+- §50.A **Visibilidad pre-cierre**: modal de resumen al "Finalizar Día" con
+  top 5 varianzas + items críticos sin contar + total merma estimada.
+- §50.B **Validación de cierre**: bloquear `closeDailyInventoryAction` si
+  hay items con `finalCount === null` (forzar conteo completo).
+- §50.C **Schema change**: separar `salesFromPOS` y `salesManual` en
+  `DailyInventoryItem` (resuelve el conflicto sync vs manual).
+- §50.D **InventoryLocation.currentStock**: actualizar al cerrar daily como
+  parte de la transacción.
+- §50.E **Keyboard nav** en `daily-manager.tsx` (Enter → siguiente fila).
+- §50.F **Tests E2E** del flujo abrir → contar → sync → cerrar.
