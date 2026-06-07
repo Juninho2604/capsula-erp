@@ -493,7 +493,9 @@ export async function applyPhysicalCountAction(input: {
 
     revalidatePath('/dashboard/inventario');
     revalidatePath('/dashboard/inventario/conteo-semanal');
+    revalidatePath('/dashboard/inventario/conteo-rapido');
     revalidatePath('/dashboard/inventario/auditorias');
+    revalidatePath('/dashboard/reportes/inventario-completo');
     revalidatePath('/dashboard');
 
     return {

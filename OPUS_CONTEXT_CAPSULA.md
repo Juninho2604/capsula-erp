@@ -9262,3 +9262,80 @@ escribir los ajustes sin lookup adicional.
 - Detección automática de "doble registro" (si el SKU ya tiene valor y se
   vuelve a tipear, advertir).
 - Botón "Saltar este" explícito para items que no se cuentan.
+
+---
+
+## §53 Modelo de capas Inventario — qué módulo refleja qué (2026-06-07)
+
+Aclaración solicitada por el dueño tras release del Conteo Rápido (§52):
+"Ese conteo rápido estará vinculado al inventario físico? O sea lo que
+cargue en conteo rápido estará apareciendo en inventario físico o?"
+
+### 53.1 Arquitectura de capas
+
+```
+┌─────────────────────────────────────────────────┐
+│  STOCK REAL POR ÁREA — InventoryLocation         │
+│  La verdad única de cuánto hay en cada almacén.  │
+│  Lo descuenta el POS con cada venta + receta.    │
+└─────────────────────────────────────────────────┘
+        ▲                            ▲
+        │ ajusta vía                 │ ajusta vía
+        │ ADJUSTMENT_IN/OUT          │ (cuando se cierra)
+        │                            │
+┌──────────────────┐         ┌──────────────────┐
+│ CONTEO SEMANAL   │         │ INVENTARIO       │
+│ (Rápido o Excel) │         │ FÍSICO DIARIO    │
+│                  │         │                  │
+│ WeeklyCount      │         │ DailyInventory   │
+│ (snapshot)       │         │ (apertura/sales/ │
+│                  │         │  merma/cierre)   │
+└──────────────────┘         └──────────────────┘
+   "Punto de                   "Diferencias
+    partida del                 diarias entre
+    stock"                      apertura y cierre"
+```
+
+### 53.2 Decisión del dueño (6/6)
+
+**Roles complementarios, NO sincronización entre los dos flujos:**
+
+- **Conteo Semanal/Rápido (`§51 + §52`)** = fijar el **punto de partida** del
+  stock. Domingo: cuentan todo, registran, queda como verdad. A partir de
+  ahí el POS descuenta automático.
+
+- **Inventario Físico Diario (`§5.3`)** = el módulo que **diariamente revisa
+  las diferencias** entre apertura y cierre. Captura mermas, mal manejo,
+  etc., a nivel granular para items críticos del día.
+
+Ambos terminan modificando `InventoryLocation.currentStock` (vía
+`InventoryMovement` ADJUSTMENT en el caso semanal, vía el flujo de cierre
+en el caso diario), pero **NO se sincronizan entre sí**. Son flujos
+paralelos, cada uno con su propio registro inmutable (`WeeklyCount` o
+`DailyInventory`).
+
+### 53.3 ¿Qué refleja qué?
+
+| Módulo | Refleja Conteo Rápido | Refleja Daily |
+|---|---|---|
+| **Inventario** (`/dashboard/inventario`) — lista 644 items con stock por área | ✅ SÍ — lee `InventoryLocation` directo | ✅ SÍ — al cerrar daily |
+| **Inventario Físico Diario** (`/dashboard/inventario/diario`) | ❌ NO directamente — el daily tiene su propio `DailyInventoryItem.initialCount/finalCount` | ✅ SÍ — es su propio registro |
+| **Reportes → Inventario completo** (`/dashboard/reportes/inventario-completo`) | ✅ SÍ — lee `InventoryLocation` | ✅ SÍ — vía `InventoryLocation` post-cierre |
+| **POS — descuento automático** | ✅ SÍ — descuenta de `InventoryLocation` con cada venta | ✅ SÍ (mismo) |
+
+### 53.4 Implementación
+
+En `applyPhysicalCountAction` (PR #286):
+- `revalidatePath('/dashboard/inventario')` ✅
+- `revalidatePath('/dashboard/inventario/conteo-semanal')` ✅
+- `revalidatePath('/dashboard/inventario/conteo-rapido')` ✅ (nuevo)
+- `revalidatePath('/dashboard/inventario/auditorias')` ✅
+- `revalidatePath('/dashboard/reportes/inventario-completo')` ✅ (nuevo)
+- `revalidatePath('/dashboard')` ✅
+- NO se toca `revalidatePath('/dashboard/inventario/diario')` — intencional,
+  son flujos independientes.
+
+**Pantalla de éxito post-aplicación** en Conteo Rápido (`quick-count-view.tsx`):
+muestra resumen del WeeklyCount creado + tarjeta explicativa "Qué pasó en
+el sistema" + dos CTAs (Ver inventario actualizado / Reporte completo) +
+botón "Empezar otro conteo".
