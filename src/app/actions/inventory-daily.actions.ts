@@ -24,6 +24,8 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { getCaracasDayRange } from '@/lib/datetime';
+import { computeConsumptionFromOrders, collectReferencedRecipeIds } from '@/lib/inventory/consumption';
 
 // ============================================================================
 // OBTENER INVENTARIO DIARIO (Sincronizado con Transferencias y Producciones)
@@ -658,47 +660,39 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
         });
         if (!daily) return { success: false, message: 'Inventario no encontrado' };
 
-        const startOfDay = new Date(daily.date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(daily.date);
-        endOfDay.setHours(23, 59, 59, 999);
+        // Rango Caracas (UTC-4) — §20 OPUS_CONTEXT. Antes setHours UTC contaba mal
+        // las órdenes de las primeras/últimas horas del día para servers no-Caracas.
+        const { start: startOfDay, end: endOfDay } = getCaracasDayRange(daily.date);
 
         const orders = await db.salesOrder.findMany({
             where: {
                 areaId: daily.areaId,
                 status: 'COMPLETED',
-                createdAt: { gte: startOfDay, lte: endOfDay }
+                createdAt: { gte: startOfDay, lte: endOfDay },
+                voidedAt: null,    // excluir anuladas — el plato no se cocinó (o se descartó)
+                deletedAt: null,   // excluir soft-deleted
             },
             include: {
                 items: { include: { menuItem: true } }
             }
         });
 
-        const totalConsumption = new Map<string, number>();
+        // Batch fetch de TODAS las recetas referenciadas en UNA query (antes era
+        // N+1: una `findFirst(recipe)` por item de cada order).
+        const recipeIds = collectReferencedRecipeIds(orders);
+        const recipesList = recipeIds.length > 0
+            ? await db.recipe.findMany({
+                where: { id: { in: recipeIds } },
+                include: { ingredients: true },
+            })
+            : [];
+        const recipesById = new Map(recipesList.map(r => [r.id, r]));
 
-        for (const order of orders) {
-            for (const item of order.items) {
-                if (item.quantity <= 0) continue;
+        const totalConsumption = computeConsumptionFromOrders(orders, recipesById);
 
-                const menuItem = item.menuItem;
-                if (menuItem?.recipeId) {
-                    const recipe = await db.recipe.findFirst({
-                        where: { id: menuItem.recipeId },
-                        include: { ingredients: true }
-                    });
-                    if (recipe) {
-                        for (const ing of recipe.ingredients) {
-                            const qty = ing.quantity * item.quantity;
-                            const current = totalConsumption.get(ing.ingredientItemId) || 0;
-                            totalConsumption.set(ing.ingredientItemId, current + qty);
-                        }
-                    }
-                }
-            }
-        }
-
-        const itemsWithConsumption = Array.from(totalConsumption.entries());
-        for (const [itemId, consumption] of itemsWithConsumption) {
+        // Idempotente: setea `sales` al consumo recalculado para cada item afectado.
+        // Re-correr el sync da el mismo resultado si las órdenes no cambian.
+        for (const [itemId, consumption] of Array.from(totalConsumption.entries())) {
             const dailyItem = daily.items.find((i: any) => i.inventoryItemId === itemId);
             if (dailyItem) {
                 await prisma.dailyInventoryItem.updateMany({
