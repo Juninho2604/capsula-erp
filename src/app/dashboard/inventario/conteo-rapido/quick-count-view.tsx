@@ -48,6 +48,13 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
     const [showOnlyMissing, setShowOnlyMissing] = useState(false);
     const [confirming, setConfirming] = useState(false);
 
+    /** Resumen del último conteo aplicado — se muestra como pantalla de éxito */
+    const [lastApplied, setLastApplied] = useState<{
+        weeklyCountNumber: string;
+        itemCount: number;
+        areaName: string;
+    } | null>(null);
+
     // ── Cargar plantilla (todos los SKU para el área principal — y producción si dual)
     const loadTemplate = useCallback(async () => {
         if (!principalId) {
@@ -182,8 +189,13 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
             if (res.success) {
                 toast.success(`Conteo aplicado: ${res.weeklyCountNumber}`);
                 localStorage.removeItem(LS_KEY);
-                setItems([]);
                 setConfirming(false);
+                setLastApplied({
+                    weeklyCountNumber: res.weeklyCountNumber ?? '—',
+                    itemCount: countedItems,
+                    areaName: areas.find(a => a.id === principalId)?.name ?? 'Almacén',
+                });
+                setItems([]);
             } else {
                 toast.error(res.message);
             }
@@ -197,6 +209,57 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
         localStorage.removeItem(LS_KEY);
         setItems([]);
     };
+
+    // ── Render: pantalla de éxito post-aplicación
+    if (lastApplied && items.length === 0) {
+        return (
+            <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+                <div className="rounded-2xl border border-capsula-line bg-capsula-ivory p-6 sm:p-8 text-center space-y-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-[#E5EDE7] dark:bg-[#1E3B2C] flex items-center justify-center">
+                        <Check className="h-8 w-8 text-[#2F6B4E] dark:text-[#6FB88F]" />
+                    </div>
+                    <div>
+                        <h1 className="font-semibold text-2xl text-capsula-ink tracking-[-0.02em]">Conteo aplicado</h1>
+                        <p className="text-sm text-capsula-ink-soft mt-1">
+                            <strong>{lastApplied.itemCount}</strong> items registrados en{' '}
+                            <strong>{lastApplied.areaName}</strong>
+                        </p>
+                        <p className="text-xs text-capsula-ink-muted mt-1 font-mono">{lastApplied.weeklyCountNumber}</p>
+                    </div>
+
+                    <div className="rounded-xl bg-[#E6ECF4] dark:bg-[#1A2636] text-[#2A4060] dark:text-[#D1DCE9] p-4 text-xs text-left space-y-1.5">
+                        <p className="font-semibold uppercase tracking-wider text-[10px]">Qué pasó en el sistema</p>
+                        <p>✓ El stock por área se actualizó al instante (módulo <strong>Inventario</strong>)</p>
+                        <p>✓ Quedó snapshot histórico (<strong>Conteo {lastApplied.weeklyCountNumber}</strong>) para comparar con el próximo</p>
+                        <p>✓ Se registraron ajustes (movimientos ADJUSTMENT_IN/OUT) por la diferencia con el stock previo</p>
+                        <p>✓ El POS descuenta el stock nuevo en cada venta vía recetas vinculadas</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Link
+                            href="/dashboard/inventario"
+                            className="pos-btn flex-1 inline-flex items-center justify-center gap-2 py-3"
+                        >
+                            Ver inventario actualizado
+                        </Link>
+                        <Link
+                            href="/dashboard/reportes/inventario-completo"
+                            className="pos-btn-secondary flex-1 inline-flex items-center justify-center gap-2 py-3"
+                        >
+                            Reporte completo
+                        </Link>
+                    </div>
+
+                    <button
+                        onClick={() => setLastApplied(null)}
+                        className="text-xs text-capsula-ink-muted hover:text-capsula-coral underline"
+                    >
+                        Empezar otro conteo
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // ── Render: si todavía no cargó la plantilla, mostrar setup
     if (items.length === 0) {
