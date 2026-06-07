@@ -8,6 +8,7 @@ import {
   previewPhysicalCountFromExcelAction,
   applyPhysicalCountAction,
   resetAllWarehouseStockAction,
+  getInventoryCountTemplateAction,
   type PreviewRow,
 } from '@/app/actions/inventory-count.actions';
 
@@ -47,6 +48,99 @@ export default function PhysicalCountClient({
       dual ? 'plantilla_inventario_dos_almacenes.xlsx' : 'plantilla_inventario_un_almacen.xlsx'
     );
     toast.success('Plantilla descargada');
+  };
+
+  /**
+   * Plantilla completa pre-llenada con TODOS los SKU activos: código, nombre,
+   * categoría, unidad base y stock actual del/los almacén(es). El usuario solo
+   * tiene que llenar la columna CANTIDAD y subir. El parser hace match exacto
+   * por SKU — sin fuzzy match por nombre.
+   */
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const downloadFullTemplate = async (dual: boolean) => {
+    if (!principalId) {
+      toast.error('Seleccione el almacén principal primero');
+      return;
+    }
+    if (dual && !productionId) {
+      toast.error('Seleccione el área de producción para la plantilla dual');
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const res = await getInventoryCountTemplateAction(principalId, dual ? productionId : null);
+      if (!res.success || !res.rows) {
+        toast.error(res.message || 'Error generando plantilla');
+        return;
+      }
+      const principalAreaName = areas.find(a => a.id === principalId)?.name ?? 'Principal';
+      const productionAreaName = dual ? (areas.find(a => a.id === productionId)?.name ?? 'Producción') : null;
+
+      // Agrupa por categoría para que el conteo físico sea ordenado.
+      const byCategory = new Map<string, typeof res.rows>();
+      for (const r of res.rows) {
+        const arr = byCategory.get(r.category) ?? [];
+        arr.push(r);
+        byCategory.set(r.category, arr);
+      }
+
+      // Construir hoja con separadores de categoría.
+      const aoa: (string | number)[][] = [];
+      // Header descriptivo (filas 0-1 ignoradas por el parser, que busca PRODUCTO)
+      aoa.push([`INVENTARIO ${principalAreaName.toUpperCase()}${dual ? ` + ${productionAreaName!.toUpperCase()}` : ''}`]);
+      aoa.push([]);
+      // Fila de encabezado real
+      const header = dual
+        ? ['SKU', 'PRODUCTO', 'CATEGORÍA', 'UNIDAD', 'STOCK SISTEMA (Principal)', 'PRINCIPAL', 'STOCK SISTEMA (Producción)', 'PRODUCCIÓN']
+        : ['SKU', 'PRODUCTO', 'CATEGORÍA', 'UNIDAD', 'STOCK SISTEMA', 'CANTIDAD'];
+      aoa.push(header);
+
+      const sortedCategories = Array.from(byCategory.keys()).sort();
+      for (const cat of sortedCategories) {
+        aoa.push([`## ${cat.toUpperCase()} ##`]);
+        for (const r of byCategory.get(cat)!) {
+          if (dual) {
+            aoa.push([
+              r.sku,
+              r.productName,
+              r.category,
+              r.baseUnit,
+              r.stockPrincipal,
+              '',                  // CANTIDAD principal (vacía para llenar)
+              r.stockProduction ?? 0,
+              '',                  // CANTIDAD producción (vacía para llenar)
+            ]);
+          } else {
+            aoa.push([
+              r.sku,
+              r.productName,
+              r.category,
+              r.baseUnit,
+              r.stockPrincipal,
+              '',                  // CANTIDAD (vacía para llenar)
+            ]);
+          }
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Anchos de columna razonables
+      ws['!cols'] = dual
+        ? [{ wch: 14 }, { wch: 36 }, { wch: 22 }, { wch: 8 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 12 }]
+        : [{ wch: 14 }, { wch: 36 }, { wch: 22 }, { wch: 8 }, { wch: 14 }, { wch: 12 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Conteo');
+      const today = new Date().toISOString().split('T')[0];
+      const fname = dual
+        ? `conteo_completo_${today}_dual.xlsx`
+        : `conteo_completo_${today}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      toast.success(`Plantilla con ${res.rows.length} SKU descargada`);
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,26 +262,63 @@ export default function PhysicalCountClient({
 
       <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
         <h2 className="font-bold mb-3">2. Plantillas Excel</h2>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => downloadTemplate(false)}
-            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-semibold text-sm"
-          >
-            Descargar plantilla (1 almacén)
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadTemplate(true)}
-            className="px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 font-semibold text-sm"
-          >
-            Descargar plantilla (Principal + Producción)
-          </button>
+
+        {/* Plantillas completas — CON todos los SKU pre-llenados (recomendado).
+            Estas hacen match exacto por SKU al subir, sin riesgo de fuzzy mal. */}
+        <div className="mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-capsula-ink-muted mb-2">
+            Plantilla completa (con todos los SKU del catálogo)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => downloadFullTemplate(false)}
+              disabled={bulkLoading || !principalId}
+              className="px-4 py-2 rounded-lg bg-capsula-navy-deep text-capsula-cream font-semibold text-sm hover:bg-capsula-navy disabled:opacity-50"
+            >
+              {bulkLoading ? '…' : 'Descargar plantilla completa (1 almacén)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadFullTemplate(true)}
+              disabled={bulkLoading || !principalId || !productionId}
+              className="px-4 py-2 rounded-lg bg-capsula-navy-deep text-capsula-cream font-semibold text-sm hover:bg-capsula-navy disabled:opacity-50"
+            >
+              {bulkLoading ? '…' : 'Descargar plantilla completa (Principal + Producción)'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Trae <strong>todos los SKU activos</strong> con código, categoría, unidad y stock actual del sistema.
+            Solo llene la columna <strong>CANTIDAD</strong> y vuelva a subir. El match es exacto por SKU.
+          </p>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          También puede usar su archivo actual: debe incluir la fila con <strong>PRODUCTO</strong> en la primera
-          columna, como en su archivo de almacén principal.
-        </p>
+
+        {/* Plantillas vacías — solo headers, fuzzy match por nombre.
+            Útil para usuarios que ya tienen un Excel propio con los mismos headers. */}
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-capsula-ink-muted mb-2">
+            Plantillas vacías (compatibles con su Excel actual)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => downloadTemplate(false)}
+              className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-semibold text-sm"
+            >
+              Plantilla vacía (1 almacén)
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadTemplate(true)}
+              className="px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 font-semibold text-sm"
+            >
+              Plantilla vacía (Principal + Producción)
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Solo headers. Útil si ya tiene su archivo. Debe incluir la fila con <strong>PRODUCTO</strong> en la primera columna.
+          </p>
+        </div>
       </section>
 
       <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">

@@ -65,11 +65,18 @@ export async function resolveDefaultCountAreasAction(): Promise<{
 }
 
 export type PreviewRow = {
+  /** SKU del Excel — si vino, el match es exacto por SKU, no fuzzy por nombre. */
+  sku: string | null;
   productName: string;
   qtyPrincipal: number;
   qtyProduction: number | null;
   inventoryItemId: string | null;
   matchedName: string | null;
+  /**
+   * 0 = match exacto por SKU o por nombre (norm).
+   * 0 < x < 0.42 = match fuzzy aceptado.
+   * null = sin coincidencia.
+   */
   matchScore: number | null;
 };
 
@@ -88,7 +95,7 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
   if (!file || file.size === 0) return { success: false, message: 'Adjunte un archivo Excel' };
 
   const buf = Buffer.from(await file.arrayBuffer());
-  let parsed: { productName: string; qtyPrincipal: number | null; qtyProduction: number | null }[];
+  let parsed: { sku: string | null; productName: string; qtyPrincipal: number | null; qtyProduction: number | null }[];
   try {
     parsed = parseInventoryExcelBuffer(buf);
   } catch (e) {
@@ -107,6 +114,9 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
     select: { id: true, name: true, sku: true },
   });
 
+  // Index por SKU para match O(1) cuando la plantilla trae código.
+  const bySku = new Map(items.map(it => [it.sku.trim().toUpperCase(), it]));
+
   const fuse = new Fuse(items, {
     keys: ['name', 'sku'],
     threshold: 0.45,
@@ -120,9 +130,27 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
     const qP = p.qtyPrincipal ?? 0;
     const qProd = p.qtyProduction;
 
+    // 1) Match exacto por SKU (preferido — usuario descargó plantilla del sistema).
+    if (p.sku) {
+      const bySkuHit = bySku.get(p.sku.trim().toUpperCase());
+      if (bySkuHit) {
+        return {
+          sku: p.sku,
+          productName: p.productName,
+          qtyPrincipal: qP,
+          qtyProduction: qProd,
+          inventoryItemId: bySkuHit.id,
+          matchedName: bySkuHit.name,
+          matchScore: 0,
+        };
+      }
+    }
+
+    // 2) Match exacto por nombre normalizado.
     const exact = items.find((it) => normName(it.name) === normName(p.productName));
     if (exact) {
       return {
+        sku: p.sku,
         productName: p.productName,
         qtyPrincipal: qP,
         qtyProduction: qProd,
@@ -132,10 +160,12 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
       };
     }
 
+    // 3) Fuzzy por nombre.
     const hits = fuse.search(p.productName);
     const best = hits[0];
     if (best && best.score !== undefined && best.score < 0.42) {
       return {
+        sku: p.sku,
         productName: p.productName,
         qtyPrincipal: qP,
         qtyProduction: qProd,
@@ -146,6 +176,7 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
     }
 
     return {
+      sku: p.sku,
       productName: p.productName,
       qtyPrincipal: qP,
       qtyProduction: qProd,
@@ -156,6 +187,87 @@ export async function previewPhysicalCountFromExcelAction(formData: FormData): P
   });
 
   return { success: true, rows, isDualColumn };
+}
+
+// ============================================================================
+// Plantilla masiva — TODOS los SKU activos con código, categoría, unidad
+// y último stock conocido por área. El usuario llena la columna CANTIDAD
+// y vuelve a subir. La columna SKU permite match exacto (sin fuzzy).
+// ============================================================================
+export type CountTemplateRow = {
+  sku: string;
+  productName: string;
+  category: string;
+  baseUnit: string;
+  stockPrincipal: number;
+  stockProduction: number | null;
+};
+
+export async function getInventoryCountTemplateAction(
+  principalAreaId: string,
+  productionAreaId: string | null,
+): Promise<{ success: boolean; message?: string; rows?: CountTemplateRow[] }> {
+  const session = await getSession();
+  if (!session?.id || !APPLY_ROLES.includes(session.role)) {
+    return { success: false, message: 'No autorizado' };
+  }
+  if (!principalAreaId) return { success: false, message: 'Seleccione el almacén principal' };
+
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
+
+  // Validar ownership del área(s).
+  const ownedPrincipal = await db.area.findFirst({ where: { id: principalAreaId }, select: { id: true } });
+  if (!ownedPrincipal) return { success: false, message: 'Área principal no encontrada' };
+  if (productionAreaId) {
+    const ownedProd = await db.area.findFirst({ where: { id: productionAreaId }, select: { id: true } });
+    if (!ownedProd) return { success: false, message: 'Área producción no encontrada' };
+  }
+
+  const items = await db.inventoryItem.findMany({
+    where: { isActive: true, deletedAt: null },
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      category: true,
+      baseUnit: true,
+    },
+    orderBy: [{ category: 'asc' }, { name: 'asc' }],
+  });
+
+  const itemIds = items.map(i => i.id);
+  // Stock actual de cada item en las áreas pedidas. InventoryLocation no es
+  // tenant-aware en schema; lo scopeamos por inventoryItemId que sí lo está.
+  const locations = await prisma.inventoryLocation.findMany({
+    where: {
+      inventoryItemId: { in: itemIds },
+      areaId: { in: productionAreaId ? [principalAreaId, productionAreaId] : [principalAreaId] },
+    },
+    select: { inventoryItemId: true, areaId: true, currentStock: true },
+  });
+
+  const stockMap = new Map<string, { principal: number; production: number }>();
+  for (const loc of locations) {
+    const cur = stockMap.get(loc.inventoryItemId) ?? { principal: 0, production: 0 };
+    if (loc.areaId === principalAreaId) cur.principal = loc.currentStock;
+    if (productionAreaId && loc.areaId === productionAreaId) cur.production = loc.currentStock;
+    stockMap.set(loc.inventoryItemId, cur);
+  }
+
+  const rows: CountTemplateRow[] = items.map(i => {
+    const stock = stockMap.get(i.id) ?? { principal: 0, production: 0 };
+    return {
+      sku: i.sku,
+      productName: i.name,
+      category: i.category || 'Sin categoría',
+      baseUnit: i.baseUnit,
+      stockPrincipal: stock.principal,
+      stockProduction: productionAreaId ? stock.production : null,
+    };
+  });
+
+  return { success: true, rows };
 }
 
 export type ApplyCountRow = {
