@@ -15,6 +15,7 @@ import {
 } from '@/app/actions/inventory-daily.actions';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { toast } from 'react-hot-toast';
+import { analyzePreCloseSummary, type PreCloseSummary } from '@/lib/inventory/pre-close-summary';
 import {
     Search,
     X as XIcon,
@@ -52,6 +53,11 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const [showSalesModal, setShowSalesModal] = useState(false);
     const [syncingSales, setSyncingSales] = useState(false);
     const [autoSuggestions, setAutoSuggestions] = useState<Record<string, { autoEntries: number; autoSales: number }>>({});
+
+    // §50.A — modal de resumen pre-cierre. Evita cerrar a ciegas: muestra
+    // top varianzas + críticos sospechosos antes de confirmar el cierre.
+    const [closeSummary, setCloseSummary] = useState<PreCloseSummary | null>(null);
+    const [closingNow, setClosingNow] = useState(false);
 
     // Vista acumulada por rango (Fase 4 — por sesión)
     const [rangeMode, setRangeMode] = useState(false);
@@ -173,21 +179,53 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
         }
     };
 
+    /**
+     * §50.A — Pre-cierre: guarda primero (si hay cambios) y abre el modal de
+     * resumen con varianzas + items sospechosos. El cierre real ocurre desde
+     * el modal con `confirmCloseDay(force)`.
+     */
     const handleCloseDay = async () => {
         if (!data) return;
-        if (!confirm('¿Seguro que desea FINALIZAR el inventario de este día? Una vez cerrado no podrá editar los conteos.')) return;
         setLoading(true);
         try {
-            if (hasChanges) await saveDailyInventoryCountsAction(data.id, items);
-            const res = await closeDailyInventoryAction(data.id);
-            if (res.success) {
-                toast.success('Día finalizado exitosamente');
-                loadData();
-            } else {
-                toast.error('Error al finalizar');
+            if (hasChanges) {
+                await saveDailyInventoryCountsAction(data.id, items);
+                await loadData();   // recargar para que items tenga variance/sales recalculados
             }
+            // Items del daily ya son críticos por construcción del filtro (§5.3).
+            const summary = analyzePreCloseSummary(
+                items.map(i => ({
+                    inventoryItemId: i.inventoryItemId,
+                    name: i.inventoryItem?.name ?? '—',
+                    unit: i.unit ?? '',
+                    finalCount: i.finalCount,
+                    sales: i.sales ?? 0,
+                    variance: i.variance,
+                    isCritical: true,
+                })),
+            );
+            setCloseSummary(summary);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const confirmCloseDay = async (force: boolean) => {
+        if (!data) return;
+        setClosingNow(true);
+        try {
+            const res = await closeDailyInventoryAction(data.id, { force });
+            if (res.success) {
+                toast.success('Día finalizado exitosamente');
+                setCloseSummary(null);
+                loadData();
+            } else if (res.code === 'ALL_AT_ZERO') {
+                toast.error('Todos los items quedaron en 0 — confirmá el cierre forzado para continuar.');
+            } else {
+                toast.error(res.message || 'Error al finalizar');
+            }
+        } finally {
+            setClosingNow(false);
         }
     };
 
@@ -985,6 +1023,144 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                     <span>CIERRE − TEÓRICO = VARIACIÓN</span>
                 </span>
             </div>
+
+            {/* §50.A — Modal de resumen pre-cierre */}
+            {closeSummary && (
+                <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between shrink-0">
+                            <div>
+                                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Resumen pre-cierre</h3>
+                                <p className="text-[11px] text-capsula-ink-muted mt-0.5">Revisá antes de cerrar el día — no se podrá editar después.</p>
+                            </div>
+                            <button
+                                onClick={() => setCloseSummary(null)}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
+                                aria-label="Cerrar"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 overflow-y-auto">
+                            {/* Semáforo */}
+                            {closeSummary.severity === 'BLOCK' && (
+                                <div className="rounded-xl bg-[#F7E3DB] dark:bg-[#3B1F14] text-[#B04A2E] dark:text-[#EFD2C8] p-4 flex items-start gap-3">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-sm">Todos los items quedaron en 0</p>
+                                        <p className="text-xs mt-1 opacity-90">Casi seguro olvidaste contar. Si el área efectivamente terminó sin stock, podés forzar el cierre.</p>
+                                    </div>
+                                </div>
+                            )}
+                            {closeSummary.severity === 'WARN' && (
+                                <div className="rounded-xl bg-[#F3EAD6] dark:bg-[#3B2F15] text-[#946A1C] dark:text-[#E8D9B8] p-4 flex items-start gap-3">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-sm">Revisá los items marcados</p>
+                                        <p className="text-xs mt-1 opacity-90">Hay varianzas significativas o items críticos en 0. Verificá que sea correcto.</p>
+                                    </div>
+                                </div>
+                            )}
+                            {closeSummary.severity === 'OK' && (
+                                <div className="rounded-xl bg-[#E5EDE7] dark:bg-[#1E3B2C] text-[#2F6B4E] dark:text-[#6FB88F] p-4 flex items-start gap-3">
+                                    <Check className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-sm">Todo en orden</p>
+                                        <p className="text-xs mt-1 opacity-90">Conteo completo, sin varianzas significativas.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Métricas */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="rounded-lg border border-capsula-line bg-capsula-ivory-surface p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Items totales</p>
+                                    <p className="text-lg font-semibold text-capsula-ink tabular-nums">{closeSummary.totalItems}</p>
+                                </div>
+                                <div className="rounded-lg border border-capsula-line bg-capsula-ivory-surface p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Contados</p>
+                                    <p className="text-lg font-semibold text-capsula-ink tabular-nums">{closeSummary.itemsCountedNonZero}</p>
+                                </div>
+                                <div className="rounded-lg border border-capsula-line bg-capsula-ivory-surface p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">En cero</p>
+                                    <p className={cn(
+                                        "text-lg font-semibold tabular-nums",
+                                        closeSummary.itemsZero > 0 ? "text-[#B04A2E] dark:text-[#EFD2C8]" : "text-capsula-ink"
+                                    )}>{closeSummary.itemsZero}</p>
+                                </div>
+                            </div>
+
+                            {/* Items sospechosos de no contado */}
+                            {closeSummary.suspectedNotCounted.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Items críticos en 0 / con ventas sin stock ({closeSummary.suspectedNotCounted.length})</p>
+                                    <div className="max-h-40 overflow-y-auto rounded-lg border border-capsula-line divide-y divide-capsula-line">
+                                        {closeSummary.suspectedNotCounted.map(s => (
+                                            <div key={s.inventoryItemId} className="px-3 py-2 flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-capsula-ink truncate">{s.name}</span>
+                                                <span className="shrink-0 text-capsula-ink-muted">
+                                                    {s.reason === 'SOLD_BUT_ZERO'
+                                                        ? <>vendió <span className="tabular-nums font-semibold">{s.sales.toFixed(2)}</span> {s.unit}</>
+                                                        : 'crítico, sin contar'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Top varianzas negativas */}
+                            {closeSummary.topNegativeVariances.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Top varianzas negativas (faltante)</p>
+                                    <div className="rounded-lg border border-capsula-line divide-y divide-capsula-line">
+                                        {closeSummary.topNegativeVariances.map(v => (
+                                            <div key={v.inventoryItemId} className="px-3 py-2 flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-capsula-ink truncate">{v.name}</span>
+                                                <span className="tabular-nums font-semibold text-[#B04A2E] dark:text-[#EFD2C8] shrink-0">
+                                                    {v.variance.toFixed(2)} {v.unit}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Varianza total */}
+                            <div className="flex items-center justify-between border-t border-capsula-line pt-3">
+                                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Varianza total</span>
+                                <span className={cn(
+                                    "text-base font-semibold tabular-nums",
+                                    closeSummary.totalVariance < -0.01 ? "text-[#B04A2E] dark:text-[#EFD2C8]" :
+                                    closeSummary.totalVariance > 0.01 ? "text-[#2F6B4E] dark:text-[#6FB88F]" :
+                                    "text-capsula-ink"
+                                )}>
+                                    {closeSummary.totalVariance >= 0 ? '+' : ''}{closeSummary.totalVariance.toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-capsula-line p-4 flex gap-3 shrink-0">
+                            <button
+                                onClick={() => setCloseSummary(null)}
+                                disabled={closingNow}
+                                className="pos-btn-secondary flex-1 py-3 disabled:opacity-50"
+                            >
+                                Volver a contar
+                            </button>
+                            <button
+                                onClick={() => confirmCloseDay(closeSummary.severity === 'BLOCK')}
+                                disabled={closingNow}
+                                className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {closingNow ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                {closeSummary.severity === 'BLOCK' ? 'Forzar cierre' : 'Finalizar día'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

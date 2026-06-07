@@ -8910,13 +8910,46 @@ cálculo de consumo aislado de Prisma.
 
 ### 50.3 Roadmap siguiente del módulo (no en este PR)
 
-- §50.A **Visibilidad pre-cierre**: modal de resumen al "Finalizar Día" con
-  top 5 varianzas + items críticos sin contar + total merma estimada.
-- §50.B **Validación de cierre**: bloquear `closeDailyInventoryAction` si
-  hay items con `finalCount === null` (forzar conteo completo).
+- ✅ §50.A **Visibilidad pre-cierre**: modal de resumen al "Finalizar Día"
+  con varianzas, items sospechosos y semáforo (OK/WARN/BLOCK). Aplicado
+  en PR #280.
+- ✅ §50.B **Validación de cierre**: rechaza cierres con TODOS los items
+  en `finalCount=0` salvo `force: true`. Aplicado en PR #280.
 - §50.C **Schema change**: separar `salesFromPOS` y `salesManual` en
   `DailyInventoryItem` (resuelve el conflicto sync vs manual).
 - §50.D **InventoryLocation.currentStock**: actualizar al cerrar daily como
   parte de la transacción.
 - §50.E **Keyboard nav** en `daily-manager.tsx` (Enter → siguiente fila).
 - §50.F **Tests E2E** del flujo abrir → contar → sync → cerrar.
+
+### §50.4 Modal pre-cierre y validación de cierre (PR #280)
+
+**`src/lib/inventory/pre-close-summary.ts`** — función pura
+`analyzePreCloseSummary(items)` con 11 tests. Categoriza:
+
+- **BLOCK** — TODOS los items en finalCount=0 → casi seguro olvidó contar.
+  El server rechaza con `code: 'ALL_AT_ZERO'` salvo `force: true`.
+- **WARN** — hay items críticos en 0, items con ventas y stock en 0, o
+  varianzas negativas significativas. Cierre permitido pero con resumen.
+- **OK** — conteo completo, sin varianzas relevantes.
+
+Devuelve también:
+- `suspectedNotCounted` — items críticos en 0 (`CRITICAL_AT_ZERO`) o
+  items con sales > 0 pero finalCount=0 (`SOLD_BUT_ZERO`).
+- `topNegativeVariances` — top 5 (configurable) más negativas, ordenadas
+  por magnitud.
+- `totalVariance` — suma de varianzas.
+
+**UI** — `daily-manager.tsx`:
+- `handleCloseDay` ahora guarda primero, recarga datos, y abre el modal
+  de resumen en vez de cerrar directo.
+- Modal Minimal Navy (§7) con semáforo de color, métricas (Items totales /
+  Contados / En 0), lista colapsable de sospechosos, lista de varianzas, y
+  CTA dinámico ("Finalizar día" vs "Forzar cierre" según severidad).
+- `confirmCloseDay(force)` llama al server con flag de override.
+
+**Server** — `closeDailyInventoryAction(dailyId, { force })`:
+- Sin `force`, verifica `totalItems > 0 && itemsCountedNonZero === 0` y
+  rechaza con código `ALL_AT_ZERO` si aplica.
+- Con `force: true`, salta validación (caso legítimo: área que efectivamente
+  terminó sin stock).
