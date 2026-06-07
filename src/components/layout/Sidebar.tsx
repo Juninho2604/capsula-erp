@@ -108,6 +108,7 @@ const SIDEBAR_TREE: SectionDef[] = [
     {
         id: 'admin', label: 'Administración', scheme: 'blue',
         items: [
+            { kind: 'link', moduleId: 'reportes' },
             {
                 kind: 'subgroup', id: 'sg-equipo', label: 'Equipo', icon: '👥',
                 items: ['users', 'mesoneros'],
