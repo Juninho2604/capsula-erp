@@ -87,6 +87,7 @@ const TENANT_MODELS = new Set<string>([
     'TableOrStation',
     'User',
     'Waiter',
+    'WeeklyCount',
     'WristbandPlan',
 ]);
 
