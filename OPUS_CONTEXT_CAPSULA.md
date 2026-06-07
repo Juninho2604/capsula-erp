@@ -9429,3 +9429,103 @@ desconocida" a la tabla. Lo dejo para PR siguiente cuando tengamos al
 menos 2 WeeklyCount reales en producción para validar la fórmula.
 
 tsc 0, vitest 323 passed (+11 de weekly-variation-helpers).
+
+---
+
+## §54 Auditoría de seguridad npm — paso 1: audit fix sin --force (2026-06-07)
+
+### 54.1 Estado de vulnerabilidades
+
+Tras el deploy de §51.B salió en el log de `npm ci`:
+> 21 vulnerabilities (1 low, 7 moderate, 11 high, 2 critical)
+
+Auditoría completa hecha con `npm audit --json` + análisis paquete-por-paquete.
+
+**Resultado del paso 1** (`npm audit fix` SIN `--force`):
+- **21 → 11 vulnerabilities** (-48%)
+- **2 critical → 1** (protobufjs cerrada; queda Next 14.1.0)
+- **11 high → 7** (4 transitivas cerradas)
+- **7 moderate → 3** (-4)
+- **1 low → 0**
+
+Solo afecta `package-lock.json` — no toca `package.json`, no agrega ni
+quita deps, no cambia API surface. Bumps de patches/minors en transitivas.
+
+### 54.2 Lo que NO se hizo (y por qué)
+
+**Bump Next 14.1.0 → 14.2.35** intentado en este branch — el build local
+del sandbox **NO se puede validar** sin `.env` completo (falla con
+"useContext returns null" y "<Html> should not be imported"). El build
+de producción del VPS sí pasa (commit 447b7c2 deployó OK), pero no
+podemos confirmar que 14.2.35 funcione sin probarlo allá con QA real.
+
+**Decisión**: dejar Next 14.1.0 por ahora. La CRITICAL del audit
+(CVE-2025-29927, auth bypass vía middleware) NO afecta este ERP porque:
+1. El middleware NO se usa para autorización (la auth está en server
+   actions y en `auth()` directamente, no en `middleware.ts`).
+2. La CVE explota cabeceras `x-middleware-subrequest` que el nginx del
+   VPS NO reescribe; vienen del browser y se ignoran.
+
+Plan para Next 14.2.x en PR separado (§54.4):
+- Stage staging-like en el VPS (rama de prueba con DB read-only)
+- QA completo de POS Mesero, POS Restaurante, login flow
+- Validar /404 /500 (en 14.2 se prerenderan diferente)
+- Si pasa: deploy + monitor 24h
+
+### 54.3 Las 11 vulns restantes
+
+| Severity | Paquete | Tipo | Acción |
+|---|---|---|---|
+| CRITICAL | `next` | runtime | Esperar §54.4 (bump planificado) |
+| HIGH | `@next/eslint-plugin-next` | **devDep** | Resuelve §54.4 (eslint-config-next bump) |
+| HIGH | `eslint-config-next` | **devDep** | Resuelve §54.4 |
+| HIGH | `glob` | **devDep** | Resuelve §54.4 |
+| HIGH | `@typescript-eslint/parser` | **devDep** | Cerrar con bump dirigido aparte |
+| HIGH | `@typescript-eslint/typescript-estree` | **devDep** | Mismo |
+| HIGH | `minimatch` | **devDep transitiva** | Cierra solo con bump de eslint |
+| HIGH | `xlsx` | runtime | §54.5 — sin parche disponible |
+| MOD | `exceljs` (uuid<8) | runtime | Major bump bloqueado |
+| MOD | `postcss` | runtime | Resuelve §54.4 |
+| MOD | `uuid` | transitiva de exceljs | Resuelve con exceljs MAJOR |
+
+**6 de 11 son devDeps de ESLint** — no se ejecutan en producción,
+no afectan runtime.
+
+### 54.4 Plan PR siguiente: bump Next 14.1 → 14.2.latest
+
+Pre-trabajo necesario antes del bump:
+1. Confirmar que `next-auth@5.0.0-beta.30` funciona con Next 14.2 (cambió
+   API de Server Actions entre 14.1 y 14.2).
+2. Crear `app/error.tsx` y `app/not-found.tsx` (App Router los necesita
+   en 14.2 si hay `global-error.tsx` con `<html>`).
+3. Validar SSG/SSR de páginas marketing en local con `.env` completo.
+
+Riesgos identificados:
+- Bug conocido de Next 14.2: SSG estático con Client Components que
+  consumen Context falla. Solución probable: `force-dynamic` en root
+  layout (las páginas marketing pasan de SSG a SSR, sin penalty visible
+  porque el ERP no depende de SEO).
+
+### 54.5 Decisión pendiente sobre `xlsx`
+
+`xlsx@0.18.5` tiene 2 CVEs HIGH **sin parche en npm** (SheetJS quitó
+la versión gratuita del registry público):
+- CVE Prototype Pollution
+- CVE ReDoS al parsear archivos
+
+**Riesgo real bajo en KPSULA**: `xlsx` se usa para **exportar** Reportes
+(genera, no parsea entrada no confiable). Solo se parsea XLSX en:
+- `/dashboard/inventario/conteo-semanal` (importar conteo)
+- `/dashboard/inventario/importar` (importar items)
+
+Ambas rutas requieren rol admin/cajera autenticado — superficie de ataque
+limitada a usuarios internos del tenant.
+
+Opciones para PR separado:
+- **A.** Migrar todo a `exceljs` (ya instalado, MIT, mantenido). ~3h + QA
+  de exports e imports.
+- **B.** Migrar SOLO el parser (imports) a `exceljs`, dejar `xlsx` para
+  exports. ~1h.
+- **C.** Aceptar riesgo, documentar.
+
+Recomendación: **B**, balance entre superficie y costo.
