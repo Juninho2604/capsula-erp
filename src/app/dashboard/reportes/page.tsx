@@ -22,9 +22,9 @@ const TILES: ReportTile[] = [
     {
         href: '/dashboard/reportes/variacion-semanal',
         label: 'Variación semana vs semana',
-        description: 'Compara dos conteos físicos semanales. Top mermas y entradas no registradas por SKU.',
+        description: 'Compara dos conteos físicos semanales. Detecta caídas (mermas) y subidas (entradas no registradas) por SKU.',
         Icon: Repeat,
-        status: 'soon',
+        status: 'available',
     },
     {
         href: '/dashboard/reportes/movimientos',
