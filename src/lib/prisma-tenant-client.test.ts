@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 51 modelos esperados (SalesOrderPayment removido en fix #188 — modelo sin tenantId en schema)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(51);
+    it('Contiene los 52 modelos esperados (WeeklyCount añadido en §51.A)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(52);
     });
 
     it('Incluye modelos críticos del POS', () => {
@@ -161,5 +161,6 @@ describe('TENANT_AWARE_MODELS', () => {
         expect(TENANT_AWARE_MODELS).toContain('OpenTab');
         expect(TENANT_AWARE_MODELS).toContain('Waiter');
         expect(TENANT_AWARE_MODELS).toContain('Branch');
+        expect(TENANT_AWARE_MODELS).toContain('WeeklyCount');
     });
 });

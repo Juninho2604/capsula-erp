@@ -108,6 +108,8 @@ model Tenant {
   // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
   tenantPayments       TenantPayment[]
   promotions           Promotion[]
+  // Conteo físico semanal como entidad (§51.A)
+  weeklyCounts         WeeklyCount[]
 }
 
 model User {
@@ -197,6 +199,9 @@ model User {
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
   registeredSupplierPrices  SupplierItemPriceHistory[] @relation("SupplierPriceRegisteredBy")
 
+  // Conteos físicos semanales (§51.A)
+  createdWeeklyCounts WeeklyCount[]
+
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -246,6 +251,10 @@ model Area {
 
   // Items críticos por área
   criticalItems AreaCriticalItem[]
+
+  // Conteos semanales (§51.A)
+  weeklyCountsAsPrincipal  WeeklyCount[] @relation("WeeklyCountPrincipal")
+  weeklyCountsAsProduction WeeklyCount[] @relation("WeeklyCountProduction")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -330,6 +339,9 @@ model InventoryItem {
 
   // Histórico de precios por proveedor (Fase 2 — propuesta 002)
   supplierPriceHistory SupplierItemPriceHistory[]
+
+  // Conteos físicos semanales — items contados (§51.A)
+  weeklyCountItems WeeklyCountItem[]
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -435,6 +447,87 @@ model InventoryMovement {
   @@index([productionOrderId])
   @@index([requisitionId])
   @@index([purchaseOrderId])
+}
+
+// ============================================================================
+// CONTEO FÍSICO SEMANAL (§51.A)
+// ============================================================================
+// Persiste cada conteo aplicado en /conteo-semanal como entidad para:
+//   - Historial de conteos (cuántos conté esta semana vs la anterior)
+//   - Comparativa semana N vs N-1 (variación por SKU, por categoría)
+//   - Reporte de pérdidas/mermas no registradas en diario
+// El movimiento real de stock sigue siendo InventoryMovement(ADJUSTMENT_*);
+// WeeklyCount es snapshot inmutable + denormalizado de qué se contó.
+
+model WeeklyCount {
+  id String @id @default(cuid())
+
+  // Correlativo legible por tenant. Ej: "INV-2026-W23-001"
+  countNumber String
+
+  countDate DateTime @default(now())
+
+  // Almacén principal contado (always required).
+  principalAreaId String
+  principalArea   Area   @relation("WeeklyCountPrincipal", fields: [principalAreaId], references: [id])
+
+  // Si fue modo dual, área producción contada también.
+  productionAreaId String?
+  productionArea   Area?   @relation("WeeklyCountProduction", fields: [productionAreaId], references: [id])
+
+  // DRAFT (preview cargado pero no aplicado) | APPLIED (ajustes generados).
+  // En el flujo actual de applyPhysicalCountAction se persiste directo en APPLIED.
+  status String @default("APPLIED")
+
+  notes String?
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime  @default(now())
+  appliedAt DateTime?
+
+  items WeeklyCountItem[]
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, countNumber])
+  @@index([tenantId])
+  @@index([countDate])
+  @@index([principalAreaId])
+}
+
+model WeeklyCountItem {
+  id            String      @id @default(cuid())
+  weeklyCountId String
+  weeklyCount   WeeklyCount @relation(fields: [weeklyCountId], references: [id], onDelete: Cascade)
+
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  // Snapshot denormalizado en el momento del conteo (resistente a cambios
+  // posteriores de nombre/categoría del catálogo).
+  sku      String
+  name     String
+  category String?
+  baseUnit String
+
+  // Almacén principal.
+  stockBeforePrincipal Float
+  qtyCountedPrincipal  Float
+  variancePrincipal    Float   // qtyCounted - stockBefore (puede ser negativa)
+
+  // Almacén producción (solo si modo dual).
+  stockBeforeProduction Float?
+  qtyCountedProduction  Float?
+  varianceProduction    Float?
+
+  // FK NO tenant-aware (scope vía weeklyCount.tenantId).
+
+  @@unique([weeklyCountId, inventoryItemId])
+  @@index([weeklyCountId])
+  @@index([inventoryItemId])
 }
 
 // ============================================================================

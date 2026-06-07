@@ -9043,3 +9043,80 @@ conteo-semanal (§5.5) que opera sobre `InventoryLocation.currentStock`.
   de varianzas que el diario no capturó.
 - **§51.C** Módulo Reportes (`/dashboard/reportes`) con: inventario completo,
   variación semanal, movimientos por rango, ventas + costos + margen.
+
+---
+
+## §51.A WeeklyCount — conteos semanales como entidad (2026-06-07, PR #282)
+
+Implementación de §51.A del plan de mejora de inventarios. Habilita
+historial de conteos y la base para la comparativa N vs N-1 (§51.B).
+
+### 51.A.1 Modelo nuevo
+
+`WeeklyCount` — header del conteo:
+- `id` (cuid)
+- `countNumber` (correlativo `INV-YYYY-WSS-NNN` por tenant)
+- `countDate` (fecha del conteo)
+- `principalAreaId` FK Area (NOT NULL)
+- `productionAreaId` FK Area (nullable — solo modo dual)
+- `status` ('DRAFT' | 'APPLIED', default 'APPLIED')
+- `notes` (texto libre opcional)
+- `createdById` FK User, `createdAt`, `appliedAt?`
+- `tenantId` FK Tenant
+- unique `(tenantId, countNumber)`, indexes en tenantId, countDate, principalAreaId
+
+`WeeklyCountItem` — snapshot de cada SKU contado:
+- `weeklyCountId` FK CASCADE, `inventoryItemId` FK
+- Snapshot denormalizado: `sku`, `name`, `category`, `baseUnit` (resistente
+  a cambios posteriores del catálogo).
+- `stockBeforePrincipal`, `qtyCountedPrincipal`, `variancePrincipal`
+- `stockBeforeProduction?`, `qtyCountedProduction?`, `varianceProduction?`
+  (solo si dual)
+- unique `(weeklyCountId, inventoryItemId)`
+
+**Migración**: `20260607000000_add_weekly_count/migration.sql`. SAFE en
+producción viva (solo `CREATE TABLE IF NOT EXISTS` + indexes + FK
+condicionales). Aplica vía `npx prisma migrate deploy` en el deploy script.
+
+### 51.A.2 Persistencia automática al aplicar conteo
+
+`applyPhysicalCountAction` ahora:
+1. Snapshot del stock de cada item ANTES de tocar (carga
+   `InventoryLocation.currentStock` y metadatos `sku/name/category/baseUnit`
+   en una sola query batch).
+2. Genera `countNumber` correlativo `INV-YYYY-WSS-NNN` (ISO week +
+   secuencia por tenant).
+3. Crea `WeeklyCount` con status='APPLIED', incluye notas opcionales del
+   usuario, y los `WeeklyCountItem` con varianzas calculadas.
+4. Aplica los ADJUSTMENT_IN/OUT como antes — el `notes` del movimiento
+   ahora incluye el `countNumber` para trazabilidad.
+5. Devuelve `weeklyCountId` y `weeklyCountNumber` para que la UI confirme.
+
+Todo dentro de una sola `$transaction` — si falla la persistencia del
+WeeklyCount, los ajustes no se aplican.
+
+### 51.A.3 Actions de lectura
+
+- `listWeeklyCountsAction({ areaId?, limit? })` → últimos N conteos
+  ordenados por `countDate desc`, con totales de varianza y creador.
+- `compareWeeklyCountsAction(previousId, currentId, 'PRINCIPAL' | 'PRODUCTION')`
+  → comparativa por SKU entre dos conteos. Devuelve `previousQty`, `currentQty`,
+  `delta` (negativo = bajaste de stock entre los dos = típicamente merma).
+  Ordenado por delta ASC (caídas más fuertes primero).
+
+### 51.A.4 Decisiones de diseño
+
+- **WeeklyCount es snapshot inmutable** — el ajuste de stock real sigue
+  siendo `InventoryMovement(ADJUSTMENT_*)`. WeeklyCount no participa en
+  cálculos de stock, solo es el record histórico.
+- **Snapshot denormalizado** (sku/name/category/baseUnit copiados al item)
+  para que el reporte histórico sea estable aunque después se renombre el
+  item o cambie de categoría en el catálogo.
+- **Correlativo legible por tenant** (no global) — `INV-2026-W23-001`.
+- **NO se persisten previews sin aplicar** — solo se crea el WeeklyCount
+  cuando el usuario apreta "Aplicar conteo". Esto evita huérfanos.
+
+### 51.A.5 Wrap-up
+
+Listo para §51.B (vista comparativa semana vs semana en la UI) y §51.C
+(módulo Reportes que consume estas actions).
