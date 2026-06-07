@@ -717,13 +717,46 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
 // ============================================================================
 // CERRAR DÍA
 // ============================================================================
-export async function closeDailyInventoryAction(dailyId: string) {
+/**
+ * Cierra el día. Por defecto rechaza cierres con TODOS los items en
+ * finalCount=0 (el usuario olvidó contar). Para forzar — caso legítimo de
+ * área que efectivamente terminó sin stock — pasar `force: true`. La UI
+ * obtiene `force` después de mostrar el modal de resumen pre-cierre (§50.A).
+ */
+export async function closeDailyInventoryAction(
+    dailyId: string,
+    options: { force?: boolean } = {},
+) {
     const guard = await checkActionPermission(PERM.CLOSE_DAILY_INV);
     if (!guard.ok) return { success: false, message: guard.message };
 
     try {
         const { tenantId } = await resolveTenantContext();
-        const res = await withTenant(tenantId).dailyInventory.updateMany({
+        const db = withTenant(tenantId);
+
+        if (!options.force) {
+            // Sanity check: si TODOS los items quedan en 0, casi seguro olvidó contar.
+            const daily = await db.dailyInventory.findFirst({
+                where: { id: dailyId },
+                select: {
+                    id: true,
+                    items: { select: { finalCount: true } },
+                },
+            });
+            if (!daily) return { success: false, message: 'Inventario no encontrado' };
+
+            const totalItems = daily.items.length;
+            const itemsCountedNonZero = daily.items.filter(i => (i.finalCount ?? 0) > 0).length;
+            if (totalItems > 0 && itemsCountedNonZero === 0) {
+                return {
+                    success: false,
+                    code: 'ALL_AT_ZERO',
+                    message: 'Todos los items quedaron en 0. Revisá el conteo antes de cerrar, o forzá el cierre si efectivamente no quedó stock.',
+                };
+            }
+        }
+
+        const res = await db.dailyInventory.updateMany({
             where: { id: dailyId },
             data: {
                 status: 'CLOSED',
