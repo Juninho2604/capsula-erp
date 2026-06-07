@@ -399,6 +399,23 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 400,
     tags: ['multi-business'],
   },
+  {
+    id: 'reportes',
+    label: 'Reportes',
+    description: 'Reportes exportables a Excel: inventario completo, variación semanal, movimientos, ventas y márgenes.',
+    icon: '📑',
+    href: '/dashboard/reportes',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 410,
+    subRoutes: [
+      '/dashboard/reportes/inventario-completo',
+      '/dashboard/reportes/variacion-semanal',
+      '/dashboard/reportes/movimientos',
+      '/dashboard/reportes/ventas-costos',
+    ],
+    tags: ['reports', 'excel', 'exports'],
+  },
 
   // ═══════════════════════════════════════════
   // ADMINISTRACIÓN
@@ -601,6 +618,8 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   queue: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   // Intercompany
   intercompany: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  // Reportes (§51.C)
+  reportes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   // Admin
   mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],

@@ -9120,3 +9120,73 @@ WeeklyCount, los ajustes no se aplican.
 
 Listo para §51.B (vista comparativa semana vs semana en la UI) y §51.C
 (módulo Reportes que consume estas actions).
+
+---
+
+## §51.C Módulo Reportes — esqueleto + Inventario completo (2026-06-07, PR #283)
+
+Tercer paso del plan de mejora de inventarios. Crea el módulo `/dashboard/reportes`
+solicitado por el dueño y entrega el primer reporte funcional:
+**Inventario completo** exportable a Excel.
+
+### 51.C.1 Estructura del módulo
+
+```
+/dashboard/reportes/                          ← landing con tiles
+  /dashboard/reportes/inventario-completo/    ← AVAILABLE (este PR)
+  /dashboard/reportes/variacion-semanal/      ← próximo (consume §51.A)
+  /dashboard/reportes/movimientos/            ← futuro (consume InventoryMovement)
+  /dashboard/reportes/ventas-costos/          ← futuro (consume SalesOrder + costos)
+```
+
+Landing muestra 4 tiles: el primero clickable, los otros 3 con badge
+"Próximamente" desactivado. Cuando se implementan, se intercambia el flag
+`status: 'soon'` → `'available'`.
+
+### 51.C.2 Module registry
+
+`src/lib/constants/modules-registry.ts`:
+- Nuevo módulo `reportes` (icon 📑, sección 'admin', sortOrder 410, entre
+  Intercompany y Usuarios).
+- `enabledByDefault: true`.
+- `subRoutes` con las 4 sub-rutas para breadcrumbs.
+- `MODULE_ROLE_ACCESS['reportes']`: OWNER, ADMIN_MANAGER, OPS_MANAGER, AUDITOR.
+
+### 51.C.3 Reporte: Inventario completo
+
+**Server action** `getInventoryReportAction()` en
+`src/app/actions/reports.actions.ts`:
+- Carga todos los `InventoryItem` activos + `Area` activas + `InventoryLocation`
+  + último `CostHistory` vigente — en queries batch (sin N+1).
+- Devuelve filas con `stockByArea: Record<areaId, stock>`, `totalStock`,
+  `costPerUnit`, `totalValue`.
+
+**Función pura testeada** `src/lib/reports/inventory-report-helpers.ts`:
+- `groupInventoryByCategory(rows)` → agrupa, ordena por categoría
+  alfabéticamente, calcula subtotales por grupo y grand total.
+- `filterInventoryRows(rows, query)` → filtra por SKU+nombre+categoría
+  case-insensitive.
+- **10 tests** cubren agrupación, subtotales, "Sin categoría", filtros,
+  defensivo NaN/Infinity.
+
+**UI** `/dashboard/reportes/inventario-completo`:
+- Server component (`page.tsx`) carga el reporte y delega al client.
+- Client component (`inventory-report-view.tsx`):
+  - Buscador en vivo (filtro client-side).
+  - 4 métricas (SKU mostrados, categorías, stock total, valor total).
+  - Tabla agrupada por categoría con header fijo de áreas, subtotales por
+    categoría y grand total en footer navy.
+  - Botón "Exportar a Excel" — genera archivo agrupado con separadores
+    `## CATEGORÍA ##`, subtotales y grand total.
+  - Filename: `inventario_completo_YYYY-MM-DD.xlsx`.
+  - Paleta Minimal Navy: `bg-capsula-ivory`, `border-capsula-line`,
+    `text-capsula-ink*`, `pos-btn`, `pos-input`.
+
+### 51.C.4 Roadmap del módulo
+
+Los siguientes reportes consumirán actions ya implementadas:
+- **Variación semanal** → `compareWeeklyCountsAction` (§51.A).
+- **Movimientos por rango** → migrar `historial-mensual` aquí + extender por
+  rango de fechas configurable.
+- **Ventas + costos + margen** → consume `SalesOrder` + `Recipe`/`CostHistory`,
+  agrega por categoría de menú y por período (día/semana/mes).
