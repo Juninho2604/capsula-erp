@@ -7,12 +7,15 @@
  * PATCH desde n8n, auto-validación al subir comprobante) compartan la misma
  * regla: **al entrar a EN_COCINA se encola la impresión de la comanda**.
  *
- * El caller DEBE haber validado antes:
- *   - ownership (la orden pertenece al tenant) — via `withTenant().findFirst`
- *   - que la transición es legal — via `canTransition(from, to)`
+ * Concurrencia: el update es GUARDADO por `status = from` (+ tenantId). Si otra
+ * request ya movió la orden (retry de n8n, doble clic, modo AUTO), el
+ * updateMany afecta 0 filas y se omiten evento + efectos → idempotente, sin
+ * doble impresión. Devuelve `false` en ese caso.
  *
- * server-only: usa el cliente base + tenantId explícito (update no se filtra
- * por la extensión de tenant; la ownership ya se validó arriba).
+ * El caller DEBE haber validado antes que la transición es legal
+ * (`canTransition(from, to)`).
+ *
+ * server-only: usa el cliente base con tenantId explícito en el `where`.
  */
 
 import 'server-only';
@@ -35,21 +38,16 @@ export async function applyDeliveryTransition(params: {
     userId?: string | null;
     cancelReason?: string | null;
     note?: string | null;
-}): Promise<void> {
-    const { tenantId, order, from, to, userId, cancelReason, note } = params;
+    /** Campos escalares extra a setear en el mismo update guardado (ej.
+     *  driverId/assignedAt al asignar motorizado). */
+    extraData?: Prisma.DeliveryOrderUpdateManyMutationInput;
+}): Promise<boolean> {
+    const { tenantId, order, from, to, userId, cancelReason, note, extraData } = params;
 
-    const data: Prisma.DeliveryOrderUpdateInput = {
+    const data: Prisma.DeliveryOrderUpdateManyMutationInput = {
+        ...(extraData ?? {}),
         status: to,
-        events: {
-            create: {
-                fromState: from,
-                toState: to,
-                userId: userId ?? null,
-                note: note ?? (to === 'CANCELADA' ? cancelReason ?? null : null),
-            },
-        },
     };
-
     if (to === 'CANCELADA') {
         data.cancelReason = cancelReason ?? null;
     }
@@ -59,10 +57,30 @@ export async function applyDeliveryTransition(params: {
         data.paymentValidatedAt = new Date();
     }
 
-    await prisma.deliveryOrder.update({ where: { id: order.id }, data });
+    // Update guardado por estado actual (concurrencia optimista) + tenant.
+    const res = await prisma.deliveryOrder.updateMany({
+        where: { id: order.id, tenantId, status: from },
+        data,
+    });
+    if (res.count === 0) {
+        // Otra request ya transicionó (retry / carrera) → no-op idempotente.
+        return false;
+    }
+
+    await prisma.deliveryOrderEvent.create({
+        data: {
+            orderId: order.id,
+            fromState: from,
+            toState: to,
+            userId: userId ?? null,
+            note: note ?? (to === 'CANCELADA' ? cancelReason ?? null : null),
+        },
+    });
 
     // Efecto lateral: imprimir la comanda al pasar a cocina.
     if (to === 'EN_COCINA') {
         await enqueueDeliveryPrintJob(tenantId, order, userId ?? null);
     }
+
+    return true;
 }
