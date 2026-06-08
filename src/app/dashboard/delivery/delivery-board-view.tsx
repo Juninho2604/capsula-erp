@@ -13,6 +13,7 @@ import {
     Inbox,
     Check,
     Receipt,
+    Bike,
 } from 'lucide-react';
 import {
     nextStates,
@@ -22,7 +23,9 @@ import {
     listDeliveryOrdersAction,
     transitionDeliveryOrderAction,
     validateDeliveryPaymentAction,
+    assignDriverAction,
     type DeliveryOrderRow,
+    type DeliveryDriverRow,
 } from '@/app/actions/delivery.actions';
 
 // Columnas del flujo feliz (CANCELADA se muestra como contador aparte).
@@ -64,9 +67,11 @@ function timeAgo(iso: string): string {
 export function DeliveryBoardView({
     initialOrders,
     branches,
+    drivers,
 }: {
     initialOrders: DeliveryOrderRow[];
     branches: { id: string; name: string }[];
+    drivers: DeliveryDriverRow[];
 }) {
     const router = useRouter();
     const [orders, setOrders] = useState(initialOrders);
@@ -130,6 +135,28 @@ export function DeliveryBoardView({
             router.refresh();
         });
     }
+
+    function assign(orderId: string, driverId: string) {
+        setError(null);
+        startTransition(async () => {
+            const res = await assignDriverAction(orderId, driverId);
+            if (!res.success) {
+                setError(res.message ?? 'No se pudo asignar el motorizado.');
+                return;
+            }
+            const dn = drivers.find(d => d.id === driverId)?.name ?? null;
+            setOrders(prev =>
+                prev.map(o =>
+                    o.id === orderId
+                        ? { ...o, status: 'EN_CAMINO', driverId, driverName: dn }
+                        : o,
+                ),
+            );
+            router.refresh();
+        });
+    }
+
+    const availableDrivers = drivers.filter(d => d.isActive);
 
     return (
         <div className="p-4 sm:p-6 space-y-5">
@@ -208,8 +235,10 @@ export function DeliveryBoardView({
                                         key={o.id}
                                         order={o}
                                         pending={pending}
+                                        drivers={availableDrivers}
                                         onAdvance={(to) => transition(o.id, to)}
                                         onValidate={() => validate(o.id)}
+                                        onAssign={(driverId) => assign(o.id, driverId)}
                                         onCancel={(reason) => transition(o.id, 'CANCELADA', reason)}
                                     />
                                 ))
@@ -231,20 +260,26 @@ const PROOF_LABEL: Record<string, string> = {
 function OrderCard({
     order,
     pending,
+    drivers,
     onAdvance,
     onValidate,
+    onAssign,
     onCancel,
 }: {
     order: DeliveryOrderRow;
     pending: boolean;
+    drivers: DeliveryDriverRow[];
     onAdvance: (to: DeliveryState) => void;
     onValidate: () => void;
+    onAssign: (driverId: string) => void;
     onCancel: (reason: string) => void;
 }) {
     const succ = nextStates(order.status as DeliveryState);
     const terminal = succ.length === 0;
     const advance = succ.find(s => s !== 'CANCELADA') as DeliveryState | undefined;
     const isValidation = order.status === 'PAGO_POR_VALIDAR';
+    const isAssignment = order.status === 'LISTA';
+    const [pickedDriver, setPickedDriver] = useState('');
 
     function handleCancel() {
         const reason = window.prompt('Motivo de la cancelación:');
@@ -312,7 +347,42 @@ function OrderCard({
                 </a>
             )}
 
-            {!terminal && (
+            {order.driverName && (
+                <p className="text-xs text-capsula-ink-muted inline-flex items-center gap-1">
+                    <Bike className="h-3 w-3" /> {order.driverName}
+                </p>
+            )}
+
+            {isAssignment && !terminal && (
+                <div className="flex gap-2 pt-1">
+                    <select
+                        value={pickedDriver}
+                        onChange={e => setPickedDriver(e.target.value)}
+                        disabled={pending}
+                        className="pos-input flex-1 text-xs py-1.5"
+                    >
+                        <option value="">
+                            {drivers.length ? 'Motorizado…' : 'Sin motorizados'}
+                        </option>
+                        {drivers.map(d => (
+                            <option key={d.id} value={d.id}>
+                                {d.name}
+                                {d.status === 'ON_ROUTE' ? ' (en ruta)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={() => pickedDriver && onAssign(pickedDriver)}
+                        disabled={pending || !pickedDriver}
+                        className="pos-btn py-1.5 px-3 text-xs inline-flex items-center justify-center gap-1 disabled:opacity-50"
+                        title="Asignar motorizado y enviar en camino"
+                    >
+                        <Bike className="h-3.5 w-3.5" /> Asignar
+                    </button>
+                </div>
+            )}
+
+            {!terminal && !isAssignment && (
                 <div className="flex gap-2 pt-1">
                     {isValidation ? (
                         <button
@@ -341,6 +411,17 @@ function OrderCard({
                         <Ban className="h-4 w-4" />
                     </button>
                 </div>
+            )}
+
+            {isAssignment && (
+                <button
+                    onClick={handleCancel}
+                    disabled={pending}
+                    className="pos-btn-danger w-full py-1.5 text-xs inline-flex items-center justify-center gap-1 disabled:opacity-50"
+                    title="Anular orden"
+                >
+                    <Ban className="h-3.5 w-3.5" /> Anular
+                </button>
             )}
         </div>
     );

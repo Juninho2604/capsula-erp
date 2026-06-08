@@ -45,8 +45,10 @@ const TENANT_MODELS = new Set<string>([
     // no tiene tenantId, se aísla por FK a DeliveryOrder (igual que
     // SalesOrderPayment).
     'BranchDeliveryConfig',
+    'DeliveryDriver',
     'DeliveryOrder',
     'DeliveryTenantConfig',
+    'DeliveryWebhookOutbox',
     'DeliveryZone',
     'ExchangeRate',
     'Expense',

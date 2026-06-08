@@ -116,6 +116,8 @@ model Tenant {
   deliveryZones          DeliveryZone[]
   branchDeliveryConfigs  BranchDeliveryConfig[]
   deliveryTenantConfig   DeliveryTenantConfig?
+  deliveryDrivers        DeliveryDriver[]
+  deliveryWebhookOutbox  DeliveryWebhookOutbox[]
 }
 
 model User {
@@ -1948,6 +1950,7 @@ model Branch {
   deliveryConfig  BranchDeliveryConfig?
   deliveryZones   DeliveryZone[]
   deliveryOrders  DeliveryOrder[]
+  deliveryDrivers DeliveryDriver[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -2959,8 +2962,9 @@ model DeliveryOrder {
   paymentValidatedById String? // scalar; sin FK a User
   paymentValidatedAt   DateTime?
 
-  // Motorizado (Fase 3 — driverId scalar por ahora; FK/relación en Fase 3)
+  // Motorizado (Fase 3)
   driverId   String?
+  driver     DeliveryDriver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
   assignedAt DateTime?
 
   // Cancelación
@@ -2977,6 +2981,45 @@ model DeliveryOrder {
   @@index([tenantId, channel, chatId])
   @@index([branchId, status])
   @@index([tenantId, customerPhone])
+}
+
+/// Motorizado (repartidor) del tenant. Puede estar asociado a una sede.
+model DeliveryDriver {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name      String
+  phone     String
+  status    String   @default("AVAILABLE") // AVAILABLE | ON_ROUTE | OFFLINE
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders DeliveryOrder[]
+
+  @@index([tenantId])
+  @@index([branchId, status])
+}
+
+/// Outbox de webhooks salientes (KPSULA → n8n). Entrega confiable con
+/// reintentos por el cron /api/cron/deliver-webhooks (patrón §18.40/41).
+model DeliveryWebhookOutbox {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     String   // orden.en_cocina | orden.lista | orden.en_camino | orden.entregada
+  payload   Json
+  status    String   @default("PENDING") // PENDING | SENT | FAILED
+  attempts  Int      @default(0)
+  lastError String?
+
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([tenantId, status, createdAt])
 }
 
 /// Auditoría de transiciones de estado de una orden. Sin tenantId: aísla vía

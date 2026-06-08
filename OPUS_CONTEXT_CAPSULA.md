@@ -9676,3 +9676,49 @@ terminal (ENTREGADA) no muestran acciones.
 **Pendiente Fase 3:** motorizados + `POST /ordenes/{id}/motorizado` + webhooks
 salientes HMAC (outbox + cron) + notificación al cliente. Para multi-sede real:
 agregar filtro `?station=` a `GET /api/print-agent/jobs` (1 agent por sede).
+
+### §55.8 Fase 3 — Motorizados + webhooks salientes HMAC (2026-06-08)
+
+**Schema (migración `20260608140000_add_delivery_ops_phase3`, SAFE):**
+- `DeliveryDriver` (motorizados: nombre, teléfono, sede opcional, status
+  AVAILABLE|ON_ROUTE|OFFLINE).
+- `DeliveryWebhookOutbox` (event, payload, status PENDING|SENT|FAILED,
+  attempts, lastError) — entrega confiable de webhooks (patrón outbox §18.40/41).
+- `DeliveryOrder.driverId` ahora es relación a `DeliveryDriver` (FK add sobre
+  tabla vacía → instantáneo). +2 modelos a `TENANT_MODELS` → **58** total.
+
+**Webhooks salientes (KPSULA → n8n):**
+- `webhook-sign.ts` (puro): `hmacSign(body, secret)` HMAC-SHA256 → header
+  `X-Kpsula-Signature`.
+- `webhook-payload.ts` (puro): `buildWebhookPayload(evento, orden)` → body
+  `{ evento, orden: {correlativo, estado, canal, cliente, sede, motorizado…} }`.
+- `webhook.ts` (server-only): `enqueueDeliveryWebhook` re-fetcha la orden
+  (sede+motorizado) y escribe la fila en el outbox.
+- `applyDeliveryTransition` ahora emite webhook para los estados observables
+  (EN_COCINA, LISTA, EN_CAMINO, ENTREGADA) vía `STATE_WEBHOOK_EVENT`.
+- Cron `/api/cron/deliver-webhooks` (auth `Bearer CRON_SECRET`, cross-tenant):
+  toma PENDING, firma y POSTea a `DeliveryTenantConfig.webhookUrl`, marca
+  SENT/FAILED con reintentos (MAX 6) y timeout 10s.
+
+**Asignación de motorizado:**
+- `POST /ordenes/{id}/motorizado` (n8n): `{ motorizado_id }` → LISTA→EN_CAMINO
+  + driver ON_ROUTE + webhook orden.en_camino.
+- Server action `assignDriverAction` (UI) — mismo flujo.
+- Ambos usan `applyDeliveryTransition` con `extraData: { driverId, assignedAt }`
+  (un solo update guardado).
+
+**UI:**
+- Submódulo Motorizados `/dashboard/delivery/motorizados` (CRUD Minimal Navy:
+  alta/edición en modal, status quick-select, activar/desactivar).
+- Tablero: tarjetas LISTA muestran picker de motorizado + "Asignar"; tarjetas
+  EN_CAMINO/ENTREGADA muestran el motorizado asignado.
+
+**Auditoría Fase 2 (commit aparte):** `applyDeliveryTransition` pasó a
+`updateMany` GUARDADO por `status=from` (+tenantId) → transición idempotente,
+sin doble impresión/transición bajo concurrencia (retries n8n, doble clic, AUTO).
+
+**Env nueva:** `DELIVERY_WEBHOOK_SECRET` (firma HMAC). `CRON_SECRET` ya existía.
+Falta agendar el cron `deliver-webhooks` (crontab del VPS, junto al de outbox).
+
+**Pendiente Fase 4/4.5:** agotados, tasa/config desde UI, clientes, notas del
+gerente + reglas de ruteo, permiso por sede.

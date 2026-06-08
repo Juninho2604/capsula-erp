@@ -78,7 +78,18 @@ export interface DeliveryOrderRow {
     totalBs: number | null;
     paymentProofPath: string | null;
     paymentProofType: string | null;
+    driverId: string | null;
+    driverName: string | null;
     createdAt: string;
+}
+
+export interface DeliveryDriverRow {
+    id: string;
+    name: string;
+    phone: string;
+    branchId: string | null;
+    status: string;
+    isActive: boolean;
 }
 
 interface ListResult {
@@ -86,6 +97,7 @@ interface ListResult {
     message?: string;
     orders: DeliveryOrderRow[];
     branches: { id: string; name: string }[];
+    drivers: DeliveryDriverRow[];
 }
 
 async function guard(): Promise<
@@ -107,20 +119,29 @@ export async function listDeliveryOrdersAction(opts?: {
     branchId?: string | null;
 }): Promise<ListResult> {
     const g = await guard();
-    if (!g.ok) return { success: false, message: g.message, orders: [], branches: [] };
+    if (!g.ok) {
+        return { success: false, message: g.message, orders: [], branches: [], drivers: [] };
+    }
 
     const db = withTenant(g.tenantId);
 
-    const [orders, configs] = await Promise.all([
+    const [orders, configs, drivers] = await Promise.all([
         db.deliveryOrder.findMany({
             where: opts?.branchId ? { branchId: opts.branchId } : {},
             orderBy: { createdAt: 'desc' },
             take: 200,
-            include: { branch: { select: { id: true, name: true } } },
+            include: {
+                branch: { select: { id: true, name: true } },
+                driver: { select: { id: true, name: true } },
+            },
         }),
         db.branchDeliveryConfig.findMany({
             where: { isActive: true },
             include: { branch: { select: { id: true, name: true, isActive: true } } },
+        }),
+        db.deliveryDriver.findMany({
+            where: { isActive: true },
+            orderBy: { name: 'asc' },
         }),
     ]);
 
@@ -140,11 +161,21 @@ export async function listDeliveryOrdersAction(opts?: {
             totalBs: o.totalBs,
             paymentProofPath: o.paymentProofPath,
             paymentProofType: o.paymentProofType,
+            driverId: o.driverId,
+            driverName: o.driver?.name ?? null,
             createdAt: o.createdAt.toISOString(),
         })),
         branches: configs
             .filter(c => c.branch?.isActive)
             .map(c => ({ id: c.branch!.id, name: c.branch!.name })),
+        drivers: drivers.map(d => ({
+            id: d.id,
+            name: d.name,
+            phone: d.phone,
+            branchId: d.branchId,
+            status: d.status,
+            isActive: d.isActive,
+        })),
     };
 }
 
@@ -237,6 +268,132 @@ export async function validateDeliveryPaymentAction(
         userId: session?.id ?? null,
         note: 'pago validado',
     });
+
+    revalidatePath('/dashboard/delivery');
+    return { success: true };
+}
+
+// ─── Motorizados (Fase 3) ────────────────────────────────────────────────────
+
+export async function listDeliveryDriversAction(): Promise<{
+    success: boolean;
+    message?: string;
+    drivers: DeliveryDriverRow[];
+    branches: { id: string; name: string }[];
+}> {
+    const g = await guard();
+    if (!g.ok) return { success: false, message: g.message, drivers: [], branches: [] };
+
+    const db = withTenant(g.tenantId);
+    const [drivers, configs] = await Promise.all([
+        db.deliveryDriver.findMany({ orderBy: [{ isActive: 'desc' }, { name: 'asc' }] }),
+        db.branchDeliveryConfig.findMany({
+            where: { isActive: true },
+            include: { branch: { select: { id: true, name: true, isActive: true } } },
+        }),
+    ]);
+    return {
+        success: true,
+        drivers: drivers.map(d => ({
+            id: d.id,
+            name: d.name,
+            phone: d.phone,
+            branchId: d.branchId,
+            status: d.status,
+            isActive: d.isActive,
+        })),
+        branches: configs
+            .filter(c => c.branch?.isActive)
+            .map(c => ({ id: c.branch!.id, name: c.branch!.name })),
+    };
+}
+
+export async function createDeliveryDriverAction(input: {
+    name: string;
+    phone: string;
+    branchId?: string | null;
+}): Promise<{ success: boolean; message?: string }> {
+    const g = await guard();
+    if (!g.ok) return { success: false, message: g.message };
+
+    const name = input.name?.trim();
+    const phone = input.phone?.trim();
+    if (!name || !phone) return { success: false, message: 'Nombre y teléfono son obligatorios.' };
+
+    const db = withTenant(g.tenantId);
+    await db.deliveryDriver.create({
+        data: { tenantId: g.tenantId, name, phone, branchId: input.branchId || null },
+    });
+    revalidatePath('/dashboard/delivery/motorizados');
+    revalidatePath('/dashboard/delivery');
+    return { success: true };
+}
+
+export async function updateDeliveryDriverAction(
+    id: string,
+    patch: { name?: string; phone?: string; branchId?: string | null; status?: string; isActive?: boolean },
+): Promise<{ success: boolean; message?: string }> {
+    const g = await guard();
+    if (!g.ok) return { success: false, message: g.message };
+
+    const db = withTenant(g.tenantId);
+    // Ownership: findFirst está filtrado por tenant; update por id va después.
+    const existing = await db.deliveryDriver.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) return { success: false, message: 'Motorizado no encontrado.' };
+
+    const data: Record<string, unknown> = {};
+    if (patch.name !== undefined) data.name = patch.name.trim();
+    if (patch.phone !== undefined) data.phone = patch.phone.trim();
+    if (patch.branchId !== undefined) data.branchId = patch.branchId || null;
+    if (patch.status !== undefined) data.status = patch.status;
+    if (patch.isActive !== undefined) data.isActive = patch.isActive;
+
+    await db.deliveryDriver.update({ where: { id }, data });
+    revalidatePath('/dashboard/delivery/motorizados');
+    revalidatePath('/dashboard/delivery');
+    return { success: true };
+}
+
+/**
+ * Asigna un motorizado a una orden LISTA → EN_CAMINO (en un solo update
+ * guardado, vía el helper central que además emite el webhook orden.en_camino).
+ * Marca al motorizado ON_ROUTE.
+ */
+export async function assignDriverAction(
+    orderId: string,
+    driverId: string,
+): Promise<{ success: boolean; message?: string }> {
+    const g = await guard();
+    if (!g.ok) return { success: false, message: g.message };
+
+    const db = withTenant(g.tenantId);
+    const [order, driver] = await Promise.all([
+        db.deliveryOrder.findFirst({ where: { id: orderId }, select: ORDER_SELECT }) as Promise<LoadedOrder | null>,
+        db.deliveryDriver.findFirst({ where: { id: driverId }, select: { id: true, isActive: true } }),
+    ]);
+    if (!order) return { success: false, message: 'Orden no encontrada.' };
+    if (!driver || !driver.isActive) return { success: false, message: 'Motorizado no disponible.' };
+
+    if (!isDeliveryState(order.status) || !canTransition(order.status as DeliveryState, 'EN_CAMINO')) {
+        return {
+            success: false,
+            message: `Solo se asigna motorizado a una orden "lista" (actual: ${order.status}).`,
+        };
+    }
+
+    const session = await getSession();
+    const applied = await applyDeliveryTransition({
+        tenantId: g.tenantId,
+        order: toTransitionOrder(order),
+        from: order.status as DeliveryState,
+        to: 'EN_CAMINO',
+        userId: session?.id ?? null,
+        note: 'motorizado asignado',
+        extraData: { driverId, assignedAt: new Date() },
+    });
+    if (applied) {
+        await db.deliveryDriver.update({ where: { id: driverId }, data: { status: 'ON_ROUTE' } });
+    }
 
     revalidatePath('/dashboard/delivery');
     return { success: true };
