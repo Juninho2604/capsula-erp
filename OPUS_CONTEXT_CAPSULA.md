@@ -9757,3 +9757,32 @@ por sede) sigue pendiente.
 **Pendiente del módulo:** submódulo **Sedes** UI (`BranchDeliveryConfig` +
 `DeliveryZone` CRUD con lat/lon/impresora/grupo WA/gerente) — por ahora las
 sedes se siembran por SQL/script. Es lo único grande que falta para self-serve.
+
+### §55.10 Fase 5 — Submódulo Sedes + provisión de Poke Pok (2026-06-08)
+
+**Submódulo Sedes** `/dashboard/delivery/sedes` (sin schema nuevo — usa Branch +
+BranchDeliveryConfig + DeliveryZone de fases previas):
+- `delivery-sedes.actions.ts`: list (Branch+config+zonas+managers), createSede
+  (Branch nuevo con code auto-slug único + BranchDeliveryConfig vacío),
+  updateSede (name/isActive del Branch + upsert de lat/lon/printerStation/
+  whatsappGroup/managerUserId), add/removeDeliveryZone.
+- UI Minimal Navy: tarjetas por sede con resumen (GPS/impresora/WA/gerente),
+  modal de config, editor de zonas inline (chips), alta de sede, toggle activo.
+- El dropdown de gerente lista users del tenant con rol OWNER/ADMIN_MANAGER/
+  OPS_MANAGER/HR_MANAGER (sigue siendo permiso por sede opción A — el campo es
+  informativo/para WhatsApp, no scoping de RBAC).
+
+Con esto el módulo es **self-serve completo** (Fases 1→5). Único pendiente real:
+permiso por sede (opción B).
+
+**Script de provisión `scripts/seed-poke-pok.ts`** (idempotente, upserts):
+- Tenant `pokepok` + flag `deliveryOps: true`, owner + gerente, DeliveryTenantConfig
+  (PP/MANUAL), y las 4 sedes (Santa Fe, El Hatillo, San Luis, Los Palos Grandes)
+  con BranchDeliveryConfig + zonas placeholder. Coords APROXIMADAS (ajustar en UI).
+- Uso en el VPS: `set -a && source .env && set +a && npx tsx scripts/seed-poke-pok.ts [--password=...] [--reset]`.
+- NO siembra menú/inventario/ventas (módulo aislado; el bot da las comandas).
+
+**Camino a producción** (recordatorio): merge a `main` → deploy VPS (corre
+`prisma migrate deploy` en deploy-vps.sh paso [7/10], aborta sin swap si falla)
+→ correr seed-poke-pok.ts en el VPS → login en `pokepok.kpsula.app`. El módulo
+viaja apagado para los demás tenants (flag OFF).
