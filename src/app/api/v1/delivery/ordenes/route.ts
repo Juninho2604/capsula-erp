@@ -13,13 +13,14 @@
  */
 
 import { NextResponse } from 'next/server';
+import prisma from '@/server/db';
 import { authenticateDeliveryApi } from '@/lib/delivery/auth';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { assignBranch, type BranchCandidate } from '@/lib/delivery/assign-branch';
 import { extractItemNames, extractComandaMeta } from '@/lib/delivery/comanda';
 import { computeItemsHash, isWithinIdempotencyWindow } from '@/lib/delivery/idempotency';
-import { nextCorrelative } from '@/lib/delivery/correlative';
+import { reserveCorrelative } from '@/lib/delivery/correlative';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,25 +65,29 @@ export async function POST(req: Request) {
     const db = withTenant(auth.tenantId);
 
     // ── Idempotencia: ¿llegó este mismo pedido hace < 10 min? ───────────────
+    // Solo deduplicamos cuando hay chatId: dos pedidos anónimos (chatId null)
+    // con ítems iguales son clientes distintos, no un duplicado.
     const itemsHash = computeItemsHash(canal, chatId, body.comanda);
-    const recent = await db.deliveryOrder.findFirst({
-        where: { channel: canal, chatId, itemsHash },
-        orderBy: { createdAt: 'desc' },
-        include: { branch: { select: { id: true, name: true } } },
-    });
-    if (recent && isWithinIdempotencyWindow(recent.createdAt)) {
-        return NextResponse.json(
-            {
-                orden_id: recent.id,
-                correlativo: recent.correlative,
-                sede_asignada: recent.branch
-                    ? { id: recent.branch.id, nombre: recent.branch.name }
-                    : null,
-                estado: recent.status,
-                idempotent: true,
-            },
-            { status: 200 },
-        );
+    if (chatId) {
+        const recent = await db.deliveryOrder.findFirst({
+            where: { channel: canal, chatId, itemsHash },
+            orderBy: { createdAt: 'desc' },
+            include: { branch: { select: { id: true, name: true } } },
+        });
+        if (recent && isWithinIdempotencyWindow(recent.createdAt)) {
+            return NextResponse.json(
+                {
+                    orden_id: recent.id,
+                    correlativo: recent.correlative,
+                    sede_asignada: recent.branch
+                        ? { id: recent.branch.id, nombre: recent.branch.name }
+                        : null,
+                    estado: recent.status,
+                    idempotent: true,
+                },
+                { status: 200 },
+            );
+        }
     }
 
     // ── Asignación de sede (ruteo → GPS → zona → fallback) ──────────────────
@@ -125,32 +130,35 @@ export async function POST(req: Request) {
         fallbackBranchId: branches.length === 1 ? branches[0].id : null,
     });
 
-    // ── Correlativo atómico + creación ──────────────────────────────────────
-    const correlativo = await nextCorrelative(auth.tenantId);
-
-    const order = await db.deliveryOrder.create({
-        data: {
-            tenantId: auth.tenantId,
-            correlative: correlativo,
-            channel: canal,
-            chatId,
-            branchId: assignment.branchId,
-            customerName: body.customer_name ?? meta.customerName,
-            customerPhone: body.customer_phone ?? meta.customerPhone,
-            deliveryAddress: address,
-            deliveryRef: body.reference ?? meta.deliveryRef,
-            lat,
-            lon,
-            comanda: body.comanda as object,
-            totalUsd: meta.totalUsd,
-            totalBs: meta.totalBs,
-            status: 'ESPERANDO_PAGO',
-            itemsHash,
-            events: {
-                create: { fromState: null, toState: 'ESPERANDO_PAGO', note: `assign:${assignment.reason}` },
+    // ── Correlativo + creación en UNA transacción (sin huecos) ──────────────
+    // Si la creación falla, el rollback revierte también el incremento del
+    // contador. Se usa el cliente base (tx) con tenantId explícito.
+    const order = await prisma.$transaction(async tx => {
+        const correlativo = await reserveCorrelative(tx, auth.tenantId);
+        return tx.deliveryOrder.create({
+            data: {
+                tenantId: auth.tenantId,
+                correlative: correlativo,
+                channel: canal,
+                chatId,
+                branchId: assignment.branchId,
+                customerName: body.customer_name ?? meta.customerName,
+                customerPhone: body.customer_phone ?? meta.customerPhone,
+                deliveryAddress: address,
+                deliveryRef: body.reference ?? meta.deliveryRef,
+                lat,
+                lon,
+                comanda: body.comanda as object,
+                totalUsd: meta.totalUsd,
+                totalBs: meta.totalBs,
+                status: 'ESPERANDO_PAGO',
+                itemsHash,
+                events: {
+                    create: { fromState: null, toState: 'ESPERANDO_PAGO', note: `assign:${assignment.reason}` },
+                },
             },
-        },
-        include: { branch: { select: { id: true, name: true } } },
+            include: { branch: { select: { id: true, name: true } } },
+        });
     });
 
     return NextResponse.json(

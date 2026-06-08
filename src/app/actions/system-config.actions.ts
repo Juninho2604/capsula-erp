@@ -127,18 +127,17 @@ export async function getEnabledModulesFromDB(): Promise<string[]> {
 
     // Gate por feature flags del tenant: módulos con `requiresFeatureFlag`
     // (ej. delivery → deliveryOps) solo quedan visibles si el flag está ON.
+    // Conservador: si no hay tenantId o falla la lectura de flags, ocultamos
+    // los módulos gated (no exponer features no confirmadas para el tenant).
+    let flags: Record<string, boolean> = {};
     if (tenantId) {
         try {
-            const flags = await getTenantFeatureFlags(tenantId);
-            ids = filterModuleIdsByFeatureFlags(ids, flags);
+            flags = await getTenantFeatureFlags(tenantId);
         } catch {
-            // Si no se pueden leer flags, ser conservador: ocultar módulos
-            // gated (no exponer features no confirmadas para el tenant).
-            ids = filterModuleIdsByFeatureFlags(ids, {});
+            flags = {};
         }
     }
-
-    return ids;
+    return filterModuleIdsByFeatureFlags(ids, flags);
 }
 
 /**
