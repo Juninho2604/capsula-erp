@@ -29,6 +29,14 @@ export interface ModuleDefinition {
   subRoutes?: string[];
   /** Tags para búsqueda / agrupación */
   tags?: string[];
+  /**
+   * Si está seteado, el módulo solo es visible cuando el feature flag del
+   * tenant (clave de FEATURE_FLAGS en `src/lib/feature-flags.ts`) está ON.
+   * El gate se aplica en `getEnabledModulesFromDB()` vía
+   * `filterModuleIdsByFeatureFlags`. Tipado como string para no acoplar el
+   * registry (importado en cliente) al módulo server-only de feature flags.
+   */
+  requiresFeatureFlag?: string;
 }
 
 /**
@@ -427,6 +435,29 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     ],
     tags: ['reports', 'excel', 'exports'],
   },
+  {
+    id: 'delivery',
+    label: 'Gestión de Deliverys',
+    description: 'Centro de operaciones de delivery: tablero de órdenes por estado y sede, sedes, motorizados y agotados. Alimentado por el bot (n8n + IA). Módulo aislado de la contabilidad.',
+    icon: '🛵',
+    href: '/dashboard/delivery',
+    section: 'admin',
+    // enabledByDefault:true PERO gated por el flag deliveryOps (que arranca OFF
+    // para todos). Resultado: visible por defecto SOLO si el OWNER prende el
+    // flag. El flag es el gate maestro (controla módulo + API).
+    enabledByDefault: true,
+    sortOrder: 412,
+    requiresFeatureFlag: 'deliveryOps',
+    subRoutes: [
+      '/dashboard/delivery/sedes',
+      '/dashboard/delivery/motorizados',
+      '/dashboard/delivery/agotados',
+      '/dashboard/delivery/instrucciones',
+      '/dashboard/delivery/clientes',
+      '/dashboard/delivery/config',
+    ],
+    tags: ['delivery', 'pedidos', 'motorizados', 'bot'],
+  },
 
   // ═══════════════════════════════════════════
   // ADMINISTRACIÓN
@@ -632,6 +663,8 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   intercompany: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
   // Reportes (§51.C)
   reportes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
+  // Gestión de Deliverys (módulo aislado, gated por flag deliveryOps)
+  delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
   // Admin
   mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
@@ -649,6 +682,28 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   caja:          ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AUDITOR'],
   cuentas_pagar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
 };
+
+/**
+ * Filtra una lista de module ids dejando fuera los que requieren un feature
+ * flag de tenant que está apagado. Función pura (testeable sin BD).
+ *
+ * @param ids          - module ids candidatos (ya filtrados por instalación)
+ * @param enabledFlags - mapa flagKey → boolean del tenant actual
+ */
+export function filterModuleIdsByFeatureFlags(
+  ids: string[],
+  enabledFlags: Record<string, boolean>,
+): string[] {
+  const gated = new Map<string, string>(); // moduleId → flag requerido
+  for (const m of MODULE_REGISTRY) {
+    if (m.requiresFeatureFlag) gated.set(m.id, m.requiresFeatureFlag);
+  }
+  return ids.filter(id => {
+    const flag = gated.get(id);
+    if (!flag) return true; // módulo sin gate → siempre pasa
+    return enabledFlags[flag] === true;
+  });
+}
 
 /**
  * Obtener la lista de módulos habilitados para esta instancia.

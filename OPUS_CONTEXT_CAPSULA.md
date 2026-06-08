@@ -9529,3 +9529,260 @@ Opciones para PR separado:
 - **C.** Aceptar riesgo, documentar.
 
 Recomendación: **B**, balance entre superficie y costo.
+
+---
+
+## §55 Módulo Gestión de Deliverys — Fase 1 (2026-06-08)
+
+Módulo nuevo en sección **Administración**, gated por feature flag `deliveryOps`.
+Operación de delivery orquestada por un bot externo (n8n + IA): KPSULA es la
+fuente determinística (correlativos, sede, estados, impresión), la IA solo
+conversa y produce la comanda JSON. Plan completo y fases en
+`docs/DELIVERY_OPS_PLAN.md`.
+
+**Decisión maestra: MÓDULO AISLADO.** `DeliveryOrder` es una entidad propia,
+separada de `SalesOrder`. NO entra al Report Z, NI al historial de ventas
+(§20), NI descarga inventario. La contabilidad del delivery se lleva aparte
+(decisión futura). `ENTREGADA` es un cierre puramente logístico.
+
+### 55.1 Modelos nuevos (Fase 1) — migración `20260608120000_add_delivery_ops_phase1`
+
+Migración SAFE en producción viva (§44): solo `CREATE TABLE`. Hand-authored con
+guards `IF NOT EXISTS` + FKs en bloque `DO $$` (estilo del repo).
+
+- `DeliveryTenantConfig` (1:1 Tenant): `correlativePrefix` (default `PP`),
+  `nextCorrelative` (contador atómico), `validationMode` (MANUAL|AUTO),
+  `webhookUrl`, `schedule`.
+- `BranchDeliveryConfig` (1:1 Branch): `lat/lon`, `printerStation`,
+  `whatsappGroup`, `managerUserId` (scalar, sin FK a User). No se engorda
+  `Branch` (lo comparte el POS restaurante de todos los tenants).
+- `DeliveryZone` (zonas de cobertura geográficas por sede). NO reusa
+  `ServiceZone` (esa es DINING/BAR/VIP físico).
+- `DeliveryOrder` (entidad central): correlativo único por tenant, `branchId`,
+  `channel/chatId`, datos de cliente/entrega, `comanda` (Json), `status`
+  (máquina de estados), `itemsHash` (idempotencia), campos de comprobante
+  (Fase 2) y motorizado (Fase 3, `driverId` scalar por ahora). Link
+  best-effort a `Customer` SIN tocar sus stats POS.
+- `DeliveryOrderEvent`: auditoría de transiciones. **Sin `tenantId`** — se
+  aísla por FK a `DeliveryOrder` (mismo patrón que `SalesOrderPayment`). Por
+  eso NO está en `TENANT_MODELS`.
+
+Los 4 modelos con `tenantId` se sumaron a `TENANT_MODELS`
+(`src/lib/prisma-tenant-client.ts`) → total **56** (test actualizado).
+
+### 55.2 Máquina de estados (`src/lib/delivery/state-machine.ts`, función pura)
+
+```
+ESPERANDO_PAGO → PAGO_POR_VALIDAR → EN_COCINA → LISTA → EN_CAMINO → ENTREGADA
+                                              (CANCELADA: desde cualquier no-terminal)
+```
+
+`canTransition(from,to)` valida: avanza una etapa a la vez, no retrocede, no
+no-ops, CANCELADA desde cualquier estado no terminal, nada desde terminales.
+`STATE_WEBHOOK_EVENT` mapea estados → eventos de webhook (Fase 3).
+
+### 55.3 API REST para n8n — `/api/v1/delivery/*`
+
+Namespace versionado nuevo. Auth: header `X-API-Key` → tenantId resuelto
+contra env `DELIVERY_API_KEYS` (`{tenantId: key}`, compare en tiempo constante,
+clon de `print-agent-auth.ts`). Todos los endpoints chequean además el flag
+`deliveryOps` (403 si off).
+
+- `GET /contexto`: devuelve `{ sedes (zonas+coords), tasa_bs, agotados:[],
+  notas_gerente:[], reglas_ruteo:[] }`. Reemplaza variables manuales del
+  prompt. Fase 1 llena sedes + tasa (de `ExchangeRate`); el resto vacío hasta
+  Fase 4/4.5. Shaper puro en `src/lib/delivery/context.ts`.
+- `POST /ordenes`: crea la orden. Asigna **sede** (`assign-branch.ts`,
+  precedencia ruteo → GPS haversine → zona por texto → fallback) y
+  **correlativo atómico** (`correlative.ts`, increment en transacción).
+  **Idempotencia** (`idempotency.ts`): hash de canal+chatId+firma de comanda;
+  mismo hash < 10 min → devuelve la orden existente (200) en vez de duplicar.
+  Parsing defensivo de la comanda (es/en) en `comanda.ts`.
+
+### 55.4 Feature flag + gate de visibilidad (plomería nueva reutilizable)
+
+- Flag `deliveryOps` agregado a `FEATURE_FLAGS` (`src/lib/feature-flags.ts`).
+- Nuevo campo `requiresFeatureFlag?` en `ModuleDefinition` + helper puro
+  `filterModuleIdsByFeatureFlags()` (registry). Cableado en
+  `getEnabledModulesFromDB()`: módulos con `requiresFeatureFlag` solo quedan
+  visibles si el flag del tenant está ON. **Sirve para futuros módulos
+  flag-gated**, no solo delivery.
+- El módulo `delivery` es `enabledByDefault:true` PERO gated → visible solo si
+  el OWNER prende el flag (que arranca OFF para todos).
+- Defensa en profundidad: la página `/dashboard/delivery` revalida sesión +
+  rol + flag server-side y redirige si está off.
+
+### 55.5 UI — tablero (Minimal Navy)
+
+`/dashboard/delivery`: kanban por estado (6 columnas del flujo feliz + contador
+de canceladas), filtro por sede, tarjetas con correlativo/cliente/dirección/
+total/tiempo, botón "avanzar" (siguiente estado válido) y "anular" (con motivo).
+Iconos lucide (`Truck` para el módulo, distinto de `pos_delivery`=`Bike`),
+tonos sutiles autorizados por estado, `tabular-nums`. Server action
+`delivery.actions.ts` (lectura + transición con validación).
+
+### 55.6 Pendiente / siguientes fases
+
+- **Fase 2**: comprobantes (upload máquina, n8n sin sesión) + validación
+  1-clic + impresión vía Print Agent existente (encolar `PrintJob`, +filtro
+  `?station=` en `/api/print-agent/jobs`).
+- **Fase 3**: motorizados + webhooks salientes HMAC (outbox + cron) +
+  notificación al cliente.
+- **Fase 4/4.5**: agotados, config/tasa desde UI, clientes, notas del gerente +
+  reglas de ruteo, permiso por sede (el RBAC actual es rol+módulo+tenant, NO
+  por sede — gap pendiente).
+- **Seed Poke Pok**: faltan lat/lon + zonas reales de las 4 sedes (Santa Fe,
+  El Hatillo, San Luis, Los Palos Grandes) → sin coords la asignación por GPS
+  no opera (solo zona/ruteo).
+- **Env**: `DELIVERY_API_KEYS` (por tenant) y, en Fase 3, `DELIVERY_WEBHOOK_SECRET`.
+
+### §55.7 Fase 2 — Comprobantes + validación 1-clic + impresión (2026-06-08)
+
+Reusa el **Print Agent existente** (§39) en vez de la "Opción A" (kiosk Chrome):
+la comanda de delivery se encola como `PrintJob` `type: 'KITCHEN'` (el renderer
+ya soporta `orderTypeLabel: 'DELIVERY'` + dirección) → **no hace falta nuevo
+valor de enum** (evita `ALTER TYPE`, §44).
+
+**Piezas (todas con tests puros donde aplica):**
+- `src/lib/delivery/print.ts` — `buildDeliveryKitchenPayload(order)`: arma el
+  payload KITCHEN (correlativo como `orderNumber`, label DELIVERY, ítems con
+  modificadores; dirección+referencia+teléfono van juntos en `customerAddress`
+  porque KitchenPayload no tiene campos aparte). PURO.
+- `comanda.ts` — ahora extrae `modifiers[]` por ítem (array de strings u objetos).
+- `src/lib/delivery/enqueue-print.ts` — server-only, best-effort (no lanza):
+  crea el `PrintJob` con `station = BranchDeliveryConfig.printerStation` de la
+  sede. Funciona con o sin sesión (`enqueuedById` opcional → n8n lo deja null).
+- `src/lib/delivery/transition.ts` — `applyDeliveryTransition()`: centraliza
+  update de estado + `DeliveryOrderEvent` + **side-effect: al entrar a
+  EN_COCINA encola la impresión**. Lo usan los 3 caminos (UI, PATCH n8n,
+  auto-validación). Al validar pago (PAGO_POR_VALIDAR→EN_COCINA) deja traza en
+  `paymentValidatedById/At`.
+
+**API nueva (auth máquina X-API-Key + chequeo de flag):**
+- `POST /ordenes/{id}/comprobante` — multipart `file` + `tipo`
+  (billetes|pago_movil|transferencia). Guarda el archivo tenant-scoped en
+  `storage/uploads/<tenantId>/delivery-comprobantes/` (servido por `/api/files`,
+  que valida sesión). Transiciona ESPERANDO_PAGO→PAGO_POR_VALIDAR. Si el tenant
+  está en `validationMode=AUTO`, auto-valida →EN_COCINA + imprime. Default
+  MANUAL (antifraude: el bot no verifica fotos).
+- `PATCH /ordenes/{id}` — `{ estado, cancel_reason? }` con validación de
+  transiciones (para n8n). Al pasar a EN_COCINA imprime vía el helper central.
+
+**UI:** el tablero ahora muestra "Validar pago" (1-clic, verde) en las tarjetas
+PAGO_POR_VALIDAR (llama `validateDeliveryPaymentAction` → EN_COCINA + imprime) y
+un link "Ver comprobante" cuando hay archivo adjunto. Las tarjetas en estado
+terminal (ENTREGADA) no muestran acciones.
+
+**Pendiente Fase 3:** motorizados + `POST /ordenes/{id}/motorizado` + webhooks
+salientes HMAC (outbox + cron) + notificación al cliente. Para multi-sede real:
+agregar filtro `?station=` a `GET /api/print-agent/jobs` (1 agent por sede).
+
+### §55.8 Fase 3 — Motorizados + webhooks salientes HMAC (2026-06-08)
+
+**Schema (migración `20260608140000_add_delivery_ops_phase3`, SAFE):**
+- `DeliveryDriver` (motorizados: nombre, teléfono, sede opcional, status
+  AVAILABLE|ON_ROUTE|OFFLINE).
+- `DeliveryWebhookOutbox` (event, payload, status PENDING|SENT|FAILED,
+  attempts, lastError) — entrega confiable de webhooks (patrón outbox §18.40/41).
+- `DeliveryOrder.driverId` ahora es relación a `DeliveryDriver` (FK add sobre
+  tabla vacía → instantáneo). +2 modelos a `TENANT_MODELS` → **58** total.
+
+**Webhooks salientes (KPSULA → n8n):**
+- `webhook-sign.ts` (puro): `hmacSign(body, secret)` HMAC-SHA256 → header
+  `X-Kpsula-Signature`.
+- `webhook-payload.ts` (puro): `buildWebhookPayload(evento, orden)` → body
+  `{ evento, orden: {correlativo, estado, canal, cliente, sede, motorizado…} }`.
+- `webhook.ts` (server-only): `enqueueDeliveryWebhook` re-fetcha la orden
+  (sede+motorizado) y escribe la fila en el outbox.
+- `applyDeliveryTransition` ahora emite webhook para los estados observables
+  (EN_COCINA, LISTA, EN_CAMINO, ENTREGADA) vía `STATE_WEBHOOK_EVENT`.
+- Cron `/api/cron/deliver-webhooks` (auth `Bearer CRON_SECRET`, cross-tenant):
+  toma PENDING, firma y POSTea a `DeliveryTenantConfig.webhookUrl`, marca
+  SENT/FAILED con reintentos (MAX 6) y timeout 10s.
+
+**Asignación de motorizado:**
+- `POST /ordenes/{id}/motorizado` (n8n): `{ motorizado_id }` → LISTA→EN_CAMINO
+  + driver ON_ROUTE + webhook orden.en_camino.
+- Server action `assignDriverAction` (UI) — mismo flujo.
+- Ambos usan `applyDeliveryTransition` con `extraData: { driverId, assignedAt }`
+  (un solo update guardado).
+
+**UI:**
+- Submódulo Motorizados `/dashboard/delivery/motorizados` (CRUD Minimal Navy:
+  alta/edición en modal, status quick-select, activar/desactivar).
+- Tablero: tarjetas LISTA muestran picker de motorizado + "Asignar"; tarjetas
+  EN_CAMINO/ENTREGADA muestran el motorizado asignado.
+
+**Auditoría Fase 2 (commit aparte):** `applyDeliveryTransition` pasó a
+`updateMany` GUARDADO por `status=from` (+tenantId) → transición idempotente,
+sin doble impresión/transición bajo concurrencia (retries n8n, doble clic, AUTO).
+
+**Env nueva:** `DELIVERY_WEBHOOK_SECRET` (firma HMAC). `CRON_SECRET` ya existía.
+Falta agendar el cron `deliver-webhooks` (crontab del VPS, junto al de outbox).
+
+**Pendiente Fase 4/4.5:** agotados, tasa/config desde UI, clientes, notas del
+gerente + reglas de ruteo, permiso por sede.
+
+### §55.9 Fase 4/4.5 — Instrucciones dinámicas del gerente + config + clientes (2026-06-08)
+
+Mata las variables manuales del prompt: `GET /contexto` ahora devuelve datos
+reales de la BD (antes arrays vacíos).
+
+**Schema (migración `20260608160000_add_delivery_ops_phase4`, SAFE):**
+- `ItemAvailability` (agotados por sede, label-based, unique [branchId,itemLabel]).
+- `ManagerNote` (notas: alcance global/sede, on/off, `expiresAt`).
+- `RoutingRule` (producto→sede, priority, isActive). +3 a `TENANT_MODELS` → **61**.
+
+**Backend (`delivery-config.actions.ts`, guard compartido `lib/delivery/guard.ts`):**
+- CRUD de agotados, notas, reglas; get/update de `DeliveryTenantConfig`
+  (prefijo, validationMode, webhookUrl); clientes (agregación de DeliveryOrder
+  por teléfono — lectura, sin tocar stats POS del `Customer`).
+- **`GET /contexto`** llena `agotados` (available=false), `notas_gerente`
+  (activas + no vencidas) y `reglas_ruteo` (activas).
+- **`POST /ordenes`** aplica `RoutingRule` en `assignBranch` (precedencia
+  ruteo→GPS→zona→fallback ya soportada desde Fase 1).
+
+**Dos capas (§9 del spec):** estructurada (agotados + reglas, determinística) y
+texto libre (notas, orientativas — la guarda "nunca anulan las reglas de oro"
+vive en el prompt del bot, no en KPSULA).
+
+**UI (Minimal Navy):** nav compartido `_components/delivery-nav.tsx` entre
+submódulos. Páginas nuevas: `/agotados`, `/instrucciones` (notas + reglas),
+`/config`, `/clientes`.
+
+**Permiso por sede:** opción A (sin scoping por sede) — cualquier rol con acceso
+a `delivery` opera todas las sedes. Documentado en `guard.ts`. Opción B (scope
+por sede) sigue pendiente.
+
+**Pendiente del módulo:** submódulo **Sedes** UI (`BranchDeliveryConfig` +
+`DeliveryZone` CRUD con lat/lon/impresora/grupo WA/gerente) — por ahora las
+sedes se siembran por SQL/script. Es lo único grande que falta para self-serve.
+
+### §55.10 Fase 5 — Submódulo Sedes + provisión de Poke Pok (2026-06-08)
+
+**Submódulo Sedes** `/dashboard/delivery/sedes` (sin schema nuevo — usa Branch +
+BranchDeliveryConfig + DeliveryZone de fases previas):
+- `delivery-sedes.actions.ts`: list (Branch+config+zonas+managers), createSede
+  (Branch nuevo con code auto-slug único + BranchDeliveryConfig vacío),
+  updateSede (name/isActive del Branch + upsert de lat/lon/printerStation/
+  whatsappGroup/managerUserId), add/removeDeliveryZone.
+- UI Minimal Navy: tarjetas por sede con resumen (GPS/impresora/WA/gerente),
+  modal de config, editor de zonas inline (chips), alta de sede, toggle activo.
+- El dropdown de gerente lista users del tenant con rol OWNER/ADMIN_MANAGER/
+  OPS_MANAGER/HR_MANAGER (sigue siendo permiso por sede opción A — el campo es
+  informativo/para WhatsApp, no scoping de RBAC).
+
+Con esto el módulo es **self-serve completo** (Fases 1→5). Único pendiente real:
+permiso por sede (opción B).
+
+**Script de provisión `scripts/seed-poke-pok.ts`** (idempotente, upserts):
+- Tenant `pokepok` + flag `deliveryOps: true`, owner + gerente, DeliveryTenantConfig
+  (PP/MANUAL), y las 4 sedes (Santa Fe, El Hatillo, San Luis, Los Palos Grandes)
+  con BranchDeliveryConfig + zonas placeholder. Coords APROXIMADAS (ajustar en UI).
+- Uso en el VPS: `set -a && source .env && set +a && npx tsx scripts/seed-poke-pok.ts [--password=...] [--reset]`.
+- NO siembra menú/inventario/ventas (módulo aislado; el bot da las comandas).
+
+**Camino a producción** (recordatorio): merge a `main` → deploy VPS (corre
+`prisma migrate deploy` en deploy-vps.sh paso [7/10], aborta sin swap si falla)
+→ correr seed-poke-pok.ts en el VPS → login en `pokepok.kpsula.app`. El módulo
+viaja apagado para los demás tenants (flag OFF).

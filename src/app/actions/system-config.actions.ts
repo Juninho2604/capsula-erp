@@ -32,7 +32,11 @@
 import prisma from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { MODULE_REGISTRY } from '@/lib/constants/modules-registry';
+import {
+    MODULE_REGISTRY,
+    filterModuleIdsByFeatureFlags,
+} from '@/lib/constants/modules-registry';
+import { getTenantFeatureFlags } from '@/lib/feature-flags';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 
@@ -84,9 +88,11 @@ function parseEnabledModulesValue(raw: string): EnabledModulesPayload | null {
  *         en `enabled` y respetamos eso.
  */
 export async function getEnabledModulesFromDB(): Promise<string[]> {
+    let tenantId: string | null = null;
     let saved: EnabledModulesPayload | null = null;
     try {
-        const { tenantId } = await resolveTenantContext();
+        const ctx = await resolveTenantContext();
+        tenantId = ctx.tenantId;
         const db = withTenant(tenantId);
         const config = await db.systemConfig.findFirst({
             where: { key: ENABLED_MODULES_KEY },
@@ -98,24 +104,40 @@ export async function getEnabledModulesFromDB(): Promise<string[]> {
         // Si falla la BD (primera vez, tabla vacía, etc.), usar defaults
     }
 
+    let ids: string[];
     if (!saved) {
         // Sin config guardada: env var o defaults del registry.
         const envModules = process.env.NEXT_PUBLIC_ENABLED_MODULES;
         if (envModules) {
-            return envModules.split(',').map((m) => m.trim()).filter(Boolean);
+            ids = envModules.split(',').map((m) => m.trim()).filter(Boolean);
+        } else {
+            ids = MODULE_REGISTRY.filter((m) => m.enabledByDefault).map((m) => m.id);
         }
-        return MODULE_REGISTRY.filter((m) => m.enabledByDefault).map((m) => m.id);
+    } else {
+        // Hay config guardada. Auto-incluir módulos NUEVOS con enabledByDefault.
+        const knownSet = new Set(saved.known);
+        const enabledSet = new Set(saved.enabled);
+        for (const m of MODULE_REGISTRY) {
+            if (!knownSet.has(m.id) && m.enabledByDefault) {
+                enabledSet.add(m.id);
+            }
+        }
+        ids = Array.from(enabledSet);
     }
 
-    // Hay config guardada. Auto-incluir módulos NUEVOS con enabledByDefault.
-    const knownSet = new Set(saved.known);
-    const enabledSet = new Set(saved.enabled);
-    for (const m of MODULE_REGISTRY) {
-        if (!knownSet.has(m.id) && m.enabledByDefault) {
-            enabledSet.add(m.id);
+    // Gate por feature flags del tenant: módulos con `requiresFeatureFlag`
+    // (ej. delivery → deliveryOps) solo quedan visibles si el flag está ON.
+    // Conservador: si no hay tenantId o falla la lectura de flags, ocultamos
+    // los módulos gated (no exponer features no confirmadas para el tenant).
+    let flags: Record<string, boolean> = {};
+    if (tenantId) {
+        try {
+            flags = await getTenantFeatureFlags(tenantId);
+        } catch {
+            flags = {};
         }
     }
-    return Array.from(enabledSet);
+    return filterModuleIdsByFeatureFlags(ids, flags);
 }
 
 /**

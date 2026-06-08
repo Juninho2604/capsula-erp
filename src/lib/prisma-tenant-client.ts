@@ -41,6 +41,15 @@ const TENANT_MODELS = new Set<string>([
     'CashRegister',
     'Customer',
     'DailyInventory',
+    // Módulo Gestión de Deliverys (aislado). DeliveryOrderEvent NO va acá:
+    // no tiene tenantId, se aísla por FK a DeliveryOrder (igual que
+    // SalesOrderPayment).
+    'BranchDeliveryConfig',
+    'DeliveryDriver',
+    'DeliveryOrder',
+    'DeliveryTenantConfig',
+    'DeliveryWebhookOutbox',
+    'DeliveryZone',
     'ExchangeRate',
     'Expense',
     'ExpenseCategory',
@@ -54,11 +63,13 @@ const TENANT_MODELS = new Set<string>([
     'InventoryItem',
     'InventoryLoan',
     'InvoiceCounter',
+    'ItemAvailability',
     'MenuCategory',
     'MenuItem',
     'MenuItemModifierGroup',
     'MenuModifier',
     'MenuModifierGroup',
+    'ManagerNote',
     'OpenTab',
     'PrintJob',
     'ProcessingTemplateOutput',
@@ -72,6 +83,7 @@ const TENANT_MODELS = new Set<string>([
     'Requisition',
     'RequisitionItem',
     'Reservation',
+    'RoutingRule',
     'SalesOrder',
     'SalesOrderItem',
     // NOTA: SalesOrderPayment NO está aquí — el modelo en schema.prisma

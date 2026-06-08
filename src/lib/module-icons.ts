@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     BarChart3, TrendingUp, CalendarDays, Package, ClipboardCheck, Shield, ArrowLeftRight,
     History, Coins, ChefHat, Factory, DollarSign, Target, ShoppingCart, Beef, UserCheck,
-    Palette, Wand2, UtensilsCrossed, Settings2, Salad, Smartphone, Bike, Monitor,
+    Palette, Wand2, UtensilsCrossed, Settings2, Salad, Smartphone, Bike, Truck, Monitor,
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
     Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag, UserCircle2,
@@ -62,6 +62,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     queue:             ListChecks,
     intercompany:      Building2,
     reportes:          FileSpreadsheet,
+    delivery:          Truck,
 
     // ADMINISTRACIÓN
     users:             Users,
