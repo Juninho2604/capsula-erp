@@ -8,6 +8,7 @@ import {
     updateDeliveryDriverAction,
     type DeliveryDriverRow,
 } from '@/app/actions/delivery.actions';
+import { DeliveryNav } from '../_components/delivery-nav';
 
 const STATUS_OPTS = [
     { value: 'AVAILABLE', label: 'Disponible' },
@@ -56,6 +57,7 @@ export function MotorizadosView({
 
     return (
         <div className="p-4 sm:p-6 space-y-5">
+            <DeliveryNav />
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <span className="h-10 w-10 rounded-2xl bg-capsula-navy-deep text-capsula-cream flex items-center justify-center">

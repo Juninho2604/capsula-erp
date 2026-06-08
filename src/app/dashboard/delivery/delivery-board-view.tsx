@@ -27,6 +27,7 @@ import {
     type DeliveryOrderRow,
     type DeliveryDriverRow,
 } from '@/app/actions/delivery.actions';
+import { DeliveryNav } from './_components/delivery-nav';
 
 // Columnas del flujo feliz (CANCELADA se muestra como contador aparte).
 const FLOW: { state: DeliveryState; label: string }[] = [
@@ -160,6 +161,7 @@ export function DeliveryBoardView({
 
     return (
         <div className="p-4 sm:p-6 space-y-5">
+            <DeliveryNav />
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">

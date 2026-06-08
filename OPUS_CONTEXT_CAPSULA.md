@@ -9722,3 +9722,38 @@ Falta agendar el cron `deliver-webhooks` (crontab del VPS, junto al de outbox).
 
 **Pendiente Fase 4/4.5:** agotados, tasa/config desde UI, clientes, notas del
 gerente + reglas de ruteo, permiso por sede.
+
+### §55.9 Fase 4/4.5 — Instrucciones dinámicas del gerente + config + clientes (2026-06-08)
+
+Mata las variables manuales del prompt: `GET /contexto` ahora devuelve datos
+reales de la BD (antes arrays vacíos).
+
+**Schema (migración `20260608160000_add_delivery_ops_phase4`, SAFE):**
+- `ItemAvailability` (agotados por sede, label-based, unique [branchId,itemLabel]).
+- `ManagerNote` (notas: alcance global/sede, on/off, `expiresAt`).
+- `RoutingRule` (producto→sede, priority, isActive). +3 a `TENANT_MODELS` → **61**.
+
+**Backend (`delivery-config.actions.ts`, guard compartido `lib/delivery/guard.ts`):**
+- CRUD de agotados, notas, reglas; get/update de `DeliveryTenantConfig`
+  (prefijo, validationMode, webhookUrl); clientes (agregación de DeliveryOrder
+  por teléfono — lectura, sin tocar stats POS del `Customer`).
+- **`GET /contexto`** llena `agotados` (available=false), `notas_gerente`
+  (activas + no vencidas) y `reglas_ruteo` (activas).
+- **`POST /ordenes`** aplica `RoutingRule` en `assignBranch` (precedencia
+  ruteo→GPS→zona→fallback ya soportada desde Fase 1).
+
+**Dos capas (§9 del spec):** estructurada (agotados + reglas, determinística) y
+texto libre (notas, orientativas — la guarda "nunca anulan las reglas de oro"
+vive en el prompt del bot, no en KPSULA).
+
+**UI (Minimal Navy):** nav compartido `_components/delivery-nav.tsx` entre
+submódulos. Páginas nuevas: `/agotados`, `/instrucciones` (notas + reglas),
+`/config`, `/clientes`.
+
+**Permiso por sede:** opción A (sin scoping por sede) — cualquier rol con acceso
+a `delivery` opera todas las sedes. Documentado en `guard.ts`. Opción B (scope
+por sede) sigue pendiente.
+
+**Pendiente del módulo:** submódulo **Sedes** UI (`BranchDeliveryConfig` +
+`DeliveryZone` CRUD con lat/lon/impresora/grupo WA/gerente) — por ahora las
+sedes se siembran por SQL/script. Es lo único grande que falta para self-serve.

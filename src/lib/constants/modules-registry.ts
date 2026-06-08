@@ -452,6 +452,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       '/dashboard/delivery/sedes',
       '/dashboard/delivery/motorizados',
       '/dashboard/delivery/agotados',
+      '/dashboard/delivery/instrucciones',
       '/dashboard/delivery/clientes',
       '/dashboard/delivery/config',
     ],
