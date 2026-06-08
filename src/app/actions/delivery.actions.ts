@@ -18,7 +18,49 @@ import {
     isDeliveryState,
     type DeliveryState,
 } from '@/lib/delivery/state-machine';
+import { applyDeliveryTransition, type TransitionOrder } from '@/lib/delivery/transition';
 import { revalidatePath } from 'next/cache';
+
+// Campos de la orden necesarios para transicionar + imprimir la comanda.
+const ORDER_SELECT = {
+    id: true,
+    status: true,
+    branchId: true,
+    correlative: true,
+    customerName: true,
+    customerPhone: true,
+    deliveryAddress: true,
+    deliveryRef: true,
+    comanda: true,
+    createdAt: true,
+} as const;
+
+type LoadedOrder = {
+    id: string;
+    status: string;
+    branchId: string | null;
+    correlative: string;
+    customerName: string | null;
+    customerPhone: string | null;
+    deliveryAddress: string | null;
+    deliveryRef: string | null;
+    comanda: unknown;
+    createdAt: Date;
+};
+
+function toTransitionOrder(o: LoadedOrder): TransitionOrder {
+    return {
+        id: o.id,
+        branchId: o.branchId,
+        correlative: o.correlative,
+        customerName: o.customerName,
+        customerPhone: o.customerPhone,
+        deliveryAddress: o.deliveryAddress,
+        deliveryRef: o.deliveryRef,
+        comanda: o.comanda,
+        createdAt: o.createdAt.toISOString(),
+    };
+}
 
 const DELIVERY_ROLES = MODULE_ROLE_ACCESS['delivery'] ?? [];
 
@@ -35,6 +77,7 @@ export interface DeliveryOrderRow {
     totalUsd: number | null;
     totalBs: number | null;
     paymentProofPath: string | null;
+    paymentProofType: string | null;
     createdAt: string;
 }
 
@@ -96,6 +139,7 @@ export async function listDeliveryOrdersAction(opts?: {
             totalUsd: o.totalUsd,
             totalBs: o.totalBs,
             paymentProofPath: o.paymentProofPath,
+            paymentProofType: o.paymentProofType,
             createdAt: o.createdAt.toISOString(),
         })),
         branches: configs
@@ -128,10 +172,10 @@ export async function transitionDeliveryOrderAction(
     }
 
     const db = withTenant(g.tenantId);
-    const order = await db.deliveryOrder.findFirst({
+    const order = (await db.deliveryOrder.findFirst({
         where: { id: orderId },
-        select: { id: true, status: true },
-    });
+        select: ORDER_SELECT,
+    })) as LoadedOrder | null;
     if (!order) return { success: false, message: 'Orden no encontrada.' };
 
     const from = order.status;
@@ -143,20 +187,55 @@ export async function transitionDeliveryOrderAction(
     }
 
     const session = await getSession();
-    await db.deliveryOrder.update({
-        where: { id: order.id },
-        data: {
-            status: to,
-            ...(to === 'CANCELADA' ? { cancelReason: cancelReason!.trim() } : {}),
-            events: {
-                create: {
-                    fromState: from,
-                    toState: to,
-                    userId: session?.id ?? null,
-                    note: to === 'CANCELADA' ? cancelReason!.trim() : null,
-                },
-            },
-        },
+    await applyDeliveryTransition({
+        tenantId: g.tenantId,
+        order: toTransitionOrder(order),
+        from: from as DeliveryState,
+        to,
+        userId: session?.id ?? null,
+        cancelReason: to === 'CANCELADA' ? cancelReason!.trim() : null,
+    });
+
+    revalidatePath('/dashboard/delivery');
+    return { success: true };
+}
+
+/**
+ * Validación de pago 1-clic (PAGO_POR_VALIDAR → EN_COCINA). Atajo semántico
+ * de `transitionDeliveryOrderAction` que deja claro el intent y, vía el helper
+ * central, encola la impresión de la comanda en la sede asignada.
+ *
+ * Es la barrera antifraude: el supervisor confirma a ojo el comprobante antes
+ * de mandar a cocina (el bot no puede verificar fotos).
+ */
+export async function validateDeliveryPaymentAction(
+    orderId: string,
+): Promise<{ success: boolean; message?: string }> {
+    const g = await guard();
+    if (!g.ok) return { success: false, message: g.message };
+
+    const db = withTenant(g.tenantId);
+    const order = (await db.deliveryOrder.findFirst({
+        where: { id: orderId },
+        select: ORDER_SELECT,
+    })) as LoadedOrder | null;
+    if (!order) return { success: false, message: 'Orden no encontrada.' };
+
+    if (order.status !== 'PAGO_POR_VALIDAR') {
+        return {
+            success: false,
+            message: `Solo se valida una orden en "pago por validar" (actual: ${order.status}).`,
+        };
+    }
+
+    const session = await getSession();
+    await applyDeliveryTransition({
+        tenantId: g.tenantId,
+        order: toTransitionOrder(order),
+        from: 'PAGO_POR_VALIDAR',
+        to: 'EN_COCINA',
+        userId: session?.id ?? null,
+        note: 'pago validado',
     });
 
     revalidatePath('/dashboard/delivery');

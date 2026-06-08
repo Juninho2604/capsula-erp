@@ -11,6 +11,8 @@ import {
     Clock,
     RefreshCw,
     Inbox,
+    Check,
+    Receipt,
 } from 'lucide-react';
 import {
     nextStates,
@@ -19,6 +21,7 @@ import {
 import {
     listDeliveryOrdersAction,
     transitionDeliveryOrderAction,
+    validateDeliveryPaymentAction,
     type DeliveryOrderRow,
 } from '@/app/actions/delivery.actions';
 
@@ -113,6 +116,21 @@ export function DeliveryBoardView({
         });
     }
 
+    function validate(orderId: string) {
+        setError(null);
+        startTransition(async () => {
+            const res = await validateDeliveryPaymentAction(orderId);
+            if (!res.success) {
+                setError(res.message ?? 'No se pudo validar el pago.');
+                return;
+            }
+            setOrders(prev =>
+                prev.map(o => (o.id === orderId ? { ...o, status: 'EN_COCINA' } : o)),
+            );
+            router.refresh();
+        });
+    }
+
     return (
         <div className="p-4 sm:p-6 space-y-5">
             {/* Header */}
@@ -191,6 +209,7 @@ export function DeliveryBoardView({
                                         order={o}
                                         pending={pending}
                                         onAdvance={(to) => transition(o.id, to)}
+                                        onValidate={() => validate(o.id)}
                                         onCancel={(reason) => transition(o.id, 'CANCELADA', reason)}
                                     />
                                 ))
@@ -203,19 +222,29 @@ export function DeliveryBoardView({
     );
 }
 
+const PROOF_LABEL: Record<string, string> = {
+    billetes: 'billetes',
+    pago_movil: 'pago móvil',
+    transferencia: 'transferencia',
+};
+
 function OrderCard({
     order,
     pending,
     onAdvance,
+    onValidate,
     onCancel,
 }: {
     order: DeliveryOrderRow;
     pending: boolean;
     onAdvance: (to: DeliveryState) => void;
+    onValidate: () => void;
     onCancel: (reason: string) => void;
 }) {
     const succ = nextStates(order.status as DeliveryState);
+    const terminal = succ.length === 0;
     const advance = succ.find(s => s !== 'CANCELADA') as DeliveryState | undefined;
+    const isValidation = order.status === 'PAGO_POR_VALIDAR';
 
     function handleCancel() {
         const reason = window.prompt('Motivo de la cancelación:');
@@ -268,25 +297,51 @@ function OrderCard({
                 </p>
             )}
 
-            <div className="flex gap-2 pt-1">
-                {advance && (
-                    <button
-                        onClick={() => onAdvance(advance)}
-                        disabled={pending}
-                        className="pos-btn flex-1 py-2 text-sm inline-flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                        {STATE_LABEL[advance]} <ChevronRight className="h-4 w-4" />
-                    </button>
-                )}
-                <button
-                    onClick={handleCancel}
-                    disabled={pending}
-                    className="pos-btn-danger py-2 px-3 text-sm inline-flex items-center justify-center disabled:opacity-50"
-                    title="Anular orden"
+            {order.paymentProofPath && (
+                <a
+                    href={order.paymentProofPath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-capsula-coral inline-flex items-center gap-1 hover:underline"
                 >
-                    <Ban className="h-4 w-4" />
-                </button>
-            </div>
+                    <Receipt className="h-3 w-3" />
+                    Ver comprobante
+                    {order.paymentProofType
+                        ? ` · ${PROOF_LABEL[order.paymentProofType] ?? order.paymentProofType}`
+                        : ''}
+                </a>
+            )}
+
+            {!terminal && (
+                <div className="flex gap-2 pt-1">
+                    {isValidation ? (
+                        <button
+                            onClick={onValidate}
+                            disabled={pending}
+                            className="pos-btn flex-1 py-2 text-sm inline-flex items-center justify-center gap-1 disabled:opacity-50"
+                            title="Validar pago y enviar a cocina"
+                        >
+                            <Check className="h-4 w-4" /> Validar pago
+                        </button>
+                    ) : advance ? (
+                        <button
+                            onClick={() => onAdvance(advance)}
+                            disabled={pending}
+                            className="pos-btn flex-1 py-2 text-sm inline-flex items-center justify-center gap-1 disabled:opacity-50"
+                        >
+                            {STATE_LABEL[advance]} <ChevronRight className="h-4 w-4" />
+                        </button>
+                    ) : null}
+                    <button
+                        onClick={handleCancel}
+                        disabled={pending}
+                        className="pos-btn-danger py-2 px-3 text-sm inline-flex items-center justify-center disabled:opacity-50"
+                        title="Anular orden"
+                    >
+                        <Ban className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

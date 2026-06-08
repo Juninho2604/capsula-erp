@@ -14,6 +14,7 @@
 export interface ComandaItem {
     name: string;
     qty: number;
+    modifiers: string[];
 }
 
 type Json = unknown;
@@ -56,10 +57,36 @@ function rawItems(comanda: Json): Record<string, unknown>[] {
     return [];
 }
 
+/** Extrae una lista de strings de modificadores, tolerando array de strings
+ *  o array de objetos `{name|nombre|label}`. */
+function pickStringArray(rec: Record<string, unknown>, keys: string[]): string[] {
+    for (const k of keys) {
+        const val = rec[k];
+        if (Array.isArray(val)) {
+            return val
+                .map(v => {
+                    if (typeof v === 'string') return v.trim();
+                    const r = asRecord(v);
+                    return r ? pickString(r, ['name', 'nombre', 'label', 'opcion']) : '';
+                })
+                .filter(Boolean);
+        }
+    }
+    return [];
+}
+
 export function parseComandaItems(comanda: Json): ComandaItem[] {
     return rawItems(comanda).map(it => ({
         name: pickString(it, ['name', 'nombre', 'producto', 'item', 'title']),
         qty: pickNumber(it, ['qty', 'cantidad', 'quantity', 'cant'], 1),
+        modifiers: pickStringArray(it, [
+            'modifiers',
+            'modificadores',
+            'personalizaciones',
+            'opciones',
+            'extras',
+            'toppings',
+        ]),
     }));
 }
 

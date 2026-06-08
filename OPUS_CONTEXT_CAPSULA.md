@@ -9635,3 +9635,44 @@ tonos sutiles autorizados por estado, `tabular-nums`. Server action
   El Hatillo, San Luis, Los Palos Grandes) → sin coords la asignación por GPS
   no opera (solo zona/ruteo).
 - **Env**: `DELIVERY_API_KEYS` (por tenant) y, en Fase 3, `DELIVERY_WEBHOOK_SECRET`.
+
+### §55.7 Fase 2 — Comprobantes + validación 1-clic + impresión (2026-06-08)
+
+Reusa el **Print Agent existente** (§39) en vez de la "Opción A" (kiosk Chrome):
+la comanda de delivery se encola como `PrintJob` `type: 'KITCHEN'` (el renderer
+ya soporta `orderTypeLabel: 'DELIVERY'` + dirección) → **no hace falta nuevo
+valor de enum** (evita `ALTER TYPE`, §44).
+
+**Piezas (todas con tests puros donde aplica):**
+- `src/lib/delivery/print.ts` — `buildDeliveryKitchenPayload(order)`: arma el
+  payload KITCHEN (correlativo como `orderNumber`, label DELIVERY, ítems con
+  modificadores; dirección+referencia+teléfono van juntos en `customerAddress`
+  porque KitchenPayload no tiene campos aparte). PURO.
+- `comanda.ts` — ahora extrae `modifiers[]` por ítem (array de strings u objetos).
+- `src/lib/delivery/enqueue-print.ts` — server-only, best-effort (no lanza):
+  crea el `PrintJob` con `station = BranchDeliveryConfig.printerStation` de la
+  sede. Funciona con o sin sesión (`enqueuedById` opcional → n8n lo deja null).
+- `src/lib/delivery/transition.ts` — `applyDeliveryTransition()`: centraliza
+  update de estado + `DeliveryOrderEvent` + **side-effect: al entrar a
+  EN_COCINA encola la impresión**. Lo usan los 3 caminos (UI, PATCH n8n,
+  auto-validación). Al validar pago (PAGO_POR_VALIDAR→EN_COCINA) deja traza en
+  `paymentValidatedById/At`.
+
+**API nueva (auth máquina X-API-Key + chequeo de flag):**
+- `POST /ordenes/{id}/comprobante` — multipart `file` + `tipo`
+  (billetes|pago_movil|transferencia). Guarda el archivo tenant-scoped en
+  `storage/uploads/<tenantId>/delivery-comprobantes/` (servido por `/api/files`,
+  que valida sesión). Transiciona ESPERANDO_PAGO→PAGO_POR_VALIDAR. Si el tenant
+  está en `validationMode=AUTO`, auto-valida →EN_COCINA + imprime. Default
+  MANUAL (antifraude: el bot no verifica fotos).
+- `PATCH /ordenes/{id}` — `{ estado, cancel_reason? }` con validación de
+  transiciones (para n8n). Al pasar a EN_COCINA imprime vía el helper central.
+
+**UI:** el tablero ahora muestra "Validar pago" (1-clic, verde) en las tarjetas
+PAGO_POR_VALIDAR (llama `validateDeliveryPaymentAction` → EN_COCINA + imprime) y
+un link "Ver comprobante" cuando hay archivo adjunto. Las tarjetas en estado
+terminal (ENTREGADA) no muestran acciones.
+
+**Pendiente Fase 3:** motorizados + `POST /ordenes/{id}/motorizado` + webhooks
+salientes HMAC (outbox + cron) + notificación al cliente. Para multi-sede real:
+agregar filtro `?station=` a `GET /api/print-agent/jobs` (1 agent por sede).
