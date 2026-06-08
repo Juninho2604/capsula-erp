@@ -9529,3 +9529,109 @@ Opciones para PR separado:
 - **C.** Aceptar riesgo, documentar.
 
 Recomendación: **B**, balance entre superficie y costo.
+
+---
+
+## §55 Módulo Gestión de Deliverys — Fase 1 (2026-06-08)
+
+Módulo nuevo en sección **Administración**, gated por feature flag `deliveryOps`.
+Operación de delivery orquestada por un bot externo (n8n + IA): KPSULA es la
+fuente determinística (correlativos, sede, estados, impresión), la IA solo
+conversa y produce la comanda JSON. Plan completo y fases en
+`docs/DELIVERY_OPS_PLAN.md`.
+
+**Decisión maestra: MÓDULO AISLADO.** `DeliveryOrder` es una entidad propia,
+separada de `SalesOrder`. NO entra al Report Z, NI al historial de ventas
+(§20), NI descarga inventario. La contabilidad del delivery se lleva aparte
+(decisión futura). `ENTREGADA` es un cierre puramente logístico.
+
+### 55.1 Modelos nuevos (Fase 1) — migración `20260608120000_add_delivery_ops_phase1`
+
+Migración SAFE en producción viva (§44): solo `CREATE TABLE`. Hand-authored con
+guards `IF NOT EXISTS` + FKs en bloque `DO $$` (estilo del repo).
+
+- `DeliveryTenantConfig` (1:1 Tenant): `correlativePrefix` (default `PP`),
+  `nextCorrelative` (contador atómico), `validationMode` (MANUAL|AUTO),
+  `webhookUrl`, `schedule`.
+- `BranchDeliveryConfig` (1:1 Branch): `lat/lon`, `printerStation`,
+  `whatsappGroup`, `managerUserId` (scalar, sin FK a User). No se engorda
+  `Branch` (lo comparte el POS restaurante de todos los tenants).
+- `DeliveryZone` (zonas de cobertura geográficas por sede). NO reusa
+  `ServiceZone` (esa es DINING/BAR/VIP físico).
+- `DeliveryOrder` (entidad central): correlativo único por tenant, `branchId`,
+  `channel/chatId`, datos de cliente/entrega, `comanda` (Json), `status`
+  (máquina de estados), `itemsHash` (idempotencia), campos de comprobante
+  (Fase 2) y motorizado (Fase 3, `driverId` scalar por ahora). Link
+  best-effort a `Customer` SIN tocar sus stats POS.
+- `DeliveryOrderEvent`: auditoría de transiciones. **Sin `tenantId`** — se
+  aísla por FK a `DeliveryOrder` (mismo patrón que `SalesOrderPayment`). Por
+  eso NO está en `TENANT_MODELS`.
+
+Los 4 modelos con `tenantId` se sumaron a `TENANT_MODELS`
+(`src/lib/prisma-tenant-client.ts`) → total **56** (test actualizado).
+
+### 55.2 Máquina de estados (`src/lib/delivery/state-machine.ts`, función pura)
+
+```
+ESPERANDO_PAGO → PAGO_POR_VALIDAR → EN_COCINA → LISTA → EN_CAMINO → ENTREGADA
+                                              (CANCELADA: desde cualquier no-terminal)
+```
+
+`canTransition(from,to)` valida: avanza una etapa a la vez, no retrocede, no
+no-ops, CANCELADA desde cualquier estado no terminal, nada desde terminales.
+`STATE_WEBHOOK_EVENT` mapea estados → eventos de webhook (Fase 3).
+
+### 55.3 API REST para n8n — `/api/v1/delivery/*`
+
+Namespace versionado nuevo. Auth: header `X-API-Key` → tenantId resuelto
+contra env `DELIVERY_API_KEYS` (`{tenantId: key}`, compare en tiempo constante,
+clon de `print-agent-auth.ts`). Todos los endpoints chequean además el flag
+`deliveryOps` (403 si off).
+
+- `GET /contexto`: devuelve `{ sedes (zonas+coords), tasa_bs, agotados:[],
+  notas_gerente:[], reglas_ruteo:[] }`. Reemplaza variables manuales del
+  prompt. Fase 1 llena sedes + tasa (de `ExchangeRate`); el resto vacío hasta
+  Fase 4/4.5. Shaper puro en `src/lib/delivery/context.ts`.
+- `POST /ordenes`: crea la orden. Asigna **sede** (`assign-branch.ts`,
+  precedencia ruteo → GPS haversine → zona por texto → fallback) y
+  **correlativo atómico** (`correlative.ts`, increment en transacción).
+  **Idempotencia** (`idempotency.ts`): hash de canal+chatId+firma de comanda;
+  mismo hash < 10 min → devuelve la orden existente (200) en vez de duplicar.
+  Parsing defensivo de la comanda (es/en) en `comanda.ts`.
+
+### 55.4 Feature flag + gate de visibilidad (plomería nueva reutilizable)
+
+- Flag `deliveryOps` agregado a `FEATURE_FLAGS` (`src/lib/feature-flags.ts`).
+- Nuevo campo `requiresFeatureFlag?` en `ModuleDefinition` + helper puro
+  `filterModuleIdsByFeatureFlags()` (registry). Cableado en
+  `getEnabledModulesFromDB()`: módulos con `requiresFeatureFlag` solo quedan
+  visibles si el flag del tenant está ON. **Sirve para futuros módulos
+  flag-gated**, no solo delivery.
+- El módulo `delivery` es `enabledByDefault:true` PERO gated → visible solo si
+  el OWNER prende el flag (que arranca OFF para todos).
+- Defensa en profundidad: la página `/dashboard/delivery` revalida sesión +
+  rol + flag server-side y redirige si está off.
+
+### 55.5 UI — tablero (Minimal Navy)
+
+`/dashboard/delivery`: kanban por estado (6 columnas del flujo feliz + contador
+de canceladas), filtro por sede, tarjetas con correlativo/cliente/dirección/
+total/tiempo, botón "avanzar" (siguiente estado válido) y "anular" (con motivo).
+Iconos lucide (`Truck` para el módulo, distinto de `pos_delivery`=`Bike`),
+tonos sutiles autorizados por estado, `tabular-nums`. Server action
+`delivery.actions.ts` (lectura + transición con validación).
+
+### 55.6 Pendiente / siguientes fases
+
+- **Fase 2**: comprobantes (upload máquina, n8n sin sesión) + validación
+  1-clic + impresión vía Print Agent existente (encolar `PrintJob`, +filtro
+  `?station=` en `/api/print-agent/jobs`).
+- **Fase 3**: motorizados + webhooks salientes HMAC (outbox + cron) +
+  notificación al cliente.
+- **Fase 4/4.5**: agotados, config/tasa desde UI, clientes, notas del gerente +
+  reglas de ruteo, permiso por sede (el RBAC actual es rol+módulo+tenant, NO
+  por sede — gap pendiente).
+- **Seed Poke Pok**: faltan lat/lon + zonas reales de las 4 sedes (Santa Fe,
+  El Hatillo, San Luis, Los Palos Grandes) → sin coords la asignación por GPS
+  no opera (solo zona/ruteo).
+- **Env**: `DELIVERY_API_KEYS` (por tenant) y, en Fase 3, `DELIVERY_WEBHOOK_SECRET`.

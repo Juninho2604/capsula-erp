@@ -41,6 +41,13 @@ const TENANT_MODELS = new Set<string>([
     'CashRegister',
     'Customer',
     'DailyInventory',
+    // Módulo Gestión de Deliverys (aislado). DeliveryOrderEvent NO va acá:
+    // no tiene tenantId, se aísla por FK a DeliveryOrder (igual que
+    // SalesOrderPayment).
+    'BranchDeliveryConfig',
+    'DeliveryOrder',
+    'DeliveryTenantConfig',
+    'DeliveryZone',
     'ExchangeRate',
     'Expense',
     'ExpenseCategory',
