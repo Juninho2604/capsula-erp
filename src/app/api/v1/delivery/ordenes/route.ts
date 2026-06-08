@@ -96,12 +96,13 @@ export async function POST(req: Request) {
     const lon = body.lon ?? meta.lon;
     const address = body.address ?? meta.deliveryAddress;
 
-    const [configs, zones] = await Promise.all([
+    const [configs, zones, rules] = await Promise.all([
         db.branchDeliveryConfig.findMany({
             where: { isActive: true },
             include: { branch: { select: { id: true, name: true, isActive: true } } },
         }),
         db.deliveryZone.findMany({ where: { isActive: true } }),
+        db.routingRule.findMany({ where: { isActive: true } }),
     ]);
     const zonesByBranch = new Map<string, string[]>();
     for (const z of zones) {
@@ -126,7 +127,12 @@ export async function POST(req: Request) {
         lat,
         lon,
         branches,
-        // routingRules: Fase 4.5 (todavía no hay modelo RoutingRule).
+        routingRules: rules.map(r => ({
+            matchProduct: r.matchProduct,
+            branchId: r.branchId,
+            priority: r.priority,
+            isActive: r.isActive,
+        })),
         fallbackBranchId: branches.length === 1 ? branches[0].id : null,
     });
 

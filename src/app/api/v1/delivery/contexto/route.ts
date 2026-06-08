@@ -29,14 +29,23 @@ export async function GET(req: Request) {
     }
 
     const db = withTenant(auth.tenantId);
+    const now = new Date();
 
-    const [configs, zones, rate] = await Promise.all([
+    const [configs, zones, rate, agotados, notas, reglas] = await Promise.all([
         db.branchDeliveryConfig.findMany({
             where: { isActive: true },
             include: { branch: { select: { id: true, name: true, isActive: true } } },
         }),
         db.deliveryZone.findMany({ where: { isActive: true } }),
         db.exchangeRate.findFirst({ orderBy: { effectiveDate: 'desc' } }),
+        // Agotados = ítems marcados NO disponibles por sede.
+        db.itemAvailability.findMany({ where: { available: false } }),
+        // Notas activas y no vencidas.
+        db.managerNote.findMany({
+            where: { isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+            orderBy: { createdAt: 'desc' },
+        }),
+        db.routingRule.findMany({ where: { isActive: true }, orderBy: { priority: 'desc' } }),
     ]);
 
     const zonesByBranch = new Map<string, string[]>();
@@ -59,6 +68,16 @@ export async function GET(req: Request) {
     const context = buildDeliveryContext({
         sedes,
         tasaBs: rate?.rate ?? null,
+        agotados: agotados.map(a => ({ sede_id: a.branchId, item: a.itemLabel })),
+        notas: notas.map(n => ({
+            sede_id: n.branchId,
+            texto: n.text,
+            vigencia: n.expiresAt ? n.expiresAt.toISOString().slice(0, 10) : null,
+        })),
+        reglasRuteo: reglas.map(r => ({
+            si_incluye_producto: r.matchProduct,
+            enviar_a_sede_id: r.branchId,
+        })),
     });
 
     return NextResponse.json(context);

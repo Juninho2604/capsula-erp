@@ -118,6 +118,9 @@ model Tenant {
   deliveryTenantConfig   DeliveryTenantConfig?
   deliveryDrivers        DeliveryDriver[]
   deliveryWebhookOutbox  DeliveryWebhookOutbox[]
+  itemAvailabilities     ItemAvailability[]
+  managerNotes           ManagerNote[]
+  routingRules           RoutingRule[]
 }
 
 model User {
@@ -1947,10 +1950,13 @@ model Branch {
   waiters         Waiter[]
 
   // Módulo Gestión de Deliverys (módulo aislado, feature flag deliveryOps).
-  deliveryConfig  BranchDeliveryConfig?
-  deliveryZones   DeliveryZone[]
-  deliveryOrders  DeliveryOrder[]
-  deliveryDrivers DeliveryDriver[]
+  deliveryConfig     BranchDeliveryConfig?
+  deliveryZones      DeliveryZone[]
+  deliveryOrders     DeliveryOrder[]
+  deliveryDrivers    DeliveryDriver[]
+  itemAvailabilities ItemAvailability[]
+  managerNotes       ManagerNote[]
+  routingRules       RoutingRule[]
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -3020,6 +3026,67 @@ model DeliveryWebhookOutbox {
   sentAt    DateTime?
 
   @@index([tenantId, status, createdAt])
+}
+
+/// Agotados / falta de stock por sede (capa estructurada, §9). El gerente
+/// marca un ítem (por etiqueta) como no disponible en su sede; alimenta
+/// GET /contexto para que el bot deje de ofrecerlo. Label-based (decoupled del
+/// menú) — coincide con el shape del contexto: { sede_id, item }.
+model ItemAvailability {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  itemLabel   String
+  available   Boolean  @default(true)
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, itemLabel])
+  @@index([tenantId, branchId, available])
+}
+
+/// Notas de texto libre del gerente (capa de texto libre, §9). Aditivas y
+/// orientativas: se inyectan en {NOTAS_GERENTE} del prompt. Alcance global
+/// (branchId null) o por sede; con on/off y vigencia (expiresAt) para que no
+/// queden instrucciones viejas activas.
+model ManagerNote {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  text        String
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+}
+
+/// Reglas de ruteo producto → sede (capa estructurada, §9). Si la comanda
+/// incluye `matchProduct`, la orden nace en `branchId` (se aplica en
+/// POST /ordenes, NO en la IA). Mayor prioridad gana.
+model RoutingRule {
+  id           String  @id @default(cuid())
+  tenantId     String
+  tenant       Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matchProduct String
+  branchId     String
+  branch       Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  priority     Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive])
 }
 
 /// Auditoría de transiciones de estado de una orden. Sin tenantId: aísla vía

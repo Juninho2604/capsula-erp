@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 58 modelos esperados (+6 del módulo delivery, Fases 1 y 3)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(58);
+    it('Contiene los 61 modelos esperados (+9 del módulo delivery, Fases 1/3/4)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(61);
     });
 
     it('Incluye modelos críticos del POS', () => {
@@ -171,6 +171,9 @@ describe('TENANT_AWARE_MODELS', () => {
         expect(TENANT_AWARE_MODELS).toContain('DeliveryTenantConfig');
         expect(TENANT_AWARE_MODELS).toContain('DeliveryDriver');
         expect(TENANT_AWARE_MODELS).toContain('DeliveryWebhookOutbox');
+        expect(TENANT_AWARE_MODELS).toContain('ItemAvailability');
+        expect(TENANT_AWARE_MODELS).toContain('ManagerNote');
+        expect(TENANT_AWARE_MODELS).toContain('RoutingRule');
         expect(TENANT_AWARE_MODELS).not.toContain('DeliveryOrderEvent');
     });
 });

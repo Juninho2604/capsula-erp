@@ -9,16 +9,14 @@
  */
 
 import { getSession } from '@/lib/auth';
-import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { withTenant } from '@/lib/prisma-tenant-client';
-import { tenantFeatureEnabled } from '@/lib/feature-flags';
-import { MODULE_ROLE_ACCESS } from '@/lib/constants/modules-registry';
 import {
     canTransition,
     isDeliveryState,
     type DeliveryState,
 } from '@/lib/delivery/state-machine';
 import { applyDeliveryTransition, type TransitionOrder } from '@/lib/delivery/transition';
+import { deliveryGuard } from '@/lib/delivery/guard';
 import { revalidatePath } from 'next/cache';
 
 // Campos de la orden necesarios para transicionar + imprimir la comanda.
@@ -62,8 +60,6 @@ function toTransitionOrder(o: LoadedOrder): TransitionOrder {
     };
 }
 
-const DELIVERY_ROLES = MODULE_ROLE_ACCESS['delivery'] ?? [];
-
 export interface DeliveryOrderRow {
     id: string;
     correlative: string;
@@ -100,20 +96,7 @@ interface ListResult {
     drivers: DeliveryDriverRow[];
 }
 
-async function guard(): Promise<
-    { ok: true; tenantId: string } | { ok: false; message: string }
-> {
-    const session = await getSession();
-    if (!session) return { ok: false, message: 'Sin sesión.' };
-    if (!DELIVERY_ROLES.includes(session.role)) {
-        return { ok: false, message: 'Sin permiso para el módulo de delivery.' };
-    }
-    const { tenantId } = await resolveTenantContext();
-    if (!(await tenantFeatureEnabled(tenantId, 'deliveryOps'))) {
-        return { ok: false, message: 'El módulo de delivery no está habilitado.' };
-    }
-    return { ok: true, tenantId };
-}
+const guard = deliveryGuard;
 
 export async function listDeliveryOrdersAction(opts?: {
     branchId?: string | null;
