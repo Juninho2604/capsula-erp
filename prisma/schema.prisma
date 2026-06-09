@@ -110,9 +110,10 @@ model Tenant {
   promotions           Promotion[]
   // Conteo físico semanal como entidad (§51.A)
   weeklyCounts         WeeklyCount[]
-  // Tesorería / Conciliación bancaria (Fase 0)
+  // Tesorería / Conciliación bancaria (Fase 0+)
   bankAccounts         BankAccount[]
   posTerminals         PosTerminal[]
+  bankReconciliations  BankReconciliation[]
 }
 
 model User {
@@ -1957,6 +1958,7 @@ model BankAccount {
   salesOrderPayments SalesOrderPayment[]
   expenses           Expense[]
   accountPayments    AccountPayment[]
+  reconciliations    BankReconciliation[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -1990,6 +1992,54 @@ model PosTerminal {
   @@index([tenantId])
   @@index([bankAccountId])
   @@index([posMethodKey])
+}
+
+/// Conciliación bancaria por cuenta y día (Fase 2).
+/// El lado "esperado" (entradas del POS + comisión) se deriva y se CONGELA al
+/// guardar; el "estado de cuenta" lo teclea el usuario. El diferencial revela
+/// si la comisión real coincide con la calculada. Montos en la moneda de la
+/// cuenta (Bs o $). Los campos BCV se llenan en Fase 3.
+model BankReconciliation {
+  id            String      @id @default(cuid())
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  date       DateTime // día conciliado (medianoche Caracas como UTC)
+  fiscalWeek String // etiqueta editable, ej "S5 ABRIL"
+
+  // Lado sistema (derivado, congelado al guardar)
+  expectedIn     Float @default(0) // ventas PDV/PM que entraron a la cuenta
+  commissionCalc Float @default(0) // comisión calculada por Kpsula
+
+  // Lado banco (tecleado)
+  statementIn    Float? // monto que el estado de cuenta dice que llegó (neto)
+  commissionStmt Float? // comisión según el banco (opcional)
+
+  // Resultado
+  differential Float  @default(0) // (esperado − estado) − comisión calculada
+  status       String @default("OPEN") // OPEN | RECONCILED | DISCREPANCY
+
+  // Pérdida BCV (Fase 3 — solo cuentas Bs)
+  rateAtSettle Float?
+  bcvLossUsd   Float?
+
+  // Gasto auto-generado por comisión + pérdida BCV (Fase 3)
+  postedExpenseId String?
+
+  notes          String?
+  reconciledById String? // id del usuario (sin FK, como otros campos del repo)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, bankAccountId, date])
+  @@index([tenantId])
+  @@index([bankAccountId])
+  @@index([date])
+  @@index([status])
 }
 
 // ============================================================================

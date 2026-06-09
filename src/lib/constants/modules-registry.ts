@@ -591,6 +591,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 585,
     tags: ['cuentas', 'bancos', 'tesorería', 'conciliación', 'terminales', 'pdv', 'comisiones'],
   },
+  {
+    id: 'conciliacion',
+    label: 'Conciliación',
+    description: 'Conciliación de cuentas: esperado del sistema vs estado de cuenta, con diferencial',
+    icon: '⚖️',
+    href: '/dashboard/conciliacion',
+    section: 'admin',
+    enabledByDefault: false,
+    sortOrder: 587,
+    tags: ['conciliación', 'bancos', 'tesorería', 'diferencial', 'estado de cuenta'],
+  },
 ];
 
 /**
@@ -660,6 +671,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   caja:          ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AUDITOR'],
   cuentas_pagar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  conciliacion: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
 };
 
 /**
