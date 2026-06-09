@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Landmark, Plus, Pencil, CreditCard, X as XIcon, Check, Wallet, Smartphone,
-  PowerOff, Info,
+  PowerOff, Info, Percent,
 } from 'lucide-react';
 import {
   createBankAccountAction, updateBankAccountAction,
   createPosTerminalAction, updatePosTerminalAction,
   type BankAccountData, type PosTerminalData,
 } from '@/app/actions/bank-account.actions';
+import { ComisionesReport } from './comisiones-report';
 
 const KIND_LABEL: Record<string, string> = { BANK: 'Banco', CASH: 'Efectivo', DIGITAL: 'Digital' };
 const POS_METHOD_OPTIONS = [
@@ -44,6 +45,7 @@ export function CuentasBancariasView({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const [tab, setTab] = useState<'cuentas' | 'comisiones'>('cuentas');
   const [accountModal, setAccountModal] = useState<{ open: boolean; edit?: BankAccountData }>({ open: false });
   const [terminalModal, setTerminalModal] = useState<{ open: boolean; accountId?: string; edit?: PosTerminalData }>({ open: false });
 
@@ -59,13 +61,32 @@ export function CuentasBancariasView({
             <Landmark className="h-6 w-6" /> Cuentas Bancarias
           </h1>
         </div>
-        {canEdit && (
+        {canEdit && tab === 'cuentas' && (
           <button onClick={() => setAccountModal({ open: true })} className="pos-btn px-4 py-2.5 inline-flex items-center gap-2">
             <Plus className="h-4 w-4" /> Nueva cuenta
           </button>
         )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-capsula-ivory-alt border border-capsula-line rounded-2xl w-fit">
+        {([['cuentas', 'Cuentas', Landmark], ['comisiones', 'Comisiones', Percent]] as const).map(([id, label, Icon]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 ${
+              tab === id ? 'bg-capsula-navy-deep text-capsula-cream' : 'text-capsula-ink-muted hover:text-capsula-ink'
+            }`}
+          >
+            <Icon className="h-4 w-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'comisiones' && <ComisionesReport />}
+
+      {tab === 'cuentas' && (
+      <>
       {/* Info */}
       <div className="bg-capsula-ivory-alt border border-capsula-line rounded-2xl p-4 flex gap-3 text-sm text-capsula-ink-soft">
         <Info className="h-5 w-5 shrink-0 text-capsula-ink-muted mt-0.5" />
@@ -158,6 +179,8 @@ export function CuentasBancariasView({
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
 
       {accountModal.open && (
