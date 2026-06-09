@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Truck,
@@ -14,6 +14,8 @@ import {
     Check,
     Receipt,
     Bike,
+    Bell,
+    BellOff,
 } from 'lucide-react';
 import {
     nextStates,
@@ -55,6 +57,11 @@ const STATE_TONE: Record<string, string> = {
     CANCELADA: 'bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]',
 };
 
+// Cada cuánto el tablero consulta órdenes nuevas sin recargar la página.
+const POLL_INTERVAL_MS = 8000;
+// Cuánto tiempo la tarjeta recién llegada queda resaltada con el badge NUEVO.
+const HIGHLIGHT_MS = 10000;
+
 function timeAgo(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
     const min = Math.floor(diff / 60000);
@@ -80,6 +87,108 @@ export function DeliveryBoardView({
     const [error, setError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
 
+    // ── Alerta de pedido nuevo ────────────────────────────────────────────
+    // Los navegadores bloquean el audio hasta que el usuario interactúa con
+    // la página: el AudioContext solo se crea/resume en el click de
+    // "Activar alertas". Sin ese gesto NUNCA se intenta reproducir sonido.
+    const [alertsEnabled, setAlertsEnabled] = useState(false);
+    const [newIds, setNewIds] = useState<Set<string>>(new Set());
+    const [unseenCount, setUnseenCount] = useState(0);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    // Órdenes ya vistas: las del primer render no disparan alarma.
+    const knownIdsRef = useRef<Set<string>>(new Set(initialOrders.map(o => o.id)));
+    // Espejos en ref para que el interval de polling lea el valor vigente
+    // sin recrearse en cada cambio de filtro/toggle.
+    const branchFilterRef = useRef(branchFilter);
+    branchFilterRef.current = branchFilter;
+    const alertsEnabledRef = useRef(alertsEnabled);
+    alertsEnabledRef.current = alertsEnabled;
+
+    function playAlertSound() {
+        const ctx = audioCtxRef.current;
+        if (!ctx || ctx.state !== 'running') return;
+        // Dos tonos cortos ascendentes generados con Web Audio API (sin asset).
+        const t0 = ctx.currentTime;
+        [880, 1320].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const start = t0 + i * 0.18;
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(0.35, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.18);
+        });
+    }
+
+    async function toggleAlerts() {
+        if (alertsEnabled) {
+            setAlertsEnabled(false);
+            return;
+        }
+        try {
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            await audioCtxRef.current.resume();
+            setAlertsEnabled(true);
+            alertsEnabledRef.current = true;
+            playAlertSound(); // beep de confirmación: el audio quedó desbloqueado
+        } catch {
+            setError('No se pudo activar el sonido en este navegador.');
+        }
+    }
+
+    /**
+     * Trae la lista completa del server y detecta órdenes nuevas (id no
+     * visto). La alarma/resaltado solo dispara si la orden pasa el filtro de
+     * sede vigente; igual se registra como vista para no sonar tarde al
+     * cambiar de filtro.
+     */
+    async function syncOrders() {
+        const res = await listDeliveryOrdersAction();
+        if (!res.success) return;
+        const fresh = res.orders;
+        const known = knownIdsRef.current;
+        const incoming = fresh.filter(o => !known.has(o.id));
+        if (incoming.length > 0) {
+            for (const o of incoming) known.add(o.id);
+            const bf = branchFilterRef.current;
+            const relevant = incoming.filter(o => !bf || o.branchId === bf);
+            if (relevant.length > 0) {
+                setUnseenCount(c => c + relevant.length);
+                setNewIds(prev => {
+                    const next = new Set(prev);
+                    for (const o of relevant) next.add(o.id);
+                    return next;
+                });
+                setTimeout(() => {
+                    setNewIds(prev => {
+                        const next = new Set(prev);
+                        for (const o of relevant) next.delete(o.id);
+                        return next;
+                    });
+                }, HIGHLIGHT_MS);
+                if (alertsEnabledRef.current) playAlertSound();
+            }
+        }
+        setOrders(fresh);
+    }
+    const syncOrdersRef = useRef(syncOrders);
+    syncOrdersRef.current = syncOrders;
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            // Pestaña oculta → no gastar requests; al volver, el próximo tick
+            // trae todo lo acumulado de una vez.
+            if (document.visibilityState === 'hidden') return;
+            void syncOrdersRef.current();
+        }, POLL_INTERVAL_MS);
+        return () => clearInterval(id);
+    }, []);
+
     const filtered = useMemo(
         () => (branchFilter ? orders.filter(o => o.branchId === branchFilter) : orders),
         [orders, branchFilter],
@@ -98,10 +207,9 @@ export function DeliveryBoardView({
     const canceladasCount = (byState.get('CANCELADA') ?? []).length;
 
     async function refresh() {
-        const res = await listDeliveryOrdersAction(
-            branchFilter ? { branchId: branchFilter } : undefined,
-        );
-        if (res.success) setOrders(res.orders);
+        // Trae siempre la lista completa (el filtro de sede es client-side)
+        // y pasa por la misma detección de nuevas que el polling.
+        await syncOrders();
     }
 
     function transition(orderId: string, to: DeliveryState, reason?: string) {
@@ -179,7 +287,38 @@ export function DeliveryBoardView({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {unseenCount > 0 && (
+                        <button
+                            onClick={() => setUnseenCount(0)}
+                            className="h-10 px-3 rounded-xl bg-capsula-coral text-capsula-cream text-sm font-semibold inline-flex items-center gap-2 tabular-nums"
+                            title="Marcar como vistos"
+                        >
+                            <Bell className="h-4 w-4" />
+                            {unseenCount} {unseenCount === 1 ? 'nuevo' : 'nuevos'}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => void toggleAlerts()}
+                        className={`h-10 px-3 inline-flex items-center gap-2 text-sm ${
+                            alertsEnabled ? 'pos-btn' : 'pos-btn-secondary'
+                        }`}
+                        title={
+                            alertsEnabled
+                                ? 'Sonido activo: silenciar alertas'
+                                : 'Activar el sonido de pedidos nuevos (requiere un toque por el bloqueo de audio del navegador)'
+                        }
+                    >
+                        {alertsEnabled ? (
+                            <>
+                                <Bell className="h-4 w-4" /> Alertas activas
+                            </>
+                        ) : (
+                            <>
+                                <BellOff className="h-4 w-4" /> Activar alertas
+                            </>
+                        )}
+                    </button>
                     {branches.length > 0 && (
                         <select
                             value={branchFilter}
@@ -232,18 +371,28 @@ export function DeliveryBoardView({
                                     <span className="text-[11px]">vacío</span>
                                 </div>
                             ) : (
-                                list.map(o => (
-                                    <OrderCard
-                                        key={o.id}
-                                        order={o}
-                                        pending={pending}
-                                        drivers={availableDrivers}
-                                        onAdvance={(to) => transition(o.id, to)}
-                                        onValidate={() => validate(o.id)}
-                                        onAssign={(driverId) => assign(o.id, driverId)}
-                                        onCancel={(reason) => transition(o.id, 'CANCELADA', reason)}
-                                    />
-                                ))
+                                /*
+                                 * Con muchos pedidos acumulados la columna
+                                 * scrollea internamente en vez de estirar la
+                                 * página; las nuevas llegan arriba (orden
+                                 * createdAt desc) así el resaltado se ve sin
+                                 * scrollear.
+                                 */
+                                <div className="max-h-[60vh] xl:max-h-[calc(100vh-300px)] overflow-y-auto overscroll-contain space-y-3 -mr-1 pr-1">
+                                    {list.map(o => (
+                                        <OrderCard
+                                            key={o.id}
+                                            order={o}
+                                            isNew={newIds.has(o.id)}
+                                            pending={pending}
+                                            drivers={availableDrivers}
+                                            onAdvance={(to) => transition(o.id, to)}
+                                            onValidate={() => validate(o.id)}
+                                            onAssign={(driverId) => assign(o.id, driverId)}
+                                            onCancel={(reason) => transition(o.id, 'CANCELADA', reason)}
+                                        />
+                                    ))}
+                                </div>
                             )}
                         </div>
                     );
@@ -261,6 +410,7 @@ const PROOF_LABEL: Record<string, string> = {
 
 function OrderCard({
     order,
+    isNew,
     pending,
     drivers,
     onAdvance,
@@ -269,6 +419,7 @@ function OrderCard({
     onCancel,
 }: {
     order: DeliveryOrderRow;
+    isNew?: boolean;
     pending: boolean;
     drivers: DeliveryDriverRow[];
     onAdvance: (to: DeliveryState) => void;
@@ -289,10 +440,19 @@ function OrderCard({
     }
 
     return (
-        <div className="pos-card p-3 space-y-2">
+        <div
+            className={`pos-card p-3 space-y-2 ${
+                isNew ? 'ring-2 ring-capsula-coral animate-pulse' : ''
+            }`}
+        >
             <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold tabular-nums text-capsula-ink tracking-[-0.01em]">
+                <span className="font-semibold tabular-nums text-capsula-ink tracking-[-0.01em] inline-flex items-center gap-1.5">
                     {order.correlative}
+                    {isNew && (
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] rounded-full px-1.5 py-0.5 bg-capsula-coral text-capsula-cream">
+                            Nuevo
+                        </span>
+                    )}
                 </span>
                 <span
                     className={`text-[10px] font-semibold uppercase tracking-[0.1em] rounded-full px-2 py-0.5 ${STATE_TONE[order.status] ?? ''}`}
