@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 55 modelos esperados (BankAccount + PosTerminal + BankReconciliation — Tesorería)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(55);
+    it('Contiene los 57 modelos esperados (Tesorería + Cuentas por Cobrar)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(57);
     });
 
     it('Incluye modelos críticos del POS', () => {

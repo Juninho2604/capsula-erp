@@ -34,6 +34,7 @@ import prisma from '@/server/db';
 const TENANT_MODELS = new Set<string>([
     'AccountPayable',
     'AccountPayment',
+    'AccountReceivable',
     'Area',
     'AuditLog',
     'BankAccount',
@@ -71,6 +72,7 @@ const TENANT_MODELS = new Set<string>([
     'PurchaseOrder',
     'QueueTicket',
     'RateLimitBucket',
+    'ReceivablePayment',
     'Recipe',
     'Requisition',
     'RequisitionItem',

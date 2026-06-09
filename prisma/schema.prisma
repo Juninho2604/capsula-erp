@@ -114,6 +114,9 @@ model Tenant {
   bankAccounts         BankAccount[]
   posTerminals         PosTerminal[]
   bankReconciliations  BankReconciliation[]
+  // Cuentas por cobrar (Fase 4)
+  accountsReceivable   AccountReceivable[]
+  receivablePayments   ReceivablePayment[]
 }
 
 model User {
@@ -1923,6 +1926,72 @@ model AccountPayment {
   @@index([paidAt])
   @@index([tenantId])
   @@index([bankAccountId])
+}
+
+// ============================================================================
+// CUENTAS POR COBRAR — "nos deben" (Fase 4)
+// ============================================================================
+// Espejo de AccountPayable: dinero que terceros le deben al negocio (el
+// "CRÉDITO NOS DEBEN" del Excel). createdById/customerId/bankAccountId son
+// scalars sin FK (como reconciledById) para no acoplar User/Customer.
+
+/// Cuenta por cobrar — deuda a favor del negocio.
+model AccountReceivable {
+  id          String  @id @default(cuid())
+  description String
+  reference   String? // # de nota/recibo
+  debtorName  String // quién nos debe (cliente, tercero)
+  customerId  String? // opcional: ficha de cliente (CRM), sin FK
+
+  totalAmountUsd     Float
+  collectedAmountUsd Float @default(0)
+  remainingUsd       Float
+
+  issueDate        DateTime
+  dueDate          DateTime?
+  fullyCollectedAt DateTime?
+
+  status String  @default("PENDING") // PENDING, PARTIAL, COLLECTED, OVERDUE, VOID
+  notes  String?
+
+  createdById String // sin FK (scalar)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments ReceivablePayment[]
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([tenantId])
+}
+
+/// Cobro individual aplicado a una cuenta por cobrar.
+model ReceivablePayment {
+  id                  String            @id @default(cuid())
+  accountReceivableId String
+  accountReceivable   AccountReceivable @relation(fields: [accountReceivableId], references: [id], onDelete: Cascade)
+
+  amountUsd     Float
+  amountBs      Float?
+  exchangeRate  Float?
+  method        String // cómo nos pagaron
+  reference     String?
+  bankAccountId String? // cuenta que recibió el cobro (scalar, sin FK)
+  collectedAt   DateTime
+  notes         String?
+
+  createdById String // sin FK (scalar)
+  createdAt   DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([accountReceivableId])
+  @@index([collectedAt])
+  @@index([tenantId])
 }
 
 // ============================================================================

@@ -602,6 +602,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 587,
     tags: ['conciliación', 'bancos', 'tesorería', 'diferencial', 'estado de cuenta'],
   },
+  {
+    id: 'cuentas_cobrar',
+    label: 'Cuentas por Cobrar',
+    description: 'Lo que terceros le deben al negocio ("nos deben"): deudas a favor y sus cobros',
+    icon: '🤝',
+    href: '/dashboard/cuentas-cobrar',
+    section: 'admin',
+    enabledByDefault: false,
+    sortOrder: 583,
+    tags: ['cuentas', 'cobrar', 'nos deben', 'deudores', 'por cobrar'],
+  },
 ];
 
 /**
@@ -672,6 +683,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   cuentas_pagar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
   conciliacion: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  cuentas_cobrar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
 };
 
 /**
