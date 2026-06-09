@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeReconciliation, defaultTolerance } from './reconciliation';
+import { computeReconciliation, defaultTolerance, computeBcvLossUsd } from './reconciliation';
 
 describe('computeReconciliation', () => {
     it('OPEN cuando no hay estado de cuenta', () => {
@@ -37,5 +37,20 @@ describe('computeReconciliation', () => {
     it('defaultTolerance = max(1, 0.5% del esperado)', () => {
         expect(defaultTolerance(100)).toBe(1);
         expect(defaultTolerance(100000)).toBe(500);
+    });
+});
+
+describe('computeBcvLossUsd', () => {
+    it('pérdida cuando la tasa subió de venta a liquidación', () => {
+        // 100.000 Bs vendidos a 300 = $333.33; liquidan a 310 = $322.58 → pérdida $10.75
+        const loss = computeBcvLossUsd(333.33, 100000, 310);
+        expect(loss).toBeCloseTo(10.75, 2);
+    });
+    it('cero si no hay tasa de liquidación válida', () => {
+        expect(computeBcvLossUsd(333.33, 100000, null)).toBe(0);
+        expect(computeBcvLossUsd(333.33, 100000, 0)).toBe(0);
+    });
+    it('ganancia cambiaria (tasa bajó) sale negativa', () => {
+        expect(computeBcvLossUsd(333.33, 100000, 290)).toBeLessThan(0);
     });
 });

@@ -54,3 +54,20 @@ export function computeReconciliation(
     const status: ReconStatus = Math.abs(differential) <= tol ? 'RECONCILED' : 'DISCREPANCY';
     return { differential, status };
 }
+
+/**
+ * Pérdida BCV en USD (solo cuentas Bs). Mismo Bs vale menos $ a la tasa de
+ * liquidación que a la de la venta:
+ *   pérdida = USD_reconocido_al_vender − USD_realizado_al_liquidar
+ *           = usdAtSale − (expectedInBs / rateSettle)
+ * Negativos (ganancia cambiaria) se reportan tal cual. Devuelve 0 si la tasa
+ * de liquidación no es válida.
+ */
+export function computeBcvLossUsd(
+    usdAtSale: number,
+    expectedInBs: number,
+    rateSettle: number | null | undefined
+): number {
+    if (!rateSettle || rateSettle <= 0) return 0;
+    return round2(usdAtSale - expectedInBs / rateSettle);
+}

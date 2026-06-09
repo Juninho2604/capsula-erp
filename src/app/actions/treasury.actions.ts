@@ -9,7 +9,7 @@ import { revenueWhere } from '@/lib/sales-where';
 import { fiscalWeekLabel } from '@/lib/fiscal-week';
 import { getCaracasDateStamp } from '@/lib/datetime';
 import { resolveTerminalForMethod, commissionBs, netBs } from '@/lib/treasury/commission';
-import { computeReconciliation, type ReconStatus } from '@/lib/treasury/reconciliation';
+import { computeReconciliation, computeBcvLossUsd, type ReconStatus } from '@/lib/treasury/reconciliation';
 
 const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'];
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER'];
@@ -135,15 +135,21 @@ interface AccountForRecon {
  * Calcula, por día Caracas, el esperado (entradas) y la comisión derivada de
  * las ventas, para una cuenta en un rango. Compartido por la vista y el guardado.
  */
+interface DailyExpected {
+  expectedIn: number; // en moneda de la cuenta (Bs o $)
+  commissionCalc: number; // ídem
+  usdAtSale: number; // valor en $ a la tasa de cada venta (para pérdida BCV)
+}
+
 async function computeDailyExpected(
   db: ReturnType<typeof withTenant>,
   tenantId: string,
   account: AccountForRecon,
   start: Date,
   end: Date
-): Promise<Map<string, { expectedIn: number; commissionCalc: number }>> {
+): Promise<Map<string, DailyExpected>> {
   const terminals = account.terminals.filter((t) => t.isActive && t.posMethodKey);
-  const out = new Map<string, { expectedIn: number; commissionCalc: number }>();
+  const out = new Map<string, DailyExpected>();
   if (terminals.length === 0) return out;
   const methodKeys = terminals.map((t) => t.posMethodKey!) as string[];
   const isBs = account.currency !== 'USD';
@@ -154,7 +160,10 @@ async function computeDailyExpected(
       ...(isBs ? { amountBS: { gt: 0 } } : { amountUSD: { gt: 0 } }),
       salesOrder: { is: { tenantId, ...revenueWhere(start, end) } },
     },
-    select: { method: true, amountUSD: true, amountBS: true, salesOrder: { select: { createdAt: true } } },
+    select: {
+      method: true, amountUSD: true, amountBS: true, exchangeRate: true,
+      salesOrder: { select: { createdAt: true } },
+    },
   });
 
   for (const p of payments) {
@@ -163,9 +172,12 @@ async function computeDailyExpected(
     const amount = isBs ? (p.amountBS ?? 0) : p.amountUSD;
     if (amount <= 0) continue;
     const stamp = getCaracasDateStamp(p.salesOrder.createdAt);
-    const row = out.get(stamp) ?? { expectedIn: 0, commissionCalc: 0 };
+    const row = out.get(stamp) ?? { expectedIn: 0, commissionCalc: 0, usdAtSale: 0 };
     row.expectedIn = Math.round((row.expectedIn + amount) * 100) / 100;
     row.commissionCalc = Math.round((row.commissionCalc + commissionBs(amount, terminal.commissionPct)) * 100) / 100;
+    // USD a tasa de la venta: Bs → $ con la tasa del cobro; en cuentas $ ya es $.
+    const usd = isBs ? (p.exchangeRate && p.exchangeRate > 0 ? amount / p.exchangeRate : 0) : amount;
+    row.usdAtSale = Math.round((row.usdAtSale + usd) * 100) / 100;
     out.set(stamp, row);
   }
   return out;
@@ -191,6 +203,9 @@ export interface ReconciliationDayRow {
   commissionStmt: number | null;
   differential: number;
   status: ReconStatus;
+  rateAtSettle: number | null;
+  bcvLossUsd: number | null;
+  posted: boolean;
   saved: boolean;
   notes: string | null;
 }
@@ -231,7 +246,7 @@ export async function getReconciliationViewAction(input: {
     // Días con actividad esperada o con un registro previo.
     const stamps = new Set<string>([...Array.from(daily.keys()), ...Array.from(recByStamp.keys())]);
     const rows: ReconciliationDayRow[] = Array.from(stamps).sort().map((stamp) => {
-      const d = daily.get(stamp) ?? { expectedIn: 0, commissionCalc: 0 };
+      const d = daily.get(stamp) ?? { expectedIn: 0, commissionCalc: 0, usdAtSale: 0 };
       const rec = recByStamp.get(stamp);
       const statementIn = rec?.statementIn ?? null;
       const { differential, status } = computeReconciliation({
@@ -248,6 +263,9 @@ export async function getReconciliationViewAction(input: {
         commissionStmt: rec?.commissionStmt ?? null,
         differential,
         status,
+        rateAtSettle: rec?.rateAtSettle ?? null,
+        bcvLossUsd: rec?.bcvLossUsd ?? null,
+        posted: !!rec?.postedExpenseId,
         saved: !!rec,
         notes: rec?.notes ?? null,
       };
@@ -262,10 +280,105 @@ export async function getReconciliationViewAction(input: {
   }
 }
 
+/** Categoría de gasto find-or-create (idempotente por nombre). */
+async function ensureExpenseCategoryId(
+  db: ReturnType<typeof withTenant>,
+  tenantId: string,
+  name: string
+): Promise<string> {
+  const cat = await db.expenseCategory.upsert({
+    where: { tenantId_name: { tenantId, name } },
+    update: {},
+    create: { tenantId, name, isActive: true },
+  });
+  return cat.id;
+}
+
+/**
+ * Postea (o actualiza) el gasto de comisión + pérdida BCV de una conciliación.
+ * Idempotente: si ya hay un gasto asociado, lo actualiza en vez de duplicar.
+ * Devuelve el id del gasto y los montos en $ para guardar en la conciliación.
+ */
+async function upsertReconciliationExpense(
+  db: ReturnType<typeof withTenant>,
+  tenantId: string,
+  opts: {
+    existingExpenseId: string | null;
+    account: { id: string; name: string; currency: string };
+    date: Date;
+    dateStamp: string;
+    expectedIn: number;
+    commissionInAccountCcy: number;
+    usdAtSale: number;
+    rateAtSettle: number | null;
+    createdById: string;
+  }
+): Promise<{ expenseId: string | null; commissionUsd: number; bcvLossUsd: number }> {
+  const isBs = opts.account.currency !== 'USD';
+  const avgSaleRate = opts.usdAtSale > 0 ? opts.expectedIn / opts.usdAtSale : 0;
+  const convRate = opts.rateAtSettle && opts.rateAtSettle > 0 ? opts.rateAtSettle : avgSaleRate;
+
+  const commissionUsd = isBs
+    ? (convRate > 0 ? Math.round((opts.commissionInAccountCcy / convRate) * 100) / 100 : 0)
+    : Math.round(opts.commissionInAccountCcy * 100) / 100;
+  const bcvLossUsd = isBs ? computeBcvLossUsd(opts.usdAtSale, opts.expectedIn, opts.rateAtSettle) : 0;
+
+  // El gasto sólo refleja pérdidas (positivas). La ganancia cambiaria no es gasto.
+  const expenseUsd = Math.round((commissionUsd + Math.max(0, bcvLossUsd)) * 100) / 100;
+
+  // Nada que postear y no había gasto previo → no creamos basura.
+  if (expenseUsd <= 0 && !opts.existingExpenseId) {
+    return { expenseId: null, commissionUsd, bcvLossUsd };
+  }
+
+  const categoryId = await ensureExpenseCategoryId(db, tenantId, 'Comisión Bancaria');
+  const d = dayStampToDate(opts.dateStamp);
+  const periodMonth = d.getUTCMonth() + 1;
+  const periodYear = d.getUTCFullYear();
+  const parts: string[] = [];
+  if (commissionUsd > 0) parts.push(`comisión $${commissionUsd.toFixed(2)}`);
+  if (bcvLossUsd > 0) parts.push(`pérdida BCV $${bcvLossUsd.toFixed(2)}`);
+  const description = `Conciliación ${opts.account.name} ${opts.dateStamp} — ${parts.join(' + ') || 'sin cargo'}`;
+  const amountBs = isBs ? Math.round(opts.commissionInAccountCcy * 100) / 100 : null;
+
+  if (opts.existingExpenseId) {
+    await db.expense.updateMany({
+      where: { id: opts.existingExpenseId },
+      data: {
+        description, categoryId, amountUsd: expenseUsd, amountBs,
+        exchangeRate: isBs && convRate > 0 ? convRate : null,
+        paidAt: opts.date, periodMonth, periodYear, bankAccountId: opts.account.id,
+        status: 'CONFIRMED',
+      },
+    });
+    return { expenseId: opts.existingExpenseId, commissionUsd, bcvLossUsd };
+  }
+
+  const expense = await db.expense.create({
+    data: {
+      tenantId,
+      description,
+      categoryId,
+      amountUsd: expenseUsd,
+      amountBs,
+      exchangeRate: isBs && convRate > 0 ? convRate : null,
+      paymentMethod: 'DIGITAL',
+      paidAt: opts.date,
+      periodMonth,
+      periodYear,
+      bankAccountId: opts.account.id,
+      createdById: opts.createdById,
+      notes: 'Auto-generado por conciliación bancaria',
+    },
+  });
+  return { expenseId: expense.id, commissionUsd, bcvLossUsd };
+}
+
 export async function saveReconciliationAction(input: {
   bankAccountId: string;
   dateStamp: string; // YYYY-MM-DD
   statementIn: number;
+  rateAtSettle?: number | null;
   commissionStmt?: number | null;
   notes?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
@@ -289,7 +402,7 @@ export async function saveReconciliationAction(input: {
     const dayEnd = new Date(`${input.dateStamp}T03:59:59.999Z`);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
     const daily = await computeDailyExpected(db, tenantId, account, dayStart, dayEnd);
-    const d = daily.get(input.dateStamp) ?? { expectedIn: 0, commissionCalc: 0 };
+    const d = daily.get(input.dateStamp) ?? { expectedIn: 0, commissionCalc: 0, usdAtSale: 0 };
 
     const { differential, status } = computeReconciliation({
       expectedIn: d.expectedIn,
@@ -297,34 +410,44 @@ export async function saveReconciliationAction(input: {
       statementIn: input.statementIn,
     });
     const fiscalWeek = fiscalWeekLabel(date);
+    const rateAtSettle = input.rateAtSettle && input.rateAtSettle > 0 ? input.rateAtSettle : null;
+
+    // Gasto idempotente: buscamos si ya había uno asociado a esta conciliación.
+    const existing = await db.bankReconciliation.findUnique({
+      where: { tenantId_bankAccountId_date: { tenantId, bankAccountId: account.id, date } },
+    });
+
+    const posted = await upsertReconciliationExpense(db, tenantId, {
+      existingExpenseId: existing?.postedExpenseId ?? null,
+      account: { id: account.id, name: account.name, currency: account.currency },
+      date,
+      dateStamp: input.dateStamp,
+      expectedIn: d.expectedIn,
+      commissionInAccountCcy: d.commissionCalc,
+      usdAtSale: d.usdAtSale,
+      rateAtSettle,
+      createdById: session.id,
+    });
+
+    const reconData = {
+      fiscalWeek,
+      expectedIn: d.expectedIn,
+      commissionCalc: d.commissionCalc,
+      statementIn: input.statementIn,
+      commissionStmt: input.commissionStmt ?? null,
+      differential,
+      status,
+      rateAtSettle,
+      bcvLossUsd: posted.bcvLossUsd,
+      postedExpenseId: posted.expenseId,
+      notes: input.notes?.trim() || null,
+      reconciledById: session.id,
+    };
 
     await db.bankReconciliation.upsert({
       where: { tenantId_bankAccountId_date: { tenantId, bankAccountId: account.id, date } },
-      update: {
-        fiscalWeek,
-        expectedIn: d.expectedIn,
-        commissionCalc: d.commissionCalc,
-        statementIn: input.statementIn,
-        commissionStmt: input.commissionStmt ?? null,
-        differential,
-        status,
-        notes: input.notes?.trim() || null,
-        reconciledById: session.id,
-      },
-      create: {
-        tenantId,
-        bankAccountId: account.id,
-        date,
-        fiscalWeek,
-        expectedIn: d.expectedIn,
-        commissionCalc: d.commissionCalc,
-        statementIn: input.statementIn,
-        commissionStmt: input.commissionStmt ?? null,
-        differential,
-        status,
-        notes: input.notes?.trim() || null,
-        reconciledById: session.id,
-      },
+      update: reconData,
+      create: { tenantId, bankAccountId: account.id, date, ...reconData },
     });
 
     await logAudit({
@@ -334,11 +457,13 @@ export async function saveReconciliationAction(input: {
       action: 'UPDATE',
       entityType: 'BankReconciliation',
       entityId: `${account.name}/${input.dateStamp}`,
-      description: `Concilió ${account.name} ${input.dateStamp}: ${status} (dif ${differential})`,
+      description: `Concilió ${account.name} ${input.dateStamp}: ${status} (dif ${differential}, comisión $${posted.commissionUsd}, BCV $${posted.bcvLossUsd})`,
       module: 'CONFIG',
     });
 
     revalidatePath('/dashboard/conciliacion');
+    revalidatePath('/dashboard/gastos');
+    revalidatePath('/dashboard/finanzas');
     return { success: true };
   } catch {
     return { success: false, error: 'Error al guardar la conciliación' };

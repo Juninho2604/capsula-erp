@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Scale, ChevronLeft, ChevronRight, Loader2, Info, Check, Landmark,
+  Scale, ChevronLeft, ChevronRight, Loader2, Info, Check, Landmark, Receipt,
 } from 'lucide-react';
 import {
   getReconciliationViewAction, saveReconciliationAction,
@@ -33,9 +33,11 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
   const [currency, setCurrency] = useState(accounts[0]?.currency ?? 'BS');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // edición local del estado de cuenta por día
+  // edición local del estado de cuenta y tasa de liquidación por día
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
   const [savingStamp, setSavingStamp] = useState('');
+  const isBs = currency !== 'USD';
 
   const load = useCallback(async () => {
     if (!accountId) return;
@@ -46,6 +48,7 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
     setRows(res.data.rows);
     setCurrency(res.data.currency);
     setDrafts({});
+    setRateDrafts({});
   }, [accountId, year, month0]);
 
   useEffect(() => { load(); }, [load]);
@@ -61,8 +64,10 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
     const raw = drafts[row.dateStamp] ?? (row.statementIn != null ? String(row.statementIn) : '');
     const statementIn = parseFloat(raw);
     if (isNaN(statementIn)) { setError('Ingresá el monto del estado de cuenta'); return; }
+    const rateRaw = rateDrafts[row.dateStamp] ?? (row.rateAtSettle != null ? String(row.rateAtSettle) : '');
+    const rateAtSettle = rateRaw.trim() ? parseFloat(rateRaw) : null;
     setSavingStamp(row.dateStamp); setError('');
-    const res = await saveReconciliationAction({ bankAccountId: accountId, dateStamp: row.dateStamp, statementIn });
+    const res = await saveReconciliationAction({ bankAccountId: accountId, dateStamp: row.dateStamp, statementIn, rateAtSettle });
     setSavingStamp('');
     if (!res.success) { setError(res.error ?? 'Error'); return; }
     await load();
@@ -113,9 +118,10 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
           <div className="bg-capsula-ivory-alt border border-capsula-line rounded-2xl p-4 flex gap-3 text-sm text-capsula-ink-soft">
             <Info className="h-5 w-5 shrink-0 text-capsula-ink-muted mt-0.5" />
             <p>
-              Kpsula trae el <strong>esperado</strong> (ventas que entraron por los terminales) y la comisión calculada.
-              Tecleá el <strong>estado de cuenta</strong> (lo que el banco dice que llegó) y guardá: el <strong>diferencial</strong>
-              {' '}= (esperado − estado) − comisión. Si ≈ 0, la cuenta concilia. Montos en {currency}.
+              Kpsula trae el <strong>esperado</strong> (ventas por los terminales) y la comisión calculada.
+              Tecleá el <strong>estado de cuenta</strong> y guardá: el <strong>diferencial</strong> = (esperado − estado) − comisión.
+              {isBs && <> Si ponés la <strong>tasa de liquidación</strong>, calcula la <strong>pérdida BCV</strong>.</>}
+              {' '}Al guardar, la comisión{isBs && ' + pérdida BCV'} se postea solo a <strong>Gastos</strong> (Comisión Bancaria). Montos en {currency}.
             </p>
           </div>
 
@@ -133,7 +139,7 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
             </div>
           ) : (
             <div className="pos-card overflow-x-auto">
-              <table className="w-full text-sm min-w-[680px]">
+              <table className="w-full text-sm min-w-[860px]">
                 <thead>
                   <tr className="border-b border-capsula-line text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                     <th className="text-left p-3">Día</th>
@@ -142,6 +148,8 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
                     <th className="text-right p-3">Comisión</th>
                     <th className="text-right p-3">Estado de cuenta</th>
                     <th className="text-right p-3">Diferencial</th>
+                    {isBs && <th className="text-right p-3">Tasa liq.</th>}
+                    {isBs && <th className="text-right p-3">Pérdida BCV $</th>}
                     <th className="text-center p-3">Estado</th>
                     {canEdit && <th className="p-3"></th>}
                   </tr>
@@ -172,10 +180,35 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
                         <td className={`p-3 text-right tabular-nums font-semibold ${r.status === 'DISCREPANCY' ? 'text-capsula-coral' : 'text-capsula-ink'}`}>
                           {r.statementIn != null ? fmt(r.differential) : '—'}
                         </td>
+                        {isBs && (
+                          <td className="p-3 text-right">
+                            {canEdit ? (
+                              <input
+                                className="pos-input w-24 text-right tabular-nums"
+                                type="number" step="0.01" inputMode="decimal"
+                                value={rateDrafts[r.dateStamp] ?? (r.rateAtSettle != null ? String(r.rateAtSettle) : '')}
+                                placeholder="—"
+                                onChange={(e) => setRateDrafts((d) => ({ ...d, [r.dateStamp]: e.target.value }))}
+                              />
+                            ) : (
+                              <span className="tabular-nums text-capsula-ink-soft">{r.rateAtSettle != null ? fmt(r.rateAtSettle) : '—'}</span>
+                            )}
+                          </td>
+                        )}
+                        {isBs && (
+                          <td className="p-3 text-right tabular-nums text-capsula-ink-soft">
+                            {r.bcvLossUsd != null ? fmt(r.bcvLossUsd) : '—'}
+                          </td>
+                        )}
                         <td className="p-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.1em] ${st.cls}`}>
                             {st.label}
                           </span>
+                          {r.posted && (
+                            <span className="ml-1 inline-flex items-center text-capsula-ink-muted" title="Posteado a Gastos">
+                              <Receipt className="h-3.5 w-3.5" />
+                            </span>
+                          )}
                         </td>
                         {canEdit && (
                           <td className="p-3 text-right">
