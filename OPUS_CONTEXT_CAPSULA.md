@@ -9529,3 +9529,60 @@ Opciones para PR separado:
 - **C.** Aceptar riesgo, documentar.
 
 Recomendación: **B**, balance entre superficie y costo.
+
+---
+
+## §55 Tesorería / Conciliación Bancaria — Fase 0 (2026-06-09)
+
+Adaptación operacional (NO contable) del Excel "SC Capital" del dueño. Plan
+completo en `docs/PLAN_TESORERIA_CONCILIACION.md`. Objetivo: comisiones
+bancarias, conciliación banco-vs-ventas y pérdida BCV, montados sobre lo que el
+POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
+
+### Fundamentos (del análisis del Excel real, 19 hojas)
+- **La cuenta bancaria es el eje:** por ella ENTRA la venta liquidada por
+  PDV/PM y SALE el gasto/pago. Conciliación = (entradas − salidas) esperado vs
+  estado de cuenta. La columna "Forma de Pago" de las 8 hojas de gastos = la
+  cuenta bancaria (NOUR, SUPERFERRO, SHANKLISH, CANUR, PITACHEF, BOFA, CASH…).
+- **Conciliación y comisiones PRODUCEN gastos:** cada día el Excel postea en
+  "Gastos Pasivos" la comisión (`proveedor=PROVINCIAL`) y la pérdida BCV
+  (`proveedor=TASA CAMBIARIA`). En Kpsula será auto-posting a `Expense` (Fase 2/3).
+- **Moneda:** base USD; lo Bs se divide por tasa BCV. Kpsula guarda
+  `amountBs`+`amountUsd`+`exchangeRate` en cada tabla → superset del Excel.
+- **Pérdida BCV** = `Σ amountBS × (1/tasa_cobro − 1/tasa_liquidación)`, solo
+  cuentas Bs. Necesita la 2ª tasa (día de liquidación) — input de Fase 3.
+- **Factor ×1.0245 / ×1.16** del Excel: gross-up de IVA/impuesto SOLO en hoja
+  "Costo Consumo"; no toca el flujo bancario.
+
+### Fase 0 — implementado (rama claude/compassionate-goldberg-rrf4md)
+- **Modelos nuevos** (`prisma/schema.prisma`):
+  - `BankAccount` (name, bankName, `currency` BS|USD, `kind` BANK|CASH|DIGITAL,
+    rif, isActive, sortOrder). Unique `[tenantId, name]`.
+  - `PosTerminal` (label, terminalCode, `posMethodKey` → mapea al método del
+    POS para atribuir ventas, `commissionPct`, bankAccountId). Unique `[tenantId, label]`.
+  - Etiquetado: `bankAccountId String?` (nullable, FK SetNull) en `Expense`,
+    `AccountPayment`, `SalesOrderPayment`.
+  - Migración `20260609120000_add_bank_accounts` — 100% aditiva. Verificada
+    contra Postgres 16 efímero: aplica sobre la DB existente y `migrate diff`
+    da "No difference" (cero drift).
+- **Helper** `src/lib/fiscal-week.ts`: semana fiscal Lun→Dom asignada al mes que
+  contiene su jueves (ISO), numerada S1..S5. ~4 meses/año tienen S5 (≈ cada 3
+  meses, como el dueño lo piensa). Default determinístico; el label se guardará
+  EDITABLE en los modelos de conciliación. Zona Caracas vía `datetime.ts`. 5 tests.
+- **Módulo** `cuentas_bancarias` (`/dashboard/cuentas-bancarias`, section admin,
+  `enabledByDefault:false`, roles OWNER/ADMIN_MANAGER/AUDITOR, icono `Landmark`):
+  CRUD de cuentas + terminales, vista Minimal Navy. Actions en
+  `bank-account.actions.ts` (tenant-scoped + audit).
+- **Seed** `prisma/seed-bank-accounts.ts`: idempotente (upsert por nombre),
+  MANUAL (no en deploy) — `npx tsx prisma/seed-bank-accounts.ts`. Siembra las 9
+  cuentas + 2 terminales PDV inequívocos. Probado e2e contra Postgres.
+- `TENANT_MODELS` (prisma-tenant-client) += BankAccount, PosTerminal (test 52→54).
+
+### Pendiente (próximas fases)
+- F1: comisiones por terminal → neto por cobro + reporte por cuenta/semana.
+- F2: pantalla `/dashboard/conciliacion` (esperado auto vs estado de cuenta +
+  diferencial) + auto-posting de comisión/pérdida BCV a `Expense`.
+- F3: pérdida BCV (2ª tasa) + registro de compra de divisas.
+- F4: flag crédito/contado desde Compras → `AccountPayable`; "nos deben" (por cobrar).
+- A confirmar con el dueño: mapeo terminal→cuenta de MOVIL_NG/ZELLE; lista
+  final de cuentas; granularidad de `SalesOrderPayment.amountBS` en flujos viejos.
