@@ -1,0 +1,140 @@
+{
+  "name": "Poke Pok Bot — Telegram + Crear Orden",
+  "nodes": [
+    {
+      "parameters": {
+        "pollIntervalValue": 60,
+        "pollUnitValue": "seconds"
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [100, 200],
+      "credentials": {
+        "telegramApi": "telegram-bot-token"
+      }
+    },
+    {
+      "parameters": {
+        "content": "// Inicialisasi config — reemplazar con valores reales\n$input.first().json = {\n  config: {\n    KPSULA_HOST: \"https://pokepok.kpsula.app\",\n    KPSULA_API_KEY: \"TU_API_KEY_AQUI\",\n    KPSULA_WEBHOOK_SECRET: \"TU_SECRET_AQUI\",\n    TELEGRAM_BOT_TOKEN: \"TU_BOT_TOKEN_AQUI\",\n    OPENAI_API_KEY: \"TU_OPENAI_KEY_AQUI\"\n  }\n};\nreturn $input.first();",
+        "language": "javaScript"
+      },
+      "id": "set-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Parse Telegram message\nconst msg = $input.first().json.message;\nconst chatId = msg.chat.id;\nconst userId = msg.from.id;\nconst userName = msg.from.first_name;\nconst isPhoto = !!msg.photo && msg.photo.length > 0;\nconst isText = !!msg.text;\nconst messageText = msg.text || null;\nconst photoId = isPhoto ? msg.photo[msg.photo.length - 1].file_id : null;\nconst caption = msg.caption || null;\n\nreturn {\n  chatId,\n  userId,\n  userName,\n  isPhoto,\n  isText,\n  messageText,\n  photoId,\n  caption,\n  config: $input.first().json.config\n};",
+        "language": "javaScript"
+      },
+      "id": "parse-telegram",
+      "name": "Parse Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "{{ $node[\"Parse Telegram Message\"].json.isText }}",
+              "operation": "equals",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "is-text-message",
+      "name": "Es mensaje texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "url": "{{ $node[\"Parse Telegram Message\"].json.config.KPSULA_HOST }}/api/v1/delivery/contexto",
+        "method": "GET",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "{{ $node[\"Parse Telegram Message\"].json.config.KPSULA_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "get-contexto",
+      "name": "GET /contexto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 100]
+    },
+    {
+      "parameters": {
+        "content": "// Cargar orden_id de sesión (si existe)\nconst sessionKey = `session_${$node[\"Parse Telegram Message\"].json.chatId}`;\nconst workflowData = await $getWorkflowData(sessionKey);\nconst ordenId = workflowData ? workflowData.orden_id : null;\n\nreturn {\n  ...Object.fromEntries(Object.entries($input.first().json).map(([k, v]) => [k, v])),\n  ordenId: ordenId,\n  sessionKey: sessionKey\n};",
+        "language": "javaScript"
+      },
+      "id": "load-session",
+      "name": "Cargar sesión",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "messageValues": [
+            {
+              "contentType": "text",
+              "textContent": "{{ 'Eres un asistente de atención al cliente de un servicio de delivery llamado Poke Pok. Hablas en español, eres amable y directo. Tu objetivo es entender las necesidades del cliente y cuando sea apropiado, crear una orden de entrega.\\n\\nContexto actual:\\n- Sedes disponibles: ' + JSON.stringify($node[\"GET /contexto\"].json.sedes) + '\\n- Productos agotados: ' + JSON.stringify($node[\"GET /contexto\"].json.agotados) + '\\n- Tasa actual (Bs/USD): ' + $node[\"GET /contexto\"].json.tasa_bs + '\\n\\nInstrucciones:\\n1. Si el usuario pregunta sobre sedes, direcciones, o menciona el envío → dale la lista de sedes y zonas.\\n2. Si el usuario pregunta sobre precios o productos → consulta agotados, advierte si algo no está disponible.\\n3. Si el usuario está listo para hacer una orden → pídele: dirección, teléfono, nombre, y lista de items (nombre + cantidad + precio cada uno).\\n4. IMPORTANTE: Cuando recolectes todos los datos de la orden, responde con EXACTAMENTE esto al final (en su propia línea):\\n   [CREAR_ORDEN]\\n\\nMensaje del cliente: ' + $node[\"Parse Telegram Message\"].json.messageText }}"
+            }
+          ]
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent (OpenAI)",
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 1,
+      "position": [1100, 200],
+      "credentials": {
+        "openAiApi": "openai-api-key"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{ $node[\"AI Agent (OpenAI)\"].json.response }}",
+              "operation": "contains",
+              "value2": \"[CREAR_ORDEN]\"
+            }
+          ]
+        }
+      },
+      "id": "check-crear-orden",
+      "name": "¿Agent dijo crear orden?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Parsear respuesta del agent para extraer datos de la orden\nconst resp = $node[\"AI Agent (OpenAI)\"].json.response;\n\n// Buscar patrón: dirección, teléfono, nombre, items\nconst dirMatch = resp.match(/(dirección|dirección|address):\\s*([^\\n]+)/i);\nconst telMatch = resp.match(/(teléfono|telefono|phone):\\s*([^\\n]+)/i);\nconst nomMatch = resp.match(/(nombre|name):\\s*([^\\n]+)/i);\nconst itemsMatch = resp.match(/(items?|productos?|comida):\\s*([^\\n]+)/is);\n\n// Construcción básica de payload\nconst payload = {\n  direccion: dirMatch ? dirMatch[2].trim() : \"dirección no especificada\",\n  telefono: telMatch ? telMatch[2].trim() : \"0000\",\n  nombre_cliente: nomMatch ? nomMatch[2].trim() : \"cliente\",\n  items: itemsMatch ? itemsMatch[2].trim() : \"items no especificados\",\n  config: $input.first().json.config,\n  chatId: $node[\"Parse Telegram Message\"].json.chatId\n};\n\nreturn payload;",
+        "language": "javaScript"
+      },
+      "id": "extract-order-data",
+      "name": "Extraer datos de la orden",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "url": \"{{ $node[\"extract-order-data\"].json.config.KPSULA_HOST }}/api/v1/delivery/ordenes\",\n        "method": \"POST\",\n        \"headerParameters\": {\n          \"parameters\": [\n            {\n              \"name\": \"X-API-Key\",\n              \"value\": \"{{ $node[\\\"extract-order-data\\\"].json.config.KPSULA_API_KEY }}\"\n            },\n            {\n              \"name\": \"Content-Type\",\n              \"value\": \"application/json\"\n            }\n          ]\n        },\n        \"body\": \"{{ JSON.stringify({\\n  channel: 'telegram',\\n  chatId: $node[\\\"extract-order-data\\\"].json.chatId.toString(),\\n  nombre_cliente: $node[\\\"extract-order-data\\\"].json.nombre_cliente,\\n  telefono: $node[\\\"extract-order-data\\\"].json.telefono,\\n  direccion: $node[\\\"extract-order-data\\\"].json.direccion,\\n  items: $node[\\\"extract-order-data\\\"].json.items,\\n  sede_id: null\\n}) }}\"\n      },\n      "id": "post-create-orden",\n      "name": "POST /ordenes (crear)",\n      "type": "n8n-nodes-base.httpRequest",\n      "typeVersion": 4.1,\n      "position": [1700, 100]\n    },\n    {\n      "parameters": {\n        "content": \"// Guardar orden_id en sesión para Workflow 2\nconst ordenId = $node[\\\"POST /ordenes (crear)\\\"].json.orden.id;\nconst correlativo = $node[\\\"POST /ordenes (crear)\\\"].json.orden.correlativo;\nconst sessionKey = $node[\\\"load-session\\\"].json.sessionKey;\n\nawait $setWorkflowData(sessionKey, { orden_id: ordenId, correlativo: correlativo });\n\nreturn {\n  ordenId: ordenId,\n  correlativo: correlativo,\n  config: $input.first().json.config,\n  chatId: $node[\\\"Parse Telegram Message\\\"].json.chatId\n};\",\n        \"language\": \"javaScript\"\n      },\n      \"id\": \"save-session\",\n      \"name\": \"Guardar orden_id en sesión\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [1900, 100]\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"save-session\\\"].json.chatId }}\",\n        \"messageType\": \"text\",\n        \"text\": \"✅ Orden creada!\\n\\n📋 Correlativo: {{$node[\\\"save-session\\\"].json.correlativo}}\\n\\nAhora envía una foto del comprobante de pago para validar tu orden.\"\n      },\n      \"id\": \"respond-order-ok\",\n      \"name\": \"Responder: Orden creada\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [2100, 100],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Parse Telegram Message\\\"].json.chatId }}\",\n        \"messageType\": \"text\",\n        \"text\": \"{{ $node[\\\"AI Agent (OpenAI)\\\"].json.response }}\"\n      },\n      \"id\": \"respond-conversational\",\n      \"name\": \"Responder: Conversacional\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [1500, 400],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"telegram-trigger\": {\n      \"main\": [[{ \"node\": \"set-config\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"set-config\": {\n      \"main\": [[{ \"node\": \"parse-telegram\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"parse-telegram\": {\n      \"main\": [[{ \"node\": \"is-text-message\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"is-text-message\": {\n      \"main\": [\n        [{ \"node\": \"get-contexto\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"respond-conversational\", \"type\": \"main\", \"index\": 0 }]\n      ]\n    },\n    \"get-contexto\": {\n      \"main\": [[{ \"node\": \"load-session\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"load-session\": {\n      \"main\": [[{ \"node\": \"ai-agent\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"ai-agent\": {\n      \"main\": [[{ \"node\": \"check-crear-orden\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"check-crear-orden\": {\n      \"main\": [\n        [{ \"node\": \"extract-order-data\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"respond-conversational\", \"type\": \"main\", \"index\": 0 }]\n      ]\n    },\n    \"extract-order-data\": {\n      \"main\": [[{ \"node\": \"post-create-orden\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"post-create-orden\": {\n      \"main\": [[{ \"node\": \"save-session\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"save-session\": {\n      \"main\": [[{ \"node\": \"respond-order-ok\", \"type\": \"main\", \"index\": 0 }]]\n    }\n  }\n}
