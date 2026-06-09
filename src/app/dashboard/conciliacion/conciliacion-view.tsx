@@ -8,6 +8,7 @@ import {
   getReconciliationViewAction, saveReconciliationAction,
   type ReconciliationDayRow,
 } from '@/app/actions/treasury.actions';
+import { getCaracasNowParts } from '@/lib/datetime';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -25,10 +26,11 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
 interface AccountOption { id: string; name: string; currency: string }
 
 export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOption[]; canEdit: boolean }) {
-  const now = new Date();
+  // Mes por defecto en calendario Caracas (UTC cambia de día a las 8pm locales).
+  const nowCcs = getCaracasNowParts();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
-  const [year, setYear] = useState(now.getUTCFullYear());
-  const [month0, setMonth0] = useState(now.getUTCMonth());
+  const [year, setYear] = useState(nowCcs.year);
+  const [month0, setMonth0] = useState(nowCcs.month);
   const [rows, setRows] = useState<ReconciliationDayRow[]>([]);
   const [currency, setCurrency] = useState(accounts[0]?.currency ?? 'BS');
   const [loading, setLoading] = useState(false);

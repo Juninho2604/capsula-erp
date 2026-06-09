@@ -11,7 +11,7 @@ import { getCaracasDateStamp } from '@/lib/datetime';
 import { resolveTerminalForMethod, commissionBs, netBs } from '@/lib/treasury/commission';
 import { computeReconciliation, computeBcvLossUsd, type ReconStatus } from '@/lib/treasury/reconciliation';
 
-const READ_ROLES = ['OWNER', 'ADMIN_MANAGER'];
+const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'];
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER'];
 
 export interface CommissionRow {
@@ -321,7 +321,11 @@ async function upsertReconciliationExpense(
   const commissionUsd = isBs
     ? (convRate > 0 ? Math.round((opts.commissionInAccountCcy / convRate) * 100) / 100 : 0)
     : Math.round(opts.commissionInAccountCcy * 100) / 100;
-  const bcvLossUsd = isBs ? computeBcvLossUsd(opts.usdAtSale, opts.expectedIn, opts.rateAtSettle) : 0;
+  // usdAtSale = 0 significa que los pagos no traen tasa snapshot (flujos viejos):
+  // sin base $ confiable no se calcula pérdida BCV (evita negativos absurdos).
+  const bcvLossUsd = isBs && opts.usdAtSale > 0
+    ? computeBcvLossUsd(opts.usdAtSale, opts.expectedIn, opts.rateAtSettle)
+    : 0;
 
   // El gasto sólo refleja pérdidas (positivas). La ganancia cambiaria no es gasto.
   const expenseUsd = Math.round((commissionUsd + Math.max(0, bcvLossUsd)) * 100) / 100;

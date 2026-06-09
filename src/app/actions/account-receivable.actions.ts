@@ -6,8 +6,8 @@ import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
 
-const READ_ROLES = ['OWNER', 'ADMIN_MANAGER'];
-const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER'];
+const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'];
+const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 
 export interface ReceivablePaymentData {
   id: string;

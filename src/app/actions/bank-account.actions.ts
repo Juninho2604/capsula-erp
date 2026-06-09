@@ -34,7 +34,7 @@ export interface BankAccountData {
 }
 
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER'];
-const READ_ROLES = ['OWNER', 'ADMIN_MANAGER'];
+const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'];
 
 // ─── Lectura ─────────────────────────────────────────────────────────────────
 

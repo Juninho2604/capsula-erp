@@ -714,9 +714,9 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   gastos:        ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   caja:          ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AUDITOR'],
   cuentas_pagar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
-  cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER'],
-  conciliacion: ['OWNER', 'ADMIN_MANAGER'],
-  cuentas_cobrar: ['OWNER', 'ADMIN_MANAGER'],
+  cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  conciliacion: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
+  cuentas_cobrar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
 };
 
 /**

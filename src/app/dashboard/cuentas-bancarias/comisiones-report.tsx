@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Percent, Loader2, Info } from 'lucide-react';
+import { getCaracasNowParts } from '@/lib/datetime';
 import {
   getBankCommissionsReportAction, type CommissionsReport,
 } from '@/app/actions/treasury.actions';
@@ -21,9 +22,10 @@ function caracasMonthRange(year: number, month0: number) {
 const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function ComisionesReport() {
-  const now = new Date();
-  const [year, setYear] = useState(now.getUTCFullYear());
-  const [month0, setMonth0] = useState(now.getUTCMonth());
+  // Mes por defecto en calendario Caracas (UTC cambia de día a las 8pm locales).
+  const nowCcs = getCaracasNowParts();
+  const [year, setYear] = useState(nowCcs.year);
+  const [month0, setMonth0] = useState(nowCcs.month);
   const [data, setData] = useState<CommissionsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

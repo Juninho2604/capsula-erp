@@ -134,6 +134,17 @@ export async function createAccountPayableAction(input: {
   const dueDate = input.dueDate ? new Date(input.dueDate) : null;
 
   try {
+    // Guard anti-duplicado: una orden de compra no debe generar dos deudas.
+    if (input.purchaseOrderId) {
+      const existing = await db.accountPayable.findFirst({
+        where: { purchaseOrderId: input.purchaseOrderId, status: { not: 'VOID' } },
+        select: { id: true },
+      });
+      if (existing) {
+        return { success: false, error: 'Esa orden de compra ya tiene una cuenta por pagar asociada' };
+      }
+    }
+
     const account = await db.accountPayable.create({
       data: {
         tenantId,
