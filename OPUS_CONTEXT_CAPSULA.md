@@ -9603,9 +9603,20 @@ POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
   icono `Scale`): selector cuenta+mes, tabla diaria, estado de cuenta editable,
   diferencial + badge. `TENANT_MODELS` += BankReconciliation (test 54→55).
 
+### Fase 3 — implementado (pérdida BCV + auto-posteo)
+- `computeBcvLossUsd(usdAtSale, expectedBs, tasaLiq) = usdAtSale − expectedBs/tasaLiq`
+  (solo cuentas Bs). 3 tests. `computeDailyExpected` ahora suma `usdAtSale`
+  (Bs→$ a la tasa de cada venta, vía `SalesOrderPayment.exchangeRate`).
+- `saveReconciliationAction` acepta `rateAtSettle`; calcula comisión$ + pérdida
+  BCV y **POSTEA idempotente** un `Expense` categoría "Comisión Bancaria"
+  (find-or-create, `bankAccountId` seteado, `postedExpenseId` en la conciliación).
+  Re-guardar actualiza el mismo gasto (no duplica). Revalida Gastos + Finanzas →
+  sube al P&L. SIN migración nueva (campos reservados en Fase 2).
+- UI: input tasa de liquidación + columna pérdida BCV (solo Bs) + ícono
+  "posteado a Gastos". Verificado vs Postgres (idempotencia del posteo).
+- Pendiente menor de F3: registro explícito de "compra de divisas" (COMPRA $).
+
 ### Pendiente (próximas fases)
-- F3: auto-posting comisión a `Expense` (postedExpenseId) + pérdida BCV (2ª tasa,
-  `rateAtSettle`/`bcvLossUsd`) + registro de compra de divisas.
 - F4: flag crédito/contado desde Compras → `AccountPayable`; "nos deben" (por cobrar).
 - A confirmar con el dueño: mapeo terminal→cuenta de MOVIL_NG/ZELLE; lista
   final de cuentas; granularidad de `SalesOrderPayment.amountBS` en flujos viejos.
