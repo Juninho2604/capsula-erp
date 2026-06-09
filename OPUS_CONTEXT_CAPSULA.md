@@ -9632,9 +9632,14 @@ POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
 - Puente automático Compras (flag crédito/contado) → `AccountPayable` (requiere
   tocar el flujo de PurchaseOrder; pendiente de decidir).
 - Registro explícito de "compra de divisas" (COMPRA $).
-- A confirmar con el dueño: mapeo terminal→cuenta de MOVIL_NG/ZELLE; lista
-  final de cuentas; granularidad de `SalesOrderPayment.amountBS` en flujos viejos.
 
 ### Resumen módulos Tesorería entregados (todos `enabledByDefault:false`, section admin)
 `cuentas_bancarias` · `comisiones` (pestaña) · `conciliacion` · `cuentas_cobrar`.
 Activar desde Configuración de módulos. Seed manual: `npx tsx prisma/seed-bank-accounts.ts`.
+
+### Puente Compras → Cuentas por Pagar (semi-automático, aditivo)
+- `getCreditCandidatePurchaseOrdersAction` (account-payable.actions): OCs
+  RECIBIDAS sin `AccountPayable` asociada. Read-only, no toca el flujo de compras.
+- En el modal de Cuentas por Pagar, selector "desde orden de compra" precarga
+  descripción/proveedor/monto y vincula la deuda a la OC (`purchaseOrderId`).
+  Un clic convierte una compra a crédito en deuda. Sin migración.
