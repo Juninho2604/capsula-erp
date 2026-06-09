@@ -72,16 +72,24 @@ jobs:
   #   - workflow_dispatch → manual desde la pestaña Actions (rollback, redeploy, etc.).
   #
   # Concurrency: un solo deploy a la vez; si llega otro push, cancela el corriente
-  # para evitar swaps atómicos solapados sobre /root/capsula-erp/current.
+  # para evitar swaps atómicos solapados sobre /var/www/capsula-erp.
   #
   # Secrets requeridos en el repo (Settings → Secrets and variables → Actions):
   #   CONTABO_HOST    — IP o hostname del VPS (e.g. 147.93.6.70)
   #   CONTABO_USER    — usuario SSH (root)
   #   CONTABO_SSH_KEY — clave privada SSH ed25519 con acceso a authorized_keys del VPS
   #
-  # El script /root/deploy-capsula.sh hace todo el flujo seguro:
-  #   backup BD → clone fresh → build → smoke test Prisma → swap atómico → pm2 restart.
-  # Si falla en el smoke test, aborta sin tocar la instalación viva.
+  # El deploy ejecuta scripts/deploy-vps.sh VERSIONADO EN EL REPO, descargado en
+  # el commit exacto que se está deployando. Flujo seguro:
+  #   backup BD → clone fresh → build → prisma migrate deploy → smoke test Prisma
+  #   → swap atómico → pm2 restart → verificación.
+  # Si una migración o el smoke test fallan, aborta sin tocar la instalación viva.
+  #
+  # Historial: hasta junio 2026 esto invocaba /root/deploy-capsula.sh — una copia
+  # vieja que vivía SOLO en el VPS y NO corría `prisma migrate deploy`. Resultado:
+  # cada PR con migración deployaba código que crasheaba contra una BD sin las
+  # tablas/columnas nuevas (PRs #233/#234/#291/#294), y había que destrabarlo a
+  # mano con apply-migrations.yml. Bajar el script del repo elimina el drift.
   deploy:
     name: Deploy to Contabo VPS
     runs-on: ubuntu-latest
@@ -106,6 +114,17 @@ jobs:
             set -e
             export BUILD_SHA="$GITHUB_SHA"
             export BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-            echo ">>> Ejecutando deploy-capsula.sh (SHA: $BUILD_SHA)"
-            bash /root/deploy-capsula.sh main
+
+            # Bajar el script de deploy versionado, pinneado al commit que se
+            # deploya. Corre desde /tmp (no desde /var/www/capsula-erp) porque
+            # el propio script hace swap de ese directorio a mitad de ejecución.
+            DEPLOY_SCRIPT=$(mktemp /tmp/deploy-vps-XXXXXX.sh)
+            echo ">>> Descargando scripts/deploy-vps.sh @ $GITHUB_SHA"
+            curl -fsSL --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Juninho2604/capsula-erp/$GITHUB_SHA/scripts/deploy-vps.sh" \
+              -o "$DEPLOY_SCRIPT"
+
+            echo ">>> Ejecutando deploy-vps.sh (SHA: $BUILD_SHA)"
+            bash "$DEPLOY_SCRIPT" main
+            rm -f "$DEPLOY_SCRIPT"
             echo ">>> Deploy completado OK"

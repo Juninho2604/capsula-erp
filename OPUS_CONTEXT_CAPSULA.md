@@ -7178,6 +7178,31 @@ hasta validar que el manual funciona. Una vez confirmado, se puede
 agregar `if: github.ref == 'refs/heads/main'` al deploy job junto con
 `github.event_name == 'push'`.
 
+### 38.12.b 🚨 Deploy usa el script VERSIONADO del repo (2026-06-09)
+
+**Causa raíz cerrada**: el deploy job invocaba `bash /root/deploy-capsula.sh`
+— una copia que vivía SOLO en el VPS, quedó vieja y **no corría
+`prisma migrate deploy`**. Cada PR con migración deployaba código que
+crasheaba contra una BD sin las tablas nuevas (PRs #233/#234 branding,
+#291 tesorería, #294 documentos de proveedor) y había que destrabarlo a
+mano con `apply-migrations.yml` (3 veces: 2× mayo, 1× 9-jun).
+
+**Fix**: el step "Deploy via SSH" de `ci.yml` ahora descarga
+`scripts/deploy-vps.sh` desde raw.githubusercontent.com **pinneado al
+`$GITHUB_SHA` que se está deployando**, lo corre desde `/tmp` (no desde
+`/var/www/capsula-erp`, porque el script hace swap de ese directorio a
+mitad de ejecución) y lo borra al final. El script versionado incluye
+`prisma migrate deploy` en el paso [7/10] — si la migración falla, aborta
+ANTES del swap y la app vieja sigue atendiendo.
+
+**Implicaciones**:
+- `/root/deploy-capsula.sh` queda obsoleto (se puede conservar como
+  fallback manual, pero ya no lo invoca nadie). Cualquier mejora al deploy
+  se hace en `scripts/deploy-vps.sh` y viaja sola con el merge.
+- `apply-migrations.yml` pasa a ser solo escape-hatch de emergencia.
+- Requiere repo público (raw.githubusercontent sin auth). Si el repo pasa
+  a privado, cambiar el curl por `git archive` o un token.
+
 ### 38.13 SSH key setup para deploy automatizado
 
 Generar keypair dedicado para GitHub Actions (NO usar la del user
