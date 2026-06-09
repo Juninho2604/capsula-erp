@@ -9588,10 +9588,24 @@ POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
 - UI: pestaña "Comisiones" en el módulo Cuentas Bancarias (selector de mes,
   tabla cuenta/semana con bruto/comisión/neto/#cobros + totales).
 
+### Fase 2 — implementado (conciliación)
+- Modelo `BankReconciliation` (por cuenta+día, unique `[tenant,cuenta,fecha]`).
+  Campos `rateAtSettle`/`bcvLossUsd`/`postedExpenseId` reservados para Fase 3.
+  Migración `20260609140000_add_bank_reconciliation` aditiva, verificada vs
+  Postgres (cero drift) + smoke test del upsert (idempotente).
+- `lib/treasury/reconciliation.ts`: `computeReconciliation` →
+  `differential = (esperado − estado) − comisión`; status OPEN/RECONCILED/
+  DISCREPANCY con tolerancia `max(1, 0.5%)`. 5 tests.
+- `treasury.actions.ts`: `getReconciliationViewAction` (esperado auto por día,
+  helper `computeDailyExpected` compartido) + `saveReconciliationAction`
+  (congela esperado, upsert, audit).
+- Módulo `conciliacion` (`/dashboard/conciliacion`, admin, `enabledByDefault:false`,
+  icono `Scale`): selector cuenta+mes, tabla diaria, estado de cuenta editable,
+  diferencial + badge. `TENANT_MODELS` += BankReconciliation (test 54→55).
+
 ### Pendiente (próximas fases)
-- F2: pantalla `/dashboard/conciliacion` (esperado auto vs estado de cuenta +
-  diferencial) + auto-posting de comisión/pérdida BCV a `Expense`.
-- F3: pérdida BCV (2ª tasa) + registro de compra de divisas.
+- F3: auto-posting comisión a `Expense` (postedExpenseId) + pérdida BCV (2ª tasa,
+  `rateAtSettle`/`bcvLossUsd`) + registro de compra de divisas.
 - F4: flag crédito/contado desde Compras → `AccountPayable`; "nos deben" (por cobrar).
 - A confirmar con el dueño: mapeo terminal→cuenta de MOVIL_NG/ZELLE; lista
   final de cuentas; granularidad de `SalesOrderPayment.amountBS` en flujos viejos.
