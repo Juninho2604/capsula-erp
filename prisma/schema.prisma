@@ -57,70 +57,77 @@ model Tenant {
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.
-  menuCategories       MenuCategory[]
-  menuItems            MenuItem[]
-  recipes              Recipe[]
-  suppliers            Supplier[]
-  expenseCategories    ExpenseCategory[]
-  productFamilies      ProductFamily[]
+  menuCategories        MenuCategory[]
+  menuItems             MenuItem[]
+  recipes               Recipe[]
+  suppliers             Supplier[]
+  expenseCategories     ExpenseCategory[]
+  productFamilies       ProductFamily[]
   // Lote 1.D-α (bajo riesgo)
-  inventoryItems       InventoryItem[]
-  menuModifierGroups   MenuModifierGroup[]
-  menuModifiers        MenuModifier[]
-  exchangeRates        ExchangeRate[]
-  auditLogs            AuditLog[]
-  broadcastMessages    BroadcastMessage[]
-  gameTypes            GameType[]
-  wristbandPlans       WristbandPlan[]
-  skuCreationTemplates SkuCreationTemplate[]
-  queueTickets         QueueTicket[]
+  inventoryItems        InventoryItem[]
+  menuModifierGroups    MenuModifierGroup[]
+  menuModifiers         MenuModifier[]
+  exchangeRates         ExchangeRate[]
+  auditLogs             AuditLog[]
+  broadcastMessages     BroadcastMessage[]
+  gameTypes             GameType[]
+  wristbandPlans        WristbandPlan[]
+  skuCreationTemplates  SkuCreationTemplate[]
+  queueTickets          QueueTicket[]
   // Lote 1.D-β (riesgo medio)
-  expenses             Expense[]
-  accountsPayable      AccountPayable[]
-  accountPayments      AccountPayment[]
-  purchaseOrders       PurchaseOrder[]
-  productionOrders     ProductionOrder[]
-  proteinProcessings   ProteinProcessing[]
-  requisitions         Requisition[]
-  inventoryAudits      InventoryAudit[]
-  inventoryLoans       InventoryLoan[]
-  inventoryCycles      InventoryCycle[]
-  dailyInventories     DailyInventory[]
-  cashRegisters        CashRegister[]
+  expenses              Expense[]
+  accountsPayable       AccountPayable[]
+  accountPayments       AccountPayment[]
+  purchaseOrders        PurchaseOrder[]
+  productionOrders      ProductionOrder[]
+  proteinProcessings    ProteinProcessing[]
+  requisitions          Requisition[]
+  inventoryAudits       InventoryAudit[]
+  inventoryLoans        InventoryLoan[]
+  inventoryCycles       InventoryCycle[]
+  dailyInventories      DailyInventory[]
+  cashRegisters         CashRegister[]
   // Lote 1.D-γ (riesgo alto — POS crítico)
-  users                User[]
-  branches             Branch[]
-  areas                Area[]
-  serviceZones         ServiceZone[]
-  tableOrStations      TableOrStation[]
-  openTabs             OpenTab[]
-  salesOrders          SalesOrder[]
-  salesOrderItems      SalesOrderItem[]
-  waiters              Waiter[]
-  gameStations         GameStation[]
-  gameSessions         GameSession[]
-  invoiceCounters      InvoiceCounter[]
-  systemConfigs        SystemConfig[]
-  reservations         Reservation[]
-  printJobs            PrintJob[]
-  customers            Customer[]
+  users                 User[]
+  branches              Branch[]
+  areas                 Area[]
+  serviceZones          ServiceZone[]
+  tableOrStations       TableOrStation[]
+  openTabs              OpenTab[]
+  salesOrders           SalesOrder[]
+  salesOrderItems       SalesOrderItem[]
+  waiters               Waiter[]
+  gameStations          GameStation[]
+  gameSessions          GameSession[]
+  invoiceCounters       InvoiceCounter[]
+  systemConfigs         SystemConfig[]
+  reservations          Reservation[]
+  printJobs             PrintJob[]
+  customers             Customer[]
   // SaaS billing — pagos del tenant al operador del SaaS. NO multi-tenant
   // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
-  tenantPayments       TenantPayment[]
-  promotions           Promotion[]
+  tenantPayments        TenantPayment[]
+  promotions            Promotion[]
   // Conteo físico semanal como entidad (§51.A)
-  weeklyCounts         WeeklyCount[]
+  weeklyCounts          WeeklyCount[]
+  // Tesorería / Conciliación bancaria (Fase 0+)
+  bankAccounts          BankAccount[]
+  posTerminals          PosTerminal[]
+  bankReconciliations   BankReconciliation[]
+  // Cuentas por cobrar (Fase 4)
+  accountsReceivable    AccountReceivable[]
+  receivablePayments    ReceivablePayment[]
   // Módulo Gestión de Deliverys (feature flag deliveryOps). Módulo AISLADO:
   // no toca SalesOrder, Report Z ni inventario. Ver docs/DELIVERY_OPS_PLAN.md.
-  deliveryOrders         DeliveryOrder[]
-  deliveryZones          DeliveryZone[]
-  branchDeliveryConfigs  BranchDeliveryConfig[]
-  deliveryTenantConfig   DeliveryTenantConfig?
-  deliveryDrivers        DeliveryDriver[]
-  deliveryWebhookOutbox  DeliveryWebhookOutbox[]
-  itemAvailabilities     ItemAvailability[]
-  managerNotes           ManagerNote[]
-  routingRules           RoutingRule[]
+  deliveryOrders        DeliveryOrder[]
+  deliveryZones         DeliveryZone[]
+  branchDeliveryConfigs BranchDeliveryConfig[]
+  deliveryTenantConfig  DeliveryTenantConfig?
+  deliveryDrivers       DeliveryDriver[]
+  deliveryWebhookOutbox DeliveryWebhookOutbox[]
+  itemAvailabilities    ItemAvailability[]
+  managerNotes          ManagerNote[]
+  routingRules          RoutingRule[]
 }
 
 model User {
@@ -527,7 +534,7 @@ model WeeklyCountItem {
   // Almacén principal.
   stockBeforePrincipal Float
   qtyCountedPrincipal  Float
-  variancePrincipal    Float   // qtyCounted - stockBefore (puede ser negativa)
+  variancePrincipal    Float // qtyCounted - stockBefore (puede ser negativa)
 
   // Almacén producción (solo si modo dual).
   stockBeforeProduction Float?
@@ -1027,8 +1034,8 @@ model Promotion {
   description String?
 
   // Descuento
-  discountType  String // 'PERCENT' (discountValue = % 0-100) | 'FIXED' (discountValue = USD por unidad)
-  discountValue Float
+  discountType       String // 'PERCENT' (discountValue = % 0-100) | 'FIXED' (discountValue = USD por unidad)
+  discountValue      Float
   maxDiscountPerUnit Float? // tope opcional de descuento por unidad (solo PERCENT)
 
   // Alcance (JSON arrays de ids; vacío = todo el menú)
@@ -1285,8 +1292,8 @@ model SalesOrderItem {
   // estos campos son solo para auditoría y reporte. Null = sin promo.
   appliedPromotionId   String? // id de la Promotion vigente al cobrar
   appliedPromotionName String? // nombre snapshot para mostrar sin join
-  originalUnitPrice    Float?  // precio de lista antes de la promo
-  promotionDiscount    Float?  // descuento total de la línea por la promo (≥0)
+  originalUnitPrice    Float? // precio de lista antes de la promo
+  promotionDiscount    Float? // descuento total de la línea por la promo (≥0)
 
   // Notas especiales (Ej: "Sin cebolla")
   notes String?
@@ -1775,6 +1782,10 @@ model Expense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Tesorería (Fase 0): cuenta bancaria desde la que SALIÓ el gasto. Nullable.
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1785,6 +1796,7 @@ model Expense {
   @@index([status])
   @@index([createdById])
   @@index([tenantId])
+  @@index([bankAccountId])
 }
 
 /// Apertura y cierre de caja (para cuadre de efectivo al inicio/fin del turno)
@@ -1913,6 +1925,10 @@ model AccountPayment {
   createdBy   User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
+  // Tesorería (Fase 0): cuenta bancaria desde la que SALIÓ el pago. Nullable.
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1920,6 +1936,190 @@ model AccountPayment {
   @@index([accountPayableId])
   @@index([paidAt])
   @@index([tenantId])
+  @@index([bankAccountId])
+}
+
+// ============================================================================
+// CUENTAS POR COBRAR — "nos deben" (Fase 4)
+// ============================================================================
+// Espejo de AccountPayable: dinero que terceros le deben al negocio (el
+// "CRÉDITO NOS DEBEN" del Excel). createdById/customerId/bankAccountId son
+// scalars sin FK (como reconciledById) para no acoplar User/Customer.
+
+/// Cuenta por cobrar — deuda a favor del negocio.
+model AccountReceivable {
+  id          String  @id @default(cuid())
+  description String
+  reference   String? // # de nota/recibo
+  debtorName  String // quién nos debe (cliente, tercero)
+  customerId  String? // opcional: ficha de cliente (CRM), sin FK
+
+  totalAmountUsd     Float
+  collectedAmountUsd Float @default(0)
+  remainingUsd       Float
+
+  issueDate        DateTime
+  dueDate          DateTime?
+  fullyCollectedAt DateTime?
+
+  status String  @default("PENDING") // PENDING, PARTIAL, COLLECTED, OVERDUE, VOID
+  notes  String?
+
+  createdById String // sin FK (scalar)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments ReceivablePayment[]
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([tenantId])
+}
+
+/// Cobro individual aplicado a una cuenta por cobrar.
+model ReceivablePayment {
+  id                  String            @id @default(cuid())
+  accountReceivableId String
+  accountReceivable   AccountReceivable @relation(fields: [accountReceivableId], references: [id], onDelete: Cascade)
+
+  amountUsd     Float
+  amountBs      Float?
+  exchangeRate  Float?
+  method        String // cómo nos pagaron
+  reference     String?
+  bankAccountId String? // cuenta que recibió el cobro (scalar, sin FK)
+  collectedAt   DateTime
+  notes         String?
+
+  createdById String // sin FK (scalar)
+  createdAt   DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([accountReceivableId])
+  @@index([collectedAt])
+  @@index([tenantId])
+}
+
+// ============================================================================
+// TESORERÍA / CONCILIACIÓN BANCARIA (Fase 0)
+// ============================================================================
+// La cuenta bancaria es el eje de la conciliación: por cada cuenta ENTRA la
+// venta liquidada por PDV/PM y SALE el gasto/pago. El saldo esperado
+// (entradas − salidas, derivado de las tablas existentes) se compara contra
+// el estado de cuenta. Ver docs/PLAN_TESORERIA_CONCILIACION.md.
+
+/// Cuenta bancaria / caja del negocio (NOUR, SUPERFERRO, BOFA, CASH…).
+model BankAccount {
+  id       String  @id @default(cuid())
+  name     String // "PROVINCIAL NOUR", "SUPERFERRO", "BOFA", "CASH BS"…
+  bankName String? // "Banco Provincial", "Bank of America"
+  // Moneda nativa de la cuenta. Decide si aplica conversión Bs→$ y pérdida BCV.
+  currency String  @default("BS") // BS | USD
+  // Naturaleza: cuenta bancaria, caja de efectivo, o billetera digital (Zelle).
+  kind     String  @default("BANK") // BANK | CASH | DIGITAL
+  rif      String?
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  terminals          PosTerminal[]
+  salesOrderPayments SalesOrderPayment[]
+  expenses           Expense[]
+  accountPayments    AccountPayment[]
+  reconciliations    BankReconciliation[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+/// Terminal de punto de venta (PDV). Abona a una cuenta y cobra una comisión.
+model PosTerminal {
+  id            String  @id @default(cuid())
+  label         String // "PDV Superferro", "PDV Shanklish"
+  terminalCode  String? // número de afiliación / serial del POS
+  // Mapea al método de pago del POS para atribuir ventas automáticamente.
+  // Ej: "PDV_SUPERFERRO", "PDV_SHANKLISH", "MOVIL_NG".
+  posMethodKey  String?
+  // Comisión por defecto que cobra el banco sobre la transacción (ej. 0.5 = 0.5%).
+  commissionPct Float   @default(0)
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, label])
+  @@index([tenantId])
+  @@index([bankAccountId])
+  @@index([posMethodKey])
+}
+
+/// Conciliación bancaria por cuenta y día (Fase 2).
+/// El lado "esperado" (entradas del POS + comisión) se deriva y se CONGELA al
+/// guardar; el "estado de cuenta" lo teclea el usuario. El diferencial revela
+/// si la comisión real coincide con la calculada. Montos en la moneda de la
+/// cuenta (Bs o $). Los campos BCV se llenan en Fase 3.
+model BankReconciliation {
+  id            String      @id @default(cuid())
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  date       DateTime // día conciliado (medianoche Caracas como UTC)
+  fiscalWeek String // etiqueta editable, ej "S5 ABRIL"
+
+  // Lado sistema (derivado, congelado al guardar)
+  expectedIn     Float @default(0) // ventas PDV/PM que entraron a la cuenta
+  commissionCalc Float @default(0) // comisión calculada por Kpsula
+
+  // Lado banco (tecleado)
+  statementIn    Float? // monto que el estado de cuenta dice que llegó (neto)
+  commissionStmt Float? // comisión según el banco (opcional)
+
+  // Resultado
+  differential Float  @default(0) // (esperado − estado) − comisión calculada
+  status       String @default("OPEN") // OPEN | RECONCILED | DISCREPANCY
+
+  // Pérdida BCV (Fase 3 — solo cuentas Bs)
+  rateAtSettle Float?
+  bcvLossUsd   Float?
+
+  // Gasto auto-generado por comisión + pérdida BCV (Fase 3)
+  postedExpenseId String?
+
+  notes          String?
+  reconciledById String? // id del usuario (sin FK, como otros campos del repo)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, bankAccountId, date])
+  @@index([tenantId])
+  @@index([bankAccountId])
+  @@index([date])
+  @@index([status])
 }
 
 // ============================================================================
@@ -2239,7 +2439,13 @@ model SalesOrderPayment {
   reference    String? // Número de referencia (transferencia, confirmación Zelle, etc.)
   createdAt    DateTime   @default(now())
 
+  // Tesorería (Fase 0): cuenta bancaria a la que ENTRÓ/liquidó este pago. Nullable.
+  // Se resuelve desde `method` vía PosTerminal.posMethodKey (entrada de la cuenta).
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   @@index([salesOrderId])
+  @@index([bankAccountId])
 }
 
 // ============================================================================
@@ -2869,15 +3075,15 @@ model Customer {
 /// Config a nivel tenant: prefijo + contador atómico de correlativo, modo de
 /// validación de pago y destino de webhooks. 1:1 con Tenant.
 model DeliveryTenantConfig {
-  id                String @id @default(cuid())
-  tenantId          String @unique
-  tenant            Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   correlativePrefix String  @default("PP") // "PP-00127"
-  nextCorrelative   Int     @default(1)     // contador atómico (incremento en transacción)
+  nextCorrelative   Int     @default(1) // contador atómico (incremento en transacción)
   validationMode    String  @default("MANUAL") // MANUAL | AUTO (antifraude: arrancar MANUAL)
   webhookUrl        String? // destino de webhooks salientes a n8n
-  schedule          Json?   // horarios de atención (global o por sede)
+  schedule          Json? // horarios de atención (global o por sede)
   isActive          Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -2887,11 +3093,11 @@ model DeliveryTenantConfig {
 /// Config de delivery por sede. 1:1 con Branch (no se engorda Branch, que lo
 /// comparte el POS restaurante de todos los tenants).
 model BranchDeliveryConfig {
-  id             String  @id @default(cuid())
-  tenantId       String
-  tenant         Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branchId       String  @unique
-  branch         Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @unique
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   lat            Float?
   lon            Float?
@@ -2909,13 +3115,13 @@ model BranchDeliveryConfig {
 /// Zona de cobertura geográfica de una sede (El Hatillo, La Lagunita, etc.).
 /// NO reusa ServiceZone (esa es DINING/BAR/VIP físico dentro del local).
 model DeliveryZone {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branchId  String
-  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  name      String
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String
+  branch   Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name     String
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2927,16 +3133,16 @@ model DeliveryZone {
 /// La orden de delivery (entidad central). Máquina de estados propia,
 /// independiente de SalesOrder. Nace sin cajera, antes del pago.
 model DeliveryOrder {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   tenantId    String
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  correlative String  // "PP-00127" — único por tenant
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  correlative String // "PP-00127" — único por tenant
 
   branchId String? // sede asignada (null hasta resolver)
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   // Canal / origen (del bot)
-  channel String  // telegram | whatsapp
+  channel String // telegram | whatsapp
   chatId  String?
 
   // Cliente (best-effort, sin contaminar stats POS del Customer)
@@ -2950,7 +3156,7 @@ model DeliveryOrder {
   lon             Float?
 
   // Comanda y montos (INFORMATIVOS — no contables)
-  comanda      Json   // el JSON que emite el bot
+  comanda      Json // el JSON que emite el bot
   totalUsd     Float?
   totalBs      Float?
   exchangeRate Float?
@@ -2991,15 +3197,15 @@ model DeliveryOrder {
 
 /// Motorizado (repartidor) del tenant. Puede estar asociado a una sede.
 model DeliveryDriver {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branchId  String?
-  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  name      String
-  phone     String
-  status    String   @default("AVAILABLE") // AVAILABLE | ON_ROUTE | OFFLINE
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name     String
+  phone    String
+  status   String  @default("AVAILABLE") // AVAILABLE | ON_ROUTE | OFFLINE
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3013,13 +3219,13 @@ model DeliveryDriver {
 /// Outbox de webhooks salientes (KPSULA → n8n). Entrega confiable con
 /// reintentos por el cron /api/cron/deliver-webhooks (patrón §18.40/41).
 model DeliveryWebhookOutbox {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  event     String   // orden.en_cocina | orden.lista | orden.en_camino | orden.entregada
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     String // orden.en_cocina | orden.lista | orden.en_camino | orden.entregada
   payload   Json
-  status    String   @default("PENDING") // PENDING | SENT | FAILED
-  attempts  Int      @default(0)
+  status    String  @default("PENDING") // PENDING | SENT | FAILED
+  attempts  Int     @default(0)
   lastError String?
 
   createdAt DateTime  @default(now())
@@ -3033,13 +3239,13 @@ model DeliveryWebhookOutbox {
 /// GET /contexto para que el bot deje de ofrecerlo. Label-based (decoupled del
 /// menú) — coincide con el shape del contexto: { sede_id, item }.
 model ItemAvailability {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branchId    String
-  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch      Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
   itemLabel   String
-  available   Boolean  @default(true)
+  available   Boolean @default(true)
   updatedById String?
 
   createdAt DateTime @default(now())
@@ -3100,7 +3306,7 @@ model DeliveryOrderEvent {
   toState   String
   userId    String? // null = lo hizo n8n/bot
   note      String?
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 
   @@index([orderId, createdAt])
 }

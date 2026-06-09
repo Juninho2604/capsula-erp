@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 61 modelos esperados (+9 del módulo delivery, Fases 1/3/4)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(61);
+    it('Contiene los 66 modelos esperados (delivery +9, Tesorería +5: Bank/Recon/Receivable)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(66);
     });
 
     it('Incluye modelos críticos del POS', () => {

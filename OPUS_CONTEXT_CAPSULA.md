@@ -9532,6 +9532,120 @@ Recomendación: **B**, balance entre superficie y costo.
 
 ---
 
+## §56 Tesorería / Conciliación Bancaria — Fases 0–4 (2026-06-09)
+
+Adaptación operacional (NO contable) del Excel "SC Capital" del dueño. Plan
+completo en `docs/PLAN_TESORERIA_CONCILIACION.md`. Objetivo: comisiones
+bancarias, conciliación banco-vs-ventas y pérdida BCV, montados sobre lo que el
+POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
+
+### Fundamentos (del análisis del Excel real, 19 hojas)
+- **La cuenta bancaria es el eje:** por ella ENTRA la venta liquidada por
+  PDV/PM y SALE el gasto/pago. Conciliación = (entradas − salidas) esperado vs
+  estado de cuenta. La columna "Forma de Pago" de las 8 hojas de gastos = la
+  cuenta bancaria (NOUR, SUPERFERRO, SHANKLISH, CANUR, PITACHEF, BOFA, CASH…).
+- **Conciliación y comisiones PRODUCEN gastos:** cada día el Excel postea en
+  "Gastos Pasivos" la comisión (`proveedor=PROVINCIAL`) y la pérdida BCV
+  (`proveedor=TASA CAMBIARIA`). En Kpsula será auto-posting a `Expense` (Fase 2/3).
+- **Moneda:** base USD; lo Bs se divide por tasa BCV. Kpsula guarda
+  `amountBs`+`amountUsd`+`exchangeRate` en cada tabla → superset del Excel.
+- **Pérdida BCV** = `Σ amountBS × (1/tasa_cobro − 1/tasa_liquidación)`, solo
+  cuentas Bs. Necesita la 2ª tasa (día de liquidación) — input de Fase 3.
+- **Factor ×1.0245 / ×1.16** del Excel: gross-up de IVA/impuesto SOLO en hoja
+  "Costo Consumo"; no toca el flujo bancario.
+
+### Fase 0 — implementado (rama claude/compassionate-goldberg-rrf4md)
+- **Modelos nuevos** (`prisma/schema.prisma`):
+  - `BankAccount` (name, bankName, `currency` BS|USD, `kind` BANK|CASH|DIGITAL,
+    rif, isActive, sortOrder). Unique `[tenantId, name]`.
+  - `PosTerminal` (label, terminalCode, `posMethodKey` → mapea al método del
+    POS para atribuir ventas, `commissionPct`, bankAccountId). Unique `[tenantId, label]`.
+  - Etiquetado: `bankAccountId String?` (nullable, FK SetNull) en `Expense`,
+    `AccountPayment`, `SalesOrderPayment`.
+  - Migración `20260609120000_add_bank_accounts` — 100% aditiva. Verificada
+    contra Postgres 16 efímero: aplica sobre la DB existente y `migrate diff`
+    da "No difference" (cero drift).
+- **Helper** `src/lib/fiscal-week.ts`: semana fiscal Lun→Dom asignada al mes que
+  contiene su jueves (ISO), numerada S1..S5. ~4 meses/año tienen S5 (≈ cada 3
+  meses, como el dueño lo piensa). Default determinístico; el label se guardará
+  EDITABLE en los modelos de conciliación. Zona Caracas vía `datetime.ts`. 5 tests.
+- **Módulo** `cuentas_bancarias` (`/dashboard/cuentas-bancarias`, section admin,
+  `enabledByDefault:false`, roles OWNER/ADMIN_MANAGER/AUDITOR, icono `Landmark`):
+  CRUD de cuentas + terminales, vista Minimal Navy. Actions en
+  `bank-account.actions.ts` (tenant-scoped + audit).
+- **Seed** `prisma/seed-bank-accounts.ts`: idempotente (upsert por nombre),
+  MANUAL (no en deploy) — `npx tsx prisma/seed-bank-accounts.ts`. Siembra las 9
+  cuentas + 2 terminales PDV inequívocos. Probado e2e contra Postgres.
+- `TENANT_MODELS` (prisma-tenant-client) += BankAccount, PosTerminal (test 52→54).
+
+### Fase 1 — implementado (comisiones)
+- `src/lib/treasury/commission.ts`: motor puro — `resolveTerminalForMethod`
+  (método de pago → terminal vía `posMethodKey`), `commissionBs` (= Bs × %),
+  `netBs`. 6 tests.
+- `treasury.actions.ts` → `getBankCommissionsReportAction({start,end})`: deriva
+  comisiones de `SalesOrderPayment` (ventas cobradas, `revenueWhere`), agrupa por
+  cuenta + semana fiscal. El dueño solo configura el % por terminal.
+- UI: pestaña "Comisiones" en el módulo Cuentas Bancarias (selector de mes,
+  tabla cuenta/semana con bruto/comisión/neto/#cobros + totales).
+
+### Fase 2 — implementado (conciliación)
+- Modelo `BankReconciliation` (por cuenta+día, unique `[tenant,cuenta,fecha]`).
+  Campos `rateAtSettle`/`bcvLossUsd`/`postedExpenseId` reservados para Fase 3.
+  Migración `20260609140000_add_bank_reconciliation` aditiva, verificada vs
+  Postgres (cero drift) + smoke test del upsert (idempotente).
+- `lib/treasury/reconciliation.ts`: `computeReconciliation` →
+  `differential = (esperado − estado) − comisión`; status OPEN/RECONCILED/
+  DISCREPANCY con tolerancia `max(1, 0.5%)`. 5 tests.
+- `treasury.actions.ts`: `getReconciliationViewAction` (esperado auto por día,
+  helper `computeDailyExpected` compartido) + `saveReconciliationAction`
+  (congela esperado, upsert, audit).
+- Módulo `conciliacion` (`/dashboard/conciliacion`, admin, `enabledByDefault:false`,
+  icono `Scale`): selector cuenta+mes, tabla diaria, estado de cuenta editable,
+  diferencial + badge. `TENANT_MODELS` += BankReconciliation (test 54→55).
+
+### Fase 3 — implementado (pérdida BCV + auto-posteo)
+- `computeBcvLossUsd(usdAtSale, expectedBs, tasaLiq) = usdAtSale − expectedBs/tasaLiq`
+  (solo cuentas Bs). 3 tests. `computeDailyExpected` ahora suma `usdAtSale`
+  (Bs→$ a la tasa de cada venta, vía `SalesOrderPayment.exchangeRate`).
+- `saveReconciliationAction` acepta `rateAtSettle`; calcula comisión$ + pérdida
+  BCV y **POSTEA idempotente** un `Expense` categoría "Comisión Bancaria"
+  (find-or-create, `bankAccountId` seteado, `postedExpenseId` en la conciliación).
+  Re-guardar actualiza el mismo gasto (no duplica). Revalida Gastos + Finanzas →
+  sube al P&L. SIN migración nueva (campos reservados en Fase 2).
+- UI: input tasa de liquidación + columna pérdida BCV (solo Bs) + ícono
+  "posteado a Gastos". Verificado vs Postgres (idempotencia del posteo).
+- Pendiente menor de F3: registro explícito de "compra de divisas" (COMPRA $).
+
+### Fase 4 — implementado (Cuentas por Cobrar — "nos deben")
+- Modelos `AccountReceivable` + `ReceivablePayment` (espejo de payable: deudor en
+  vez de acreedor; cobro vinculable a `bankAccountId`). `createdById`/`customerId`/
+  `bankAccountId` como scalars sin FK (como `reconciledById`). Migración
+  `20260609160000_add_accounts_receivable` aditiva, verificada vs Postgres.
+- `account-receivable.actions.ts`: get (aging→OVERDUE + KPIs pendiente/vencido/
+  cobrado/deudores), create, `registerCollectionAction` (transacción parcial→
+  total, status PENDING/PARTIAL/COLLECTED), void.
+- Módulo `cuentas_cobrar` (`/dashboard/cuentas-cobrar`, admin, `enabledByDefault:
+  false`, icono `HandCoins`): KPIs, filtros, lista expandible, modales crear/cobrar.
+- `TENANT_MODELS` += AccountReceivable, ReceivablePayment (test 55→57).
+
+### Pendiente
+- Puente automático Compras (flag crédito/contado) → `AccountPayable` (requiere
+  tocar el flujo de PurchaseOrder; pendiente de decidir).
+- Registro explícito de "compra de divisas" (COMPRA $).
+
+### Resumen módulos Tesorería entregados (todos `enabledByDefault:false`, section admin)
+`cuentas_bancarias` · `comisiones` (pestaña) · `conciliacion` · `cuentas_cobrar`.
+Activar desde Configuración de módulos. Seed manual: `npx tsx prisma/seed-bank-accounts.ts`.
+
+### Puente Compras → Cuentas por Pagar (semi-automático, aditivo)
+- `getCreditCandidatePurchaseOrdersAction` (account-payable.actions): OCs
+  RECIBIDAS sin `AccountPayable` asociada. Read-only, no toca el flujo de compras.
+- En el modal de Cuentas por Pagar, selector "desde orden de compra" precarga
+  descripción/proveedor/monto y vincula la deuda a la OC (`purchaseOrderId`).
+  Un clic convierte una compra a crédito en deuda. Sin migración.
+
+---
+
 ## §55 Módulo Gestión de Deliverys — Fase 1 (2026-06-08)
 
 Módulo nuevo en sección **Administración**, gated por feature flag `deliveryOps`.
