@@ -9901,6 +9901,30 @@ permiso por sede (opción B).
 → correr seed-poke-pok.ts en el VPS → login en `pokepok.kpsula.app`. El módulo
 viaja apagado para los demás tenants (flag OFF).
 
+### §55.11 Pieza C — Alerta sonora de pedido nuevo en el tablero (2026-06-09)
+
+Solo frontend (`delivery-board-view.tsx`), aditivo, sin endpoint nuevo:
+- **Polling cada 8s** (`POLL_INTERVAL_MS`) vía `listDeliveryOrdersAction()` SIN
+  filtro (el filtro de sede ya era client-side); se pausa con la pestaña oculta
+  (`document.visibilityState`). El botón "Refrescar" manual reusa `syncOrders()`.
+- **Detección de nuevas**: `knownIdsRef` (Set de ids) inicializado con
+  `initialOrders` — el primer render nunca dispara alarma. Id no visto = nueva;
+  se registra como vista SIEMPRE (aunque esté silenciado o sea de otra sede)
+  para no sonar tarde al cambiar filtro.
+- **Filtro por sede**: alarma/badge/resaltado solo si la orden pasa el
+  `branchFilter` vigente ('' = todas las sedes suenan).
+- **Sonido**: beep de 2 tonos (880/1320 Hz) con **Web Audio API** — sin asset
+  mp3. ⚠️ Autoplay: el `AudioContext` solo se crea/resume en el click del botón
+  "Activar alertas" (`Bell`/`BellOff` lucide, toggle). Sin ese gesto NUNCA se
+  intenta reproducir (los navegadores lo bloquean silenciosamente).
+- **Resaltado**: tarjeta nueva con `ring-2 ring-capsula-coral animate-pulse` +
+  badge "NUEVO" por 10s (`HIGHLIGHT_MS`); badge contador "N nuevos" en el
+  header (click = limpiar).
+- **Acumulación UX**: la lista de cada columna del Kanban scrollea internamente
+  (`max-h-[60vh] xl:max-h-[calc(100vh-300px)] overflow-y-auto`) en vez de
+  estirar la página; las nuevas entran arriba (orden createdAt desc) así el
+  resaltado se ve sin scrollear.
+
 ## §57 Documentos de Proveedor — facturas/notas de entrega (Compras, 2026-06-09)
 
 Decopla el "papel" del proveedor del inventario y de la OC. Resuelve el caso
