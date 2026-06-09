@@ -249,3 +249,53 @@ export async function registerPaymentAction(
     return { success: false, error: 'Error al registrar pago' };
   }
 }
+
+export interface CreditCandidatePO {
+  id: string;
+  orderNumber: string;
+  orderName: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
+  totalAmount: number;
+}
+
+/**
+ * Órdenes de compra RECIBIDAS que aún no tienen una cuenta por pagar asociada.
+ * Candidatas a "crédito": generar la deuda con un clic desde Cuentas por Pagar.
+ * Read-only y aditiva — no toca el flujo de compras.
+ */
+export async function getCreditCandidatePurchaseOrdersAction(): Promise<{
+  success: boolean; data?: CreditCandidatePO[]; error?: string;
+}> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'].includes(session.role)) {
+    return { success: false, error: 'Sin permisos' };
+  }
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const pos = await db.purchaseOrder.findMany({
+      where: { status: 'RECEIVED', deletedAt: null, accountsPayable: { none: {} } },
+      select: {
+        id: true, orderNumber: true, orderName: true, totalAmount: true,
+        supplierId: true, supplier: { select: { name: true } },
+      },
+      orderBy: { orderDate: 'desc' },
+      take: 100,
+    });
+    return {
+      success: true,
+      data: pos.map((p) => ({
+        id: p.id,
+        orderNumber: p.orderNumber,
+        orderName: p.orderName,
+        supplierId: p.supplierId,
+        supplierName: p.supplier?.name ?? null,
+        totalAmount: p.totalAmount,
+      })),
+    };
+  } catch {
+    return { success: false, error: 'Error al cargar órdenes de compra' };
+  }
+}

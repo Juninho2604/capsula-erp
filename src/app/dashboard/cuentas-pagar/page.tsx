@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getAccountsPayableAction } from '@/app/actions/account-payable.actions';
+import { getAccountsPayableAction, getCreditCandidatePurchaseOrdersAction } from '@/app/actions/account-payable.actions';
 import { getSuppliersAction } from '@/app/actions/purchase.actions';
 import { CuentasPagarView } from './cuentas-pagar-view';
 
@@ -18,15 +18,17 @@ export default async function CuentasPagarPage() {
     redirect('/dashboard');
   }
 
-  const [accountsResult, suppliers] = await Promise.all([
+  const [accountsResult, suppliers, candidatesResult] = await Promise.all([
     getAccountsPayableAction(),
     getSuppliersAction(),
+    getCreditCandidatePurchaseOrdersAction(),
   ]);
 
   return (
     <CuentasPagarView
       initialAccounts={accountsResult.data ?? []}
       suppliers={suppliers ?? []}
+      creditCandidates={candidatesResult.data ?? []}
       currentUserRole={session.role}
     />
   );

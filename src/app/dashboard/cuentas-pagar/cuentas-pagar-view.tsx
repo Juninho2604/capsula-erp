@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText, Clock } from 'lucide-react';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
-  type AccountPayableData,
+  type AccountPayableData, type CreditCandidatePO,
 } from '@/app/actions/account-payable.actions';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -52,10 +52,11 @@ interface Supplier { id: string; name: string; code: string | null }
 interface Props {
   initialAccounts: AccountPayableData[];
   suppliers: Supplier[];
+  creditCandidates: CreditCandidatePO[];
   currentUserRole: string;
 }
 
-export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }: Props) {
+export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates, currentUserRole }: Props) {
   const [accounts, setAccounts] = useState<AccountPayableData[]>(initialAccounts);
   const [filter, setFilter] = useState<string>('ACTIVE'); // ACTIVE | ALL | PAID
   const [showForm, setShowForm] = useState(false);
@@ -68,7 +69,24 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
   const [form, setForm] = useState({
     description: '', invoiceNumber: '', supplierId: '', creditorName: '',
     totalAmountUsd: '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: '',
+    purchaseOrderId: '',
   });
+
+  // Precarga el formulario desde una orden de compra recibida (crédito).
+  const prefillFromPO = (poId: string) => {
+    if (!poId) { setForm(f => ({ ...f, purchaseOrderId: '' })); return; }
+    const po = creditCandidates.find(p => p.id === poId);
+    if (!po) return;
+    setForm(f => ({
+      ...f,
+      purchaseOrderId: po.id,
+      description: po.orderName ? `${po.orderName} (${po.orderNumber})` : `Compra ${po.orderNumber}`,
+      invoiceNumber: po.orderNumber,
+      supplierId: po.supplierId ?? '',
+      creditorName: po.supplierId ? '' : (po.supplierName ?? ''),
+      totalAmountUsd: po.totalAmount ? String(po.totalAmount) : f.totalAmountUsd,
+    }));
+  };
 
   const [payForm, setPayForm] = useState({
     amountUsd: '', paymentMethod: 'BANK_TRANSFER', paymentRef: '',
@@ -95,11 +113,12 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
         totalAmountUsd: parseFloat(form.totalAmountUsd),
         invoiceDate: form.invoiceDate,
         dueDate: form.dueDate || undefined,
+        purchaseOrderId: form.purchaseOrderId || undefined,
       });
       if (result.success) {
         toast.success('Cuenta por pagar registrada');
         setShowForm(false);
-        setForm({ description: '', invoiceNumber: '', supplierId: '', creditorName: '', totalAmountUsd: '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: '' });
+        setForm({ description: '', invoiceNumber: '', supplierId: '', creditorName: '', totalAmountUsd: '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: '', purchaseOrderId: '' });
         reload();
       } else {
         toast.error(result.error ?? 'Error');
@@ -426,6 +445,21 @@ export function CuentasPagarView({ initialAccounts, suppliers, currentUserRole }
       {showForm && (
         <Modal title="Nueva cuenta por pagar" onClose={() => setShowForm(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
+            {creditCandidates.length > 0 && (
+              <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Desde orden de compra (crédito)</label>
+                <select value={form.purchaseOrderId} onChange={e => prefillFromPO(e.target.value)}
+                  className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none transition">
+                  <option value="">— Cargar manual —</option>
+                  {creditCandidates.map(po => (
+                    <option key={po.id} value={po.id}>
+                      {po.orderNumber}{po.orderName ? ` · ${po.orderName}` : ''}{po.supplierName ? ` · ${po.supplierName}` : ''} — ${po.totalAmount.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-capsula-ink-muted mt-1">Genera la deuda desde una compra recibida y la deja vinculada a la orden.</p>
+              </div>
+            )}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Descripción *</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
