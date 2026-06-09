@@ -580,6 +580,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 580,
     tags: ['cuentas', 'pagar', 'proveedores', 'deudas'],
   },
+  {
+    id: 'cuentas_bancarias',
+    label: 'Cuentas Bancarias',
+    description: 'Cuentas, cajas y terminales (PDV) — base de comisiones y conciliación bancaria',
+    icon: '🏦',
+    href: '/dashboard/cuentas-bancarias',
+    section: 'admin',
+    enabledByDefault: false,
+    sortOrder: 585,
+    tags: ['cuentas', 'bancos', 'tesorería', 'conciliación', 'terminales', 'pdv', 'comisiones'],
+  },
 ];
 
 /**
@@ -648,6 +659,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   gastos:        ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   caja:          ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AUDITOR'],
   cuentas_pagar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
+  cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
 };
 
 /**

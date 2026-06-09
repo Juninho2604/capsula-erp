@@ -6,7 +6,7 @@ import {
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
     Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag, UserCircle2,
-    FileSpreadsheet,
+    FileSpreadsheet, Landmark,
 } from 'lucide-react';
 
 /**
@@ -80,6 +80,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     gastos:            Receipt,
     caja:              Banknote,
     cuentas_pagar:     FileText,
+    cuentas_bancarias: Landmark,
 };
 
 /**
