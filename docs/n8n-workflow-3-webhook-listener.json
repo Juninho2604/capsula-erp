@@ -1,0 +1,40 @@
+{
+  "name": "Poke Pok Bot — Webhook Listener (Eventos de Orden)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "poke-pok-webhook",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Listener",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Inicializar config\n$input.first().json = {\n  config: {\n    KPSULA_HOST: \"https://pokepok.kpsula.app\",\n    KPSULA_API_KEY: \"TU_API_KEY_AQUI\",\n    KPSULA_WEBHOOK_SECRET: \"TU_SECRET_AQUI\",\n    TELEGRAM_BOT_TOKEN: \"TU_BOT_TOKEN_AQUI\"\n  }\n};\nreturn $input.first();",
+        "language": "javaScript"
+      },
+      "id": "set-config-webhook",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Validar firma HMAC-SHA256\nconst crypto = require('crypto');\nconst body = JSON.stringify($input.first().json.body);\nconst signature = $input.first().json.headers['x-kpsula-signature'];\nconst secret = $input.first().json.config.KPSULA_WEBHOOK_SECRET;\n\nif (!signature) {\n  throw new Error('Missing X-Kpsula-Signature header');\n}\n\nconst expectedSig = crypto.createHmac('sha256', secret).update(body).digest('hex');\nif (signature !== expectedSig) {\n  throw new Error('Invalid signature');\n}\n\nreturn {\n  ...Object.fromEntries(Object.entries($input.first().json).map(([k, v]) => [k, v])),\n  isValid: true\n};",
+        "language": "javaScript"
+      },
+      "id": "validate-hmac",
+      "name": "Validar HMAC-SHA256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {\n          \"string\": [\n            {\n              \"value1\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.event.type }}\",\n              \"operation\": \"equals\",\n              \"value2\": \"orden.en_cocina\"\n            },\n            {\n              \"value1\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.event.type }}\",\n              \"operation\": \"equals\",\n              \"value2\": \"orden.lista\"\n            },\n            {\n              \"value1\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.event.type }}\",\n              \"operation\": \"equals\",\n              \"value2\": \"orden.en_camino\"\n            },\n            {\n              \"value1\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.event.type }}\",\n              \"operation\": \"equals\",\n              \"value2\": \"orden.entregada\"\n            }\n          ]\n        }\n      },\n      \"id\": \"switch-event-type\",\n      \"name\": \"Switch: Tipo de evento\",\n      \"type\": \"n8n-nodes-base.switch\",\n      \"typeVersion\": 1,\n      \"position\": [700, 200]\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.order.chat_id }}\",\n        \"messageType\": \"text\",\n        \"text\": \"🍳 Tu orden está en cocina!\\n\\nNos estamos preparando. Te avisaremos cuando esté lista para salir.\"\n      },\n      \"id\": \"notify-en-cocina\",\n      \"name\": \"Notificar: En cocina\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [900, 50],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.order.chat_id }}\",\n        \"messageType\": \"text\",\n        \"text\": \"✅ Tu orden está LISTA!\\n\\nTu motorizado está en camino para recogerla. Te contactaremos para la entrega.\"\n      },\n      \"id\": \"notify-lista\",\n      \"name\": \"Notificar: Lista\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [900, 150],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.order.chat_id }}\",\n        \"messageType\": \"text\",\n        \"text\": \"🚗 Tu orden está EN CAMINO!\\n\\nNuestro motorizado está en camino hacia ti. Revisa el tracking si está disponible.\"\n      },\n      \"id\": \"notify-en-camino\",\n      \"name\": \"Notificar: En camino\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [900, 250],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.order.chat_id }}\",\n        \"messageType\": \"text\",\n        \"text\": \"🎉 ¡Tu orden fue ENTREGADA!\\n\\nGracias por usar Poke Pok. ¡Que disfrutes! 🍜\"\n      },\n      \"id\": \"notify-entregada\",\n      \"name\": \"Notificar: Entregada\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [900, 350],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"Validar HMAC-SHA256\\\"].json.body.order.chat_id }}\",\n        \"messageType\": \"text\",\n        \"text\": \"⚠️ Tu orden no pudo procesarse. Contacta al servicio al cliente.\"\n      },\n      \"id\": \"notify-unknown\",\n      \"name\": \"Notificar: Evento desconocido\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [900, 450],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"webhook-trigger\": {\n      \"main\": [[{ \"node\": \"set-config-webhook\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"set-config-webhook\": {\n      \"main\": [[{ \"node\": \"Validar HMAC-SHA256\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"Validar HMAC-SHA256\": {\n      \"main\": [[{ \"node\": \"switch-event-type\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"switch-event-type\": {\n      \"main\": [\n        [{ \"node\": \"notify-en-cocina\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"notify-lista\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"notify-en-camino\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"notify-entregada\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"notify-unknown\", \"type\": \"main\", \"index\": 0 }]\n      ]\n    }\n  }\n}

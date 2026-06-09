@@ -1,0 +1,52 @@
+{
+  "name": "Poke Pok Bot — Foto Comprobante → Validar Pago",
+  "nodes": [
+    {
+      "parameters": {
+        "pollIntervalValue": 60,
+        "pollUnitValue": "seconds"
+      },
+      "id": "telegram-trigger-photo",
+      "name": "Telegram Trigger (Photos)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [100, 200],
+      "credentials": {
+        "telegramApi": "telegram-bot-token"
+      }
+    },
+    {
+      "parameters": {
+        "content": "// Inicializar config\n$input.first().json = {\n  config: {\n    KPSULA_HOST: \"https://pokepok.kpsula.app\",\n    KPSULA_API_KEY: \"TU_API_KEY_AQUI\",\n    KPSULA_WEBHOOK_SECRET: \"TU_SECRET_AQUI\",\n    TELEGRAM_BOT_TOKEN: \"TU_BOT_TOKEN_AQUI\"\n  }\n};\nreturn $input.first();",
+        "language": "javaScript"
+      },
+      "id": "set-config-photo",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Parse foto de Telegram\nconst msg = $input.first().json.message;\nconst chatId = msg.chat.id;\nconst photoId = msg.photo[msg.photo.length - 1].file_id;\n\nreturn {\n  chatId,\n  photoId,\n  config: $input.first().json.config\n};",
+        "language": "javaScript"
+      },
+      "id": "parse-photo",
+      "name": "Parse Photo",
+      "type": "n8n-nodes-base.code",\n      "typeVersion": 2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "content": "// Cargar orden_id de sesión\nconst sessionKey = `session_${$node[\"Parse Photo\"].json.chatId}`;\nconst workflowData = await $getWorkflowData(sessionKey);\nconst ordenId = workflowData ? workflowData.orden_id : null;\n\nif (!ordenId) {\n  throw new Error(`No hay orden activa para el chat ${$node[\"Parse Photo\"].json.chatId}`);\n}\n\nreturn {\n  chatId: $node[\"Parse Photo\"].json.chatId,\n  photoId: $node[\"Parse Photo\"].json.photoId,\n  ordenId: ordenId,\n  config: $input.first().json.config\n};",
+        "language": "javaScript"
+      },
+      "id": "load-orden-id",
+      "name": "Cargar orden_id desde sesión",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "url": \"{{ 'https://api.telegram.org/bot' + $node[\\\"load-orden-id\\\"].json.config.TELEGRAM_BOT_TOKEN + '/getFile?file_id=' + $node[\\\"load-orden-id\\\"].json.photoId }}\",\n        "method": \"GET\"\n      },\n      "id": "get-file-info",\n      "name": "GET file info from Telegram",\n      "type": "n8n-nodes-base.httpRequest",\n      "typeVersion": 4.1,\n      "position": [900, 100]\n    },\n    {\n      "parameters": {\n        \"url\": \"{{ 'https://api.telegram.org/file/bot' + $node[\\\"load-orden-id\\\"].json.config.TELEGRAM_BOT_TOKEN + '/' + $node[\\\"get-file-info\\\"].json.result.file_path }}\",\n        \"method\": \"GET\",\n        \"responseFormat\": \"arraybuffer\"\n      },\n      \"id\": \"download-image\",\n      \"name\": \"Download Image",\n      "type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.1,\n      \"position\": [900, 300]\n    },\n    {\n      \"parameters\": {\n        \"content\": \"// Preparar multipart form-data para POST /ordenes/{id}/comprobante\\nconst imageBuffer = $node[\\\"download-image\\\"].json.body; // arraybuffer\\nconst ordenId = $node[\\\"load-orden-id\\\"].json.ordenId;\\nconst tipo = 'manual'; // tipo de comprobante\\n\\nreturn {\\n  ordenId: ordenId,\\n  imageBinary: imageBuffer,\\n  tipo: tipo,\\n  config: $input.first().json.config,\\n  chatId: $node[\\\"load-orden-id\\\"].json.chatId\\n};\",\n        \"language\": \"javaScript\"\n      },\n      \"id\": \"prepare-multipart\",\n      \"name\": \"Prepare Multipart Payload\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [1100, 200]\n    },\n    {\n      \"parameters\": {\n        \"url\": \"{{ $node[\\\"prepare-multipart\\\"].json.config.KPSULA_HOST + '/api/v1/delivery/ordenes/' + $node[\\\"prepare-multipart\\\"].json.ordenId + '/comprobante' }}\",\n        \"method\": \"POST\",\n        \"headerParameters\": {\n          \"parameters\": [\n            {\n              \"name\": \"X-API-Key\",\n              \"value\": \"{{ $node[\\\"prepare-multipart\\\"].json.config.KPSULA_API_KEY }}\"\n            }\n          ]\n        },\n        \"options\": {\n          \"formData\": {\n            \"data\": [\n              {\n                \"key\": \"tipo\",\n                \"value\": \"manual\"\n              },\n              {\n                \"key\": \"files\",\n                \"type\": \"file\",\n                \"fileContent\": \"{{ $node[\\\"prepare-multipart\\\"].json.imageBinary }}\",\n                \"fileName\": \"comprobante.jpg\"\n              }\n            ]\n          }\n        }\n      },\n      \"id\": \"post-comprobante\",\n      \"name\": \"POST /ordenes/{id}/comprobante\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.1,\n      \"position\": [1300, 200]\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"prepare-multipart\\\"].json.chatId }}\",\n        \"messageType\": \"text\",\n        \"text\": \"✅ Comprobante recibido!\\n\\nTu orden está en validación. Te avisaremos cuando sea confirmada.\"\n      },\n      \"id\": \"respond-comprobante-ok\",\n      \"name\": \"Responder: Comprobante OK\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [1500, 200],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      }\n    },\n    {\n      \"parameters\": {\n        \"chatId\": \"{{ $node[\\\"load-orden-id\\\"].json.chatId }}\",\n        \"messageType\": \"text\",\n        \"text\": \"❌ Error: No tienes una orden activa. Inicia una nueva.\"\n      },\n      \"id\": \"respond-no-orden\",\n      \"name\": \"Responder: Sin orden\",\n      \"type\": \"n8n-nodes-base.telegram\",\n      \"typeVersion\": 1,\n      \"position\": [700, 400],\n      \"credentials\": {\n        \"telegramApi\": \"telegram-bot-token\"\n      },\n      \"continueOnFail\": true\n    }\n  ],\n  \"connections\": {\n    \"telegram-trigger-photo\": {\n      \"main\": [[{ \"node\": \"set-config-photo\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"set-config-photo\": {\n      \"main\": [[{ \"node\": \"parse-photo\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"parse-photo\": {\n      \"main\": [[{ \"node\": \"load-orden-id\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"load-orden-id\": {\n      \"main\": [\n        [{ \"node\": \"get-file-info\", \"type\": \"main\", \"index\": 0 }],\n        [{ \"node\": \"respond-no-orden\", \"type\": \"main\", \"index\": 0 }]\n      ]\n    },\n    \"get-file-info\": {\n      \"main\": [[{ \"node\": \"download-image\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"download-image\": {\n      \"main\": [[{ \"node\": \"prepare-multipart\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"prepare-multipart\": {\n      \"main\": [[{ \"node\": \"post-comprobante\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"post-comprobante\": {\n      \"main\": [[{ \"node\": \"respond-comprobante-ok\", \"type\": \"main\", \"index\": 0 }]]\n    }\n  }\n}
