@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 57 modelos esperados (Tesorería + Cuentas por Cobrar)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(57);
+    it('Contiene los 66 modelos esperados (delivery +9, Tesorería +5: Bank/Recon/Receivable)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(66);
     });
 
     it('Incluye modelos críticos del POS', () => {
@@ -162,5 +162,18 @@ describe('TENANT_AWARE_MODELS', () => {
         expect(TENANT_AWARE_MODELS).toContain('Waiter');
         expect(TENANT_AWARE_MODELS).toContain('Branch');
         expect(TENANT_AWARE_MODELS).toContain('WeeklyCount');
+    });
+
+    it('Incluye los modelos multi-tenant del módulo delivery (DeliveryOrderEvent NO: sin tenantId)', () => {
+        expect(TENANT_AWARE_MODELS).toContain('DeliveryOrder');
+        expect(TENANT_AWARE_MODELS).toContain('BranchDeliveryConfig');
+        expect(TENANT_AWARE_MODELS).toContain('DeliveryZone');
+        expect(TENANT_AWARE_MODELS).toContain('DeliveryTenantConfig');
+        expect(TENANT_AWARE_MODELS).toContain('DeliveryDriver');
+        expect(TENANT_AWARE_MODELS).toContain('DeliveryWebhookOutbox');
+        expect(TENANT_AWARE_MODELS).toContain('ItemAvailability');
+        expect(TENANT_AWARE_MODELS).toContain('ManagerNote');
+        expect(TENANT_AWARE_MODELS).toContain('RoutingRule');
+        expect(TENANT_AWARE_MODELS).not.toContain('DeliveryOrderEvent');
     });
 });

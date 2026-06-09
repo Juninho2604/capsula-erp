@@ -34,6 +34,11 @@ export const FEATURE_FLAGS = {
         description:
             'Cuando está activo, el POS aplica automáticamente las promociones vigentes (descuentos por día/horario sobre categorías o items) al armar el carrito, y el servidor las re-valida al cobrar. Sin el flag, ninguna promoción se aplica aunque existan cargadas. Las promociones se configuran en el módulo "Promociones".',
     },
+    deliveryOps: {
+        label: 'Activar módulo Gestión de Deliverys',
+        description:
+            'Cuando está activo, aparece el módulo "Gestión de Deliverys" en Administración (tablero de órdenes, sedes, motorizados, agotados) y se habilita la API /api/v1/delivery/* que consume el bot (n8n + IA). Módulo aislado: no toca el Report Z, el historial de ventas ni el inventario. Sin el flag, el módulo y la API quedan ocultos para el tenant.',
+    },
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

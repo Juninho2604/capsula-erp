@@ -28,6 +28,7 @@ on:
                 type: choice
                 options:
                     - seed-demo-tenant
+                    - seed-poke-pok
                     - cleanup-leaked-records
                     - inspect-neon-schema
                     - migrate-from-neon
@@ -63,7 +64,7 @@ jobs:
                       cd /var/www/capsula-erp
                       set -a && source .env && set +a
                       case "$SCRIPT_NAME" in
-                          seed-demo-tenant|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant|sync-modifier-groups-tablas)
+                          seed-demo-tenant|seed-poke-pok|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant|sync-modifier-groups-tablas)
                               echo ">>> Ejecutando: npx tsx scripts/${SCRIPT_NAME}.ts $SCRIPT_ARGS"
                               npx tsx "scripts/${SCRIPT_NAME}.ts" $SCRIPT_ARGS
                               ;;

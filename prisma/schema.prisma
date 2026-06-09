@@ -57,66 +57,77 @@ model Tenant {
   // Relaciones inversas (multi-tenant Fase 1.B+).
   // Todas opcionales por ahora; al completar la migración cada fila tendrá
   // tenantId y se aplicará NOT NULL en una migration posterior.
-  menuCategories       MenuCategory[]
-  menuItems            MenuItem[]
-  recipes              Recipe[]
-  suppliers            Supplier[]
-  expenseCategories    ExpenseCategory[]
-  productFamilies      ProductFamily[]
+  menuCategories        MenuCategory[]
+  menuItems             MenuItem[]
+  recipes               Recipe[]
+  suppliers             Supplier[]
+  expenseCategories     ExpenseCategory[]
+  productFamilies       ProductFamily[]
   // Lote 1.D-α (bajo riesgo)
-  inventoryItems       InventoryItem[]
-  menuModifierGroups   MenuModifierGroup[]
-  menuModifiers        MenuModifier[]
-  exchangeRates        ExchangeRate[]
-  auditLogs            AuditLog[]
-  broadcastMessages    BroadcastMessage[]
-  gameTypes            GameType[]
-  wristbandPlans       WristbandPlan[]
-  skuCreationTemplates SkuCreationTemplate[]
-  queueTickets         QueueTicket[]
+  inventoryItems        InventoryItem[]
+  menuModifierGroups    MenuModifierGroup[]
+  menuModifiers         MenuModifier[]
+  exchangeRates         ExchangeRate[]
+  auditLogs             AuditLog[]
+  broadcastMessages     BroadcastMessage[]
+  gameTypes             GameType[]
+  wristbandPlans        WristbandPlan[]
+  skuCreationTemplates  SkuCreationTemplate[]
+  queueTickets          QueueTicket[]
   // Lote 1.D-β (riesgo medio)
-  expenses             Expense[]
-  accountsPayable      AccountPayable[]
-  accountPayments      AccountPayment[]
-  purchaseOrders       PurchaseOrder[]
-  productionOrders     ProductionOrder[]
-  proteinProcessings   ProteinProcessing[]
-  requisitions         Requisition[]
-  inventoryAudits      InventoryAudit[]
-  inventoryLoans       InventoryLoan[]
-  inventoryCycles      InventoryCycle[]
-  dailyInventories     DailyInventory[]
-  cashRegisters        CashRegister[]
+  expenses              Expense[]
+  accountsPayable       AccountPayable[]
+  accountPayments       AccountPayment[]
+  purchaseOrders        PurchaseOrder[]
+  productionOrders      ProductionOrder[]
+  proteinProcessings    ProteinProcessing[]
+  requisitions          Requisition[]
+  inventoryAudits       InventoryAudit[]
+  inventoryLoans        InventoryLoan[]
+  inventoryCycles       InventoryCycle[]
+  dailyInventories      DailyInventory[]
+  cashRegisters         CashRegister[]
   // Lote 1.D-γ (riesgo alto — POS crítico)
-  users                User[]
-  branches             Branch[]
-  areas                Area[]
-  serviceZones         ServiceZone[]
-  tableOrStations      TableOrStation[]
-  openTabs             OpenTab[]
-  salesOrders          SalesOrder[]
-  salesOrderItems      SalesOrderItem[]
-  waiters              Waiter[]
-  gameStations         GameStation[]
-  gameSessions         GameSession[]
-  invoiceCounters      InvoiceCounter[]
-  systemConfigs        SystemConfig[]
-  reservations         Reservation[]
-  printJobs            PrintJob[]
-  customers            Customer[]
+  users                 User[]
+  branches              Branch[]
+  areas                 Area[]
+  serviceZones          ServiceZone[]
+  tableOrStations       TableOrStation[]
+  openTabs              OpenTab[]
+  salesOrders           SalesOrder[]
+  salesOrderItems       SalesOrderItem[]
+  waiters               Waiter[]
+  gameStations          GameStation[]
+  gameSessions          GameSession[]
+  invoiceCounters       InvoiceCounter[]
+  systemConfigs         SystemConfig[]
+  reservations          Reservation[]
+  printJobs             PrintJob[]
+  customers             Customer[]
   // SaaS billing — pagos del tenant al operador del SaaS. NO multi-tenant
   // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
-  tenantPayments       TenantPayment[]
-  promotions           Promotion[]
+  tenantPayments        TenantPayment[]
+  promotions            Promotion[]
   // Conteo físico semanal como entidad (§51.A)
-  weeklyCounts         WeeklyCount[]
+  weeklyCounts          WeeklyCount[]
   // Tesorería / Conciliación bancaria (Fase 0+)
-  bankAccounts         BankAccount[]
-  posTerminals         PosTerminal[]
-  bankReconciliations  BankReconciliation[]
+  bankAccounts          BankAccount[]
+  posTerminals          PosTerminal[]
+  bankReconciliations   BankReconciliation[]
   // Cuentas por cobrar (Fase 4)
-  accountsReceivable   AccountReceivable[]
-  receivablePayments   ReceivablePayment[]
+  accountsReceivable    AccountReceivable[]
+  receivablePayments    ReceivablePayment[]
+  // Módulo Gestión de Deliverys (feature flag deliveryOps). Módulo AISLADO:
+  // no toca SalesOrder, Report Z ni inventario. Ver docs/DELIVERY_OPS_PLAN.md.
+  deliveryOrders        DeliveryOrder[]
+  deliveryZones         DeliveryZone[]
+  branchDeliveryConfigs BranchDeliveryConfig[]
+  deliveryTenantConfig  DeliveryTenantConfig?
+  deliveryDrivers       DeliveryDriver[]
+  deliveryWebhookOutbox DeliveryWebhookOutbox[]
+  itemAvailabilities    ItemAvailability[]
+  managerNotes          ManagerNote[]
+  routingRules          RoutingRule[]
 }
 
 model User {
@@ -2138,6 +2149,15 @@ model Branch {
   gameStations    GameStation[]
   waiters         Waiter[]
 
+  // Módulo Gestión de Deliverys (módulo aislado, feature flag deliveryOps).
+  deliveryConfig     BranchDeliveryConfig?
+  deliveryZones      DeliveryZone[]
+  deliveryOrders     DeliveryOrder[]
+  deliveryDrivers    DeliveryDriver[]
+  itemAvailabilities ItemAvailability[]
+  managerNotes       ManagerNote[]
+  routingRules       RoutingRule[]
+
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -3032,10 +3052,263 @@ model Customer {
   // arriba se actualizan al cobrar; el historial real se lee desde acá.
   salesOrders SalesOrder[]
 
+  // Órdenes de delivery vinculadas (módulo aislado). Link best-effort por
+  // teléfono; NO actualiza las stats POS de arriba (totalSpent/totalOrders).
+  deliveryOrders DeliveryOrder[]
+
   @@unique([tenantId, idDocument])
   @@index([tenantId])
   @@index([tenantId, fullName])
   @@index([tenantId, phone])
+}
+
+// ============================================================================
+// MÓDULO GESTIÓN DE DELIVERYS (feature flag deliveryOps) — MÓDULO AISLADO
+// ============================================================================
+// Operación de delivery orquestada por un bot (n8n + IA). KPSULA es la fuente
+// determinística: correlativos, asignación de sede, estados, impresión.
+//
+// AISLADO: NO escribe en SalesOrder, NO entra al Report Z / historial de
+// ventas (§20), NI descarga inventario. La contabilidad del delivery se lleva
+// aparte (decisión futura). Plan completo: docs/DELIVERY_OPS_PLAN.md.
+
+/// Config a nivel tenant: prefijo + contador atómico de correlativo, modo de
+/// validación de pago y destino de webhooks. 1:1 con Tenant.
+model DeliveryTenantConfig {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  correlativePrefix String  @default("PP") // "PP-00127"
+  nextCorrelative   Int     @default(1) // contador atómico (incremento en transacción)
+  validationMode    String  @default("MANUAL") // MANUAL | AUTO (antifraude: arrancar MANUAL)
+  webhookUrl        String? // destino de webhooks salientes a n8n
+  schedule          Json? // horarios de atención (global o por sede)
+  isActive          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Config de delivery por sede. 1:1 con Branch (no se engorda Branch, que lo
+/// comparte el POS restaurante de todos los tenants).
+model BranchDeliveryConfig {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @unique
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  lat            Float?
+  lon            Float?
+  printerStation String? // string `station` que consume el Print Agent (§39)
+  whatsappGroup  String? // id/nombre del grupo de motorizados (Evolution API)
+  managerUserId  String? // gerente responsable de la sede (scalar; sin FK a User)
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+/// Zona de cobertura geográfica de una sede (El Hatillo, La Lagunita, etc.).
+/// NO reusa ServiceZone (esa es DINING/BAR/VIP físico dentro del local).
+model DeliveryZone {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String
+  branch   Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name     String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+  @@index([tenantId])
+}
+
+/// La orden de delivery (entidad central). Máquina de estados propia,
+/// independiente de SalesOrder. Nace sin cajera, antes del pago.
+model DeliveryOrder {
+  id          String @id @default(cuid())
+  tenantId    String
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  correlative String // "PP-00127" — único por tenant
+
+  branchId String? // sede asignada (null hasta resolver)
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  // Canal / origen (del bot)
+  channel String // telegram | whatsapp
+  chatId  String?
+
+  // Cliente (best-effort, sin contaminar stats POS del Customer)
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName    String?
+  customerPhone   String?
+  deliveryAddress String?
+  deliveryRef     String? // punto de referencia
+  lat             Float?
+  lon             Float?
+
+  // Comanda y montos (INFORMATIVOS — no contables)
+  comanda      Json // el JSON que emite el bot
+  totalUsd     Float?
+  totalBs      Float?
+  exchangeRate Float?
+
+  // Estado (máquina de estados — ver src/lib/delivery/state-machine.ts)
+  // ESPERANDO_PAGO | PAGO_POR_VALIDAR | EN_COCINA | LISTA | EN_CAMINO | ENTREGADA | CANCELADA
+  status String @default("ESPERANDO_PAGO")
+
+  // Idempotencia (dedupe del bot): hash de canal+chatId+items, ventana 10 min
+  itemsHash String?
+
+  // Comprobante de pago (Fase 2)
+  paymentProofPath     String?
+  paymentProofType     String? // billetes | pago_movil | transferencia
+  paymentValidatedById String? // scalar; sin FK a User
+  paymentValidatedAt   DateTime?
+
+  // Motorizado (Fase 3)
+  driverId   String?
+  driver     DeliveryDriver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  assignedAt DateTime?
+
+  // Cancelación
+  cancelReason  String?
+  cancelledById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events DeliveryOrderEvent[]
+
+  @@unique([tenantId, correlative])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, channel, chatId])
+  @@index([branchId, status])
+  @@index([tenantId, customerPhone])
+}
+
+/// Motorizado (repartidor) del tenant. Puede estar asociado a una sede.
+model DeliveryDriver {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name     String
+  phone    String
+  status   String  @default("AVAILABLE") // AVAILABLE | ON_ROUTE | OFFLINE
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders DeliveryOrder[]
+
+  @@index([tenantId])
+  @@index([branchId, status])
+}
+
+/// Outbox de webhooks salientes (KPSULA → n8n). Entrega confiable con
+/// reintentos por el cron /api/cron/deliver-webhooks (patrón §18.40/41).
+model DeliveryWebhookOutbox {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     String // orden.en_cocina | orden.lista | orden.en_camino | orden.entregada
+  payload   Json
+  status    String  @default("PENDING") // PENDING | SENT | FAILED
+  attempts  Int     @default(0)
+  lastError String?
+
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([tenantId, status, createdAt])
+}
+
+/// Agotados / falta de stock por sede (capa estructurada, §9). El gerente
+/// marca un ítem (por etiqueta) como no disponible en su sede; alimenta
+/// GET /contexto para que el bot deje de ofrecerlo. Label-based (decoupled del
+/// menú) — coincide con el shape del contexto: { sede_id, item }.
+model ItemAvailability {
+  id          String  @id @default(cuid())
+  tenantId    String
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  itemLabel   String
+  available   Boolean @default(true)
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, itemLabel])
+  @@index([tenantId, branchId, available])
+}
+
+/// Notas de texto libre del gerente (capa de texto libre, §9). Aditivas y
+/// orientativas: se inyectan en {NOTAS_GERENTE} del prompt. Alcance global
+/// (branchId null) o por sede; con on/off y vigencia (expiresAt) para que no
+/// queden instrucciones viejas activas.
+model ManagerNote {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  text        String
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+}
+
+/// Reglas de ruteo producto → sede (capa estructurada, §9). Si la comanda
+/// incluye `matchProduct`, la orden nace en `branchId` (se aplica en
+/// POST /ordenes, NO en la IA). Mayor prioridad gana.
+model RoutingRule {
+  id           String  @id @default(cuid())
+  tenantId     String
+  tenant       Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matchProduct String
+  branchId     String
+  branch       Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  priority     Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+}
+
+/// Auditoría de transiciones de estado de una orden. Sin tenantId: aísla vía
+/// FK a DeliveryOrder (mismo patrón que SalesOrderPayment). Da métricas de
+/// tiempo por etapa gratis.
+model DeliveryOrderEvent {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     DeliveryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromState String?
+  toState   String
+  userId    String? // null = lo hizo n8n/bot
+  note      String?
+  createdAt DateTime      @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 /// SaaS billing — registro manual de pagos que cada tenant le hace al
