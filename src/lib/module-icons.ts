@@ -84,6 +84,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     cuentas_bancarias: Landmark,
     conciliacion:      Scale,
     cuentas_cobrar:    HandCoins,
+    compras_documentos: Receipt,
 };
 
 /**
