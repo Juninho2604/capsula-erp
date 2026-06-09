@@ -89,8 +89,129 @@ function parseQty(raw: string): { qty: number | null; flag?: string } {
 interface Line { name: string; qty: number | null; unit: string; flags: string[]; raw: string }
 interface ParsedRecipe { name: string; note?: string; lines: Line[]; skipped?: string; warnings: string[] }
 
+/** Formato B (restaurante): bloques con fila "INGREDIENTES,<tam1>,<tam2>…".
+ *  Genera UNA receta por tamaño (así matchea los ítems del POS por tamaño). */
+const SKIP_B = [/^arma tu/i, /^degustacion/i, /^pan arabe mixto$/i];
+
+function parseFormatB(rowsAll: string[][]): ParsedRecipe[] {
+  // bloques separados por filas sin contenido en cols 1-5
+  const blocks: string[][][] = [];
+  let cur: string[][] = [];
+  for (const r of rowsAll) {
+    const hasContent = [1, 2, 3, 4, 5].some((i) => (r[i] ?? '').trim());
+    if (!hasContent) { if (cur.length) { blocks.push(cur); cur = []; } continue; }
+    cur.push(r);
+  }
+  if (cur.length) blocks.push(cur);
+
+  const out: ParsedRecipe[] = [];
+  for (const block of blocks) {
+    const ingIdx = block.findIndex((r) => norm(r[1] ?? '') === 'ingredientes');
+    if (ingIdx < 0) continue; // sección/encabezado/texto suelto
+    const title = (block[0][1] ?? '').replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    if (SKIP_B.some((re) => re.test(norm(title)))) {
+      out.push({ name: title, lines: [], warnings: [], skipped: 'armado de menú (el cliente elige opciones), no es receta fija' });
+      continue;
+    }
+
+    const header = block[ingIdx];
+    // columnas de tamaño: labels en cols 2..5 hasta DETALLE/PREPARACIÓN/PRODUCTO
+    let sizeCols: { label: string; col: number }[] = [];
+    for (let c = 2; c <= 5; c++) {
+      const lab = (header[c] ?? '').replace(/\s+/g, ' ').trim();
+      if (!lab || /^(detalle|preparaci|producto)/i.test(lab)) break;
+      sizeCols.push({ label: lab.toUpperCase(), col: c });
+    }
+    // caso "1,UND" (CHEESE CAKE / BROOKIE): cantidad en col2, unidad en col3 → tamaño único
+    const singleUnd = sizeCols.length >= 2 && sizeCols[0].label === '1' && /^UND/.test(sizeCols[1].label);
+    if (singleUnd) sizeCols = [{ label: '', col: 2 }];
+    if (sizeCols.length === 0) sizeCols = [{ label: '', col: 2 }]; // PAPAS TRUFADAS: header vacío
+
+    let rows = block.slice(ingIdx + 1);
+    const warnings: string[] = [];
+    // Sub-tabla "Receta Base/Porción de X" (Tabule): re-mapear a cols de porción
+    const subIdx = rows.findIndex((r) => /receta base/i.test(r[2] ?? ''));
+    if (subIdx >= 0) {
+      const sub = rows[subIdx];
+      sizeCols = [];
+      for (let c = 2; c <= 5; c++) {
+        const m = (sub[c] ?? '').match(/(\d+)\s*gr/i);
+        if (m && /porci/i.test(sub[c] ?? '')) sizeCols.push({ label: `${m[1]}GR`, col: c });
+      }
+      rows = rows.slice(subIdx + 1);
+      warnings.push('tabla de porciones (Receta Base/%): se tomaron las columnas de porción');
+    }
+    // datos laterales (cols 7-9: SUB RECETA inline) → no se importan, se avisa
+    if (block.some((r) => [6, 7, 8, 9].some((i) => (r[i] ?? '').trim()))) {
+      warnings.push('tiene sub-receta/notas en columnas laterales — NO importadas (revisar: MIX DE VEGETALES / FRUTOS SECOS / VEGETALES SALTEADOS)');
+    }
+
+    // columnas DETALLE / PREPARACIÓN según el encabezado (no aplican si la
+    // tabla fue remapeada a columnas de porción, ej. Tabule)
+    const remapped = subIdx >= 0;
+    const lastSizeCol = sizeCols[sizeCols.length - 1].col;
+    const detalleCol = !remapped && /^detalle/i.test((header[lastSizeCol + 1] ?? '').trim()) ? lastSizeCol + 1 : -1;
+    const prepCol = remapped ? -1 : ([4, 5].find((c) => /^(preparaci|producto)/i.test((header[c] ?? '').trim())) ?? -1);
+
+    const multi = sizeCols.length > 1;
+    for (const sc of sizeCols) {
+      const recName = multi ? `${title} ${sc.label}` : title;
+      const rec: ParsedRecipe = { name: recName, lines: [], warnings: [...warnings] };
+      const prepNotes = new Set<string>();
+      for (const r of rows) {
+        const iname = (r[1] ?? '').replace(/\s+/g, ' ').trim().replace(/^\*|\*$/g, '');
+        if (!iname || /^peso total$/i.test(iname) || /^ingrediente$/i.test(iname)) continue;
+        const rawQty = (r[sc.col] ?? '').trim();
+        const detalle = detalleCol > 0 ? (r[detalleCol] ?? '').trim() : '';
+        const prep = prepCol > 0 ? (r[prepCol] ?? '').trim() : '';
+        if (prep) prepNotes.add(prep);
+        if (!rawQty) {
+          // sin cantidad para este tamaño: si NINGÚN tamaño la tiene → flag qty 0; si otros sí → omitir en este tamaño
+          const anyOther = sizeCols.some((o) => (r[o.col] ?? '').trim());
+          if (!anyOther) rec.lines.push({ name: iname, qty: null, unit: 'G', flags: ['sin cantidad en el CSV'], raw: '' });
+          else rec.warnings.push(`"${iname}" sin cantidad para ${sc.label || 'este tamaño'} — omitido en este tamaño`);
+          continue;
+        }
+        // unidad embebida en la cantidad ("60 GR", "1UND", "2 UND (VARA)") o en col siguiente (TABASCO 2 + GOTAS / "1,UND")
+        const m = rawQty.replace(',', '.').match(/(-?\d+(?:\.\d+)?)\s*([A-Za-zÁÉÍÓÚáéíóú]*)/);
+        if (!m) { rec.lines.push({ name: iname, qty: null, unit: 'G', flags: [`cantidad ilegible "${rawQty}"`], raw: rawQty }); continue; }
+        const qty = parseFloat(m[1]);
+        let unitRaw = m[2] || '';
+        if (!unitRaw && singleUnd) unitRaw = (r[3] ?? '').trim();
+        if (!unitRaw && detalle && /^(rodajas|gotas|und|bola)/i.test(detalle)) unitRaw = detalle;
+        const { unit, flag } = normUnit(unitRaw || 'GR');
+        const flags = [flag, !unitRaw ? 'unidad asumida G' : undefined].filter(Boolean) as string[];
+        const noteBits = [detalle && !/^(rodajas|gotas)/i.test(detalle) ? detalle : ''].filter(Boolean);
+        rec.lines.push({ name: iname, qty, unit, flags: [...flags, ...noteBits.map((n) => `detalle: ${n}`)], raw: rawQty });
+      }
+      rec.note = Array.from(prepNotes).slice(0, 3).join(' · ') || undefined;
+      if (rec.lines.length === 0) rec.skipped = 'sin ingredientes parseables';
+      out.push(rec);
+    }
+  }
+  // dedupe de líneas por receta (igual que formato A)
+  for (const r of out) {
+    if (r.skipped) continue;
+    const seen = new Map<string, Line>();
+    const merged: Line[] = [];
+    for (const l of r.lines) {
+      const k = norm(l.name);
+      const prev = seen.get(k);
+      if (prev && prev.unit === l.unit && prev.qty != null && l.qty != null) {
+        prev.qty += l.qty; r.warnings.push(`ingrediente repetido "${l.name}" — sumado`);
+      } else if (prev) { r.warnings.push(`ingrediente repetido "${l.name}" unidad distinta — se toma el primero`); }
+      else { seen.set(k, l); merged.push(l); }
+    }
+    r.lines = merged;
+  }
+  return out;
+}
+
 function parseCsv(text: string): ParsedRecipe[] {
   const rows = text.split(/\r?\n/).map(splitCsvLine);
+  // Formato B (restaurante): presencia de filas "INGREDIENTES,…"
+  if (rows.some((r) => norm(r[1] ?? '') === 'ingredientes')) return parseFormatB(rows);
   // Bloques separados por filas "vacías" (sin nombre ni cantidad)
   const blocks: string[][][] = [];
   let cur: string[][] = [];
@@ -236,22 +357,46 @@ async function main() {
     }
   }
 
+  // Huérfanos del POS: ítems del menú sin receta vinculada (para que nada quede suelto)
+  const posOrphans = await prisma.menuItem.findMany({
+    where: { tenantId: tenant.id, isActive: true, recipeId: null },
+    select: { sku: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+  if (posOrphans.length) {
+    console.log(`\n⚠ POS: ${posOrphans.length} producto(s) del menú SIN receta vinculada (vincular en Menú → editar producto):`);
+    for (const m of posOrphans) console.log(`  ◌ ${m.name}  [${m.sku}]`);
+  } else {
+    console.log('\n✓ POS: todos los productos del menú tienen receta vinculada.');
+  }
+
   if (!APPLY) { console.log('\n🟡 ENSAYO — nada se escribió. Corré con --apply para aplicar las recetas ✓.'); await prisma.$disconnect(); return; }
 
   // ── APLICAR (solo recetas completamente macheadas) ──
   console.log('\n🔴 Aplicando…');
+  let skuSeq = Date.now() % 100000;
   // Pass 1: crear outputItems de recetas nuevas aplicables (habilita sub-recetas como ingrediente)
+  const outputOverride = new Map<string, string>(); // norm(nombre receta) → outputItemId forzado
   for (const p of plan) {
     const fullyMatched = p.resolved.every((x) => x.itemId || x.via !== 'NO ENCONTRADO');
     if (!fullyMatched || p.existing) continue;
     const k = norm(p.rec.name);
-    if (itemByName.has(k)) continue;
-    const sku = `REC-${p.rec.name.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-5)}`;
+    const clash = itemByName.get(k);
+    const ingIds = new Set(p.rec.lines.map((l) => itemByName.get(norm(l.name))?.id).filter(Boolean));
+    if (clash && !ingIds.has(clash.id)) continue; // ya existe item con ese nombre y no es su propio ingrediente → se reusa
+    const isSelfClash = !!clash; // el plato se llama igual que su ingrediente (ej. PAPAS FRITAS)
+    const finalName = isSelfClash ? `${p.rec.name} (PLATO)` : p.rec.name;
+    const sku = `REC-${p.rec.name.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase()}-${(skuSeq++).toString().padStart(5, '0')}`;
     const out = await prisma.inventoryItem.create({
-      data: { tenantId: tenant.id, name: p.rec.name, sku, type: TYPE, baseUnit: 'KG', category: 'PRODUCCION', isActive: true },
+      data: { tenantId: tenant.id, name: finalName, sku, type: TYPE, baseUnit: 'KG', category: TYPE === 'FINISHED_GOOD' ? 'PLATOS' : 'PRODUCCION', isActive: true },
     });
-    itemByName.set(k, { id: out.id, name: out.name, sku: out.sku, type: TYPE, baseUnit: 'KG' });
-    console.log(`  + item de salida: ${p.rec.name} (${sku})`);
+    if (isSelfClash) {
+      outputOverride.set(k, out.id);
+      console.log(`  + item de salida (auto-colisión, renombrado): ${finalName} (${sku})`);
+    } else {
+      itemByName.set(k, { id: out.id, name: out.name, sku: out.sku, type: TYPE, baseUnit: 'KG' });
+      console.log(`  + item de salida: ${p.rec.name} (${sku})`);
+    }
   }
   // Pass 2: recetas
   let applied = 0;
@@ -276,11 +421,12 @@ async function main() {
       ]);
       console.log(`  ↻ reemplazada: ${p.rec.name} (v${p.existing.version + 1}, ${ingredientsData.length} ingredientes)`);
     } else {
-      const outItem = itemByName.get(norm(p.rec.name))!;
+      const outItemId = outputOverride.get(norm(p.rec.name)) ?? itemByName.get(norm(p.rec.name))?.id;
+      if (!outItemId) { console.log(`  ✗ saltada (sin item de salida): ${p.rec.name}`); continue; }
       await prisma.recipe.create({
         data: {
           tenantId: tenant.id, name: p.rec.name, description: p.rec.note ?? null,
-          outputItemId: outItem.id, outputQuantity: 1, outputUnit: 'KG',
+          outputItemId: outItemId, outputQuantity: 1, outputUnit: 'KG',
           isApproved: true, ingredients: { create: ingredientsData },
         },
       });
