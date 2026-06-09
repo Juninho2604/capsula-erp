@@ -13,7 +13,7 @@ export const metadata = {
 export default async function CuentasBancariasPage() {
   const session = await getSession();
   if (!session) redirect('/login');
-  if (!['OWNER', 'ADMIN_MANAGER', 'AUDITOR'].includes(session.role)) {
+  if (!['OWNER', 'ADMIN_MANAGER'].includes(session.role)) {
     redirect('/dashboard');
   }
 

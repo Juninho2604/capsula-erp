@@ -11,7 +11,7 @@ import { getCaracasDateStamp } from '@/lib/datetime';
 import { resolveTerminalForMethod, commissionBs, netBs } from '@/lib/treasury/commission';
 import { computeReconciliation, computeBcvLossUsd, type ReconStatus } from '@/lib/treasury/reconciliation';
 
-const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'];
+const READ_ROLES = ['OWNER', 'ADMIN_MANAGER'];
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER'];
 
 export interface CommissionRow {
