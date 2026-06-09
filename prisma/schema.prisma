@@ -110,6 +110,9 @@ model Tenant {
   promotions           Promotion[]
   // Conteo físico semanal como entidad (§51.A)
   weeklyCounts         WeeklyCount[]
+  // Tesorería / Conciliación bancaria (Fase 0)
+  bankAccounts         BankAccount[]
+  posTerminals         PosTerminal[]
 }
 
 model User {
@@ -516,7 +519,7 @@ model WeeklyCountItem {
   // Almacén principal.
   stockBeforePrincipal Float
   qtyCountedPrincipal  Float
-  variancePrincipal    Float   // qtyCounted - stockBefore (puede ser negativa)
+  variancePrincipal    Float // qtyCounted - stockBefore (puede ser negativa)
 
   // Almacén producción (solo si modo dual).
   stockBeforeProduction Float?
@@ -1016,8 +1019,8 @@ model Promotion {
   description String?
 
   // Descuento
-  discountType  String // 'PERCENT' (discountValue = % 0-100) | 'FIXED' (discountValue = USD por unidad)
-  discountValue Float
+  discountType       String // 'PERCENT' (discountValue = % 0-100) | 'FIXED' (discountValue = USD por unidad)
+  discountValue      Float
   maxDiscountPerUnit Float? // tope opcional de descuento por unidad (solo PERCENT)
 
   // Alcance (JSON arrays de ids; vacío = todo el menú)
@@ -1274,8 +1277,8 @@ model SalesOrderItem {
   // estos campos son solo para auditoría y reporte. Null = sin promo.
   appliedPromotionId   String? // id de la Promotion vigente al cobrar
   appliedPromotionName String? // nombre snapshot para mostrar sin join
-  originalUnitPrice    Float?  // precio de lista antes de la promo
-  promotionDiscount    Float?  // descuento total de la línea por la promo (≥0)
+  originalUnitPrice    Float? // precio de lista antes de la promo
+  promotionDiscount    Float? // descuento total de la línea por la promo (≥0)
 
   // Notas especiales (Ej: "Sin cebolla")
   notes String?
@@ -1764,6 +1767,10 @@ model Expense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Tesorería (Fase 0): cuenta bancaria desde la que SALIÓ el gasto. Nullable.
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1774,6 +1781,7 @@ model Expense {
   @@index([status])
   @@index([createdById])
   @@index([tenantId])
+  @@index([bankAccountId])
 }
 
 /// Apertura y cierre de caja (para cuadre de efectivo al inicio/fin del turno)
@@ -1902,6 +1910,10 @@ model AccountPayment {
   createdBy   User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
+  // Tesorería (Fase 0): cuenta bancaria desde la que SALIÓ el pago. Nullable.
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1909,6 +1921,75 @@ model AccountPayment {
   @@index([accountPayableId])
   @@index([paidAt])
   @@index([tenantId])
+  @@index([bankAccountId])
+}
+
+// ============================================================================
+// TESORERÍA / CONCILIACIÓN BANCARIA (Fase 0)
+// ============================================================================
+// La cuenta bancaria es el eje de la conciliación: por cada cuenta ENTRA la
+// venta liquidada por PDV/PM y SALE el gasto/pago. El saldo esperado
+// (entradas − salidas, derivado de las tablas existentes) se compara contra
+// el estado de cuenta. Ver docs/PLAN_TESORERIA_CONCILIACION.md.
+
+/// Cuenta bancaria / caja del negocio (NOUR, SUPERFERRO, BOFA, CASH…).
+model BankAccount {
+  id       String  @id @default(cuid())
+  name     String // "PROVINCIAL NOUR", "SUPERFERRO", "BOFA", "CASH BS"…
+  bankName String? // "Banco Provincial", "Bank of America"
+  // Moneda nativa de la cuenta. Decide si aplica conversión Bs→$ y pérdida BCV.
+  currency String  @default("BS") // BS | USD
+  // Naturaleza: cuenta bancaria, caja de efectivo, o billetera digital (Zelle).
+  kind     String  @default("BANK") // BANK | CASH | DIGITAL
+  rif      String?
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  terminals          PosTerminal[]
+  salesOrderPayments SalesOrderPayment[]
+  expenses           Expense[]
+  accountPayments    AccountPayment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+/// Terminal de punto de venta (PDV). Abona a una cuenta y cobra una comisión.
+model PosTerminal {
+  id            String  @id @default(cuid())
+  label         String // "PDV Superferro", "PDV Shanklish"
+  terminalCode  String? // número de afiliación / serial del POS
+  // Mapea al método de pago del POS para atribuir ventas automáticamente.
+  // Ej: "PDV_SUPERFERRO", "PDV_SHANKLISH", "MOVIL_NG".
+  posMethodKey  String?
+  // Comisión por defecto que cobra el banco sobre la transacción (ej. 0.5 = 0.5%).
+  commissionPct Float   @default(0)
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, label])
+  @@index([tenantId])
+  @@index([bankAccountId])
+  @@index([posMethodKey])
 }
 
 // ============================================================================
@@ -2219,7 +2300,13 @@ model SalesOrderPayment {
   reference    String? // Número de referencia (transferencia, confirmación Zelle, etc.)
   createdAt    DateTime   @default(now())
 
+  // Tesorería (Fase 0): cuenta bancaria a la que ENTRÓ/liquidó este pago. Nullable.
+  // Se resuelve desde `method` vía PosTerminal.posMethodKey (entrada de la cuenta).
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   @@index([salesOrderId])
+  @@index([bankAccountId])
 }
 
 // ============================================================================

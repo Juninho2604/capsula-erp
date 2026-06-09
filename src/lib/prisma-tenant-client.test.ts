@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 52 modelos esperados (WeeklyCount añadido en §51.A)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(52);
+    it('Contiene los 54 modelos esperados (BankAccount + PosTerminal añadidos en Tesorería Fase 0)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(54);
     });
 
     it('Incluye modelos críticos del POS', () => {
