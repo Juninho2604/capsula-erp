@@ -9616,7 +9616,25 @@ POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
   "posteado a Gastos". Verificado vs Postgres (idempotencia del posteo).
 - Pendiente menor de F3: registro explícito de "compra de divisas" (COMPRA $).
 
-### Pendiente (próximas fases)
-- F4: flag crédito/contado desde Compras → `AccountPayable`; "nos deben" (por cobrar).
+### Fase 4 — implementado (Cuentas por Cobrar — "nos deben")
+- Modelos `AccountReceivable` + `ReceivablePayment` (espejo de payable: deudor en
+  vez de acreedor; cobro vinculable a `bankAccountId`). `createdById`/`customerId`/
+  `bankAccountId` como scalars sin FK (como `reconciledById`). Migración
+  `20260609160000_add_accounts_receivable` aditiva, verificada vs Postgres.
+- `account-receivable.actions.ts`: get (aging→OVERDUE + KPIs pendiente/vencido/
+  cobrado/deudores), create, `registerCollectionAction` (transacción parcial→
+  total, status PENDING/PARTIAL/COLLECTED), void.
+- Módulo `cuentas_cobrar` (`/dashboard/cuentas-cobrar`, admin, `enabledByDefault:
+  false`, icono `HandCoins`): KPIs, filtros, lista expandible, modales crear/cobrar.
+- `TENANT_MODELS` += AccountReceivable, ReceivablePayment (test 55→57).
+
+### Pendiente
+- Puente automático Compras (flag crédito/contado) → `AccountPayable` (requiere
+  tocar el flujo de PurchaseOrder; pendiente de decidir).
+- Registro explícito de "compra de divisas" (COMPRA $).
 - A confirmar con el dueño: mapeo terminal→cuenta de MOVIL_NG/ZELLE; lista
   final de cuentas; granularidad de `SalesOrderPayment.amountBS` en flujos viejos.
+
+### Resumen módulos Tesorería entregados (todos `enabledByDefault:false`, section admin)
+`cuentas_bancarias` · `comisiones` (pestaña) · `conciliacion` · `cuentas_cobrar`.
+Activar desde Configuración de módulos. Seed manual: `npx tsx prisma/seed-bank-accounts.ts`.
