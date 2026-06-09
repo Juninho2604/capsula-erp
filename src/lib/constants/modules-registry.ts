@@ -644,6 +644,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     sortOrder: 583,
     tags: ['cuentas', 'cobrar', 'nos deben', 'deudores', 'por cobrar'],
   },
+  {
+    id: 'compras_documentos',
+    label: 'Facturas y Notas',
+    description: 'Facturas y notas de entrega de proveedor: entrada a inventario, vínculo a compras y a cuentas por pagar',
+    icon: '🧾',
+    href: '/dashboard/compras/documentos',
+    section: 'admin',
+    enabledByDefault: false,
+    sortOrder: 589,
+    tags: ['facturas', 'notas', 'entrega', 'compras', 'proveedor', 'documentos', 'cuentas por pagar'],
+  },
 ];
 
 /**
@@ -717,6 +728,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   cuentas_bancarias: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
   conciliacion: ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
   cuentas_cobrar: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
+  compras_documentos: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
 };
 
 /**

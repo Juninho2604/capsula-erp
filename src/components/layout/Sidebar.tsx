@@ -101,6 +101,7 @@ const SIDEBAR_TREE: SectionDef[] = [
             { kind: 'link', moduleId: 'caja' },
             { kind: 'link', moduleId: 'cuentas_pagar' },
             { kind: 'link', moduleId: 'cuentas_cobrar' },
+            { kind: 'link', moduleId: 'compras_documentos' },
             { kind: 'link', moduleId: 'cuentas_bancarias' },
             { kind: 'link', moduleId: 'conciliacion' },
             { kind: 'link', moduleId: 'purchases' },

@@ -9900,3 +9900,27 @@ permiso por sede (opción B).
 `prisma migrate deploy` en deploy-vps.sh paso [7/10], aborta sin swap si falla)
 → correr seed-poke-pok.ts en el VPS → login en `pokepok.kpsula.app`. El módulo
 viaja apagado para los demás tenants (flag OFF).
+
+## §57 Documentos de Proveedor — facturas/notas de entrega (Compras, 2026-06-09)
+
+Decopla el "papel" del proveedor del inventario y de la OC. Resuelve el caso
+real: la mercancía entra hoy y la factura se registra días después (o al revés).
+
+- **Modelos** `SupplierDocument` + `SupplierDocumentItem` (migración
+  `20260609180000_add_supplier_documents`, aditiva, verificada vs Postgres).
+  `supplierId`/`linkedPurchaseOrderId`/`accountPayableId`/`createdById` scalars
+  (sin FK) para no acoplar Supplier/PurchaseOrder/AccountPayable/User. El item
+  no tiene tenantId (hereda vía el documento). `TENANT_MODELS` += SupplierDocument (66→67).
+- **Acciones independientes** (`supplier-document.actions.ts`): crear documento
+  con líneas; `enterDocumentToInventoryAction` (reusa `registrarEntradaMercancia`
+  línea por línea → movimientos + stock + costo promedio probados); `linkDocument
+  ToPurchaseOrderAction`; `generatePayableFromDocumentAction` (crea AccountPayable
+  y guarda accountPayableId); `voidSupplierDocumentAction` (bloqueado si ya entró
+  a inventario); `getPurchaseReconciliationReportAction` (huérfanos).
+- **Módulo** `compras_documentos` (`/dashboard/compras/documentos`, sección
+  Finanzas en sidebar, `enabledByDefault:false`, icono Receipt, roles OWNER/
+  ADMIN_MANAGER/OPS_MANAGER + AUDITOR lectura): pestañas Documentos (lista +
+  crear + dar entrada/vincular/deuda/anular) y Conciliación (huérfanos:
+  documentos sin entrada/OC, y OC recibidas sin documento).
+- Verificado vs Postgres: creación con líneas, deuda vinculada, reporte de
+  huérfanos correcto. Build OK.

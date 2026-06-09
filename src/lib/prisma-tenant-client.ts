@@ -99,6 +99,7 @@ const TENANT_MODELS = new Set<string>([
     'ServiceZone',
     'SkuCreationTemplate',
     'Supplier',
+    'SupplierDocument',
     'SupplierItem',
     'SystemConfig',
     'TableOrStation',

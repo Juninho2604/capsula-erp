@@ -117,6 +117,8 @@ model Tenant {
   // Cuentas por cobrar (Fase 4)
   accountsReceivable    AccountReceivable[]
   receivablePayments    ReceivablePayment[]
+  // Documentos de proveedor (Compras Fase A)
+  supplierDocuments     SupplierDocument[]
   // Módulo Gestión de Deliverys (feature flag deliveryOps). Módulo AISLADO:
   // no toca SalesOrder, Report Z ni inventario. Ver docs/DELIVERY_OPS_PLAN.md.
   deliveryOrders        DeliveryOrder[]
@@ -1663,6 +1665,69 @@ model PurchaseOrderItem {
 
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
+}
+
+// ============================================================================
+// DOCUMENTOS DE PROVEEDOR — facturas / notas de entrega (Compras Fase A)
+// ============================================================================
+// El "papel" del proveedor como entidad de primera clase, DECOPLADO del
+// inventario y de la orden de compra: se puede crear solo, darle entrada al
+// inventario, vincularlo a una OC y/o generar la deuda — en cualquier orden.
+// supplierId/linkedPurchaseOrderId/accountPayableId/createdById son scalars
+// (sin FK) para no acoplar Supplier/PurchaseOrder/AccountPayable/User.
+
+model SupplierDocument {
+  id             String  @id @default(cuid())
+  documentType   String // FACTURA | NOTA_ENTREGA
+  documentNumber String
+  supplierId     String? // scalar (proveedor del sistema, opcional)
+  supplierName   String? // texto libre si no está en el sistema
+
+  documentDate     DateTime
+  paymentCondition String   @default("CONTADO") // CONTADO | CREDITO
+  totalAmount      Float    @default(0)
+  currency         String   @default("USD")
+  documentUrl      String? // foto/PDF del documento
+
+  // Estado de vínculos (cada uno independiente)
+  inventoryStatus       String    @default("NOT_ENTERED") // NOT_ENTERED | ENTERED
+  inventoryEnteredAt    DateTime?
+  linkedPurchaseOrderId String? // scalar — OC vinculada (caso: entró por OC antes)
+  accountPayableId      String? // scalar — deuda generada (si crédito)
+
+  status String  @default("ACTIVE") // ACTIVE | VOID
+  notes  String?
+
+  createdById String // scalar (sin FK)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items SupplierDocumentItem[]
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
+  @@index([documentType])
+  @@index([inventoryStatus])
+  @@index([linkedPurchaseOrderId])
+  @@index([status])
+}
+
+/// Línea de un documento de proveedor. Sin tenantId: hereda vía el documento.
+model SupplierDocumentItem {
+  id                 String           @id @default(cuid())
+  supplierDocumentId String
+  supplierDocument   SupplierDocument @relation(fields: [supplierDocumentId], references: [id], onDelete: Cascade)
+
+  inventoryItemId String // scalar (se valida en la action)
+  itemName        String // snapshot del nombre
+  quantity        Float
+  unit            String
+  unitCost        Float  @default(0)
+  lineTotal       Float  @default(0)
+
+  @@index([supplierDocumentId])
 }
 
 // ============================================================================
