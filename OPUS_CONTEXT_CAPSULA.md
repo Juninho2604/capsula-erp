@@ -9578,8 +9578,17 @@ POS ya cobra. Arquitectura **etiquetado + derivado** (no se duplica el dinero).
   cuentas + 2 terminales PDV inequívocos. Probado e2e contra Postgres.
 - `TENANT_MODELS` (prisma-tenant-client) += BankAccount, PosTerminal (test 52→54).
 
+### Fase 1 — implementado (comisiones)
+- `src/lib/treasury/commission.ts`: motor puro — `resolveTerminalForMethod`
+  (método de pago → terminal vía `posMethodKey`), `commissionBs` (= Bs × %),
+  `netBs`. 6 tests.
+- `treasury.actions.ts` → `getBankCommissionsReportAction({start,end})`: deriva
+  comisiones de `SalesOrderPayment` (ventas cobradas, `revenueWhere`), agrupa por
+  cuenta + semana fiscal. El dueño solo configura el % por terminal.
+- UI: pestaña "Comisiones" en el módulo Cuentas Bancarias (selector de mes,
+  tabla cuenta/semana con bruto/comisión/neto/#cobros + totales).
+
 ### Pendiente (próximas fases)
-- F1: comisiones por terminal → neto por cobro + reporte por cuenta/semana.
 - F2: pantalla `/dashboard/conciliacion` (esperado auto vs estado de cuenta +
   diferencial) + auto-posting de comisión/pérdida BCV a `Expense`.
 - F3: pérdida BCV (2ª tasa) + registro de compra de divisas.
