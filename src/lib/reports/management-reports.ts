@@ -74,11 +74,16 @@ export async function getExecutiveDayKpis(
                 createdAt: { gte: start, lte: end },
                 customerName: 'PROPINA COLECTIVA',
                 status: { not: 'CANCELLED' },
+                ...(branchIds?.length ? { branchId: { in: branchIds } } : {}),
             },
             _sum: { amountPaid: true },
         }),
         prisma.salesOrder.aggregate({
-            where: { tenantId, voidedAt: { gte: start, lte: end } },
+            where: {
+                tenantId,
+                voidedAt: { gte: start, lte: end },
+                ...(branchIds?.length ? { branchId: { in: branchIds } } : {}),
+            },
             _count: { id: true },
             _sum: { total: true },
         }),
@@ -99,6 +104,7 @@ export async function getExecutiveDayKpis(
         WHERE t."tenantId" = ${tenantId}
           AND s."status" = 'PAID'
           AND s."paidAt" >= ${start} AND s."paidAt" <= ${end}
+          ${branchIds?.length ? Prisma.sql`AND t."branchId" IN (${Prisma.join(branchIds)})` : Prisma.empty}
     `);
 
     return {

@@ -2759,12 +2759,16 @@ export async function modifyTabItemAction({
             else if (modification.type === 'REPLACE') {
                 const { newMenuItemId, newQuantity = 1 } = modification;
 
-                // Cargar el nuevo MenuItem
+                // Cargar el nuevo MenuItem — validando ownership del tenant:
+                // newMenuItemId viene del cliente y findUnique no filtra tenant
+                // dentro del tx (defensa anti cross-tenant, patrón §43.3).
                 const newMenuItem = await tx.menuItem.findUnique({
                     where: { id: newMenuItemId },
-                    select: { id: true, name: true, price: true },
+                    select: { id: true, name: true, price: true, tenantId: true },
                 });
-                if (!newMenuItem) throw new Error('Producto de reemplazo no encontrado');
+                if (!newMenuItem || newMenuItem.tenantId !== tenantId) {
+                    throw new Error('Producto de reemplazo no encontrado');
+                }
 
                 const newLineTotal = round2(newMenuItem.price * newQuantity);
 

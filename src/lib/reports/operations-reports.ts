@@ -45,6 +45,14 @@ export interface DailyClosureRow {
 export async function getDailyClosures(f: ReportFilters): Promise<DailyClosureRow[]> {
     const dayExpr = (col: Prisma.Sql) =>
         Prisma.sql`to_char((${col} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')::date, 'YYYY-MM-DD')`;
+    // Filtro de sucursal para las sub-queries que no usan orderWhere
+    // (splits van por OpenTab.branchId; PKP/anuladas por SalesOrder.branchId)
+    const branchOrder = f.branchIds && f.branchIds.length > 0
+        ? Prisma.sql`AND o."branchId" IN (${Prisma.join(f.branchIds)})`
+        : Prisma.empty;
+    const branchTab = f.branchIds && f.branchIds.length > 0
+        ? Prisma.sql`AND t."branchId" IN (${Prisma.join(f.branchIds)})`
+        : Prisma.empty;
 
     const [facturado, splits, directas, propinasPkp, anuladas] = await Promise.all([
         prisma.$queryRaw<Array<{ day: string; orders: number; total: number }>>(Prisma.sql`
@@ -65,6 +73,7 @@ export async function getDailyClosures(f: ReportFilters): Promise<DailyClosureRo
             WHERE t."tenantId" = ${f.tenantId}
               AND s."status" = 'PAID'
               AND s."paidAt" >= ${f.from} AND s."paidAt" <= ${f.to}
+              ${branchTab}
             GROUP BY 1 ORDER BY 1
         `),
         prisma.$queryRaw<Array<{ day: string; cobrado: number }>>(Prisma.sql`
@@ -82,6 +91,7 @@ export async function getDailyClosures(f: ReportFilters): Promise<DailyClosureRo
               AND o."createdAt" >= ${f.from} AND o."createdAt" <= ${f.to}
               AND o."customerName" = 'PROPINA COLECTIVA'
               AND o."status" <> 'CANCELLED'
+              ${branchOrder}
             GROUP BY 1 ORDER BY 1
         `),
         prisma.$queryRaw<Array<{ day: string; count: number; total: number }>>(Prisma.sql`
@@ -91,6 +101,7 @@ export async function getDailyClosures(f: ReportFilters): Promise<DailyClosureRo
             FROM "SalesOrder" o
             WHERE o."tenantId" = ${f.tenantId}
               AND o."voidedAt" >= ${f.from} AND o."voidedAt" <= ${f.to}
+              ${branchOrder}
             GROUP BY 1 ORDER BY 1
         `),
     ]);
