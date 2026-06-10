@@ -42,6 +42,15 @@ export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     [PERM.MANAGE_PINS]:         ['users', 'mesoneros'],
     [PERM.CONFIGURE_SYSTEM]:    ['module_config'],
     [PERM.MANAGE_BROADCAST]:    ['anuncios'],
+
+    // ── Reportes (granular por familia) ──────────────────────────────────────
+    [PERM.REPORTES_VENTAS_VER]:     ['reportes'],
+    [PERM.REPORTES_OPERATIVOS_VER]: ['reportes'],
+    [PERM.REPORTES_INVENTARIO_VER]: ['reportes'],
+    [PERM.REPORTES_COMPRAS_VER]:    ['reportes'],
+    [PERM.REPORTES_GERENCIAL_VER]:  ['reportes'],
+    [PERM.REPORTES_FISCAL_VER]:     ['reportes'],
+    [PERM.REPORTES_EXPORTAR]:       ['reportes'],
 };
 
 /** Devuelve el conjunto de módulos asociados a una lista de permisos. */

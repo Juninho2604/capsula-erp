@@ -18,10 +18,11 @@
  *   es pre-agregar en SQL via Prisma.queryRaw.
  */
 
-import { getSession } from '@/lib/auth';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getCaracasDayRange } from '@/lib/datetime';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 
 export interface SoldItemsReportFilters {
     /** "YYYY-MM-DD" hora Caracas. */
@@ -73,8 +74,11 @@ export async function getSoldItemsReportAction(
     filters: SoldItemsReportFilters,
 ): Promise<SoldItemsReportResult> {
     try {
-        const session = await getSession();
-        if (!session) return { success: false, message: 'No autorizado' };
+        // Gate de rol (BUG #7 del DIAGNOSTICO: antes solo exigía sesión —
+        // cualquier rol podía invocarla por RPC). Mismo permiso que el
+        // historial de ventas.
+        const guard = await checkActionPermission(PERM.VIEW_SALES_HISTORY);
+        if (!guard.ok) return { success: false, message: guard.message };
 
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);

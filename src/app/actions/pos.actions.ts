@@ -47,6 +47,18 @@ import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCar
 import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
 import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
 import { embedTabCode } from '@/lib/sales/collective-tip-ref';
+import { buildMenuItemCostMap, costSnapshotFields } from '@/lib/sales/menu-item-cost';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+
+/**
+ * Métodos de pago cuyo dinero entra en BOLÍVARES (el monto Bs y la tasa
+ * histórica deben persistirse en la línea de pago / split — BUG #3 del
+ * DIAGNOSTICO_REPORTES). Espejo de BS_METHODS de MixedPaymentSelector.
+ */
+const BS_PAYMENT_METHODS = new Set([
+    'CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG',
+    'MOBILE_PAY', 'CARD', 'TRANSFER',
+]);
 
 // ============================================================================
 // TIPOS
@@ -1320,6 +1332,24 @@ export async function createSalesOrderAction(
             finalNotes = finalNotes ? `${finalNotes} | ${discountReason}` : discountReason;
         }
 
+        // ── Contexto de reportería (DIAGNOSTICO_REPORTES A0.1/A0.3) ─────────
+        // · costMap: snapshot de costo por MenuItem (COGS — antes quedaba en 0)
+        // · branchId: las ventas directas quedaban con branch NULL (BUG #5)
+        // · tasa BCV del momento: exchangeRateValue/totalBs nunca se poblaban
+        // · caja abierta: vincula la venta al turno (Reporte X — FASE B)
+        // Todo best-effort: si algo falla, la venta sale igual (campos null).
+        const [costMap, currentRate, activeBranch, openRegister] = await Promise.all([
+            buildMenuItemCostMap(db, data.items.map(i => i.menuItemId)),
+            getExchangeRateValue().catch(() => null),
+            db.branch.findFirst({ where: { isActive: true }, select: { id: true } }).catch(() => null),
+            db.cashRegister.findFirst({
+                where: { status: 'OPEN' },
+                orderBy: { openedAt: 'desc' },
+                select: { id: true },
+            }).catch(() => null),
+        ]);
+        const orderBranchId = salesArea.branchId ?? activeBranch?.id ?? null;
+
         let newOrder;
         for (let attempt = 0; attempt < 10; attempt++) {
             try {
@@ -1365,6 +1395,11 @@ export async function createSalesOrderAction(
 
                         createdById: session.activeCashierId ?? session.id,
                         areaId: areaId,
+                        branchId: orderBranchId,
+                        cashRegisterId: openRegister?.id ?? null,
+                        // Snapshot dual-currency de la orden (tasa del momento)
+                        exchangeRateValue: currentRate ?? null,
+                        totalBs: currentRate ? round2(total * currentRate) : null,
 
                         items: {
                             create: data.items.map((item, idx) => ({
@@ -1375,6 +1410,8 @@ export async function createSalesOrderAction(
                                 unitPrice: item.unitPrice,
                                 lineTotal: item.lineTotal,
                                 notes: item.notes,
+                                // Snapshot de costo/margen (COGS — A0.1)
+                                ...costSnapshotFields(item.unitPrice, item.quantity, costMap.get(item.menuItemId) ?? 0),
                                 appliedPromotionId: promoAudit[idx]?.appliedPromotionId ?? null,
                                 appliedPromotionName: promoAudit[idx]?.appliedPromotionName ?? null,
                                 originalUnitPrice: promoAudit[idx]?.originalUnitPrice ?? null,
@@ -1416,10 +1453,31 @@ export async function createSalesOrderAction(
                     method: p.method,
                     amountUSD: p.amountUSD,
                     amountBS: p.amountBS,
-                    exchangeRate: p.exchangeRate,
+                    exchangeRate: p.exchangeRate ?? currentRate ?? undefined,
                     reference: p.reference,
                 })),
             });
+        } else if (total > 0) {
+            // A0.3 (BUG #3 parcial): pago único sin desglose del cliente
+            // (ej. delivery con PDV/MOVIL sin monto tipeado) antes NO creaba
+            // línea de pago → ni Bs ni tasa persistidos. Sintetizamos UNA
+            // línea con el total cobrado y la tasa del momento para que
+            // "ventas por método" cuadre y la tasa histórica quede grabada.
+            try {
+                const method = data.paymentMethod || 'CASH';
+                const isBsMethod = BS_PAYMENT_METHODS.has(method);
+                await prisma.salesOrderPayment.create({
+                    data: {
+                        salesOrderId: newOrder.id,
+                        method,
+                        amountUSD: total,
+                        amountBS: isBsMethod && currentRate ? round2(total * currentRate) : null,
+                        exchangeRate: currentRate ?? null,
+                    },
+                });
+            } catch (payErr) {
+                console.error('[PAYMENTS] No se pudo sintetizar línea de pago:', payErr);
+            }
         }
 
         // ====================================================================
@@ -1789,6 +1847,9 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
         const menuItems = await getMenuItemMetadata(menuItemIds);
         const menuMap = new Map(menuItems.map(item => [item.id, item]));
 
+        // Snapshot de costo por MenuItem (COGS — DIAGNOSTICO A0.1, BUG #1)
+        const costMap = await buildMenuItemCostMap(db, menuItemIds);
+
         // Stock validation — controlled via SystemConfig 'pos_stock_validation_enabled'
         const stockValidation = await getStockValidationEnabled();
         if (stockValidation) {
@@ -1857,6 +1918,8 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                             unitPrice: item.unitPrice,
                             lineTotal: item.lineTotal,
                             notes: item.notes,
+                            // Snapshot de costo/margen (COGS — A0.1)
+                            ...costSnapshotFields(item.unitPrice, item.quantity, costMap.get(item.menuItemId) ?? 0),
                             appliedPromotionId: promoAudit[idx]?.appliedPromotionId ?? null,
                             appliedPromotionName: promoAudit[idx]?.appliedPromotionName ?? null,
                             originalUnitPrice: promoAudit[idx]?.originalUnitPrice ?? null,
@@ -2016,6 +2079,12 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const wantsSkipServiceFee = isTableService && data.serviceFeeIncluded === false;
         let serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
 
+        // Tasa BCV del momento del cobro — se persiste en el split (BUG #3:
+        // los cobros de mesa no guardaban tasa ni Bs → dual-currency
+        // irrecuperable). Best-effort: si falla, el split queda sin tasa.
+        const splitRate = await getExchangeRateValue().catch(() => null);
+        const isBsTabPayment = BS_PAYMENT_METHODS.has(data.paymentMethod);
+
         if (wantsSkipServiceFee) {
             const pin = (data.skipServiceFeeAuthPin || '').trim();
             if (pin.length < 4) {
@@ -2067,6 +2136,12 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     serviceChargeAmount: serviceCharge,
                     total: appliedAmount + serviceCharge,
                     paidAmount: data.amount,
+                    // Dual currency (FASE B): Bs equivalente del total cobrado
+                    // + tasa histórica. Null si no hay tasa configurada.
+                    amountBs: isBsTabPayment && splitRate
+                        ? round2((appliedAmount + serviceCharge) * splitRate)
+                        : null,
+                    exchangeRate: splitRate ?? null,
                     paidAt: new Date(),
                     notes: splitNotes,
                 }
@@ -2280,12 +2355,103 @@ async function resolveVoidAuthPin(pin: string, branchId: string): Promise<VoidAu
 // NO hace commit — debe llamarse dentro de db.$transaction.
 // ============================================================================
 
+/**
+ * Reversión/descargo de inventario para modificaciones de ítems de mesa
+ * (BUG #2 del DIAGNOSTICO_REPORTES). Antes, anular/ajustar/reemplazar un
+ * ítem enviado NO tocaba inventario → stock real vs teórico desincronizado.
+ *
+ * `direction: 'RESTORE'` crea ADJUSTMENT_IN + increment (espejo de
+ * voidSalesOrderAction); `direction: 'DEDUCT'` crea SALE + decrement
+ * (espejo de registerInventoryForCartItems). Cubre la receta del MenuItem
+ * y las recetas de modificadores con linkedMenuItemId.
+ */
+async function applyItemInventoryInTx(tx: any, params: {
+    direction: 'RESTORE' | 'DEDUCT';
+    menuItemId: string;
+    quantity: number;
+    modifierIds: (string | null | undefined)[];
+    areaId: string;
+    orderId: string;
+    createdById: string;
+    label: string; // itemName para las notas del movimiento
+}) {
+    const { direction, quantity } = params;
+    type Op = { inventoryItemId: string; quantity: number; unit: string; note: string };
+    const ops: Op[] = [];
+
+    const collectRecipe = async (recipeId: string | null | undefined, note: string) => {
+        if (!recipeId) return;
+        const recipe = await tx.recipe.findUnique({
+            where: { id: recipeId },
+            include: { ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } } },
+        });
+        if (!recipe?.isActive) return;
+        for (const ing of recipe.ingredients) {
+            ops.push({
+                inventoryItemId: ing.ingredientItemId,
+                quantity: ing.quantity * quantity,
+                unit: ing.unit,
+                note,
+            });
+        }
+    };
+
+    const menuItem = await tx.menuItem.findUnique({
+        where: { id: params.menuItemId },
+        select: { name: true, recipeId: true },
+    });
+    await collectRecipe(menuItem?.recipeId, `${params.label}`);
+
+    for (const modifierId of params.modifierIds) {
+        if (!modifierId) continue;
+        const menuModifier = await tx.menuModifier.findUnique({
+            where: { id: modifierId },
+            select: { name: true, linkedMenuItem: { select: { recipeId: true } } },
+        });
+        await collectRecipe(menuModifier?.linkedMenuItem?.recipeId, `${params.label} (mod: ${menuModifier?.name ?? modifierId})`);
+    }
+
+    for (const op of ops) {
+        await tx.inventoryMovement.create({
+            data: {
+                inventoryItemId: op.inventoryItemId,
+                movementType: direction === 'RESTORE' ? 'ADJUSTMENT_IN' : 'SALE',
+                quantity: op.quantity,
+                unit: op.unit,
+                reason: direction === 'RESTORE'
+                    ? `Reversión por anulación de ítem — Orden: ${params.orderId}`
+                    : `Venta — Orden: ${params.orderId}`,
+                notes: direction === 'RESTORE'
+                    ? `Anulación ítem: ${op.note}`
+                    : `Reemplazo/ajuste ítem: ${op.note}`,
+                salesOrderId: params.orderId,
+                createdById: params.createdById,
+            },
+        });
+        await tx.inventoryLocation.upsert({
+            where: { inventoryItemId_areaId: { inventoryItemId: op.inventoryItemId, areaId: params.areaId } },
+            create: {
+                inventoryItemId: op.inventoryItemId,
+                areaId: params.areaId,
+                currentStock: direction === 'RESTORE' ? op.quantity : -op.quantity,
+            },
+            update: {
+                currentStock: direction === 'RESTORE'
+                    ? { increment: op.quantity }
+                    : { decrement: op.quantity },
+            },
+        });
+    }
+}
+
 async function voidItemInTx(
     // Acepta tx tanto del cliente original como del extendido (withTenant).
     tx: any,
     item: {
-        id: string; orderId: string; itemName: string;
+        id: string; orderId: string; itemName: string; menuItemId: string;
         quantity: number; lineTotal: number;
+        modifiers: { modifierId: string | null }[];
+        order: { areaId: string; createdById: string };
     },
     openTabId: string,
     reason: string,
@@ -2327,6 +2493,20 @@ async function voidItemInTx(
             notes:           ((tab.notes || '') + ' ' + noteEntry).trim().slice(0, 1000),
             version:         { increment: 1 },
         },
+    });
+
+    // Revertir el descargo de inventario del ítem anulado (BUG #2).
+    // El descargo original ocurrió en addItemsToOpenTabAction al enviarlo;
+    // sin esta reversión el stock quedaba descontado para siempre.
+    await applyItemInventoryInTx(tx, {
+        direction: 'RESTORE',
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        modifierIds: item.modifiers.map(m => m.modifierId),
+        areaId: item.order.areaId,
+        orderId: item.orderId,
+        createdById: item.order.createdById,
+        label: item.itemName,
     });
 }
 
@@ -2516,6 +2696,8 @@ export async function modifyTabItemAction({
                         quantity:  newQuantity,
                         lineTotal: newLineTotal,
                         notes:     item.notes,
+                        // Hereda el snapshot de costo del ítem original (A0.1)
+                        ...costSnapshotFields(item.unitPrice, newQuantity, item.costPerUnit ?? 0),
                         modifiers: {
                             create: item.modifiers.map(m => ({
                                 name: m.name,
@@ -2524,6 +2706,19 @@ export async function modifyTabItemAction({
                             })),
                         },
                     },
+                });
+
+                // Re-descargar inventario por la cantidad nueva (BUG #2):
+                // voidItemInTx restauró la cantidad completa del original.
+                await applyItemInventoryInTx(tx, {
+                    direction: 'DEDUCT',
+                    menuItemId: item.menuItemId,
+                    quantity: newQuantity,
+                    modifierIds: item.modifiers.map(m => m.modifierId),
+                    areaId: item.order.areaId,
+                    orderId: item.orderId,
+                    createdById: item.order.createdById,
+                    label: item.itemName,
                 });
 
                 // Marcar el original como reemplazado por el nuevo
@@ -2564,12 +2759,16 @@ export async function modifyTabItemAction({
             else if (modification.type === 'REPLACE') {
                 const { newMenuItemId, newQuantity = 1 } = modification;
 
-                // Cargar el nuevo MenuItem
+                // Cargar el nuevo MenuItem — validando ownership del tenant:
+                // newMenuItemId viene del cliente y findUnique no filtra tenant
+                // dentro del tx (defensa anti cross-tenant, patrón §43.3).
                 const newMenuItem = await tx.menuItem.findUnique({
                     where: { id: newMenuItemId },
-                    select: { id: true, name: true, price: true },
+                    select: { id: true, name: true, price: true, tenantId: true },
                 });
-                if (!newMenuItem) throw new Error('Producto de reemplazo no encontrado');
+                if (!newMenuItem || newMenuItem.tenantId !== tenantId) {
+                    throw new Error('Producto de reemplazo no encontrado');
+                }
 
                 const newLineTotal = round2(newMenuItem.price * newQuantity);
 
@@ -2577,6 +2776,7 @@ export async function modifyTabItemAction({
                 await voidItemInTx(tx, item, openTabId, reason, auth);
 
                 // Crear ítem de reemplazo
+                const replacementCostMap = await buildMenuItemCostMap(tx, [newMenuItem.id]);
                 const newItem = await tx.salesOrderItem.create({
                     data: {
                         tenantId,
@@ -2586,7 +2786,22 @@ export async function modifyTabItemAction({
                         unitPrice: newMenuItem.price,
                         quantity:  newQuantity,
                         lineTotal: newLineTotal,
+                        // Snapshot de costo del producto nuevo (A0.1)
+                        ...costSnapshotFields(newMenuItem.price, newQuantity, replacementCostMap.get(newMenuItem.id) ?? 0),
                     },
+                });
+
+                // Descargar inventario del producto nuevo (BUG #2):
+                // voidItemInTx restauró el original; el reemplazo consume.
+                await applyItemInventoryInTx(tx, {
+                    direction: 'DEDUCT',
+                    menuItemId: newMenuItem.id,
+                    quantity: newQuantity,
+                    modifierIds: [],
+                    areaId: item.order.areaId,
+                    orderId: item.orderId,
+                    createdById: item.order.createdById,
+                    label: newMenuItem.name,
                 });
 
                 // Marcar el original como reemplazado
@@ -3110,6 +3325,10 @@ export async function paySubAccountAction(data: {
         if (applyServiceFee) labelParts.push('+10% serv');
         const splitLabel = labelParts.join(' | ');
 
+        // Tasa BCV del momento del cobro (dual currency — BUG #3, FASE B)
+        const splitRate = await getExchangeRateValue().catch(() => null);
+        const isBsSubPayment = BS_PAYMENT_METHODS.has(data.paymentMethod);
+
         const updatedTab = await db.$transaction(async (tx) => {
             // Mark subcuenta as PAID
             await tx.tabSubAccount.update({
@@ -3136,6 +3355,9 @@ export async function paySubAccountAction(data: {
                     serviceChargeAmount: serviceChargeApplied,
                     total: totalApplied,
                     paidAmount: data.amount,
+                    // Dual currency (FASE B): Bs del total cobrado + tasa histórica
+                    amountBs: isBsSubPayment && splitRate ? round2(totalApplied * splitRate) : null,
+                    exchangeRate: splitRate ?? null,
                     paidAt: new Date(),
                     notes: discountType === 'DIVISAS_33' ? 'Pago en Divisas (33.33%)' : undefined,
                 },

@@ -467,6 +467,8 @@ model InventoryMovement {
   @@index([productionOrderId])
   @@index([requisitionId])
   @@index([purchaseOrderId])
+  @@index([inventoryItemId, createdAt])
+  @@index([movementType, createdAt])
 }
 
 // ============================================================================
@@ -1199,6 +1201,9 @@ model SalesOrder {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   sentToKitchenAt DateTime?
+  // Cuándo la cocina marcó la orden como lista (Reportes FASE B — tiempos
+  // de cocina). Lo setea el PATCH de /api/kitchen/orders al pasar a READY.
+  kitchenReadyAt  DateTime?
   closedAt        DateTime?
 
   // Hora de entrega solicitada (PICKUP/DELIVERY). Si la cajera la captura,
@@ -1231,6 +1236,11 @@ model SalesOrder {
   exchangeRate      ExchangeRate? @relation(fields: [exchangeRateId], references: [id])
   exchangeRateValue Float?
   totalBs           Float?
+
+  // Turno de caja en el que se cobró (Reportes FASE B — habilita Reporte X
+  // por turno/cajero). Nullable: órdenes históricas y ventas sin caja abierta.
+  cashRegisterId String?
+  cashRegister   CashRegister? @relation("CashRegisterOrders", fields: [cashRegisterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   // Notas
   notes String?
@@ -1269,6 +1279,9 @@ model SalesOrder {
   @@index([openTabId])
   @@index([tenantId])
   @@index([customerId])
+  @@index([cashRegisterId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, voidedAt])
 }
 
 model SalesOrderItem {
@@ -1641,6 +1654,7 @@ model PurchaseOrder {
   @@index([orderDate])
   @@index([supplierId])
   @@index([tenantId])
+  @@index([tenantId, orderDate])
 }
 
 model PurchaseOrderItem {
@@ -1776,6 +1790,7 @@ model AuditLog {
   @@index([createdAt])
   @@index([module])
   @@index([tenantId])
+  @@index([tenantId, createdAt])
 }
 
 // ============================================================================
@@ -1862,6 +1877,7 @@ model Expense {
   @@index([createdById])
   @@index([tenantId])
   @@index([bankAccountId])
+  @@index([tenantId, paidAt])
 }
 
 /// Apertura y cierre de caja (para cuadre de efectivo al inicio/fin del turno)
@@ -1910,6 +1926,9 @@ model CashRegister {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Órdenes cobradas durante este turno (Reportes FASE B — Reporte X)
+  salesOrders SalesOrder[] @relation("CashRegisterOrders")
+
   // Multi-tenant (Fase 1.D-β). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1918,6 +1937,7 @@ model CashRegister {
   @@index([status])
   @@index([openedById])
   @@index([tenantId])
+  @@index([tenantId, shiftDate])
 }
 
 /// Cuentas por pagar — facturas/deudas pendientes con proveedores u otros acreedores
@@ -2431,6 +2451,11 @@ model PaymentSplit {
   tipAmount           Float          @default(0) // Propina prorrateada en este split
   total               Float          @default(0)
   paidAmount          Float          @default(0)
+  // Dual currency (Reportes FASE B — BUG #3 del diagnóstico): monto Bs
+  // equivalente y tasa BCV AL MOMENTO del cobro. Null en cobros históricos
+  // (= "Bs no registrado"; los reportes NO reconvierten con tasa actual).
+  amountBs            Float?
+  exchangeRate        Float?
   createdAt           DateTime       @default(now())
   paidAt              DateTime?
   notes               String?
@@ -2438,6 +2463,7 @@ model PaymentSplit {
   @@index([openTabId, status])
   @@index([salesOrderId])
   @@index([subAccountId])
+  @@index([paidAt])
 }
 
 // ─── SUBCUENTAS ──────────────────────────────────────────────────────────────
