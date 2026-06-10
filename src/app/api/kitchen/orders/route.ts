@@ -100,9 +100,14 @@ export async function PATCH(request: NextRequest) {
 
         // Validar ownership: la orden debe pertenecer al tenant del session.
         // updateMany con filtro de tenant evita IDOR cross-tenant.
+        // Al marcar READY se estampa kitchenReadyAt (tiempos de cocina —
+        // Reportes FASE B).
         const result = await prisma.salesOrder.updateMany({
             where: { id: orderId, tenantId },
-            data: { status },
+            data: {
+                status,
+                ...(status === 'READY' ? { kitchenReadyAt: new Date() } : {}),
+            },
         });
 
         if (result.count === 0) {

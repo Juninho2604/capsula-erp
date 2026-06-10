@@ -37,6 +37,15 @@ export const PERM = {
   MANAGE_PINS:          'MANAGE_PINS',           // Asignar PINs a otros usuarios
   CONFIGURE_SYSTEM:     'CONFIGURE_SYSTEM',      // Módulos, métodos de pago, fees (solo OWNER)
   MANAGE_BROADCAST:     'MANAGE_BROADCAST',      // Crear/editar anuncios al equipo
+
+  // Reportes — permisos granulares por familia (reportes.<familia>.ver)
+  REPORTES_VENTAS_VER:      'REPORTES_VENTAS_VER',      // reportes.ventas.ver
+  REPORTES_OPERATIVOS_VER:  'REPORTES_OPERATIVOS_VER',  // reportes.operativos.ver (X/Z, anulaciones, auditoría)
+  REPORTES_INVENTARIO_VER:  'REPORTES_INVENTARIO_VER',  // reportes.inventario.ver
+  REPORTES_COMPRAS_VER:     'REPORTES_COMPRAS_VER',     // reportes.compras.ver
+  REPORTES_GERENCIAL_VER:   'REPORTES_GERENCIAL_VER',   // reportes.gerencial.ver (solo roles administrativos)
+  REPORTES_FISCAL_VER:      'REPORTES_FISCAL_VER',      // reportes.fiscal.ver
+  REPORTES_EXPORTAR:        'REPORTES_EXPORTAR',        // reportes.exportar (Excel/PDF)
 } as const;
 
 export type PermKey = typeof PERM[keyof typeof PERM];
@@ -54,6 +63,13 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.EXPORT_SALES,
     PERM.VIEW_COSTS,
     PERM.VIEW_FINANCES,
+    PERM.REPORTES_VENTAS_VER,
+    PERM.REPORTES_OPERATIVOS_VER,
+    PERM.REPORTES_INVENTARIO_VER,
+    PERM.REPORTES_COMPRAS_VER,
+    PERM.REPORTES_GERENCIAL_VER,
+    PERM.REPORTES_FISCAL_VER,
+    PERM.REPORTES_EXPORTAR,
   ],
 
   ADMIN_MANAGER: [
@@ -71,6 +87,13 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.MANAGE_USERS,
     PERM.MANAGE_PINS,
     PERM.MANAGE_BROADCAST,
+    PERM.REPORTES_VENTAS_VER,
+    PERM.REPORTES_OPERATIVOS_VER,
+    PERM.REPORTES_INVENTARIO_VER,
+    PERM.REPORTES_COMPRAS_VER,
+    PERM.REPORTES_GERENCIAL_VER,
+    PERM.REPORTES_FISCAL_VER,
+    PERM.REPORTES_EXPORTAR,
   ],
 
   OPS_MANAGER: [
@@ -88,6 +111,12 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.OPEN_CASH_REGISTER,
     PERM.CLOSE_CASH_REGISTER,
     PERM.MANAGE_BROADCAST,
+    // Reportes: operación completa SIN gerencial (solo roles administrativos)
+    PERM.REPORTES_VENTAS_VER,
+    PERM.REPORTES_OPERATIVOS_VER,
+    PERM.REPORTES_INVENTARIO_VER,
+    PERM.REPORTES_COMPRAS_VER,
+    PERM.REPORTES_EXPORTAR,
   ],
 
   HR_MANAGER: [
@@ -98,12 +127,14 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
   CHEF: [
     PERM.ADJUST_STOCK,
     PERM.CLOSE_DAILY_INV,
+    PERM.REPORTES_INVENTARIO_VER,
   ],
 
   AREA_LEAD: [
     PERM.ADJUST_STOCK,
     PERM.APPROVE_TRANSFER,
     PERM.CLOSE_DAILY_INV,
+    PERM.REPORTES_INVENTARIO_VER,
   ],
 
   // Rol unificado de cajera — regla base mínima
@@ -169,6 +200,20 @@ export const PERM_GROUPS: { key: string; label: string; icon: string; perms: Per
       PERM.MANAGE_BROADCAST,
     ],
   },
+  {
+    key: 'reportes',
+    label: 'Reportes',
+    icon: '📊',
+    perms: [
+      PERM.REPORTES_VENTAS_VER,
+      PERM.REPORTES_OPERATIVOS_VER,
+      PERM.REPORTES_INVENTARIO_VER,
+      PERM.REPORTES_COMPRAS_VER,
+      PERM.REPORTES_GERENCIAL_VER,
+      PERM.REPORTES_FISCAL_VER,
+      PERM.REPORTES_EXPORTAR,
+    ],
+  },
 ];
 
 // ─── Etiquetas legibles para cada permiso ────────────────────────────────────
@@ -192,6 +237,13 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.MANAGE_PINS]:         { label: 'Gestionar PINs',        description: 'Asignar o cambiar PINs de otros usuarios' },
   [PERM.CONFIGURE_SYSTEM]:    { label: 'Configurar sistema',    description: 'Módulos, métodos de pago, fees (solo OWNER)' },
   [PERM.MANAGE_BROADCAST]:    { label: 'Gestionar anuncios',    description: 'Crear/editar anuncios al equipo' },
+  [PERM.REPORTES_VENTAS_VER]:     { label: 'Reportes: ventas',      description: 'reportes.ventas.ver — ventas por producto/categoría/mesonero/área/método' },
+  [PERM.REPORTES_OPERATIVOS_VER]: { label: 'Reportes: operativos',  description: 'reportes.operativos.ver — cierres X/Z, anulaciones, descuentos, transferencias' },
+  [PERM.REPORTES_INVENTARIO_VER]: { label: 'Reportes: inventario',  description: 'reportes.inventario.ver — existencias valorizadas, kardex, variación' },
+  [PERM.REPORTES_COMPRAS_VER]:    { label: 'Reportes: compras',     description: 'reportes.compras.ver — compras por proveedor, OC vs recepción' },
+  [PERM.REPORTES_GERENCIAL_VER]:  { label: 'Reportes: gerencial',   description: 'reportes.gerencial.ver — KPIs ejecutivos, ingeniería de menú (solo administrativos)' },
+  [PERM.REPORTES_FISCAL_VER]:     { label: 'Reportes: fiscal',      description: 'reportes.fiscal.ver — documentos fiscales (requiere infraestructura FASE C)' },
+  [PERM.REPORTES_EXPORTAR]:       { label: 'Reportes: exportar',    description: 'reportes.exportar — descargar Excel/PDF de cualquier reporte' },
 };
 
 // ─── Función de resolución de permisos ───────────────────────────────────────
