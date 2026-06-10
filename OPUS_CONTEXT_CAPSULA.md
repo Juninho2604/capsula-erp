@@ -10003,3 +10003,127 @@ Plan acordado en el informe: FASE A (hoy, sin migraciones — fixes A0 +
 reportes sobre datos existentes), FASE B (migraciones menores: Bs/tasa en
 PaymentSplit, `SalesOrder.cashRegisterId`, `kitchenReadyAt`, branchId en
 finanzas, índices), FASE C (CMV/ingeniería de menú/multi-sucursal/fiscal).
+
+## §59 Módulo de Reportes — implementación FASE A + B (2026-06-10)
+
+Implementación del plan del §58/DIAGNOSTICO_REPORTES.md. Cuatro commits
+temáticos: fixes de integridad, capa de servicios, UI por familia, script
+de verificación.
+
+### 59.1 Fixes de integridad aplicados ANTES de los reportes
+
+- **A0.1 — COGS (BUG #1)**: `createSalesOrderAction` y `addItemsToOpenTabAction`
+  snapshootean `costPerUnit/costTotal/marginPerUnit/marginPercent` en cada
+  `SalesOrderItem` vía `src/lib/sales/menu-item-cost.ts`
+  (`buildMenuItemCostMap` batch — misma convención que /costos/margen:
+  Σ qty × CostHistory vigente, fallback `MenuItem.cost`; best-effort, la
+  venta nunca se bloquea). 8 tests. **Las ventas previas al 2026-06-10 tienen
+  costo 0** — backfill opcional pendiente (script).
+- **A0.2 — Voids de ítem (BUG #2)**: `voidItemInTx` ahora revierte inventario
+  (`applyItemInventoryInTx` RESTORE: ADJUSTMENT_IN + increment, cubre receta
+  del ítem y modificadores con linkedMenuItemId — espejo de
+  voidSalesOrderAction). `modifyTabItemAction` ADJUST_QTY/REPLACE re-descargan
+  el ítem nuevo (DEDUCT: SALE + decrement) con snapshot de costo.
+- **A0.3 — Ventas directas (BUGs #3/#5)**: `createSalesOrderAction` ahora
+  pobla `branchId` (área→branch o branch activo), `exchangeRateValue`,
+  `totalBs`, `cashRegisterId` (caja OPEN más reciente) y **SIEMPRE crea línea
+  de pago** (sintetiza una con tasa del momento si el POS no manda
+  `payments[]` — caso PDV/MOVIL fallback en delivery).
+- **A0.4 — sold-items (BUG #7)**: `getSoldItemsReportAction` gateado por
+  `VIEW_SALES_HISTORY` (antes solo sesión).
+- **Cobros de mesa**: `registerOpenTabPaymentAction` y `paySubAccountAction`
+  persisten `amountBs` + `exchangeRate` en el PaymentSplit (tasa BCV del
+  momento del cobro).
+- **Cocina**: PATCH `/api/kitchen/orders` estampa `kitchenReadyAt` al marcar
+  READY (tiempos de cocina — dato disponible de ahora en adelante).
+
+### 59.2 Migración FASE B — `20260610120000_reports_phase_b`
+
+100% aditiva, verificada contra Postgres 16 (`migrate diff` = sin drift):
+`PaymentSplit.amountBs/exchangeRate`, `SalesOrder.cashRegisterId` (FK→
+CashRegister SET NULL) + `kitchenReadyAt`, índices compuestos
+`SalesOrder(tenantId,createdAt)`, `(tenantId,voidedAt)`, `(cashRegisterId)`,
+`Expense(tenantId,paidAt)`, `CashRegister(tenantId,shiftDate)`,
+`PurchaseOrder(tenantId,orderDate)`, `InventoryMovement(inventoryItemId,
+createdAt)`, `(movementType,createdAt)`, `AuditLog(tenantId,createdAt)`,
+`PaymentSplit(paidAt)`. Aplica vía `prisma migrate deploy` en el deploy [7/10].
+
+### 59.3 RBAC granular — 7 permisos nuevos (permissions-registry)
+
+`REPORTES_VENTAS_VER`, `REPORTES_OPERATIVOS_VER`, `REPORTES_INVENTARIO_VER`,
+`REPORTES_COMPRAS_VER`, `REPORTES_GERENCIAL_VER`, `REPORTES_FISCAL_VER`,
+`REPORTES_EXPORTAR` (equivalen a reportes.<familia>.ver / reportes.exportar).
+Base por rol: OWNER/ADMIN_MANAGER/AUDITOR = todos; OPS_MANAGER = todos MENOS
+gerencial y fiscal; CHEF/AREA_LEAD = solo inventario; CASHIER/WAITER = ninguno
+(otorgables por usuario vía grantedPerms). Grupo UI "📊 Reportes" en
+PERM_GROUPS; mapeo a módulo `reportes` en perm-to-modules.
+
+### 59.4 Estructura final del módulo
+
+```
+src/lib/reports/            ← capa de servicios (solo lectura, tenantId SIEMPRE
+                              de sesión, branchIds opcional, $queryRaw tipado)
+  types.ts                  ← ReportFilters, DualMoney (usd/bs/usdSinTasa)
+  range.ts (+test)          ← zod YYYY-MM-DD + rango Caracas→UTC (máx 366d)
+  action-helpers.ts         ← prepareReportFilters (RBAC+zod+tenant)
+  page-guard.ts             ← getReportPageContext para server pages
+  sales-reports.ts          ← por producto/categoría/mesonero/zona/canal/
+                              método (dual currency)/serie día-hora/totales
+  operations-reports.ts     ← cierres por día, turnos X (vínculo
+                              cashRegisterId), voids orden+ítem, descuentos
+                              +promos, transferencias de mesa
+  inventory-reports.ts      ← kardex por rango paginado (tenant vía relación)
+  purchases-reports.ts      ← por proveedor + OC vs recepción
+  management-reports.ts     ← KPIs ejecutivos del día + vs semana pasada
+  menu-engineering.ts(+test)← matriz Kasavana-Smith (pura)
+src/app/actions/reports/    ← actions delgadas (ventas/operativos/inventario/
+                              compras/gerencial)
+src/app/dashboard/reportes/
+  page.tsx                  ← dashboard ejecutivo + nav por familia (gateada)
+  executive-dashboard.tsx   ← KPIs día: ventas dual, tickets, ticket prom.,
+                              comensales, propinas, top 5, por hora, Δ vs -7d
+  ventas/ operativos/ inventario/ (kardex) compras/ gerencial/ fiscal/
+  inventario-completo/ variacion-semanal/   ← preexistentes (§51), enlazados
+  _components/              ← ReportToolbar (presets+rango+sucursal+toggle
+                              $/Bs/ambas+export), skeletons, empty states,
+                              export.ts (Excel xlsx con encabezado tenant/rango
+                              + PDF vía ventana imprimible), format.ts
+scripts/verify-reports.ts   ← cruces C1-C7 (--seed-fixtures solo demo/test)
+```
+
+### 59.5 Decisiones tomadas
+
+- **Criterio FACTURADO vs COBRADO** explícito: dimensiones de venta usan
+  facturado (= revenueWhere §20.3, incluye mesas abiertas); método de pago usa
+  cobrado (directas + splits PAID). El puente se verifica en C4/C5 del script.
+- **Dual currency**: Bs SOLO desde montos/tasas persistidos
+  (`totalBs`/`amountBS`/`amountBs` por nivel); el legado sin tasa se reporta
+  como `usdSinTasa` ("Bs no registrado") — NUNCA se reconvierte con tasa de hoy.
+- **PDF sin dependencia nueva**: ventana imprimible (patrón print-command) →
+  el usuario guarda como PDF. Excel con xlsx (patrón §51).
+- **Reporte X**: las ventas se vinculan al turno vía `cashRegisterId` desde
+  hoy; los turnos previos muestran solo los totales guardados (etiquetado en
+  la UI). La fórmula `expectedCash` legacy del cierre de caja NO se tocó
+  (cambia números del arqueo — requiere OK del dueño, queda FASE B pendiente).
+- **Fiscal**: placeholder honesto (no hay infraestructura SENIAT — §58).
+- `prisma migrate dev` no se usó (sin shadow DB) — migración hand-authored
+  con guards, patrón §55, verificada con db push + migrate diff.
+
+### 59.6 Pendiente FASE B/C (no implementado hoy)
+
+- Backfill de costo (`costTotal`) y `branchId` para ventas históricas (script).
+- Corrección de la fórmula `expectedCash` del cierre de caja (BUG #4 completo:
+  separar efectivo por moneda, excluir métodos no-cash, usar cashRegisterId).
+- `branchId` en CashRegister/Expense (migración M4 del diagnóstico).
+- Reporte de tiempos de cocina (kitchenReadyAt ya se llena; falta la vista).
+- Costo real vs teórico por período (cruce WeeklyCount × movimientos, §51.B.5).
+- CMV/food cost % por categoría con ventana de datos de costo madura.
+- Comparativo entre sucursales (necesita 2º branch real + M4).
+- Familia fiscal completa (modelo FiscalDocument + adaptador TFHKA).
+- RBAC por sucursal (User.branchId no existe — opción B de §55.9).
+
+### 59.7 Verificación
+
+`scripts/verify-reports.ts --tenant-slug=demo --seed-fixtures` contra
+Postgres 16 local con tenant demo sembrado: **9/9 cruces PASS** (C1-C7).
+Gates: `tsc --noEmit` 0 errores · vitest **407 passed** (15 tests nuevos).
