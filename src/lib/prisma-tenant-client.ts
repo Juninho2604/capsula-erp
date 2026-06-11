@@ -38,6 +38,7 @@ const TENANT_MODELS = new Set<string>([
     'Area',
     'AuditLog',
     'BankAccount',
+    'BankMovementRecon',
     'BankReconciliation',
     'Branch',
     'BroadcastMessage',
