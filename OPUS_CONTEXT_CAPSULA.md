@@ -10106,6 +10106,13 @@ scripts/verify-reports.ts   ← cruces C1-C7 (--seed-fixtures solo demo/test)
   añadidas: historial ("con 10% servicio" / "con servicio y propinas"),
   Finanzas y ExecutiveSummary ("facturado sin 10% servicio"). Las fórmulas
   canónicas de Finanzas/Dashboard NO se cambiaron — solo se explican.
+- **Cobrado como métrica secundaria (2026-06-10, decisión del dueño)**: el
+  facturado sigue siendo el número principal del P&L, pero Finanzas (vista
+  diaria) y el dashboard operativo muestran el cobrado al lado:
+  `DailyFinancialSummary.income.cobradoUsd/pendienteUsd` (vía
+  `getSalesByPaymentMethod` + `getSalesBridge`) y
+  `salesKPIs.todayCollected` en `dashboard.actions.ts` →
+  `ExecutiveSummary` ("Cobrado: $X (con servicio)").
 - **Dual currency**: Bs SOLO desde montos/tasas persistidos
   (`totalBs`/`amountBS`/`amountBs` por nivel); el legado sin tasa se reporta
   como `usdSinTasa` ("Bs no registrado") — NUNCA se reconvierte con tasa de hoy.

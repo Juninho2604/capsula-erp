@@ -7,6 +7,7 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { getCaracasNowParts } from '@/lib/datetime';
 import { revenueWhere } from '@/lib/sales-where';
+import { getSalesByPaymentMethod, getSalesBridge } from '@/lib/reports/sales-reports';
 
 export interface FinancialSummary {
   period: { month: number; year: number; label: string };
@@ -391,6 +392,10 @@ export interface DailyFinancialSummary {
   period: { date: string; label: string };           // 'YYYY-MM-DD' + 'Lun 12 May 2026'
   income: {
     totalSalesUsd: number;
+    /** Pagos reales del día (con 10% servicio, sin propinas) — criterio puente §59.5. */
+    cobradoUsd: number;
+    /** balanceDue de mesas aún abiertas con consumo del día (facturado sin cobrar). */
+    pendienteUsd: number;
     ordersCount: number;
     avgTicket: number;
     byType: { type: string; total: number; count: number }[];
@@ -506,6 +511,11 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
       orders: hourlyMap.get(hour)?.orders ?? 0,
     }));
 
+    // ── Cobrado y pendiente del día (criterio del puente de cuadre — §59.5) ─
+    const fDay = { tenantId, from: startDate, to: endDate };
+    const cobradoUsd = (await getSalesByPaymentMethod(fDay)).reduce((s, mRow) => s + mRow.usd, 0);
+    const bridgeDay = await getSalesBridge(fDay, totalSalesUsd, cobradoUsd);
+
     // ── Gastos del día (filtra por paidAt) ──────────────────────────────────
     const expenses = await db.expense.findMany({
       where: {
@@ -601,6 +611,8 @@ export async function getDailyFinancialSummaryAction(dateStr?: string): Promise<
       period: { date: targetDateStr, label },
       income: {
         totalSalesUsd,
+        cobradoUsd,
+        pendienteUsd: bridgeDay.pendiente,
         ordersCount: salesOrders.length,
         avgTicket: Math.round(avgTicket * 100) / 100,
         byType: Array.from(salesByType.entries()).map(([type, v]) => ({ type, ...v })),
