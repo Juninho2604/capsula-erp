@@ -96,7 +96,7 @@ export default function ExecutiveSummary({
         <div className="flex items-center gap-3">
           <span className="text-xl"></span>
           <div className="text-left">
-            <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">
+            <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
               Resumen Gerencial
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -116,14 +116,14 @@ export default function ExecutiveSummary({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
             {/* Facturación hoy */}
             <div className="rounded-xl bg-muted/20 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Facturación Hoy
               </p>
-              <p className="text-lg font-black text-foreground mt-0.5">
+              <p className="text-lg font-semibold text-foreground mt-0.5">
                 ${todayRevenue.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {todayOrders} {todayOrders === 1 ? 'orden' : 'órdenes'}
+                {todayOrders} {todayOrders === 1 ? 'orden' : 'órdenes'} · facturado sin 10% servicio
               </p>
             </div>
 
@@ -131,11 +131,11 @@ export default function ExecutiveSummary({
             <div
               className={`rounded-xl p-3 ${lowStockCount > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}
             >
-              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Stock Crítico
               </p>
               <p
-                className={`text-lg font-black mt-0.5 ${lowStockCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}
+                className={`text-lg font-semibold mt-0.5 ${lowStockCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}
               >
                 {lowStockCount}
               </p>
@@ -148,11 +148,11 @@ export default function ExecutiveSummary({
             <div
               className={`rounded-xl p-3 ${openTabs > 0 ? 'bg-orange-500/10' : 'bg-muted/20'}`}
             >
-              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Cuentas Abiertas
               </p>
               <p
-                className={`text-lg font-black mt-0.5 ${openTabs > 0 ? 'text-orange-500' : 'text-muted-foreground'}`}
+                className={`text-lg font-semibold mt-0.5 ${openTabs > 0 ? 'text-orange-500' : 'text-muted-foreground'}`}
               >
                 {openTabs}
               </p>
@@ -166,7 +166,7 @@ export default function ExecutiveSummary({
               <div
                 className={`rounded-xl p-3 ${operatingProfit >= 0 ? 'bg-blue-500/10' : 'bg-red-500/10'}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Margen Mensual
                 </p>
                 <p
@@ -178,10 +178,10 @@ export default function ExecutiveSummary({
               </div>
             ) : (
               <div className="rounded-xl bg-muted/20 p-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Margen Mensual
                 </p>
-                <p className="text-lg font-black mt-0.5 text-muted-foreground">—</p>
+                <p className="text-lg font-semibold mt-0.5 text-muted-foreground">—</p>
                 <p className="text-[10px] text-muted-foreground">sin datos</p>
               </div>
             )}
@@ -208,7 +208,7 @@ export default function ExecutiveSummary({
                   key={i}
                   className="flex items-start gap-2 rounded-xl bg-red-500/5 border border-red-500/10 px-3 py-2"
                 >
-                  <span className="text-red-500 text-[10px] mt-0.5 flex-shrink-0 font-black"></span>
+                  <span className="text-red-500 text-[10px] mt-0.5 flex-shrink-0 font-semibold"></span>
                   <p className="text-xs font-medium text-foreground">{issue}</p>
                 </div>
               ))}
@@ -223,7 +223,7 @@ export default function ExecutiveSummary({
                   key={i}
                   className="flex items-start gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/10 px-3 py-2"
                 >
-                  <span className="text-emerald-500 text-[10px] mt-0.5 flex-shrink-0 font-black"></span>
+                  <span className="text-emerald-500 text-[10px] mt-0.5 flex-shrink-0 font-semibold"></span>
                   <p className="text-xs font-medium text-foreground">{pos}</p>
                 </div>
               ))}

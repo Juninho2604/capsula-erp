@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { ExecutiveDayKpis } from '@/lib/reports/management-reports';
 import { fmtBs, fmtQty, fmtUsd } from './_components/format';
+import { BridgeCard } from './_components/bridge-card';
 
 export default function ExecutiveDashboard({ kpis }: { kpis: ExecutiveDayKpis }) {
     const deltaPct = kpis.lastWeek.facturado > 0
@@ -32,8 +33,10 @@ export default function ExecutiveDashboard({ kpis }: { kpis: ExecutiveDayKpis })
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <Kpi label="Ventas del día" value={fmtUsd(kpis.facturado)}
-                    sub={kpis.cobrado.bs > 0 ? `Cobrado: ${fmtBs(kpis.cobrado.bs)} + USD` : undefined} />
+                <Kpi label="Facturado del día" value={fmtUsd(kpis.facturado)}
+                    sub={kpis.cobrado.bs > 0
+                        ? `Sin 10% servicio · Cobrado: ${fmtBs(kpis.cobrado.bs)} + USD`
+                        : 'Sin 10% servicio · incluye mesas abiertas'} />
                 <Kpi label="Tickets" value={fmtQty(kpis.orders)}
                     sub={`Semana pasada: ${fmtQty(kpis.lastWeek.orders)}`} />
                 <Kpi label="Ticket promedio" value={fmtUsd(kpis.avgTicket)}
@@ -42,6 +45,8 @@ export default function ExecutiveDashboard({ kpis }: { kpis: ExecutiveDayKpis })
                 <Kpi label="Propinas" value={fmtUsd(kpis.propinas)}
                     sub={kpis.anuladas.count > 0 ? `Anuladas: ${kpis.anuladas.count} (${fmtUsd(kpis.anuladas.total)})` : undefined} />
             </div>
+
+            <BridgeCard bridge={kpis.bridge} />
 
             <div className="grid lg:grid-cols-2 gap-3">
                 <div className="bg-capsula-ivory border border-capsula-line rounded-2xl p-4">

@@ -14,7 +14,8 @@ import type { ReportFilters, DualMoney } from './types';
 import { emptyDualMoney } from './types';
 import {
     getSalesByProduct, getSalesByPaymentMethod, getSalesSeries, getSalesRangeTotals,
-    type SalesByProductRow, type SalesSeriesPoint,
+    getSalesBridge,
+    type SalesByProductRow, type SalesSeriesPoint, type SalesBridge,
 } from './sales-reports';
 import { classifyMenuEngineering, type MenuEngineeringResult } from './menu-engineering';
 
@@ -33,6 +34,8 @@ export interface ExecutiveDayKpis {
     anuladas: { count: number; total: number };
     topProducts: SalesByProductRow[];
     salesByHour: SalesSeriesPoint[];
+    /** Puente de cuadre facturado → cobrado del día. */
+    bridge: SalesBridge;
     /** Mismo día de la semana pasada para el comparativo. */
     lastWeek: {
         day: string;
@@ -107,6 +110,8 @@ export async function getExecutiveDayKpis(
           ${branchIds?.length ? Prisma.sql`AND t."branchId" IN (${Prisma.join(branchIds)})` : Prisma.empty}
     `);
 
+    const bridge = await getSalesBridge(f, totals.revenue, cobrado.usd);
+
     return {
         day: getCaracasDateStamp(date),
         facturado: totals.revenue,
@@ -118,6 +123,7 @@ export async function getExecutiveDayKpis(
         anuladas: { count: anuladasAgg._count.id, total: anuladasAgg._sum.total ?? 0 },
         topProducts: topProducts.slice(0, 5),
         salesByHour,
+        bridge,
         lastWeek: {
             day: getCaracasDateStamp(lastWeekDate),
             facturado: lwTotals.revenue,

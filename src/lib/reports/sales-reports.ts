@@ -314,6 +314,91 @@ export async function getSalesSeries(
     return rows.map(r => ({ bucket: r.bucket, orders: Number(r.orders), revenue: Number(r.revenue) }));
 }
 
+// ── Puente de cuadre FACTURADO → COBRADO ─────────────────────────────────────
+
+export interface SalesBridge {
+    /** Σ total órdenes del rango (criterio revenueWhere — sin 10% servicio, incluye mesas abiertas). */
+    facturado: number;
+    /** 10% servicio de los splits cobrados en el rango (por paidAt). */
+    servicioCobrado: number;
+    /** Propinas del rango (splits + PROPINA COLECTIVA) — NO incluidas en cobrado, van al personal. */
+    propinas: number;
+    /** balanceDue de mesas aún abiertas con consumo en el rango (facturado sin cobrar). */
+    pendiente: number;
+    /** Σ cobros del rango (criterio getSalesByPaymentMethod — con servicio, sin propinas). */
+    cobrado: number;
+    /** cobrado − (facturado + servicio − pendiente): mesas facturadas otro día y pagos parciales. */
+    ajusteOtrosDias: number;
+}
+
+/**
+ * Explica la diferencia entre el FACTURADO (Σ total órdenes, mismo número de
+ * Finanzas/Dashboard) y el COBRADO (pagos reales, mismo número del Z):
+ *   cobrado = facturado + servicio 10% − pendiente por cobrar ± mesas de otros días.
+ * Recibe facturado y cobrado ya calculados por el caller (evita repetir queries).
+ */
+export async function getSalesBridge(
+    f: ReportFilters,
+    facturado: number,
+    cobrado: number,
+): Promise<SalesBridge> {
+    const branchTab = f.branchIds && f.branchIds.length > 0
+        ? Prisma.sql`AND t."branchId" IN (${Prisma.join(f.branchIds)})`
+        : Prisma.empty;
+    const branchOrder = f.branchIds && f.branchIds.length > 0
+        ? Prisma.sql`AND o."branchId" IN (${Prisma.join(f.branchIds)})`
+        : Prisma.empty;
+
+    const [splitAgg, pkpAgg, pendienteAgg] = await Promise.all([
+        prisma.$queryRaw<Array<{ service: number; tips: number }>>(Prisma.sql`
+            SELECT COALESCE(SUM(s."serviceChargeAmount"), 0)::float AS service,
+                   COALESCE(SUM(s."tipAmount"), 0)::float AS tips
+            FROM "PaymentSplit" s
+            JOIN "OpenTab" t ON t."id" = s."openTabId"
+            WHERE t."tenantId" = ${f.tenantId}
+              AND s."status" = 'PAID'
+              AND s."paidAt" >= ${f.from} AND s."paidAt" <= ${f.to}
+              ${branchTab}
+        `),
+        prisma.$queryRaw<Array<{ tips: number }>>(Prisma.sql`
+            SELECT COALESCE(SUM(o."amountPaid"), 0)::float AS tips
+            FROM "SalesOrder" o
+            WHERE o."tenantId" = ${f.tenantId}
+              AND o."createdAt" >= ${f.from} AND o."createdAt" <= ${f.to}
+              AND o."customerName" = 'PROPINA COLECTIVA'
+              AND o."status" <> 'CANCELLED'
+              ${branchOrder}
+        `),
+        prisma.$queryRaw<Array<{ pendiente: number }>>(Prisma.sql`
+            SELECT COALESCE(SUM(t."balanceDue"), 0)::float AS pendiente
+            FROM "OpenTab" t
+            WHERE t."tenantId" = ${f.tenantId}
+              AND t."status" IN ('OPEN', 'PARTIALLY_PAID')
+              AND t."deletedAt" IS NULL
+              ${branchTab}
+              AND EXISTS (
+                  SELECT 1 FROM "SalesOrder" o
+                  WHERE o."openTabId" = t."id"
+                    AND o."createdAt" >= ${f.from} AND o."createdAt" <= ${f.to}
+                    AND o."status" <> 'CANCELLED'
+              )
+        `),
+    ]);
+
+    const servicioCobrado = Number(splitAgg[0]?.service ?? 0);
+    const propinas = Number(splitAgg[0]?.tips ?? 0) + Number(pkpAgg[0]?.tips ?? 0);
+    const pendiente = Number(pendienteAgg[0]?.pendiente ?? 0);
+
+    return {
+        facturado,
+        servicioCobrado,
+        propinas,
+        pendiente,
+        cobrado,
+        ajusteOtrosDias: cobrado - (facturado + servicioCobrado - pendiente),
+    };
+}
+
 // ── Totales del rango (para encabezado/cuadre) ───────────────────────────────
 
 export interface SalesRangeTotals {
