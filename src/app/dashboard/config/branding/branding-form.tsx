@@ -41,7 +41,7 @@ export function BrandingForm({ initialBranding }: Props) {
                 throw new Error(json.error ?? 'Error subiendo el archivo');
             }
             update('logoUrl', json.data.url);
-            setMessage({ type: 'ok', text: 'Logo cargado. Guardá los cambios para activarlo.' });
+            setMessage({ type: 'ok', text: 'Logo cargado. Guarda los cambios para activarlo.' });
         } catch (err) {
             setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Error subiendo el logo' });
         } finally {

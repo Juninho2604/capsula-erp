@@ -127,7 +127,7 @@ export async function createSupplierDocumentAction(input: {
 
   if (!input.documentNumber.trim()) return { success: false, error: 'El número de documento es obligatorio' };
   if (!['FACTURA', 'NOTA_ENTREGA'].includes(input.documentType)) return { success: false, error: 'Tipo de documento inválido' };
-  if (!input.items || input.items.length === 0) return { success: false, error: 'Agregá al menos una línea' };
+  if (!input.items || input.items.length === 0) return { success: false, error: 'Agrega al menos una línea' };
   const documentDate = new Date(input.documentDate);
   if (isNaN(documentDate.getTime())) return { success: false, error: 'Fecha inválida' };
 
@@ -189,7 +189,7 @@ export async function enterDocumentToInventoryAction(
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!WRITE_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
-  if (!areaId) return { success: false, error: 'Elegí el área destino' };
+  if (!areaId) return { success: false, error: 'Elige el área destino' };
 
   try {
     const { tenantId } = await resolveTenantContext();

@@ -65,7 +65,7 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
   async function save(row: ReconciliationDayRow) {
     const raw = drafts[row.dateStamp] ?? (row.statementIn != null ? String(row.statementIn) : '');
     const statementIn = parseFloat(raw);
-    if (isNaN(statementIn)) { setError('Ingresá el monto del estado de cuenta'); return; }
+    if (isNaN(statementIn)) { setError('Ingresa el monto del estado de cuenta'); return; }
     const rateRaw = rateDrafts[row.dateStamp] ?? (row.rateAtSettle != null ? String(row.rateAtSettle) : '');
     const rateAtSettle = rateRaw.trim() ? parseFloat(rateRaw) : null;
     setSavingStamp(row.dateStamp); setError('');
@@ -121,7 +121,7 @@ export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOptio
             <Info className="h-5 w-5 shrink-0 text-capsula-ink-muted mt-0.5" />
             <p>
               Kpsula trae el <strong>esperado</strong> (ventas por los terminales) y la comisión calculada.
-              Tecleá el <strong>estado de cuenta</strong> y guardá: el <strong>diferencial</strong> = (esperado − estado) − comisión.
+              Ingresa el <strong>estado de cuenta</strong> y guarda: el <strong>diferencial</strong> = (esperado − estado) − comisión.
               {isBs && <> Si ponés la <strong>tasa de liquidación</strong>, calcula la <strong>pérdida BCV</strong>.</>}
               {' '}Al guardar, la comisión{isBs && ' + pérdida BCV'} se postea solo a <strong>Gastos</strong> (Comisión Bancaria). Montos en {currency}.
             </p>

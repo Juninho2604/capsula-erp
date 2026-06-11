@@ -92,7 +92,7 @@ export default function DemoCredentialsCard() {
             {open && (
                 <div className="border-t border-amber-200/60 px-4 py-3">
                     <p className="mb-3 text-xs leading-relaxed text-amber-900/80">
-                        Datos sintéticos, sin clientes reales. Elegí el rol que quieras
+                        Datos sintéticos, sin clientes reales. Elige el rol que quieras
                         explorar, copiá el email y pegalo arriba con la contraseña{' '}
                         <span className="font-semibold text-amber-900">{DEMO_PASSWORD}</span>.
                     </p>

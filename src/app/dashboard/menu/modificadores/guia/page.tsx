@@ -146,7 +146,7 @@ export default function GuiaModificadoresPage() {
 
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory p-4 space-y-3">
                     <p className="text-sm text-capsula-ink-soft">
-                        Cuando creas un modificador (ej. crema &quot;Hummus&quot; dentro de una Tabla), podés <strong className="text-capsula-ink">vincularlo a un MenuItem real</strong> del menú (ej. &quot;Hummus Tradicional 125gr&quot;).
+                        Cuando creas un modificador (ej. crema &quot;Hummus&quot; dentro de una Tabla), puedes <strong className="text-capsula-ink">vincularlo a un MenuItem real</strong> del menú (ej. &quot;Hummus Tradicional 125gr&quot;).
                     </p>
                     <p className="text-sm text-capsula-ink-soft">
                         Cuando un cliente pide la Tabla y elige Hummus, el sistema automáticamente:

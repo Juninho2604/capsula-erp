@@ -86,7 +86,7 @@ export function SedesView({
             {sedes.length === 0 ? (
                 <div className="pos-panel p-10 flex flex-col items-center text-capsula-ink-faint">
                     <Building2 className="h-8 w-8 mb-2" />
-                    <p className="text-sm">No hay sedes. Creá la primera.</p>
+                    <p className="text-sm">No hay sedes. Crea la primera.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

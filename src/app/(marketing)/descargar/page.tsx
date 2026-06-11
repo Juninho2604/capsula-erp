@@ -18,29 +18,29 @@ const APK_HREF = '/downloads/kpsula-erp.apk';
 export const metadata: Metadata = {
     title: 'Descargar la app · KPSULA',
     description:
-        'Instalá KPSULA en tu tablet o teléfono Android. Descarga directa del APK firmado, con instrucciones paso a paso.',
+        'Instala KPSULA en tu tablet o teléfono Android. Descarga directa del APK firmado, con instrucciones paso a paso.',
 };
 
 const PASOS = [
     {
         icon: Download,
-        title: 'Descargá el APK',
-        desc: 'Tocá el botón de arriba. El archivo se guarda en tu teléfono o tablet (carpeta Descargas).',
+        title: 'Descarga el APK',
+        desc: 'Toca el botón de arriba. El archivo se guarda en tu teléfono o tablet (carpeta Descargas).',
     },
     {
         icon: FolderDown,
-        title: 'Abrí el archivo',
-        desc: 'Tocá la notificación de descarga, o buscá kpsula-erp.apk en tu gestor de archivos y abrilo.',
+        title: 'Abre el archivo',
+        desc: 'Toca la notificación de descarga, o busca kpsula-erp.apk en tu gestor de archivos y ábrelo.',
     },
     {
         icon: Settings2,
         title: 'Permití la instalación',
-        desc: 'Si Android avisa que viene de una "fuente desconocida", tocá Ajustes y activá el permiso para tu navegador. Es solo la primera vez.',
+        desc: 'Si Android avisa que viene de una "fuente desconocida", toca Ajustes y activa el permiso para tu navegador. Es solo la primera vez.',
     },
     {
         icon: CheckCircle2,
-        title: 'Instalá y abrí',
-        desc: 'Tocá Instalar y después Abrir. KPSULA queda como una app más en tu pantalla de inicio.',
+        title: 'Instala y abre',
+        desc: 'Toca Instalar y después Abrir. KPSULA queda como una app más en tu pantalla de inicio.',
     },
 ];
 
@@ -133,12 +133,12 @@ export default function DescargarPage() {
                             <Smartphone className="h-[22px] w-[22px]" strokeWidth={1.5} style={{ color: 'var(--cap-accent)' }} />
                         </span>
                         <div className="mt-[22px] mb-[10px] text-[16px] font-semibold tracking-[-0.01em] text-[color:var(--cap-ink)]">
-                            ¿Tenés iPhone o iPad?
+                            ¿Tienes iPhone o iPad?
                         </div>
                         <p className="cap-text-dim m-0 text-[13px] leading-[1.6]">
-                            iOS no permite instalar APKs. Abrí{' '}
+                            iOS no permite instalar APKs. Abre{' '}
                             <a href="https://kpsula.app" className="cap-text-blue underline">kpsula.app</a>{' '}
-                            en Safari y tocá Compartir → "Agregar a inicio" para usarla como app.
+                            en Safari y toca Compartir → "Agregar a inicio" para usarla como app.
                         </p>
                     </div>
 
@@ -150,7 +150,7 @@ export default function DescargarPage() {
                             Actualizaciones
                         </div>
                         <p className="cap-text-dim mb-4 text-[13px] leading-[1.6]">
-                            Cuando saquemos una versión nueva, descargás el APK de nuevo desde esta misma página
+                            Cuando saquemos una versión nueva, descargas el APK de nuevo desde esta misma página
                             e instalás encima. Tus datos no se tocan.
                         </p>
                         <Link href="/" className="cap-text-blue inline-flex items-center gap-2 text-[13px] font-medium">

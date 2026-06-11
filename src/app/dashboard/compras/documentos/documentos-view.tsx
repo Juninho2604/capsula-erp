@@ -71,7 +71,7 @@ export function DocumentosView(props: Props) {
         <>
           <div className="bg-capsula-ivory-alt border border-capsula-line rounded-2xl p-4 flex gap-3 text-sm text-capsula-ink-soft">
             <Info className="h-5 w-5 shrink-0 text-capsula-ink-muted mt-0.5" />
-            <p>Cargá la factura o nota de entrega. Después, en cualquier momento: <strong>dale entrada al inventario</strong>, <strong>vinculala a una orden de compra</strong> ya recibida, y/o <strong>generá la cuenta por pagar</strong> (si es a crédito).</p>
+            <p>Carga la factura o nota de entrega. Después, en cualquier momento: <strong>da entrada al inventario</strong>, <strong>vincúlala a una orden de compra</strong> ya recibida, y/o <strong>genera la cuenta por pagar</strong> (si es a crédito).</p>
           </div>
 
           {initialDocuments.length === 0 ? (
@@ -371,7 +371,7 @@ function LinkModal({ doc, pos, onClose, onSaved }: { doc: SupplierDocumentData; 
   return (
     <ModalShell title="Vincular a orden de compra" onClose={onClose}>
       <div className="p-5 space-y-4">
-        <p className="text-sm text-capsula-ink-soft">Vinculá <strong>{doc.documentNumber}</strong> a una OC recibida (cuando la mercancía entró antes por una orden).</p>
+        <p className="text-sm text-capsula-ink-soft">Vincula <strong>{doc.documentNumber}</strong> a una OC recibida (cuando la mercancía entró antes por una orden).</p>
         <Field label="Orden de compra">
           <select className="pos-input w-full" value={poId} onChange={(e) => setPoId(e.target.value)}>
             <option value="">— sin vincular —</option>
