@@ -518,6 +518,94 @@ function isPdvMethod(key: string | null | undefined): boolean {
   return !!key && key.toUpperCase().startsWith('PDV');
 }
 
+type AccountForMovements = {
+  id: string; currency: string;
+  commInNaturalPct: number; commInJuridicaPct: number; commOutNaturalPct: number; commOutJuridicaPct: number;
+  terminals: { label: string; posMethodKey: string | null; commissionPct: number; commNaturalPct: number; commJuridicaPct: number }[];
+};
+
+/** Deriva todos los movimientos (ingresos + egresos) de una cuenta en un rango,
+ *  cruzados con su estado de conciliación. Compartido por la vista y el reporte. */
+async function deriveAccountMovements(
+  db: ReturnType<typeof withTenant>,
+  tenantId: string,
+  account: AccountForMovements,
+  start: Date,
+  end: Date,
+): Promise<ReconMovement[]> {
+  const isBs = account.currency !== 'USD';
+  const terminals = account.terminals.filter((t) => t.posMethodKey);
+  const methodKeys = terminals.map((t) => t.posMethodKey!) as string[];
+  const terminalByMethod = new Map(terminals.map((t) => [t.posMethodKey!, t]));
+
+  const payments = methodKeys.length
+    ? await db.salesOrderPayment.findMany({
+        where: {
+          method: { in: methodKeys },
+          ...(isBs ? { amountBS: { gt: 0 } } : { amountUSD: { gt: 0 } }),
+          salesOrder: { is: { tenantId, ...revenueWhere(start, end) } },
+        },
+        select: {
+          id: true, method: true, amountBS: true, amountUSD: true, reference: true,
+          salesOrder: { select: { createdAt: true, orderNumber: true } },
+        },
+        take: 2000,
+      })
+    : [];
+  const expenses = await db.expense.findMany({
+    where: { bankAccountId: account.id, status: { not: 'VOID' }, paidAt: { gte: start, lte: end } },
+    select: { id: true, description: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true },
+    take: 2000,
+  });
+  const accPayments = await db.accountPayment.findMany({
+    where: { bankAccountId: account.id, paidAt: { gte: start, lte: end } },
+    select: { id: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true, accountPayable: { select: { description: true } } },
+    take: 2000,
+  });
+  const recs = await db.bankMovementRecon.findMany({ where: { bankAccountId: account.id, date: { gte: start, lte: end } } });
+  const recByKey = new Map(recs.map((r) => [`${r.sourceType}:${r.sourceId}`, r]));
+
+  const build = (
+    sourceType: string, sourceId: string, date: Date, kind: 'IN' | 'OUT',
+    channel: string, isPdv: boolean, amountBs: number | null, amountUsd: number | null,
+    reference: string | null, methodKey?: string | null,
+  ): ReconMovement => {
+    const rec = recByKey.get(`${sourceType}:${sourceId}`);
+    const cp: Counterparty = (rec?.counterpartyType as Counterparty) ?? 'NATURAL';
+    const amount = isBs ? (amountBs ?? 0) : (amountUsd ?? 0);
+    let pctVal: number;
+    if (rec?.commissionOverridePct != null) pctVal = rec.commissionOverridePct;
+    else if (isPdv && methodKey) pctVal = terminalCommissionPct(terminalByMethod.get(methodKey)!, cp);
+    else pctVal = accountCommissionPct(account, kind, cp);
+    const removed = rec?.commissionRemoved ?? false;
+    const commission = removed ? 0 : commissionBs(amount, pctVal);
+    return {
+      sourceType, sourceId,
+      dateIso: date.toISOString(), dateStamp: getCaracasDateStamp(date),
+      kind, channel, isPdv, amountBs, amountUsd, reference,
+      counterpartyType: cp, commissionPct: removed ? 0 : pctVal, commission, commissionRemoved: removed,
+      reconciled: rec?.reconciled ?? false,
+      statementAmount: rec?.statementAmount ?? null,
+      notes: rec?.notes ?? null,
+    };
+  };
+
+  const movements: ReconMovement[] = [];
+  for (const p of payments) {
+    const t = terminalByMethod.get(p.method);
+    movements.push(build('SALE_PAYMENT', p.id, p.salesOrder.createdAt, 'IN',
+      `${t?.label ?? p.method} · ${p.salesOrder.orderNumber}`, isPdvMethod(p.method),
+      p.amountBS, p.amountUSD, p.reference, p.method));
+  }
+  for (const e of expenses) {
+    movements.push(build('EXPENSE', e.id, e.paidAt, 'OUT', e.description, false, e.amountBs, e.amountUsd, e.paymentRef, null));
+  }
+  for (const ap of accPayments) {
+    movements.push(build('ACCOUNT_PAYMENT', ap.id, ap.paidAt, 'OUT', `Pago: ${ap.accountPayable?.description ?? ''}`, false, ap.amountBs, ap.amountUsd, ap.paymentRef, null));
+  }
+  return movements;
+}
+
 export async function getReconciliationMovementsAction(input: {
   bankAccountId: string;
   year: number;
@@ -535,86 +623,8 @@ export async function getReconciliationMovementsAction(input: {
       include: { terminals: { where: { isActive: true } } },
     });
     if (!account) return { success: false, error: 'Cuenta no encontrada' };
-    const isBs = account.currency !== 'USD';
     const { start, end } = caracasMonthBounds(input.year, input.month0);
-
-    const terminals = account.terminals.filter((t) => t.posMethodKey);
-    const methodKeys = terminals.map((t) => t.posMethodKey!) as string[];
-    const terminalByMethod = new Map(terminals.map((t) => [t.posMethodKey!, t]));
-
-    // ── INGRESOS: cobros de las ventas vía los métodos de esta cuenta ──
-    const payments = methodKeys.length
-      ? await db.salesOrderPayment.findMany({
-          where: {
-            method: { in: methodKeys },
-            ...(isBs ? { amountBS: { gt: 0 } } : { amountUSD: { gt: 0 } }),
-            salesOrder: { is: { tenantId, ...revenueWhere(start, end) } },
-          },
-          select: {
-            id: true, method: true, amountBS: true, amountUSD: true, reference: true,
-            salesOrder: { select: { createdAt: true, orderNumber: true } },
-          },
-          take: 2000,
-        })
-      : [];
-
-    // ── EGRESOS: gastos y pagos a proveedores pagados desde esta cuenta ──
-    const expenses = await db.expense.findMany({
-      where: { bankAccountId: account.id, status: { not: 'VOID' }, paidAt: { gte: start, lte: end } },
-      select: { id: true, description: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true },
-      take: 2000,
-    });
-    const accPayments = await db.accountPayment.findMany({
-      where: { bankAccountId: account.id, paidAt: { gte: start, lte: end } },
-      select: { id: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true, accountPayable: { select: { description: true } } },
-      take: 2000,
-    });
-
-    // Estado por movimiento.
-    const recs = await db.bankMovementRecon.findMany({
-      where: { bankAccountId: account.id, date: { gte: start, lte: end } },
-    });
-    const recByKey = new Map(recs.map((r) => [`${r.sourceType}:${r.sourceId}`, r]));
-
-    const build = (
-      sourceType: string, sourceId: string, date: Date, kind: 'IN' | 'OUT',
-      channel: string, isPdv: boolean, amountBs: number | null, amountUsd: number | null,
-      reference: string | null, methodKey?: string | null,
-    ): ReconMovement => {
-      const rec = recByKey.get(`${sourceType}:${sourceId}`);
-      const cp: Counterparty = (rec?.counterpartyType as Counterparty) ?? 'NATURAL';
-      const amount = isBs ? (amountBs ?? 0) : (amountUsd ?? 0);
-      // % de comisión según origen.
-      let pctVal: number;
-      if (rec?.commissionOverridePct != null) pctVal = rec.commissionOverridePct;
-      else if (isPdv && methodKey) pctVal = terminalCommissionPct(terminalByMethod.get(methodKey)!, cp);
-      else pctVal = accountCommissionPct(account, kind, cp);
-      const removed = rec?.commissionRemoved ?? false;
-      const commission = removed ? 0 : commissionBs(amount, pctVal);
-      return {
-        sourceType, sourceId,
-        dateIso: date.toISOString(), dateStamp: getCaracasDateStamp(date),
-        kind, channel, isPdv, amountBs, amountUsd, reference,
-        counterpartyType: cp, commissionPct: removed ? 0 : pctVal, commission, commissionRemoved: removed,
-        reconciled: rec?.reconciled ?? false,
-        statementAmount: rec?.statementAmount ?? null,
-        notes: rec?.notes ?? null,
-      };
-    };
-
-    const movements: ReconMovement[] = [];
-    for (const p of payments) {
-      const t = terminalByMethod.get(p.method);
-      movements.push(build('SALE_PAYMENT', p.id, p.salesOrder.createdAt, 'IN',
-        `${t?.label ?? p.method} · ${p.salesOrder.orderNumber}`, isPdvMethod(p.method),
-        p.amountBS, p.amountUSD, p.reference, p.method));
-    }
-    for (const e of expenses) {
-      movements.push(build('EXPENSE', e.id, e.paidAt, 'OUT', e.description, false, e.amountBs, e.amountUsd, e.paymentRef, null));
-    }
-    for (const ap of accPayments) {
-      movements.push(build('ACCOUNT_PAYMENT', ap.id, ap.paidAt, 'OUT', `Pago: ${ap.accountPayable?.description ?? ''}`, false, ap.amountBs, ap.amountUsd, ap.paymentRef, null));
-    }
+    const movements = await deriveAccountMovements(db, tenantId, account, start, end);
 
     // Agrupar por día.
     const byDay = new Map<string, ReconMovement[]>();
@@ -685,5 +695,92 @@ export async function saveMovementReconAction(input: {
     return { success: true };
   } catch {
     return { success: false, error: 'Error al guardar el movimiento' };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// REPORTE DE CONCILIACIÓN
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ReconReportRow {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  systemBalance: number;        // neto del sistema (ingresos − egresos − comisiones)
+  unreconciledCount: number;
+  unreconciledAmount: number;   // |monto| de los movimientos sin conciliar
+  lastReconciliationDate: string | null; // ISO o null
+}
+
+export interface ReconReport {
+  rows: ReconReportRow[];
+  rangeLabel: string;
+}
+
+/**
+ * Reporte de conciliación por cuenta para un período:
+ *  - Saldo según sistema (neto de movimientos).
+ *  - Movimientos no conciliados (cantidad + monto).
+ *  - Última fecha de conciliación.
+ * El "saldo real en banco" lo teclea el usuario en la UI y la diferencia se
+ * calcula allí (real − sistema). Filtro por cuenta ('all' = todas) y mes.
+ */
+export async function getReconciliationReportAction(input: {
+  bankAccountId: string | 'all';
+  year: number;
+  month0: number;
+}): Promise<{ success: boolean; data?: ReconReport; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!READ_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
+
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const accounts = await db.bankAccount.findMany({
+      where: { isActive: true, ...(input.bankAccountId !== 'all' && { id: input.bankAccountId }) },
+      include: { terminals: { where: { isActive: true } } },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    const { start, end } = caracasMonthBounds(input.year, input.month0);
+
+    const rows: ReconReportRow[] = [];
+    for (const account of accounts) {
+      const movements = await deriveAccountMovements(db, tenantId, account, start, end);
+      const isBs = account.currency !== 'USD';
+      const amt = (m: ReconMovement) => (isBs ? (m.amountBs ?? 0) : (m.amountUsd ?? 0));
+
+      let systemBalance = 0;
+      let unreconciledCount = 0;
+      let unreconciledAmount = 0;
+      for (const m of movements) {
+        const a = amt(m);
+        systemBalance += (m.kind === 'IN' ? a : -a) - m.commission;
+        if (!m.reconciled) { unreconciledCount += 1; unreconciledAmount += a; }
+      }
+      systemBalance = Math.round(systemBalance * 100) / 100;
+      unreconciledAmount = Math.round(unreconciledAmount * 100) / 100;
+
+      // Última fecha de conciliación: el movimiento conciliado más reciente.
+      const lastRec = await db.bankMovementRecon.findFirst({
+        where: { bankAccountId: account.id, reconciled: true },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true },
+      });
+
+      rows.push({
+        accountId: account.id,
+        accountName: account.name,
+        currency: account.currency,
+        systemBalance,
+        unreconciledCount,
+        unreconciledAmount,
+        lastReconciliationDate: lastRec ? lastRec.updatedAt.toISOString() : null,
+      });
+    }
+
+    return { success: true, data: { rows, rangeLabel: `${input.month0 + 1}/${input.year}` } };
+  } catch {
+    return { success: false, error: 'Error al generar el reporte' };
   }
 }
