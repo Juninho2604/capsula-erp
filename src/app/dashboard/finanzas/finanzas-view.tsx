@@ -288,7 +288,7 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
                 <PnLCard
                   label="Ventas del día"
                   value={`$${fmt(ds.income.totalSalesUsd)}`}
-                  sub={`${ds.income.ordersCount} órdenes`}
+                  sub={`${ds.income.ordersCount} órdenes · facturado sin 10% servicio`}
                   Icon={Wallet}
                   tone="ok"
                   change={ds.dod?.salesChange ?? null}

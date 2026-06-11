@@ -10096,6 +10096,16 @@ scripts/verify-reports.ts   ← cruces C1-C7 (--seed-fixtures solo demo/test)
 - **Criterio FACTURADO vs COBRADO** explícito: dimensiones de venta usan
   facturado (= revenueWhere §20.3, incluye mesas abiertas); método de pago usa
   cobrado (directas + splits PAID). El puente se verifica en C4/C5 del script.
+- **Puente de cuadre visible (2026-06-10 tarde)**: `getSalesBridge()` en
+  `sales-reports.ts` calcula `cobrado = facturado + servicio 10% cobrado −
+  pendiente por cobrar (balanceDue de mesas OPEN/PARTIALLY_PAID con consumo en
+  el rango) ± ajuste de mesas de otros días/pagos parciales`, con propinas
+  reportadas aparte (no son venta; el "Cobrado" del historial sí las incluye).
+  Se muestra como `BridgeCard` (`reportes/_components/bridge-card.tsx`) en
+  /reportes/ventas y en el dashboard ejecutivo. Etiquetas aclaratorias
+  añadidas: historial ("con 10% servicio" / "con servicio y propinas"),
+  Finanzas y ExecutiveSummary ("facturado sin 10% servicio"). Las fórmulas
+  canónicas de Finanzas/Dashboard NO se cambiaron — solo se explican.
 - **Dual currency**: Bs SOLO desde montos/tasas persistidos
   (`totalBs`/`amountBS`/`amountBs` por nivel); el legado sin tasa se reporta
   como `usdSinTasa` ("Bs no registrado") — NUNCA se reconvierte con tasa de hoy.

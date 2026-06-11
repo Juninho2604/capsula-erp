@@ -528,10 +528,12 @@ export default function SalesHistoryPage() {
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 shadow-cap-soft">
                     <p className="text-[10px] text-capsula-ink-muted uppercase font-semibold tracking-[0.14em] mb-1">Facturado</p>
                     <p className="font-semibold text-2xl tracking-[-0.02em] text-capsula-ink tabular-nums">{formatMoney(filteredTotals.invoiced)}</p>
+                    <p className="text-xs text-capsula-ink-faint">con 10% servicio</p>
                 </div>
                 <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#244935] dark:bg-[#1E3B2C]/40 px-4 py-3">
                     <p className="text-[10px] text-[#2F6B4E] dark:text-[#6FB88F] uppercase font-semibold tracking-[0.14em] mb-1">Cobrado</p>
                     <p className="font-semibold text-2xl tracking-[-0.02em] text-[#2F6B4E] dark:text-[#6FB88F] tabular-nums">{formatMoney(filteredTotals.collected)}</p>
+                    <p className="text-xs text-[#2F6B4E]/70 dark:text-[#6FB88F]/70">con servicio y propinas</p>
                 </div>
                 <div className="rounded-xl border border-capsula-line bg-capsula-ivory px-4 py-3 shadow-cap-soft">
                     <p className="text-[10px] text-capsula-ink-muted uppercase font-semibold tracking-[0.14em] mb-1">Descuentos</p>

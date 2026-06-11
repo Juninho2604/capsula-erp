@@ -11,9 +11,10 @@ import { prepareReportFilters } from '@/lib/reports/action-helpers';
 import {
     getSalesByProduct, getSalesByCategory, getSalesByWaiter, getSalesByZone,
     getSalesByChannel, getSalesByPaymentMethod, getSalesSeries, getSalesRangeTotals,
+    getSalesBridge,
     type SalesByProductRow, type SalesByCategoryRow, type SalesByWaiterRow,
     type SalesByDimensionRow, type SalesByPaymentMethodRow, type SalesSeriesPoint,
-    type SalesRangeTotals,
+    type SalesRangeTotals, type SalesBridge,
 } from '@/lib/reports/sales-reports';
 
 export interface VentasReportData {
@@ -25,6 +26,8 @@ export interface VentasReportData {
     byChannel: SalesByDimensionRow[];
     byMethod: SalesByPaymentMethodRow[];
     series: SalesSeriesPoint[];
+    /** Puente de cuadre facturado → cobrado (explica la diferencia con el historial/Z). */
+    bridge: SalesBridge;
 }
 
 export async function getVentasReportAction(input: unknown): Promise<{
@@ -47,9 +50,13 @@ export async function getVentasReportAction(input: unknown): Promise<{
                 getSalesSeries(f, 'day'),
             ]);
 
+        const bridge = await getSalesBridge(
+            f, totals.revenue, byMethod.reduce((s, m) => s + m.usd, 0),
+        );
+
         return {
             success: true,
-            data: { totals, byProduct, byCategory, byWaiter, byZone, byChannel, byMethod, series },
+            data: { totals, byProduct, byCategory, byWaiter, byZone, byChannel, byMethod, series, bridge },
         };
     } catch (err) {
         console.error('[getVentasReportAction]', err);

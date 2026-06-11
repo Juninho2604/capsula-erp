@@ -22,6 +22,7 @@ import {
     type CurrencyMode, type DateRange,
 } from '../_components/format';
 import { exportAoaToExcel, exportElementToPdf, type Aoa } from '../_components/export';
+import { BridgeCard } from '../_components/bridge-card';
 
 type TabKey = 'producto' | 'categoria' | 'mesonero' | 'zona' | 'canal' | 'metodo';
 
@@ -144,11 +145,14 @@ export default function VentasReportView({ tenantName, branches, canExport }: Pr
                 <div id="ventas-report-body" className="space-y-4">
                     {/* KPIs del rango */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <Kpi label="Facturado" value={fmtUsd(data.totals.revenue)} />
+                        <Kpi label="Facturado" value={fmtUsd(data.totals.revenue)} sub="Sin 10% servicio · incluye mesas abiertas" />
                         <Kpi label="Órdenes" value={fmtQty(data.totals.orders)} />
                         <Kpi label="Ticket promedio" value={fmtUsd(data.totals.orders > 0 ? data.totals.revenue / data.totals.orders : 0)} />
                         <Kpi label="Descuentos" value={fmtUsd(data.totals.discount)} />
                     </div>
+
+                    {/* Puente facturado → cobrado */}
+                    <BridgeCard bridge={data.bridge} />
 
                     {/* Serie diaria */}
                     {data.series.length > 1 && (
@@ -329,7 +333,7 @@ function MethodTable({ data, currency }: { data: VentasReportData; currency: Cur
                     ))}
                 </tbody>
                 <tfoot><tr className="border-t border-capsula-line-strong bg-capsula-ivory-alt font-semibold">
-                    <td className={TD}>TOTAL COBRADO</td>
+                    <td className={TD}>TOTAL COBRADO (con servicio, sin propinas)</td>
                     <td className={TDn}>{fmtQty(data.byMethod.reduce((s, r) => s + r.count, 0))}</td>
                     <td className={TDn}>{currency === 'BS' ? fmtBs(totBs) : currency === 'USD' ? fmtUsd(totUsd) : `${fmtUsd(totUsd)} · ${fmtBs(totBs)}`}</td>
                 </tr></tfoot>
