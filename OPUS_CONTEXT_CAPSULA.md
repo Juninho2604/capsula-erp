@@ -10144,3 +10144,37 @@ scripts/verify-reports.ts   ← cruces C1-C7 (--seed-fixtures solo demo/test)
 `scripts/verify-reports.ts --tenant-slug=demo --seed-fixtures` contra
 Postgres 16 local con tenant demo sembrado: **9/9 cruces PASS** (C1-C7).
 Gates: `tsc --noEmit` 0 errores · vitest **407 passed** (15 tests nuevos).
+
+## §60 BUG Promociones — fechas vencían un día antes (off-by-one TZ, 2026-06-11)
+
+**Síntoma reportado:** dueño activa una promo 50%, en el formulario la fecha
+"Hasta" se ve correcta (ej. 11-jun), pero al cobrar en el POS sale el precio
+completo. El motor la consideraba vencida.
+
+**Causa raíz:** `inputToData()` en `promotions.actions.ts` guardaba
+`new Date(input.startDate)` / `new Date(input.endDate)` con un string de
+fecha-sola `"YYYY-MM-DD"` del `<input type="date">`. JS lo ancla a **medianoche
+UTC** (`2026-06-11T00:00:00Z`). El motor (`engine.ts → withinDateRange`) compara
+por día calendario en **Caracas (UTC-4)**, donde ese instante cae el **10-jun**.
+La promo "moría" un día antes. El bug quedaba **oculto en la UI** porque la
+lectura (`rowToDTO` → `toISOString().slice(0,10)`) usa componentes UTC y mostraba
+de vuelta 11-jun.
+
+**Fix:** helper `caracasDateOnlyToDate(ymd)` en `src/lib/datetime.ts` que ancla
+la fecha al **mediodía de Caracas (16:00 UTC)** → al releer en TZ Caracas el día
+calendario coincide con el elegido, y el round-trip del formulario
+(`toISOString().slice(0,10)`) se mantiene estable. Usado en `inputToData()` y en
+la validación de rango. Venezuela no tiene DST → offset fijo -4 seguro.
+
+**Datos existentes:** `scripts/fix-promo-dates.ts` (dry-run por defecto,
+`--apply` para escribir) re-ancla las filas viejas (hora UTC < 4) al mediodía de
+Caracas conservando el día que el usuario veía en el formulario. Idempotente.
+
+**Diagnóstico:** `scripts/diagnose-promociones.ts` (read-only) imprime, por cada
+promo activa y por tenant, si aplica AHORA (hora Caracas) y **exactamente por
+qué no** (flag/día/horario/fechas/alcance). Fue lo que pinpointeó el bug en prod
+("✗ … ya terminó (hasta 2026-06-10)").
+
+**Regla general:** NUNCA `new Date("YYYY-MM-DD")` para fechas-sola que se
+comparan por día en Caracas. Usar `caracasDateOnlyToDate()`. Tests:
+`src/lib/datetime.test.ts` (4 casos). Gates: tsc 0 · vitest 416 passed.
