@@ -26,25 +26,17 @@ function caracasParts(at: Date) {
   return { weekday: wmap[get('weekday')] ?? 0, minutes: hour * 60 + parseInt(get('minute'), 10), ymd: `${get('year')}-${get('month')}-${get('day')}`, hhmm: `${get('hour')}:${get('minute')}` };
 }
 
-async function main() {
-  const atArg = process.argv.find((a) => a.startsWith('--at='))?.split('=')[1];
-  const now = atArg ? new Date(atArg) : new Date();
-  const cp = caracasParts(now);
-  const prisma = new PrismaClient();
-
-  const slug = process.env.SEED_TENANT_SLUG;
-  const tenant = slug ? await prisma.tenant.findUnique({ where: { slug } }) : await prisma.tenant.findFirst({ orderBy: { createdAt: 'asc' } });
-  if (!tenant) throw new Error('Tenant no encontrado');
-
+async function diagnoseTenant(prisma: PrismaClient, tenant: { id: string; name: string; slug: string; featureFlags: unknown }, now: Date, cp: ReturnType<typeof caracasParts>) {
   const flags = (tenant.featureFlags ?? {}) as Record<string, boolean>;
-  const flagOn = !!flags.promotionsEnabled;
-  console.log(`\nTenant: ${tenant.name} (${tenant.slug})`);
+  const flagOn = flags.promotionsEnabled === true;
+  console.log(`\n${'='.repeat(64)}`);
+  console.log(`Tenant: ${tenant.name} (${tenant.slug})`);
   console.log(`Hora evaluada (Caracas): ${cp.ymd} ${cp.hhmm} · ${DAYS[cp.weekday]}`);
   console.log(`Interruptor maestro 'promotionsEnabled': ${flagOn ? '✅ PRENDIDO' : '❌ APAGADO → ninguna promo aplica en el POS'}`);
 
-  const promos = await prisma.promotion.findMany({ where: { deletedAt: null }, orderBy: { priority: 'desc' } });
+  const promos = await prisma.promotion.findMany({ where: { deletedAt: null, tenantId: tenant.id }, orderBy: { priority: 'desc' } });
   const active = promos.filter((p) => p.isActive);
-  console.log(`\nPromociones: ${promos.length} totales · ${active.length} activas\n`);
+  console.log(`Promociones: ${promos.length} totales · ${active.length} activas\n`);
 
   const items = await prisma.menuItem.findMany({ where: { isActive: true, deletedAt: null, tenantId: tenant.id }, select: { id: true, name: true, price: true, categoryId: true } });
 
@@ -79,6 +71,33 @@ async function main() {
       console.log(`    → aplica a ${matchItems.length} ítem(s). Ej: ${ex.join(' · ')}`);
     }
   }
+}
+
+async function main() {
+  const atArg = process.argv.find((a) => a.startsWith('--at='))?.split('=')[1];
+  const now = atArg ? new Date(atArg) : new Date();
+  const cp = caracasParts(now);
+  const prisma = new PrismaClient();
+
+  // Permite apuntar a un tenant específico: --tenant=<slug> o SEED_TENANT_SLUG.
+  // Sin filtro: diagnostica TODOS los tenants que tengan alguna promo cargada
+  // (así el orden de tenants no puede hacernos mirar el equivocado).
+  const slug = process.argv.find((a) => a.startsWith('--tenant='))?.split('=')[1] ?? process.env.SEED_TENANT_SLUG;
+
+  let tenants: { id: string; name: string; slug: string; featureFlags: unknown }[];
+  if (slug) {
+    const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true, name: true, slug: true, featureFlags: true } });
+    if (!t) throw new Error(`Tenant con slug "${slug}" no encontrado`);
+    tenants = [t];
+  } else {
+    const withPromos = await prisma.promotion.findMany({ where: { deletedAt: null }, select: { tenantId: true }, distinct: ['tenantId'] });
+    const ids = withPromos.map((p) => p.tenantId);
+    tenants = await prisma.tenant.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, slug: true, featureFlags: true }, orderBy: { name: 'asc' } });
+    if (tenants.length === 0) console.log('\n⚠️  Ningún tenant tiene promociones cargadas.');
+  }
+
+  for (const t of tenants) await diagnoseTenant(prisma, t, now, cp);
+  console.log(`\n${'='.repeat(64)}`);
   await prisma.$disconnect();
 }
 main().catch((e) => { console.error('❌', e); process.exit(1); });
