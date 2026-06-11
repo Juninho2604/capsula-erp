@@ -1152,9 +1152,12 @@ async function verifyPin(pin: string, stored: string): Promise<boolean> {
 // VALIDACIÓN DE PIN DE GERENTE
 // ============================================================================
 
-export async function validateManagerPinAction(pin: string): Promise<ActionResult> {
+export async function validateManagerPinAction(pinRaw: string): Promise<ActionResult> {
     const db = await getTenantDb();
     try {
+        // trim defensivo — alinea con resolveVoidAuthPin/updateUserPin (que ya
+        // trimean). Un espacio/nueva-línea pegado rompía el match del hash.
+        const pin = (pinRaw ?? '').trim();
         if (!pin || pin.length < 4) {
             return { success: false, message: 'PIN debe tener al menos 4 dígitos' };
         }
