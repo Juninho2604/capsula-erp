@@ -14,6 +14,7 @@ import { getSession } from '@/lib/auth';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
+import { caracasDateOnlyToDate } from '@/lib/datetime';
 import { revalidatePath } from 'next/cache';
 import type { PromotionRule, PromotionDiscountType } from '@/lib/promotions/engine';
 
@@ -136,9 +137,9 @@ function validateInput(input: PromotionInput): string | null {
     }
     // Rango de fechas coherente — sin esto la promo "muere" en silencio.
     if (input.startDate && input.endDate) {
-        const s = new Date(input.startDate).getTime();
-        const e = new Date(input.endDate).getTime();
-        if (Number.isFinite(s) && Number.isFinite(e) && s > e) {
+        const s = caracasDateOnlyToDate(input.startDate)?.getTime();
+        const e = caracasDateOnlyToDate(input.endDate)?.getTime();
+        if (s != null && e != null && s > e) {
             return 'La fecha de inicio no puede ser posterior a la de fin.';
         }
     }
@@ -157,8 +158,8 @@ function inputToData(input: PromotionInput) {
         daysOfWeek: JSON.stringify(input.daysOfWeek ?? []),
         startTime: input.startTime || null,
         endTime: input.endTime || null,
-        startDate: input.startDate ? new Date(input.startDate) : null,
-        endDate: input.endDate ? new Date(input.endDate) : null,
+        startDate: caracasDateOnlyToDate(input.startDate),
+        endDate: caracasDateOnlyToDate(input.endDate),
         priority: input.priority ?? 0,
         isActive: input.isActive ?? true,
     };
