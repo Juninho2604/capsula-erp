@@ -153,7 +153,7 @@ export function CuentasBancariasView({
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs tabular-nums text-capsula-ink-soft">{t.commissionPct}%</span>
+                        <span className="text-xs tabular-nums text-capsula-ink-soft" title="natural / jurídica">{t.commNaturalPct || t.commissionPct}% / {t.commJuridicaPct}%</span>
                         {canEdit && (
                           <button
                             onClick={() => setTerminalModal({ open: true, accountId: acc.id, edit: t })}
@@ -218,12 +218,22 @@ function AccountModal({
   const [rif, setRif] = useState(edit?.rif ?? '');
   const [notes, setNotes] = useState(edit?.notes ?? '');
   const [isActive, setIsActive] = useState(edit?.isActive ?? true);
+  const [cInNat, setCInNat] = useState(String(edit?.commInNaturalPct ?? 0));
+  const [cInJur, setCInJur] = useState(String(edit?.commInJuridicaPct ?? 0));
+  const [cOutNat, setCOutNat] = useState(String(edit?.commOutNaturalPct ?? 0));
+  const [cOutJur, setCOutJur] = useState(String(edit?.commOutJuridicaPct ?? 0));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function submit() {
     setError(''); setSaving(true);
-    const payload = { name, bankName, currency, kind, rif, notes };
+    const payload = {
+      name, bankName, currency, kind, rif, notes,
+      commInNaturalPct: parseFloat(cInNat) || 0,
+      commInJuridicaPct: parseFloat(cInJur) || 0,
+      commOutNaturalPct: parseFloat(cOutNat) || 0,
+      commOutJuridicaPct: parseFloat(cOutJur) || 0,
+    };
     const res = edit
       ? await updateBankAccountAction(edit.id, { ...payload, isActive })
       : await createBankAccountAction(payload);
@@ -264,6 +274,30 @@ function AccountModal({
         <Field label="Notas (opcional)">
           <input className="pos-input w-full" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
+
+        <div className="rounded-2xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+            Comisiones de pago móvil / transferencia (%)
+          </p>
+          <p className="text-[11px] text-capsula-ink-faint -mt-1">
+            Los PDV tienen su propia comisión en cada terminal. Estas aplican a pago móvil/transferencias de la cuenta.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Ingreso · natural">
+              <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={cInNat} onChange={(e) => setCInNat(e.target.value)} />
+            </Field>
+            <Field label="Ingreso · jurídica">
+              <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={cInJur} onChange={(e) => setCInJur(e.target.value)} />
+            </Field>
+            <Field label="Egreso · natural">
+              <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={cOutNat} onChange={(e) => setCOutNat(e.target.value)} />
+            </Field>
+            <Field label="Egreso · jurídica">
+              <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={cOutJur} onChange={(e) => setCOutJur(e.target.value)} />
+            </Field>
+          </div>
+        </div>
+
         {edit && (
           <button
             onClick={() => setIsActive((v) => !v)}
@@ -292,15 +326,17 @@ function TerminalModal({
   const [label, setLabel] = useState(edit?.label ?? '');
   const [terminalCode, setTerminalCode] = useState(edit?.terminalCode ?? '');
   const [posMethodKey, setPosMethodKey] = useState(edit?.posMethodKey ?? '');
-  const [commissionPct, setCommissionPct] = useState(String(edit?.commissionPct ?? 0));
+  const [commNatural, setCommNatural] = useState(String(edit?.commNaturalPct ?? edit?.commissionPct ?? 0));
+  const [commJuridica, setCommJuridica] = useState(String(edit?.commJuridicaPct ?? 0));
   const [isActive, setIsActive] = useState(edit?.isActive ?? true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function submit() {
     setError(''); setSaving(true);
-    const pct = parseFloat(commissionPct) || 0;
-    const payload = { bankAccountId: accountId, label, terminalCode, posMethodKey, commissionPct: pct };
+    const natural = parseFloat(commNatural) || 0;
+    const juridica = parseFloat(commJuridica) || 0;
+    const payload = { bankAccountId: accountId, label, terminalCode, posMethodKey, commissionPct: natural, commNaturalPct: natural, commJuridicaPct: juridica };
     const res = edit
       ? await updatePosTerminalAction(edit.id, { ...payload, isActive })
       : await createPosTerminalAction(payload);
@@ -323,18 +359,18 @@ function TerminalModal({
               ))}
             </select>
           </Field>
-          <Field label="Comisión %">
-            <input
-              className="pos-input w-full tabular-nums"
-              type="number" step="0.01" min="0"
-              value={commissionPct}
-              onChange={(e) => setCommissionPct(e.target.value)}
-            />
+          <Field label="Código / afiliación (opcional)">
+            <input className="pos-input w-full" value={terminalCode} onChange={(e) => setTerminalCode(e.target.value)} />
           </Field>
         </div>
-        <Field label="Código / afiliación (opcional)">
-          <input className="pos-input w-full" value={terminalCode} onChange={(e) => setTerminalCode(e.target.value)} />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Comisión % persona natural">
+            <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={commNatural} onChange={(e) => setCommNatural(e.target.value)} />
+          </Field>
+          <Field label="Comisión % persona jurídica">
+            <input className="pos-input w-full tabular-nums" type="number" step="0.01" min="0" value={commJuridica} onChange={(e) => setCommJuridica(e.target.value)} />
+          </Field>
+        </div>
         {edit && (
           <button
             onClick={() => setIsActive((v) => !v)}

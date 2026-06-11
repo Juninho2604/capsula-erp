@@ -43,3 +43,30 @@ describe('commissionBs / netBs', () => {
         expect(netBs(37145.72, 0.32)).toBe(37026.85);
     });
 });
+
+import { terminalCommissionPct, accountCommissionPct } from './commission';
+
+describe('terminalCommissionPct (PDV por contraparte)', () => {
+    const t = { commissionPct: 0.5, commNaturalPct: 0, commJuridicaPct: 1.2 };
+    it('natural cae al % legado si no hay commNaturalPct', () => {
+        expect(terminalCommissionPct(t, 'NATURAL')).toBe(0.5);
+    });
+    it('natural usa commNaturalPct cuando existe', () => {
+        expect(terminalCommissionPct({ ...t, commNaturalPct: 0.3 }, 'NATURAL')).toBe(0.3);
+    });
+    it('jurídica usa commJuridicaPct', () => {
+        expect(terminalCommissionPct(t, 'JURIDICA')).toBe(1.2);
+    });
+});
+
+describe('accountCommissionPct (pago móvil/transfer por dirección+contraparte)', () => {
+    const a = { commInNaturalPct: 0, commInJuridicaPct: 0.5, commOutNaturalPct: 0.3, commOutJuridicaPct: 0.8 };
+    it('ingreso natural = 0 (no cobra), jurídica cobra', () => {
+        expect(accountCommissionPct(a, 'IN', 'NATURAL')).toBe(0);
+        expect(accountCommissionPct(a, 'IN', 'JURIDICA')).toBe(0.5);
+    });
+    it('egreso cobra a ambas', () => {
+        expect(accountCommissionPct(a, 'OUT', 'NATURAL')).toBe(0.3);
+        expect(accountCommissionPct(a, 'OUT', 'JURIDICA')).toBe(0.8);
+    });
+});
