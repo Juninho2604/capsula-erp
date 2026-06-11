@@ -2113,6 +2113,16 @@ model BankAccount {
   sortOrder Int     @default(0)
   notes     String?
 
+  // ── Comisiones configurables (pago móvil / transferencia de la cuenta) ──────
+  // Por dirección (ingreso/egreso) y tipo de contraparte (persona natural /
+  // jurídica). Regla típica VE: ingreso natural = 0; jurídica cobra; egreso
+  // cobra a ambas. Todo configurable. Los PDV tienen sus propias tasas en
+  // PosTerminal. Valores en % (ej. 0.3 = 0.3%).
+  commInNaturalPct   Float @default(0) // ingreso, persona natural
+  commInJuridicaPct  Float @default(0) // ingreso, persona jurídica
+  commOutNaturalPct  Float @default(0) // egreso, persona natural
+  commOutJuridicaPct Float @default(0) // egreso, persona jurídica
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2132,14 +2142,17 @@ model BankAccount {
 
 /// Terminal de punto de venta (PDV). Abona a una cuenta y cobra una comisión.
 model PosTerminal {
-  id            String  @id @default(cuid())
-  label         String // "PDV Superferro", "PDV Shanklish"
-  terminalCode  String? // número de afiliación / serial del POS
+  id              String  @id @default(cuid())
+  label           String // "PDV Superferro", "PDV Shanklish"
+  terminalCode    String? // número de afiliación / serial del POS
   // Mapea al método de pago del POS para atribuir ventas automáticamente.
   // Ej: "PDV_SUPERFERRO", "PDV_SHANKLISH", "MOVIL_NG".
-  posMethodKey  String?
-  // Comisión por defecto que cobra el banco sobre la transacción (ej. 0.5 = 0.5%).
-  commissionPct Float   @default(0)
+  posMethodKey    String?
+  // Comisión por defecto (legado — se usa como fallback de la tasa natural).
+  commissionPct   Float   @default(0)
+  // Comisiones configurables del PDV por tipo de contraparte (% sobre la venta).
+  commNaturalPct  Float   @default(0) // persona natural
+  commJuridicaPct Float   @default(0) // persona jurídica
 
   bankAccountId String
   bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)

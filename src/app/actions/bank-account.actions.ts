@@ -15,6 +15,8 @@ export interface PosTerminalData {
   terminalCode: string | null;
   posMethodKey: string | null;
   commissionPct: number;
+  commNaturalPct: number;
+  commJuridicaPct: number;
   bankAccountId: string;
   isActive: boolean;
   sortOrder: number;
@@ -30,6 +32,10 @@ export interface BankAccountData {
   isActive: boolean;
   sortOrder: number;
   notes: string | null;
+  commInNaturalPct: number;
+  commInJuridicaPct: number;
+  commOutNaturalPct: number;
+  commOutJuridicaPct: number;
   terminals: PosTerminalData[];
 }
 
@@ -71,12 +77,18 @@ export async function getBankAccountsAction(): Promise<{
         isActive: a.isActive,
         sortOrder: a.sortOrder,
         notes: a.notes,
+        commInNaturalPct: a.commInNaturalPct,
+        commInJuridicaPct: a.commInJuridicaPct,
+        commOutNaturalPct: a.commOutNaturalPct,
+        commOutJuridicaPct: a.commOutJuridicaPct,
         terminals: a.terminals.map((t) => ({
           id: t.id,
           label: t.label,
           terminalCode: t.terminalCode,
           posMethodKey: t.posMethodKey,
           commissionPct: t.commissionPct,
+          commNaturalPct: t.commNaturalPct,
+          commJuridicaPct: t.commJuridicaPct,
           bankAccountId: t.bankAccountId,
           isActive: t.isActive,
           sortOrder: t.sortOrder,
@@ -98,6 +110,14 @@ export interface BankAccountInput {
   rif?: string | null;
   sortOrder?: number;
   notes?: string | null;
+  commInNaturalPct?: number;
+  commInJuridicaPct?: number;
+  commOutNaturalPct?: number;
+  commOutJuridicaPct?: number;
+}
+
+function pct(n: number | undefined): number {
+  return typeof n === 'number' && n >= 0 ? n : 0;
 }
 
 function normalizeCurrency(c: string): string {
@@ -131,6 +151,10 @@ export async function createBankAccountAction(
         rif: input.rif?.trim() || null,
         sortOrder: input.sortOrder ?? 0,
         notes: input.notes?.trim() || null,
+        commInNaturalPct: pct(input.commInNaturalPct),
+        commInJuridicaPct: pct(input.commInJuridicaPct),
+        commOutNaturalPct: pct(input.commOutNaturalPct),
+        commOutJuridicaPct: pct(input.commOutJuridicaPct),
       },
     });
 
@@ -180,6 +204,10 @@ export async function updateBankAccountAction(
         ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
         ...(input.notes !== undefined && { notes: input.notes?.trim() || null }),
         ...(input.isActive !== undefined && { isActive: input.isActive }),
+        ...(input.commInNaturalPct !== undefined && { commInNaturalPct: pct(input.commInNaturalPct) }),
+        ...(input.commInJuridicaPct !== undefined && { commInJuridicaPct: pct(input.commInJuridicaPct) }),
+        ...(input.commOutNaturalPct !== undefined && { commOutNaturalPct: pct(input.commOutNaturalPct) }),
+        ...(input.commOutJuridicaPct !== undefined && { commOutJuridicaPct: pct(input.commOutJuridicaPct) }),
       },
     });
     if (res.count === 0) return { success: false, error: 'Cuenta no encontrada' };
@@ -213,6 +241,8 @@ export interface PosTerminalInput {
   terminalCode?: string | null;
   posMethodKey?: string | null;
   commissionPct?: number;
+  commNaturalPct?: number;
+  commJuridicaPct?: number;
   sortOrder?: number;
 }
 
@@ -242,6 +272,8 @@ export async function createPosTerminalAction(
         terminalCode: input.terminalCode?.trim() || null,
         posMethodKey: input.posMethodKey?.trim() || null,
         commissionPct: input.commissionPct ?? 0,
+        commNaturalPct: pct(input.commNaturalPct ?? input.commissionPct),
+        commJuridicaPct: pct(input.commJuridicaPct),
         sortOrder: input.sortOrder ?? 0,
         bankAccountId: input.bankAccountId,
       },
@@ -288,6 +320,8 @@ export async function updatePosTerminalAction(
         ...(input.terminalCode !== undefined && { terminalCode: input.terminalCode?.trim() || null }),
         ...(input.posMethodKey !== undefined && { posMethodKey: input.posMethodKey?.trim() || null }),
         ...(input.commissionPct !== undefined && { commissionPct: input.commissionPct }),
+        ...(input.commNaturalPct !== undefined && { commNaturalPct: pct(input.commNaturalPct) }),
+        ...(input.commJuridicaPct !== undefined && { commJuridicaPct: pct(input.commJuridicaPct) }),
         ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
         ...(input.bankAccountId !== undefined && { bankAccountId: input.bankAccountId }),
         ...(input.isActive !== undefined && { isActive: input.isActive }),

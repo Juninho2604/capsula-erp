@@ -44,3 +44,40 @@ export function netBs(amountBs: number, commissionPct: number): number {
     const gross = amountBs > 0 ? amountBs : 0;
     return round2(gross - commissionBs(amountBs, commissionPct));
 }
+
+// ─── Comisiones configurables por dirección y contraparte (Fase 3) ───────────
+
+export type Counterparty = 'NATURAL' | 'JURIDICA';
+export type CommissionDirection = 'IN' | 'OUT';
+
+export interface TerminalCommissionConfig {
+    commissionPct: number; // legado (fallback de natural)
+    commNaturalPct: number;
+    commJuridicaPct: number;
+}
+
+export interface AccountCommissionConfig {
+    commInNaturalPct: number;
+    commInJuridicaPct: number;
+    commOutNaturalPct: number;
+    commOutJuridicaPct: number;
+}
+
+/**
+ * % de comisión de un PDV (ingreso) según la contraparte. Natural cae al %
+ * legado (`commissionPct`) si no se configuró el nuevo campo.
+ */
+export function terminalCommissionPct(t: TerminalCommissionConfig, cp: Counterparty): number {
+    if (cp === 'JURIDICA') return t.commJuridicaPct || 0;
+    return t.commNaturalPct || t.commissionPct || 0;
+}
+
+/**
+ * % de comisión de la cuenta (pago móvil / transferencia, sin PDV) según
+ * dirección (ingreso/egreso) y contraparte. Regla típica VE: ingreso natural
+ * suele ser 0; egreso cobra a ambas. Todo configurable.
+ */
+export function accountCommissionPct(a: AccountCommissionConfig, dir: CommissionDirection, cp: Counterparty): number {
+    if (dir === 'IN') return cp === 'JURIDICA' ? (a.commInJuridicaPct || 0) : (a.commInNaturalPct || 0);
+    return cp === 'JURIDICA' ? (a.commOutJuridicaPct || 0) : (a.commOutNaturalPct || 0);
+}
