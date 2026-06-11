@@ -49,6 +49,7 @@ import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
 import { embedTabCode } from '@/lib/sales/collective-tip-ref';
 import { buildMenuItemCostMap, costSnapshotFields } from '@/lib/sales/menu-item-cost';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+import { tenantFeatureEnabled } from '@/lib/feature-flags';
 
 /**
  * Métodos de pago cuyo dinero entra en BOLÍVARES (el monto Bs y la tasa
@@ -393,14 +394,28 @@ function roundCents(n: number): number {
  * Debe aplicarse como ÚLTIMO paso, después de descuentos y service charge.
  * NUNCA al precio base ni al monto en Bs.
  */
-function roundToWhole(amount: number, paymentMethod?: string): number {
-    if (paymentMethod === 'CASH_USD' || paymentMethod === 'CASH_EUR' || paymentMethod === 'ZELLE') {
+function isCashDivisaMethod(method?: string): boolean {
+    return method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE';
+}
+
+/**
+ * @param exactTotal Cuando true (feature flag `exactCashSaleTip`): la VENTA no
+ *   se redondea — registra el monto exacto. El redondeo al dólar (hacia arriba)
+ *   pasa a ser una sugerencia de cobro en el frontend y la diferencia va a
+ *   propina. Cuando false (histórico): cash divisas se redondea al entero.
+ */
+function roundToWhole(amount: number, paymentMethod?: string, exactTotal = false): number {
+    if (exactTotal) return roundCents(amount);
+    if (isCashDivisaMethod(paymentMethod)) {
         return Math.round(amount);
     }
     return amount;
 }
 
-function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery'>) {
+function calculateCartTotals(
+    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery'>,
+    exactTotal = false,
+) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
     // DELIVERY: $4.5 fee normal, $3 en divisas. Sin 10% servicio.
@@ -463,7 +478,7 @@ function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' |
             }
         }
 
-        total = roundToWhole(total, data.paymentMethod);
+        total = roundToWhole(total, data.paymentMethod, exactTotal);
         const change = (data.amountPaid || 0) - total;
         return { subtotal, discount, total, change: change > 0 ? change : 0, discountReason };
     }
@@ -490,7 +505,7 @@ function calculateCartTotals(data: Pick<CreateOrderData, 'orderType' | 'items' |
 
     if (discount > subtotal) discount = subtotal;
 
-    const total = roundToWhole(subtotal - discount, data.paymentMethod);
+    const total = roundToWhole(subtotal - discount, data.paymentMethod, exactTotal);
     const change = (data.amountPaid || 0) - total;
 
     return {
@@ -1328,7 +1343,14 @@ export async function createSalesOrderAction(
         // devuelve auditoría por índice para snapshot en SalesOrderItem.
         const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
 
-        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data);
+        // Flag: venta exacta + redondeo de efectivo divisas a propina.
+        const exactCashTip = await tenantFeatureEnabled(tenantId, 'exactCashSaleTip').catch(() => false);
+        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip);
+        // Con el flag, en efectivo divisas el excedente (redondeo hacia arriba)
+        // es PROPINA, no vuelto: forzamos change=0 salvo que la cajera pida
+        // dar vuelto explícito (keepChangeAsTip=false + tipAtCheckout marcado).
+        const routeDeltaToTip = exactCashTip && isCashDivisaMethod(data.paymentMethod)
+            && !data.payments?.length && data.keepChangeAsTip !== false;
 
         let finalNotes = data.notes || '';
         if (discountReason) {
@@ -1385,7 +1407,8 @@ export async function createSalesOrderAction(
                         amountPaid: data.payments && data.payments.length > 0
                             ? data.payments.reduce((s, p) => s + p.amountUSD, 0)
                             : (data.amountPaid || total),
-                        change: data.keepChangeAsTip ? 0
+                        change: routeDeltaToTip ? 0
+                            : data.keepChangeAsTip ? 0
                             : (data.tipAtCheckout && data.tipAtCheckout > 0)
                                 ? Math.max(0, change - data.tipAtCheckout)
                                 : (change > 0 ? change : 0),

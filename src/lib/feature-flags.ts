@@ -39,6 +39,11 @@ export const FEATURE_FLAGS = {
         description:
             'Cuando está activo, aparece el módulo "Gestión de Deliverys" en Administración (tablero de órdenes, sedes, motorizados, agotados) y se habilita la API /api/v1/delivery/* que consume el bot (n8n + IA). Módulo aislado: no toca el Report Z, el historial de ventas ni el inventario. Sin el flag, el módulo y la API quedan ocultos para el tenant.',
     },
+    exactCashSaleTip: {
+        label: 'Venta exacta + redondeo de efectivo a propina',
+        description:
+            'Cambia cómo se cobra en efectivo divisas (CASH_USD, CASH_EUR, ZELLE). Sin el flag (histórico): el total de la venta se redondea al dólar entero, inflando lo facturado. Con el flag: la VENTA registra el monto EXACTO (ej. 27,70) y el POS sugiere cobrar el dólar entero hacia ARRIBA (28). La diferencia (0,30) se registra como PROPINA del personal, no como venta. Si el cliente pide el vuelto de esos centavos, la cajera lo da y deja de ser propina. Solo afecta ventas directas en efectivo divisas; el cierre de mesa ya era exacto.',
+    },
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

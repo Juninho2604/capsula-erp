@@ -621,11 +621,16 @@ export default function POSSportBarPage() {
     ? rawAmount / exchangeRate
     : rawAmount;
   // Regla de negocio — redondeo por método:
-  //   Divisas efectivo (CASH_USD, CASH_EUR, ZELLE): Math.round() sobre el neto FINAL (post-descuento).
+  //   Divisas efectivo (CASH_USD, CASH_EUR, ZELLE): se redondea el monto a cobrar.
   //   Bolívares (CASH_BS, PDV_*, MOVIL_NG): sin redondeo — el monto Bs debe ser exacto.
   //   NUNCA redondear el precio base ni antes del descuento.
+  // Con el flag `exactCashSaleTip`: redondea hacia ARRIBA (Math.ceil) — la venta
+  // real queda exacta en el servidor y la diferencia se registra como propina.
+  // Sin el flag (histórico): Math.round (puede subir o bajar, e infla la venta).
   const roundToWhole = (amount: number, method: string): number =>
-    (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE') ? Math.round(amount) : amount;
+    (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')
+      ? (featureFlags.exactCashSaleTip ? Math.ceil(amount) : Math.round(amount))
+      : amount;
   const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
   const isPagoDivisas = isDivisasMethod(paymentMethod);
