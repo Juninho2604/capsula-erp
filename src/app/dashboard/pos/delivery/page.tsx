@@ -338,8 +338,14 @@ export default function POSDeliveryPage() {
 
     const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
     // Divisas methods: CASH, CASH_USD, CASH_EUR, ZELLE get 33.33% discount
-    const roundToWhole = (amount: number, method: string): number =>
-        (method === 'CASH_USD' || method === 'ZELLE' || method === 'CASH_BS') ? Math.round(amount) : amount;
+    // Con el flag `exactCashSaleTip`: cash divisas redondea hacia ARRIBA (la venta
+    // queda exacta en el servidor; la diferencia es propina). Sin flag: histórico.
+    const roundToWhole = (amount: number, method: string): number => {
+        if (featureFlags.exactCashSaleTip && (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')) {
+            return Math.ceil(amount);
+        }
+        return (method === 'CASH_USD' || method === 'ZELLE' || method === 'CASH_BS') ? Math.round(amount) : amount;
+    };
     const isDivisasMethod = (m: string) => m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
     // Bs methods: user enters amount in Bs, needs conversion to USD
     const BS_SINGLE_METHODS = new Set(['PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'CASH_BS']);
