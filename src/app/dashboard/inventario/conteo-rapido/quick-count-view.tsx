@@ -445,7 +445,7 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
                                 quedan en 0 en el sistema (= "no había nada").
                             </p>
                             <p className="text-capsula-ink-soft text-xs">
-                                Si querés contar solo los que quedaron pendientes en otra sesión, cancelá y usá el filtro
+                                Si quieres contar solo los que quedaron pendientes en otra sesión, cancela y usa el filtro
                                 "Solo pendientes" arriba.
                             </p>
                         </div>

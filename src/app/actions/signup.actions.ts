@@ -82,7 +82,7 @@ export async function signupTenantAction(
         };
     }
     if (isReservedSlug(slugRaw)) {
-        return { success: false, field: 'slug', message: 'Ese slug está reservado. Elegí otro.' };
+        return { success: false, field: 'slug', message: 'Ese slug está reservado. Elige otro.' };
     }
     if (!EMAIL_RE.test(email) || email.length > 200) {
         return { success: false, field: 'email', message: 'Email inválido.' };
@@ -160,7 +160,7 @@ export async function signupTenantAction(
         // create. El @unique constraint nos protege.
         console.error('[signupTenantAction]', err);
         const msg = (err as { code?: string })?.code === 'P2002'
-            ? 'Ese slug acaba de tomarse. Elegí otro.'
+            ? 'Ese slug acaba de tomarse. Elige otro.'
             : 'Error al crear la cuenta. Intentá de nuevo en unos minutos.';
         return { success: false, field: 'slug', message: msg };
     }

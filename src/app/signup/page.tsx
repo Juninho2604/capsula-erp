@@ -24,7 +24,7 @@ export default function SignupPage() {
                         Crear cuenta de negocio
                     </h1>
                     <p className="mt-2 text-sm text-capsula-ink-soft">
-                        En 1 minuto tenés tu propio sistema de gestión.
+                        En 1 minuto tienes tu propio sistema de gestión.
                     </p>
                 </div>
                 <SignupForm />

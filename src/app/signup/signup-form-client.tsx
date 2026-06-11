@@ -228,7 +228,7 @@ export default function SignupForm() {
             <SubmitButton />
 
             <p className="text-center text-[11px] uppercase tracking-[0.14em] text-capsula-ink-muted">
-                ¿Ya tenés cuenta?{' '}
+                ¿Ya tienes cuenta?{' '}
                 <a href="/login" className="font-semibold text-capsula-navy-deep hover:text-capsula-coral">
                     Iniciar sesión
                 </a>

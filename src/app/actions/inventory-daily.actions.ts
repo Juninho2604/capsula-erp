@@ -751,7 +751,7 @@ export async function closeDailyInventoryAction(
                 return {
                     success: false,
                     code: 'ALL_AT_ZERO',
-                    message: 'Todos los items quedaron en 0. Revisá el conteo antes de cerrar, o forzá el cierre si efectivamente no quedó stock.',
+                    message: 'Todos los items quedaron en 0. Revisa el conteo antes de cerrar, o fuerza el cierre si efectivamente no quedó stock.',
                 };
             }
         }

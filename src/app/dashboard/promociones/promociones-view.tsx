@@ -253,7 +253,7 @@ export function PromocionesView({ initialPromotions, categories, items, promotio
             {/* Lista */}
             {promotions.length === 0 ? (
                 <div className="bg-capsula-ivory border border-capsula-line rounded-2xl p-10 text-center text-capsula-ink-muted">
-                    No hay promociones. Creá la primera con "Nueva promoción".
+                    No hay promociones. Crea la primera con "Nueva promoción".
                 </div>
             ) : (
                 <div className="space-y-3">

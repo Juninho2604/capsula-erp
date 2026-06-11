@@ -220,7 +220,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                 setCloseSummary(null);
                 loadData();
             } else if (res.code === 'ALL_AT_ZERO') {
-                toast.error('Todos los items quedaron en 0 — confirmá el cierre forzado para continuar.');
+                toast.error('Todos los items quedaron en 0 — confirma el cierre forzado para continuar.');
             } else {
                 toast.error(res.message || 'Error al finalizar');
             }
@@ -1031,7 +1031,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                         <div className="border-b border-capsula-line p-5 flex items-center justify-between shrink-0">
                             <div>
                                 <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Resumen pre-cierre</h3>
-                                <p className="text-[11px] text-capsula-ink-muted mt-0.5">Revisá antes de cerrar el día — no se podrá editar después.</p>
+                                <p className="text-[11px] text-capsula-ink-muted mt-0.5">Revisa antes de cerrar el día — no se podrá editar después.</p>
                             </div>
                             <button
                                 onClick={() => setCloseSummary(null)}
@@ -1049,7 +1049,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="font-semibold text-sm">Todos los items quedaron en 0</p>
-                                        <p className="text-xs mt-1 opacity-90">Casi seguro olvidaste contar. Si el área efectivamente terminó sin stock, podés forzar el cierre.</p>
+                                        <p className="text-xs mt-1 opacity-90">Casi seguro olvidaste contar. Si el área efectivamente terminó sin stock, puedes forzar el cierre.</p>
                                     </div>
                                 </div>
                             )}
@@ -1057,8 +1057,8 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                 <div className="rounded-xl bg-[#F3EAD6] dark:bg-[#3B2F15] text-[#946A1C] dark:text-[#E8D9B8] p-4 flex items-start gap-3">
                                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-semibold text-sm">Revisá los items marcados</p>
-                                        <p className="text-xs mt-1 opacity-90">Hay varianzas significativas o items críticos en 0. Verificá que sea correcto.</p>
+                                        <p className="font-semibold text-sm">Revisa los items marcados</p>
+                                        <p className="text-xs mt-1 opacity-90">Hay varianzas significativas o items críticos en 0. Verifica que sea correcto.</p>
                                     </div>
                                 </div>
                             )}
