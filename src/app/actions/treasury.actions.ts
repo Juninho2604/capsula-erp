@@ -8,7 +8,7 @@ import { logAudit } from '@/lib/audit-log';
 import { revenueWhere } from '@/lib/sales-where';
 import { fiscalWeekLabel } from '@/lib/fiscal-week';
 import { getCaracasDateStamp } from '@/lib/datetime';
-import { resolveTerminalForMethod, commissionBs, netBs } from '@/lib/treasury/commission';
+import { resolveTerminalForMethod, commissionBs, netBs, terminalCommissionPct, accountCommissionPct, type Counterparty } from '@/lib/treasury/commission';
 import { computeReconciliation, computeBcvLossUsd, type ReconStatus } from '@/lib/treasury/reconciliation';
 
 const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'];
@@ -471,5 +471,219 @@ export async function saveReconciliationAction(input: {
     return { success: true };
   } catch {
     return { success: false, error: 'Error al guardar la conciliación' };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONCILIACIÓN POR MOVIMIENTO (Fase 3)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ReconMovement {
+  sourceType: string; // SALE_PAYMENT | EXPENSE | ACCOUNT_PAYMENT
+  sourceId: string;
+  dateIso: string;
+  dateStamp: string;
+  kind: 'IN' | 'OUT';
+  channel: string;       // terminal / método / concepto
+  isPdv: boolean;
+  amountBs: number | null;
+  amountUsd: number | null;
+  reference: string | null;
+  counterpartyType: Counterparty;
+  commissionPct: number;
+  commission: number;    // en la moneda de la cuenta
+  commissionRemoved: boolean;
+  reconciled: boolean;
+  statementAmount: number | null;
+  notes: string | null;
+}
+
+export interface ReconMovementsDay {
+  dateStamp: string;
+  movements: ReconMovement[];
+  countTotal: number;
+  countReconciled: number;
+}
+
+export interface ReconMovementsView {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  days: ReconMovementsDay[];
+  totalMovements: number;
+  totalReconciled: number;
+}
+
+function isPdvMethod(key: string | null | undefined): boolean {
+  return !!key && key.toUpperCase().startsWith('PDV');
+}
+
+export async function getReconciliationMovementsAction(input: {
+  bankAccountId: string;
+  year: number;
+  month0: number;
+}): Promise<{ success: boolean; data?: ReconMovementsView; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!READ_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
+
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const account = await db.bankAccount.findFirst({
+      where: { id: input.bankAccountId },
+      include: { terminals: { where: { isActive: true } } },
+    });
+    if (!account) return { success: false, error: 'Cuenta no encontrada' };
+    const isBs = account.currency !== 'USD';
+    const { start, end } = caracasMonthBounds(input.year, input.month0);
+
+    const terminals = account.terminals.filter((t) => t.posMethodKey);
+    const methodKeys = terminals.map((t) => t.posMethodKey!) as string[];
+    const terminalByMethod = new Map(terminals.map((t) => [t.posMethodKey!, t]));
+
+    // ── INGRESOS: cobros de las ventas vía los métodos de esta cuenta ──
+    const payments = methodKeys.length
+      ? await db.salesOrderPayment.findMany({
+          where: {
+            method: { in: methodKeys },
+            ...(isBs ? { amountBS: { gt: 0 } } : { amountUSD: { gt: 0 } }),
+            salesOrder: { is: { tenantId, ...revenueWhere(start, end) } },
+          },
+          select: {
+            id: true, method: true, amountBS: true, amountUSD: true, reference: true,
+            salesOrder: { select: { createdAt: true, orderNumber: true } },
+          },
+          take: 2000,
+        })
+      : [];
+
+    // ── EGRESOS: gastos y pagos a proveedores pagados desde esta cuenta ──
+    const expenses = await db.expense.findMany({
+      where: { bankAccountId: account.id, status: { not: 'VOID' }, paidAt: { gte: start, lte: end } },
+      select: { id: true, description: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true },
+      take: 2000,
+    });
+    const accPayments = await db.accountPayment.findMany({
+      where: { bankAccountId: account.id, paidAt: { gte: start, lte: end } },
+      select: { id: true, amountBs: true, amountUsd: true, paymentRef: true, paidAt: true, accountPayable: { select: { description: true } } },
+      take: 2000,
+    });
+
+    // Estado por movimiento.
+    const recs = await db.bankMovementRecon.findMany({
+      where: { bankAccountId: account.id, date: { gte: start, lte: end } },
+    });
+    const recByKey = new Map(recs.map((r) => [`${r.sourceType}:${r.sourceId}`, r]));
+
+    const build = (
+      sourceType: string, sourceId: string, date: Date, kind: 'IN' | 'OUT',
+      channel: string, isPdv: boolean, amountBs: number | null, amountUsd: number | null,
+      reference: string | null, methodKey?: string | null,
+    ): ReconMovement => {
+      const rec = recByKey.get(`${sourceType}:${sourceId}`);
+      const cp: Counterparty = (rec?.counterpartyType as Counterparty) ?? 'NATURAL';
+      const amount = isBs ? (amountBs ?? 0) : (amountUsd ?? 0);
+      // % de comisión según origen.
+      let pctVal: number;
+      if (rec?.commissionOverridePct != null) pctVal = rec.commissionOverridePct;
+      else if (isPdv && methodKey) pctVal = terminalCommissionPct(terminalByMethod.get(methodKey)!, cp);
+      else pctVal = accountCommissionPct(account, kind, cp);
+      const removed = rec?.commissionRemoved ?? false;
+      const commission = removed ? 0 : commissionBs(amount, pctVal);
+      return {
+        sourceType, sourceId,
+        dateIso: date.toISOString(), dateStamp: getCaracasDateStamp(date),
+        kind, channel, isPdv, amountBs, amountUsd, reference,
+        counterpartyType: cp, commissionPct: removed ? 0 : pctVal, commission, commissionRemoved: removed,
+        reconciled: rec?.reconciled ?? false,
+        statementAmount: rec?.statementAmount ?? null,
+        notes: rec?.notes ?? null,
+      };
+    };
+
+    const movements: ReconMovement[] = [];
+    for (const p of payments) {
+      const t = terminalByMethod.get(p.method);
+      movements.push(build('SALE_PAYMENT', p.id, p.salesOrder.createdAt, 'IN',
+        `${t?.label ?? p.method} · ${p.salesOrder.orderNumber}`, isPdvMethod(p.method),
+        p.amountBS, p.amountUSD, p.reference, p.method));
+    }
+    for (const e of expenses) {
+      movements.push(build('EXPENSE', e.id, e.paidAt, 'OUT', e.description, false, e.amountBs, e.amountUsd, e.paymentRef, null));
+    }
+    for (const ap of accPayments) {
+      movements.push(build('ACCOUNT_PAYMENT', ap.id, ap.paidAt, 'OUT', `Pago: ${ap.accountPayable?.description ?? ''}`, false, ap.amountBs, ap.amountUsd, ap.paymentRef, null));
+    }
+
+    // Agrupar por día.
+    const byDay = new Map<string, ReconMovement[]>();
+    for (const m of movements) {
+      const arr = byDay.get(m.dateStamp) ?? [];
+      arr.push(m);
+      byDay.set(m.dateStamp, arr);
+    }
+    const days: ReconMovementsDay[] = Array.from(byDay.keys()).sort().map((stamp) => {
+      const ms = byDay.get(stamp)!.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+      return { dateStamp: stamp, movements: ms, countTotal: ms.length, countReconciled: ms.filter((m) => m.reconciled).length };
+    });
+
+    return {
+      success: true,
+      data: {
+        accountId: account.id, accountName: account.name, currency: account.currency, days,
+        totalMovements: movements.length, totalReconciled: movements.filter((m) => m.reconciled).length,
+      },
+    };
+  } catch {
+    return { success: false, error: 'Error al cargar los movimientos' };
+  }
+}
+
+export async function saveMovementReconAction(input: {
+  bankAccountId: string;
+  sourceType: string;
+  sourceId: string;
+  dateIso: string;
+  counterpartyType?: Counterparty;
+  commissionRemoved?: boolean;
+  commissionOverridePct?: number | null;
+  reconciled?: boolean;
+  statementAmount?: number | null;
+  notes?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!WRITE_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
+  if (!['SALE_PAYMENT', 'EXPENSE', 'ACCOUNT_PAYMENT'].includes(input.sourceType)) {
+    return { success: false, error: 'Tipo de movimiento inválido' };
+  }
+  const date = new Date(input.dateIso);
+  if (isNaN(date.getTime())) return { success: false, error: 'Fecha inválida' };
+
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+    const patch = {
+      ...(input.counterpartyType && { counterpartyType: input.counterpartyType === 'JURIDICA' ? 'JURIDICA' : 'NATURAL' }),
+      ...(input.commissionRemoved !== undefined && { commissionRemoved: input.commissionRemoved }),
+      ...(input.commissionOverridePct !== undefined && { commissionOverridePct: input.commissionOverridePct }),
+      ...(input.reconciled !== undefined && { reconciled: input.reconciled }),
+      ...(input.statementAmount !== undefined && { statementAmount: input.statementAmount }),
+      ...(input.notes !== undefined && { notes: input.notes?.trim() || null }),
+      reconciledById: session.id,
+    };
+    await db.bankMovementRecon.upsert({
+      where: { tenantId_sourceType_sourceId: { tenantId, sourceType: input.sourceType, sourceId: input.sourceId } },
+      update: patch,
+      create: {
+        tenantId, bankAccountId: input.bankAccountId, sourceType: input.sourceType,
+        sourceId: input.sourceId, date, counterpartyType: 'NATURAL', ...patch,
+      },
+    });
+    revalidatePath('/dashboard/conciliacion');
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Error al guardar el movimiento' };
   }
 }

@@ -114,6 +114,7 @@ model Tenant {
   bankAccounts          BankAccount[]
   posTerminals          PosTerminal[]
   bankReconciliations   BankReconciliation[]
+  bankMovementRecons    BankMovementRecon[]
   // Cuentas por cobrar (Fase 4)
   accountsReceivable    AccountReceivable[]
   receivablePayments    ReceivablePayment[]
@@ -2218,6 +2219,44 @@ model BankReconciliation {
   @@index([bankAccountId])
   @@index([date])
   @@index([status])
+}
+
+/// Estado de conciliación POR MOVIMIENTO (Fase 3 — conciliación de verdad).
+/// No duplica el dato de la venta/gasto: guarda solo el estado del movimiento
+/// (conciliado, contraparte para la comisión, comisión quitada/ajustada, monto
+/// del banco si difiere). Los movimientos se derivan en vivo (SalesOrderPayment,
+/// Expense, AccountPayment) y se cruzan con esta tabla por (sourceType, sourceId).
+model BankMovementRecon {
+  id            String @id @default(cuid())
+  bankAccountId String // scalar (sin FK; se filtra por él)
+
+  sourceType String // SALE_PAYMENT | EXPENSE | ACCOUNT_PAYMENT
+  sourceId   String // id del registro de origen
+  date       DateTime
+
+  // Contraparte → decide el % de comisión (natural/jurídica).
+  counterpartyType String @default("NATURAL") // NATURAL | JURIDICA
+
+  // Ajustes manuales de comisión.
+  commissionRemoved     Boolean @default(false) // el usuario quitó la comisión
+  commissionOverridePct Float? // % manual (null = usar config de la cuenta/terminal)
+
+  // Conciliación contra el banco.
+  reconciled      Boolean @default(false)
+  statementAmount Float? // monto según el estado de cuenta (si difiere → discrepancia)
+  notes           String?
+
+  reconciledById String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, sourceType, sourceId])
+  @@index([tenantId])
+  @@index([bankAccountId])
+  @@index([date])
 }
 
 // ============================================================================
