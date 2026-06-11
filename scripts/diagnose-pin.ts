@@ -68,22 +68,24 @@ async function main() {
   }
 
   console.log(`\n══ PROBANDO PIN "${candidate}" ══`);
+  console.log('(El POS solo autoriza con PINs del MISMO tenant donde estás logueado)');
   let hits = 0;
   for (const u of users) {
     if (await verifyPin(candidate, u.pin!)) {
       hits++;
       const ok = MANAGER_ROLES.includes(u.role) && u.isActive;
-      console.log(`  ✔ coincide con USUARIO ${u.firstName} ${u.lastName} (${u.role}, ${u.isActive ? 'activo' : 'INACTIVO'}) → ${ok ? '✅ PUEDE autorizar' : '❌ NO autoriza (rol sin permiso o inactivo)'}`);
+      console.log(`  ✔ USUARIO ${u.firstName} ${u.lastName} · ${u.role} · ${u.isActive ? 'activo' : 'INACTIVO'} · tenant=${u.tenant?.slug ?? '?'} → ${ok ? '✅ autoriza' : '❌ NO autoriza'}`);
     }
   }
   for (const w of waiters) {
     if (await verifyPin(candidate, w.pin!)) {
       hits++;
       const ok = w.isCaptain && w.isActive;
-      console.log(`  ✔ coincide con MESONERO ${w.firstName} ${w.lastName} (${w.isCaptain ? 'capitán' : 'mesonero'}, ${w.isActive ? 'activo' : 'INACTIVO'}) → ${ok ? '✅ PUEDE autorizar anulaciones' : '❌ NO autoriza (no es capitán o inactivo)'}`);
+      console.log(`  ✔ MESONERO ${w.firstName} ${w.lastName} · ${w.isCaptain ? 'capitán' : 'mesonero'} · ${w.isActive ? 'activo' : 'INACTIVO'} · sucursal=${w.branchId.slice(0, 8)} → ${ok ? '✅ autoriza anulaciones' : '❌ NO autoriza'}`);
     }
   }
   if (hits === 0) console.log('  ✗ NO coincide con NINGÚN usuario ni mesonero. → el PIN no quedó guardado, o lo tecleás distinto.');
+  else console.log(`\n→ Si tu gerente NO aparece arriba con tu tenant, ESE es el problema (PIN no guardado o en otra instancia).`);
 
   await prisma.$disconnect();
 }
