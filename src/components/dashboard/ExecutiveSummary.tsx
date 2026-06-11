@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 interface ExecutiveSummaryProps {
   todayRevenue: number;
+  /** Pagos reales del día (con 10% servicio, sin propinas) — secundario al facturado. */
+  todayCollected?: number;
   todayOrders: number;
   revenueChange: number | null;
   openTabs: number;
@@ -61,6 +63,7 @@ function buildHealthReport(
 
 export default function ExecutiveSummary({
   todayRevenue,
+  todayCollected,
   todayOrders,
   revenueChange,
   openTabs,
@@ -125,6 +128,11 @@ export default function ExecutiveSummary({
               <p className="text-[10px] text-muted-foreground">
                 {todayOrders} {todayOrders === 1 ? 'orden' : 'órdenes'} · facturado sin 10% servicio
               </p>
+              {typeof todayCollected === 'number' && (
+                <p className="text-[10px] text-muted-foreground">
+                  Cobrado: ${todayCollected.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} (con servicio)
+                </p>
+              )}
             </div>
 
             {/* Stock crítico */}

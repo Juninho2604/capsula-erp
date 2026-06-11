@@ -286,9 +286,9 @@ export function FinanzasView({ initialSummary, initialTrend, currentMonth, curre
               {/* P&L Summary diario */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <PnLCard
-                  label="Ventas del día"
+                  label="Ventas del día (facturado)"
                   value={`$${fmt(ds.income.totalSalesUsd)}`}
-                  sub={`${ds.income.ordersCount} órdenes · facturado sin 10% servicio`}
+                  sub={`Cobrado: $${fmt(ds.income.cobradoUsd ?? 0)}${(ds.income.pendienteUsd ?? 0) > 0.005 ? ` · por cobrar: $${fmt(ds.income.pendienteUsd)}` : ''} · ${ds.income.ordersCount} órdenes`}
                   Icon={Wallet}
                   tone="ok"
                   change={ds.dod?.salesChange ?? null}

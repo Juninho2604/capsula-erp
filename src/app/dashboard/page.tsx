@@ -84,6 +84,7 @@ export default async function DashboardPage() {
             {salesKPIs && (
                 <ExecutiveSummary
                     todayRevenue={salesKPIs.todayRevenue}
+                    todayCollected={salesKPIs.todayCollected}
                     todayOrders={salesKPIs.todayOrders}
                     revenueChange={salesKPIs.revenueChange}
                     openTabs={salesKPIs.openTabs}

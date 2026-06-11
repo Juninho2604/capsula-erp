@@ -8,6 +8,7 @@ import { getStockStatus } from '@/lib/utils'; // Assuming this is safe to use on
 import { InventoryItemType } from '@/types';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { revenueWhere, propinasWhere, cancelledWhere } from '@/lib/sales-where';
+import { getSalesByPaymentMethod } from '@/lib/reports/sales-reports';
 
 export async function getDashboardStatsAction() {
     try {
@@ -19,7 +20,7 @@ export async function getDashboardStatsAction() {
         const { start: todayStart, end: todayEnd } = getCaracasDayRange();
         const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
 
-        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg, propinasHoyAgg, canceladasHoyAgg] = await Promise.all([
+        const [items, todaySalesAgg, yesterdaySalesAgg, openTabsAgg, propinasHoyAgg, canceladasHoyAgg, cobradoHoyRows] = await Promise.all([
             db.inventoryItem.findMany({
                 where: { isActive: true },
                 include: {
@@ -60,6 +61,10 @@ export async function getDashboardStatsAction() {
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
+            // Cobrado hoy (pagos reales: directas + splits PAID, con 10% servicio — §59.5)
+            isAdmin
+                ? getSalesByPaymentMethod({ tenantId, from: todayStart, to: todayEnd })
+                : Promise.resolve([]),
         ]);
 
         // Process items to calculate stock and status
@@ -89,6 +94,8 @@ export async function getDashboardStatsAction() {
             salesKPIs: isAdmin ? {
                 todayRevenue,
                 todayOrders,
+                /** Pagos reales del día (con 10% servicio, sin propinas) — secundario al facturado. */
+                todayCollected: cobradoHoyRows.reduce((s, m) => s + m.usd, 0),
                 avgTicket: todayOrders > 0 ? todayRevenue / todayOrders : 0,
                 yesterdayRevenue,
                 yesterdayOrders: yesterdaySalesAgg._count.id,
