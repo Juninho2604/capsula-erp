@@ -12,12 +12,12 @@ function SubmitButton() {
         <button
             type="submit"
             disabled={pending}
-            className="group relative w-full overflow-hidden rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            className="group relative w-full overflow-hidden px-4 py-3.5 text-[12px] font-bold uppercase tracking-[.16em] transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-                background: pending
-                    ? '#E85A3A'
-                    : 'linear-gradient(135deg, #FF6B4A 0%, #E85A3A 100%)',
-                boxShadow: pending ? 'none' : '0 4px 14px rgba(255, 107, 74, 0.35)',
+                background: pending ? '#D03318' : '#E8432A',
+                color: '#F7E6E4',
+                borderRadius: 999,
+                boxShadow: pending ? 'none' : '0 4px 14px rgba(232, 67, 42, 0.30)',
             }}
         >
             {/* Hover shimmer */}
@@ -29,7 +29,7 @@ function SubmitButton() {
                         Validando...
                     </>
                 ) : (
-                    'Iniciar Sesión'
+                    'Iniciar sesión'
                 )}
             </span>
         </button>
@@ -78,9 +78,10 @@ export default function LoginForm() {
             <div className="space-y-1.5">
                 <label
                     htmlFor="email"
-                    className="block text-xs font-semibold uppercase tracking-widest text-gray-500"
+                    className="block text-[11px] font-semibold uppercase tracking-[.16em]"
+                    style={{ color: '#1A1D17', opacity: 0.7 }}
                 >
-                    Correo Electrónico
+                    Correo electrónico
                 </label>
                 <input
                     id="email"
@@ -94,19 +95,20 @@ export default function LoginForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="correo@ejemplo.com"
-                    className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-150 outline-none"
+                    className="block w-full px-4 py-3 text-sm transition-all duration-150 outline-none"
                     style={{
-                        '--tw-ring-color': '#FF6B4A',
-                    } as React.CSSProperties}
+                        background: '#F2DBD8',
+                        border: '1.5px solid rgba(26,29,23,.18)',
+                        borderRadius: 14,
+                        color: '#1A1D17',
+                    }}
                     onFocus={e => {
-                        e.target.style.borderColor = '#FF6B4A';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(255, 107, 74, 0.12)';
-                        e.target.style.background = '#fff';
+                        e.target.style.borderColor = '#E8432A';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(232, 67, 42, 0.12)';
                     }}
                     onBlur={e => {
-                        e.target.style.borderColor = '';
+                        e.target.style.borderColor = 'rgba(26,29,23,.18)';
                         e.target.style.boxShadow = '';
-                        e.target.style.background = '';
                     }}
                 />
             </div>
@@ -115,7 +117,8 @@ export default function LoginForm() {
             <div className="space-y-1.5">
                 <label
                     htmlFor="password"
-                    className="block text-xs font-semibold uppercase tracking-widest text-gray-500"
+                    className="block text-[11px] font-semibold uppercase tracking-[.16em]"
+                    style={{ color: '#1A1D17', opacity: 0.7 }}
                 >
                     Contraseña
                 </label>
@@ -126,24 +129,30 @@ export default function LoginForm() {
                     autoComplete="current-password"
                     required
                     placeholder="••••••••"
-                    className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all duration-150 outline-none"
+                    className="block w-full px-4 py-3 text-sm transition-all duration-150 outline-none"
+                    style={{
+                        background: '#F2DBD8',
+                        border: '1.5px solid rgba(26,29,23,.18)',
+                        borderRadius: 14,
+                        color: '#1A1D17',
+                    }}
                     onFocus={e => {
-                        e.target.style.borderColor = '#FF6B4A';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(255, 107, 74, 0.12)';
-                        e.target.style.background = '#fff';
+                        e.target.style.borderColor = '#E8432A';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(232, 67, 42, 0.12)';
                     }}
                     onBlur={e => {
-                        e.target.style.borderColor = '';
+                        e.target.style.borderColor = 'rgba(26,29,23,.18)';
                         e.target.style.boxShadow = '';
-                        e.target.style.background = '';
                     }}
                 />
             </div>
 
             {/* Error */}
             {error && (
-                <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                    <span className="mt-px shrink-0"></span>
+                <div
+                    className="flex items-start gap-3 px-4 py-3 text-sm"
+                    style={{ background: '#F7E3DB', border: '1.5px solid #E8432A', borderRadius: 14, color: '#B04A2E' }}
+                >
                     <span>{error}</span>
                 </div>
             )}

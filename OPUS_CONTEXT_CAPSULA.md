@@ -10178,3 +10178,42 @@ qué no** (flag/día/horario/fechas/alcance). Fue lo que pinpointeó el bug en p
 **Regla general:** NUNCA `new Date("YYYY-MM-DD")` para fechas-sola que se
 comparan por día en Caracas. Usar `caracasDateOnlyToDate()`. Tests:
 `src/lib/datetime.test.ts` (4 casos). Gates: tsc 0 · vitest 416 passed.
+
+## §61 Landing "Editorial" 2.0 — rebrand aislado de la home (2026-06-12)
+
+Rebrand completo de la **landing page (`/`)** y la **vista de login** a la
+identidad gastro-editorial (kit `CAPSULA_2.0`): fondo blush `#F7E6E4`, rojo de
+marca `#E8432A`, tinta `#1A1D17`, tipografía **Archivo Black** display (uppercase
+gigante) + **Archivo** cuerpo, ilustraciones hand-drawn y rotaciones sutiles.
+
+**Aislamiento (clave — no romper):**
+- La home vive en un route group propio **`src/app/(landing)/`** con su **propio
+  layout** (nav pill + footer rojo autocontenidos). NO usa el chrome de
+  `(marketing)` (AuroraNav/AuroraFooter/aurora.css), que sigue intacto para
+  `/descargar`, `/ayuda`, `/producto/*`, `/empresa`, `/contacto`, `/legal/*`,
+  `/estado`. Se eliminó `(marketing)/page.tsx`; ahora `/` lo sirve
+  `(landing)/page.tsx`.
+- Todo el CSS está **namespaced bajo `.kpsula-editorial`** (`editorial.css`) → no
+  se filtra al resto de la app ni lo invierte el dark mode (colores fijos a
+  propósito). Esta landing NO sigue el sistema Minimal Navy del ERP — es una
+  marca aparte. No migrar sus tokens.
+- Fuentes Archivo cargadas con `next/font/google` scoped al wrapper (variables
+  `--font-archivo`, `--font-archivo-black`), no globales.
+- Animaciones: `EditorialMotion.tsx` (client) — cascada de entrada del hero
+  (`[data-anim]`) + scroll-reveal one-shot (`[data-reveal]`) con
+  IntersectionObserver. **Progresivo**: los estados ocultos viven bajo
+  `.is-ready` (solo lo agrega el JS), así sin JS todo queda visible.
+- Ilustraciones en `public/landing/` (`mesa-hero.png`, `sarten-band-left.png`,
+  `sandwich-band-right.png`).
+
+**Login (`src/app/login/`):** solo se reestiló el chrome (page.tsx) y las clases
+del formulario (login-form-client.tsx) a la paleta editorial. **Cero cambios de
+lógica**: `loginAction`, el redirect server-side (§ comentarios in-file: super
+admin → /admin, root+tenantSlug → subdomain, resto → /dashboard), el sync de
+Zustand y `router.refresh()` quedan idénticos. DemoCredentialsCard intacto.
+
+**"Descargar app" (APK):** preservado — link a `/descargar` en el nav y el footer
+de la landing.
+
+Gates: `tsc` 0 · `next build` exit 0 (index.html prerendea editorial; resto de
+marketing intacto) · vitest 416 passed.
