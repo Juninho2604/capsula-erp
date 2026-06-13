@@ -44,6 +44,25 @@ function pickNumber(rec: Record<string, unknown>, keys: string[], fallback: numb
     return fallback;
 }
 
+/**
+ * Parsea un par de coordenadas desde un string combinado "lat,lon" — el
+ * formato que emiten los bots de chat al compartir ubicación (ej. Telegram:
+ * "10.466026,-66.812147"). Tolera separador coma o punto y coma e ignora
+ * espacios. Devuelve null si no parsea o si las coordenadas no son plausibles
+ * (fuera de rango terrestre, o "null island" 0,0 = sin fix real de GPS), para
+ * que el caller siga cayendo al ruteo por zona/fallback sin romperse.
+ */
+function parseGpsPair(raw: string): { lat: number; lon: number } | null {
+    const parts = raw.split(/[,;]/);
+    if (parts.length !== 2) return null;
+    const lat = parseFloat(parts[0].trim());
+    const lon = parseFloat(parts[1].trim());
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    if (lat === 0 && lon === 0) return null;
+    return { lat, lon };
+}
+
 /** Devuelve el array de ítems crudos de la comanda, tolerando shapes. */
 function rawItems(comanda: Json): Record<string, unknown>[] {
     const rec = asRecord(comanda);
@@ -127,13 +146,32 @@ export function extractComandaMeta(comanda: Json): ComandaMeta {
         return v || null;
     };
 
+    // Coordenadas. Prioridad: lat/lon numéricos explícitos (raíz o cliente).
+    // Si falta alguno, se intenta un string combinado "lat,lon" desde
+    // `delivery.gps`, `gps` en la raíz, o `cliente/customer.gps` — el formato
+    // que emite el bot al compartir la ubicación de Telegram. Sin esto el GPS
+    // del bot nunca llegaba a assignBranch y la sede caía a zona/fallback.
+    let lat = num(merged, ['lat', 'latitude', 'latitud']);
+    let lon = num(merged, ['lon', 'lng', 'longitude', 'longitud']);
+    if (lat === null || lon === null) {
+        const delivery = asRecord(root.delivery) ?? {};
+        const gpsRaw =
+            pickString(delivery, ['gps', 'ubicacion', 'location', 'coords', 'coordenadas']) ||
+            pickString(merged, ['gps', 'ubicacion', 'location', 'coords', 'coordenadas']);
+        const pair = gpsRaw ? parseGpsPair(gpsRaw) : null;
+        if (pair) {
+            if (lat === null) lat = pair.lat;
+            if (lon === null) lon = pair.lon;
+        }
+    }
+
     return {
         customerName: str(merged, ['nombre', 'name', 'cliente_nombre', 'fullName']),
         customerPhone: str(merged, ['telefono', 'phone', 'celular', 'whatsapp']),
         deliveryAddress: str(merged, ['direccion', 'address', 'direccion_entrega']),
         deliveryRef: str(merged, ['referencia', 'reference', 'punto_referencia', 'ref']),
-        lat: num(merged, ['lat', 'latitude', 'latitud']),
-        lon: num(merged, ['lon', 'lng', 'longitude', 'longitud']),
+        lat,
+        lon,
         totalUsd: num(root, ['total_usd', 'totalUsd', 'total', 'monto_usd']),
         totalBs: num(root, ['total_bs', 'totalBs', 'monto_bs']),
     };
