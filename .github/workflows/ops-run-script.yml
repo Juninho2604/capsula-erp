@@ -58,15 +58,21 @@ jobs:
                   key: ${{ secrets.CONTABO_SSH_KEY }}
                   script_stop: true
                   command_timeout: 12m
-                  envs: SCRIPT_NAME,SCRIPT_ARGS
+                  # NO pasamos script/args por `envs:`: appleboy@v1.0.3 genera un
+                  # preámbulo `export` malformado cuando un env va vacío (args sin
+                  # valor) → "bash: syntax error near unexpected token ;". Los
+                  # inlineamos: inputs.script es un `choice` (allowlist) → seguro;
+                  # inputs.args lo valida el case + ya requiere write-access para
+                  # disparar el workflow (y el `name:` de arriba ya lo interpola).
                   script: |
                       set -e
                       cd /var/www/capsula-erp
                       set -a && source .env && set +a
+                      SCRIPT_NAME="${{ inputs.script }}"
                       case "$SCRIPT_NAME" in
                           seed-demo-tenant|seed-poke-pok|cleanup-leaked-records|inspect-neon-schema|migrate-from-neon|create-tenant|sync-modifier-groups-tablas)
-                              echo ">>> Ejecutando: npx tsx scripts/${SCRIPT_NAME}.ts $SCRIPT_ARGS"
-                              npx tsx "scripts/${SCRIPT_NAME}.ts" $SCRIPT_ARGS
+                              echo ">>> Ejecutando: npx tsx scripts/${SCRIPT_NAME}.ts ${{ inputs.args }}"
+                              npx tsx "scripts/${SCRIPT_NAME}.ts" ${{ inputs.args }}
                               ;;
                           *)
                               echo "ERROR: script '$SCRIPT_NAME' no está en la allowlist"
@@ -74,6 +80,3 @@ jobs:
                               ;;
                       esac
                       echo ">>> Done"
-              env:
-                  SCRIPT_NAME: ${{ inputs.script }}
-                  SCRIPT_ARGS: ${{ inputs.args }}

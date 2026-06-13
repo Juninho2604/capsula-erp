@@ -9950,6 +9950,36 @@ Solo frontend (`delivery-board-view.tsx`), aditivo, sin endpoint nuevo:
   estirar la página; las nuevas entran arriba (orden createdAt desc) así el
   resaltado se ve sin scrollear.
 
+### §55.12 GPS del bot → `extractComandaMeta` + coords reales de sedes (2026-06-13)
+
+Cierra el ruteo por GPS end-to-end. Dos partes:
+
+**1. Parseo de `delivery.gps` (bug fix en `src/lib/delivery/comanda.ts`).**
+El bot (n8n) emite la ubicación de Telegram como string combinado anidado:
+`comanda.delivery.gps = "10.466026,-66.812147"` (formato `"lat,lon"`). Pero
+`extractComandaMeta` solo buscaba `lat`/`lon` como números separados → el GPS
+válido nunca se parseaba → el nivel GPS de `assignBranch` no disparaba y la
+orden caía a zona/fallback (`sede_asignada: null`).
+- Nuevo helper `parseGpsPair(raw)`: `split(/[,;]/)` + `trim` + `parseFloat`,
+  valida rango terrestre (lat `[-90,90]`, lon `[-180,180]`) y descarta `0,0`
+  (null island). Inválido → null (sigue a zona).
+- En `extractComandaMeta`: si faltan `lat`/`lon` numéricos, lee el string desde
+  `delivery.gps` → `gps` (raíz) → `cliente/customer.gps`. Precedencia: los
+  numéricos explícitos ganan; el string es respaldo. Firma/salida sin cambios.
+- `assignBranch`, `POST /ordenes`, idempotencia y contrato de API: SIN tocar.
+- Tests: `comanda.test.ts` (10 casos) — delivery.gps, raíz, cliente, prioridad
+  numérica, `"abc"`/`"GPS registrado"`, fuera de rango, `0,0`, sin GPS.
+
+**2. Coords REALES de las 4 sedes (`scripts/seed-poke-pok.ts`).**
+Las coords sembradas eran placeholder aproximadas. Reemplazadas por las reales:
+Santa Fe `10.463427,-66.865664` · El Hatillo `10.424993,-66.825674` · San Luis
+`10.4685,-66.8431` · Los Palos Grandes `10.501165,-66.844456`. Verificado: el
+punto del demo `10.466026,-66.812147` (Macaracuay/El Cafetal) rutea a **San
+Luis** (haversine 3.40 km, margen 1.4 km sobre El Hatillo).
+- ⚠️ El seed actualiza la BD viva SOLO al re-correrlo (sin `--reset`: el
+  `branchDeliveryConfig.upsert` hace `update: { lat, lon }`, no toca órdenes).
+  Alternativa: editar coords en `/dashboard/delivery/sedes`.
+
 ## §57 Documentos de Proveedor — facturas/notas de entrega (Compras, 2026-06-09)
 
 Decopla el "papel" del proveedor del inventario y de la OC. Resuelve el caso

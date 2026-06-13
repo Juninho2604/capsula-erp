@@ -21,9 +21,10 @@
  *   --password=...  password de los usuarios (default: kpsula-pokepok)
  *   --reset         borra el tenant pokepok si existe y lo crea de cero
  *
- * ⚠️ Las coordenadas de las sedes son APROXIMADAS (placeholder). Ajustarlas
- *    en /dashboard/delivery/sedes o pasando lat/lon reales. Sin coords reales
- *    la asignación por GPS no será precisa (igual funciona por zona/ruteo).
+ * Las coordenadas de las sedes son las REALES de cada local (verificadas
+ *    2026-06-13). La asignación por GPS (haversine) las usa para rutear cada
+ *    pedido a la sede más cercana. Re-correr el seed SIN --reset actualiza
+ *    lat/lon en la BD viva (el upsert hace update), sin tocar las órdenes.
  *
  * Requiere que las migraciones del módulo delivery ya estén aplicadas
  * (prisma migrate deploy) — el deploy del VPS las corre.
@@ -72,13 +73,13 @@ async function hash(secret: string): Promise<string> {
     return `${saltHex}:${await pbkdf2Hex(secret, saltHex)}`;
 }
 
-// ─── Datos de las sedes (coords APROXIMADAS — ajustar) ───────────────────────
+// ─── Datos de las sedes (coords REALES de cada local, verificadas 2026-06-13) ─
 
 const SEDES = [
-    { code: 'SANTAFE', name: 'Santa Fe',          lat: 10.452, lon: -66.842, zones: ['Santa Fe', 'Santa Mónica', 'Las Mercedes'] },
-    { code: 'HATILLO', name: 'El Hatillo',         lat: 10.4256, lon: -66.8236, zones: ['El Hatillo', 'La Lagunita', 'Los Naranjos'] },
-    { code: 'SANLUIS', name: 'San Luis',           lat: 10.462, lon: -66.836, zones: ['San Luis', 'El Cafetal', 'Macaracuay'] },
-    { code: 'LPG',     name: 'Los Palos Grandes',  lat: 10.5028, lon: -66.8419, zones: ['Los Palos Grandes', 'Altamira', 'Los Dos Caminos'] },
+    { code: 'SANTAFE', name: 'Santa Fe',          lat: 10.463427306423812, lon: -66.8656637240326,  zones: ['Santa Fe', 'Santa Mónica', 'Las Mercedes'] },
+    { code: 'HATILLO', name: 'El Hatillo',         lat: 10.424992932764802, lon: -66.82567388098285, zones: ['El Hatillo', 'La Lagunita', 'Los Naranjos'] },
+    { code: 'SANLUIS', name: 'San Luis',           lat: 10.4685,            lon: -66.8431,            zones: ['San Luis', 'El Cafetal', 'Macaracuay'] },
+    { code: 'LPG',     name: 'Los Palos Grandes',  lat: 10.501165404781213, lon: -66.8444560039279,  zones: ['Los Palos Grandes', 'Altamira', 'Los Dos Caminos'] },
 ];
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -200,7 +201,7 @@ async function main() {
         console.log(`  Login:  https://${SLUG}.kpsula.app/login`);
         console.log(`  Owner:  owner@pokepok.kpsula.app / ${args.password}`);
         console.log(`  Módulo: Administración → Gestión de Deliverys`);
-        console.log('  ⚠️ Ajustar coords reales de las sedes en /dashboard/delivery/sedes');
+        console.log('  Coords reales cargadas; verificá en /dashboard/delivery/sedes si hace falta');
         console.log('');
     } finally {
         await prisma.$disconnect();
