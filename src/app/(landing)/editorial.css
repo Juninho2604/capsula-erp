@@ -26,7 +26,7 @@
 .kpsula-editorial a { color: inherit; text-decoration: none; }
 
 /* ============ NAV — pill centrado ============ */
-.kpsula-editorial .ke-nav { display: flex; justify-content: center; padding: 18px 16px 0; }
+.kpsula-editorial .ke-nav { display: flex; justify-content: center; padding: 18px 16px 0; position: relative; z-index: 5; }
 .kpsula-editorial .ke-nav-pill {
     display: flex; align-items: center; gap: 0;
     border: 1.5px solid var(--red); border-radius: 999px;
@@ -62,6 +62,10 @@
     max-height: 66svh;
     margin: -7svh auto 0;
     transform: rotate(.5deg);
+    /* Ilustración decorativa (aria-hidden): su caja rectangular transparente
+       se solapa con el nav por el margin negativo. Sin esto roba los clicks
+       de los botones del nav. */
+    pointer-events: none;
 }
 .kpsula-editorial .ke-hero-title {
     font-family: var(--font-archivo-black), sans-serif;
@@ -156,7 +160,7 @@
 
 /* ============ BANDA DE ILUSTRACIONES ============ */
 .kpsula-editorial .ke-band { position: relative; height: 300px; margin-top: 90px; }
-.kpsula-editorial .ke-band img { position: absolute; bottom: 0; width: min(300px, 30vw); }
+.kpsula-editorial .ke-band img { position: absolute; bottom: 0; width: min(300px, 30vw); pointer-events: none; }
 .kpsula-editorial .ke-band .ke-band-left { left: max(14px, 3.4vw); transform: rotate(-2deg); }
 .kpsula-editorial .ke-band .ke-band-right { right: max(14px, 3.4vw); transform: rotate(2deg); }
 .kpsula-editorial .ke-band .ke-band-word {
