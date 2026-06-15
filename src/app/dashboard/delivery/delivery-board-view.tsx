@@ -16,6 +16,7 @@ import {
     Bike,
     Bell,
     BellOff,
+    AlertTriangle,
 } from 'lucide-react';
 import {
     nextStates,
@@ -473,6 +474,34 @@ function OrderCard({
                 <p className="text-xs text-capsula-ink-muted inline-flex items-start gap-1">
                     <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
                     <span className="line-clamp-2">{order.deliveryAddress}</span>
+                </p>
+            )}
+
+            {/* Detalle del pedido — mismos ítems/modificadores que salen en la
+                comanda impresa (comparten parser), para que la cajera vea el
+                pedido completo en pantalla, igual que en restaurante. */}
+            {order.items.length > 0 ? (
+                <div className="rounded-lg border border-capsula-line bg-capsula-ivory-alt px-2.5 py-2 space-y-1.5">
+                    {order.items.map((it, idx) => (
+                        <div key={idx} className="text-xs">
+                            <div className="flex items-baseline gap-1.5 text-capsula-ink">
+                                <span className="font-semibold tabular-nums">{it.qty}x</span>
+                                <span className="font-medium">{it.name}</span>
+                            </div>
+                            {it.modifiers.length > 0 && (
+                                <div className="pl-5 mt-0.5 text-[11px] leading-snug text-capsula-ink-muted">
+                                    {it.modifiers.map((m, j) => (
+                                        <div key={j}>+ {m}</div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="rounded-lg border border-capsula-line bg-capsula-ivory-alt px-2.5 py-2 text-[11px] text-capsula-ink-faint inline-flex items-center gap-1.5">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    Sin ítems legibles en la comanda
                 </p>
             )}
 

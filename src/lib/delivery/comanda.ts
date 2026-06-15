@@ -63,17 +63,66 @@ function parseGpsPair(raw: string): { lat: number; lon: number } | null {
     return { lat, lon };
 }
 
-/** Devuelve el array de ítems crudos de la comanda, tolerando shapes. */
-function rawItems(comanda: Json): Record<string, unknown>[] {
+const ITEM_KEYS = ['items', 'productos', 'lineas', 'lines', 'comida', 'pedido', 'order'];
+
+/** Devuelve el valor crudo del contenedor de ítems (array | string | null),
+ *  tolerando varias convenciones de nombre. */
+function itemsContainer(comanda: Json): unknown {
     const rec = asRecord(comanda);
-    if (!rec) return [];
-    const candidates = [rec.items, rec.productos, rec.lineas, rec.lines];
-    for (const c of candidates) {
-        if (Array.isArray(c)) {
-            return c.map(asRecord).filter((x): x is Record<string, unknown> => x !== null);
-        }
+    if (!rec) return null;
+    for (const k of ITEM_KEYS) {
+        const v = rec[k];
+        if (Array.isArray(v) && v.length > 0) return v;
+        if (typeof v === 'string' && v.trim()) return v;
+    }
+    // Si ninguno tuvo contenido, devolvemos el primer array presente (aunque
+    // vacío) para conservar el comportamiento previo.
+    for (const k of ITEM_KEYS) {
+        if (Array.isArray(rec[k])) return rec[k];
+    }
+    return null;
+}
+
+/** Devuelve el array de ítems crudos de la comanda cuando viene estructurado. */
+function rawItems(comanda: Json): Record<string, unknown>[] {
+    const c = itemsContainer(comanda);
+    if (Array.isArray(c)) {
+        return c.map(asRecord).filter((x): x is Record<string, unknown> => x !== null);
     }
     return [];
+}
+
+const SENTINELS = new Set(['items no especificados', 'no especificado', 'no especificados', 'n/a', '-']);
+
+/**
+ * Parsea ítems desde un STRING de texto libre — el formato real que emite el
+ * bot de Telegram (ej. "2 Poke de salmón sin cebolla, 1 Limonada"). Sin esto,
+ * la comanda salía VACÍA (el parser solo entendía arrays). Best-effort: separa
+ * por líneas/comas/";"/"·" y extrae una cantidad líder si está presente. Los
+ * modificadores quedan dentro del nombre (el texto libre no los separa), pero
+ * al menos el pedido completo se ve en pantalla y en la comanda impresa.
+ */
+function parseItemsString(raw: string): ComandaItem[] {
+    return raw
+        .split(/\r?\n|,|;|·|•|\*|•/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !SENTINELS.has(s.toLowerCase()))
+        .map(line => {
+            // Cantidad líder: "2 ", "2x ", "x2 ", "2 x " → resto = nombre.
+            let qty = 1;
+            let name = line;
+            const lead = /^(\d{1,3})\s*[xX]?\s+(.*)$/.exec(line);
+            const xLead = /^[xX]\s*(\d{1,3})\s+(.*)$/.exec(line);
+            if (lead) {
+                qty = parseInt(lead[1], 10);
+                name = lead[2].trim();
+            } else if (xLead) {
+                qty = parseInt(xLead[1], 10);
+                name = xLead[2].trim();
+            }
+            return { name: name || line, qty: Number.isFinite(qty) && qty > 0 ? qty : 1, modifiers: [] };
+        })
+        .filter(it => it.name.length > 0);
 }
 
 /** Extrae una lista de strings de modificadores, tolerando array de strings
@@ -95,6 +144,12 @@ function pickStringArray(rec: Record<string, unknown>, keys: string[]): string[]
 }
 
 export function parseComandaItems(comanda: Json): ComandaItem[] {
+    // El bot puede mandar los ítems como STRING de texto libre o como array
+    // estructurado. Si es string, lo parseamos por líneas (best-effort).
+    const container = itemsContainer(comanda);
+    if (typeof container === 'string') {
+        return parseItemsString(container);
+    }
     return rawItems(comanda).map(it => ({
         name: pickString(it, ['name', 'nombre', 'producto', 'item', 'title']),
         qty: pickNumber(it, ['qty', 'cantidad', 'quantity', 'cant'], 1),
@@ -166,7 +221,7 @@ export function extractComandaMeta(comanda: Json): ComandaMeta {
     }
 
     return {
-        customerName: str(merged, ['nombre', 'name', 'cliente_nombre', 'fullName']),
+        customerName: str(merged, ['nombre', 'name', 'cliente_nombre', 'nombre_cliente', 'fullName']),
         customerPhone: str(merged, ['telefono', 'phone', 'celular', 'whatsapp']),
         deliveryAddress: str(merged, ['direccion', 'address', 'direccion_entrega']),
         deliveryRef: str(merged, ['referencia', 'reference', 'punto_referencia', 'ref']),

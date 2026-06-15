@@ -32,6 +32,44 @@ describe('parseComandaItems — modificadores', () => {
     });
 });
 
+describe('parseComandaItems — items como STRING (shape real del bot)', () => {
+    it('parsea texto libre separado por comas con cantidades líderes', () => {
+        // Formato real que emite el n8n: items es un string, no un array.
+        const items = parseComandaItems({
+            items: '2 Poke de salmón sin cebolla, 1 Limonada',
+        });
+        expect(items).toEqual([
+            { name: 'Poke de salmón sin cebolla', qty: 2, modifiers: [] },
+            { name: 'Limonada', qty: 1, modifiers: [] },
+        ]);
+    });
+
+    it('soporta saltos de línea y cantidad estilo "x2"', () => {
+        const items = parseComandaItems({ productos: 'x2 Shawarma\nCoca-Cola' });
+        expect(items).toEqual([
+            { name: 'Shawarma', qty: 2, modifiers: [] },
+            { name: 'Coca-Cola', qty: 1, modifiers: [] },
+        ]);
+    });
+
+    it('ignora el sentinel "items no especificados"', () => {
+        expect(parseComandaItems({ items: 'items no especificados' })).toEqual([]);
+    });
+
+    it('un solo ítem sin cantidad → qty 1', () => {
+        expect(parseComandaItems({ items: 'Poke clásico' })).toEqual([
+            { name: 'Poke clásico', qty: 1, modifiers: [] },
+        ]);
+    });
+
+    it('sigue prefiriendo el array estructurado si está presente', () => {
+        const items = parseComandaItems({
+            items: [{ nombre: 'Estructurado', cantidad: 3, modificadores: ['extra'] }],
+        });
+        expect(items).toEqual([{ name: 'Estructurado', qty: 3, modifiers: ['extra'] }]);
+    });
+});
+
 describe('buildDeliveryKitchenPayload', () => {
     it('arma un payload KITCHEN con label DELIVERY', () => {
         const p = buildDeliveryKitchenPayload(baseOrder);
