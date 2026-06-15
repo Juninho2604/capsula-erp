@@ -360,7 +360,7 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 
 - JWT firmado con HS256 via `jose`
 - Cookie `session` httpOnly, secure en prod, sameSite lax, 24h TTL
-- Secret: `JWT_SECRET` env var (fallback hardcodeado — **gap de seguridad**)
+- Secret: `JWT_SECRET` env var. ⚠️ **GAP DE SEGURIDAD (crítico para multi-tenant):** `getSecretKey()` en `auth.ts` cae a un `FALLBACK_SECRET` hardcodeado si `JWT_SECRET` falta o tiene <32 chars (solo loguea un warning). En un SaaS con varios tenants, un deploy sin `JWT_SECRET` deja sesiones **forjables**. Acción: hacer que producción **falle el arranque** si falta el secret, no que degrade.
 - Payload: `{ id, email, firstName, lastName, role }`
 - Funciones: `encrypt()`, `decrypt()`, `getSession()`, `createSession()`, `deleteSession()`
 
@@ -368,9 +368,9 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 - `loginAction(prevState, formData)` — valida email+password, crea sesión
 - `logoutAction()` — elimina cookie de sesión
 
-### 3.2 Los 9 Roles del Sistema
+### 3.2 Los 10 Roles del Sistema
 
-**Archivo**: `src/lib/constants/roles.ts`
+**Archivo**: `src/lib/constants/roles.ts` (`ROLE_HIERARCHY` define **10 roles**)
 
 | Rol | Nivel RBAC | Nivel permisos | Descripción |
 |-----|-----------|---------------|-------------|
@@ -390,6 +390,8 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 Existen dos sistemas de niveles numéricos paralelos (históricamente separados, no unificados en una sola fuente):
 - `roles.ts:ROLE_HIERARCHY` — menor número = mayor rango (1-8), usado en `canManageRole()`
 - `permissions.ts:roleLevels` — mayor número = mayor rango (15-100), usado en `hasPermission()`
+
+`STAFF` aparece solo en `permissions.ts:roleLevels` (nivel 10, legado) — **no** está en `ROLE_HIERARCHY` ni se asigna a usuarios; no cuenta como rol canónico.
 
 ### 3.3 Sistema de Permisos — 4 Capas
 
@@ -421,22 +423,25 @@ PERMISSIONS = { CONFIGURE_ROLES: 70, APPROVE_TRANSFERS: 40,
 
 #### Capa 4 — `src/lib/constants/permissions-registry.ts` *(nuevo)*
 
-Catálogo de **17 permisos granulares** con resolución por usuario:
+Catálogo de **25 permisos granulares** con resolución por usuario:
 
 ```typescript
 // Permisos disponibles (PERM keys):
-// POS: VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS, REPRINT_COMANDA
-// Inventario: ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV
-// Financiero: EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES
-// Admin: MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST
+// POS/Ventas (6): VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS,
+//                 VIEW_SALES_HISTORY, REPRINT_COMANDA
+// Inventario (3): ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV
+// Financiero (5): EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES
+// Admin (4): MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST
+// Reportes (7): REPORTES_VENTAS_VER, REPORTES_OPERATIVOS_VER, REPORTES_INVENTARIO_VER,
+//               REPORTES_COMPRAS_VER, REPORTES_GERENCIAL_VER, REPORTES_FISCAL_VER, REPORTES_EXPORTAR
 
-// ROLE_BASE_PERMS — set base por rol (sin override)
+// ROLE_BASE_PERMS — set base por rol (sin override). OWNER = Object.values(PERM) (todos)
 // Resolución final: base ∪ grantedPerms - revokedPerms
 resolvePerms(role, grantedPerms?, revokedPerms?) → Set<PermKey>
 canDo(role, perm, grantedPerms?, revokedPerms?)   → boolean
 ```
 
-`PERM_GROUPS` — 4 grupos para la UI (POS/Ventas, Inventario, Financiero, Administración).
+`PERM_GROUPS` — **5 grupos** para la UI (POS/Ventas, Inventario, Financiero, Administración, Reportes).
 `PERM_LABELS` — etiquetas y descripciones legibles para cada permiso.
 
 **Flujo de resolución**: El JWT carga `grantedPerms`/`revokedPerms` en la sesión (`auth.actions.ts`). `resolvePerms()` aplica la fórmula `base ∪ granted − revoked` en runtime — no hay cache, siempre calculado desde la sesión.
