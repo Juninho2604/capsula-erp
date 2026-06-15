@@ -32,17 +32,25 @@
 
 ## 1. Identidad del Sistema
 
-**Shanklish ERP** es un sistema POS + ERP para restaurantes y entretenimiento construido con
-Next.js 14 (App Router), Prisma ORM y PostgreSQL.
+**Cápsula** (`kpsula.app`) es un SaaS POS + ERP **multi-tenant** para restaurantes
+y entretenimiento, construido con Next.js 14 (App Router), Prisma ORM y
+PostgreSQL. **Shanklish ERP** fue el sistema original (un solo restaurante) y hoy
+es el tenant fundador; el producto que se vende es Cápsula.
 
-### Instancias en producción
-| Instancia | Negocio | BD |
-|-----------|---------|-----|
-| `shanklish-erp` | Restaurante Shanklish Caracas | PostgreSQL (Google Cloud SQL) |
-| `table-pong` | Sala de juegos / bar | PostgreSQL independiente |
+### Tenants en producción (1 sola BD multi-tenant)
 
-Cada instancia tiene su propia base de datos. La visión a mediano plazo es unificarlas en un
-SaaS multi-tenant llamado **Cápsula**.
+> Actualizado 2026-06: ya **no** hay instancias/BD separadas. Todos los clientes
+> viven en una sola BD (`capsula_erp_prod` en VPS Contabo) aislados por
+> `tenantId`. Para el listado vivo y el estado de cada tenant ver **§44**.
+
+| Tenant | Negocio |
+|--------|---------|
+| Shanklish | Restaurante Shanklish Caracas (tenant fundador) |
+| Table Pong | Sala de juegos / bar |
+| Sello Criollo, Poke Pok, … | Onboarding posterior (ver §44/§45) |
+| `demo` | Sandbox de prospectos (ver §44.3) |
+
+La visión multi-tenant de §14 **ya está implementada** (ver §43–§45).
 
 ### Stack técnico
 
@@ -60,7 +68,7 @@ SaaS multi-tenant llamado **Cápsula**.
 | OCR | Google Cloud Vision API |
 | Validación | Zod |
 | Charts | Recharts |
-| Deploy app | **VPS Contabo** vía GitHub Actions SSH (`/root/deploy-capsula.sh`). Vercel queda como fallback dormant pendiente apagar — ver §1.2. |
+| Deploy app | **VPS Contabo** vía GitHub Actions SSH: `.github/workflows/ci.yml` descarga y corre `scripts/deploy-vps.sh` **versionado en el repo** (migrado del viejo `/root/deploy-capsula.sh` en PR #296). Vercel dormant pendiente apagar — ver §1.2. |
 | Reverse proxy | nginx en VPS (termina SSL wildcard `*.kpsula.app` con Let's Encrypt) |
 | DNS | Cloudflare (`kpsula.app` y `*.kpsula.app` → VPS) |
 | Proceso runtime | pm2 con `node .next/standalone/server.js` |
@@ -97,15 +105,15 @@ Para detalle completo del cutover histórico y razón de las decisiones, ver §1
 
 ### Mapa de carpetas del proyecto
 ```
-shanklish-erp-main/
+capsula-erp/
 ├── prisma/
-│   └── schema.prisma              # 2002 líneas, 42+ modelos
+│   └── schema.prisma              # 3479 líneas, 95 modelos (2026-06-15)
 ├── src/
 │   ├── app/
-│   │   ├── actions/               # 40 archivos .actions.ts (Server Actions)
-│   │   ├── api/                   # 4 API Routes (REST)
-│   │   ├── dashboard/             # 57 páginas en 31 secciones
-│   │   ├── kitchen/               # 2 páginas (cocina + barra)
+│   │   ├── actions/               # 66 archivos .actions.ts (Server Actions)
+│   │   ├── api/                   # 19 route.ts (REST, incl. /api/v1/delivery)
+│   │   ├── dashboard/             # 85 páginas
+│   │   ├── kitchen/               # cocina + barra
 │   │   └── login/                 # Página de login
 │   ├── components/
 │   │   ├── layout/                # Navbar, Sidebar, ThemeToggle, NotificationBell, HelpPanel
