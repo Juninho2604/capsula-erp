@@ -57,7 +57,7 @@ La visión multi-tenant de §14 **ya está implementada** (ver §43–§45).
 | Capa | Tecnología |
 |------|-----------|
 | Framework | Next.js 14 App Router, Server Actions, TypeScript |
-| Base de datos | PostgreSQL 18.3 self-hosted en VPS Contabo (`localhost:5433/capsula_erp_prod`) + Prisma ORM 5.10 |
+| Base de datos | PostgreSQL self-hosted en VPS Contabo (`localhost:5433/capsula_erp_prod`) + Prisma ORM 5.10. **Versión a confirmar** (`SELECT version();` en el VPS) — el doc decía 18.3, la verificación local usó 16 |
 | Autenticación | JWT custom con `jose` (sesiones 24h, cookie httpOnly) |
 | UI | Tailwind CSS 3.4 + Radix UI primitives + Lucide icons |
 | State management | Zustand 4.5 + React Query (TanStack) |
@@ -149,17 +149,22 @@ capsula-erp/
 
 ---
 
-## 2. Arquitectura de Datos — 42 Modelos Prisma
+## 2. Arquitectura de Datos — 95 Modelos Prisma
 
-### 2.1 Core (3 modelos)
+> Conteo real al 2026-06-15: **95 modelos** (`grep -c '^model ' prisma/schema.prisma`).
+> Casi todos llevan `tenantId` (multi-tenant, §43); las excepciones (InventoryMovement,
+> PaymentSplit, TableTransfer, sub-líneas) se aíslan vía relación al padre.
+
+### 2.1 Core (4 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
-| **User** | id, email, passwordHash, pin, role, allowedModules, grantedPerms, revokedPerms, isActive, deletedAt | Usuarios del sistema. 9 roles activos. `allowedModules` (JSON array nullable) filtra módulos por usuario; `grantedPerms`/`revokedPerms` (JSON arrays de PERM keys) amplían o restringen permisos del rol base |
+| **Tenant** | id, slug, name, legalName, taxId, displayName, logoUrl, featureFlags (JSON) | **Raíz multi-tenant.** Cada cliente de Cápsula es un Tenant; `slug` mapea al subdominio. `featureFlags` activa módulos opcionales (ej. deliveryOps) |
+| **User** | id, email, passwordHash, pin, role, allowedModules, grantedPerms, revokedPerms, isActive, deletedAt, tenantId | Usuarios del sistema. 9 roles activos. `allowedModules` (JSON array nullable) filtra módulos por usuario; `grantedPerms`/`revokedPerms` (JSON arrays de PERM keys) amplían o restringen permisos del rol base |
 | **Area** | id, name, branchId, isActive, deletedAt | Áreas/almacenes de trabajo (Cocina, Bodega, Barra, etc.) |
 | **Branch** | id, code, name, legalName, timezone, currencyCode | Sucursal física. Relaciona zonas, mesas, mesoneros |
 
-### 2.2 Inventario (12 modelos)
+### 2.2 Inventario (18 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -175,6 +180,12 @@ capsula-erp/
 | **InventoryCycle** | code, cycleType (WEEKLY/MONTHLY/SPOT_CHECK), areaIds (JSON), status | Ciclo de conteo físico semanal/mensual |
 | **InventoryCycleSnapshot** | cycleId + inventoryItemId + areaId (unique), countedStock, systemStock, difference | Snapshot de conteo en un ciclo |
 | **AreaCriticalItem** | areaId + inventoryItemId (unique) | Items marcados como críticos por área |
+| **WeeklyCount** | countNumber, countDate, principalAreaId, productionAreaId, status, appliedAt, tenantId | Conteo semanal como entidad (§51.A). Compara stock principal vs producción |
+| **WeeklyCountItem** | weeklyCountId + inventoryItemId, sku, stockBeforePrincipal, qtyCountedPrincipal, variancePrincipal, stockBeforeProduction, qtyCountedProduction, varianceProduction | Línea de conteo semanal con varianza por área |
+| **Requisition** | code, status, requestedById, sourceAreaId, targetAreaId, dispatchedAt, receivedAt, tenantId | Requisición/transferencia interna de stock entre áreas (genera movimientos TRANSFER) |
+| **RequisitionItem** | requisitionId + inventoryItemId, quantity, sentQuantity, dispatchedQuantity, receivedQuantity | Línea de requisición |
+| **InventoryDeductionRetry** | salesOrderId, payload (JSON), status, attempts, maxAttempts, lastError, nextRetryAt | Outbox de reintentos cuando el descuento de stock de una venta falla (no bloquea el cobro) |
+| **ItemAvailability** | tenantId + branchId + itemLabel, available, updatedById | Toggle de "agotado/86" por ítem y sucursal (delivery/POS) |
 
 ### 2.3 Producción (5 modelos)
 
@@ -193,7 +204,7 @@ capsula-erp/
 | **ProcessingTemplate** | name, sourceItemId, processingStep, canGainWeight, chainOrder | Plantilla reutilizable para procesamiento de proteínas |
 | **ProcessingTemplateOutput** | templateId + outputItemId (unique), expectedWeight, expectedUnits, isIntermediate | Output esperado en la plantilla |
 
-### 2.5 Menú (4 modelos)
+### 2.5 Menú (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -202,8 +213,9 @@ capsula-erp/
 | **MenuModifierGroup** | name, isRequired, minSelections, maxSelections | Grupo de modificadores (Acompañantes, Tamaño...) |
 | **MenuModifier** | groupId, name, priceAdjustment, linkedMenuItemId, isAvailable | Opción modificadora (Tabulé, Extra queso...) |
 | **MenuItemModifierGroup** | menuItemId + modifierGroupId (unique) | Pivote: qué grupos aplican a qué productos |
+| **Promotion** | name, discountType, discountValue, maxDiscountPerUnit, startTime, endTime, startDate, endDate, priority, isActive, tenantId | Promoción/happy hour por horario y rango de fechas (§6.0). ⚠️ fechas: usar `caracasDateOnlyToDate` (§60) |
 
-### 2.6 Ventas / POS (8 modelos)
+### 2.6 Ventas / POS (10 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -213,7 +225,9 @@ capsula-erp/
 | **SalesOrderPayment** | salesOrderId, method, amountUSD, amountBS, exchangeRate, reference | Línea de pago (para pagos mixtos) |
 | **OpenTab** | tabCode (unique), branchId, serviceZoneId, tableOrStationId, status (OPEN/PARTIALLY_PAID/CLOSED), runningTotal, balanceDue, totalServiceCharge, totalTip, waiterLabel | Mesa/tab abierta |
 | **OpenTabOrder** | openTabId + salesOrderId (unique) | Vincula órdenes con tab abierto |
-| **PaymentSplit** | openTabId, salesOrderId, splitLabel, splitType, paymentMethod, status, serviceChargeAmount, tipAmount, total | División de cuenta (pago parcial por persona) |
+| **PaymentSplit** | openTabId, salesOrderId, splitLabel, splitType, paymentMethod, status, serviceChargeAmount, tipAmount, total, amountBs, exchangeRate | División de cuenta (pago parcial por persona). `amountBs`/`exchangeRate` (FASE B §59) persisten la tasa histórica del cobro |
+| **TabSubAccount** | openTabId, label, sortOrder, status, subtotal, serviceCharge, total, paidAmount, paymentMethod, paidAt | Subcuenta lógica dentro de una mesa (división por persona); la habilita el capitán |
+| **SubAccountItem** | subAccountId, salesOrderItemId, quantity, lineTotal | Ítem asignado a una subcuenta |
 | **InvoiceCounter** | channel (unique), lastValue | Correlativo global por canal. Nunca se resetea |
 
 ### 2.7 Modelo Operativo Restaurante (4 modelos)
@@ -225,7 +239,7 @@ capsula-erp/
 | **Waiter** | branchId, firstName, lastName, pin (PBKDF2 hash), isCaptain, isActive | Mesonero del restaurante. `pin` permite identificación sin sesión en POS Mesero. `isCaptain` habilita subcuentas y autorizaciones de transferencia |
 | **TableTransfer** | openTabId, fromWaiterId, toWaiterId, authorizedByWaiterId?, authorizedByUserId?, authorizedNote?, fromTableId?, toTableId?, reason, transferredAt | Historial de transferencias de mesonero y de mesa física. PIN dual: capitán Waiter O gerente User |
 
-### 2.8 Compras (4 modelos)
+### 2.8 Compras (7 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -233,8 +247,11 @@ capsula-erp/
 | **SupplierItem** | supplierId + inventoryItemId (unique), unitPrice, leadTimeDays, isPreferred | Catálogo de items por proveedor |
 | **PurchaseOrder** | orderNumber (unique), orderName, supplierId, status (DRAFT→RECEIVED), subtotal, totalAmount | Orden de compra |
 | **PurchaseOrderItem** | purchaseOrderId, inventoryItemId, quantityOrdered, quantityReceived, unitPrice | Línea de orden de compra |
+| **SupplierDocument** | documentType, documentNumber, supplierId, documentDate, totalAmount, currency, documentUrl, inventoryStatus, linkedPurchaseOrderId, accountPayableId, status, tenantId | Factura/nota de entrega del proveedor — documento decoplado del inventario (§57) |
+| **SupplierDocumentItem** | supplierDocumentId, inventoryItemId, itemName, quantity, unit, unitCost, lineTotal | Línea de documento de proveedor |
+| **SupplierItemPriceHistory** | supplierId + inventoryItemId, unitPrice, currency, effectiveFrom/To, registeredFromPurchaseOrderId | Historial de precio de compra por proveedor e insumo |
 
-### 2.9 Financiero (4 modelos)
+### 2.9 Financiero (5 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -244,7 +261,7 @@ capsula-erp/
 | **AccountPayable** | description, supplierId, totalAmountUsd, paidAmountUsd, remainingUsd, status (PENDING/PARTIAL/PAID/OVERDUE), purchaseOrderId | Cuenta por pagar |
 | **AccountPayment** | accountPayableId, amountUsd, amountBs, paymentMethod, paymentRef, paidAt | Pago aplicado a cuenta |
 
-### 2.10 Entretenimiento — Table Pong (5 modelos)
+### 2.10 Entretenimiento — Table Pong (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -263,7 +280,7 @@ capsula-erp/
 | **IntercompanySettlementLine** | settlementId, menuItemId, inventoryItemId, description, quantity, unitPrice | Línea de liquidación |
 | **IntercompanyItemMapping** | menuItemId + fromBranchId (unique), sourceInventoryItemId, toBranchId, transferPrice | Mapeo de items entre negocios |
 
-### 2.12 Configuración y Sistema (4 modelos)
+### 2.12 Configuración y Sistema (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -271,6 +288,8 @@ capsula-erp/
 | **ExchangeRate** | rate (Bs por 1 USD), effectiveDate, source (BCV) | Tasa de cambio diaria |
 | **ProductFamily** | code (unique), name | Familia de productos para SKU Studio |
 | **SkuCreationTemplate** | name, productFamilyId, defaultFields (JSON) | Plantilla de creación rápida de SKUs |
+| **RateLimitBucket** | key, windowStart, count, expiresAt | Rate limiting (ventana deslizante) para login/endpoints sensibles |
+| **PrintJob** | tenantId, type, station, payload (JSON), status, retries, claimedAt, completedAt | Cola de impresión térmica que consume el Print Agent (§45.4) |
 
 ### 2.13 Comunicación y Auditoría (2 modelos)
 
@@ -278,6 +297,40 @@ capsula-erp/
 |--------|-------------|-----------|
 | **BroadcastMessage** | title, body, type (INFO/WARNING/ALERT/SUCCESS), targetRoles (JSON), startsAt, expiresAt | Anuncios internos |
 | **AuditLog** | userId, userName, userRole, action, entityType, entityId, description, changes (JSON), module, createdAt | Registro forense inmutable. NUNCA se borra |
+
+### 2.15 Tesorería / Conciliación Bancaria (6 modelos — §56)
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **AccountReceivable** | description, debtorName, customerId, totalAmountUsd, collectedAmountUsd, remainingUsd, issueDate, dueDate, status, tenantId | Cuenta por cobrar |
+| **ReceivablePayment** | accountReceivableId, amountUsd, amountBs, exchangeRate, method, bankAccountId, collectedAt, tenantId | Cobro aplicado a una CxC |
+| **BankAccount** | name, bankName, currency, kind, rif, isActive, commInNaturalPct, commInJuridicaPct, commOutNaturalPct, commOutJuridicaPct, tenantId | Cuenta bancaria con comisiones por tipo de contraparte (natural/jurídica, entrada/salida) |
+| **PosTerminal** | label, terminalCode, posMethodKey, commissionPct, commNaturalPct, commJuridicaPct, bankAccountId, tenantId | Terminal PDV con su comisión, ligado a una cuenta bancaria |
+| **BankReconciliation** | bankAccountId, date, fiscalWeek, expectedIn, statementIn, commissionStmt, differential, status, rateAtSettle, bcvLossUsd, postedExpenseId, tenantId | Conciliación semanal: esperado vs estado de cuenta, pérdida BCV al liquidar |
+| **BankMovementRecon** | bankAccountId, sourceType, sourceId, date, counterpartyType, commissionRemoved, reconciled, statementAmount, tenantId | Marca de conciliación por movimiento individual |
+
+### 2.16 Delivery / CRM (10 modelos — §55, §6.0.1)
+
+> Detalle completo en §55 (estados, API n8n, webhooks). Aquí solo el inventario de modelos.
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **Customer** | tenantId, fullName, idDocument, phone, email, address, totalOrders, totalSpent, lastOrderAt | Cartera de clientes (CRM, §6.0.1/§48). Compartido con CxC |
+| **DeliveryTenantConfig** | tenantId, … | Config de delivery a nivel tenant (feature flag deliveryOps) |
+| **BranchDeliveryConfig** | branchId, … | Config de delivery por sucursal |
+| **DeliveryZone** | tenantId/branchId, nombre, tarifa | Zona de reparto con su tarifa |
+| **DeliveryOrder** | código, estado (máquina §55.2), cliente, total, motorizado | Pedido de delivery (entra por API n8n) |
+| **DeliveryDriver** | tenantId, nombre, estado | Motorizado/repartidor |
+| **DeliveryWebhookOutbox** | payload, status, attempts, HMAC | Outbox de webhooks salientes firmados (§55.8) |
+| **DeliveryOrderEvent** | deliveryOrderId, tipo, timestamp | Bitácora de eventos del pedido (auditoría de estados) |
+| **RoutingRule** | tenantId, matchProduct, branchId, priority, isActive | Regla de ruteo de pedido → sucursal por producto |
+| **ManagerNote** | tenantId, branchId, text, isActive, expiresAt | Instrucción dinámica del gerente al tablero de delivery (§55.9) |
+
+### 2.17 SaaS / Facturación de la plataforma (1 modelo)
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **TenantPayment** | tenantId, amount, currency, paidAt, method, periodStart, periodEnd, recordedById | Pago de suscripción del tenant a Cápsula (cobro de la plataforma, no del restaurante) |
 
 ### 2.14 Diagrama de Relaciones Principales
 
