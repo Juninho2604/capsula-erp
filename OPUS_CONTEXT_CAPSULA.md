@@ -1,5 +1,32 @@
 # Documento de Contexto — Shanklish ERP / Cápsula SaaS
-## Radiografía Completa del Sistema — OPUS 4.6
+## Radiografía Completa del Sistema
+
+> **Cómo leer este documento.** Las secciones **§1–§42** son la radiografía
+> temática del sistema (identidad, datos, RBAC, módulos). A partir de **§43**
+> el documento funciona como **changelog cronológico**: cada sección registra
+> un bloque de trabajo con su fecha y PRs. Por eso algunos números aparecen
+> fuera de secuencia física (ej. §51.B después de §54, §56 antes de §55) — es
+> esperado; usá el índice de abajo para ubicarte. Última sincronización con
+> `main`: **2026-06-15** (tip `7101fbd`).
+
+### Índice cronológico del changelog (§43 en adelante)
+
+| § | Fecha | Tema | PRs |
+|---|---|---|---|
+| §43–§45 | 2026-05-18→23 | Multi-tenant en producción · tenants · pre-flight onboarding | — |
+| §46 | 2026-06 | Bug TAB-2433 — propina fantasma con descuentos | — |
+| §47–§49 | 2026-06-06→07 | Historial cajera · CRM captura · POS Mesero 10%/propina · congruencia | #278 |
+| §50–§53 | 2026-06-07 | Inventario Diario · conteo físico/rápido · WeeklyCount · modelo de capas | #279–#286 |
+| §51.B / §51.C | 2026-06-07 | Variación semana vs semana · esqueleto Reportes | #283, #287 |
+| §54 | 2026-06-07 | Auditoría seguridad npm (audit fix) | #288 |
+| §55 | 2026-06-08→09 | Módulo Gestión de Deliverys (Fases 1–5 + Pieza C) | #290, #295 |
+| §56 | 2026-06-09 | Tesorería / Conciliación Bancaria (Fases 0–4) | #291–#293 |
+| §57 | 2026-06-09 | Documentos de Proveedor (facturas/notas de entrega) | #294 |
+| §63 | 2026-06-09 | Recetas restaurante por tamaño · importador CSV | #298, #299 |
+| §58–§59 | 2026-06-10 | Módulo Reportes (diagnóstico + FASE A/B) · puente de cuadre · cobrado secundario | #300–#302 |
+| §60 | 2026-06-11 | BUG Promociones — fechas vencían un día antes (off-by-one TZ) | — |
+| §61 | 2026-06-12 | Landing "Editorial" 2.0 — rebrand aislado de la home | #316 |
+| §62 | 2026-06-15 | BUG Comanda delivery — items como string del bot n8n | — |
 
 ---
 
@@ -1854,7 +1881,15 @@ Toggle por `orderType`:
 
 ## 14. Visión Multi-Tenant (diseñar para ello, NO implementar ahora)
 
-### Estado actual
+> ⚠️ **DESACTUALIZADO (histórico).** Esta sección describe el plan original de
+> mayo 2026. **Multi-tenant YA está implementado y en producción** desde §43:
+> `tenantId` NOT NULL en ~67 modelos, `resolveTenantContext()` + `withTenant()`,
+> aislamiento auditado (`scripts/audit-tenant-isolation.ts`), demo tenant como
+> sandbox de prospectos. **Para el estado real ver §43 (multi-tenant en prod),
+> §44 (tenants en producción) y §45 (pre-flight onboarding).** Se conserva este
+> texto solo como registro de la decisión de diseño.
+
+### Estado actual (mayo 2026 — superado)
 - 1 BD por cliente (instancias separadas)
 - Sin `tenantId` en ningún modelo
 
@@ -8767,6 +8802,10 @@ fichas basura). 6 tests.
 
 ## §49 POS Mesero — cuenta al cliente: 10% siempre visible + propina sobre neto (2026-06-06)
 
+> ⚠️ **SUPERSEDIDO en parte.** El primer fix (PR #276) introdujo un bug de
+> línea duplicada del 10%. La versión vigente está en **§49 (corregido)** y
+> **§49.1** más abajo. Se conserva este bloque por el contexto del caso real.
+
 Bug detectado durante el servicio del 6/6 (foto IMG_2614 vs IMG_2615): el POS
 Mesero le muestra al cliente un total **distinto** al que la cajera cobra.
 
@@ -8796,7 +8835,7 @@ Fix (PR #276):
 - `OpenTabSummary` ahora declara `serviceType`. Default `TABLE_SERVICE` por
   defensa si el campo no llegara (sesiones cacheadas).
 
-## §49 (corregido) POS Mesero — UNA sola línea del 10% servicio, no duplicado
+## §49.bis (corregido) POS Mesero — UNA sola línea del 10% servicio, no duplicado
 
 **Bug del PR #276 (mi fix anterior):** agregué una línea NUEVA "Servicio (10%)"
 al preview del mesero porque pensé que faltaba. Pero la línea "Propina (10%)"
@@ -10285,3 +10324,66 @@ el pedido HOY sin depender del cambio en n8n.
 
 Tests: `src/lib/delivery/print.test.ts` (+5: items como string). Gates: tsc 0 ·
 vitest 431 passed.
+
+---
+
+## §63 Importador de recetas desde CSV (2026-06-09, PRs #298/#299)
+
+> Cronológicamente previo a §58/§59 (su lugar en el tiempo está entre §57 y
+> §58); se numera §63 para no renumerar el changelog. Es un script de carga
+> masiva, **no** un módulo de UI.
+
+Herramienta de línea de comandos para cargar las recetas del chef (exportadas
+a CSV desde Excel) directo a la BD, sin tipeo manual ítem por ítem. Vive en
+`scripts/import-recetas.ts` con los CSV fuente en `scripts/data/`.
+
+### 63.1 Uso
+
+```bash
+# ENSAYO (default, no escribe en BD — reporta qué haría):
+npx tsx scripts/import-recetas.ts scripts/data/recetas-produccion.csv
+# Aplicar:
+npx tsx scripts/import-recetas.ts scripts/data/recetas-produccion.csv --apply
+# Recetas finales (producto vendible) en vez de sub-receta:
+npx tsx scripts/import-recetas.ts <csv> --type=FINISHED_GOOD
+# Solo parsear el CSV sin tocar BD (debug de formato):
+npx tsx scripts/import-recetas.ts <csv> --parse-only
+```
+
+Se corre **en el VPS**, donde `DATABASE_URL` apunta a producción. El modo
+ensayo (sin `--apply`) es el default deliberado: nunca escribe sin confirmación
+explícita.
+
+### 63.2 Semántica de REEMPLAZO (decisión del dueño)
+
+- **Receta existente** (match por nombre normalizado): se le **borran los
+  ingredientes y se recrean** desde el CSV; el `outputItem` y sus vínculos al
+  menú quedan intactos; `version += 1`.
+- **Receta nueva**: crea el `InventoryItem` de salida (`type` según `--type`,
+  default `SUB_RECIPE`, `outputQuantity` 1 KG ajustable luego en UI).
+- **Nunca** borra recetas que no estén en el CSV.
+- Solo aplica recetas cuyos ingredientes matchearon **todos** contra el
+  inventario; el resto se reporta para corregir manualmente.
+
+### 63.3 Parsing robusto (CSV real del chef)
+
+- **Matching de ingredientes** por nombre normalizado (minúsculas, sin acentos,
+  espacios colapsados) contra `InventoryItem` activo (`RAW_MATERIAL` |
+  `SUB_RECIPE`) + los outputItems nuevos de la misma corrida (recetas usadas
+  como ingrediente de otras, ej. "Yogurt").
+- **Unidades** normalizadas vía `UNIT_MAP` (GR/GRS→G, LT/LTS→L, UND/UNID→UNIT…);
+  unidades no estándar (PIZCA, CUCH, AL GUSTO) se marcan como advertencia.
+- **Cantidades**: tolera coma decimal (`3,6`→3.6), fracciones (`1/2 KG`→0.5),
+  texto (`Al gusto`/`-`/`/`→null con flag), unidades pegadas (`10 KG`→10).
+- **Dos formatos**: Formato A (producción, lista plana) y **Formato B
+  (restaurante)**: bloques con fila `INGREDIENTES,<tam1>,<tam2>…` que generan
+  **una receta por tamaño** — así cada receta matchea el ítem del POS por
+  tamaño (espejo del POS). Salta armados de menú (`Arma tu…`, `Degustación`)
+  donde el cliente elige opciones y no hay receta fija.
+
+### 63.4 Reporte de huérfanos (#299)
+
+Tras la corrida, lista recetas del CSV cuyos ingredientes no matchearon y
+productos del menú sin receta vinculada, para que el chef corrija nombres o
+cree los SKU faltantes. Ningún cambio destructivo: es un diagnóstico de
+cobertura.
