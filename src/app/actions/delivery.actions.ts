@@ -17,6 +17,7 @@ import {
 } from '@/lib/delivery/state-machine';
 import { applyDeliveryTransition, type TransitionOrder } from '@/lib/delivery/transition';
 import { deliveryGuard } from '@/lib/delivery/guard';
+import { parseComandaItems } from '@/lib/delivery/comanda';
 import { revalidatePath } from 'next/cache';
 
 // Campos de la orden necesarios para transicionar + imprimir la comanda.
@@ -60,6 +61,12 @@ function toTransitionOrder(o: LoadedOrder): TransitionOrder {
     };
 }
 
+export interface DeliveryOrderItemRow {
+    name: string;
+    qty: number;
+    modifiers: string[];
+}
+
 export interface DeliveryOrderRow {
     id: string;
     correlative: string;
@@ -70,6 +77,9 @@ export interface DeliveryOrderRow {
     customerName: string | null;
     customerPhone: string | null;
     deliveryAddress: string | null;
+    /** Ítems de la comanda (parseados del JSON del bot) — el mismo parser que
+     *  alimenta la comanda impresa, para que pantalla e impresión coincidan. */
+    items: DeliveryOrderItemRow[];
     totalUsd: number | null;
     totalBs: number | null;
     paymentProofPath: string | null;
@@ -140,6 +150,11 @@ export async function listDeliveryOrdersAction(opts?: {
             customerName: o.customerName,
             customerPhone: o.customerPhone,
             deliveryAddress: o.deliveryAddress,
+            items: parseComandaItems(o.comanda).map(i => ({
+                name: i.name || 'Ítem',
+                qty: i.qty,
+                modifiers: i.modifiers,
+            })),
             totalUsd: o.totalUsd,
             totalBs: o.totalBs,
             paymentProofPath: o.paymentProofPath,

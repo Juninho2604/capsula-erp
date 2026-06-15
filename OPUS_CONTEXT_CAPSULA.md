@@ -10247,3 +10247,41 @@ de la landing.
 
 Gates: `tsc` 0 · `next build` exit 0 (index.html prerendea editorial; resto de
 marketing intacto) · vitest 416 passed.
+
+## §62 BUG Comanda delivery — items vacíos: el bot manda `items` como STRING (2026-06-15)
+
+**Síntoma:** la comanda de delivery (pantalla e impresión) no reflejaba el
+pedido completo ni los modificadores. "Debe verse igual que en restaurante".
+
+**Causa raíz:** el bot (n8n, `docs/n8n-workflow-1-bot-telegram.json`) arma el
+payload con `items: itemsMatch ? itemsMatch[2].trim() : "items no especificados"`
+→ `comanda.items` llega como **STRING de texto libre** (ej. "2 Poke de salmón
+sin cebolla, 1 Limonada"), NO como array de `{name, qty, modifiers}`. El parser
+`parseComandaItems` solo entendía arrays (`rawItems` exige `Array.isArray`) →
+devolvía `[]` → comanda vacía en cocina/motorizado y en el tablero.
+
+**Fix (`src/lib/delivery/comanda.ts`):**
+- `itemsContainer()` detecta el contenedor de ítems (array | string) tolerando
+  más claves (`items/productos/lineas/lines/comida/pedido/order`).
+- `parseItemsString()`: si es string, lo parsea best-effort (separa por
+  líneas/comas/";"/"·"/bullets, extrae cantidad líder "2 ", "2x", "x2"; los
+  modificadores quedan dentro del nombre porque el texto libre no los separa,
+  pero el pedido completo ya se ve). Ignora sentinels ("items no especificados").
+- Backward-compatible: si viene array estructurado, comportamiento idéntico
+  (gana sobre el string). Se agregó `nombre_cliente` a las claves de nombre.
+
+**Tablero (`src/app/dashboard/delivery/`):** la comanda en pantalla NO mostraba
+ítems (solo cliente/total). Ahora `listDeliveryOrdersAction` expone
+`items: DeliveryOrderItemRow[]` (parseados con el MISMO parser que alimenta la
+impresión, para que pantalla e impresión coincidan) y `delivery-board-view.tsx`
+los renderiza (qty + nombre, modificadores indentados; o aviso "sin ítems
+legibles"). El tablero refresca por `listDeliveryOrdersAction` (carga inicial +
+polling), así que el detalle aparece en ambos.
+
+**Nota:** lo correcto a futuro es que el bot emita `items` estructurado
+(array con name/qty/modifiers separados) para que los modificadores salgan en
+línea aparte como en restaurante. El fix del parser es defensivo y hace legible
+el pedido HOY sin depender del cambio en n8n.
+
+Tests: `src/lib/delivery/print.test.ts` (+5: items como string). Gates: tsc 0 ·
+vitest 431 passed.
