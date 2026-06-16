@@ -42,7 +42,7 @@ export const FEATURE_FLAGS = {
     exactCashSaleTip: {
         label: 'Venta exacta + redondeo de efectivo a propina',
         description:
-            'Cambia cómo se cobra en efectivo divisas (CASH_USD, CASH_EUR, ZELLE). Sin el flag (histórico): el total de la venta se redondea al dólar entero, inflando lo facturado. Con el flag: la VENTA registra el monto EXACTO (ej. 27,70) y el POS sugiere cobrar el dólar entero hacia ARRIBA (28). La diferencia (0,30) se registra como PROPINA del personal, no como venta. Si el cliente pide el vuelto de esos centavos, la cajera lo da y deja de ser propina. Solo afecta ventas directas en efectivo divisas; el cierre de mesa ya era exacto.',
+            'Cambia cómo se cobra en efectivo divisas (CASH_USD, CASH_EUR, ZELLE) en VENTA DIRECTA (pickup/delivery). Sin el flag (histórico): el total de la venta se redondea al dólar entero, inflando lo facturado. Con el flag: la VENTA registra el monto EXACTO (ej. 27,70) y el POS sugiere cobrar el dólar entero hacia ARRIBA (28). La diferencia (0,30) se registra como PROPINA del personal, no como venta. Si el cliente pide el vuelto de esos centavos, la cajera lo da y deja de ser propina. NOTA: el cobro de MESA ya aplica este mismo redondeo→propina SIEMPRE (no depende de este flag), vía roundingTipForCharge — recibo, sistema y lo cobrado coinciden (decisión del dueño 16/06).',
     },
 } as const;
 

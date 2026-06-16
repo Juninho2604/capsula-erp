@@ -36,7 +36,7 @@ import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { cappedTipForPayment, keptAmountForSplit } from "@/lib/sales/tip-calculation";
+import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from "@/lib/sales/tip-calculation";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
@@ -631,6 +631,18 @@ export default function POSSportBarPage() {
     (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')
       ? (featureFlags.exactCashSaleTip ? Math.ceil(amount) : Math.round(amount))
       : amount;
+  // MESA — redondeo del cobro en divisas efectivo/zelle: SIEMPRE hacia arriba
+  // al dólar entero (decisión del dueño 16/06). La diferencia (roundedCharge −
+  // factura) se registra como PROPINA en handlePaymentPinConfirm, y el recibo
+  // imprime ese mismo monto redondeado. Determinista (no depende de flags) para
+  // que pantalla, recibo y registro muestren EXACTAMENTE el mismo número y el
+  // arqueo cuadre. Antes usaba roundToWhole (Math.round con flag off) → podía
+  // redondear hacia abajo y el recibo/registro quedaban por debajo de lo
+  // cobrado (desfase reportado por la cajera).
+  const roundDivisasChargeUp = (amount: number, method: string): number =>
+    (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')
+      ? Math.ceil(amount)
+      : amount;
   const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
   const isPagoDivisas = isDivisasMethod(paymentMethod);
@@ -667,7 +679,7 @@ export default function POSSportBarPage() {
   // (PDV/Bs methods no se redondean; aplicar roundToWhole del single-method causaría underpay/overpay)
   const paymentAmountToCharge = isTableMixedMode
     ? (serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount)
-    : roundToWhole(serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount, paymentMethod);
+    : roundDivisasChargeUp(serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount, paymentMethod);
 
   // ============================================================================
   // OPEN TAB
@@ -1102,10 +1114,24 @@ export default function POSSportBarPage() {
       // Factura real (post-descuento) = total antes de servicio + 10% servicio.
       const totalAntesServicio = Math.max(0, activeTab.balanceDue - discountAmount);
       const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
-      // Propina = lo que el cliente pagó por encima de la factura, capado al
-      // excedente real (el prefill del mesero NO puede inventar propina).
+      // ── REDONDEO → PROPINA (divisas efectivo/zelle) ──────────────────────
+      // El POS le dice a la cajera cobrar el dólar entero hacia arriba
+      // (roundDivisasChargeUp == paymentAmountToCharge). Esa diferencia debe
+      // quedar registrada como propina para que el RECIBO, el SISTEMA y lo
+      // COBRADO coincidan (decisión del dueño 16/06). En mixto el target es
+      // exacto → sin redondeo. El cap por excedente real lo respeta todo: si el
+      // cliente pagó justo (ej. Zelle por el monto exacto sin redondear), no se
+      // inventa propina de redondeo.
+      const facturaReal = totalAntesServicio + serviceFee;
+      const roundingTip = roundingTipForCharge({
+        facturaReal,
+        paymentMethod: effectiveMethod,
+        isMixed: isTableMixedMode,
+      });
+      // Propina = max(propina del mesero/cajera, delta de redondeo), capada al
+      // excedente realmente recibido (no se inventa propina sobre lo no pagado).
       const tipVal = cappedTipForPayment({
-        intendedTip: parseFloat(checkoutTip) || 0,
+        intendedTip: Math.max(parseFloat(checkoutTip) || 0, roundingTip),
         amountPaid: rawReceived,
         totalAntesServicio,
         serviceFee,

@@ -10490,3 +10490,47 @@ Tras la corrida, lista recetas del CSV cuyos ingredientes no matchearon y
 productos del menú sin receta vinculada, para que el chef corrija nombres o
 cree los SKU faltantes. Ningún cambio destructivo: es un diagnóstico de
 cobertura.
+
+## §65 Redondeo→propina en cobro de MESA: recibo = sistema = lo cobrado (2026-06-16)
+
+**Reporte de la cajera (con 2 fotos de recibos):** "el sistema redondea fino, me
+da exacto lo que debo cobrar, pero cuando imprimo el recibo a veces toma completo
+el servicio/propina y otras veces no". Pasaba con cash y zelle → desfase en arqueo.
+
+**Causa raíz (auditada):** en `pos/restaurante/page.tsx` el cobro de mesa usaba
+TRES números que no coincidían:
+1. **Pantalla** (`paymentAmountToCharge`): redondeaba la factura al dólar entero
+   para divisas (`roundToWhole` → `Math.round` con flag off) → le decía a la
+   cajera cobrar p.ej. $17.
+2. **Recibo** (`printReceipt`) y **registro** (`registerOpenTabPaymentAction`):
+   se calculaban aparte como `factura + 10% servicio + propina`, donde la propina
+   salía de `checkoutTip` (solo la propina del mesero, NO el delta del redondeo).
+
+Resultado: el delta del redondeo solo quedaba como propina si `checkoutTip` lo
+contenía por casualidad. Recibo 1 (factura $16.50, sin propina) imprimió $16.50
+pero la cajera cobró $17 → faltan $0.50 en sistema y papel. Recibo 2 (factura
+$25.74, propina $0.26) imprimió $26 = lo cobrado. De ahí "a veces sí, a veces no".
+Peor aún: con `Math.round` la pantalla podía redondear hacia ABAJO (factura
+$x.30 → $x) y entonces cobraba MENOS que la factura.
+
+**Fix (decisión del dueño 16/06 — "redondear hacia arriba y registrar el delta
+como propina"):**
+- `roundingTipForCharge()` en `src/lib/sales/tip-calculation.ts` (función pura,
+  testeada): para métodos divisas efectivo/zelle devuelve `ceil(factura) −
+  factura`; 0 en métodos Bs/PDV/móvil y en pago mixto. Determinista (NO depende
+  de `exactCashSaleTip`) para que pantalla, recibo y registro muestren el MISMO
+  número.
+- `handlePaymentPinConfirm`: `tipVal = cappedTipForPayment({ intendedTip:
+  max(checkoutTip, roundingTip), ... })`. El cap por excedente real se mantiene:
+  si el cliente paga justo (sin entregar el dólar entero, ej. Zelle exacto), la
+  propina de redondeo se capa a 0 → no hay propina fantasma.
+- La pantalla (`paymentAmountToCharge`) usa `roundDivisasChargeUp` (ceil) para
+  mostrar el mismo monto redondeado.
+
+Ahora SIEMPRE: recibo total = `factura + servicio + propina` = monto redondeado
+= lo cobrado = lo registrado. El split guarda `factura + propina` (vía
+`keptAmountForSplit`), así el arqueo/Z report cuentan la propina una vez y cuadra.
+Solo MESA; pickup/delivery siguen con su `roundToWhole` gated por el flag.
+
+Tests: `tip-calculation.test.ts` (+9, incluye los 2 recibos reales). Gates: tsc 0
+· vitest 440 passed.
