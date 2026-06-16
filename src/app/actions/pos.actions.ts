@@ -1666,7 +1666,12 @@ export async function recordCollectiveTipAction(data: {
         for (let attempt = 0; attempt < 10; attempt++) {
             try {
                 if (attempt > 0) await new Promise(r => setTimeout(r, Math.random() * 80 + 20));
-                const orderNumber = await generateOrderNumber('PICKUP');
+                // Correlativo propio PROP-#### (canal COLLECTIVE_TIP): la propina
+                // colectiva ya NO toma el código de pickup, para poder conciliar
+                // el arqueo sin confundirla con ventas. orderType sigue siendo
+                // 'PICKUP' por compatibilidad con el historial (el filtro
+                // Mesa/Pickup y los reportes la identifican por customerName).
+                const orderNumber = await getNextCorrelativo('COLLECTIVE_TIP');
                 order = await db.salesOrder.create({
                     data: {
                         tenantId,

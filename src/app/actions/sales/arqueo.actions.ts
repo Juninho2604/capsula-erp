@@ -11,9 +11,10 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { extractTabCode } from '@/lib/sales/collective-tip-ref';
 
 export interface ArqueoSaleRow {
-    orderType: 'RESTAURANT' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
+    orderType: 'RESTAURANT' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA' | 'PROPINA';
     description: string;
     correlativo: string;
     total: number;
@@ -116,6 +117,26 @@ export async function getSalesForArqueoAction(date: Date): Promise<{ success: bo
         const seenTabs = new Set<string>();
 
         for (const o of orders) {
+            // ── Propina colectiva: fila propia (no es venta) ──────────────────
+            // Se identifica por customerName (robusto para histórico con código
+            // PKP- y nuevo PROP-). Antes caía en el bloque Pickup con total=0
+            // (su monto vive en amountPaid), así que el dinero de la propina
+            // NO aparecía en el arqueo → desfase contra el conteo físico.
+            if ((o.customerName || '') === 'PROPINA COLECTIVA') {
+                const amt = o.amountPaid || 0;
+                const breakdown = emptyBreakdown();
+                addToBreakdown(breakdown, o.paymentMethod, amt);
+                const tabRef = extractTabCode(o.notes);
+                result.push({
+                    orderType: 'PROPINA',
+                    description: `Propina colectiva${tabRef ? ` (mesa ${tabRef})` : ''}`,
+                    correlativo: o.orderNumber || '',
+                    total: amt,
+                    paymentBreakdown: breakdown,
+                    serviceFee: 0,
+                });
+                continue;
+            }
             if (o.orderType === 'RESTAURANT' && o.openTabId && !seenTabs.has(o.openTabId)) {
                 seenTabs.add(o.openTabId);
                 const group = byTab.get(o.openTabId) || [o];

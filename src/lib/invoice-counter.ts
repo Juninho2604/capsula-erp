@@ -7,7 +7,8 @@ export type InvoiceChannel =
   | 'RESTAURANT'
   | 'PEDIDOS_YA'
   | 'OPEN_TAB'
-  | 'GAME_SESSION';
+  | 'GAME_SESSION'
+  | 'COLLECTIVE_TIP';
 
 // Prefijos del correlativo por canal. Revertidos a la versión original
 // después de incidente productivo: PICKUP y RESTAURANT con el mismo
@@ -19,13 +20,17 @@ export type InvoiceChannel =
 //   - PKP-#### → Pickup directo desde caja (PICKUP channel)
 //   - DEL-####  → SalesOrder de Delivery
 //   - PYA-####  → SalesOrder de PedidosYa
+//   - PROP-#### → Propina colectiva (registrada post-cobro, total=0). Tiene su
+//                 propio correlativo para NO mezclarse con el código de pickup
+//                 y poder conciliar el arqueo sin confundirla con ventas.
 const PREFIX: Record<InvoiceChannel, string> = {
-  DELIVERY:     'DEL',
-  PICKUP:       'PKP',
-  RESTAURANT:   'REST',
-  PEDIDOS_YA:   'PYA',
-  OPEN_TAB:     'TAB',
-  GAME_SESSION: 'GSN',
+  DELIVERY:      'DEL',
+  PICKUP:        'PKP',
+  RESTAURANT:    'REST',
+  PEDIDOS_YA:    'PYA',
+  OPEN_TAB:      'TAB',
+  GAME_SESSION:  'GSN',
+  COLLECTIVE_TIP:'PROP',
 };
 
 /**

@@ -10285,3 +10285,40 @@ el pedido HOY sin depender del cambio en n8n.
 
 Tests: `src/lib/delivery/print.test.ts` (+5: items como string). Gates: tsc 0 ·
 vitest 431 passed.
+
+## §63 Propina colectiva con código propio PROP- + arqueo conciliable (2026-06-16)
+
+**Pedido del dueño:** la cajera cuadra un Excel manual de arqueo contra el
+sistema y siempre hay desfase. La **propina colectiva** tomaba el código de
+pickup (PKP-####) y se confundía con ventas.
+
+**Causa del desfase en el arqueo:** `recordCollectiveTipAction` crea la propina
+como `SalesOrder` ficticio (orderType='PICKUP', total=0, amountPaid=propina,
+customerName='PROPINA COLECTIVA'). En el export de arqueo
+(`getSalesForArqueoAction`) caía en el bloque Pickup usando `o.total` = **0**, así
+que el dinero de la propina **no aparecía** en el arqueo → la caja física tenía
+ese dinero pero el Excel del sistema no lo mostraba.
+
+**Cambios (alcance "separar propina 1+2+3", sin migración):**
+1. **Código propio `PROP-####`** — nuevo canal `COLLECTIVE_TIP` en
+   `invoice-counter.ts` (prefijo `PROP`). `recordCollectiveTipAction` ahora usa
+   `getNextCorrelativo('COLLECTIVE_TIP')`. **`orderType` sigue siendo 'PICKUP'**
+   a propósito: `sales/page.tsx:307-309` (filtro Mesa/Pickup) y los reportes
+   identifican la propina por `customerName='PROPINA COLECTIVA'`, no por
+   orderType; cambiarlo rompería el historial. Lo que el dueño llamaba "el
+   código" es el correlativo, que ahora es PROP-.
+2. **Conteos ya limpios**: Z report (`z-report.actions.ts:98`) y cierre del día
+   (`end-of-day.actions.ts:69`) YA excluyen la propina colectiva del query
+   principal por `customerName`, así que nunca contaron como pickup. (El reporte
+   del agente que decía lo contrario estaba equivocado.)
+3. **Arqueo Excel** (`arqueo.actions.ts` + `arqueo-excel-utils.ts`): la propina
+   colectiva se detecta por `customerName` (robusto para histórico PKP- y nuevo
+   PROP-) y sale como **fila/bloque propio "PROPINAS COLECTIVAS"** con
+   `total = amountPaid` y el desglose por método de pago. Así el dinero de la
+   propina entra al total y a la columna del método correcto → la caja cuadra
+   centavo a centavo. El correlativo mostrado es PROP-.
+
+Export activo: `arqueo-excel-utils.ts` (ExcelJS) vía `/api/arqueo`.
+`export-arqueo-excel.ts` (XLSX) es código muerto (sin importadores).
+
+Gates: tsc 0 · vitest 431 passed.

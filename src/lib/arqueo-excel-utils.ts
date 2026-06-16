@@ -397,6 +397,9 @@ function buildDataRows(sheet: ExcelJS.Worksheet, sales: ArqueoSaleRow[]) {
         { label: 'PICKUP / PARA LLEVAR',  type: 'PICKUP'     as const, rows: sales.filter(r => r.orderType === 'PICKUP') },
         { label: 'DELIVERY',              type: 'DELIVERY'   as const, rows: sales.filter(r => r.orderType === 'DELIVERY') },
         { label: 'PEDIDOS YA',            type: 'PEDIDOSYA'  as const, rows: sales.filter(r => r.orderType === 'PEDIDOSYA') },
+        // Propinas colectivas: bloque propio (no son ventas). Su monto entra al
+        // desglose por método y al total para cuadrar el efectivo de la caja.
+        { label: 'PROPINAS COLECTIVAS',   type: 'PROPINA'    as const, rows: sales.filter(r => r.orderType === 'PROPINA') },
     ] as GroupDef[]).filter(g => g.rows.length > 0);
 
     const NUM  = '#,##0.00';
