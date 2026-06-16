@@ -10582,3 +10582,28 @@ Respeta `allowedModules`/`grantedPerms`/`revokedPerms`/`isActive`/`tokenVersion`
   `allowedModules` sí aplican al instante.
 
 Gates: tsc 0 · vitest 440 passed.
+
+### §66.1 Fase 2 — costos en recetas/inventario también respetan el submódulo (2026-06-16)
+
+Continuación de §66. Las pantallas de costos gateaban con role-only y se migraron
+al sistema granular, **sin regresión** (verificado: roles con `VIEW_COSTS` en
+`ROLE_BASE_PERMS` == `COST_VISIBLE_ROLES` exactamente → usuario sin overrides ve lo
+mismo de siempre).
+
+- **Cliente (5 componentes):** `store.canViewCosts()` (`src/stores/auth.store.ts`)
+  ahora arma un `PermUser` con `user.role` + `permissions` (allowedModules/granted/
+  revoked, ya sincronizados del JWT por el Sidebar) y llama al `hasPermission`
+  granular de 4 capas con `PERM.VIEW_COSTS`. Un solo cambio arregla RecipeForm,
+  RecipeList, inventory-view, entrada-form y compra-form sin tocarlos. Fallback
+  seguro: si `permissions` es null, el granular cae al rol base = comportamiento
+  histórico. Cadena de imports 100% client-safe (registry sin imports).
+- **Server (1 componente):** `recetas/[id]/page.tsx` pasó de `canViewCosts(role)`
+  (role-only, `@/types`) a `(await checkActionPermission(PERM.VIEW_COSTS)).ok`.
+
+Sigue siendo solo UX; la data real ya estaba protegida en las server actions. El
+hook idiomático cliente para nuevos gates es `usePermission(PERM.X)`
+(`src/hooks/use-permission.ts`). Pendiente (Fase 3, no hecha): guards granulares en
+`getDashboardStatsAction`/`getEstadisticasAction` y leer granted/revoked de BD en el
+guard para evitar el re-login.
+
+Gates: tsc 0 · vitest 440 passed.
