@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, UserRole, canViewCosts } from '@/types';
+import { User, UserRole } from '@/types';
+import { hasPermission } from '@/lib/permissions/has-permission';
+import { PERM } from '@/lib/constants/permissions-registry';
 
 // mockCurrentUser fue removido del estado inicial: antes se cargaba como
 // estado por default lo que causaba que un user nuevo (Delia/Carlos) viera
@@ -77,9 +79,24 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
+            // Granular (Capas 1-4): respeta lo configurado en /dashboard/usuarios
+            // (allowedModules + grantedPerms + revokedPerms), no solo el rol.
+            // Si `permissions` aún no se hidrató (null), el granular cae al rol
+            // base (ROLE_BASE_PERMS), que para VIEW_COSTS == COST_VISIBLE_ROLES →
+            // mismo comportamiento histórico, sin regresión. Solo para UX; la
+            // seguridad real vive en los Server Actions con checkActionPermission.
             canViewCosts: () => {
-                const user = get().user;
-                return user ? canViewCosts(user.role) : false;
+                const { user, permissions } = get();
+                if (!user) return false;
+                return hasPermission(
+                    {
+                        role: user.role,
+                        allowedModules: permissions?.allowedModules ?? null,
+                        grantedPerms: permissions?.grantedPerms ?? null,
+                        revokedPerms: permissions?.revokedPerms ?? null,
+                    },
+                    PERM.VIEW_COSTS,
+                );
             },
 
             hasRole: (roles) => {

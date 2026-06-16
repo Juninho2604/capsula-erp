@@ -6,12 +6,13 @@ import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import { getRecipeByIdAction } from '@/app/actions/recipe.actions';
 import { UNIT_INFO } from '@/lib/constants/units';
 
-import { getSession } from '@/lib/auth';
-import { canViewCosts, UserRole } from '@/types';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 
 export default async function RecipeDetailPage({ params }: { params: { id: string } }) {
-    const session = await getSession();
-    const showCosts = session ? canViewCosts(session.role as UserRole) : false;
+    // Granular (respeta /dashboard/usuarios): no solo el rol. Mismo guard que
+    // las server actions. Sin permiso → costos ocultos en el detalle de receta.
+    const showCosts = (await checkActionPermission(PERM.VIEW_COSTS)).ok;
 
     const recipe = await getRecipeByIdAction(params.id);
 
