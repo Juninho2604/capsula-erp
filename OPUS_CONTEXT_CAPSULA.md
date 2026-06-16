@@ -10534,3 +10534,51 @@ Solo MESA; pickup/delivery siguen con su `roundToWhole` gated por el flag.
 
 Tests: `tip-calculation.test.ts` (+9, incluye los 2 recibos reales). Gates: tsc 0
 · vitest 440 passed.
+
+## §66 Dashboard ignoraba el submódulo de usuarios para finanzas/costos (2026-06-16)
+
+**Reporte:** un usuario (Ramiro) con permisos DESACTIVADOS desde `/dashboard/usuarios`
+igual veía el dashboard con datos financieros (Resumen Financiero, columna Costo
+Unit., acceso a Finanzas). "Lo que se establezca desde el submódulo de usuarios
+debe funcionar sí o sí."
+
+**Causa raíz:** coexisten DOS sistemas de permisos:
+- **Granular (el correcto):** `src/lib/permissions/has-permission.ts` — 4 capas
+  (rol base + `allowedModules` + `grantedPerms` + `revokedPerms`). Es lo que escribe
+  el submódulo de usuarios y lo que consumen las server actions vía
+  `checkActionPermission` (`src/lib/permissions/action-guard.ts`).
+- **Legacy por nivel de rol:** `src/lib/permissions.ts` — `hasPermission(role, level)`
+  con `PERMISSIONS.VIEW_COSTS = 80`. Solo compara el nivel numérico del rol.
+
+El **dashboard** (`src/app/dashboard/page.tsx`) gateaba finanzas/costos con el
+sistema LEGACY: `const showCosts = hasPermission(session?.role, PERMISSIONS.VIEW_COSTS)`.
+Como solo miraba el rol (ADMIN_MANAGER/AUDITOR ≥ 80), desactivar el módulo
+`finanzas` o revocar `VIEW_FINANCES`/`VIEW_COSTS` en el submódulo **no tenía
+ningún efecto** en el dashboard.
+
+**Fix (Fase 1):** el dashboard ahora resuelve los permisos con el guard granular:
+```ts
+const [canViewFinances, canViewCosts] = await Promise.all([
+  checkActionPermission(PERM.VIEW_FINANCES).then(r => r.ok),
+  checkActionPermission(PERM.VIEW_COSTS).then(r => r.ok),
+]);
+```
+- `canViewFinances` → fetch `getFinancialSummaryAction()`, widget Resumen Financiero,
+  acceso rápido "Finanzas".
+- `canViewCosts` → columnas "Costo Unit." de la tabla de stock bajo.
+
+Respeta `allowedModules`/`grantedPerms`/`revokedPerms`/`isActive`/`tokenVersion`.
+`VIEW_FINANCES`→módulo `finanzas`; `VIEW_COSTS`→`costs|margen|finanzas`
+(`perm-to-modules.ts`), así que desactivar por módulo o por permiso ambos cortan.
+
+**Fugas pendientes detectadas (NO arregladas en esta fase — mismo patrón):**
+- `getDashboardStatsAction` / `getEstadisticasAction`: sin guard granular (solo
+  `getSession`), exponen KPIs de ventas a cualquier autenticado.
+- Recetas (`RecipeForm`, `RecipeList`, `[id]`) e inventario (`inventory-view`,
+  `entrada-form`, `compra-form`): gatean costos con `canViewCosts(role)` /
+  `useAuthStore` (role-only, cliente) → también ignoran el submódulo.
+- `checkActionPermission` lee `grantedPerms`/`revokedPerms` del JWT, no de BD →
+  conceder/revocar exige re-login (lo fuerza `tokenVersion`); cambios de
+  `allowedModules` sí aplican al instante.
+
+Gates: tsc 0 · vitest 440 passed.
