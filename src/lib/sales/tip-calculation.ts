@@ -37,6 +37,38 @@ export function cappedTipForPayment(args: {
     return capped > 0 ? capped : 0;
 }
 
+/** Métodos en divisas efectivo/zelle que se redondean al dólar entero. */
+const DIVISAS_CASH_METHODS = new Set(['CASH_USD', 'CASH_EUR', 'ZELLE']);
+
+/**
+ * Propina por REDONDEO del cobro (POS mesa, divisas efectivo/zelle).
+ *
+ * Decisión del dueño (16/06): el POS le dice a la cajera cobrar el dólar entero
+ * hacia ARRIBA. La diferencia entre ese monto redondeado y la factura real
+ * (neto post-descuento + 10% servicio) se registra como PROPINA, de modo que el
+ * RECIBO, el SISTEMA y lo COBRADO muestren exactamente el mismo número y el
+ * arqueo cuadre. Antes el redondeo solo afectaba la pantalla → el recibo/registro
+ * quedaban por debajo de lo cobrado (desfase reportado por la cajera).
+ *
+ * Reglas:
+ *   - Solo métodos divisas efectivo/zelle (CASH_USD, CASH_EUR, ZELLE).
+ *   - Nunca negativa (Math.ceil siempre ≥ factura).
+ *   - En pago mixto el target es exacto → 0 (no se redondea).
+ *
+ * El cap final lo aplica `cappedTipForPayment`: si el cliente pagó justo (sin
+ * entregar el dólar entero), esta propina de redondeo se capa a 0.
+ */
+export function roundingTipForCharge(args: {
+    facturaReal: number;
+    paymentMethod: string;
+    isMixed?: boolean;
+}): number {
+    const factura = Math.max(0, Number.isFinite(args.facturaReal) ? args.facturaReal : 0);
+    if (args.isMixed) return 0;
+    if (!DIVISAS_CASH_METHODS.has((args.paymentMethod || '').toUpperCase())) return 0;
+    return Math.max(0, Math.ceil(factura) - factura);
+}
+
 /**
  * Monto que el split de la mesa debe registrar como `paidAmount`: el dinero
  * RETENIDO por el local = factura + propina, NO el bruto recibido.
