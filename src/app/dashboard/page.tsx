@@ -1,4 +1,6 @@
-import { getSession, hasPermission, PERMISSIONS } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 import { getDashboardStatsAction } from '@/app/actions/dashboard.actions';
 import { getFinancialSummaryAction } from '@/app/actions/finance.actions';
 import { getEstadisticasAction } from '@/app/actions/estadisticas.actions';
@@ -46,11 +48,20 @@ export default async function DashboardPage() {
         const first = visible[0];
         redirect(first?.href ?? '/dashboard/pos/restaurante');
     }
-    const showCosts = hasPermission(session?.role, PERMISSIONS.VIEW_COSTS);
+    // Gating granular (respeta el submódulo de usuarios): rol base +
+    // allowedModules + grantedPerms + revokedPerms + isActive + tokenVersion.
+    // ANTES usaba el hasPermission LEGACY por nivel de rol (VIEW_COSTS=80), que
+    // ignoraba por completo lo configurado en /dashboard/usuarios → un usuario
+    // con finanzas/costos desactivados igual veía los datos. checkActionPermission
+    // es la misma puerta granular que ya usan las server actions.
+    const [canViewFinances, canViewCosts] = await Promise.all([
+        checkActionPermission(PERM.VIEW_FINANCES).then(r => r.ok),
+        checkActionPermission(PERM.VIEW_COSTS).then(r => r.ok),
+    ]);
 
     const [{ stats, salesKPIs, lowStockItems }, financeSummary, estadisticas] = await Promise.all([
         getDashboardStatsAction(),
-        showCosts ? getFinancialSummaryAction() : Promise.resolve({ success: false } as any),
+        canViewFinances ? getFinancialSummaryAction() : Promise.resolve({ success: false } as any),
         // Datos role-based provenientes de la antigua /dashboard/estadisticas
         // (absorbida por el dashboard unificado).
         getEstadisticasAction(),
@@ -139,7 +150,7 @@ export default async function DashboardPage() {
             )}
 
             {/* Financial Summary Widget */}
-            {finance && showCosts && (
+            {finance && canViewFinances && (
               <div className="capsula-card p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -206,7 +217,7 @@ export default async function DashboardPage() {
                                 <th className="px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.08em] text-capsula-ink-muted">
                                     Estado
                                 </th>
-                                {showCosts && (
+                                {canViewCosts && (
                                     <th className="px-8 py-4 text-right text-xs font-semibold uppercase tracking-[0.08em] text-capsula-ink-muted">
                                         Costo Unit.
                                     </th>
@@ -256,7 +267,7 @@ export default async function DashboardPage() {
                                                 {item.status.label}
                                             </span>
                                         </td>
-                                        {showCosts && (
+                                        {canViewCosts && (
                                             <td className="px-8 py-5 text-right font-medium tabular-nums text-capsula-ink">
                                                 {formatCurrency(item.costPerUnit || 0)}
                                             </td>
@@ -291,7 +302,7 @@ export default async function DashboardPage() {
                 {salesKPIs && (
                     <QuickAction href="/dashboard/metas" label="Metas" sub="Objetivos y merma" Icon={Target} color="rose" />
                 )}
-                {showCosts && (
+                {canViewFinances && (
                     <QuickAction href="/dashboard/finanzas" label="Finanzas" sub="P&L y flujo de caja" Icon={BarChart2} color="emerald" />
                 )}
             </div>
