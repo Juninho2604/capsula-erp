@@ -10607,3 +10607,41 @@ hook idiomático cliente para nuevos gates es `usePermission(PERM.X)`
 guard para evitar el re-login.
 
 Gates: tsc 0 · vitest 440 passed.
+
+### §66.2 Fase 3 — KPIs financieros del dashboard respetan el submódulo (2026-06-16)
+
+Continuación de §66/§66.1. Faltaba que el bloque **ExecutiveSummary** (revenue del
+día, cobrado, ticket promedio, propinas, anuladas, cuentas abiertas) respetara lo
+configurado en `/dashboard/usuarios`: se rendía con `salesKPIs &&` (existencia del
+dato), y `salesKPIs` lo gobernaba un `isAdmin` **por rol** dentro de
+`getDashboardStatsAction`. Un ADMIN_MANAGER con finanzas revocadas igual veía esos
+números.
+
+**Fix:** en `src/app/actions/dashboard.actions.ts`, el gate financiero pasó de
+`isAdmin` (rol) a `showFinance`, una composición **no regresiva**:
+```ts
+const baseHasFinance = (ROLE_BASE_PERMS[role] ?? []).includes(PERM.VIEW_FINANCES);
+const showFinance = !!session && roleAllowsFinance
+  && (!baseHasFinance || hasPermission(permUser, PERM.VIEW_FINANCES));
+```
+- Roles con `VIEW_FINANCES` por base (OWNER/ADMIN_MANAGER/AUDITOR): respetan módulos +
+  revoke/grant configurados en usuarios → si se revoca/restringe, se ocultan.
+- Roles sin esa base (OPS_MANAGER/AREA_LEAD): conservan el gate por rol histórico →
+  **sin regresión** (nadie pierde lo que ya veía).
+- `permUser` se arma de la sesión (el JWT ya espeja allowedModules/granted/revoked),
+  sin query extra. La forma del return no cambia (los fallbacks a cero/null ya
+  existían) → cero riesgo de romper el destructuring del dashboard.
+
+**Deliberadamente NO tocado en esta fase (decisión de seguridad):**
+- **`getEstadisticasAction` / `RoleBasedSections`:** tiene 8+ gates financieros
+  entrelazados con operativos (`isAdmin || isAuditor || isChef`, `isChef || isAdmin`).
+  Una cirugía ahí puede ocultar data operativa a chefs/cajeras o romper el dashboard
+  role-based. Queda como Fase 3b (requiere gating field-by-field con verificación).
+- **Guards / re-login (`checkActionPermission` lee granted/revoked del JWT):** es
+  working-as-designed. `updateUserPerms`/`updateUserModules` bumpean `tokenVersion`,
+  que fuerza re-login y aplica el cambio. Para sesiones válidas, JWT == BD (mismo
+  tokenVersion ⟹ mismos perms), así que leer de BD sería inerte. Quitar el bump de
+  tokenVersion para "evitar el re-login" DEBILITARÍA la invalidación de sesión en
+  cambios de privilegio → no se hace.
+
+Gates: tsc 0 · vitest 440 passed.

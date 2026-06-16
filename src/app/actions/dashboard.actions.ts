@@ -9,13 +9,30 @@ import { InventoryItemType } from '@/types';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { revenueWhere, propinasWhere, cancelledWhere } from '@/lib/sales-where';
 import { getSalesByPaymentMethod } from '@/lib/reports/sales-reports';
+import { hasPermission } from '@/lib/permissions/has-permission';
+import { PERM, ROLE_BASE_PERMS } from '@/lib/constants/permissions-registry';
 
 export async function getDashboardStatsAction() {
     try {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
         const session = await getSession();
-        const isAdmin = session && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(session.role);
+        const role = session?.role ?? '';
+        const roleAllowsFinance = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'].includes(role);
+        // Gate financiero NO regresivo (Fase 3 — §66.2): los KPIs financieros del
+        // dashboard (revenue del día, cobrado, propinas, anuladas, cuentas abiertas)
+        // ahora respetan lo configurado en /dashboard/usuarios. Los roles que tienen
+        // VIEW_FINANCES por defecto (OWNER/ADMIN_MANAGER/AUDITOR) se ocultan si se les
+        // revocó o restringió el módulo finanzas; los que NO la tienen por base
+        // (OPS_MANAGER/AREA_LEAD) conservan el acceso histórico por rol → sin regresión.
+        const permUser = {
+            role,
+            allowedModules: session?.allowedModules ?? null,
+            grantedPerms: session?.grantedPerms ?? null,
+            revokedPerms: session?.revokedPerms ?? null,
+        };
+        const baseHasFinance = (ROLE_BASE_PERMS[role] ?? []).includes(PERM.VIEW_FINANCES);
+        const showFinance = !!session && roleAllowsFinance && (!baseHasFinance || hasPermission(permUser, PERM.VIEW_FINANCES));
 
         const { start: todayStart, end: todayEnd } = getCaracasDayRange();
         const { start: yesterdayStart, end: yesterdayEnd } = getCaracasDayRange(new Date(Date.now() - 86400000));
@@ -32,37 +49,37 @@ export async function getDashboardStatsAction() {
                 }
             }),
             // Today's sales
-            isAdmin ? db.salesOrder.aggregate({
+            showFinance ? db.salesOrder.aggregate({
                 where: revenueWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Yesterday comparison
-            isAdmin ? db.salesOrder.aggregate({
+            showFinance ? db.salesOrder.aggregate({
                 where: revenueWhere(yesterdayStart, yesterdayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Open tabs
-            isAdmin ? db.openTab.aggregate({
+            showFinance ? db.openTab.aggregate({
                 where: { status: 'OPEN' },
                 _count: { id: true },
                 _sum: { balanceDue: true },
             }) : Promise.resolve({ _count: { id: 0 }, _sum: { balanceDue: null } }),
             // Propinas colectivas hoy
-            isAdmin ? db.salesOrder.aggregate({
+            showFinance ? db.salesOrder.aggregate({
                 where: propinasWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Órdenes canceladas hoy (auditoría)
-            isAdmin ? db.salesOrder.aggregate({
+            showFinance ? db.salesOrder.aggregate({
                 where: cancelledWhere(todayStart, todayEnd),
                 _sum: { total: true },
                 _count: { id: true },
             }) : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
             // Cobrado hoy (pagos reales: directas + splits PAID, con 10% servicio — §59.5)
-            isAdmin
+            showFinance
                 ? getSalesByPaymentMethod({ tenantId, from: todayStart, to: todayEnd })
                 : Promise.resolve([]),
         ]);
@@ -91,7 +108,7 @@ export async function getDashboardStatsAction() {
                 subRecipes,
                 finishedGoods,
             },
-            salesKPIs: isAdmin ? {
+            salesKPIs: showFinance ? {
                 todayRevenue,
                 todayOrders,
                 /** Pagos reales del día (con 10% servicio, sin propinas) — secundario al facturado. */
