@@ -1,28 +1,63 @@
 # Documento de Contexto — Shanklish ERP / Cápsula SaaS
-## Radiografía Completa del Sistema — OPUS 4.6
+## Radiografía Completa del Sistema
+
+> **Cómo leer este documento.** Las secciones **§1–§42** son la radiografía
+> temática del sistema (identidad, datos, RBAC, módulos). A partir de **§43**
+> el documento funciona como **changelog cronológico**: cada sección registra
+> un bloque de trabajo con su fecha y PRs. Por eso algunos números aparecen
+> fuera de secuencia física (ej. §51.B después de §54, §56 antes de §55) — es
+> esperado; usá el índice de abajo para ubicarte. Última sincronización con
+> `main`: **2026-06-15** (tip `7101fbd`).
+
+### Índice cronológico del changelog (§43 en adelante)
+
+| § | Fecha | Tema | PRs |
+|---|---|---|---|
+| §43–§45 | 2026-05-18→23 | Multi-tenant en producción · tenants · pre-flight onboarding | — |
+| §46 | 2026-06 | Bug TAB-2433 — propina fantasma con descuentos | — |
+| §47–§49 | 2026-06-06→07 | Historial cajera · CRM captura · POS Mesero 10%/propina · congruencia | #278 |
+| §50–§53 | 2026-06-07 | Inventario Diario · conteo físico/rápido · WeeklyCount · modelo de capas | #279–#286 |
+| §51.B / §51.C | 2026-06-07 | Variación semana vs semana · esqueleto Reportes | #283, #287 |
+| §54 | 2026-06-07 | Auditoría seguridad npm (audit fix) | #288 |
+| §55 | 2026-06-08→09 | Módulo Gestión de Deliverys (Fases 1–5 + Pieza C) | #290, #295 |
+| §56 | 2026-06-09 | Tesorería / Conciliación Bancaria (Fases 0–4) | #291–#293 |
+| §57 | 2026-06-09 | Documentos de Proveedor (facturas/notas de entrega) | #294 |
+| §63 | 2026-06-09 | Recetas restaurante por tamaño · importador CSV | #298, #299 |
+| §58–§59 | 2026-06-10 | Módulo Reportes (diagnóstico + FASE A/B) · puente de cuadre · cobrado secundario | #300–#302 |
+| §60 | 2026-06-11 | BUG Promociones — fechas vencían un día antes (off-by-one TZ) | — |
+| §61 | 2026-06-12 | Landing "Editorial" 2.0 — rebrand aislado de la home | #316 |
+| §62 | 2026-06-15 | BUG Comanda delivery — items como string del bot n8n | — |
 
 ---
 
 ## 1. Identidad del Sistema
 
-**Shanklish ERP** es un sistema POS + ERP para restaurantes y entretenimiento construido con
-Next.js 14 (App Router), Prisma ORM y PostgreSQL.
+**Cápsula** (`kpsula.app`) es un SaaS POS + ERP **multi-tenant** para restaurantes
+y entretenimiento, construido con Next.js 14 (App Router), Prisma ORM y
+PostgreSQL. **Shanklish ERP** fue el sistema original (un solo restaurante) y hoy
+es el tenant fundador; el producto que se vende es Cápsula.
 
-### Instancias en producción
-| Instancia | Negocio | BD |
-|-----------|---------|-----|
-| `shanklish-erp` | Restaurante Shanklish Caracas | PostgreSQL (Google Cloud SQL) |
-| `table-pong` | Sala de juegos / bar | PostgreSQL independiente |
+### Tenants en producción (1 sola BD multi-tenant)
 
-Cada instancia tiene su propia base de datos. La visión a mediano plazo es unificarlas en un
-SaaS multi-tenant llamado **Cápsula**.
+> Actualizado 2026-06: ya **no** hay instancias/BD separadas. Todos los clientes
+> viven en una sola BD (`capsula_erp_prod` en VPS Contabo) aislados por
+> `tenantId`. Para el listado vivo y el estado de cada tenant ver **§44**.
+
+| Tenant | Negocio |
+|--------|---------|
+| Shanklish | Restaurante Shanklish Caracas (tenant fundador) |
+| Table Pong | Sala de juegos / bar |
+| Sello Criollo, Poke Pok, … | Onboarding posterior (ver §44/§45) |
+| `demo` | Sandbox de prospectos (ver §44.3) |
+
+La visión multi-tenant de §14 **ya está implementada** (ver §43–§45).
 
 ### Stack técnico
 
 | Capa | Tecnología |
 |------|-----------|
 | Framework | Next.js 14 App Router, Server Actions, TypeScript |
-| Base de datos | PostgreSQL 18.3 self-hosted en VPS Contabo (`localhost:5433/capsula_erp_prod`) + Prisma ORM 5.10 |
+| Base de datos | PostgreSQL self-hosted en VPS Contabo (`localhost:5433/capsula_erp_prod`) + Prisma ORM 5.10. **Versión a confirmar** (`SELECT version();` en el VPS) — el doc decía 18.3, la verificación local usó 16 |
 | Autenticación | JWT custom con `jose` (sesiones 24h, cookie httpOnly) |
 | UI | Tailwind CSS 3.4 + Radix UI primitives + Lucide icons |
 | State management | Zustand 4.5 + React Query (TanStack) |
@@ -33,7 +68,7 @@ SaaS multi-tenant llamado **Cápsula**.
 | OCR | Google Cloud Vision API |
 | Validación | Zod |
 | Charts | Recharts |
-| Deploy app | **VPS Contabo** vía GitHub Actions SSH (`/root/deploy-capsula.sh`). Vercel queda como fallback dormant pendiente apagar — ver §1.2. |
+| Deploy app | **VPS Contabo** vía GitHub Actions SSH: `.github/workflows/ci.yml` descarga y corre `scripts/deploy-vps.sh` **versionado en el repo** (migrado del viejo `/root/deploy-capsula.sh` en PR #296). Vercel dormant pendiente apagar — ver §1.2. |
 | Reverse proxy | nginx en VPS (termina SSL wildcard `*.kpsula.app` con Let's Encrypt) |
 | DNS | Cloudflare (`kpsula.app` y `*.kpsula.app` → VPS) |
 | Proceso runtime | pm2 con `node .next/standalone/server.js` |
@@ -70,15 +105,15 @@ Para detalle completo del cutover histórico y razón de las decisiones, ver §1
 
 ### Mapa de carpetas del proyecto
 ```
-shanklish-erp-main/
+capsula-erp/
 ├── prisma/
-│   └── schema.prisma              # 2002 líneas, 42+ modelos
+│   └── schema.prisma              # 3479 líneas, 95 modelos (2026-06-15)
 ├── src/
 │   ├── app/
-│   │   ├── actions/               # 40 archivos .actions.ts (Server Actions)
-│   │   ├── api/                   # 4 API Routes (REST)
-│   │   ├── dashboard/             # 57 páginas en 31 secciones
-│   │   ├── kitchen/               # 2 páginas (cocina + barra)
+│   │   ├── actions/               # 66 archivos .actions.ts (Server Actions)
+│   │   ├── api/                   # 19 route.ts (REST, incl. /api/v1/delivery)
+│   │   ├── dashboard/             # 85 páginas
+│   │   ├── kitchen/               # cocina + barra
 │   │   └── login/                 # Página de login
 │   ├── components/
 │   │   ├── layout/                # Navbar, Sidebar, ThemeToggle, NotificationBell, HelpPanel
@@ -114,17 +149,22 @@ shanklish-erp-main/
 
 ---
 
-## 2. Arquitectura de Datos — 42 Modelos Prisma
+## 2. Arquitectura de Datos — 95 Modelos Prisma
 
-### 2.1 Core (3 modelos)
+> Conteo real al 2026-06-15: **95 modelos** (`grep -c '^model ' prisma/schema.prisma`).
+> Casi todos llevan `tenantId` (multi-tenant, §43); las excepciones (InventoryMovement,
+> PaymentSplit, TableTransfer, sub-líneas) se aíslan vía relación al padre.
+
+### 2.1 Core (4 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
-| **User** | id, email, passwordHash, pin, role, allowedModules, grantedPerms, revokedPerms, isActive, deletedAt | Usuarios del sistema. 9 roles activos. `allowedModules` (JSON array nullable) filtra módulos por usuario; `grantedPerms`/`revokedPerms` (JSON arrays de PERM keys) amplían o restringen permisos del rol base |
+| **Tenant** | id, slug, name, legalName, taxId, displayName, logoUrl, featureFlags (JSON) | **Raíz multi-tenant.** Cada cliente de Cápsula es un Tenant; `slug` mapea al subdominio. `featureFlags` activa módulos opcionales (ej. deliveryOps) |
+| **User** | id, email, passwordHash, pin, role, allowedModules, grantedPerms, revokedPerms, isActive, deletedAt, tenantId | Usuarios del sistema. 9 roles activos. `allowedModules` (JSON array nullable) filtra módulos por usuario; `grantedPerms`/`revokedPerms` (JSON arrays de PERM keys) amplían o restringen permisos del rol base |
 | **Area** | id, name, branchId, isActive, deletedAt | Áreas/almacenes de trabajo (Cocina, Bodega, Barra, etc.) |
 | **Branch** | id, code, name, legalName, timezone, currencyCode | Sucursal física. Relaciona zonas, mesas, mesoneros |
 
-### 2.2 Inventario (12 modelos)
+### 2.2 Inventario (18 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -140,6 +180,12 @@ shanklish-erp-main/
 | **InventoryCycle** | code, cycleType (WEEKLY/MONTHLY/SPOT_CHECK), areaIds (JSON), status | Ciclo de conteo físico semanal/mensual |
 | **InventoryCycleSnapshot** | cycleId + inventoryItemId + areaId (unique), countedStock, systemStock, difference | Snapshot de conteo en un ciclo |
 | **AreaCriticalItem** | areaId + inventoryItemId (unique) | Items marcados como críticos por área |
+| **WeeklyCount** | countNumber, countDate, principalAreaId, productionAreaId, status, appliedAt, tenantId | Conteo semanal como entidad (§51.A). Compara stock principal vs producción |
+| **WeeklyCountItem** | weeklyCountId + inventoryItemId, sku, stockBeforePrincipal, qtyCountedPrincipal, variancePrincipal, stockBeforeProduction, qtyCountedProduction, varianceProduction | Línea de conteo semanal con varianza por área |
+| **Requisition** | code, status, requestedById, sourceAreaId, targetAreaId, dispatchedAt, receivedAt, tenantId | Requisición/transferencia interna de stock entre áreas (genera movimientos TRANSFER) |
+| **RequisitionItem** | requisitionId + inventoryItemId, quantity, sentQuantity, dispatchedQuantity, receivedQuantity | Línea de requisición |
+| **InventoryDeductionRetry** | salesOrderId, payload (JSON), status, attempts, maxAttempts, lastError, nextRetryAt | Outbox de reintentos cuando el descuento de stock de una venta falla (no bloquea el cobro) |
+| **ItemAvailability** | tenantId + branchId + itemLabel, available, updatedById | Toggle de "agotado/86" por ítem y sucursal (delivery/POS) |
 
 ### 2.3 Producción (5 modelos)
 
@@ -158,7 +204,7 @@ shanklish-erp-main/
 | **ProcessingTemplate** | name, sourceItemId, processingStep, canGainWeight, chainOrder | Plantilla reutilizable para procesamiento de proteínas |
 | **ProcessingTemplateOutput** | templateId + outputItemId (unique), expectedWeight, expectedUnits, isIntermediate | Output esperado en la plantilla |
 
-### 2.5 Menú (4 modelos)
+### 2.5 Menú (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -167,8 +213,9 @@ shanklish-erp-main/
 | **MenuModifierGroup** | name, isRequired, minSelections, maxSelections | Grupo de modificadores (Acompañantes, Tamaño...) |
 | **MenuModifier** | groupId, name, priceAdjustment, linkedMenuItemId, isAvailable | Opción modificadora (Tabulé, Extra queso...) |
 | **MenuItemModifierGroup** | menuItemId + modifierGroupId (unique) | Pivote: qué grupos aplican a qué productos |
+| **Promotion** | name, discountType, discountValue, maxDiscountPerUnit, startTime, endTime, startDate, endDate, priority, isActive, tenantId | Promoción/happy hour por horario y rango de fechas (§6.0). ⚠️ fechas: usar `caracasDateOnlyToDate` (§60) |
 
-### 2.6 Ventas / POS (8 modelos)
+### 2.6 Ventas / POS (10 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -178,7 +225,9 @@ shanklish-erp-main/
 | **SalesOrderPayment** | salesOrderId, method, amountUSD, amountBS, exchangeRate, reference | Línea de pago (para pagos mixtos) |
 | **OpenTab** | tabCode (unique), branchId, serviceZoneId, tableOrStationId, status (OPEN/PARTIALLY_PAID/CLOSED), runningTotal, balanceDue, totalServiceCharge, totalTip, waiterLabel | Mesa/tab abierta |
 | **OpenTabOrder** | openTabId + salesOrderId (unique) | Vincula órdenes con tab abierto |
-| **PaymentSplit** | openTabId, salesOrderId, splitLabel, splitType, paymentMethod, status, serviceChargeAmount, tipAmount, total | División de cuenta (pago parcial por persona) |
+| **PaymentSplit** | openTabId, salesOrderId, splitLabel, splitType, paymentMethod, status, serviceChargeAmount, tipAmount, total, amountBs, exchangeRate | División de cuenta (pago parcial por persona). `amountBs`/`exchangeRate` (FASE B §59) persisten la tasa histórica del cobro |
+| **TabSubAccount** | openTabId, label, sortOrder, status, subtotal, serviceCharge, total, paidAmount, paymentMethod, paidAt | Subcuenta lógica dentro de una mesa (división por persona); la habilita el capitán |
+| **SubAccountItem** | subAccountId, salesOrderItemId, quantity, lineTotal | Ítem asignado a una subcuenta |
 | **InvoiceCounter** | channel (unique), lastValue | Correlativo global por canal. Nunca se resetea |
 
 ### 2.7 Modelo Operativo Restaurante (4 modelos)
@@ -190,7 +239,7 @@ shanklish-erp-main/
 | **Waiter** | branchId, firstName, lastName, pin (PBKDF2 hash), isCaptain, isActive | Mesonero del restaurante. `pin` permite identificación sin sesión en POS Mesero. `isCaptain` habilita subcuentas y autorizaciones de transferencia |
 | **TableTransfer** | openTabId, fromWaiterId, toWaiterId, authorizedByWaiterId?, authorizedByUserId?, authorizedNote?, fromTableId?, toTableId?, reason, transferredAt | Historial de transferencias de mesonero y de mesa física. PIN dual: capitán Waiter O gerente User |
 
-### 2.8 Compras (4 modelos)
+### 2.8 Compras (7 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -198,8 +247,11 @@ shanklish-erp-main/
 | **SupplierItem** | supplierId + inventoryItemId (unique), unitPrice, leadTimeDays, isPreferred | Catálogo de items por proveedor |
 | **PurchaseOrder** | orderNumber (unique), orderName, supplierId, status (DRAFT→RECEIVED), subtotal, totalAmount | Orden de compra |
 | **PurchaseOrderItem** | purchaseOrderId, inventoryItemId, quantityOrdered, quantityReceived, unitPrice | Línea de orden de compra |
+| **SupplierDocument** | documentType, documentNumber, supplierId, documentDate, totalAmount, currency, documentUrl, inventoryStatus, linkedPurchaseOrderId, accountPayableId, status, tenantId | Factura/nota de entrega del proveedor — documento decoplado del inventario (§57) |
+| **SupplierDocumentItem** | supplierDocumentId, inventoryItemId, itemName, quantity, unit, unitCost, lineTotal | Línea de documento de proveedor |
+| **SupplierItemPriceHistory** | supplierId + inventoryItemId, unitPrice, currency, effectiveFrom/To, registeredFromPurchaseOrderId | Historial de precio de compra por proveedor e insumo |
 
-### 2.9 Financiero (4 modelos)
+### 2.9 Financiero (5 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -209,7 +261,7 @@ shanklish-erp-main/
 | **AccountPayable** | description, supplierId, totalAmountUsd, paidAmountUsd, remainingUsd, status (PENDING/PARTIAL/PAID/OVERDUE), purchaseOrderId | Cuenta por pagar |
 | **AccountPayment** | accountPayableId, amountUsd, amountBs, paymentMethod, paymentRef, paidAt | Pago aplicado a cuenta |
 
-### 2.10 Entretenimiento — Table Pong (5 modelos)
+### 2.10 Entretenimiento — Table Pong (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -228,7 +280,7 @@ shanklish-erp-main/
 | **IntercompanySettlementLine** | settlementId, menuItemId, inventoryItemId, description, quantity, unitPrice | Línea de liquidación |
 | **IntercompanyItemMapping** | menuItemId + fromBranchId (unique), sourceInventoryItemId, toBranchId, transferPrice | Mapeo de items entre negocios |
 
-### 2.12 Configuración y Sistema (4 modelos)
+### 2.12 Configuración y Sistema (6 modelos)
 
 | Modelo | Campos clave | Propósito |
 |--------|-------------|-----------|
@@ -236,6 +288,8 @@ shanklish-erp-main/
 | **ExchangeRate** | rate (Bs por 1 USD), effectiveDate, source (BCV) | Tasa de cambio diaria |
 | **ProductFamily** | code (unique), name | Familia de productos para SKU Studio |
 | **SkuCreationTemplate** | name, productFamilyId, defaultFields (JSON) | Plantilla de creación rápida de SKUs |
+| **RateLimitBucket** | key, windowStart, count, expiresAt | Rate limiting (ventana deslizante) para login/endpoints sensibles |
+| **PrintJob** | tenantId, type, station, payload (JSON), status, retries, claimedAt, completedAt | Cola de impresión térmica que consume el Print Agent (§45.4) |
 
 ### 2.13 Comunicación y Auditoría (2 modelos)
 
@@ -243,6 +297,40 @@ shanklish-erp-main/
 |--------|-------------|-----------|
 | **BroadcastMessage** | title, body, type (INFO/WARNING/ALERT/SUCCESS), targetRoles (JSON), startsAt, expiresAt | Anuncios internos |
 | **AuditLog** | userId, userName, userRole, action, entityType, entityId, description, changes (JSON), module, createdAt | Registro forense inmutable. NUNCA se borra |
+
+### 2.15 Tesorería / Conciliación Bancaria (6 modelos — §56)
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **AccountReceivable** | description, debtorName, customerId, totalAmountUsd, collectedAmountUsd, remainingUsd, issueDate, dueDate, status, tenantId | Cuenta por cobrar |
+| **ReceivablePayment** | accountReceivableId, amountUsd, amountBs, exchangeRate, method, bankAccountId, collectedAt, tenantId | Cobro aplicado a una CxC |
+| **BankAccount** | name, bankName, currency, kind, rif, isActive, commInNaturalPct, commInJuridicaPct, commOutNaturalPct, commOutJuridicaPct, tenantId | Cuenta bancaria con comisiones por tipo de contraparte (natural/jurídica, entrada/salida) |
+| **PosTerminal** | label, terminalCode, posMethodKey, commissionPct, commNaturalPct, commJuridicaPct, bankAccountId, tenantId | Terminal PDV con su comisión, ligado a una cuenta bancaria |
+| **BankReconciliation** | bankAccountId, date, fiscalWeek, expectedIn, statementIn, commissionStmt, differential, status, rateAtSettle, bcvLossUsd, postedExpenseId, tenantId | Conciliación semanal: esperado vs estado de cuenta, pérdida BCV al liquidar |
+| **BankMovementRecon** | bankAccountId, sourceType, sourceId, date, counterpartyType, commissionRemoved, reconciled, statementAmount, tenantId | Marca de conciliación por movimiento individual |
+
+### 2.16 Delivery / CRM (10 modelos — §55, §6.0.1)
+
+> Detalle completo en §55 (estados, API n8n, webhooks). Aquí solo el inventario de modelos.
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **Customer** | tenantId, fullName, idDocument, phone, email, address, totalOrders, totalSpent, lastOrderAt | Cartera de clientes (CRM, §6.0.1/§48). Compartido con CxC |
+| **DeliveryTenantConfig** | tenantId, … | Config de delivery a nivel tenant (feature flag deliveryOps) |
+| **BranchDeliveryConfig** | branchId, … | Config de delivery por sucursal |
+| **DeliveryZone** | tenantId/branchId, nombre, tarifa | Zona de reparto con su tarifa |
+| **DeliveryOrder** | código, estado (máquina §55.2), cliente, total, motorizado | Pedido de delivery (entra por API n8n) |
+| **DeliveryDriver** | tenantId, nombre, estado | Motorizado/repartidor |
+| **DeliveryWebhookOutbox** | payload, status, attempts, HMAC | Outbox de webhooks salientes firmados (§55.8) |
+| **DeliveryOrderEvent** | deliveryOrderId, tipo, timestamp | Bitácora de eventos del pedido (auditoría de estados) |
+| **RoutingRule** | tenantId, matchProduct, branchId, priority, isActive | Regla de ruteo de pedido → sucursal por producto |
+| **ManagerNote** | tenantId, branchId, text, isActive, expiresAt | Instrucción dinámica del gerente al tablero de delivery (§55.9) |
+
+### 2.17 SaaS / Facturación de la plataforma (1 modelo)
+
+| Modelo | Campos clave | Propósito |
+|--------|-------------|-----------|
+| **TenantPayment** | tenantId, amount, currency, paidAt, method, periodStart, periodEnd, recordedById | Pago de suscripción del tenant a Cápsula (cobro de la plataforma, no del restaurante) |
 
 ### 2.14 Diagrama de Relaciones Principales
 
@@ -272,7 +360,7 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 
 - JWT firmado con HS256 via `jose`
 - Cookie `session` httpOnly, secure en prod, sameSite lax, 24h TTL
-- Secret: `JWT_SECRET` env var (fallback hardcodeado — **gap de seguridad**)
+- Secret: `JWT_SECRET` env var. ⚠️ **GAP DE SEGURIDAD (crítico para multi-tenant):** `getSecretKey()` en `auth.ts` cae a un `FALLBACK_SECRET` hardcodeado si `JWT_SECRET` falta o tiene <32 chars (solo loguea un warning). En un SaaS con varios tenants, un deploy sin `JWT_SECRET` deja sesiones **forjables**. Acción: hacer que producción **falle el arranque** si falta el secret, no que degrade.
 - Payload: `{ id, email, firstName, lastName, role }`
 - Funciones: `encrypt()`, `decrypt()`, `getSession()`, `createSession()`, `deleteSession()`
 
@@ -280,9 +368,9 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 - `loginAction(prevState, formData)` — valida email+password, crea sesión
 - `logoutAction()` — elimina cookie de sesión
 
-### 3.2 Los 9 Roles del Sistema
+### 3.2 Los 10 Roles del Sistema
 
-**Archivo**: `src/lib/constants/roles.ts`
+**Archivo**: `src/lib/constants/roles.ts` (`ROLE_HIERARCHY` define **10 roles**)
 
 | Rol | Nivel RBAC | Nivel permisos | Descripción |
 |-----|-----------|---------------|-------------|
@@ -302,6 +390,8 @@ Finanzas (P&L) ← Expense + AccountPayable          InventoryMovement(ADJUSTMEN
 Existen dos sistemas de niveles numéricos paralelos (históricamente separados, no unificados en una sola fuente):
 - `roles.ts:ROLE_HIERARCHY` — menor número = mayor rango (1-8), usado en `canManageRole()`
 - `permissions.ts:roleLevels` — mayor número = mayor rango (15-100), usado en `hasPermission()`
+
+`STAFF` aparece solo en `permissions.ts:roleLevels` (nivel 10, legado) — **no** está en `ROLE_HIERARCHY` ni se asigna a usuarios; no cuenta como rol canónico.
 
 ### 3.3 Sistema de Permisos — 4 Capas
 
@@ -333,22 +423,25 @@ PERMISSIONS = { CONFIGURE_ROLES: 70, APPROVE_TRANSFERS: 40,
 
 #### Capa 4 — `src/lib/constants/permissions-registry.ts` *(nuevo)*
 
-Catálogo de **17 permisos granulares** con resolución por usuario:
+Catálogo de **25 permisos granulares** con resolución por usuario:
 
 ```typescript
 // Permisos disponibles (PERM keys):
-// POS: VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS, REPRINT_COMANDA
-// Inventario: ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV
-// Financiero: EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES
-// Admin: MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST
+// POS/Ventas (6): VOID_ORDER, APPLY_DISCOUNT, APPROVE_DISCOUNT, VIEW_ALL_ORDERS,
+//                 VIEW_SALES_HISTORY, REPRINT_COMANDA
+// Inventario (3): ADJUST_STOCK, APPROVE_TRANSFER, CLOSE_DAILY_INV
+// Financiero (5): EXPORT_SALES, VIEW_COSTS, OPEN_CASH_REGISTER, CLOSE_CASH_REGISTER, VIEW_FINANCES
+// Admin (4): MANAGE_USERS, MANAGE_PINS, CONFIGURE_SYSTEM, MANAGE_BROADCAST
+// Reportes (7): REPORTES_VENTAS_VER, REPORTES_OPERATIVOS_VER, REPORTES_INVENTARIO_VER,
+//               REPORTES_COMPRAS_VER, REPORTES_GERENCIAL_VER, REPORTES_FISCAL_VER, REPORTES_EXPORTAR
 
-// ROLE_BASE_PERMS — set base por rol (sin override)
+// ROLE_BASE_PERMS — set base por rol (sin override). OWNER = Object.values(PERM) (todos)
 // Resolución final: base ∪ grantedPerms - revokedPerms
 resolvePerms(role, grantedPerms?, revokedPerms?) → Set<PermKey>
 canDo(role, perm, grantedPerms?, revokedPerms?)   → boolean
 ```
 
-`PERM_GROUPS` — 4 grupos para la UI (POS/Ventas, Inventario, Financiero, Administración).
+`PERM_GROUPS` — **5 grupos** para la UI (POS/Ventas, Inventario, Financiero, Administración, Reportes).
 `PERM_LABELS` — etiquetas y descripciones legibles para cada permiso.
 
 **Flujo de resolución**: El JWT carga `grantedPerms`/`revokedPerms` en la sesión (`auth.actions.ts`). `resolvePerms()` aplica la fórmula `base ∪ granted − revoked` en runtime — no hay cache, siempre calculado desde la sesión.
@@ -1854,7 +1947,15 @@ Toggle por `orderType`:
 
 ## 14. Visión Multi-Tenant (diseñar para ello, NO implementar ahora)
 
-### Estado actual
+> ⚠️ **DESACTUALIZADO (histórico).** Esta sección describe el plan original de
+> mayo 2026. **Multi-tenant YA está implementado y en producción** desde §43:
+> `tenantId` NOT NULL en ~67 modelos, `resolveTenantContext()` + `withTenant()`,
+> aislamiento auditado (`scripts/audit-tenant-isolation.ts`), demo tenant como
+> sandbox de prospectos. **Para el estado real ver §43 (multi-tenant en prod),
+> §44 (tenants en producción) y §45 (pre-flight onboarding).** Se conserva este
+> texto solo como registro de la decisión de diseño.
+
+### Estado actual (mayo 2026 — superado)
 - 1 BD por cliente (instancias separadas)
 - Sin `tenantId` en ningún modelo
 
@@ -8767,6 +8868,10 @@ fichas basura). 6 tests.
 
 ## §49 POS Mesero — cuenta al cliente: 10% siempre visible + propina sobre neto (2026-06-06)
 
+> ⚠️ **SUPERSEDIDO en parte.** El primer fix (PR #276) introdujo un bug de
+> línea duplicada del 10%. La versión vigente está en **§49 (corregido)** y
+> **§49.1** más abajo. Se conserva este bloque por el contexto del caso real.
+
 Bug detectado durante el servicio del 6/6 (foto IMG_2614 vs IMG_2615): el POS
 Mesero le muestra al cliente un total **distinto** al que la cajera cobra.
 
@@ -8796,7 +8901,7 @@ Fix (PR #276):
 - `OpenTabSummary` ahora declara `serviceType`. Default `TABLE_SERVICE` por
   defensa si el campo no llegara (sesiones cacheadas).
 
-## §49 (corregido) POS Mesero — UNA sola línea del 10% servicio, no duplicado
+## §49.bis (corregido) POS Mesero — UNA sola línea del 10% servicio, no duplicado
 
 **Bug del PR #276 (mi fix anterior):** agregué una línea NUEVA "Servicio (10%)"
 al preview del mesero porque pensé que faltaba. Pero la línea "Propina (10%)"
@@ -10286,7 +10391,7 @@ el pedido HOY sin depender del cambio en n8n.
 Tests: `src/lib/delivery/print.test.ts` (+5: items como string). Gates: tsc 0 ·
 vitest 431 passed.
 
-## §63 Propina colectiva con código propio PROP- + arqueo conciliable (2026-06-16)
+## §64 Propina colectiva con código propio PROP- + arqueo conciliable (2026-06-16)
 
 **Pedido del dueño:** la cajera cuadra un Excel manual de arqueo contra el
 sistema y siempre hay desfase. La **propina colectiva** tomaba el código de
@@ -10322,3 +10427,66 @@ Export activo: `arqueo-excel-utils.ts` (ExcelJS) vía `/api/arqueo`.
 `export-arqueo-excel.ts` (XLSX) es código muerto (sin importadores).
 
 Gates: tsc 0 · vitest 431 passed.
+
+---
+
+## §63 Importador de recetas desde CSV (2026-06-09, PRs #298/#299)
+
+> Cronológicamente previo a §58/§59 (su lugar en el tiempo está entre §57 y
+> §58); se numera §63 para no renumerar el changelog. Es un script de carga
+> masiva, **no** un módulo de UI.
+
+Herramienta de línea de comandos para cargar las recetas del chef (exportadas
+a CSV desde Excel) directo a la BD, sin tipeo manual ítem por ítem. Vive en
+`scripts/import-recetas.ts` con los CSV fuente en `scripts/data/`.
+
+### 63.1 Uso
+
+```bash
+# ENSAYO (default, no escribe en BD — reporta qué haría):
+npx tsx scripts/import-recetas.ts scripts/data/recetas-produccion.csv
+# Aplicar:
+npx tsx scripts/import-recetas.ts scripts/data/recetas-produccion.csv --apply
+# Recetas finales (producto vendible) en vez de sub-receta:
+npx tsx scripts/import-recetas.ts <csv> --type=FINISHED_GOOD
+# Solo parsear el CSV sin tocar BD (debug de formato):
+npx tsx scripts/import-recetas.ts <csv> --parse-only
+```
+
+Se corre **en el VPS**, donde `DATABASE_URL` apunta a producción. El modo
+ensayo (sin `--apply`) es el default deliberado: nunca escribe sin confirmación
+explícita.
+
+### 63.2 Semántica de REEMPLAZO (decisión del dueño)
+
+- **Receta existente** (match por nombre normalizado): se le **borran los
+  ingredientes y se recrean** desde el CSV; el `outputItem` y sus vínculos al
+  menú quedan intactos; `version += 1`.
+- **Receta nueva**: crea el `InventoryItem` de salida (`type` según `--type`,
+  default `SUB_RECIPE`, `outputQuantity` 1 KG ajustable luego en UI).
+- **Nunca** borra recetas que no estén en el CSV.
+- Solo aplica recetas cuyos ingredientes matchearon **todos** contra el
+  inventario; el resto se reporta para corregir manualmente.
+
+### 63.3 Parsing robusto (CSV real del chef)
+
+- **Matching de ingredientes** por nombre normalizado (minúsculas, sin acentos,
+  espacios colapsados) contra `InventoryItem` activo (`RAW_MATERIAL` |
+  `SUB_RECIPE`) + los outputItems nuevos de la misma corrida (recetas usadas
+  como ingrediente de otras, ej. "Yogurt").
+- **Unidades** normalizadas vía `UNIT_MAP` (GR/GRS→G, LT/LTS→L, UND/UNID→UNIT…);
+  unidades no estándar (PIZCA, CUCH, AL GUSTO) se marcan como advertencia.
+- **Cantidades**: tolera coma decimal (`3,6`→3.6), fracciones (`1/2 KG`→0.5),
+  texto (`Al gusto`/`-`/`/`→null con flag), unidades pegadas (`10 KG`→10).
+- **Dos formatos**: Formato A (producción, lista plana) y **Formato B
+  (restaurante)**: bloques con fila `INGREDIENTES,<tam1>,<tam2>…` que generan
+  **una receta por tamaño** — así cada receta matchea el ítem del POS por
+  tamaño (espejo del POS). Salta armados de menú (`Arma tu…`, `Degustación`)
+  donde el cliente elige opciones y no hay receta fija.
+
+### 63.4 Reporte de huérfanos (#299)
+
+Tras la corrida, lista recetas del CSV cuyos ingredientes no matchearon y
+productos del menú sin receta vinculada, para que el chef corrija nombres o
+cree los SKU faltantes. Ningún cambio destructivo: es un diagnóstico de
+cobertura.
