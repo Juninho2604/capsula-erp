@@ -1,21 +1,46 @@
 /**
- * Soft-delete de TODAS las recetas activas de un tenant (carga inicial nueva).
+ * Soft-delete SELECTIVO de recetas: borra solo las PREPARACIONES (comida que se
+ * va a reemplazar con la carga nueva) y PRESERVA intactos los productos de
+ * REVENTA y las BEBIDAS — esos no se tocan, siguen descontando stock.
  *
- * Reversible: setea `deletedAt` (y isActive=false). NO borra filas ni cascada a
- * ingredientes — se pueden recuperar con un UPDATE deletedAt=NULL si hace falta.
- * No toca `MenuItem.recipeId` (el re-vínculo lo hace relink-menu-recipes.ts tras
- * importar las nuevas; mientras tanto el POS simplemente no descuenta esos
- * productos, porque la receta soft-deleteada deja de resolverse).
+ * Clasificación (determinista):
+ *   PRESERVAR (no se borra) si:
+ *     - el item de salida tiene `beverageCategory` (cerveza, vino, trago, etc.), o
+ *     - la receta es 1:1 auto-referenciada (único ingrediente == el output) →
+ *       producto de reventa tal cual (Pepsi, agua, Stella, ticket…), o
+ *     - la receta no tiene ingredientes (passthrough/dudosa → no se borra).
+ *   BORRAR (soft-delete) el resto = preparaciones con ingredientes propios.
  *
- * Uso (en el VPS, con DATABASE_URL de producción):
- *   npx tsx scripts/soft-delete-recipes.ts            # ENSAYO (no escribe — lista qué haría)
- *   npx tsx scripts/soft-delete-recipes.ts --apply    # aplica el soft-delete
+ * Reversible: setea `deletedAt` (e isActive=false). No borra filas. No toca
+ * `MenuItem.recipeId` (el re-vínculo de la comida lo hace relink-menu-recipes.ts).
  *
- * Recomendado: hacer un backup/snapshot de la BD antes de --apply.
+ * Uso (en el VPS, DATABASE_URL de producción):
+ *   npx tsx scripts/soft-delete-recipes.ts            # ENSAYO (lista qué borraría / preservaría)
+ *   npx tsx scripts/soft-delete-recipes.ts --apply    # aplica el soft-delete a las preparaciones
+ *   npx tsx scripts/soft-delete-recipes.ts --all      # (peligroso) borra TODAS, sin preservar reventa/bebidas
+ *
+ * Recomendado: backup de la BD antes de --apply.
  */
 import { PrismaClient } from '@prisma/client';
 
 const APPLY = process.argv.includes('--apply');
+const ALL = process.argv.includes('--all'); // override: borrar todo sin preservar
+
+interface Rec {
+  id: string;
+  name: string;
+  outputItemId: string;
+  outputItem: { beverageCategory: string | null } | null;
+  ingredients: { ingredientItemId: string }[];
+}
+
+/** true = preservar (reventa o bebida); false = preparación (borrar). */
+function isResaleOrBeverage(r: Rec): boolean {
+  if (r.outputItem?.beverageCategory) return true;                       // bebida
+  if (r.ingredients.length === 0) return true;                          // sin ingredientes → no tocar
+  if (r.ingredients.length === 1 && r.ingredients[0].ingredientItemId === r.outputItemId) return true; // reventa 1:1
+  return false;                                                          // preparación
+}
 
 async function main() {
   const prisma = new PrismaClient();
@@ -27,34 +52,38 @@ async function main() {
 
   const recipes = await prisma.recipe.findMany({
     where: { tenantId: tenant.id, deletedAt: null },
-    select: { id: true, name: true },
+    select: {
+      id: true, name: true, outputItemId: true,
+      outputItem: { select: { beverageCategory: true } },
+      ingredients: { select: { ingredientItemId: true } },
+    },
     orderBy: { name: 'asc' },
-  });
-  const linkedMenu = await prisma.menuItem.count({
-    where: { tenantId: tenant.id, recipeId: { not: null } },
-  });
+  }) as Rec[];
+
+  const keep = ALL ? [] : recipes.filter(isResaleOrBeverage);
+  const del = ALL ? recipes : recipes.filter((r) => !isResaleOrBeverage(r));
 
   console.log(`\nTenant: ${tenant.name}`);
-  console.log(`Recetas activas a soft-deletear: ${recipes.length}`);
-  console.log(`Modo: ${APPLY ? '🔴 APLICAR (soft-delete)' : '🟡 ENSAYO (no escribe)'}\n`);
-  for (const r of recipes) console.log(`  - ${r.name}`);
+  console.log(`Recetas activas: ${recipes.length}`);
+  console.log(`Modo: ${APPLY ? '🔴 APLICAR' : '🟡 ENSAYO (no escribe)'}${ALL ? '  ⚠ --all (sin preservar)' : ''}\n`);
 
-  console.log(`\n⚠ ${linkedMenu} producto(s) del menú tienen receta vinculada hoy.`);
-  console.log('  Tras el soft-delete dejarán de descontar inventario hasta re-vincularlos');
-  console.log('  (correr el import nuevo + scripts/relink-menu-recipes.ts).');
+  console.log(`🟢 PRESERVADAS (reventa/bebidas, NO se tocan): ${keep.length}`);
+  for (const r of keep) console.log(`   ${r.name}`);
+  console.log(`\n🔴 A BORRAR (preparaciones): ${del.length}`);
+  for (const r of del) console.log(`   ${r.name}`);
 
   if (!APPLY) {
-    console.log('\n🟡 ENSAYO — nada se borró. Corré con --apply para aplicar el soft-delete.');
+    console.log('\n🟡 ENSAYO — nada se borró. Revisá las dos listas; corré con --apply cuando estén bien.');
     await prisma.$disconnect();
     return;
   }
 
   const res = await prisma.recipe.updateMany({
-    where: { tenantId: tenant.id, deletedAt: null },
+    where: { tenantId: tenant.id, id: { in: del.map((r) => r.id) } },
     data: { deletedAt: new Date(), isActive: false },
   });
-  console.log(`\n✅ Soft-delete aplicado a ${res.count} receta(s). Recuperable: están con deletedAt seteado.`);
-  console.log('   Para recuperar todo: UPDATE "Recipe" SET "deletedAt"=NULL, "isActive"=true WHERE "tenantId"=\'' + tenant.id + '\';');
+  console.log(`\n✅ Soft-delete aplicado a ${res.count} preparación(es). Reventa/bebidas intactas.`);
+  console.log(`   Recuperar todo lo borrado: UPDATE "Recipe" SET "deletedAt"=NULL,"isActive"=true WHERE "tenantId"='${tenant.id}' AND "deletedAt" IS NOT NULL;`);
   await prisma.$disconnect();
 }
 
