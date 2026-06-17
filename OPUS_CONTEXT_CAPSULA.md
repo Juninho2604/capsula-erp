@@ -10695,8 +10695,12 @@ Herramientas (todas **dry-run por defecto**, destructivo solo con `--apply`):
   placeholder (RAW_MATERIAL, categoría `IMPORT_REVISAR`, costo 0) por cada
   ingrediente sin match → **ninguna receta queda bloqueada**; todo entra y queda
   editable. Los placeholders se revisan/fusionan luego en Inventario.
-- `scripts/soft-delete-recipes.ts` — soft-delete de todas las recetas activas del
-  tenant (reversible vía `UPDATE deletedAt=NULL`).
+- `scripts/soft-delete-recipes.ts` — soft-delete **selectivo**: borra solo las
+  PREPARACIONES y **preserva** reventa/bebidas (decisión del dueño 17/06: no borrar
+  productos de reventa ni bebidas que no ameritan preparación). Clasifica como
+  reventa/bebida si el output tiene `beverageCategory`, o la receta es 1:1
+  auto-referenciada (único ingrediente == output, patrón de `createResaleProductAction`),
+  o no tiene ingredientes. Reversible (`deletedAt`). Flag `--all` para borrar todo.
 - `scripts/relink-menu-recipes.ts` — re-vincula `MenuItem.recipeId` por nombre
   normalizado (exacto, o prefijo para recetas por tamaño); reporta ambiguos/sin match.
 
