@@ -18,11 +18,13 @@
  *   npx tsx scripts/soft-delete-recipes.ts            # ENSAYO (desglose + listas)
  *   npx tsx scripts/soft-delete-recipes.ts --apply    # aplica el soft-delete a los platos
  *   npx tsx scripts/soft-delete-recipes.ts --all      # (peligroso) borra TODAS, sin preservar
+ *
+ * Recomendado: backup de la BD antes de --apply.
  */
 import { PrismaClient } from '@prisma/client';
 
 const APPLY = process.argv.includes('--apply');
-const ALL = process.argv.includes('--all');
+const ALL = process.argv.includes('--all'); // override: borrar todo sin preservar
 
 interface Rec {
   id: string;
