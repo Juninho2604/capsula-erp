@@ -10645,3 +10645,33 @@ const showFinance = !!session && roleAllowsFinance
   cambios de privilegio → no se hace.
 
 Gates: tsc 0 · vitest 440 passed.
+
+### §66.3 Fase 3b — RoleBasedSections/getEstadisticasAction respeta el submódulo (2026-06-16)
+
+Cierra la última fuga financiera del dashboard. `getEstadisticasAction` alimenta
+`RoleBasedSections` (vistas Admin/Ops/Chef/Auditor). Sus datos financieros se
+gateaban con `isAdmin || isAuditor` (por rol) → un OWNER/ADMIN_MANAGER/AUDITOR con
+finanzas revocadas en `/dashboard/usuarios` igual veía breakdown de pagos,
+descuentos, anuladas y ventas del día.
+
+**Fix (`src/app/actions/estadisticas.actions.ts`):** se reemplazaron SOLO los 7
+gates **puramente financieros** `isAdmin || isAuditor` por `showFinance` (misma
+composición no-regresiva de §66.2): ventas ayer, ventas mes, cuentas abiertas,
+propinas, paymentBreakdown, discountBreakdown, voidedOrders. Además el bloque
+`today` (revenue/orders/discounts/avgTicket) se gatea por `showFinance || isCashier`
+(único consumidor en UI: `AuditorView`; la cajera conserva su vista propia).
+
+**No regresivo — verificado leyendo `RoleBasedSections.tsx`:**
+- OPS_MANAGER/AREA_LEAD muestran `paymentBreakdown` (OpsView) y NO tienen
+  VIEW_FINANCES por base → `showFinance` queda `true` siempre → no pierden nada.
+- CHEF/KITCHEN_CHEF: gates operativos intactos (`isAdmin || isAuditor || isChef`
+  stock, `isChef || isAdmin` cocina/producción, `isAdmin || isChef` top items). No
+  usan `today`.
+- CASHIER/WAITER: no se renderizan; `today` propio preservado vía `isCashier`.
+- OWNER/ADMIN_MANAGER/AUDITOR: respetan módulos + revoke → consistente con §66 (F1)
+  y §66.2 (F3).
+- Forma del return intacta (los `Promise.resolve` de fallback ya existían) → cero
+  riesgo de romper el dashboard. `permUser` se arma de la sesión (sin query extra).
+
+Único caller de `getEstadisticasAction`: `dashboard/page.tsx`. Sin cambios de
+schema/DB. Gates: tsc 0 · vitest 440 passed.

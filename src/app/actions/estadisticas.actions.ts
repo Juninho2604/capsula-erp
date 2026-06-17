@@ -6,6 +6,8 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { getCaracasDayRange, getCaracasNowParts } from '@/lib/datetime';
 import { revenueWhere, propinasWhere } from '@/lib/sales-where';
+import { hasPermission } from '@/lib/permissions/has-permission';
+import { PERM, ROLE_BASE_PERMS } from '@/lib/constants/permissions-registry';
 
 // ============================================================================
 // TIPOS
@@ -67,6 +69,20 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
     const isChef = role === 'CHEF' || role === 'KITCHEN_CHEF';
     const isAuditor = role === 'AUDITOR';
     const isAdmin = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'].includes(role);
+    // Gate financiero NO regresivo (Fase 3b — §66.3): reemplaza los gates
+    // PURAMENTE financieros `isAdmin || isAuditor`. Los roles con VIEW_FINANCES
+    // por base (OWNER/ADMIN_MANAGER/AUDITOR) respetan lo configurado en
+    // /dashboard/usuarios (módulos + revoke); los que NO la tienen por base
+    // (OPS_MANAGER/AREA_LEAD) conservan el acceso histórico → sin regresión.
+    // Los gates operativos (stock, cocina, producción, top items) NO se tocan.
+    const permUser = {
+      role,
+      allowedModules: session.allowedModules ?? null,
+      grantedPerms: session.grantedPerms ?? null,
+      revokedPerms: session.revokedPerms ?? null,
+    };
+    const baseHasFinance = (ROLE_BASE_PERMS[role] ?? []).includes(PERM.VIEW_FINANCES);
+    const showFinance = (isAdmin || isAuditor) && (!baseHasFinance || hasPermission(permUser, PERM.VIEW_FINANCES));
 
     // ── Queries paralelas base (todos los roles) ─────────────────────────────
     const [
@@ -87,7 +103,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         _count: { id: true },
       }),
       // Ventas ayer (solo admin+)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.aggregate({
             where: revenueWhere(yesterdayStart, yesterdayEnd),
             _sum: { total: true },
@@ -95,7 +111,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
           })
         : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
       // Ventas mes (rango abierto hasta ahora)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.aggregate({
             where: {
               status: { not: 'CANCELLED' },
@@ -107,7 +123,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
           })
         : Promise.resolve({ _sum: { total: null }, _count: { id: 0 } }),
       // Cuentas abiertas
-      isAdmin || isAuditor
+      showFinance
         ? db.openTab.aggregate({
             where: { status: 'OPEN' },
             _count: { id: true },
@@ -138,7 +154,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
           )
         : Promise.resolve([]),
       // Propinas colectivas hoy (admin + auditor)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.aggregate({
             where: propinasWhere(todayStart, todayEnd),
             _sum: { total: true },
@@ -159,7 +175,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
       inventoryVariances,
     ] = await Promise.all([
       // Breakdown por método de pago (admin + auditor)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.groupBy({
             by: ['paymentMethod'],
             where: {
@@ -200,7 +216,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve([]),
 
       // Breakdown de descuentos hoy (admin + auditor)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.findMany({
             where: {
               createdAt: { gte: todayStart, lte: todayEnd },
@@ -223,7 +239,7 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         : Promise.resolve([]),
 
       // Órdenes anuladas hoy (auditor + admin)
-      isAdmin || isAuditor
+      showFinance
         ? db.salesOrder.findMany({
             where: {
               voidedAt: { gte: todayStart, lte: todayEnd },
@@ -334,11 +350,16 @@ export async function getEstadisticasAction(): Promise<{ success: boolean; data?
         role,
         userName: `${session.firstName} ${session.lastName}`,
         today: {
-          revenue: todayRevenue,
-          orders: todayOrders,
-          discounts: Number(todayAgg._sum.discount || 0),
+          // Campos financieros del día: solo si el usuario puede ver finanzas
+          // (único consumidor en UI: AuditorView). `voided` ya sigue a
+          // voidedOrders (gateado). isCashier conserva su propia vista (su
+          // todayAgg ya viene filtrado por createdById). Sin regresión: OPS/
+          // AREA_LEAD mantienen showFinance=true; CHEF no muestra `today`.
+          revenue: showFinance || isCashier ? todayRevenue : 0,
+          orders: showFinance || isCashier ? todayOrders : 0,
+          discounts: showFinance ? Number(todayAgg._sum.discount || 0) : 0,
           voided: voidedOrders.length,
-          avgTicket: todayOrders > 0 ? todayRevenue / todayOrders : 0,
+          avgTicket: (showFinance || isCashier) && todayOrders > 0 ? todayRevenue / todayOrders : 0,
         },
         yesterday: {
           revenue: Number(yesterdayAgg._sum.total || 0),
