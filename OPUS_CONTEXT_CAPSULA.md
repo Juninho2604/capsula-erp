@@ -10675,3 +10675,46 @@ propinas, paymentBreakdown, discountBreakdown, voidedOrders. Además el bloque
 
 Único caller de `getEstadisticasAction`: `dashboard/page.tsx`. Sin cambios de
 schema/DB. Gates: tsc 0 · vitest 440 passed.
+
+### §63.5 Recarga inicial de recetas (2026-06-17): soft-delete + import crudo + re-vínculo
+
+Operación pedida por el dueño: borrar TODAS las recetas viejas y cargar las
+nuevas (CSVs "RECETAS ACTUALIZADAS": `scripts/data/recetas-centro-produccion-2026-06.csv`
+y `recetas-servicio-completo-2026-06.csv`), priorizando que queden **editables en
+la UI** (no se invierte en limpieza previa de nomenclatura — se importa "crudo").
+
+Hechos del schema que hacen segura la operación:
+- `Recipe` tiene **soft-delete** (`deletedAt`) → el borrado es reversible.
+- El costo de venta es **snapshot** en `SalesOrderItem.costPerUnit/costTotal` → el
+  historial/márgenes NO se alteran al recargar recetas.
+- `MenuItem.recipeId` apunta directo a la receta → al recargar con ids nuevos, los
+  productos quedan **sin descuento** hasta re-vincular (paso explícito).
+
+Herramientas (todas **dry-run por defecto**, destructivo solo con `--apply`):
+- `scripts/import-recetas.ts --create-missing` (NUEVO modo): crea un InventoryItem
+  placeholder (RAW_MATERIAL, categoría `IMPORT_REVISAR`, costo 0) por cada
+  ingrediente sin match → **ninguna receta queda bloqueada**; todo entra y queda
+  editable. Los placeholders se revisan/fusionan luego en Inventario.
+- `scripts/soft-delete-recipes.ts` — soft-delete de todas las recetas activas del
+  tenant (reversible vía `UPDATE deletedAt=NULL`).
+- `scripts/relink-menu-recipes.ts` — re-vincula `MenuItem.recipeId` por nombre
+  normalizado (exacto, o prefijo para recetas por tamaño); reporta ambiguos/sin match.
+
+**Runbook (en el VPS, DATABASE_URL de producción), en orden:**
+```bash
+# 0. BACKUP de la BD primero.
+# 1. Ensayo de import (ver alcance, sin escribir):
+npx tsx scripts/import-recetas.ts scripts/data/recetas-centro-produccion-2026-06.csv
+npx tsx scripts/import-recetas.ts scripts/data/recetas-servicio-completo-2026-06.csv
+# 2. Soft-delete de las viejas (ensayo y luego aplicar):
+npx tsx scripts/soft-delete-recipes.ts
+npx tsx scripts/soft-delete-recipes.ts --apply
+# 3. Import crudo (producción PRIMERO — son sub-recetas usadas por servicio):
+npx tsx scripts/import-recetas.ts scripts/data/recetas-centro-produccion-2026-06.csv --apply --create-missing
+npx tsx scripts/import-recetas.ts scripts/data/recetas-servicio-completo-2026-06.csv --apply --create-missing --type=FINISHED_GOOD
+# 4. Re-vincular menú (ensayo y luego aplicar):
+npx tsx scripts/relink-menu-recipes.ts
+npx tsx scripts/relink-menu-recipes.ts --apply
+```
+Las recetas creadas son filas `Recipe` normales → editables desde el módulo Recetas
+(`updateRecipeAction`) por OWNER/ADMIN_MANAGER/OPS_MANAGER/CHEF.

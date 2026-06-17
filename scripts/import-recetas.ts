@@ -6,6 +6,7 @@
  *   npx tsx scripts/import-recetas.ts scripts/data/recetas-produccion.csv --apply       # aplica
  *   npx tsx scripts/import-recetas.ts <csv> --type=FINISHED_GOOD                        # para recetas finales
  *   npx tsx scripts/import-recetas.ts <csv> --parse-only                                # solo parseo, sin DB
+ *   npx tsx scripts/import-recetas.ts <csv> --apply --create-missing                    # crea insumos faltantes → nada queda bloqueado
  *
  * Semántica REEMPLAZO (pedido del dueño):
  *  - Receta que YA existe (match por nombre normalizado): se le BORRAN los
@@ -30,6 +31,11 @@ const args = process.argv.slice(2);
 const csvPath = args.find((a) => !a.startsWith('--'));
 const APPLY = args.includes('--apply');
 const PARSE_ONLY = args.includes('--parse-only');
+// --create-missing: crea un InventoryItem placeholder (RAW_MATERIAL, categoría
+// IMPORT_REVISAR, costo 0) para cada ingrediente sin match, de modo que NINGUNA
+// receta quede bloqueada. Todo entra y queda editable en la UI para corregir
+// nombres/costos. Pensado para una carga inicial "cruda".
+const CREATE_MISSING = args.includes('--create-missing');
 const TYPE = (args.find((a) => a.startsWith('--type='))?.split('=')[1] ?? 'SUB_RECIPE') as
   | 'SUB_RECIPE' | 'FINISHED_GOOD';
 if (!csvPath) { console.error('Uso: npx tsx scripts/import-recetas.ts <csv> [--apply|--parse-only] [--type=SUB_RECIPE|FINISHED_GOOD]'); process.exit(1); }
@@ -337,8 +343,11 @@ async function main() {
     const unmatched = resolved.filter((x) => !x.itemId && x.via === 'NO ENCONTRADO');
     for (const u of unmatched) totalUnmatched.set(u.line.name, (totalUnmatched.get(u.line.name) ?? 0) + 1);
 
-    const status = unmatched.length === 0 ? (existing ? 'REEMPLAZAR' : 'CREAR') : 'BLOQUEADA';
-    if (status === 'BLOQUEADA') blocked++; else ok++;
+    // Con --create-missing los ingredientes sin match se crean como placeholder,
+    // así que la receta NO se bloquea (entra completa, editable luego en la UI).
+    const willBlock = unmatched.length > 0 && !CREATE_MISSING;
+    const status = willBlock ? 'BLOQUEADA' : (existing ? 'REEMPLAZAR' : 'CREAR');
+    if (willBlock) blocked++; else ok++;
 
     console.log(`\n${status === 'BLOQUEADA' ? '✗' : '✓'} [${status}] ${r.name} — ${r.lines.length} ingredientes${existing ? ` (existe v${existing.version})` : ''}`);
     for (const x of resolved) {
@@ -375,6 +384,39 @@ async function main() {
   // ── APLICAR (solo recetas completamente macheadas) ──
   console.log('\n🔴 Aplicando…');
   let skuSeq = Date.now() % 100000;
+
+  // Pass 0 (--create-missing): crear insumos placeholder para ingredientes sin
+  // match, así NINGUNA receta queda bloqueada. Quedan marcados (categoría
+  // IMPORT_REVISAR, costo 0) para corregir/fusionar en la UI luego.
+  if (CREATE_MISSING) {
+    const missing = new Map<string, Line>(); // norm(nombre) → ejemplo de línea (para la unidad base)
+    for (const p of plan) for (const x of p.resolved) {
+      if (!x.itemId && x.via === 'NO ENCONTRADO') {
+        const k = norm(x.line.name);
+        if (!missing.has(k)) missing.set(k, x.line);
+      }
+    }
+    for (const [k, line] of missing) {
+      const baseUnit =
+        line.unit === 'KG' || line.unit === 'G' ? 'KG'
+        : line.unit === 'L' || line.unit === 'ML' ? 'L'
+        : line.unit === 'UNIT' || line.unit === 'PIEZA' ? 'UNIT' : 'KG';
+      const sku = `IMP-${line.name.replace(/[^A-Za-z]/g, '').substring(0, 4).toUpperCase()}-${(skuSeq++).toString().padStart(5, '0')}`;
+      const it = await prisma.inventoryItem.create({
+        data: { tenantId: tenant.id, name: line.name, sku, type: 'RAW_MATERIAL', baseUnit, category: 'IMPORT_REVISAR', isActive: true },
+      });
+      itemByName.set(k, { id: it.id, name: it.name, sku: it.sku, type: 'RAW_MATERIAL', baseUnit });
+      console.log(`  + insumo placeholder (revisar): ${line.name} [${sku}] baseUnit=${baseUnit}`);
+    }
+    // Re-resolver los planes con el mapa de insumos ya actualizado.
+    for (const p of plan) for (const x of p.resolved) {
+      if (!x.itemId && x.via === 'NO ENCONTRADO') {
+        const it = itemByName.get(norm(x.line.name));
+        if (it) { x.itemId = it.id; x.via = it.sku; }
+      }
+    }
+    if (missing.size) console.log(`  (creados ${missing.size} insumos placeholder — revisar/fusionar en Inventario, categoría IMPORT_REVISAR)`);
+  }
   // Pass 1: crear outputItems de recetas nuevas aplicables (habilita sub-recetas como ingrediente)
   const outputOverride = new Map<string, string>(); // norm(nombre receta) → outputItemId forzado
   for (const p of plan) {
