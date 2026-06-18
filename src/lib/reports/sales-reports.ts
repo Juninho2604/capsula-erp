@@ -169,6 +169,7 @@ export async function getSalesByChannel(f: ReportFilters): Promise<SalesByDimens
         SELECT
             CASE
                 WHEN o."orderType" = 'PEDIDOSYA' OR o."sourceChannel" = 'POS_PEDIDOSYA' THEN 'PEDIDOSYA'
+                WHEN o."orderType" = 'WINK' OR o."sourceChannel" = 'POS_WINK' THEN 'WINK'
                 WHEN o."orderType" = 'DELIVERY' THEN 'DELIVERY'
                 WHEN o."serviceFlow" = 'OPEN_TAB' THEN 'MESA'
                 WHEN o."notes" LIKE '%Venta Directa Pickup%' THEN 'PICKUP'
@@ -184,7 +185,7 @@ export async function getSalesByChannel(f: ReportFilters): Promise<SalesByDimens
     `);
     const LABELS: Record<string, string> = {
         MESA: 'Mesas (restaurante)', PICKUP: 'Pickup / mostrador', DELIVERY: 'Delivery',
-        PEDIDOSYA: 'PedidosYA', MANUAL_ENTRY: 'Carga manual', OTRO: 'Otros',
+        PEDIDOSYA: 'PedidosYA', WINK: 'WINK', MANUAL_ENTRY: 'Carga manual', OTRO: 'Otros',
     };
     return rows.map(r => ({
         key: r.key,
