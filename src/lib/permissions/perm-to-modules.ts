@@ -18,12 +18,12 @@ import { PERM, type PermKey } from '@/lib/constants/permissions-registry';
 
 export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     // ── POS — transversales entre canales ────────────────────────────────────
-    [PERM.VOID_ORDER]:          ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'sales_history'],
-    [PERM.APPLY_DISCOUNT]:      ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
-    [PERM.APPROVE_DISCOUNT]:    ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
+    [PERM.VOID_ORDER]:          ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'wink', 'sales_history'],
+    [PERM.APPLY_DISCOUNT]:      ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'wink'],
+    [PERM.APPROVE_DISCOUNT]:    ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'wink'],
     [PERM.VIEW_ALL_ORDERS]:     ['sales_history'],
     [PERM.VIEW_SALES_HISTORY]:  ['sales_history'],
-    [PERM.REPRINT_COMANDA]:     ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'sales_history'],
+    [PERM.REPRINT_COMANDA]:     ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'wink', 'sales_history'],
 
     // ── Inventario ───────────────────────────────────────────────────────────
     [PERM.ADJUST_STOCK]:        ['inventory', 'inventory_daily'],
@@ -42,6 +42,7 @@ export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     [PERM.MANAGE_PINS]:         ['users', 'mesoneros'],
     [PERM.CONFIGURE_SYSTEM]:    ['module_config'],
     [PERM.MANAGE_BROADCAST]:    ['anuncios'],
+    [PERM.EDIT_WINK_PRICE]:     ['menu', 'wink'],
 
     // ── Reportes (granular por familia) ──────────────────────────────────────
     [PERM.REPORTES_VENTAS_VER]:     ['reportes'],

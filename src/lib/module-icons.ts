@@ -49,6 +49,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     pos_waiter:        Smartphone,
     pos_delivery:      Bike,
     pedidosya:         Bike,
+    wink:              Truck,
     sales_entry:       PlusSquare,
     sales_history:     FileClock,
     kitchen_display:   Flame,

@@ -6,6 +6,7 @@ export type InvoiceChannel =
   | 'PICKUP'
   | 'RESTAURANT'
   | 'PEDIDOS_YA'
+  | 'WINK'
   | 'OPEN_TAB'
   | 'GAME_SESSION'
   | 'COLLECTIVE_TIP';
@@ -28,6 +29,7 @@ const PREFIX: Record<InvoiceChannel, string> = {
   PICKUP:        'PKP',
   RESTAURANT:    'REST',
   PEDIDOS_YA:    'PYA',
+  WINK:          'WNK',
   OPEN_TAB:      'TAB',
   GAME_SESSION:  'GSN',
   COLLECTIVE_TIP:'PROP',

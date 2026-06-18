@@ -75,7 +75,7 @@ export interface AgentKitchenPayload {
      * 'MESA', 'PICKUP', 'DELIVERY', 'PEDIDOSYA'. El `orderType` técnico
      * no distingue mesa de pickup; este label sí.
      */
-    orderTypeLabel?: 'MESA' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA';
+    orderTypeLabel?: 'MESA' | 'PICKUP' | 'DELIVERY' | 'PEDIDOSYA' | 'WINK';
     /**
      * Solo para comandas de mesa abierta. El agent lo imprime grande
      * arriba (ej. TAB-1512) y deja `orderNumber` chico debajo. Así

@@ -70,7 +70,7 @@ const SIDEBAR_TREE: SectionDef[] = [
         items: [
             {
                 kind: 'subgroup', id: 'sg-pos', label: 'POS', icon: '🖥️',
-                items: ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya'],
+                items: ['pos_restaurant', 'pos_waiter', 'pos_delivery', 'pedidosya', 'wink'],
             },
             {
                 kind: 'subgroup', id: 'sg-ventas', label: 'Ventas', icon: '📊',

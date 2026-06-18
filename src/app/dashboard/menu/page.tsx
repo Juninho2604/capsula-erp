@@ -24,6 +24,8 @@ import {
 } from '@/app/actions/menu.actions';
 import { getAreasAction } from '@/app/actions/areas.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
+import { updateMenuItemWinkPriceAction, canEditWinkPriceAction } from '@/app/actions/wink.actions';
+import toast from 'react-hot-toast';
 
 export default function MenuManagementPage() {
     const [categories, setCategories] = useState<any[]>([]);
@@ -64,6 +66,32 @@ export default function MenuManagementPage() {
     // Filtro sin receta
     const [showOnlyNoRecipe, setShowOnlyNoRecipe] = useState(false);
     const [creatingRecipeFor, setCreatingRecipeFor] = useState<string | null>(null);
+
+    // ¿Puede editar precios WINK? (solo gerentes — EDIT_WINK_PRICE)
+    const [canEditWink, setCanEditWink] = useState(false);
+    useEffect(() => {
+        canEditWinkPriceAction().then(setCanEditWink).catch(() => setCanEditWink(false));
+    }, []);
+
+    const handleWinkPriceChange = async (itemId: string, raw: string) => {
+        const trimmed = raw.trim();
+        const value = trimmed === '' ? null : parseFloat(trimmed);
+        if (value !== null && (isNaN(value) || value < 0)) return;
+
+        // Optimista
+        setCategories(prev => prev.map(cat => ({
+            ...cat,
+            items: cat.items.map((item: any) =>
+                item.id === itemId ? { ...item, winkPrice: value } : item
+            ),
+        })));
+
+        const res = await updateMenuItemWinkPriceAction(itemId, value);
+        if (!res.success) {
+            toast.error(res.message || 'No se pudo actualizar el precio WINK');
+            loadData(); // revertir desde el servidor
+        }
+    };
 
     // Cargar datos
     const loadData = async () => {
@@ -422,6 +450,33 @@ export default function MenuManagementPage() {
                                                     ${(item.pedidosYaPrice ?? calcPedidosYaPrice(item.price)).toFixed(2)}
                                                 </span>
                                             </div>
+                                            {/* WINK: editable solo por gerente (EDIT_WINK_PRICE). null = usa precio base. */}
+                                            {canEditWink ? (
+                                                <div
+                                                    className="flex items-center bg-capsula-ivory rounded-lg border border-capsula-coral/40 px-2 py-1 gap-1"
+                                                    title="Precio WINK — vacío usa el precio base. Solo gerentes."
+                                                >
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-capsula-coral">WINK $</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        defaultValue={item.winkPrice ?? ''}
+                                                        placeholder={item.price.toFixed(2)}
+                                                        onBlur={(e) => handleWinkPriceChange(item.id, e.target.value)}
+                                                        className="bg-transparent w-16 text-capsula-ink font-mono font-semibold text-xs focus:outline-none tabular-nums placeholder:text-capsula-ink-muted placeholder:font-normal"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    className="flex items-center bg-capsula-ivory-alt rounded-lg border border-capsula-line px-2 py-1 gap-1"
+                                                    title="Precio WINK"
+                                                >
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-capsula-ink-muted">WINK</span>
+                                                    <span className="text-capsula-ink-soft font-mono font-semibold text-xs tabular-nums">
+                                                        ${(item.winkPrice ?? item.price).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Switch Activo/Inactivo */}

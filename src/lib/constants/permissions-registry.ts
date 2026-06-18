@@ -37,6 +37,7 @@ export const PERM = {
   MANAGE_PINS:          'MANAGE_PINS',           // Asignar PINs a otros usuarios
   CONFIGURE_SYSTEM:     'CONFIGURE_SYSTEM',      // Módulos, métodos de pago, fees (solo OWNER)
   MANAGE_BROADCAST:     'MANAGE_BROADCAST',      // Crear/editar anuncios al equipo
+  EDIT_WINK_PRICE:      'EDIT_WINK_PRICE',       // Modificar el precio WINK de un producto (gerente)
 
   // Reportes — permisos granulares por familia (reportes.<familia>.ver)
   REPORTES_VENTAS_VER:      'REPORTES_VENTAS_VER',      // reportes.ventas.ver
@@ -87,6 +88,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.MANAGE_USERS,
     PERM.MANAGE_PINS,
     PERM.MANAGE_BROADCAST,
+    PERM.EDIT_WINK_PRICE,
     PERM.REPORTES_VENTAS_VER,
     PERM.REPORTES_OPERATIVOS_VER,
     PERM.REPORTES_INVENTARIO_VER,
@@ -111,6 +113,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.OPEN_CASH_REGISTER,
     PERM.CLOSE_CASH_REGISTER,
     PERM.MANAGE_BROADCAST,
+    PERM.EDIT_WINK_PRICE,
     // Reportes: operación completa SIN gerencial (solo roles administrativos)
     PERM.REPORTES_VENTAS_VER,
     PERM.REPORTES_OPERATIVOS_VER,
@@ -225,6 +228,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.VIEW_ALL_ORDERS]:     { label: 'Ver todas las órdenes', description: 'Ver historial de todas las cajeras' },
   [PERM.VIEW_SALES_HISTORY]:  { label: 'Ver historial de ventas', description: 'Historial de órdenes en solo lectura (sin método de pago, sin exportar ni anular)' },
   [PERM.REPRINT_COMANDA]:     { label: 'Re-imprimir comanda',   description: 'Volver a imprimir comanda de cocina' },
+  [PERM.EDIT_WINK_PRICE]:     { label: 'Editar precio WINK',    description: 'Modificar el precio WINK de un producto (gerente)' },
   [PERM.ADJUST_STOCK]:        { label: 'Ajustar inventario',    description: 'Crear ajuste manual de stock' },
   [PERM.APPROVE_TRANSFER]:    { label: 'Aprobar transferencias',description: 'Aprobar requisición de transferencia entre áreas' },
   [PERM.CLOSE_DAILY_INV]:     { label: 'Cerrar inv. diario',    description: 'Cerrar el inventario diario del turno' },

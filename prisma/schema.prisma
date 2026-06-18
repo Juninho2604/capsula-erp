@@ -962,6 +962,7 @@ model MenuItem {
   cost             Float? // Costo calculado (si tiene receta)
   pedidosYaPrice   Float? // Precio publicado en PedidosYA (override manual)
   pedidosYaEnabled Boolean @default(false) // Disponible en PedidosYA
+  winkPrice        Float? // Precio publicado en WINK (override manual; null = usar `price` base). Editable solo por gerente.
 
   // VinculaciÃ³n con inventario/receta (opcional)
   recipeId String? // Si el producto tiene receta para descontar insumos

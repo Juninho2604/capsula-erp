@@ -296,6 +296,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     tags: ['integration'],
   },
   {
+    id: 'wink',
+    label: 'WINK',
+    description: 'Registro de ventas del canal WINK (precio propio editable por gerente)',
+    icon: '🛵',
+    href: '/dashboard/pos/wink',
+    section: 'sales',
+    enabledByDefault: false,
+    sortOrder: 225,
+    tags: ['integration'],
+  },
+  {
     id: 'sales_entry',
     label: 'Cargar Ventas',
     description: 'Carga manual de ventas externas',

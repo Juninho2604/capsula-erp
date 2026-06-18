@@ -1151,6 +1151,16 @@ las excluye). Crédito/fiado y backfill quedan para iteraciones futuras.
 - **Estado**: Funcional
 - **enabledByDefault**: false
 
+### 6.4.1 WINK (canal de venta, espejo de PedidosYA)
+
+- **Ruta**: `/dashboard/pos/wink` · módulo `wink` (registry, `enabledByDefault: false`, icono `Truck`).
+- **Página**: `src/app/dashboard/pos/wink/page.tsx` — Client Component, copia adaptada de PedidosYA.
+- **Action**: `src/app/actions/wink.actions.ts` → `createWinkOrderAction(data)` (orderType `WINK`, sourceChannel `POS_WINK`, paymentMethod `WINK`, status PAID — WINK cobra). Descarga inventario por receta igual que PedidosYA/Delivery.
+- **Correlativo**: canal `WINK` → prefijo `WNK-####` (`invoice-counter.ts`).
+- **Precio**: campo `MenuItem.winkPrice Float?` (migración `20260618120000_add_wink_price_to_menuitem`). **Default = precio base** (`winkPrice ?? price`); NO hay fórmula de descuento (a diferencia de PedidosYA). Override editable **solo por gerente** vía `updateMenuItemWinkPriceAction` gated por `PERM.EDIT_WINK_PRICE` (otorgado a OWNER/ADMIN_MANAGER/OPS_MANAGER). UI en `/dashboard/menu`: input WINK editable si `canEditWinkPriceAction()` true, si no chip read-only.
+- **Reportes**: ya contemplado en Z/fin-de-día (`byType.wink` por `orderType === 'WINK'`) y agregado a `getSalesByChannel` (sales-reports.ts) con label `WINK`. print-command.ts ya tenía la fila Wink.
+- **Estado**: Funcional.
+
 ### 6.5 Cargar Ventas
 
 - **Ruta**: `/dashboard/ventas/cargar`
