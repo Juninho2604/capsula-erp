@@ -605,6 +605,7 @@ getModulesBySection(userRole, enabledIds?, userAllowed?)  → { operations, sale
 
 - **Ruta**: `/dashboard/inventario/diario`
 - **Página**: `src/app/dashboard/inventario/diario/page.tsx` — Server Component (carga áreas), Client Component interior
+- **Responsive (tablet/móvil)**: `daily-manager.tsx` rinde **dos vistas** del mismo dataset: tabla de 10 columnas solo en `lg:` (`hidden … lg:table`) y **tarjetas apiladas** en `< lg` (`lg:hidden`) con Apertura/Cierre editables + chips de los calculados. El contenedor suelta la altura fija en pantallas chicas (`lg:h-[calc(100vh-12rem)]`, sin `flex-1/overflow` bajo `lg`) para que la página scrollee natural y no se clipee en landscape. Tarjetas usan tokens capsula + 4 tonos de estado.
 - **Actions**: `inventory-daily.actions.ts` → 14 funciones:
   - `getDailyInventoryAction(dateStr, areaId)` — carga/crea inventario del día
   - `saveDailyInventoryCountsAction(dailyId, items[])` — guarda conteos
