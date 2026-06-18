@@ -361,7 +361,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
     const isProduction = selectedAreaName.toLowerCase().includes('producci');
 
     return (
-        <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-xl">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-xl lg:h-[calc(100vh-12rem)]">
 
             {/* Panel Filtros SKU críticos */}
             {showFilters && (
@@ -796,15 +796,124 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                 </div>
             )}
 
-            {/* TABLA */}
-            <div className="relative flex-1 overflow-auto bg-capsula-ivory">
+            {/* TABLA (lg+) / TARJETAS (tablet y móvil) */}
+            <div className="relative bg-capsula-ivory lg:flex-1 lg:overflow-auto">
                 {loading && !items.length ? (
                     <div className="flex flex-col items-center gap-3 p-10 text-center text-capsula-ink-muted">
                         <Loader2 className="h-8 w-8 animate-spin" />
                         Cargando planilla de inventario...
                     </div>
+                ) : items.length === 0 ? (
+                    <div className="bg-capsula-ivory-alt px-4 py-12 text-center text-capsula-ink-muted">
+                        No hay productos críticos asignados a este reporte.<br />
+                        <button onClick={() => setShowConfig(true)} className="mt-2 text-sm text-capsula-coral underline">
+                            Configurar lista de items críticos →
+                        </button>
+                    </div>
                 ) : (
-                    <table className="w-full text-sm text-left border-collapse">
+                  <>
+                    {/* Vista TARJETAS — tablet y móvil (oculta en lg+). Evita el scroll
+                        horizontal de la tabla de 10 columnas y el clipping en landscape. */}
+                    <div className="divide-y divide-capsula-line lg:hidden">
+                        {items.map(item => {
+                            const theoretical = item.theoreticalStock || 0;
+                            const variance = item.variance || 0;
+                            const isNeg = variance < -0.01;
+                            const theoreticalInit = item.theoreticalInitialCount || 0;
+                            const realInit = item.initialCount || 0;
+                            const initDiff = realInit - theoreticalInit;
+                            const initDiffAbs = Math.abs(initDiff);
+                            const initDiffPct = theoreticalInit > 0.001 ? initDiffAbs / theoreticalInit : 0;
+                            const hasOpeningGap = initDiffAbs > 0.5 && initDiffPct > 0.02;
+                            return (
+                                <div key={item.id} className="space-y-3 bg-capsula-ivory p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-semibold text-capsula-ink">{item.inventoryItem.name}</p>
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                                {item.inventoryItem.sku} · {item.unit}
+                                            </p>
+                                        </div>
+                                        <span className={cn(
+                                            "shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold tabular-nums",
+                                            isNeg
+                                                ? "bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]"
+                                                : variance > 0.01
+                                                    ? "bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]"
+                                                    : "bg-capsula-ivory-alt text-capsula-ink-muted"
+                                        )}>
+                                            {variance > 0 ? '+' : ''}{variance.toFixed(2)}
+                                        </span>
+                                    </div>
+
+                                    {/* Campos editables */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Apertura real</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={realInit}
+                                                onChange={e => handleInputChange(item.id, 'initialCount', e.target.value)}
+                                                onFocus={e => e.target.select()}
+                                                className={cn(
+                                                    "w-full rounded-lg border px-3 py-2.5 text-center text-base font-semibold tabular-nums",
+                                                    hasOpeningGap
+                                                        ? "border-[#B04A2E]/40 bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]"
+                                                        : "border-capsula-line bg-capsula-ivory text-capsula-ink"
+                                                )}
+                                            />
+                                        </label>
+                                        <label className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Cierre real</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                disabled={isClosed}
+                                                value={item.finalCount || 0}
+                                                onChange={e => handleInputChange(item.id, 'finalCount', e.target.value)}
+                                                onFocus={e => e.target.select()}
+                                                className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-center text-base font-semibold tabular-nums text-capsula-ink focus:ring-2 focus:ring-capsula-navy-deep/30 disabled:opacity-60"
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {/* Valores calculados (solo lectura) */}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { l: 'Noche ant.', v: theoreticalInit.toFixed(2), warn: false },
+                                            { l: 'Dif. salto', v: initDiff === 0 ? '0.00' : `${initDiff > 0 ? '+' : ''}${initDiff.toFixed(2)}`, warn: hasOpeningGap },
+                                            { l: isProduction ? 'Producción' : 'Ingresos', v: `+${(item.entries || 0).toFixed(2)}`, warn: false },
+                                            { l: isProduction ? 'Transf. salida' : 'Consumo', v: `−${(item.sales || 0).toFixed(2)}`, warn: false },
+                                            { l: 'Merma', v: `−${(item.waste || 0).toFixed(2)}`, warn: false },
+                                            { l: 'Teórico', v: theoretical.toFixed(2), warn: false },
+                                        ].map(c => (
+                                            <div key={c.l} className={cn(
+                                                "rounded-lg border border-capsula-line px-2 py-1.5 text-center",
+                                                c.warn ? "bg-[#F3EAD6] dark:bg-[#3B2F15]" : "bg-capsula-ivory-surface"
+                                            )}>
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-muted">{c.l}</p>
+                                                <p className={cn("text-sm font-semibold tabular-nums", c.warn ? "text-[#946A1C] dark:text-[#E8D9B8]" : "text-capsula-ink")}>{c.v}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {/* Totales (móvil) */}
+                        <div className="bg-capsula-navy-deep p-4 text-capsula-cream">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-cream/70">Totales ({items.length} items)</p>
+                            <div className="mt-2 flex items-center justify-between">
+                                <span className="text-xs uppercase tracking-[0.14em] text-capsula-cream/70">Variación total</span>
+                                <span className="text-lg font-semibold tabular-nums">
+                                    {(() => { const t = items.reduce((s, i) => s + (i.variance || 0), 0); return (t >= 0 ? '+' : '') + t.toFixed(2); })()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Vista TABLA — solo lg+ */}
+                    <table className="hidden w-full text-sm text-left border-collapse lg:table">
                         <thead className="bg-blue-600 dark:bg-gray-900 sticky top-0 z-10 shadow-md">
                             <tr className="text-white text-[10px] h-12 uppercase tracking-widest font-black">
                                 <th className="min-w-[220px] border-r border-blue-500/30 px-6 py-2">
@@ -1013,6 +1122,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                             </tfoot>
                         )}
                     </table>
+                  </>
                 )}
             </div>
 
