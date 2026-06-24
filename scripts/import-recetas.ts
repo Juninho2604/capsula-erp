@@ -7,6 +7,10 @@
  *   npx tsx scripts/import-recetas.ts <csv> --type=FINISHED_GOOD                        # para recetas finales
  *   npx tsx scripts/import-recetas.ts <csv> --parse-only                                # solo parseo, sin DB
  *   npx tsx scripts/import-recetas.ts <csv> --apply --create-missing                    # crea insumos faltantes → nada queda bloqueado
+ *   npx tsx scripts/import-recetas.ts <csv> --aliases=scripts/data/recetas-aliases.csv  # mapeo manual nombre_csv→sku para genéricos/ambiguos
+ *
+ * Matching (en orden): alias explícito → nombre exacto → nombre sin sufijo de
+ * unidad (PEREJIL KG→PEREJIL, solo si es único) → sub-receta de la corrida.
  *
  * Semántica REEMPLAZO (pedido del dueño):
  *  - Receta que YA existe (match por nombre normalizado): se le BORRAN los
@@ -38,6 +42,10 @@ const PARSE_ONLY = args.includes('--parse-only');
 const CREATE_MISSING = args.includes('--create-missing');
 const TYPE = (args.find((a) => a.startsWith('--type='))?.split('=')[1] ?? 'SUB_RECIPE') as
   | 'SUB_RECIPE' | 'FINISHED_GOOD';
+// --aliases=<archivo.csv>: mapa explícito "nombre_csv,sku_inventario" (una fila por
+// alias; # = comentario). Resuelve con prioridad MÁXIMA, antes que exacto/unit-strip.
+// Pensado para los insumos genéricos/ambiguos (SAL→SAL BAHIA KG, etc.).
+const ALIAS_PATH = args.find((a) => a.startsWith('--aliases='))?.split('=')[1];
 if (!csvPath) { console.error('Uso: npx tsx scripts/import-recetas.ts <csv> [--apply|--parse-only] [--type=SUB_RECIPE|FINISHED_GOOD]'); process.exit(1); }
 
 // ─── CSV split con soporte de comillas ───────────────────────────────────────
@@ -73,6 +81,18 @@ function normUnit(raw: string): { unit: string; flag?: string } {
   if (UNIT_MAP[u]) return { unit: UNIT_MAP[u] };
   if (/^\d/.test(u)) return { unit: 'G', flag: `unidad numérica ("${raw}") — revisar fila` };
   return { unit: u, flag: `unidad no estándar ("${u}")` }; // PIZCA, CUCH, GOTAS, AL GUSTO…
+}
+
+// El inventario de Shanklish nombra los insumos como "NOMBRE + UNIDAD" en
+// mayúsculas (PEREJIL KG, ACEITE DE OLIVA LTS). El CSV usa el nombre pelado.
+// Quitamos el token de unidad final para poder indexar por el nombre base.
+const UNIT_SUFFIX = new Set(['KG', 'LTS', 'LT', 'L', 'UND', 'UNID', 'UNIDAD', 'UN', 'GR', 'GRS', 'G', 'ML']);
+function stripUnitSuffix(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length > 1 && UNIT_SUFFIX.has(parts[parts.length - 1].toUpperCase().replace(/\.$/, ''))) {
+    return parts.slice(0, -1).join(' ');
+  }
+  return name;
 }
 
 /** "3,6"→3.6 · "2,22 "→2.22 · "8.5  u 8"→8.5 · " 641 ml "→641 · "10 KG"→10 · "1/2 KG"→0.5 · "Al gusto"/"-"/"/"→null */
@@ -319,6 +339,37 @@ async function main() {
     const k = norm(it.name);
     if (!itemByName.has(k)) itemByName.set(k, it);
   }
+  // Índice por SKU (para resolver alias) y por nombre SIN sufijo de unidad.
+  // El de unit-strip solo se usa si el nombre base es ÚNICO → cero riesgo de
+  // match errado (si dos insumos colapsan al mismo base, se descarta).
+  const itemBySku = new Map(items.map((it) => [it.sku, it]));
+  const strippedCount = new Map<string, number>();
+  const itemByStripped = new Map<string, typeof items[number]>();
+  for (const it of items) {
+    const sk = norm(stripUnitSuffix(it.name));
+    if (sk === norm(it.name)) continue; // sin sufijo: ya está en itemByName
+    strippedCount.set(sk, (strippedCount.get(sk) ?? 0) + 1);
+    if (!itemByStripped.has(sk)) itemByStripped.set(sk, it);
+  }
+  for (const [k, c] of strippedCount) if (c > 1) itemByStripped.delete(k); // ambiguo → fuera
+
+  // Mapa de alias explícito (nombre_csv → sku). Prioridad máxima.
+  const aliasMap = new Map<string, string>();
+  if (ALIAS_PATH) {
+    let aliasFound = 0, aliasBadSku = 0;
+    for (const ln of readFileSync(ALIAS_PATH, 'utf8').split(/\r?\n/)) {
+      const t = ln.trim();
+      if (!t || t.startsWith('#')) continue;
+      const [name, sku] = splitCsvLine(t);
+      if (!name || !sku) continue;
+      const skuT = sku.trim();
+      if (!itemBySku.has(skuT)) { aliasBadSku++; console.log(`  ⚠ alias "${name}" → SKU "${skuT}" NO existe en inventario`); continue; }
+      aliasMap.set(norm(name), skuT);
+      aliasFound++;
+    }
+    console.log(`Alias cargados: ${aliasFound}${aliasBadSku ? ` · ${aliasBadSku} con SKU inexistente (ignorados)` : ''} (de ${ALIAS_PATH})`);
+  }
+
   const existingRecipes = await prisma.recipe.findMany({
     where: { tenantId: tenant.id, deletedAt: null },
     select: { id: true, name: true, outputItemId: true, version: true },
@@ -335,8 +386,23 @@ async function main() {
     const existing = recipeByName.get(norm(r.name));
     const resolved = r.lines.map((line) => {
       const k = norm(line.name);
+      // 1) alias explícito (máxima prioridad)
+      const aliasSku = aliasMap.get(k);
+      if (aliasSku) {
+        const it = itemBySku.get(aliasSku)!;
+        itemByName.set(k, it); // que el --apply lo encuentre por el nombre del CSV
+        return { line, itemId: it.id, via: `alias→${it.sku}` };
+      }
+      // 2) match exacto por nombre
       const item = itemByName.get(k);
       if (item) return { line, itemId: item.id, via: item.sku };
+      // 3) nombre sin sufijo de unidad (solo si era único)
+      const stripped = itemByStripped.get(k);
+      if (stripped) {
+        itemByName.set(k, stripped); // idem: que el --apply lo encuentre
+        return { line, itemId: stripped.id, via: `${stripped.sku} (s/unidad)` };
+      }
+      // 4) sub-receta de esta misma corrida
       if (csvRecipeNames.has(k)) return { line, itemId: null, via: 'SUB-RECETA DE ESTA CORRIDA' };
       return { line, itemId: null, via: 'NO ENCONTRADO' };
     });
