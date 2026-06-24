@@ -37,6 +37,7 @@ import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from "@/lib/sales/tip-calculation";
+import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
 // ============================================================================
@@ -664,10 +665,18 @@ export default function POSSportBarPage() {
 
   const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
 
+  // Descuento divisas en modo MIXTO: proporcional a las divisas tecleadas (no
+  // circular sobre lo entregado). Misma función pura que el cobro de método
+  // único; topa a balanceDue/3. Para mixto todo-divisas converge al precio
+  // correcto; en divisas+Bs solo descuenta la porción en divisas. (fix TAB-3048)
+  const mixedDivisasDiscount = activeTab && isTableMixedMode
+    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded }).discountAmount
+    : 0;
+
   const paymentBaseAmount = activeTab
     ? discountType === "DIVISAS_33"
       ? isTableMixedMode
-        ? activeTab.balanceDue - divisasUsdAmountTable / 3   // partial: only USD lines get -33%
+        ? activeTab.balanceDue - mixedDivisasDiscount       // partial: only USD lines get -33%
         : (activeTab.balanceDue * 2) / 3                     // full: entire balance -33%
       : discountType === "CORTESIA_100"
       ? 0
@@ -1061,6 +1070,9 @@ export default function POSSportBarPage() {
       }
       let discountAmount = 0;
       let discountLabel = "";
+      // Cobro divisas de método único: liquidación PROPORCIONAL a lo cobrado
+      // (no al saldo total). null salvo en ese caso. Ver divisas-settlement.ts.
+      let divisasSettlement: DivisasSettlement | null = null;
       // SAFEGUARD: DIVISAS_33 SOLO aplica si el método realmente es divisas
       // (cash USD/EUR/Zelle). Sin esto, un cambio rápido de método de pago
       // (USD → Bs) puede dejar el discountType en DIVISAS_33 antes que el
@@ -1072,10 +1084,17 @@ export default function POSSportBarPage() {
           : isDivisasMethod(paymentMethod);
       if (discountType === "DIVISAS_33" && divisasQualifies) {
         if (isTableMixedMode) {
-          discountAmount = divisasUsdAmountTable / 3;
+          discountAmount = mixedDivisasDiscount;
           discountLabel = ` · Divisas sobre $${divisasUsdAmountTable.toFixed(2)}`;
         } else {
-          discountAmount = activeTab.balanceDue / 3;
+          // −33,33% PROPORCIONAL a lo cobrado en este pago. En pago completo da
+          // idéntico a balanceDue/3; en parcial evita el sobre-descuento (TAB-3048).
+          divisasSettlement = computeDivisasSettlement({
+            balanceDue: activeTab.balanceDue,
+            receivedUSD: rawReceived,
+            serviceFeeIncluded,
+          });
+          discountAmount = divisasSettlement.discountAmount;
           discountLabel = " · -33.33% Divisas";
         }
       } else if (discountType === "CORTESIA_100") {
@@ -1112,8 +1131,14 @@ export default function POSSportBarPage() {
 
       // ── PROPINA Y MONTO RETENIDO (§46 — fix definitivo TAB-2433) ──────────
       // Factura real (post-descuento) = total antes de servicio + 10% servicio.
-      const totalAntesServicio = Math.max(0, activeTab.balanceDue - discountAmount);
-      const serviceFee = serviceFeeIncluded ? totalAntesServicio * 0.1 : 0;
+      // En divisas proporcional, el neto y el servicio salen de la liquidación
+      // (sobre la porción pagada), NO del saldo total menos el descuento.
+      const totalAntesServicio = divisasSettlement
+        ? divisasSettlement.netItemsApplied
+        : Math.max(0, activeTab.balanceDue - discountAmount);
+      const serviceFee = divisasSettlement
+        ? divisasSettlement.serviceFee
+        : (serviceFeeIncluded ? totalAntesServicio * 0.1 : 0);
       // ── REDONDEO → PROPINA (divisas efectivo/zelle) ──────────────────────
       // El POS le dice a la cajera cobrar el dólar entero hacia arriba
       // (roundDivisasChargeUp == paymentAmountToCharge). Esa diferencia debe
@@ -1152,7 +1177,11 @@ export default function POSSportBarPage() {
 
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
-        amount: effectiveAmount,
+        // En divisas proporcional, `amount` lleva el NETO de ítems aplicado para
+        // que el servidor descuente bien saldo y 10%; el dinero entregado va en
+        // paidAmountOverride. En el resto de cobros, `amount` = effectiveAmount.
+        amount: divisasSettlement ? divisasSettlement.netItemsApplied : effectiveAmount,
+        paidAmountOverride: divisasSettlement ? effectiveAmount : undefined,
         paymentMethod: effectiveMethod,
         splitLabel: effectiveLabel,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
