@@ -161,6 +161,14 @@ export interface RegisterOpenTabPaymentInput {
     discountReason?: string; // texto auditable: "Pago en Divisas (33.33%)", etc.
     serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal). Default: true para TABLE_SERVICE.
     /**
+     * Dinero realmente entregado por el cliente, a registrar como `paidAmount`
+     * del split. Se usa cuando `amount` lleva el NETO de ítems aplicado (no el
+     * bruto recibido) — caso del cobro en divisas proporcional, donde el neto y
+     * el dinero entregado difieren. Si se omite, `paidAmount = amount` (igual que
+     * siempre para el resto de los cobros).
+     */
+    paidAmountOverride?: number;
+    /**
      * PIN de capitán o gerente necesario para EXIMIR del 10% servicio
      * (cuando serviceFeeIncluded === false en una mesa TABLE_SERVICE).
      */
@@ -2166,7 +2174,9 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     discount: discountAmount,
                     serviceChargeAmount: serviceCharge,
                     total: appliedAmount + serviceCharge,
-                    paidAmount: data.amount,
+                    // En el cobro divisas proporcional, `amount` es el NETO aplicado;
+                    // el dinero realmente entregado viene en paidAmountOverride.
+                    paidAmount: data.paidAmountOverride ?? data.amount,
                     // Dual currency (FASE B): Bs equivalente del total cobrado
                     // + tasa histórica. Null si no hay tasa configurada.
                     amountBs: isBsTabPayment && splitRate
