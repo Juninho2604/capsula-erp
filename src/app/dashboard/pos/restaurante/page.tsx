@@ -665,10 +665,18 @@ export default function POSSportBarPage() {
 
   const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
 
+  // Descuento divisas en modo MIXTO: proporcional a las divisas tecleadas (no
+  // circular sobre lo entregado). Misma función pura que el cobro de método
+  // único; topa a balanceDue/3. Para mixto todo-divisas converge al precio
+  // correcto; en divisas+Bs solo descuenta la porción en divisas. (fix TAB-3048)
+  const mixedDivisasDiscount = activeTab && isTableMixedMode
+    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded }).discountAmount
+    : 0;
+
   const paymentBaseAmount = activeTab
     ? discountType === "DIVISAS_33"
       ? isTableMixedMode
-        ? activeTab.balanceDue - divisasUsdAmountTable / 3   // partial: only USD lines get -33%
+        ? activeTab.balanceDue - mixedDivisasDiscount       // partial: only USD lines get -33%
         : (activeTab.balanceDue * 2) / 3                     // full: entire balance -33%
       : discountType === "CORTESIA_100"
       ? 0
@@ -1076,7 +1084,7 @@ export default function POSSportBarPage() {
           : isDivisasMethod(paymentMethod);
       if (discountType === "DIVISAS_33" && divisasQualifies) {
         if (isTableMixedMode) {
-          discountAmount = divisasUsdAmountTable / 3;
+          discountAmount = mixedDivisasDiscount;
           discountLabel = ` · Divisas sobre $${divisasUsdAmountTable.toFixed(2)}`;
         } else {
           // −33,33% PROPORCIONAL a lo cobrado en este pago. En pago completo da

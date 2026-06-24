@@ -50,6 +50,15 @@ describe('computeDivisasSettlement — descuento divisas proporcional al pago', 
         expect(r.netItemsApplied).toBeCloseTo(30, 2);
     });
 
+    it('uso MIXTO (divisas + Bs): solo la porción en divisas recibe descuento', () => {
+        // Mesa $100. Cliente paga $30 en divisas (cash/zelle) y el resto en Bs.
+        // El −33% aplica solo a lo que cubre la porción en divisas.
+        const r = computeDivisasSettlement({ balanceDue: 100, receivedUSD: 30, serviceFeeIncluded: true });
+        expect(r.grossSettled).toBeLessThan(100);            // las divisas no saldan toda la cuenta
+        expect(r.grossSettled).toBeCloseTo(40.91, 2);        // 30 / (2/3 · 1.1)
+        expect(r.discountAmount).toBeCloseTo(13.64, 2);      // < balanceDue/3 (33.33): solo su porción
+    });
+
     it('recibido 0 o saldo 0 → todo en cero (sin NaN)', () => {
         expect(computeDivisasSettlement({ balanceDue: 50, receivedUSD: 0, serviceFeeIncluded: true }))
             .toMatchObject({ grossSettled: 0, discountAmount: 0, netItemsApplied: 0, serviceFee: 0 });
