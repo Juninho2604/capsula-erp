@@ -512,13 +512,31 @@ async function main() {
     // re-resolver (los outputItems nuevos ya están en el mapa)
     const resolved = p.rec.lines.map((line) => ({ line, item: itemByName.get(norm(line.name)) ?? null }));
     if (resolved.some((x) => !x.item)) { console.log(`  ✗ saltada (ingrediente sin match): ${p.rec.name}`); continue; }
-    const ingredientsData = resolved.map((x, i) => ({
-      ingredientItemId: x.item!.id,
-      quantity: x.line.qty ?? 0,
-      unit: x.line.unit,
-      notes: [x.line.qty == null ? `cantidad original: "${x.line.raw.split('|')[0]}"` : null, ...x.line.flags].filter(Boolean).join('; ') || null,
-      sortOrder: i,
-    }));
+    // Dedupe por INSUMO resuelto (no por nombre): dos nombres distintos del CSV
+    // pueden mapear al mismo insumo vía alias/unit-strip (ej. "Sal"+"Sal Fina" →
+    // SAL BAHIA, "Agua"+"Agua Potable" → AGUA). El índice único (recipeId,
+    // ingredientItemId) lo prohíbe → sumamos cantidades del mismo insumo.
+    const byItem = new Map<string, { ingredientItemId: string; quantity: number; unit: string; notes: string | null; sortOrder: number }>();
+    let dupMerged = 0;
+    resolved.forEach((x) => {
+      const id = x.item!.id;
+      const qty = x.line.qty ?? 0;
+      const prev = byItem.get(id);
+      if (prev) {
+        if (prev.unit === x.line.unit) prev.quantity += qty; // misma unidad → suma
+        dupMerged++;
+      } else {
+        byItem.set(id, {
+          ingredientItemId: id,
+          quantity: qty,
+          unit: x.line.unit,
+          notes: [x.line.qty == null ? `cantidad original: "${x.line.raw.split('|')[0]}"` : null, ...x.line.flags].filter(Boolean).join('; ') || null,
+          sortOrder: byItem.size,
+        });
+      }
+    });
+    if (dupMerged) console.log(`    ⚠ ${p.rec.name}: ${dupMerged} ingrediente(s) duplicado(s) por insumo — fusionados`);
+    const ingredientsData = [...byItem.values()];
     if (p.existing) {
       await prisma.$transaction([
         prisma.recipeIngredient.deleteMany({ where: { recipeId: p.existing.id } }),
