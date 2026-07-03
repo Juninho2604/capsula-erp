@@ -10734,3 +10734,48 @@ npx tsx scripts/relink-menu-recipes.ts --apply
 ```
 Las recetas creadas son filas `Recipe` normales → editables desde el módulo Recetas
 (`updateRecipeAction`) por OWNER/ADMIN_MANAGER/OPS_MANAGER/CHEF.
+
+## §67 Anular comanda completa — void de toda la orden con un solo PIN (2026-07-03)
+
+Pedido de Jhulian (mesero capitán): cuando una comanda entera se marcha a la
+mesa equivocada, anular ítem por ítem (PIN + motivo por cada línea) tomaba
+~5 minutos. Ahora existe **"Anular comanda"** por orden completa.
+
+### Acción de servidor
+
+`voidEntireTabOrderAction({ openTabId, orderId, captainPin, reason, waiterProfileId? })`
+en `src/app/actions/pos.actions.ts` (después de `modifyTabItemAction`):
+
+- **Dual PIN** vía `resolveVoidAuthPin` (Waiter capitán de la sucursal O User
+  OWNER/ADMIN_MANAGER/OPS_MANAGER/AREA_LEAD) — mismo pool que el void por ítem.
+- Carga la orden (tenant-scoped, validando `openTabId`) con ítems `voidedAt: null`
+  + modifiers + categoría del MenuItem.
+- **Una sola transacción** (`timeout: 30_000` porque cada void escribe item,
+  totales e inventario): loop de `voidItemInTx` por ítem → soft-delete con
+  `voidedAt/voidReason/voidedBy*`, limpia `subAccountItem`, recalcula totales de
+  orden y tab, y **reintegra inventario** (receta del plato + recetas de
+  modificadores con `linkedMenuItemId`) vía `applyItemInventoryInTx RESTORE`.
+- `reason` se persiste como `"<motivo> [Comanda completa] | Mesonero: <nombre>"`.
+- Devuelve `kitchenPrintItems[]` — un payload VOID_KITCHEN por ítem para que el
+  cliente los encole con `enqueueVoidKitchenCommand` y cada anulación se enrute
+  a su estación (barra vs cocina) según `categoryName`.
+
+### UI
+
+- **POS Mesero** (`pos/mesero/page.tsx`): botón "Anular comanda" (icono `Ban`)
+  en el footer de cada card de comanda enviada — visible para cualquier mesero,
+  el PIN es el gate (mismo criterio que la X por ítem). Modal z-[60] con
+  advertencia, motivo obligatorio y PIN; al confirmar imprime los VOID y
+  refresca tab + subcuentas.
+- **POS Restaurante** (`pos/restaurante/page.tsx`): mismo botón en cada card de
+  "Consumos cargados" + mismo modal.
+
+### Transferir mesa (contexto del mismo pedido)
+
+NO se tocó código: `moveTabBetweenTablesAction` (mover cuenta a otra mesa
+física) ya existía, gateada por `canUseCaptainFeatures`
+(`Waiter.isCaptain || rol gerente`). Para habilitar a un mesero se le marca
+**Capitán** en `/dashboard/mesoneros` (checkbox del form) y se le asigna PIN —
+con eso ve el botón "Transferir mesa" y autoriza con su propio PIN.
+
+Gates: tsc 0 · vitest 447 passed.

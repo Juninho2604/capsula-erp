@@ -10,6 +10,7 @@ import {
   getRestaurantLayoutAction,
   openTabAction,
   modifyTabItemAction,
+  voidEntireTabOrderAction,
   setOpenTabTipAction,
   type CartItem,
   type ModifyTabItemModification,
@@ -228,6 +229,16 @@ export default function POSMeseroPage() {
   const [removePin, setRemovePin] = useState("");
   const [removeJustification, setRemoveJustification] = useState("");
   const [removeError, setRemoveError] = useState("");
+
+  // ── Anular comanda completa (todos los ítems de una orden, un solo PIN) ──
+  const [voidOrderTarget, setVoidOrderTarget] = useState<{
+    orderId: string;
+    itemCount: number;
+    total: number;
+  } | null>(null);
+  const [voidOrderPin, setVoidOrderPin] = useState("");
+  const [voidOrderReason, setVoidOrderReason] = useState("");
+  const [voidOrderError, setVoidOrderError] = useState("");
 
   // ── State flags ───────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
@@ -914,6 +925,59 @@ export default function POSMeseroPage() {
   };
 
   // ============================================================================
+  // ANULAR COMANDA COMPLETA (requiere PIN de capitán o gerente)
+  // ============================================================================
+
+  const openVoidOrderModal = (order: { id: string; items: OrderItemSummary[]; total: number }) => {
+    setVoidOrderTarget({
+      orderId: order.id,
+      itemCount: order.items.length,
+      total: order.total,
+    });
+    setVoidOrderPin("");
+    setVoidOrderReason("");
+    setVoidOrderError("");
+  };
+
+  const handleVoidEntireOrder = async () => {
+    if (!voidOrderTarget || !activeTab) return;
+    if (!voidOrderReason.trim()) { setVoidOrderError("El motivo es obligatorio"); return; }
+    if (!voidOrderPin.trim()) { setVoidOrderError("Ingresa el PIN de capitán o gerente"); return; }
+
+    setIsProcessing(true); setVoidOrderError("");
+    try {
+      const result = await voidEntireTabOrderAction({
+        openTabId: activeTab.id,
+        orderId: voidOrderTarget.orderId,
+        captainPin: voidOrderPin,
+        reason: voidOrderReason,
+        waiterProfileId: activeWaiter?.id,
+      });
+      if (!result.success) { setVoidOrderError(result.message); return; }
+      toast.success(result.message);
+      setVoidOrderTarget(null);
+      // Un VOID_KITCHEN por ítem — cada uno se enruta a su estación
+      // (barra vs cocina) según la categoría del producto.
+      const printItems = (result.data?.kitchenPrintItems ?? []) as VoidKitchenCommandData[];
+      for (const k of printItems) {
+        void enqueueVoidKitchenCommand({
+          orderNumber: k.orderNumber,
+          tableName: k.tableName,
+          waiterLabel: k.waiterLabel,
+          authorizerName: k.authorizerName ?? activeWaiter?.firstName ?? 'Supervisor',
+          modificationType: k.modificationType,
+          categoryName: k.categoryName,
+          voidedItem: k.voidedItem,
+        });
+      }
+      await loadData(false);
+      if (activeTab?.id) await refreshSubAccounts(activeTab.id);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ============================================================================
   // TRANSFERIR MESA (solo capitanes)
   // ============================================================================
 
@@ -1582,7 +1646,14 @@ export default function POSMeseroPage() {
                       ))}
                     </div>
                     <div className="px-3 pb-3 flex justify-between items-center border-t border-capsula-line pt-2">
-                      <span className="text-[10px] text-capsula-ink-muted font-semibold uppercase tracking-wider">Orden</span>
+                      <button
+                        onClick={() => openVoidOrderModal(order)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-capsula-ink-faint hover:text-capsula-coral transition-colors"
+                        title="Anular comanda completa (requiere PIN supervisor)"
+                      >
+                        <Ban className="h-3 w-3" />
+                        Anular comanda
+                      </button>
                       <span className="text-sm font-semibold text-capsula-ink tabular-nums">${order.total.toFixed(2)}</span>
                     </div>
                   </div>
@@ -2512,6 +2583,84 @@ export default function POSMeseroPage() {
           </div>
         );
       })()}
+
+      {/* ══ MODAL: ANULAR COMANDA COMPLETA z-[60] ═════════════════════════ */}
+      {voidOrderTarget && (
+        <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-capsula-ivory w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl border border-capsula-line max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 bg-capsula-coral/10 rounded-2xl flex items-center justify-center text-capsula-coral flex-shrink-0">
+                <Ban className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm text-capsula-ink tracking-[-0.02em]">Anular comanda completa</h3>
+                <p className="text-xs text-capsula-ink-muted">
+                  <span className="font-semibold text-capsula-ink">{voidOrderTarget.itemCount}</span> ítem(s)
+                  <span className="ml-2 tabular-nums">${voidOrderTarget.total.toFixed(2)}</span>
+                </p>
+              </div>
+              <button onClick={() => setVoidOrderTarget(null)} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 text-capsula-ink-muted hover:text-capsula-coral flex items-center justify-center flex-shrink-0">
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-2 bg-[#F7E3DB] dark:bg-[#3B1F14] text-[#B04A2E] dark:text-[#EFD2C8] rounded-xl px-3 py-2.5">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <p className="text-xs font-semibold">
+                Se anularán TODOS los ítems de esta comanda de una vez. El inventario se reintegra automáticamente y la anulación se imprime en cocina/barra.
+              </p>
+            </div>
+
+            {/* Motivo */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
+                Motivo (obligatorio)
+              </label>
+              <textarea
+                value={voidOrderReason}
+                onChange={(e) => setVoidOrderReason(e.target.value)}
+                placeholder="Ej: comanda marchada a mesa equivocada..."
+                className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl p-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none resize-none h-14 transition"
+              />
+            </div>
+
+            {/* PIN */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1.5 block">
+                PIN de capitán o gerente
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                placeholder="••••"
+                value={voidOrderPin}
+                onChange={(e) => setVoidOrderPin(e.target.value)}
+                className="w-full bg-capsula-ivory-surface border border-capsula-line text-capsula-ink rounded-xl px-4 py-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-coral focus:outline-none tracking-[0.3em] transition"
+              />
+            </div>
+
+            {voidOrderError && (
+              <p className="text-capsula-coral text-xs font-semibold bg-capsula-coral/10 border border-capsula-coral/30 rounded-xl px-3 py-2">
+                {voidOrderError}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setVoidOrderTarget(null)} className="pos-btn-secondary flex-1 py-3">
+                Cancelar
+              </button>
+              <button
+                onClick={handleVoidEntireOrder}
+                disabled={isProcessing || !voidOrderReason.trim() || !voidOrderPin.trim()}
+                className="flex-[2] py-3 rounded-xl font-semibold text-sm bg-capsula-coral text-capsula-cream hover:bg-capsula-coral-hover transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                {isProcessing ? "Anulando..." : (<><Ban className="h-4 w-4" />Anular comanda completa</>)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
