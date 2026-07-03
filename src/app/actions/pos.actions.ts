@@ -2915,6 +2915,120 @@ export async function modifyTabItemAction({
 }
 
 // ============================================================================
+// ANULAR COMANDA COMPLETA — void de TODOS los ítems activos de una orden
+// en una sola autorización (dual PIN capitán/gerente). Evita anular ítem
+// por ítem cuando la comanda entera se marchó a la mesa equivocada.
+// Reintegra inventario de cada ítem (recetas + modificadores linkeados).
+// ============================================================================
+
+export async function voidEntireTabOrderAction({
+    openTabId,
+    orderId,
+    captainPin,
+    reason,
+    waiterProfileId,
+}: {
+    openTabId: string;
+    orderId: string;
+    captainPin: string;
+    reason: string;
+    waiterProfileId?: string;
+}): Promise<ActionResult> {
+    const db = await getTenantDb();
+    try {
+        if (!reason?.trim()) return { success: false, message: 'El motivo es obligatorio' };
+        if (!captainPin || captainPin.trim().length < 4) return { success: false, message: 'PIN inválido' };
+
+        const branch = await db.branch.findFirst({ where: { isActive: true } });
+        if (!branch) return { success: false, message: 'Sin sucursal activa' };
+
+        const auth = await resolveVoidAuthPin(captainPin, branch.id);
+        if (!auth) return { success: false, message: 'PIN de capitán o gerente incorrecto' };
+
+        // Cargar la orden con sus ítems activos (tenant-scoped vía db)
+        const order = await db.salesOrder.findFirst({
+            where: { id: orderId, openTabId },
+            include: {
+                tableOrStation: { select: { name: true } },
+                waiterProfile:  { select: { firstName: true, lastName: true } },
+                items: {
+                    where: { voidedAt: null },
+                    include: {
+                        modifiers: true,
+                        menuItem: { include: { category: { select: { name: true } } } },
+                    },
+                },
+            },
+        });
+        if (!order) return { success: false, message: 'Comanda no encontrada en esta cuenta' };
+        if (order.items.length === 0) {
+            return { success: false, message: 'La comanda no tiene ítems activos para anular' };
+        }
+
+        // Mesonero solicitante para el log
+        let requesterLabel = '';
+        if (waiterProfileId) {
+            const w = await db.waiter.findUnique({ where: { id: waiterProfileId }, select: { firstName: true, lastName: true } });
+            if (w) requesterLabel = ` | Mesonero: ${w.firstName} ${w.lastName}`;
+        }
+        const reasonFull = `${reason.trim()} [Comanda completa]${requesterLabel}`;
+
+        const voidedTotal = order.items.reduce((s, i) => s + i.lineTotal, 0);
+
+        // Una sola transacción: si falla un ítem, ninguno queda anulado.
+        // Timeout ampliado: cada void hace varias escrituras (item, totales,
+        // inventario) y una comanda grande supera el default de 5s.
+        await db.$transaction(async (tx) => {
+            for (const item of order.items) {
+                await voidItemInTx(
+                    tx,
+                    { ...item, order: { areaId: order.areaId, createdById: order.createdById } },
+                    openTabId,
+                    reasonFull,
+                    auth,
+                );
+            }
+        }, { timeout: 30_000 });
+
+        revalidatePath('/dashboard/pos/restaurante');
+        revalidatePath('/dashboard/pos/mesero');
+
+        const waiterLabel = order.waiterProfile
+            ? `${order.waiterProfile.firstName} ${order.waiterProfile.lastName}`
+            : auth.name;
+
+        return {
+            success: true,
+            message: `Comanda anulada completa: ${order.items.length} ítem(s) por $${voidedTotal.toFixed(2)}. Autorizó: ${auth.name}`,
+            data: {
+                authorizerName: auth.name,
+                voidedCount: order.items.length,
+                voidedAmount: voidedTotal,
+                // Un VOID_KITCHEN por ítem para que cada anulación se enrute
+                // a su estación correcta (barra vs cocina) según categoría.
+                kitchenPrintItems: order.items.map(i => ({
+                    orderNumber: order.orderNumber,
+                    tableName: order.tableOrStation?.name ?? '',
+                    waiterLabel,
+                    authorizerName: auth.name,
+                    modificationType: 'VOID' as const,
+                    categoryName: i.menuItem?.category?.name ?? null,
+                    voidedItem: {
+                        name: i.itemName,
+                        quantity: i.quantity,
+                        modifiers: i.modifiers.map(m => m.name),
+                    },
+                })),
+            },
+        };
+    } catch (error) {
+        console.error('voidEntireTabOrderAction error:', error);
+        const msg = error instanceof Error ? error.message : 'Error anulando la comanda';
+        return { success: false, message: msg };
+    }
+}
+
+// ============================================================================
 // USUARIOS DISPONIBLES PARA MESONERO / CAJERA
 // ============================================================================
 
