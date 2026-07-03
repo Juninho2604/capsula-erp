@@ -10779,3 +10779,25 @@ física) ya existía, gateada por `canUseCaptainFeatures`
 con eso ve el botón "Transferir mesa" y autoriza con su propio PIN.
 
 Gates: tsc 0 · vitest 447 passed.
+
+## §68 Script hard-delete de sub-recetas del inventario (2026-07-03)
+
+`scripts/hard-delete-subrecipe-items.ts` — borrado DEFINITIVO (no soft) de los
+`InventoryItem type='SUB_RECIPE'` de un tenant, pedido para limpiar el catálogo
+de Shanklish. Dry-run por defecto, `--apply` para ejecutar,
+`SEED_TENANT_SLUG=<slug>` para elegir tenant.
+
+- **Bloqueadores** (item se salta y se reporta): ingrediente de receta viva
+  (override `--force-ingredients`), líneas de PurchaseOrder, referencias en
+  procesamiento de proteínas/plantillas, órdenes de producción de su receta.
+- **Borra con el item** (transacción por item, timeout 60s): movimientos,
+  stock por área, cost history, líneas de conteo semanal/daily/auditoría/
+  ciclos, requisiciones, préstamos, catálogo de proveedor, RecipeIngredient
+  de recetas soft-borradas y sus Recipe propias (antes desvincula
+  `MenuItem.recipeId`). AreaCriticalItem y SupplierItemPriceHistory caen por
+  CASCADE.
+- **Referencias escalares sin FK** que quedan colgando (solo se reportan):
+  `ProductionOrder.outputItemId`, `SupplierDocumentItem.inventoryItemId`,
+  `IntercompanySettlementLine.inventoryItemId`.
+
+Runbook: backup BD → ensayo sin flags → revisar bloqueados → `--apply`.
