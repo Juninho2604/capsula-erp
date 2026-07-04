@@ -1,23 +1,22 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, cn } from '@/lib/utils';
 import { fuzzySearch } from '@/lib/fuzzy-search';
-import { updateRecipeCostAction } from '@/app/actions/recipe.actions';
+import { updateRecipeCostAction, deleteRecipeAction } from '@/app/actions/recipe.actions';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect, useMemo } from 'react';
 import {
     RefreshCcw,
-    Soup,
-    Container,
-    Factory,
     ClipboardList,
     Layers,
     UtensilsCrossed,
     Check,
-    ArrowRight,
     Search,
+    Pencil,
+    Trash2,
+    Loader2,
 } from 'lucide-react';
 
 interface Recipe {
@@ -39,39 +38,52 @@ interface RecipeListProps {
     recipes: Recipe[];
 }
 
-function categoryIcon(category: string) {
-    if (category.includes('CREMA')) return Soup;
-    if (category.includes('PANTRY')) return Container;
-    if (category.includes('PRODUCCION')) return Factory;
-    return ClipboardList;
-}
+import type { UserRole } from '@/types';
+
+const DELETE_ROLES: UserRole[] = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'];
 
 export default function RecipeList({ recipes }: RecipeListProps) {
-    const { canViewCosts, user } = useAuthStore();
+    const router = useRouter();
+    const { canViewCosts, hasRole, user } = useAuthStore();
     const [showCosts, setShowCosts] = useState(false);
-    useEffect(() => { setShowCosts(canViewCosts()); }, [canViewCosts]);
-    const [updatingId, setUpdatingId] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [canDelete, setCanDelete] = useState(false);
+    useEffect(() => {
+        setShowCosts(canViewCosts());
+        setCanDelete(hasRole(DELETE_ROLES));
+    }, [canViewCosts, hasRole]);
 
-    // Búsqueda fuzzy sobre nombre, categoría y unidad — tolerante a typos
-    // y diacríticos. Si la query es vacía, devuelve todas las recetas.
-    const filteredRecipes = useMemo(
-        () => fuzzySearch(recipes, searchQuery, { keys: ['name', 'category', 'baseUnit'] }),
-        [recipes, searchQuery],
-    );
+    const [updatingId, setUpdatingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('ALL');
+    const [typeFilter, setTypeFilter] = useState<'ALL' | 'SUB_RECIPE' | 'FINISHED_GOOD'>('ALL');
+
+    const uniqueCategories = useMemo(() => {
+        const cats = new Set(recipes.map(r => r.category || 'Sin Categoría'));
+        return Array.from(cats).sort();
+    }, [recipes]);
+
+    const filteredRecipes = useMemo(() => {
+        let items = recipes.filter(r => {
+            if (categoryFilter !== 'ALL' && (r.category || 'Sin Categoría') !== categoryFilter) return false;
+            if (typeFilter !== 'ALL' && r.type !== typeFilter) return false;
+            return true;
+        });
+        if (searchQuery.trim()) {
+            items = fuzzySearch(items, searchQuery, { keys: ['name', 'category', 'baseUnit'] });
+        }
+        return items;
+    }, [recipes, searchQuery, categoryFilter, typeFilter]);
 
     const handleCalculateCost = async (e: React.MouseEvent, recipe: Recipe) => {
         e.preventDefault();
         e.stopPropagation();
-
         if (!user) return;
 
         setUpdatingId(recipe.id);
         toast.loading('Calculando costos...', { id: 'cost-calc' });
-
         try {
             const result = await updateRecipeCostAction(recipe.id, user.id);
-
             if (result.success) {
                 toast.success(result.message, { id: 'cost-calc' });
             } else {
@@ -85,161 +97,196 @@ export default function RecipeList({ recipes }: RecipeListProps) {
         }
     };
 
-    const groupedRecipes = filteredRecipes.reduce((acc, recipe) => {
-        const cat = recipe.category || 'Sin Categoría';
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(recipe);
-        return acc;
-    }, {} as Record<string, Recipe[]>);
+    const handleDelete = async (e: React.MouseEvent, recipe: Recipe) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar la receta "${recipe.name}"?\n\nEs reversible desde la base de datos, pero los productos del menú que la usen dejarán de descontar inventario.`)) return;
 
-    const sortedCategories = Object.keys(groupedRecipes).sort();
+        setDeletingId(recipe.id);
+        try {
+            const result = await deleteRecipeAction(recipe.id);
+            if (result.success) {
+                toast.success(result.message, { duration: 6000 });
+                router.refresh();
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar la receta');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
-        <div className="space-y-6">
-            {/* Búsqueda fuzzy sobre nombre, categoría o unidad */}
-            <div className="relative max-w-md">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar receta por nombre, categoría o unidad..."
-                    className="pos-input w-full pl-10"
-                />
+        <div className="space-y-4">
+            {/* Filtros */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar receta por nombre, categoría o unidad..."
+                        className="pos-input w-full pl-10"
+                    />
+                </div>
+                <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="pos-input sm:w-56"
+                >
+                    <option value="ALL">Todas las categorías</option>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+                    className="pos-input sm:w-44"
+                >
+                    <option value="ALL">Todos los tipos</option>
+                    <option value="SUB_RECIPE">Sub-recetas</option>
+                    <option value="FINISHED_GOOD">Productos finales</option>
+                </select>
+                <span className="text-sm text-capsula-ink-muted tabular-nums shrink-0">
+                    {filteredRecipes.length} de {recipes.length}
+                </span>
             </div>
 
-            {/* Empty state cuando hay query y nada coincide */}
-            {searchQuery.trim() && filteredRecipes.length === 0 && (
-                <div className="rounded-xl border border-capsula-line bg-capsula-ivory py-12 text-center">
-                    <ClipboardList className="mx-auto h-10 w-10 text-capsula-ink-faint" />
-                    <p className="mt-2 font-medium text-capsula-ink">
-                        Ninguna receta coincide con &quot;{searchQuery}&quot;
-                    </p>
-                    <p className="text-sm text-capsula-ink-muted">
-                        Prueba con otro nombre o limpia el filtro
-                    </p>
-                </div>
-            )}
-
-            {sortedCategories.map(category => {
-                const CategoryIcon = categoryIcon(category);
-                return (
-                    <div key={category} className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-capsula-line pb-2">
-                            <CategoryIcon className="h-5 w-5 text-capsula-ink-soft" />
-                            <h2 className="font-semibold text-xl tracking-[-0.02em] text-capsula-ink">{category}</h2>
-                            <span className="text-sm text-capsula-ink-muted tabular-nums">
-                                ({groupedRecipes[category].length})
-                            </span>
-                        </div>
-
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {groupedRecipes[category].map((recipe) => {
+            {/* Tabla */}
+            <div className="overflow-hidden rounded-xl border border-capsula-line bg-capsula-ivory shadow-sm">
+                <div className="overflow-x-auto max-h-[70vh]">
+                    <table className="w-full relative">
+                        <thead className="sticky top-0 z-10 shadow-sm">
+                            <tr className="border-b border-capsula-line bg-capsula-ivory-alt">
+                                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Receta
+                                </th>
+                                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Categoría
+                                </th>
+                                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Rinde
+                                </th>
+                                {showCosts && (
+                                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                        Costo/Unidad
+                                    </th>
+                                )}
+                                <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Estado
+                                </th>
+                                <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-capsula-line">
+                            {filteredRecipes.map((recipe) => {
                                 const TypeIcon = recipe.type === 'SUB_RECIPE' ? Layers : UtensilsCrossed;
                                 const typeLabel = recipe.type === 'SUB_RECIPE' ? 'Sub-receta' : 'Producto Final';
                                 return (
-                                    <div
+                                    <tr
                                         key={recipe.id}
-                                        className="group rounded-xl border border-capsula-line bg-capsula-ivory p-5 shadow-sm transition-all hover:border-capsula-line-strong hover:shadow-md"
+                                        onClick={() => router.push(`/dashboard/recetas/${recipe.id}`)}
+                                        className="cursor-pointer transition-colors hover:bg-capsula-ivory-surface"
                                     >
-                                        {/* Header */}
-                                        <div className="mb-4 flex items-start justify-between gap-3">
+                                        <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-capsula-ivory-alt text-capsula-ink-soft">
-                                                    <TypeIcon className="h-5 w-5" />
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-capsula-ivory-alt text-capsula-ink-soft">
+                                                    <TypeIcon className="h-4 w-4" />
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">{recipe.name}</h3>
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-soft">
-                                                        <TypeIcon className="h-3 w-3" />
-                                                        {typeLabel}
-                                                    </span>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-capsula-ink truncate">{recipe.name}</p>
+                                                    <p className="text-xs text-capsula-ink-muted">{typeLabel}</p>
                                                 </div>
                                             </div>
-                                            {recipe.isApproved && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-[#E5EDE7] px-2 py-1 text-xs font-medium text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-capsula-ink-muted">
+                                            {recipe.category || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <span className="font-mono text-sm tabular-nums text-capsula-ink">
+                                                {recipe.outputQuantity && recipe.outputQuantity > 0 ? recipe.outputQuantity : 1}
+                                            </span>
+                                            <span className="ml-1 text-xs text-capsula-ink-muted">
+                                                {recipe.outputUnit ?? recipe.baseUnit}
+                                            </span>
+                                        </td>
+                                        {showCosts && (
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="inline-flex items-center gap-1.5">
+                                                    <span className="font-mono text-sm font-semibold tabular-nums text-capsula-ink">
+                                                        {formatCurrency(recipe.costPerUnit)}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => handleCalculateCost(e, recipe)}
+                                                        disabled={updatingId === recipe.id}
+                                                        className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink disabled:opacity-50"
+                                                        title="Recalcular costo"
+                                                    >
+                                                        <RefreshCcw className={cn('h-3.5 w-3.5', updatingId === recipe.id && 'animate-spin')} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td className="px-4 py-3 text-center">
+                                            {recipe.isApproved ? (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-[#E5EDE7] px-2 py-0.5 text-xs font-medium text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
                                                     <Check className="h-3 w-3" /> Aprobada
                                                 </span>
+                                            ) : (
+                                                <span className="inline-flex items-center rounded-full bg-capsula-ivory-alt px-2 py-0.5 text-xs font-medium text-capsula-ink-muted">
+                                                    Borrador
+                                                </span>
                                             )}
-                                        </div>
-
-                                        {/* Description */}
-                                        {recipe.description && (
-                                            <p className="mb-4 line-clamp-2 text-sm text-capsula-ink-muted">
-                                                {recipe.description}
-                                            </p>
-                                        )}
-
-                                        {/* Details */}
-                                        <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
-                                            <div className="rounded-lg bg-capsula-ivory-alt p-2">
-                                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Rinde</p>
-                                                <p className="font-medium text-capsula-ink tabular-nums">
-                                                    1 {recipe.baseUnit}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-lg bg-capsula-ivory-alt p-2">
-                                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Categoría</p>
-                                                <p className="font-medium text-capsula-ink truncate">
-                                                    {recipe.category}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Cost (if visible) */}
-                                        {showCosts && (
-                                            <div className="mb-4 rounded-lg bg-capsula-navy-soft p-3 space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-capsula-ink-soft">
-                                                        Costo unitario:
-                                                    </span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-mono text-lg font-semibold tabular-nums text-capsula-ink">
-                                                            {formatCurrency(recipe.costPerUnit)}
-                                                        </span>
-                                                        <button
-                                                            onClick={(e) => handleCalculateCost(e, recipe)}
-                                                            disabled={updatingId === recipe.id}
-                                                            className="rounded-full p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-ivory hover:text-capsula-ink disabled:opacity-50"
-                                                            title="Recalcular costos"
-                                                        >
-                                                            <RefreshCcw className={cn("h-4 w-4", updatingId === recipe.id && "animate-spin")} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {/* costPerServing: solo visible cuando rinde > 1 unidad y es distinto del costPerUnit */}
-                                                {recipe.outputQuantity && recipe.outputQuantity > 1 && recipe.costPerServing != null && (
-                                                    <div className="flex items-center justify-between text-xs">
-                                                        <span className="text-capsula-ink-muted">
-                                                            Por {recipe.outputUnit ?? recipe.baseUnit} (rinde {recipe.outputQuantity}):
-                                                        </span>
-                                                        <span className="font-mono tabular-nums text-capsula-ink-soft">
-                                                            {formatCurrency(recipe.costPerServing)}
-                                                        </span>
-                                                    </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <div className="inline-flex items-center gap-1">
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/dashboard/recetas/${recipe.id}`); }}
+                                                    className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-navy-soft hover:text-capsula-ink"
+                                                    title="Editar receta"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                                {canDelete && (
+                                                    <button
+                                                        onClick={(e) => handleDelete(e, recipe)}
+                                                        disabled={deletingId === recipe.id}
+                                                        className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral disabled:opacity-50"
+                                                        title="Eliminar receta"
+                                                    >
+                                                        {deletingId === recipe.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </button>
                                                 )}
                                             </div>
-                                        )}
-
-                                        {/* Footer */}
-                                        <div className="flex items-center justify-between border-t border-capsula-line pt-4">
-                                            <p className="text-xs text-capsula-ink-muted">
-                                                Por: {recipe.createdBy}
-                                            </p>
-                                            <Link
-                                                href={`/dashboard/recetas/${recipe.id}`}
-                                                className="inline-flex items-center gap-1 text-sm font-medium text-capsula-coral transition-colors hover:text-capsula-coral-hover"
-                                            >
-                                                Ver detalles <ArrowRight className="h-3.5 w-3.5" />
-                                            </Link>
-                                        </div>
-                                    </div>
+                                        </td>
+                                    </tr>
                                 );
                             })}
-                        </div>
+                        </tbody>
+                    </table>
+                </div>
+
+                {filteredRecipes.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <ClipboardList className="mx-auto h-10 w-10 text-capsula-ink-faint" />
+                        <p className="mt-2 font-medium text-capsula-ink">
+                            {searchQuery.trim() ? `Ninguna receta coincide con "${searchQuery}"` : 'No hay recetas'}
+                        </p>
+                        <p className="text-sm text-capsula-ink-muted">
+                            {searchQuery.trim() ? 'Prueba con otro nombre o limpia el filtro' : 'Crea la primera desde "Nueva receta"'}
+                        </p>
                     </div>
-                );
-            })}
+                )}
+            </div>
         </div>
     );
 }
