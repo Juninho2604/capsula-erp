@@ -10982,3 +10982,31 @@ limpio desde la plantilla Excel. `scripts/wipe-non-catalog.ts`:
   platos→recetas (hoja MENU_ITEMS o `relink-menu-recipes.ts --apply`) —
   obligatorio porque los recipeId viejos quedan apuntando a recetas
   soft-borradas.
+
+## §76 Feature Flags — auditoría del submódulo + fix de visibilidad (2026-07-04)
+
+Auditoría pedida por Omar del submódulo `/dashboard/config/feature-flags`:
+
+**Arquitectura (sana):** flags en `Tenant.featureFlags` (JSONB, por tenant),
+catálogo en `src/lib/feature-flags.ts` (6 flags: hideCashierPaymentMethod,
+requirePaymentConfirmation, unifyTipReporting, promotionsEnabled,
+deliveryOps, exactCashSaleTip). Default false. Cache in-memory 30s TTL por
+tenant, invalidada al togglear. Acciones server-side gateadas a OWNER
+(lectura de config y toggle); `getActiveFeatureFlagsAction` (solo booleanos)
+disponible a cualquier autenticado para el POS. El módulo aparece en TODOS
+los tenants por diseño (enabledByDefault + auto-enable de módulos nuevos),
+cada OWNER ve/toglea SOLO los flags de su tenant.
+
+**BUG encontrado y corregido:** `getVisibleModules` saltaba el filtro por
+rol cuando el usuario tenía `allowedModules` individuales ("única
+autoridad") — solo `module_config` estaba especial-caseado. Un no-OWNER con
+`feature_flags` en su lista veía el módulo en el sidebar (la página y las
+acciones sí bloqueaban server-side → sin fuga de datos, pero link muerto y
+superficie confusa). Fix genérico: módulos cuyo `MODULE_ROLE_ACCESS` es
+exactamente `['OWNER']` (hoy: module_config y feature_flags) se gatean por
+ROL siempre, ignorando allowedModules. `allowedModules` sigue extendiendo
+módulos operativos (ej. AREA_LEAD + pos_restaurant, §4). Tests en
+module-gate.test.ts (452 total).
+
+Nota operativa: cambios de flag tardan hasta 30 s por el cache; con pm2 en
+modo cluster cada worker tiene su propio cache (mismo tope de 30 s).
