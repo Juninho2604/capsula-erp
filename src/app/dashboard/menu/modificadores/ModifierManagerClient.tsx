@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight } from 'lucide-react';
 import {
     linkModifierToMenuItemAction,
     toggleModifierAvailabilityAction,
@@ -21,6 +22,13 @@ interface MenuItem {
     category: { name: string };
 }
 
+/** Auditoría de descargo calculada por getModifierGroupsWithItemsAction (§ punto 3 Christian). */
+interface ModifierDeduction {
+    status: 'OK' | 'NO_LINK' | 'NO_RECIPE' | 'RECIPE_INACTIVE';
+    recipeName: string | null;
+    ingredients: { name: string; quantity: number; unit: string }[];
+}
+
 interface Modifier {
     id: string;
     name: string;
@@ -28,6 +36,7 @@ interface Modifier {
     isAvailable: boolean;
     linkedMenuItemId: string | null;
     linkedMenuItem: { id: string; name: string } | null;
+    deduction?: ModifierDeduction;
 }
 
 interface ModifierGroup {
@@ -100,7 +109,9 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                 ...next[groupIdx],
                 modifiers: next[groupIdx].modifiers.map((m, idx) =>
                     idx === modIdx
-                        ? { ...m, linkedMenuItemId: menuItemId, linkedMenuItem: linkedItem ? { id: linkedItem.id, name: linkedItem.name } : null }
+                        // deduction: undefined → la fila cae al heurístico local
+                        // (recipeId del item) hasta el próximo reload del server.
+                        ? { ...m, linkedMenuItemId: menuItemId, linkedMenuItem: linkedItem ? { id: linkedItem.id, name: linkedItem.name } : null, deduction: undefined }
                         : m
                 )
             };
@@ -174,7 +185,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
         if (res.success) {
             setLocalGroups(prev => prev.map(g => g.id === groupId ? { ...g, name: editGroupName, isRequired: editGroupRequired, minSelections: editGroupMin, maxSelections: editGroupMax } : g));
             setEditingGroupId(null);
-            showToast('✅ Grupo actualizado');
+            showToast('Grupo actualizado');
         }
     };
 
@@ -186,7 +197,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
         const res = await deleteModifierGroupAction(groupId);
         if (res.success) {
             setLocalGroups(prev => prev.filter(g => g.id !== groupId));
-            showToast('✅ Grupo eliminado');
+            showToast('Grupo eliminado');
         }
     };
 
@@ -235,7 +246,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                 next[groupIdx] = { ...next[groupIdx], modifiers: next[groupIdx].modifiers.filter((_, i) => i !== modIdx) };
                 return next;
             });
-            showToast('✅ Modificador eliminado');
+            showToast('Modificador eliminado');
         }
     };
 
@@ -363,7 +374,9 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                             onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
                             className="flex items-center gap-3 min-w-0 flex-1 text-left"
                         >
-                            <span className="text-lg">{expandedGroup === group.id ? '▼' : '▶'}</span>
+                            {expandedGroup === group.id
+                                ? <ChevronDown className="h-4 w-4 text-capsula-ink-muted" />
+                                : <ChevronRight className="h-4 w-4 text-capsula-ink-muted" />}
                             {editingGroupId === group.id ? (
                                 <div className="flex items-center gap-2 flex-1" onClick={e => e.stopPropagation()}>
                                     <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="rounded border border-capsula-line bg-capsula-ivory text-capsula-ink px-2 py-1 text-sm font-semibold w-40" />
@@ -434,11 +447,15 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                     const linkedItem = menuItems.find(i => i.id === modifier.linkedMenuItemId);
                                     const linkedHasRecipe = linkedItem?.recipeId != null;
                                     const isSaving = savingModifier === modifier.id;
+                                    // Auditoría de descargo del server; tras un cambio local
+                                    // de vínculo cae al heurístico (linkedHasRecipe).
+                                    const ded = modifier.deduction;
                                     return (
                                         <div
                                             key={modifier.id}
-                                            className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${!modifier.isAvailable ? 'opacity-50' : ''}`}
+                                            className={`flex flex-col gap-2 px-5 py-3 ${!modifier.isAvailable ? 'opacity-50' : ''}`}
                                         >
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                                             {/* Toggle + Nombre */}
                                             <div className="flex items-center gap-3 min-w-0 sm:w-56 sm:shrink-0">
                                                 <button
@@ -471,7 +488,7 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                                             <optgroup key={cat} label={cat}>
                                                                 {items.map(item => (
                                                                     <option key={item.id} value={item.id}>
-                                                                        {item.name}{!item.recipeId ? ' ⚠️ sin receta' : ''}
+                                                                        {item.name}{!item.recipeId ? ' (sin receta)' : ''}
                                                                     </option>
                                                                 ))}
                                                             </optgroup>
@@ -482,25 +499,48 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
 
                                             {/* Estado + Eliminar */}
                                             <div className="shrink-0 flex items-center gap-2">
-                                                <span className="w-24 text-right text-xs font-medium">
+                                                <span className="w-28 text-right text-xs font-medium">
                                                     {isSaving ? (
                                                         <span className="text-capsula-ink-muted">Guardando...</span>
+                                                    ) : ded ? (
+                                                        ded.status === 'OK' ? (
+                                                            <span className="inline-flex items-center gap-1 text-[#2F6B4E] dark:text-[#6FB88F]"><Check className="h-3 w-3" /> Descuenta</span>
+                                                        ) : ded.status === 'RECIPE_INACTIVE' ? (
+                                                            <span className="inline-flex items-center gap-1 text-capsula-coral"><AlertTriangle className="h-3 w-3" /> Receta inactiva</span>
+                                                        ) : ded.status === 'NO_RECIPE' ? (
+                                                            <span className="inline-flex items-center gap-1 text-capsula-coral"><AlertTriangle className="h-3 w-3" /> Sin receta</span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-capsula-coral"><AlertTriangle className="h-3 w-3" /> No descuenta</span>
+                                                        )
                                                     ) : modifier.linkedMenuItemId ? (
                                                         <span className={linkedHasRecipe ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-coral'}>
-                                                            {linkedHasRecipe ? '✅ Con receta' : '⚠️ Sin receta'}
+                                                            {linkedHasRecipe ? 'Con receta' : 'Sin receta'}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-capsula-ink-muted">Sin vínculo</span>
+                                                        <span className="inline-flex items-center gap-1 text-capsula-coral"><AlertTriangle className="h-3 w-3" /> No descuenta</span>
                                                     )}
                                                 </span>
                                                 <button
                                                     onClick={() => handleDeleteModifier(groupIdx, modIdx)}
                                                     title="Eliminar modificador"
-                                                    className="text-capsula-ink-muted hover:text-capsula-coral text-xs p-1"
+                                                    className="text-capsula-ink-muted hover:text-capsula-coral p-1"
                                                 >
-                                                    🗑️
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
                                             </div>
+                                        </div>
+
+                                        {/* Detalle de descargo: qué y cuánto descuenta por cada unidad del plato */}
+                                        {ded?.status === 'OK' && ded.ingredients.length > 0 && (
+                                            <p className="flex items-start gap-1.5 pl-7 text-[11px] text-capsula-ink-muted">
+                                                <FlaskConical className="h-3 w-3 mt-0.5 shrink-0" />
+                                                <span>
+                                                    <span className="font-semibold">Descuenta por unidad</span>
+                                                    {ded.recipeName ? ` (receta "${ded.recipeName}")` : ''}:{' '}
+                                                    {ded.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`).join(' · ')}
+                                                </span>
+                                            </p>
+                                        )}
                                         </div>
                                     );
                                 })}

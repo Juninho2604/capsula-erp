@@ -10848,3 +10848,25 @@ Fix:
 
 Nota: `theoreticalStock` persistido sigue calculándose al Guardar (lo usan
 reportes); la UI simplemente no depende más de él para mostrar.
+
+## §71 Modificadores — auditoría de descargo visible (2026-07-04)
+
+Pregunta de Christian: "si al shawarma le agregan falafel, ¿cuánto falafel
+descuenta?". Respuesta del sistema: la receta COMPLETA del MenuItem vinculado
+(`linkedMenuItemId`) × cantidad de la línea; si no hay vínculo, NO descuenta.
+Para auditar eso de un vistazo:
+
+- `getModifierGroupsWithItemsAction` ahora calcula por modificador un objeto
+  `deduction`: status `OK | NO_LINK | NO_RECIPE | RECIPE_INACTIVE` +
+  `recipeName` + `ingredients[{name, quantity, unit}]`. (MenuItem.recipeId es
+  escalar sin FK → batch-fetch de recetas aparte.)
+- UI `/dashboard/menu/modificadores`: cada fila muestra el estado real
+  ("Descuenta" verde / "No descuenta" / "Sin receta" / "Receta inactiva" en
+  coral) y, si descuenta, una línea de detalle: `Descuenta por unidad
+  (receta "X"): 0.09 KG Masa falafel · …`.
+- Migración de emojis del archivo a lucide (✅→toast plano, 🗑️→Trash2,
+  ⚠️→AlertTriangle, ▼/▶→ChevronDown/Right) per regla CLAUDE.md.
+
+Config recomendada para porciones distintas al plato (ej. "extra falafel" =
+2 unidades, no la porción de 4): crear MenuItem "Falafel (extra)" con su
+propia receta de porción y vincular el modificador a ESE item.
