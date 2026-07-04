@@ -32,9 +32,16 @@ const prisma = new PrismaClient();
 const FILE = process.argv[2];
 const APPLY = process.argv.includes('--apply');
 const CREATE_MISSING = process.argv.includes('--create-missing');
+// --prune: después de aplicar, soft-deletea toda receta viva que NO vino en
+// esta plantilla → "borrón y cuenta nueva" SIN ventana sin descargo: las
+// recetas del archivo reemplazan in-place ANTES de podar el resto.
+// Por default preserva reventa/bebidas (mismo criterio que
+// soft-delete-recipes.ts); --prune-all poda absolutamente todo lo no cargado.
+const PRUNE = process.argv.includes('--prune') || process.argv.includes('--prune-all');
+const PRUNE_ALL = process.argv.includes('--prune-all');
 
 if (!FILE || FILE.startsWith('--')) {
-    console.error('Uso: npx tsx scripts/import-recetas-xlsx.ts <archivo.xlsx> [--apply] [--create-missing]');
+    console.error('Uso: npx tsx scripts/import-recetas-xlsx.ts <archivo.xlsx> [--apply] [--create-missing] [--prune|--prune-all]');
     process.exit(1);
 }
 
@@ -321,6 +328,7 @@ async function main() {
 
     // Pass 2: recetas
     let applied = 0;
+    const touchedRecipeIds = new Set<string>();
     for (const h of ordered) {
         const ings = ingByRecipe.get(norm(h.name)) ?? [];
         // Dedupe por insumo resuelto (unique recipeId+ingredientItemId)
@@ -356,17 +364,65 @@ async function main() {
                 }),
             ]);
             console.log(`  ↻ reemplazada: ${h.name} (v${existing.version + 1})`);
+            touchedRecipeIds.add(existing.id);
         } else {
             const outId = itemByName.get(norm(h.salida))!.id;
             const created = await prisma.recipe.create({
                 data: { tenantId: tenant.id, name: h.name, outputItemId: outId, ...headerData, ingredients: { create: ingredientsData } },
             });
             recipeByName.set(norm(h.name), { id: created.id, name: h.name, version: 1 });
+            touchedRecipeIds.add(created.id);
             console.log(`  + creada: ${h.name}`);
         }
         applied++;
     }
     console.log(`\n✅ Recetas aplicadas: ${applied}/${headers.length}`);
+
+    // ── PRUNE: podar recetas vivas que NO vinieron en la plantilla ──────────
+    // Corre DESPUÉS del reemplazo in-place → las recetas del archivo nunca
+    // dejan de existir y el POS no pierde descargo en ningún momento.
+    if (PRUNE) {
+        const alive = await prisma.recipe.findMany({
+            where: { tenantId: tenant.id, deletedAt: null, id: { notIn: Array.from(touchedRecipeIds) } },
+            select: {
+                id: true, name: true, outputItemId: true,
+                outputItem: { select: { beverageCategory: true, type: true } },
+                ingredients: { select: { ingredientItemId: true } },
+            },
+        });
+        const toPrune: { id: string; name: string }[] = [];
+        let preserved = 0;
+        for (const r of alive) {
+            if (!PRUNE_ALL) {
+                const isBebida = Boolean(r.outputItem?.beverageCategory);
+                const isReventa = r.ingredients.length === 1
+                    && r.ingredients[0].ingredientItemId === r.outputItemId
+                    && r.outputItem?.type === 'RAW_MATERIAL';
+                if (isBebida || isReventa) { preserved++; continue; }
+            }
+            toPrune.push({ id: r.id, name: r.name });
+        }
+        console.log(`\n══ PRUNE ══`);
+        console.log(`Recetas vivas NO incluidas en la plantilla: ${alive.length} · preservadas (reventa/bebida): ${preserved} · a podar: ${toPrune.length}`);
+        for (const r of toPrune) console.log(`  − poda: ${r.name}`);
+        if (toPrune.length) {
+            await prisma.recipe.updateMany({
+                where: { id: { in: toPrune.map(r => r.id) } },
+                data: { deletedAt: new Date(), isActive: false },
+            });
+            // Platos del menú que apuntaban a una receta podada → quedan sin
+            // descargo hasta re-vincular. Se reporta, no se toca el MenuItem.
+            const orphans = await prisma.menuItem.findMany({
+                where: { tenantId: tenant.id, isActive: true, deletedAt: null, recipeId: { in: toPrune.map(r => r.id) } },
+                select: { name: true, sku: true },
+                orderBy: { name: 'asc' },
+            });
+            if (orphans.length) {
+                console.log(`\n⚠ ${orphans.length} plato(s) del menú quedaron apuntando a recetas podadas (sin descargo hasta re-vincular):`);
+                for (const m of orphans) console.log(`  ◌ ${m.name} [${m.sku}]`);
+            }
+        }
+    }
 
     // ── 4. MENU_ITEMS (opcional) ─────────────────────────────────────────────
     if (menuRows.length) {
