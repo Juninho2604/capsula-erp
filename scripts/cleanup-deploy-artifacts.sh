@@ -25,6 +25,7 @@ APPLY=false
 KEEP_BUILDS=3
 KEEP_DUMPS=14
 KEEP_PM2_LOG_MB=200
+MIN_NEW_AGE_MINUTES=360
 
 for arg in "$@"; do
     case "$arg" in
@@ -32,6 +33,7 @@ for arg in "$@"; do
         --keep-builds=*)     KEEP_BUILDS="${arg#*=}" ;;
         --keep-dumps=*)      KEEP_DUMPS="${arg#*=}" ;;
         --keep-pm2-log-mb=*) KEEP_PM2_LOG_MB="${arg#*=}" ;;
+        --min-new-age-minutes=*) MIN_NEW_AGE_MINUTES="${arg#*=}" ;;
         --help|-h)
             sed -n '2,20p' "$0"
             exit 0
@@ -76,14 +78,21 @@ human_size() {
 echo "============================================="
 echo " 1. Builds NEW residuales"
 echo "============================================="
-echo "Cualquier capsula-erp-NEW-* es residuo de un deploy que no completó"
-echo "el swap atómico. Se borran SIEMPRE — no son fuente de rollback."
+echo "Un capsula-erp-NEW-* es residuo de un deploy que no completó el swap"
+echo "atómico. Se borran solo si tienen > ${MIN_NEW_AGE_MINUTES} min: uno reciente puede"
+echo "ser un DEPLOY EN CURSO y borrarlo lo revienta a mitad del npm ci."
+echo "(Pasó el 2026-07-04: el cron de las 12:00 borró el staging de un"
+echo "deploy lanzado a las 11:59:59.)"
 echo ""
 
 NEW_FOUND=0
 for d in "$WWW"/capsula-erp-NEW-*; do
     [[ -d "$d" ]] || continue
     NEW_FOUND=$((NEW_FOUND + 1))
+    if [[ -n "$(find "$d" -maxdepth 0 -mmin -"$MIN_NEW_AGE_MINUTES" 2>/dev/null)" ]]; then
+        echo "  SKIP  $d  (< ${MIN_NEW_AGE_MINUTES} min — posible deploy en curso)"
+        continue
+    fi
     SIZE=$(human_size "$d")
     echo "$(prefix)rm -rf $d  ($SIZE)"
     do_rm "$d"
