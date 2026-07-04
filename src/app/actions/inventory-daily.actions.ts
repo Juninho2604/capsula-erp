@@ -287,6 +287,47 @@ export async function getDailyInventoryAction(
             autoSales.set(id, (autoSales.get(id) || 0) + qty);
         }
 
+        // ── Consumo teórico desde ventas POS (SalesOrder × recetas) ──
+        // Antes esto solo existía en el botón manual "Importar desde POS"
+        // (syncSalesFromOrdersAction), y el SYNC 2.b de abajo lo PISABA en
+        // cada carga con solo transferencias+producción — por eso el consumo
+        // nunca se veía. Ahora el consumo POS entra al autoSales que se
+        // persiste en cada carga: siempre visible sin apretar nada.
+        // Rango Caracas (§20) para no perder órdenes de madrugada.
+        const { start: posStart } = getCaracasDayRange(effectiveStart);
+        const { end: posEnd } = getCaracasDayRange(date);
+        const posOrders = await db.salesOrder.findMany({
+            where: {
+                areaId,
+                status: 'COMPLETED',
+                createdAt: { gte: posStart, lte: posEnd },
+                voidedAt: null,
+                deletedAt: null,
+            },
+            include: {
+                items: {
+                    where: { voidedAt: null }, // ítems anulados no se cocinaron / se reintegraron
+                    include: {
+                        menuItem: { select: { recipeId: true } },
+                        modifiers: {
+                            select: { modifier: { select: { linkedMenuItem: { select: { recipeId: true } } } } },
+                        },
+                    },
+                },
+            },
+        });
+        const posRecipeIds = collectReferencedRecipeIds(posOrders);
+        const posRecipes = posRecipeIds.length > 0
+            ? await db.recipe.findMany({
+                where: { id: { in: posRecipeIds } },
+                include: { ingredients: true },
+            })
+            : [];
+        const posConsumption = computeConsumptionFromOrders(posOrders, new Map(posRecipes.map(r => [r.id, r])));
+        for (const [id, qty] of Array.from(posConsumption.entries())) {
+            autoSales.set(id, (autoSales.get(id) || 0) + qty);
+        }
+
         const autoWaste = new Map<string, number>();
         for (const [id, qty] of Array.from(wasteFromProduction.entries())) {
             autoWaste.set(id, (autoWaste.get(id) || 0) + qty);
@@ -673,7 +714,15 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
                 deletedAt: null,   // excluir soft-deleted
             },
             include: {
-                items: { include: { menuItem: true } }
+                items: {
+                    where: { voidedAt: null }, // ítems anulados: inventario ya reintegrado
+                    include: {
+                        menuItem: { select: { recipeId: true } },
+                        modifiers: {
+                            select: { modifier: { select: { linkedMenuItem: { select: { recipeId: true } } } } },
+                        },
+                    },
+                },
             }
         });
 

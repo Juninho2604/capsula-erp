@@ -10820,3 +10820,31 @@ cientos de recetas. `RecipeList.tsx` pasó de grid de cards a **tabla densa**:
   `MenuItem.recipeId` pero reporta en el toast cuántos productos del menú
   usaban la receta (quedan sin descargo hasta re-vincular).
 - `getRecipesAction` ya filtraba `isActive: true` → las borradas desaparecen.
+
+## §70 Inventario Diario — consumo POS automático + teórico en vivo (2026-07-04)
+
+Bug de fondo (pedido de Christian: "no veo lo consumido teóricamente"):
+`getDailyInventoryAction` re-sincronizaba `sales` en CADA carga (SYNC 2.b)
+con solo transferencias+producción, **pisando** lo que el botón manual
+"Importar desde POS" (`syncSalesFromOrdersAction`) hubiera escrito. El
+consumo POS se borraba al instante de recargar la página.
+
+Fix:
+- **`getDailyInventoryAction` ahora computa el consumo POS adentro**: órdenes
+  COMPLETED del área en rango Caracas (§20), excluyendo órdenes anuladas /
+  soft-deleted **y ítems con `voidedAt`** (su inventario ya se reintegró),
+  vía `computeConsumptionFromOrders`. Se suma al `autoSales` que SYNC 2.b
+  persiste → el consumo teórico aparece solo, sin apretar botones.
+- **`computeConsumptionFromOrders` ahora incluye modificadores**: cada
+  modifier con `linkedMenuItem.recipeId` suma su receta × cantidad de la
+  línea (espejo del descargo real del POS §67). `collectReferencedRecipeIds`
+  también los colecta. El botón manual quedó consistente (mismo include).
+- **UI (`daily-manager.tsx`)**: el "Cierre Teórico" ya NO lee
+  `item.theoreticalStock` (que se persistía solo al Guardar y mostraba 0):
+  se calcula EN VIVO con `calcTheoretical()` = Apertura real + Ingresos −
+  Consumo − Merma, en tabla, cards móviles, totales y export Excel. Puede
+  ser **negativo** y se muestra igual (tinte danger) — señal de faltante de
+  entradas/conteo, no error.
+
+Nota: `theoreticalStock` persistido sigue calculándose al Guardar (lo usan
+reportes); la UI simplemente no depende más de él para mostrar.
