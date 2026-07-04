@@ -10921,3 +10921,30 @@ Recuperación operativa tras el fallo: simplemente relanzar
 `bash scripts/deploy-vps.sh main` — el fallo fue antes del swap, la app
 vieja nunca dejó de atender y no quedó estado a medias (el NEW ya fue
 borrado por el propio cron).
+
+## §74 Importador de recetas desde plantilla Excel (2026-07-04)
+
+Christian recarga las recetas manualmente con `Plantilla_Recetas_CAPSULA.xlsx`
+(5 hojas: Instrucciones, INSUMOS_NUEVOS, RECETAS_CABECERA,
+RECETAS_INGREDIENTES, MENU_ITEMS opcional, REFERENCIA).
+`scripts/import-recetas-xlsx.ts` lee el .xlsx DIRECTO (lib `xlsx`, ya dep).
+
+Decisiones clave (pedido de Omar: "el POS debe seguir funcionando siempre"):
+- **Reemplazo in-place, NO wipe**: receta existente (match por nombre
+  normalizado, deletedAt null) → se le reemplazan ingredientes y cabecera
+  con version+1, MISMO Recipe.id → `MenuItem.recipeId` queda válido →
+  **cero ventana sin descargo**. Solo se crean recetas nuevas para nombres
+  sin match. No hace falta soft-delete previo.
+- Catálogo/menú/modificadores intactos: solo crea insumos de INSUMOS_NUEVOS
+  que no existan (match exacto/unit-strip) y placeholders IMPORT_REVISAR
+  con `--create-missing`.
+- Filas de EJEMPLO de la plantilla se detectan por nombre y se saltan.
+- Ingredientes pueden referenciar `producto_salida` de sub-recetas de la
+  misma corrida (pass 1 crea outputs, pass 2 recetas; SUB_RECIPE primero).
+- MENU_ITEMS: actualiza (recipeId/precio/routing/disponible) por nombre o
+  crea (categoría find-or-create, precio obligatorio para nuevos).
+- Errores de formato (tipo inválido, cantidad ilegible, receta sin
+  ingredientes, ingrediente de receta inexistente) abortan el --apply.
+
+Uso: `SEED_TENANT_SLUG=shanklish npx tsx scripts/import-recetas-xlsx.ts
+archivo.xlsx [--apply] [--create-missing]` — ensayo por default.
