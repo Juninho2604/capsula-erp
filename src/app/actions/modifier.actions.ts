@@ -37,7 +37,7 @@ export async function getModifierGroupsWithItemsAction() {
                     orderBy: { sortOrder: 'asc' },
                     include: {
                         linkedMenuItem: {
-                            select: { id: true, name: true }
+                            select: { id: true, name: true, recipeId: true }
                         }
                     }
                 },
@@ -48,7 +48,64 @@ export async function getModifierGroupsWithItemsAction() {
                 }
             }
         });
-        return { success: true, data: groups };
+
+        // ── Auditoría de descargo por modificador ─────────────────────────
+        // MenuItem.recipeId es escalar (sin relación) → batch-fetch de las
+        // recetas vinculadas para reportar QUÉ descuenta cada modificador.
+        const linkedRecipeIds = Array.from(new Set(
+            groups.flatMap(g => g.modifiers)
+                .map(m => m.linkedMenuItem?.recipeId)
+                .filter((id): id is string => Boolean(id))
+        ));
+        const recipes = linkedRecipeIds.length > 0
+            ? await db.recipe.findMany({
+                where: { id: { in: linkedRecipeIds } },
+                select: {
+                    id: true,
+                    name: true,
+                    isActive: true,
+                    deletedAt: true,
+                    ingredients: {
+                        select: {
+                            quantity: true,
+                            unit: true,
+                            ingredientItem: { select: { name: true } },
+                        },
+                    },
+                },
+            })
+            : [];
+        const recipesById = new Map(recipes.map(r => [r.id, r]));
+
+        type DeductionStatus = 'OK' | 'NO_LINK' | 'NO_RECIPE' | 'RECIPE_INACTIVE';
+        const withDeduction = groups.map(g => ({
+            ...g,
+            modifiers: g.modifiers.map(m => {
+                const recipeId = m.linkedMenuItem?.recipeId ?? null;
+                const recipe = recipeId ? recipesById.get(recipeId) : undefined;
+                let status: DeductionStatus;
+                if (!m.linkedMenuItemId) status = 'NO_LINK';
+                else if (!recipe) status = 'NO_RECIPE';
+                else if (!recipe.isActive || recipe.deletedAt) status = 'RECIPE_INACTIVE';
+                else status = 'OK';
+                return {
+                    ...m,
+                    deduction: {
+                        status,
+                        recipeName: recipe?.name ?? null,
+                        ingredients: status === 'OK'
+                            ? recipe!.ingredients.map(ing => ({
+                                name: ing.ingredientItem.name,
+                                quantity: ing.quantity,
+                                unit: ing.unit,
+                            }))
+                            : [],
+                    },
+                };
+            }),
+        }));
+
+        return { success: true, data: withDeduction };
     } catch (error) {
         console.error('Error fetching modifier groups:', error);
         return { success: false, message: 'Error cargando grupos de modificadores' };
