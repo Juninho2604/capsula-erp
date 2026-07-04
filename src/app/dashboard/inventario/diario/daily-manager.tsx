@@ -41,6 +41,16 @@ interface Props {
     initialAreas: any[];
 }
 
+/**
+ * Cierre teórico calculado EN VIVO: Apertura real + Ingresos − Consumo − Merma.
+ * Antes se mostraba `item.theoreticalStock` (persistido solo al Guardar), por lo
+ * que el teórico aparecía en 0 hasta que alguien guardaba. Puede ser NEGATIVO
+ * (consumo mayor al stock registrado) — se muestra igual, es señal de faltante
+ * de entradas/conteo, no un error.
+ */
+const calcTheoretical = (i: any): number =>
+    (i.initialCount || 0) + (i.entries || 0) - (i.sales || 0) - (i.waste || 0);
+
 export default function DailyInventoryManager({ initialAreas }: Props) {
     const branding = useTenantBranding();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -277,7 +287,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
 
         // ── Data rows ──
         const dataRows = items.map(item => {
-            const theoretical = item.theoreticalStock || 0;
+            const theoretical = calcTheoretical(item);
             const variance = item.variance || 0;
             const theoreticalInit = item.theoreticalInitialCount || 0;
             const realInit = item.initialCount || 0;
@@ -307,7 +317,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
             items.reduce((s, i) => s + (i.entries || 0), 0),
             items.reduce((s, i) => s + (i.sales || 0), 0),
             items.reduce((s, i) => s + (i.waste || 0), 0),
-            items.reduce((s, i) => s + (i.theoreticalStock || 0), 0),
+            items.reduce((s, i) => s + calcTheoretical(i), 0),
             items.reduce((s, i) => s + (i.finalCount || 0), 0),
             items.reduce((s, i) => s + (i.variance || 0), 0),
         ];
@@ -816,7 +826,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                         horizontal de la tabla de 10 columnas y el clipping en landscape. */}
                     <div className="divide-y divide-capsula-line lg:hidden">
                         {items.map(item => {
-                            const theoretical = item.theoreticalStock || 0;
+                            const theoretical = calcTheoretical(item);
                             const variance = item.variance || 0;
                             const isNeg = variance < -0.01;
                             const theoreticalInit = item.theoreticalInitialCount || 0;
@@ -886,7 +896,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                             { l: isProduction ? 'Producción' : 'Ingresos', v: `+${(item.entries || 0).toFixed(2)}`, warn: false },
                                             { l: isProduction ? 'Transf. salida' : 'Consumo', v: `−${(item.sales || 0).toFixed(2)}`, warn: false },
                                             { l: 'Merma', v: `−${(item.waste || 0).toFixed(2)}`, warn: false },
-                                            { l: 'Teórico', v: theoretical.toFixed(2), warn: false },
+                                            { l: 'Teórico', v: theoretical.toFixed(2), warn: theoretical < -0.01 },
                                         ].map(c => (
                                             <div key={c.l} className={cn(
                                                 "rounded-lg border border-capsula-line px-2 py-1.5 text-center",
@@ -947,7 +957,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                     </td>
                                 </tr>
                             ) : items.map(item => {
-                                const theoretical = item.theoreticalStock || 0;
+                                const theoretical = calcTheoretical(item);
                                 const variance = item.variance || 0;
                                 const isNegativeVariance = variance < -0.01;
                                 const suggestion = autoSuggestions[item.inventoryItemId];
@@ -1036,8 +1046,13 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                             </span>
                                         </td>
 
-                                        {/* TEÓRICO */}
-                                        <td className="border-r border-capsula-line bg-capsula-ivory-alt px-3 py-3 text-center font-mono text-capsula-ink-muted">
+                                        {/* TEÓRICO — en vivo, puede ser negativo (faltan entradas/conteo) */}
+                                        <td className={cn(
+                                            "border-r border-capsula-line px-3 py-3 text-center font-mono",
+                                            theoretical < -0.01
+                                                ? "bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]"
+                                                : "bg-capsula-ivory-alt text-capsula-ink-muted"
+                                        )}>
                                             <span className="text-sm font-bold tabular-nums">{theoretical.toFixed(2)}</span>
                                         </td>
 
@@ -1107,7 +1122,7 @@ export default function DailyInventoryManager({ initialAreas }: Props) {
                                         −{items.reduce((s, i) => s + (i.waste || 0), 0).toFixed(2)}
                                     </td>
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-capsula-cream/80">
-                                        {items.reduce((s, i) => s + (i.theoreticalStock || 0), 0).toFixed(2)}
+                                        {items.reduce((s, i) => s + calcTheoretical(i), 0).toFixed(2)}
                                     </td>
                                     <td className="px-3 py-2 text-center font-mono tabular-nums text-green-300">
                                         {items.reduce((s, i) => s + (i.finalCount || 0), 0).toFixed(2)}

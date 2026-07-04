@@ -86,6 +86,44 @@ describe('computeConsumptionFromOrders', () => {
         expect(c.size).toBe(0);
     });
 
+    it('modificador con receta vinculada suma su consumo × cantidad de la línea', () => {
+        const recipeFalafel = { ingredients: [{ ingredientItemId: 'masa-falafel', quantity: 2 }] };
+        const recipes = new Map([
+            ['rec-arepa', recipeArepa],
+            ['rec-falafel', recipeFalafel],
+        ]);
+        const orders = [
+            { items: [
+                {
+                    quantity: 3, // 3 arepas, cada una con +falafel
+                    menuItem: { recipeId: 'rec-arepa' },
+                    modifiers: [
+                        { modifier: { linkedMenuItem: { recipeId: 'rec-falafel' } } },
+                        { modifier: { linkedMenuItem: { recipeId: null } } },  // sin receta → no suma
+                        { modifier: null },                                      // huérfano → no rompe
+                        null,                                                    // defensivo
+                    ],
+                },
+            ] },
+        ];
+        const c = computeConsumptionFromOrders(orders, recipes);
+        expect(c.get('harina')).toBeCloseTo(0.3, 3);        // receta principal
+        expect(c.get('masa-falafel')).toBeCloseTo(6, 3);    // 2 × 3 líneas
+    });
+
+    it('collectReferencedRecipeIds incluye recetas de modificadores', () => {
+        const ids = collectReferencedRecipeIds([
+            { items: [
+                {
+                    quantity: 1,
+                    menuItem: { recipeId: 'a' },
+                    modifiers: [{ modifier: { linkedMenuItem: { recipeId: 'mod-b' } } }],
+                },
+            ] },
+        ]);
+        expect(ids.sort()).toEqual(['a', 'mod-b']);
+    });
+
     it('ingrediente con quantity 0 en receta no se suma', () => {
         const recipes = new Map([['rec-x', {
             ingredients: [
