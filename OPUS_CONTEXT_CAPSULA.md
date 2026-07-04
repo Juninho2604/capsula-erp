@@ -10963,3 +10963,22 @@ wipe previo (ventana sin descargo en POS), el importador ahora soporta:
 Resultado equivalente a "borrón y cuenta nueva" pero atómico y reversible
 (soft-delete). Los items sub-receta huérfanos se limpian después con
 hard-delete-subrecipe-items.ts, y los insumos duplicados con sku-dedupe.ts.
+
+## §75 Wipe de todo lo no-catálogo — recetas + insumos, POS intacto (2026-07-04)
+
+Decisión de Omar/gerente: "borrar todo lo que no sea catálogo" para recargar
+limpio desde la plantilla Excel. `scripts/wipe-non-catalog.ts`:
+
+- Recetas (todas, incl. sub-recetas): soft-delete masivo (reversible).
+- InventoryItems: HARD delete los que no tienen NINGUNA referencia (borra
+  antes sus locations/costHistory; cascades cubren AreaCritical y
+  SupplierItemPriceHistory); los que tienen historial se DESACTIVAN
+  (isActive=false) — la BD no permite borrarlos sin destruir trazabilidad.
+- Catálogo POS (MenuItem/MenuCategory/modificadores/mesas): NO se toca; el
+  script imprime el conteo como verificación.
+- Doble confirmación obligatoria: `--apply --confirm=BORRAR-TODO-<SLUG>`.
+- Post-wipe el POS vende sin descargo hasta: (1) importar plantilla
+  (`import-recetas-xlsx.ts --apply --create-missing`), (2) RE-VINCULAR
+  platos→recetas (hoja MENU_ITEMS o `relink-menu-recipes.ts --apply`) —
+  obligatorio porque los recipeId viejos quedan apuntando a recetas
+  soft-borradas.
