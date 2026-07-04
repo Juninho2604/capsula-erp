@@ -814,12 +814,19 @@ export function getVisibleModules(
   return MODULE_REGISTRY
     .filter(m => visibleIds.has(m.id))
     .filter(m => {
-      // module_config solo visible para OWNER, sin importar allowedModules
-      if (m.id === 'module_config') return userRole === 'OWNER';
+      const allowedRoles = MODULE_ROLE_ACCESS[m.id];
+      // Módulos OWNER-only (module_config, feature_flags): el ROL manda
+      // SIEMPRE, incluso con allowedModules individuales. Esa lista puede
+      // extender acceso a módulos operativos, pero nunca a los de
+      // administración exclusiva del dueño. (Bug: feature_flags aparecía
+      // en el sidebar de no-OWNERs con allowedModules que lo incluyeran;
+      // el server igual bloqueaba la página, pero el link estaba de más.)
+      if (allowedRoles && allowedRoles.length === 1 && allowedRoles[0] === 'OWNER') {
+        return userRole === 'OWNER';
+      }
       // Si el usuario tiene allowedModules individuales, esa lista es la única autoridad
       if (userFilter) return userFilter.has(m.id);
       // Sin allowedModules → acceso por rol
-      const allowedRoles = MODULE_ROLE_ACCESS[m.id];
       if (!allowedRoles) return true;
       return allowedRoles.includes(userRole);
     })
