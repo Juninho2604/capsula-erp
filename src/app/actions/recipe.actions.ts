@@ -20,6 +20,7 @@ import { calculateRecipeCost } from '@/server/services/cost.service';
 import { UnitOfMeasure } from '@/types'; // Assuming this exists, otherwise we use string
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { getSession } from '@/lib/auth';
 
 export interface ActionResult {
     success: boolean;
@@ -111,6 +112,53 @@ export async function getRecipesAction() {
     } catch (error) {
         console.error('Error fetching recipes:', error);
         return [];
+    }
+}
+
+/**
+ * Soft-delete de una receta desde la UI de Recetas.
+ * Reversible: setea deletedAt + isActive=false (mismo patrón que
+ * scripts/soft-delete-recipes.ts). NO toca MenuItem.recipeId — si algún
+ * producto del menú la usaba para descargo, se reporta en el mensaje para
+ * que el usuario lo re-vincule (el POS simplemente deja de descontar).
+ */
+export async function deleteRecipeAction(id: string): Promise<ActionResult> {
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, message: 'No autorizado' };
+        const allowed = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'];
+        if (!allowed.includes(session.role)) {
+            return { success: false, message: 'Sin permisos para eliminar recetas (requiere rol gerencial o chef)' };
+        }
+
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const recipe = await db.recipe.findFirst({
+            where: { id, deletedAt: null },
+            select: { id: true, name: true },
+        });
+        if (!recipe) return { success: false, message: 'Receta no encontrada' };
+
+        const linkedMenuItems = await db.menuItem.count({ where: { recipeId: id } });
+
+        await db.recipe.updateMany({
+            where: { id },
+            data: { deletedAt: new Date(), isActive: false },
+        });
+
+        revalidatePath('/dashboard/recetas');
+        revalidatePath('/dashboard/menu');
+
+        return {
+            success: true,
+            message: linkedMenuItems > 0
+                ? `Receta "${recipe.name}" eliminada. Atención: ${linkedMenuItems} producto(s) del menú la usaban para descargo de inventario — quedan sin descontar hasta re-vincular otra receta.`
+                : `Receta "${recipe.name}" eliminada`,
+        };
+    } catch (error) {
+        console.error('Error deleting recipe:', error);
+        return { success: false, message: 'Error al eliminar la receta' };
     }
 }
 

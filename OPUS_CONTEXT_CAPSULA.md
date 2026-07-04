@@ -10801,3 +10801,22 @@ de Shanklish. Dry-run por defecto, `--apply` para ejecutar,
   `IntercompanySettlementLine.inventoryItemId`.
 
 Runbook: backup BD → ensayo sin flags → revisar bloqueados → `--apply`.
+
+## §69 Recetas — vista tabla + soft-delete desde la UI (2026-07-04)
+
+Pedido de Christian: los cards de recetas ocupaban demasiada pantalla con
+cientos de recetas. `RecipeList.tsx` pasó de grid de cards a **tabla densa**:
+
+- Columnas: Receta (icono tipo + nombre + Sub-receta/Producto Final),
+  Categoría, Rinde, Costo/Unidad (con botón recalcular, solo si canViewCosts),
+  Estado (Aprobada/Borrador), Acciones.
+- Fila completa clicable → `/dashboard/recetas/[id]` (editar).
+- Filtros: búsqueda fuzzy + select de categoría + select de tipo
+  (sub-receta / producto final). Contador "X de Y".
+- **Soft-delete por fila** (Trash2, confirm nativo): nueva
+  `deleteRecipeAction(id)` en `recipe.actions.ts` — roles
+  OWNER/ADMIN_MANAGER/OPS_MANAGER/CHEF, setea `deletedAt + isActive=false`
+  (mismo patrón que scripts/soft-delete-recipes.ts), NO toca
+  `MenuItem.recipeId` pero reporta en el toast cuántos productos del menú
+  usaban la receta (quedan sin descargo hasta re-vincular).
+- `getRecipesAction` ya filtraba `isActive: true` → las borradas desaparecen.
