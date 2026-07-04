@@ -10948,3 +10948,18 @@ Decisiones clave (pedido de Omar: "el POS debe seguir funcionando siempre"):
 
 Uso: `SEED_TENANT_SLUG=shanklish npx tsx scripts/import-recetas-xlsx.ts
 archivo.xlsx [--apply] [--create-missing]` — ensayo por default.
+
+### §74.1 Flag --prune / --prune-all del importador xlsx (2026-07-04)
+
+Pedido del gerente de Shanklish: "borrar todo y cargar limpio". En vez de
+wipe previo (ventana sin descargo en POS), el importador ahora soporta:
+- `--prune`: tras aplicar la plantilla, soft-deletea toda receta viva que NO
+  vino en el archivo, preservando reventa/bebidas (criterio
+  soft-delete-recipes). Como el reemplazo es in-place ANTES de la poda, las
+  recetas del archivo nunca dejan de existir → cero interrupción del POS.
+- `--prune-all`: poda también reventa/bebidas (todo lo no cargado).
+- Reporta los MenuItems que quedaron apuntando a recetas podadas (sin
+  descargo hasta re-vincular); no toca el MenuItem.
+Resultado equivalente a "borrón y cuenta nueva" pero atómico y reversible
+(soft-delete). Los items sub-receta huérfanos se limpian después con
+hard-delete-subrecipe-items.ts, y los insumos duplicados con sku-dedupe.ts.
