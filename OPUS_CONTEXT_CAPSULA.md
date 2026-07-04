@@ -10900,3 +10900,24 @@ propia receta de porción y vincular el modificador a ESE item.
 Runbook: backup → auditoría → revisar/editar CSV → ensayo con --merge-file →
 --apply. Recategorización: editar category desde la lista del reporte (la UI
 de Inventario permite editar categoría por item).
+
+## §73 BUG deploy — cron de cleanup borraba el staging de un deploy en curso (2026-07-04)
+
+Síntoma: `deploy-vps.sh` lanzado 11:59:59 falló en `[4/9] npm ci` con
+`ENOENT package.json` en `/var/www/capsula-erp-NEW-<ts>` — el directorio
+desapareció a mitad de la instalación.
+
+Causa: `cleanup-deploy-artifacts.sh` (cron diario a las 12:00) borraba
+**cualquier** `capsula-erp-NEW-*` incondicionalmente ("se borran SIEMPRE"),
+incluyendo el staging del deploy que estaba corriendo en ese momento.
+
+Fix: la sección 1 del cleanup ahora SALTA los NEW-* con menos de
+`--min-new-age-minutes` (default 360 = 6 h) de antigüedad — un deploy tarda
+minutos, así que solo borra residuo genuino. El deploy-vps.sh no cambia:
+cuando invoca el cleanup al final, su propio staging ya fue movido al
+directorio activo por el swap.
+
+Recuperación operativa tras el fallo: simplemente relanzar
+`bash scripts/deploy-vps.sh main` — el fallo fue antes del swap, la app
+vieja nunca dejó de atender y no quedó estado a medias (el NEW ya fue
+borrado por el propio cron).
