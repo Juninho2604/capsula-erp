@@ -10870,3 +10870,33 @@ Para auditar eso de un vistazo:
 Config recomendada para porciones distintas al plato (ej. "extra falafel" =
 2 unidades, no la porción de 4): crear MenuItem "Falafel (extra)" con su
 propia receta de porción y vincular el modificador a ESE item.
+
+## §72 SKU dedupe — auditoría y fusión de items duplicados (2026-07-04)
+
+`scripts/sku-dedupe.ts` — dos modos, tenant via `SEED_TENANT_SLUG`:
+
+1. **Auditoría** (default, solo lectura): agrupa items activos por nombre
+   normalizado (minúsculas, sin acentos, sin sufijo de unidad KG/LTS/UND —
+   misma familia de normalización que import-recetas). Lista grupos con 2+
+   items con sus referencias (movimientos, usos en recetas vivas, recetas
+   propias, stock total) y sugiere canónico = el más referenciado. Reporta
+   además items sin categoría real (null/GENERAL/IMPORT_REVISAR). Escribe
+   `scripts/data/fusiones-propuestas.csv` para revisar a mano.
+
+2. **Fusión** (`--merge=DUP:CANON` o `--merge-file=csv`; escribe solo con
+   `--apply`; transacción por par, timeout 120s):
+   - RecipeIngredient: re-apunta; si la receta ya usa el canónico, SUMA
+     cantidades y borra la línea duplicada.
+   - InventoryLocation: suma stock por área al canónico (o re-apunta).
+   - CostHistory: cierra el costo vigente del duplicado y migra el historial.
+   - Movimientos, requisiciones, compras, préstamos, auditorías, proteínas,
+     plantillas y refs escalares sin FK → updateMany al canónico.
+   - Tablas con unique (Daily/Weekly/CycleSnapshot/AreaCritical/SupplierItem/
+     TemplateOutput): re-apunta o borra la fila dup si el canónico ya tiene.
+   - Duplicado queda `isActive=false` + description `[FUSIONADO → SKU]`.
+   - Regla dura: baseUnit debe coincidir; pares con unidades distintas se
+     saltan (van comentados en el CSV propuesto).
+
+Runbook: backup → auditoría → revisar/editar CSV → ensayo con --merge-file →
+--apply. Recategorización: editar category desde la lista del reporte (la UI
+de Inventario permite editar categoría por item).
