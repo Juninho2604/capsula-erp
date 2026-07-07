@@ -39,6 +39,11 @@ export const FEATURE_FLAGS = {
         description:
             'Cuando está activo, aparece el módulo "Gestión de Deliverys" en Administración (tablero de órdenes, sedes, motorizados, agotados) y se habilita la API /api/v1/delivery/* que consume el bot (n8n + IA). Módulo aislado: no toca el Report Z, el historial de ventas ni el inventario. Sin el flag, el módulo y la API quedan ocultos para el tenant.',
     },
+    waConversations: {
+        label: 'Activar módulo Conversaciones WhatsApp',
+        description:
+            'Cuando está activo, aparece el módulo "Conversaciones" (bandeja de WhatsApp del bot Fabiola: ver chats en tiempo casi real, tomar el control de una conversación y responder como humano, con compliance de ventana 24h/plantillas/opt-out forzado por el servidor) y se habilita la API /api/v1/wa/* que consume n8n. Sin el flag, el módulo y la API quedan ocultos para el tenant.',
+    },
     exactCashSaleTip: {
         label: 'Venta exacta + redondeo de efectivo a propina',
         description:

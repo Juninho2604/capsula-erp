@@ -47,6 +47,9 @@ export const PERM = {
   REPORTES_GERENCIAL_VER:   'REPORTES_GERENCIAL_VER',   // reportes.gerencial.ver (solo roles administrativos)
   REPORTES_FISCAL_VER:      'REPORTES_FISCAL_VER',      // reportes.fiscal.ver
   REPORTES_EXPORTAR:        'REPORTES_EXPORTAR',        // reportes.exportar (Excel/PDF)
+
+  // Conversaciones WhatsApp (§77)
+  CONVERSATIONS_MANAGE:     'CONVERSATIONS_MANAGE',     // conversations.manage — bandeja WA, takeover, envío humano
 } as const;
 
 export type PermKey = typeof PERM[keyof typeof PERM];
@@ -89,6 +92,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.MANAGE_PINS,
     PERM.MANAGE_BROADCAST,
     PERM.EDIT_WINK_PRICE,
+    PERM.CONVERSATIONS_MANAGE,
     PERM.REPORTES_VENTAS_VER,
     PERM.REPORTES_OPERATIVOS_VER,
     PERM.REPORTES_INVENTARIO_VER,
@@ -114,6 +118,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.CLOSE_CASH_REGISTER,
     PERM.MANAGE_BROADCAST,
     PERM.EDIT_WINK_PRICE,
+    PERM.CONVERSATIONS_MANAGE,
     // Reportes: operación completa SIN gerencial (solo roles administrativos)
     PERM.REPORTES_VENTAS_VER,
     PERM.REPORTES_OPERATIVOS_VER,
@@ -201,6 +206,7 @@ export const PERM_GROUPS: { key: string; label: string; icon: string; perms: Per
       PERM.MANAGE_PINS,
       PERM.CONFIGURE_SYSTEM,
       PERM.MANAGE_BROADCAST,
+      PERM.CONVERSATIONS_MANAGE,
     ],
   },
   {
@@ -229,6 +235,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.VIEW_SALES_HISTORY]:  { label: 'Ver historial de ventas', description: 'Historial de órdenes en solo lectura (sin método de pago, sin exportar ni anular)' },
   [PERM.REPRINT_COMANDA]:     { label: 'Re-imprimir comanda',   description: 'Volver a imprimir comanda de cocina' },
   [PERM.EDIT_WINK_PRICE]:     { label: 'Editar precio WINK',    description: 'Modificar el precio WINK de un producto (gerente)' },
+  [PERM.CONVERSATIONS_MANAGE]:{ label: 'Conversaciones WA',     description: 'Bandeja de WhatsApp: ver chats, tomar el control del bot y responder' },
   [PERM.ADJUST_STOCK]:        { label: 'Ajustar inventario',    description: 'Crear ajuste manual de stock' },
   [PERM.APPROVE_TRANSFER]:    { label: 'Aprobar transferencias',description: 'Aprobar requisición de transferencia entre áreas' },
   [PERM.CLOSE_DAILY_INV]:     { label: 'Cerrar inv. diario',    description: 'Cerrar el inventario diario del turno' },

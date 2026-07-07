@@ -41,6 +41,7 @@ export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     [PERM.MANAGE_USERS]:        ['users'],
     [PERM.MANAGE_PINS]:         ['users', 'mesoneros'],
     [PERM.CONFIGURE_SYSTEM]:    ['module_config'],
+    [PERM.CONVERSATIONS_MANAGE]: ['conversaciones'],
     [PERM.MANAGE_BROADCAST]:    ['anuncios'],
     [PERM.EDIT_WINK_PRICE]:     ['menu', 'wink'],
 
