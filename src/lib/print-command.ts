@@ -23,11 +23,45 @@ interface ReceiptItem {
     modifiers: string[];
 }
 
+/**
+ * Etiqueta legible de un método de pago para el recibo. Para los PDV
+ * distingue el punto de venta (Shanklish / Superferro) — pedido de la cajera
+ * para ver "método de pago e incluso el punto de venta" en la nota de entrega.
+ * Espejo textual de getPaymentBadge (sales/page.tsx).
+ */
+export function paymentMethodLabel(method: string | null | undefined): string {
+    switch ((method ?? '').toUpperCase()) {
+        case 'CASH':
+        case 'CASH_USD':       return 'Efectivo $';
+        case 'CASH_EUR':       return 'Efectivo €';
+        case 'CASH_BS':        return 'Efectivo Bs';
+        case 'CARD':
+        case 'BS_POS':
+        case 'PDV_SHANKLISH':  return 'PDV Shanklish';
+        case 'PDV_SUPERFERRO': return 'PDV Superferro';
+        case 'ZELLE':          return 'Zelle';
+        case 'MOBILE_PAY':     return 'Pago Móvil';
+        case 'MOVIL_NG':       return 'Móvil NG';
+        case 'TRANSFER':       return 'Transferencia';
+        case 'CORTESIA':       return 'Cortesía';
+        default:               return method || '—';
+    }
+}
+
+interface ReceiptPayment {
+    method: string;
+    amountUSD?: number;
+    amountBS?: number;
+}
+
 interface ReceiptData {
     orderNumber: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: Date | string;
     cashierName: string;
+    /** Forma(s) de pago para imprimir en la nota. Una entrada = pago simple;
+     *  varias = pago mixto. Para PDV la etiqueta ya nombra el punto de venta. */
+    payments?: ReceiptPayment[];
     customerName?: string;
     customerAddress?: string;
     customerPhone?: string;
@@ -262,7 +296,19 @@ export function printReceipt(data: ReceiptData) {
             <span>$${totalSuggested.toFixed(2)}</span>
         </div>
     </div>
-    
+
+    ${(!data.isPrecuenta && data.payments && data.payments.length > 0) ? `
+    <div class="separator"></div>
+    <div class="bold" style="margin-bottom: 4px;">Forma de pago</div>
+    ${data.payments.map(p => `
+    <div class="info-row">
+        <span class="info-label">${escHtml(paymentMethodLabel(p.method))}</span>
+        <span class="bold">${p.amountBS != null && p.amountBS > 0
+            ? `Bs ${p.amountBS.toFixed(2)}${p.amountUSD != null ? ` ($${p.amountUSD.toFixed(2)})` : ''}`
+            : p.amountUSD != null ? `$${p.amountUSD.toFixed(2)}` : ''}</span>
+    </div>`).join('')}
+    ` : ''}
+
     <div class="footer">GRACIAS POR SU COMPRA</div>
 
     <script>

@@ -504,7 +504,14 @@ export default function POSDeliveryPage() {
                         return base;
                     })(),
                     deliveryFee: (discountType === 'CORTESIA_100' || freeDelivery) ? 0 : deliveryFee,
-                    total: finalTotal
+                    total: finalTotal,
+                    // Forma de pago en la nota de entrega (pedido de la cajera):
+                    // método + punto de venta. Mixto → cada línea; simple → una.
+                    payments: isMixedMode
+                        ? (mixedPayments.length > 0
+                            ? mixedPayments.map(p => ({ method: p.method, amountUSD: p.amountUSD, amountBS: p.amountBS }))
+                            : [{ method: 'TRANSFER', amountUSD: finalTotal }])
+                        : [{ method: paymentMethod, amountUSD: finalTotal }],
                 };
                 if (cfg.printReceiptOnDelivery) {
                     printReceipt({ ...receiptData, branding });
