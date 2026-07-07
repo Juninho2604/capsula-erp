@@ -352,23 +352,19 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     <table className="w-full relative">
                         <thead className="sticky top-0 z-10 shadow-sm">
                             <tr className="border-b border-capsula-line bg-capsula-ivory-alt">
+                                {/* Columna "Tipo" eliminada: el icono del avatar ya indica el
+                                    tipo, el label va como texto junto al SKU, y el filtro por
+                                    tipo son las tarjetas de arriba. Paddings compactados
+                                    (px-6→px-3) para que la tabla entre sin scroll horizontal. */}
                                 <th
-                                    className="group cursor-pointer px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
+                                    className="group cursor-pointer px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
                                     onClick={() => handleSort('name')}
                                 >
                                     <div className="flex items-center">
                                         Item <SortIcon columnKey="name" />
                                     </div>
                                 </th>
-                                <th
-                                    className="group cursor-pointer px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
-                                    onClick={() => handleSort('type')}
-                                >
-                                    <div className="flex items-center">
-                                        Tipo <SortIcon columnKey="type" />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     <div className="flex items-center gap-2">
                                         <div
                                             className="group flex cursor-pointer items-center hover:text-capsula-ink"
@@ -379,7 +375,7 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                         <select
                                             value={categoryFilter}
                                             onChange={(e) => setCategoryFilter(e.target.value)}
-                                            className="ml-1 rounded border border-capsula-line bg-capsula-ivory px-1 py-0.5 text-xs font-normal text-capsula-ink-soft focus:border-capsula-navy focus:outline-none"
+                                            className="ml-1 max-w-[130px] rounded border border-capsula-line bg-capsula-ivory px-1 py-0.5 text-xs font-normal text-capsula-ink-soft focus:border-capsula-navy focus:outline-none"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <option value="ALL">Todas</option>
@@ -388,23 +384,23 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                     </div>
                                 </th>
                                 <th
-                                    className="group cursor-pointer px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
+                                    className="group cursor-pointer px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted hover:bg-capsula-ivory-surface"
                                     onClick={() => handleSort('currentStock')}
                                 >
                                     <div className="flex items-center justify-end">
                                         {selectedArea ? 'Stock Local' : 'Stock Global'} <SortIcon columnKey="currentStock" />
                                     </div>
                                 </th>
-                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
                                     Estado
                                 </th>
                                 {showCosts && (
-                                    <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
-                                        Costo/Unidad
+                                    <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                        Costo/U
                                     </th>
                                 )}
-                                <th className="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
-                                    Acciones
+                                <th className="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    <span className="sr-only">Acciones</span>
                                 </th>
                             </tr>
                         </thead>
@@ -421,27 +417,23 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
 
                                 return (
                                     <tr key={item.id} className="transition-colors hover:bg-capsula-ivory-surface">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-capsula-ivory-alt text-capsula-ink-soft">
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-capsula-ivory-alt text-capsula-ink-soft" title={typeLabel}>
                                                     <TypeIcon className="h-4 w-4" />
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium text-capsula-ink">{item.name}</p>
-                                                    <p className="text-xs text-capsula-ink-muted font-mono">{item.sku}</p>
+                                                <div className="min-w-0">
+                                                    <p className="max-w-[320px] truncate font-medium text-capsula-ink" title={item.name}>{item.name}</p>
+                                                    <p className="text-xs text-capsula-ink-muted">
+                                                        <span className="font-mono">{item.sku}</span> · {typeLabel}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-capsula-ivory-alt px-2.5 py-0.5 text-xs font-medium text-capsula-ink-soft">
-                                                <TypeIcon className="h-3 w-3" />
-                                                {typeLabel}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-capsula-ink-muted">
+                                        <td className="px-3 py-3 text-sm text-capsula-ink-muted">
                                             {item.category || '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-3 py-3 text-right whitespace-nowrap">
                                             <div>
                                                 <span className={cn(
                                                     "font-mono text-sm font-semibold tabular-nums",
@@ -455,9 +447,9 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                                 Mín: {formatNumber(item.minimumStock)}
                                             </p>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 py-3 text-center">
                                             <span className={cn(
-                                                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                                'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium',
                                                 STATUS_TONE[tone]
                                             )}>
                                                 <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_DOT[tone])} />
@@ -465,11 +457,11 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                                             </span>
                                         </td>
                                         {showCosts && (
-                                            <td className="px-6 py-4 text-right font-mono text-sm text-capsula-ink tabular-nums">
+                                            <td className="px-3 py-3 text-right font-mono text-sm text-capsula-ink tabular-nums whitespace-nowrap">
                                                 {item.costPerUnit ? formatCurrency(item.costPerUnit) : '-'}
                                             </td>
                                         )}
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-2 py-3 text-center">
                                             <div className="inline-flex items-center gap-1">
                                                 <button
                                                     onClick={() => setEditingItem(item)}
