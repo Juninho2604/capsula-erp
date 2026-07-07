@@ -11129,3 +11129,11 @@ Script: idempotente (salta items activos con mismo nombre normalizado),
 SKU `PREFIJO-###` por categoría verificando contra TODOS los SKUs del
 tenant (los archivados del wipe siguen ocupando su SKU), costo opcional
 (no se usa por ahora), es_critico SI→true. Dry-run default, --apply.
+
+### §18.39 Inventario — tabla compactada sin scroll horizontal (2026-07-05)
+`inventory-view.tsx`: eliminada la columna "Tipo" (redundante: el icono del
+avatar ya lo indica —con title tooltip— y el label va como texto junto al SKU
+"SKU · Insumo"; el filtro por tipo son las tarjetas superiores). Paddings
+px-6→px-3/px-4, py-4→py-3, avatar 10→8, nombre con truncate+title,
+whitespace-nowrap en stock/estado/costo, header "Costo/U", columna Acciones
+sin label (sr-only). Solo JSX/CSS — cero cambios de lógica/orden/filtros.
