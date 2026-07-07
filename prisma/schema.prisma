@@ -131,6 +131,12 @@ model Tenant {
   itemAvailabilities    ItemAvailability[]
   managerNotes          ManagerNote[]
   routingRules          RoutingRule[]
+  // Conversaciones WhatsApp (bandeja humana + bot n8n). WaMessage NO lleva
+  // relación inversa acá: su tenantId es escalar (se aísla además por FK a
+  // WaConversation, patrón SalesOrderPayment).
+  waConversations       WaConversation[]
+  waTemplates           WaTemplate[]     @relation("TenantWaTemplates")
+  waCredential          WaCredential?    @relation("TenantWaCredential")
 }
 
 model User {
@@ -3477,4 +3483,142 @@ model TenantPayment {
 
   @@index([tenantId, paidAt])
   @@index([recordedById])
+}
+
+// ============================================================================
+// CONVERSACIONES WHATSAPP (Cloud API Meta) — bandeja humana + bot Fabiola/n8n
+// ============================================================================
+// Kpsula es la fuente de verdad de las conversaciones y el panel humano.
+// El bot vive en n8n y consulta /api/v1/wa/.../control antes de responder.
+// Compliance (ventana 24h, plantillas, opt-in/out) en src/lib/wa/compliance.ts.
+
+enum ConversationStatus {
+  BOT // Fabiola responde
+  HUMAN // un humano tomó el control
+  CLOSED // cerrada/archivada
+}
+
+enum MessageDirection {
+  INBOUND // cliente → negocio
+  OUTBOUND // negocio → cliente (bot o humano)
+}
+
+enum MessageSenderType {
+  CUSTOMER
+  BOT
+  HUMAN
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  DOCUMENT
+  LOCATION
+  TEMPLATE
+  AUDIO
+  UNSUPPORTED
+}
+
+enum WaDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum TemplateApprovalStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+}
+
+model WaConversation {
+  id               String             @id @default(cuid())
+  tenantId         String
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  branchId         String?
+  waId             String // wa_id del cliente (número E.164 sin +)
+  customerName     String?
+  customerPhone    String // igual a waId, redundante para búsquedas
+  status           ConversationStatus @default(BOT)
+  assignedToUserId String? // usuario Kpsula que tomó el control
+
+  // ── Compliance ventana 24h ──────────────────────────────────────────────
+  lastCustomerMsgAt DateTime? // último mensaje ENTRANTE del cliente
+  windowExpiresAt   DateTime? // lastCustomerMsgAt + 24h (persistido para queries)
+
+  // ── Opt-in / Opt-out ────────────────────────────────────────────────────
+  marketingOptIn Boolean   @default(false)
+  optedOutAt     DateTime? // cliente pidió BAJA/STOP → bloqueo de salientes no-obligatorios
+
+  // ── Vínculos de negocio ─────────────────────────────────────────────────
+  lastOrderId String? // última orden de delivery creada desde esta conversación
+  unreadCount Int     @default(0) // no leídos por humanos (badge en bandeja)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages WaMessage[]
+
+  @@unique([tenantId, waId])
+  @@index([tenantId, status, updatedAt])
+}
+
+model WaMessage {
+  id             String         @id @default(cuid())
+  tenantId       String
+  conversationId String
+  conversation   WaConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  direction    MessageDirection
+  senderType   MessageSenderType
+  senderUserId String? // si senderType=HUMAN
+  kind         MessageKind
+  body         String? @db.Text // texto, caption, o payload serializado
+  mediaUrl     String? // URL local ya descargada (media de Meta expira)
+  mediaMimeType String?
+  latitude     Float?
+  longitude    Float?
+  templateName String? // si kind=TEMPLATE
+
+  wamid          String?          @unique // id de mensaje de Meta (correlaciona estados)
+  deliveryStatus WaDeliveryStatus @default(QUEUED)
+  errorDetail    String? // si FAILED, el error de Graph API
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([tenantId, wamid])
+}
+
+model WaTemplate {
+  id             String                 @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                 @relation("TenantWaTemplates", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name           String // nombre exacto registrado en Meta (ej. confirmacion_pedido)
+  language       String                 @default("es")
+  category       String // UTILITY | MARKETING | AUTHENTICATION
+  bodyPreview    String                 @db.Text // texto con {{1}}, {{2}} para preview
+  variablesCount Int                    @default(0)
+  approvalStatus TemplateApprovalStatus @default(DRAFT)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([tenantId, name, language])
+}
+
+model WaCredential {
+  id              String  @id @default(cuid())
+  tenantId        String  @unique
+  tenant          Tenant  @relation("TenantWaCredential", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  phoneNumberId   String
+  wabaId          String
+  accessToken     String  @db.Text // cifrado en reposo (AES-256-GCM, WA_TOKEN_ENC_KEY)
+  appSecret       String // para validar firmas si Kpsula recibe webhooks directos
+  displayPhone    String? // +58 4XX ... para mostrar en UI
+  graphApiVersion String  @default("v21.0")
+  active          Boolean @default(true)
 }

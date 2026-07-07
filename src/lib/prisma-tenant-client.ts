@@ -106,6 +106,11 @@ const TENANT_MODELS = new Set<string>([
     'TableOrStation',
     'User',
     'Waiter',
+    // Conversaciones WhatsApp (§77). WaMessage SÍ tiene tenantId escalar.
+    'WaConversation',
+    'WaCredential',
+    'WaMessage',
+    'WaTemplate',
     'WeeklyCount',
     'WristbandPlan',
 ]);

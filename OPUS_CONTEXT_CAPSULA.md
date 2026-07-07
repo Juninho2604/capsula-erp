@@ -11010,3 +11010,103 @@ module-gate.test.ts (452 total).
 
 Nota operativa: cambios de flag tardan hasta 30 s por el cache; con pm2 en
 modo cluster cada worker tiene su propio cache (mismo tope de 30 s).
+
+## §77 Módulo Conversaciones WhatsApp — bandeja humana + bot n8n (2026-07-04)
+
+Módulo nuevo `/dashboard/conversaciones`: bandeja de WhatsApp (Cloud API Meta)
+donde el personal ve las conversaciones del bot "Fabiola" (n8n), toma el
+control (bot callado) y responde como humano, con compliance de Meta forzado
+por el servidor. Kpsula = fuente de verdad + panel humano; el bot vive en n8n.
+
+### Modelos (schema.prisma, 6 enums nuevos + 4 tablas)
+- **WaConversation** (`@@unique[tenantId,waId]`): status BOT/HUMAN/CLOSED,
+  assignedToUserId, ventana 24h (lastCustomerMsgAt/windowExpiresAt),
+  marketingOptIn/optedOutAt, lastOrderId, unreadCount.
+- **WaMessage** (tenantId escalar sin FK, aísla vía conversación — patrón
+  SalesOrderPayment): direction, senderType (CUSTOMER/BOT/HUMAN), kind, body,
+  media, wamid `@unique`, deliveryStatus, errorDetail.
+- **WaTemplate** (`@@unique[tenantId,name,language]`): plantillas Meta con
+  approvalStatus; el registro/aprobación en Meta es manual, acá se refleja.
+- **WaCredential** (`tenantId @unique`): phoneNumberId, wabaId, accessToken
+  CIFRADO (AES-256-GCM), appSecret. Migración `20260704190000_wa_conversations`
+  (solo CREATE TABLE/INDEX/FK → safe en prod viva). Los 4 modelos en
+  TENANT_MODELS (ahora 72).
+
+### Compliance (§4, funciones puras en `src/lib/wa/compliance.ts` + 20 tests)
+- Ventana 24h: `checkOutboundAllowed` rechaza texto libre fuera de ventana
+  (WINDOW_EXPIRED); plantillas APPROVED siempre.
+- Opt-out BAJA/STOP/no molestar/unsubscribe (texto normalizado exacto):
+  bloquea salvo respuestas dentro de ventana y plantillas UTILITY.
+- Opt-in marketing: MARKETING solo con marketingOptIn && !optedOut.
+- Anti-spam: 10 OUTBOUND sin INBOUND → bloqueo suave (override gerente).
+- Todo server-side; la UI solo lo refleja (input deshabilitado + explicación).
+
+### Lib server (`src/lib/wa/`)
+- `graph.ts`: `sendWhatsAppMessage` (text/template/image/document; mapea Graph
+  131047→WINDOW_EXPIRED, 190→apaga credencial) + `downloadWaMedia` (los mediaId
+  de Meta expiran → storage local `/api/files/<tenant>/wa-media/`).
+- `crypto.ts`: AES-256-GCM del accessToken (env `WA_TOKEN_ENC_KEY`, 64 hex);
+  tolera valores legacy sin cifrar; `maskToken` para UI.
+- `auth.ts`: `authenticateWaApi` (header x-api-key vs env `WA_API_KEYS`, fallback
+  `DELIVERY_API_KEYS`).
+- `service.ts`: `processInboundMessage`, `sendHumanMessage`,
+  `countConsecutiveOutbound`, `updateDeliveryStatusByWamid`.
+- `guard.ts` / `require-conversaciones-page.ts`: sesión + PERM.CONVERSATIONS_MANAGE
+  + flag waConversations.
+- `control-cache.ts`: cache 5s BOT/HUMAN para el endpoint /control.
+
+### API (`/api/v1/wa/*`, auth x-api-key + flag; contrato en
+docs/WA_CONVERSATIONS_N8N_CONTRACT.md)
+- n8n: `POST /inbound` (→ {status,conversationId,optedOut}; si HUMAN, Fabiola
+  calla), `POST /outbound/bot`, `POST /status`, `GET /conversations/:waId/control`.
+- `/api/v1/delivery/ordenes` acepta `conversationId` opcional → setea lastOrderId
+  (§6.3, chip "Pedido" en la bandeja).
+- UI: server actions en `src/app/actions/wa.actions.ts` (list, messages, take,
+  release, send, read, templates CRUD, settings) — patrón data igual a delivery
+  (server component precarga + polling client 15s bandeja / 5s chat).
+
+### RBAC / registry / flag
+- Permiso nuevo `PERM.CONVERSATIONS_MANAGE` (base de OWNER/ADMIN_MANAGER/
+  OPS_MANAGER; grupo admin; perm-to-modules → 'conversaciones').
+- Módulo `conversaciones` en MODULE_REGISTRY (sortOrder 413, section admin,
+  `requiresFeatureFlag: 'waConversations'`) + MODULE_ROLE_ACCESS + icono
+  MessagesSquare. Flag `waConversations` en FEATURE_FLAGS (arranca OFF).
+
+### UI (`conversations-view.tsx`, tablet landscape, Minimal Navy)
+Dos paneles: bandeja (filtros Todas/Bot/Humano/Por-expirar, búsqueda, badge
+unread, indicador de ventana verde/amarillo/rojo/gris) + chat (burbujas estilo
+WhatsApp con tag Fabiola/usuario, checks ✓/✓✓/✓✓-azul/⚠, render imagen/doc/
+ubicación, chip Pedido). Botón "Tomar conversación"/"Devolver a Fabiola",
+contador de ventana, input deshabilitado fuera de ventana con selector de
+plantillas (preview en vivo, bloqueo MARKETING sin opt-in). Takeover auditado.
+
+### Seed
+`scripts/seed-wa-demo.ts`: 3 plantillas (confirmacion_pedido,
+pedido_en_camino UTILITY, reactivacion_cliente MARKETING) + 2 conversaciones
+fake (una en ventana abierta, otra expirada + opted-out para probar bloqueos).
+
+### Env nuevas (VPS)
+`WA_TOKEN_ENC_KEY` (obligatoria para cifrar tokens), `WA_API_KEYS` (opcional;
+si falta usa DELIVERY_API_KEYS). Gates: tsc 0 · vitest 473 passed.
+
+### §77.1 Hardening post-review adversarial (2026-07-04)
+Revisión adversarial (5 dimensiones × verificación) sobre el módulo antes del
+merge: 9 hallazgos confirmados corregidos, 3 falsos positivos descartados.
+- **IDOR cross-tenant (HIGH)**: `/outbound/bot` deduplicaba por `wamid`
+  (`@unique` global) con `findUnique` sin tenantId → podía leakear/suprimir
+  mensajes de otro tenant. Fix: `findFirst({where:{wamid,tenantId}})` (espejo
+  de processInboundMessage).
+- **Crashes de API (MEDIUM)**: `inbound`/`outbound/bot`/`status` crasheaban con
+  body `null` literal o campos no-string (`.trim()` sobre número). Fix:
+  guardas de tipo antes de tocar el body.
+- **Race opt-out (LOW)**: dos BAJA casi simultáneas mandaban doble confirmación.
+  Fix: compare-and-set atómico (`updateMany where optedOutAt:null`, count===1).
+- **isOptOutMessage (MEDIUM)**: solo match exacto → no detectaba "quiero darme
+  de baja". Fix: keywords canónicas + patrones de frase que distinguen baja de
+  "cancelar el pedido".
+- **appSecret en claro (MEDIUM)**: se guardaba sin cifrar mientras el token sí.
+  Fix: ambos con el mismo AES-256-GCM.
+- **UI (MEDIUM/LOW)**: chat no se reseteaba al cambiar de conversación (mostraba
+  la anterior) → `setChat(null)` + spinner; badge unread fantasma con chat
+  abierto → re-mark read en el polling.
+Gates finales: tsc 0 · vitest 474 passed (21 de compliance).

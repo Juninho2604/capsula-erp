@@ -151,8 +151,15 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 66 modelos esperados (delivery +9, Tesorería +5: Bank/Recon/Receivable)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(68);
+    it('Contiene los 72 modelos esperados (delivery +9, Tesorería +5, WhatsApp +4: WaConversation/WaCredential/WaMessage/WaTemplate)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(72);
+    });
+
+    it('Incluye los modelos multi-tenant del módulo Conversaciones WhatsApp', () => {
+        expect(TENANT_AWARE_MODELS).toContain('WaConversation');
+        expect(TENANT_AWARE_MODELS).toContain('WaMessage');
+        expect(TENANT_AWARE_MODELS).toContain('WaTemplate');
+        expect(TENANT_AWARE_MODELS).toContain('WaCredential');
     });
 
     it('Incluye modelos críticos del POS', () => {

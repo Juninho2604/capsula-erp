@@ -35,6 +35,9 @@ interface OrdenBody {
     reference?: string;
     lat?: number;
     lon?: number;
+    // Conversaciones WA (§6.3): id devuelto por /api/v1/wa/inbound — vincula
+    // la orden a la conversación (chip "Pedido #X" en la bandeja).
+    conversationId?: string;
 }
 
 export async function POST(req: Request) {
@@ -166,6 +169,15 @@ export async function POST(req: Request) {
             include: { branch: { select: { id: true, name: true } } },
         });
     });
+
+    // Vínculo con Conversaciones WA (§6.3) — best-effort: si el id no es del
+    // tenant o el módulo no está en uso, no bloquea la creación de la orden.
+    if (typeof body.conversationId === 'string' && body.conversationId.trim()) {
+        await prisma.waConversation.updateMany({
+            where: { id: body.conversationId.trim(), tenantId: auth.tenantId },
+            data: { lastOrderId: order.id },
+        }).catch(() => {});
+    }
 
     return NextResponse.json(
         {

@@ -473,6 +473,21 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     ],
     tags: ['delivery', 'pedidos', 'motorizados', 'bot'],
   },
+  {
+    id: 'conversaciones',
+    label: 'Conversaciones',
+    description: 'Bandeja de WhatsApp del bot (Fabiola/n8n): ver chats en tiempo casi real, tomar el control de una conversación y responder como humano. Compliance Meta (ventana 24h, plantillas, opt-out) forzado por el servidor.',
+    icon: '💬',
+    href: '/dashboard/conversaciones',
+    section: 'admin',
+    // Igual que delivery: enabledByDefault PERO gated por el flag
+    // waConversations (arranca OFF). El flag es el gate maestro
+    // (controla módulo + API /api/v1/wa/*).
+    enabledByDefault: true,
+    sortOrder: 413,
+    requiresFeatureFlag: 'waConversations',
+    tags: ['whatsapp', 'chat', 'bot', 'fabiola', 'conversaciones'],
+  },
 
   // ═══════════════════════════════════════════
   // ADMINISTRACIÓN
@@ -724,6 +739,8 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   reportes: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   // Gestión de Deliverys (módulo aislado, gated por flag deliveryOps)
   delivery: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER'],
+  // Conversaciones WhatsApp (gated por flag waConversations + PERM.CONVERSATIONS_MANAGE)
+  conversaciones: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   // Admin
   mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
