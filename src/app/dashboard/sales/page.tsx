@@ -190,7 +190,16 @@ export default function SalesHistoryPage() {
                 unitPrice: item.unitPrice ?? (item.lineTotal / (item.quantity || 1)),
                 total: item.lineTotal || item.total,
                 modifiers: Array.isArray(item.modifiers) ? item.modifiers.map((m: any) => typeof m === 'string' ? m : m?.name) : []
-            }))
+            })),
+            // Forma de pago en la nota reimpresa. Respeta el blindaje cajera:
+            // si hidePaymentMethod, el server ya stripeó los datos y acá se omite.
+            payments: hidePaymentMethod
+                ? undefined
+                : (Array.isArray(sale.paymentBreakdown) && sale.paymentBreakdown.length > 0
+                    ? sale.paymentBreakdown.map((p: { method: string; amount: number }) => ({ method: p.method, amountUSD: p.amount }))
+                    : sale.paymentMethod
+                        ? [{ method: sale.paymentMethod, amountUSD: sale.total }]
+                        : undefined),
         });
     };
 

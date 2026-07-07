@@ -11137,3 +11137,23 @@ avatar ya lo indica —con title tooltip— y el label va como texto junto al SK
 px-6→px-3/px-4, py-4→py-3, avatar 10→8, nombre con truncate+title,
 whitespace-nowrap en stock/estado/costo, header "Costo/U", columna Acciones
 sin label (sr-only). Solo JSX/CSS — cero cambios de lógica/orden/filtros.
+
+## §79 Nota de entrega — forma de pago + punto de venta en el recibo (2026-07-05)
+
+Pedido de la cajera: ver el método de pago y el PDV en la nota de entrega
+(recibo de DELIVERY). En este sistema el PDV ES el método (PDV_SHANKLISH /
+PDV_SUPERFERRO), así que mostrar el método cubre ambas cosas.
+
+- `print-command.ts`: nuevo helper exportado `paymentMethodLabel(method)`
+  (espejo textual de getPaymentBadge; distingue PDV Shanklish/Superferro).
+  `ReceiptData.payments?: {method, amountUSD?, amountBS?}[]` — sección
+  "Forma de pago" tras los totales (una línea por pago; mixto = varias).
+  NO se imprime en pre-cuenta (isPrecuenta, informativa antes de cobrar).
+- POS Delivery (`pos/delivery/page.tsx`): pasa `payments` al cobrar —
+  mixto = mixedPayments, simple = [{method: paymentMethod, amountUSD: total}].
+- Reimpresión desde historial (`sales/page.tsx`): pasa `paymentBreakdown`
+  (mixto) o `paymentMethod` (simple), GATEADO por `!hidePaymentMethod`
+  (blindaje cajera §47: si el flag está activo el server ya stripeó el dato).
+
+Solo print/JSX + un campo opcional — sin cambios de lógica de cobro.
+Gates: tsc 0 · vitest 474 passed.
