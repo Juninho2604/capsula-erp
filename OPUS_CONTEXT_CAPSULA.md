@@ -11110,3 +11110,22 @@ merge: 9 hallazgos confirmados corregidos, 3 falsos positivos descartados.
   la anterior) → `setChat(null)` + spinner; badge unread fantasma con chat
   abierto → re-mark read en el polling.
 Gates finales: tsc 0 · vitest 474 passed (21 de compliance).
+
+## §78 Carga inicial de insumos Shanklish desde CSV (2026-07-05)
+
+`scripts/import-insumos-csv.ts` + `scripts/data/insumos-shanklish-2026-07.csv`
+(395 insumos, 29 categorías) — catálogo limpio post-wipe §75.
+
+CSV original de Omar (406 filas) depurado con decisiones registradas:
+duplicados exactos omitidos (PAPRIKA, BERENJENA, DESENGRASANTE, SUMAC',
+VERMÚ ROSSO, ÁCIDO CÍTRICO en UNIT, STOLICHNAYA sin UND, TE VERDE sin tilde),
+typo REPOLLO BALNCO→BLANCO, GRABANZO→GARBANZO (queda en PASTA Y GRANOS),
+VERMU EXTRA DRY = VERMÚ EXTRA SECO (fusionados), BLUE CURACAO (ENVASES) =
+CURACAO AZUL (LICORES, fusionados). Decisión de Omar: PISTACHO KG (FRUTOS
+SECOS) y PISTACHO POSTRES KG (POSTRES) son DOS items; SAATAR y ZAATAR son
+DOS condimentos distintos.
+
+Script: idempotente (salta items activos con mismo nombre normalizado),
+SKU `PREFIJO-###` por categoría verificando contra TODOS los SKUs del
+tenant (los archivados del wipe siguen ocupando su SKU), costo opcional
+(no se usa por ahora), es_critico SI→true. Dry-run default, --apply.
