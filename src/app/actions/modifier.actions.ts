@@ -38,7 +38,16 @@ export async function getModifierGroupsWithItemsAction() {
                     include: {
                         linkedMenuItem: {
                             select: { id: true, name: true, recipeId: true }
-                        }
+                        },
+                        ingredients: {
+                            select: {
+                                id: true,
+                                ingredientItemId: true,
+                                quantity: true,
+                                unit: true,
+                                ingredientItem: { select: { name: true } },
+                            },
+                        },
                     }
                 },
                 menuItems: {
@@ -81,6 +90,23 @@ export async function getModifierGroupsWithItemsAction() {
         const withDeduction = groups.map(g => ({
             ...g,
             modifiers: g.modifiers.map(m => {
+                // Receta PROPIA del modificador (§80) tiene prioridad sobre el
+                // MenuItem vinculado — mismo criterio que el descargo del POS.
+                if (m.ingredients.length > 0) {
+                    return {
+                        ...m,
+                        deduction: {
+                            status: 'OK' as DeductionStatus,
+                            source: 'OWN' as const,
+                            recipeName: null,
+                            ingredients: m.ingredients.map(ing => ({
+                                name: ing.ingredientItem.name,
+                                quantity: ing.quantity,
+                                unit: ing.unit,
+                            })),
+                        },
+                    };
+                }
                 const recipeId = m.linkedMenuItem?.recipeId ?? null;
                 const recipe = recipeId ? recipesById.get(recipeId) : undefined;
                 let status: DeductionStatus;
@@ -92,6 +118,7 @@ export async function getModifierGroupsWithItemsAction() {
                     ...m,
                     deduction: {
                         status,
+                        source: 'LINKED' as const,
                         recipeName: recipe?.name ?? null,
                         ingredients: status === 'OK'
                             ? recipe!.ingredients.map(ing => ({
@@ -178,6 +205,99 @@ export async function toggleModifierAvailabilityAction(modifierId: string, isAva
         return { success: true };
     } catch (error) {
         return { success: false, message: 'Error actualizando modificador' };
+    }
+}
+
+// ============================================================================
+// RECETA PROPIA DEL MODIFICADOR (§80)
+// ============================================================================
+
+const MODIFIER_INGREDIENT_UNITS = ['KG', 'G', 'L', 'ML', 'UNIT', 'PORTION'] as const;
+
+/**
+ * Reemplaza (replace-all) la receta propia de un modificador: ingredientes
+ * directos de inventario que el POS descuenta con PRIORIDAD sobre el
+ * MenuItem vinculado. Lista vacía = quitar receta propia (vuelve al fallback).
+ *
+ * MenuModifierIngredient no tiene tenantId (hereda por FK, patrón
+ * RecipeIngredient) → validamos ownership del modifier y de CADA insumo
+ * antes de tocar el pivot con el cliente crudo.
+ */
+export async function setModifierIngredientsAction(
+    modifierId: string,
+    ingredients: Array<{ ingredientItemId: string; quantity: number; unit: string }>,
+) {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const modifier = await db.menuModifier.findFirst({ where: { id: modifierId } });
+        if (!modifier) return { success: false, message: 'Modificador no encontrado' };
+
+        // Validación de payload
+        const seen = new Set<string>();
+        for (const ing of ingredients) {
+            if (!ing.ingredientItemId) return { success: false, message: 'Insumo inválido' };
+            if (seen.has(ing.ingredientItemId)) {
+                return { success: false, message: 'Insumo repetido en la receta' };
+            }
+            seen.add(ing.ingredientItemId);
+            if (!Number.isFinite(ing.quantity) || ing.quantity <= 0) {
+                return { success: false, message: 'La cantidad debe ser mayor a 0' };
+            }
+            if (!MODIFIER_INGREDIENT_UNITS.includes(ing.unit as typeof MODIFIER_INGREDIENT_UNITS[number])) {
+                return { success: false, message: `Unidad inválida: ${ing.unit}` };
+            }
+        }
+
+        // Ownership de cada insumo (InventoryItem es tenant-aware)
+        if (ingredients.length > 0) {
+            const ids = ingredients.map(i => i.ingredientItemId);
+            const owned = await db.inventoryItem.findMany({
+                where: { id: { in: ids }, deletedAt: null },
+                select: { id: true },
+            });
+            if (owned.length !== ids.length) {
+                return { success: false, message: 'Uno o más insumos no existen' };
+            }
+        }
+
+        await prisma.$transaction([
+            prisma.menuModifierIngredient.deleteMany({ where: { modifierId } }),
+            ...(ingredients.length > 0
+                ? [prisma.menuModifierIngredient.createMany({
+                    data: ingredients.map(ing => ({
+                        modifierId,
+                        ingredientItemId: ing.ingredientItemId,
+                        quantity: ing.quantity,
+                        unit: ing.unit,
+                    })),
+                })]
+                : []),
+        ]);
+
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        console.error('Error setting modifier ingredients:', error);
+        return { success: false, message: 'Error guardando receta del modificador' };
+    }
+}
+
+/**
+ * Insumos activos del tenant para el picker de receta propia del modificador.
+ */
+export async function getInventoryItemsForModifierRecipeAction() {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const items = await withTenant(tenantId).inventoryItem.findMany({
+            where: { isActive: true, deletedAt: null },
+            select: { id: true, name: true, sku: true, baseUnit: true, type: true },
+            orderBy: { name: 'asc' },
+        });
+        return { success: true, data: items };
+    } catch (error) {
+        return { success: false, message: 'Error cargando insumos' };
     }
 }
 

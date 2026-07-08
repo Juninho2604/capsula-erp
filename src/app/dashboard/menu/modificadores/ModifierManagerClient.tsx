@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight } from 'lucide-react';
+import { useMemo, useState, useTransition } from 'react';
+import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight, Plus, X as XIcon } from 'lucide-react';
 import {
     linkModifierToMenuItemAction,
     toggleModifierAvailabilityAction,
@@ -13,6 +13,7 @@ import {
     updateModifierNamePriceAction,
     linkGroupToMenuItemAction,
     unlinkGroupFromMenuItemAction,
+    setModifierIngredientsAction,
 } from '@/app/actions/modifier.actions';
 
 interface MenuItem {
@@ -22,9 +23,28 @@ interface MenuItem {
     category: { name: string };
 }
 
+/** Insumo activo para el picker de receta propia (§80). */
+interface InventoryItemOption {
+    id: string;
+    name: string;
+    sku: string;
+    baseUnit: string;
+    type: string;
+}
+
+/** Ingrediente directo (receta propia) de un modificador (§80). */
+interface ModifierIngredient {
+    ingredientItemId: string;
+    quantity: number;
+    unit: string;
+    ingredientItem: { name: string };
+}
+
 /** Auditoría de descargo calculada por getModifierGroupsWithItemsAction (§ punto 3 Christian). */
 interface ModifierDeduction {
     status: 'OK' | 'NO_LINK' | 'NO_RECIPE' | 'RECIPE_INACTIVE';
+    /** OWN = receta propia del modificador (prioridad); LINKED = receta del item vinculado. */
+    source?: 'OWN' | 'LINKED';
     recipeName: string | null;
     ingredients: { name: string; quantity: number; unit: string }[];
 }
@@ -36,6 +56,7 @@ interface Modifier {
     isAvailable: boolean;
     linkedMenuItemId: string | null;
     linkedMenuItem: { id: string; name: string } | null;
+    ingredients?: ModifierIngredient[];
     deduction?: ModifierDeduction;
 }
 
@@ -53,9 +74,12 @@ interface ModifierGroup {
 interface Props {
     groups: ModifierGroup[];
     menuItems: MenuItem[];
+    inventoryItems: InventoryItemOption[];
 }
 
-export default function ModifierManagerClient({ groups, menuItems }: Props) {
+const RECIPE_UNITS = ['KG', 'G', 'L', 'ML', 'UNIT', 'PORTION'] as const;
+
+export default function ModifierManagerClient({ groups, menuItems, inventoryItems }: Props) {
     const [isPending, startTransition] = useTransition();
     const [localGroups, setLocalGroups] = useState<ModifierGroup[]>(groups);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(groups[0]?.id || null);
@@ -76,6 +100,13 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
     const [newModName, setNewModName] = useState('');
     const [newModPrice, setNewModPrice] = useState('0');
     const [newModLinkedItem, setNewModLinkedItem] = useState('');
+
+    // --- Receta propia del modificador (§80) ---
+    const [recipeEditor, setRecipeEditor] = useState<{ groupIdx: number; modIdx: number } | null>(null);
+    const [recipeRows, setRecipeRows] = useState<Array<{ ingredientItemId: string; quantity: string; unit: string }>>([]);
+    const [recipeSearch, setRecipeSearch] = useState('');
+    const [savingRecipe, setSavingRecipe] = useState(false);
+    const [recipeError, setRecipeError] = useState<string | null>(null);
 
     // --- Editar grupo ---
     const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -111,7 +142,8 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                     idx === modIdx
                         // deduction: undefined → la fila cae al heurístico local
                         // (recipeId del item) hasta el próximo reload del server.
-                        ? { ...m, linkedMenuItemId: menuItemId, linkedMenuItem: linkedItem ? { id: linkedItem.id, name: linkedItem.name } : null, deduction: undefined }
+                        // Con receta propia (OWN) el vínculo no afecta el descargo.
+                        ? { ...m, linkedMenuItemId: menuItemId, linkedMenuItem: linkedItem ? { id: linkedItem.id, name: linkedItem.name } : null, deduction: m.deduction?.source === 'OWN' ? m.deduction : undefined }
                         : m
                 )
             };
@@ -139,6 +171,93 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
         startTransition(async () => {
             await toggleModifierAvailabilityAction(modifier.id, newVal);
         });
+    };
+
+    // =========================================================================
+    // RECETA PROPIA DEL MODIFICADOR (§80)
+    // =========================================================================
+    const inventoryById = useMemo(
+        () => new Map(inventoryItems.map(i => [i.id, i])),
+        [inventoryItems],
+    );
+
+    const openRecipeEditor = (groupIdx: number, modIdx: number) => {
+        const mod = localGroups[groupIdx].modifiers[modIdx];
+        setRecipeRows((mod.ingredients ?? []).map(ing => ({
+            ingredientItemId: ing.ingredientItemId,
+            quantity: String(ing.quantity),
+            unit: ing.unit,
+        })));
+        setRecipeSearch('');
+        setRecipeError(null);
+        setRecipeEditor({ groupIdx, modIdx });
+    };
+
+    const addRecipeRow = (item: InventoryItemOption) => {
+        setRecipeRows(prev => prev.some(r => r.ingredientItemId === item.id)
+            ? prev
+            : [...prev, { ingredientItemId: item.id, quantity: '', unit: RECIPE_UNITS.includes(item.baseUnit as typeof RECIPE_UNITS[number]) ? item.baseUnit : 'UNIT' }]);
+        setRecipeSearch('');
+    };
+
+    const handleSaveRecipe = async () => {
+        if (!recipeEditor) return;
+        const { groupIdx, modIdx } = recipeEditor;
+        const mod = localGroups[groupIdx].modifiers[modIdx];
+
+        const parsed: Array<{ ingredientItemId: string; quantity: number; unit: string }> = [];
+        for (const row of recipeRows) {
+            const qty = parseFloat(row.quantity);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                setRecipeError(`Cantidad inválida para "${inventoryById.get(row.ingredientItemId)?.name ?? 'insumo'}"`);
+                return;
+            }
+            parsed.push({ ingredientItemId: row.ingredientItemId, quantity: qty, unit: row.unit });
+        }
+
+        setSavingRecipe(true);
+        setRecipeError(null);
+        const res = await setModifierIngredientsAction(mod.id, parsed);
+        setSavingRecipe(false);
+        if (!res.success) {
+            setRecipeError(res.message ?? 'Error guardando');
+            return;
+        }
+        const newIngredients: ModifierIngredient[] = parsed.map(p => ({
+            ...p,
+            ingredientItem: { name: inventoryById.get(p.ingredientItemId)?.name ?? '' },
+        }));
+        setLocalGroups(prev => {
+            const next = [...prev];
+            next[groupIdx] = {
+                ...next[groupIdx],
+                modifiers: next[groupIdx].modifiers.map((m, idx) => idx === modIdx
+                    ? {
+                        ...m,
+                        ingredients: newIngredients,
+                        deduction: newIngredients.length > 0
+                            ? {
+                                status: 'OK',
+                                source: 'OWN',
+                                recipeName: null,
+                                ingredients: newIngredients.map(ing => ({
+                                    name: ing.ingredientItem.name,
+                                    quantity: ing.quantity,
+                                    unit: ing.unit,
+                                })),
+                            }
+                            // sin receta propia → cae al heurístico local del
+                            // vínculo hasta el próximo reload del server.
+                            : undefined,
+                    }
+                    : m),
+            };
+            return next;
+        });
+        setRecipeEditor(null);
+        showToast(newIngredients.length > 0
+            ? `Receta propia de "${mod.name}" guardada`
+            : `Receta propia de "${mod.name}" eliminada`);
     };
 
     // =========================================================================
@@ -521,6 +640,13 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                                     )}
                                                 </span>
                                                 <button
+                                                    onClick={() => openRecipeEditor(groupIdx, modIdx)}
+                                                    title={(modifier.ingredients?.length ?? 0) > 0 ? 'Editar receta propia' : 'Definir receta propia (insumos directos)'}
+                                                    className={`p-1 rounded ${(modifier.ingredients?.length ?? 0) > 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F] hover:bg-capsula-navy-soft' : 'text-capsula-ink-muted hover:text-capsula-navy-deep hover:bg-capsula-navy-soft'}`}
+                                                >
+                                                    <FlaskConical className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleDeleteModifier(groupIdx, modIdx)}
                                                     title="Eliminar modificador"
                                                     className="text-capsula-ink-muted hover:text-capsula-coral p-1"
@@ -536,8 +662,13 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
                                                 <FlaskConical className="h-3 w-3 mt-0.5 shrink-0" />
                                                 <span>
                                                     <span className="font-semibold">Descuenta por unidad</span>
-                                                    {ded.recipeName ? ` (receta "${ded.recipeName}")` : ''}:{' '}
+                                                    {ded.source === 'OWN'
+                                                        ? ' (receta propia)'
+                                                        : ded.recipeName ? ` (receta "${ded.recipeName}")` : ''}:{' '}
                                                     {ded.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`).join(' · ')}
+                                                    {ded.source === 'OWN' && modifier.linkedMenuItemId && (
+                                                        <span className="text-capsula-ink-faint"> — el vínculo a plato queda ignorado</span>
+                                                    )}
                                                 </span>
                                             </p>
                                         )}
@@ -620,9 +751,130 @@ export default function ModifierManagerClient({ groups, menuItems }: Props) {
             {/* Nota sobre recetas */}
             {localGroups.length > 0 && (
                 <div className="rounded-xl border border-capsula-line bg-[#F3EAD6] dark:bg-[#3B2F15] p-4 text-sm text-[#946A1C] dark:text-[#E8D9B8]">
-                    <strong>Modificadores vinculados sin receta</strong> no descontarán inventario. Asegúrate de que el plato vinculado tenga su receta completa en el módulo de Recetas.
+                    <strong>Modificadores vinculados sin receta</strong> no descontarán inventario. Asegúrate de que el plato vinculado tenga su receta completa en el módulo de Recetas, o define una <strong>receta propia</strong> (icono de matraz) con insumos directos — esta tiene prioridad sobre el vínculo.
                 </div>
             )}
+
+            {/* Modal: receta propia del modificador (§80) */}
+            {recipeEditor && (() => {
+                const mod = localGroups[recipeEditor.groupIdx]?.modifiers[recipeEditor.modIdx];
+                if (!mod) return null;
+                const search = recipeSearch.trim().toLowerCase();
+                const matches = search.length >= 2
+                    ? inventoryItems
+                        .filter(i => !recipeRows.some(r => r.ingredientItemId === i.id))
+                        .filter(i => i.name.toLowerCase().includes(search) || i.sku.toLowerCase().includes(search))
+                        .slice(0, 8)
+                    : [];
+                return (
+                    <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                        <div className="bg-capsula-ivory border border-capsula-line w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+                            <div className="border-b border-capsula-line p-5 flex items-center justify-between shrink-0">
+                                <div className="min-w-0">
+                                    <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink truncate">Receta propia — {mod.name}</h3>
+                                    <p className="text-xs text-capsula-ink-muted mt-0.5">Insumos que descuenta cada unidad. Tiene prioridad sobre el plato vinculado.</p>
+                                </div>
+                                <button
+                                    onClick={() => setRecipeEditor(null)}
+                                    className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center shrink-0"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="p-5 space-y-4 overflow-y-auto">
+                                {/* Filas actuales */}
+                                {recipeRows.length === 0 ? (
+                                    <p className="text-sm text-capsula-ink-muted">Sin insumos. Busca abajo para agregar el primero.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {recipeRows.map((row, rowIdx) => {
+                                            const item = inventoryById.get(row.ingredientItemId);
+                                            return (
+                                                <div key={row.ingredientItemId} className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-medium text-capsula-ink truncate">{item?.name ?? row.ingredientItemId}</p>
+                                                        {item?.sku && <p className="text-[10px] text-capsula-ink-faint">{item.sku}</p>}
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min={0}
+                                                        value={row.quantity}
+                                                        onChange={e => setRecipeRows(prev => prev.map((r, i) => i === rowIdx ? { ...r, quantity: e.target.value } : r))}
+                                                        placeholder="Cant."
+                                                        className="w-24 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink px-2 py-1.5 text-sm tabular-nums text-right"
+                                                    />
+                                                    <select
+                                                        value={row.unit}
+                                                        onChange={e => setRecipeRows(prev => prev.map((r, i) => i === rowIdx ? { ...r, unit: e.target.value } : r))}
+                                                        className="rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink px-2 py-1.5 text-sm"
+                                                    >
+                                                        {RECIPE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                    <button
+                                                        onClick={() => setRecipeRows(prev => prev.filter((_, i) => i !== rowIdx))}
+                                                        title="Quitar insumo"
+                                                        className="text-capsula-ink-muted hover:text-capsula-coral p-1 shrink-0"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Buscador de insumos */}
+                                <div>
+                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Agregar insumo</label>
+                                    <input
+                                        value={recipeSearch}
+                                        onChange={e => setRecipeSearch(e.target.value)}
+                                        placeholder="Buscar por nombre o SKU (mín. 2 letras)..."
+                                        className="w-full rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink px-3 py-2 text-sm"
+                                    />
+                                    {matches.length > 0 && (
+                                        <div className="mt-1 rounded-xl border border-capsula-line bg-capsula-ivory-surface divide-y divide-capsula-line overflow-hidden">
+                                            {matches.map(item => (
+                                                <button
+                                                    key={item.id}
+                                                    onClick={() => addRecipeRow(item)}
+                                                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-capsula-navy-soft"
+                                                >
+                                                    <span className="min-w-0">
+                                                        <span className="block text-sm text-capsula-ink truncate">{item.name}</span>
+                                                        <span className="block text-[10px] text-capsula-ink-faint">{item.sku} · {item.baseUnit}</span>
+                                                    </span>
+                                                    <Plus className="h-4 w-4 text-capsula-ink-muted shrink-0" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {search.length >= 2 && matches.length === 0 && (
+                                        <p className="mt-1 text-xs text-capsula-ink-muted">Sin resultados para &quot;{recipeSearch.trim()}&quot;.</p>
+                                    )}
+                                </div>
+
+                                {recipeError && (
+                                    <p className="flex items-center gap-1.5 text-xs font-medium text-[#B04A2E] dark:text-[#EFD2C8]">
+                                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {recipeError}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="border-t border-capsula-line p-4 flex gap-3 shrink-0">
+                                <button onClick={() => setRecipeEditor(null)} className="pos-btn-secondary flex-1 py-3" disabled={savingRecipe}>Cancelar</button>
+                                <button
+                                    onClick={handleSaveRecipe}
+                                    disabled={savingRecipe}
+                                    className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    <Check className="h-4 w-4" /> {savingRecipe ? 'Guardando...' : recipeRows.length === 0 && (mod.ingredients?.length ?? 0) > 0 ? 'Quitar receta propia' : 'Guardar receta'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

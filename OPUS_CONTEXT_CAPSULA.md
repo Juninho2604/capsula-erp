@@ -11157,3 +11157,60 @@ PDV_SUPERFERRO), así que mostrar el método cubre ambas cosas.
 
 Solo print/JSX + un campo opcional — sin cambios de lógica de cobro.
 Gates: tsc 0 · vitest 474 passed.
+
+## §80 Receta propia de modificadores — MenuModifierIngredient (2026-07-06)
+
+Pedido de Christian: "el modificador debería poder tener receta en sí, que
+puede ser de materias primas o items de venta". Ej: shawarma de lomito →
+cliente pide kafta → el modificador descuenta X gramos de KAFTA KG sin crear
+un MenuItem "extra"; tipos de leche en cafés sin crear un producto por leche.
+
+### Modelo (prisma/schema.prisma + migración 20260706120000)
+`MenuModifierIngredient`: pivot SIN tenantId (hereda scope por FK, patrón
+RecipeIngredient) — `modifierId` (FK MenuModifier, onDelete Cascade),
+`ingredientItemId` (FK InventoryItem, relación "ModifierIngredientItem"),
+`quantity Float`, `unit String` (KG/G/L/ML/UNIT/PORTION),
+`@@unique([modifierId, ingredientItemId])`. Relación `ingredients` en
+MenuModifier. Migración safe (CREATE TABLE + índices + FKs).
+
+### Regla de descargo — PRIORIDAD
+1. **Receta propia** (`modifier.ingredients` con ≥1 fila) → descuenta esos
+   insumos directo × cantidad de la línea. El `linkedMenuItemId` queda
+   IGNORADO para inventario (sigue sirviendo de fallback y para precio).
+2. **Fallback**: sin ingredientes directos → receta del MenuItem vinculado
+   (`linkedMenuItem.recipeId`), comportamiento histórico.
+
+Aplicada en TODOS los caminos:
+- `pos.actions.ts`: `validateComponentStockAvailability`,
+  `registerInventoryForCartItems` (venta) y `applyItemInventoryInTx`
+  (reversión void/adjust/replace) — mismo criterio en débito y crédito.
+- `src/lib/inventory/consumption.ts` (consumo teórico §77):
+  `OrderForConsumption.modifiers[].modifier.ingredients?` opcional;
+  `computeConsumptionFromOrders` prioriza directos con `continue`.
+  Tests: prioridad sobre linkedMenuItem, ingredients vacío = fallback,
+  cantidades ≤0/NaN ignoradas (consumption.test.ts, 478 total).
+- `inventory-daily.actions.ts`: los 2 includes de posOrders (carga diaria y
+  sync manual) traen `ingredients: { ingredientItemId, quantity }`.
+
+### Actions (modifier.actions.ts)
+- `getModifierGroupsWithItemsAction`: include de `ingredients` (+nombre del
+  insumo); `deduction` ahora lleva `source: 'OWN' | 'LINKED'` — OWN gana y
+  reporta status OK con los insumos directos.
+- `setModifierIngredientsAction(modifierId, rows[])`: replace-all
+  (deleteMany + createMany en $transaction con cliente crudo). Valida
+  ownership tenant del modifier Y de cada ingredientItemId (findMany
+  in + deletedAt null), duplicados, quantity > 0, unit en whitelist.
+  Lista vacía = quitar receta propia (vuelve al fallback).
+- `getInventoryItemsForModifierRecipeAction`: insumos activos (id, name,
+  sku, baseUnit, type) para el picker.
+
+### UI (/dashboard/menu/modificadores)
+Botón matraz (FlaskConical) por fila — verde si hay receta propia. Modal
+estándar z-[60]: filas insumo+cantidad+unidad (default = baseUnit del
+insumo), buscador por nombre/SKU (mín 2 chars, top 8), quitar fila,
+guardar/quitar receta. Detalle de fila: "Descuenta por unidad (receta
+propia): 0.12 KG KAFTA KG · …" + aviso "el vínculo a plato queda ignorado"
+si además hay linkedMenuItemId. El cambio de vínculo NO borra el badge OWN.
+
+Gates: tsc 0 · vitest 478 passed. Requiere `migrate deploy` (§44) al
+deployar — la migración es safe (solo CREATE).

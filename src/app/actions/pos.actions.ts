@@ -603,19 +603,34 @@ async function validateComponentStockAvailability(params: {
             }
         }
 
-        // Modificadores con linkedMenuItem.recipe — su consumo de inventario
+        // Modificadores: receta PROPIA (ingredientes directos, §80) tiene
+        // prioridad; si no tiene, cae al linkedMenuItem.recipe. Su consumo
         // también debe validarse antes de aceptar la venta.
         for (const cartMod of cartItem.modifiers ?? []) {
             if (!cartMod.modifierId) continue;
             const menuModifier = await db.menuModifier.findUnique({
                 where: { id: cartMod.modifierId },
-                select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
+                select: {
+                    ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } },
+                    linkedMenuItem: { select: { name: true, recipeId: true } },
+                },
             });
+            const sourceLabel = `${menuItem?.name ?? cartItem.name} (${cartMod.name})`;
+            if (menuModifier?.ingredients?.length) {
+                for (const ingredient of menuModifier.ingredients) {
+                    addRequirement(
+                        ingredient.ingredientItemId,
+                        ingredient.quantity * cartItem.quantity,
+                        ingredient.unit ?? '',
+                        sourceLabel,
+                    );
+                }
+                continue;
+            }
             const linkedRecipeId = menuModifier?.linkedMenuItem?.recipeId;
             if (!linkedRecipeId) continue;
             const recipe = await loadRecipeForValidation(linkedRecipeId);
             if (!recipe?.isActive) continue;
-            const sourceLabel = `${menuItem?.name ?? cartItem.name} (${cartMod.name})`;
             for (const ingredient of recipe.ingredients) {
                 addRequirement(
                     ingredient.ingredientItemId,
@@ -805,17 +820,33 @@ async function registerInventoryForCartItems(params: {
             }
         }
 
-        // Modificadores con linkedMenuItem (recetas) — descargo simétrico al
-        // que ya hace voidSalesOrderAction. Sin esto, anular reintegra stock
-        // que nunca se descontó. Cada entrada en cartItem.modifiers es UNA
-        // selección (el modal "explota" la cantidad seleccionada → 1 entrada
-        // por unidad), y se aplica a CADA línea (× cartItem.quantity).
+        // Modificadores — descargo simétrico al que hace voidSalesOrderAction.
+        // Prioridad (§80): receta PROPIA del modificador (ingredientes
+        // directos, sin MenuItem placeholder); si no tiene, linkedMenuItem
+        // (recetas). Cada entrada en cartItem.modifiers es UNA selección
+        // (el modal "explota" la cantidad seleccionada → 1 entrada por
+        // unidad), y se aplica a CADA línea (× cartItem.quantity).
         for (const cartMod of cartItem.modifiers ?? []) {
             if (!cartMod.modifierId) continue;
             const menuModifier = await db.menuModifier.findUnique({
                 where: { id: cartMod.modifierId },
-                select: { linkedMenuItem: { select: { name: true, recipeId: true } } },
+                select: {
+                    ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } },
+                    linkedMenuItem: { select: { name: true, recipeId: true } },
+                },
             });
+            const label = `Venta POS: modificador ${cartMod.name} (${menuItem?.name ?? cartItem.name})`;
+            if (menuModifier?.ingredients?.length) {
+                for (const ing of menuModifier.ingredients) {
+                    ops.push({
+                        inventoryItemId: ing.ingredientItemId,
+                        quantity: ing.quantity * cartItem.quantity,
+                        unit: ing.unit,
+                        label,
+                    });
+                }
+                continue;
+            }
             const linkedRecipeId = menuModifier?.linkedMenuItem?.recipeId;
             if (!linkedRecipeId) continue;
             const recipe = await loadRecipe(linkedRecipeId);
@@ -825,7 +856,7 @@ async function registerInventoryForCartItems(params: {
                     inventoryItemId: ing.ingredientItemId,
                     quantity: ing.quantity * cartItem.quantity,
                     unit: ing.unit,
-                    label: `Venta POS: modificador ${cartMod.name} (${menuItem?.name ?? cartItem.name})`,
+                    label,
                 });
             }
         }
@@ -2447,9 +2478,26 @@ async function applyItemInventoryInTx(tx: any, params: {
         if (!modifierId) continue;
         const menuModifier = await tx.menuModifier.findUnique({
             where: { id: modifierId },
-            select: { name: true, linkedMenuItem: { select: { recipeId: true } } },
+            select: {
+                name: true,
+                ingredients: { select: { ingredientItemId: true, quantity: true, unit: true } },
+                linkedMenuItem: { select: { recipeId: true } },
+            },
         });
-        await collectRecipe(menuModifier?.linkedMenuItem?.recipeId, `${params.label} (mod: ${menuModifier?.name ?? modifierId})`);
+        const note = `${params.label} (mod: ${menuModifier?.name ?? modifierId})`;
+        // Receta propia del modificador (§80) tiene prioridad — espejo del descargo.
+        if (menuModifier?.ingredients?.length) {
+            for (const ing of menuModifier.ingredients) {
+                ops.push({
+                    inventoryItemId: ing.ingredientItemId,
+                    quantity: ing.quantity * quantity,
+                    unit: ing.unit,
+                    note,
+                });
+            }
+            continue;
+        }
+        await collectRecipe(menuModifier?.linkedMenuItem?.recipeId, note);
     }
 
     for (const op of ops) {

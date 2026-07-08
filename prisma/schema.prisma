@@ -374,6 +374,8 @@ model InventoryItem {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  modifierIngredients MenuModifierIngredient[] @relation("ModifierIngredientItem")
+
   @@unique([tenantId, sku])
   @@index([sku])
   @@index([type])
@@ -1125,6 +1127,12 @@ model MenuModifier {
   // Relaciones
   orderItemModifiers SalesOrderItemModifier[]
 
+  // Receta PROPIA del modificador (§80): ingredientes directos de inventario.
+  // Si tiene filas acá, el descargo usa ESTO y se ignora linkedMenuItemId.
+  // Evita crear MenuItems placeholder por cada variante (ej. tipos de leche,
+  // "cambiar lomito por kafta" → X gramos de KAFTA KG directo).
+  ingredients MenuModifierIngredient[]
+
   // Soft Delete
   deletedAt DateTime?
 
@@ -1136,6 +1144,24 @@ model MenuModifier {
   @@index([linkedMenuItemId])
   @@index([deletedAt])
   @@index([tenantId])
+}
+
+/// Ingrediente directo de un modificador (§80). Sin tenantId: hereda scope
+/// vía el modifier (patrón RecipeIngredient/WeeklyCountItem). Cantidad en la
+/// unidad indicada por porción del plato al que se aplica el modificador.
+model MenuModifierIngredient {
+  id         String       @id @default(cuid())
+  modifierId String
+  modifier   MenuModifier @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+
+  ingredientItemId String
+  ingredientItem   InventoryItem @relation("ModifierIngredientItem", fields: [ingredientItemId], references: [id])
+
+  quantity Float
+  unit     String // KG, G, L, ML, UNIT — informativo; el stock se mueve en esta cantidad
+
+  @@unique([modifierId, ingredientItemId])
+  @@index([ingredientItemId])
 }
 
 // Tabla pivote: QuÃ© grupos de modificadores aplican a quÃ© productos

@@ -1,18 +1,20 @@
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
-import { getModifierGroupsWithItemsAction, getMenuItemsForModifierLinkAction } from '@/app/actions/modifier.actions';
+import { getModifierGroupsWithItemsAction, getMenuItemsForModifierLinkAction, getInventoryItemsForModifierRecipeAction } from '@/app/actions/modifier.actions';
 import ModifierManagerClient from './ModifierManagerClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ModificadoresPage() {
-    const [groupsRes, itemsRes] = await Promise.all([
+    const [groupsRes, itemsRes, inventoryRes] = await Promise.all([
         getModifierGroupsWithItemsAction(),
-        getMenuItemsForModifierLinkAction()
+        getMenuItemsForModifierLinkAction(),
+        getInventoryItemsForModifierRecipeAction(),
     ]);
 
     const groups = groupsRes.success ? (groupsRes.data ?? []) : [];
     const menuItems = itemsRes.success ? (itemsRes.data ?? []) : [];
+    const inventoryItems = inventoryRes.success ? (inventoryRes.data ?? []) : [];
 
     return (
         <div className="space-y-6">
@@ -35,7 +37,7 @@ export default async function ModificadoresPage() {
                 </Link>
             </div>
 
-            <ModifierManagerClient groups={groups as any} menuItems={menuItems as any} />
+            <ModifierManagerClient groups={groups as any} menuItems={menuItems as any} inventoryItems={inventoryItems as any} />
         </div>
     );
 }

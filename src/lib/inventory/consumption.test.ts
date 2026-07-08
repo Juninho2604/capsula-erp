@@ -111,6 +111,101 @@ describe('computeConsumptionFromOrders', () => {
         expect(c.get('masa-falafel')).toBeCloseTo(6, 3);    // 2 × 3 líneas
     });
 
+    it('modificador con receta PROPIA (ingredients) descuenta directo × cantidad de línea', () => {
+        const recipes = new Map([['rec-shawarma', {
+            ingredients: [{ ingredientItemId: 'lomito', quantity: 0.15 }],
+        }]]);
+        const orders = [
+            { items: [
+                {
+                    quantity: 2, // 2 shawarmas, cambio a kafta
+                    menuItem: { recipeId: 'rec-shawarma' },
+                    modifiers: [
+                        { modifier: { ingredients: [{ ingredientItemId: 'kafta-kg', quantity: 0.12 }] } },
+                    ],
+                },
+            ] },
+        ];
+        const c = computeConsumptionFromOrders(orders, recipes);
+        expect(c.get('lomito')).toBeCloseTo(0.3, 3);      // receta principal sigue sumando
+        expect(c.get('kafta-kg')).toBeCloseTo(0.24, 3);   // 0.12 × 2
+    });
+
+    it('receta propia del modificador tiene PRIORIDAD sobre linkedMenuItem', () => {
+        const recipes = new Map([['rec-falafel', {
+            ingredients: [{ ingredientItemId: 'masa-falafel', quantity: 2 }],
+        }]]);
+        const orders = [
+            { items: [
+                {
+                    quantity: 1,
+                    menuItem: null,
+                    modifiers: [
+                        {
+                            modifier: {
+                                linkedMenuItem: { recipeId: 'rec-falafel' },     // fallback — NO debe usarse
+                                ingredients: [{ ingredientItemId: 'kafta-kg', quantity: 0.1 }],
+                            },
+                        },
+                    ],
+                },
+            ] },
+        ];
+        const c = computeConsumptionFromOrders(orders, recipes);
+        expect(c.has('masa-falafel')).toBe(false);
+        expect(c.get('kafta-kg')).toBeCloseTo(0.1, 3);
+    });
+
+    it('modificador con ingredients vacío cae al linkedMenuItem (fallback)', () => {
+        const recipes = new Map([['rec-falafel', {
+            ingredients: [{ ingredientItemId: 'masa-falafel', quantity: 2 }],
+        }]]);
+        const orders = [
+            { items: [
+                {
+                    quantity: 1,
+                    menuItem: null,
+                    modifiers: [
+                        {
+                            modifier: {
+                                linkedMenuItem: { recipeId: 'rec-falafel' },
+                                ingredients: [],  // vacío ≠ receta propia
+                            },
+                        },
+                    ],
+                },
+            ] },
+        ];
+        const c = computeConsumptionFromOrders(orders, recipes);
+        expect(c.get('masa-falafel')).toBeCloseTo(2, 3);
+    });
+
+    it('ingrediente directo con quantity ≤ 0 o no finita se ignora (defensivo)', () => {
+        const orders = [
+            { items: [
+                {
+                    quantity: 1,
+                    menuItem: null,
+                    modifiers: [
+                        {
+                            modifier: {
+                                ingredients: [
+                                    { ingredientItemId: 'sal', quantity: 0 },
+                                    { ingredientItemId: 'mala', quantity: -1 },
+                                    { ingredientItemId: 'nan', quantity: NaN },
+                                    { ingredientItemId: 'kafta-kg', quantity: 0.1 },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ] },
+        ];
+        const c = computeConsumptionFromOrders(orders, new Map());
+        expect(c.size).toBe(1);
+        expect(c.get('kafta-kg')).toBeCloseTo(0.1, 3);
+    });
+
     it('collectReferencedRecipeIds incluye recetas de modificadores', () => {
         const ids = collectReferencedRecipeIds([
             { items: [
