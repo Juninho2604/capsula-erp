@@ -14,7 +14,7 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function ConversacionesPage() {
-    await requireConversacionesPage();
+    const { role } = await requireConversacionesPage();
 
     const [list, templates, health] = await Promise.all([
         listWaConversationsAction(),
@@ -35,6 +35,7 @@ export default async function ConversacionesPage() {
                 approvalStatus: t.approvalStatus,
             })) : []}
             health={health.success ? health.data : { hasCredential: false, credentialActive: false, displayPhone: null }}
+            canConfigure={['OWNER', 'ADMIN_MANAGER'].includes(role)}
         />
     );
 }

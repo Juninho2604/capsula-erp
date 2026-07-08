@@ -11235,3 +11235,26 @@ STRING mientras se tipea, `parseFloat` solo al usar el valor:
 
 REGLA para inputs numéricos con decimales en React: nunca guardar number
 y parsear por tecla; guardar string y parsear al submit. `step="any"`.
+
+## §81 WA Conversaciones — UI de configuración de credencial (2026-07-08)
+
+Gap detectado al activar el módulo en pokepok: el banner rojo decía
+"Configurala con un OWNER/ADMIN" pero las actions `getWaSettingsAction` /
+`saveWaSettingsAction` (§5.2) no tenían NINGUNA UI que las llamara.
+
+- `require-conversaciones-page.ts` ahora devuelve `{ tenantId, role }`;
+  la page pasa `canConfigure = role ∈ {OWNER, ADMIN_MANAGER}` (espejo del
+  RBAC server-side de las actions — la UI solo esconde, el server manda).
+- `conversations-view.tsx`: botón "Configurar credencial" en el banner
+  rojo + engranaje fijo junto al buscador de la bandeja (solo
+  canConfigure). Modal estándar z-[60]: Phone Number ID*, WABA ID*,
+  teléfono visible, versión Graph (default v21.0), Access Token y App
+  Secret como password con autoComplete off — en edición muestran
+  "Guardado (••••1234) — dejar vacío para mantener" (el server solo
+  re-cifra si se envía valor nuevo), checkbox credencial activa.
+  Al guardar: toast + `router.refresh()` → el banner de salud se
+  actualiza desde el server component.
+
+Requisito de entorno: `WA_TOKEN_ENC_KEY` (64 hex, `openssl rand -hex 32`)
+en el .env del VPS — sin ella `encryptToken` lanza y la action devuelve
+el error legible en el toast. Restart pm2 tras agregarla.
