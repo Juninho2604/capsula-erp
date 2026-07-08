@@ -11312,3 +11312,40 @@ propia §80 / linkedMenuItem del hijo funcionan igual).
    Mixto" → "Al elegir despliega: Sabores Pincho Mixto".
 
 Gates: tsc 0 · vitest 491 passed. Requiere `migrate deploy` (safe).
+
+## §83 BUG mesero: items fantasma comandados en otra mesa (2026-07-08)
+
+Reporte de los mesoneros: "marcho un producto y en cocina sale comandado
+otro". Intermitente, imposible de reproducir a demanda. CONFIRMADO — solo
+POS mesero (restaurante limpia el cart en resetTableState()).
+
+### Cadena del bug
+1. `setSelectedTableId(mesa8)` NO limpiaba el carrito → items pendientes
+   de la mesa 4 seguían en memoria al cambiar de mesa.
+2. El autosave offline (`useEffect([cart, activeTab?.id])`) corría con la
+   mesa NUEVA activa → `saveCart(tab8, itemsDeMesa4)` en IndexedDB.
+3. Días después, cualquier mesero abría la mesa 8 con carrito vacío → la
+   rehidratación restauraba los items EN SILENCIO → se marchaban junto a
+   lo nuevo → cocina recibía productos que nadie pidió en esa mesa.
+Intermitente porque requiere cambio de mesa con carrito pendiente, y es
+por-tablet (IndexedDB local). Efecto directo además: cambiar de mesa con
+items pendientes los enviaba a la mesa nueva.
+
+### Fix (los 4 juntos en pos/mesero/page.tsx)
+- Cambio de mesa → `setCart([])`: el carrito NO viaja; queda persistido
+  bajo su mesa original y se restaura al volver.
+- `cartOwnerTabIdRef`: el autosave solo escribe si el carrito en memoria
+  pertenece a la mesa activa (null durante la hidratación — ref síncrono,
+  bloquea el effect del mismo commit). Sin esto el autosave escribía/
+  borraba el registro de la mesa equivocada durante el switch.
+- Rehidratación con TTL 6h (descarta basura vieja, incluidos los
+  registros ya contaminados pre-fix) y TOAST siempre visible
+  ("N producto(s) pendientes restaurados — revisá el carrito"). Nada de
+  items silenciosos.
+- Mensaje offline corregido: NO existe reenvío automático — ahora dice
+  "tocá 'Enviar a cocina' de nuevo cuando vuelva la señal" (el texto
+  anterior entrenaba al mesero a creer que ya estaba marchado).
+
+REGLA: cualquier POS con carrito persistido por contexto debe (a) limpiar
+el cart al cambiar de contexto, (b) gatear el autosave por dueño, (c) TTL
++ aviso visible al restaurar.

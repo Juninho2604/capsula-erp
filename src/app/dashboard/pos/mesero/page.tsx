@@ -559,22 +559,60 @@ export default function POSMeseroPage() {
   // el carrito sigue ahí. Cuando "Enviar a cocina" se complete con éxito,
   // borramos el carrito persistido (lo limpia ya `setCart([])` + delete).
   const lastLoadedCartTabIdRef = useRef<string | null>(null);
+  // Mesa a la que pertenece el carrito EN MEMORIA (§83). El autosave solo
+  // escribe cuando coincide con la mesa activa. Sin este guard, al cambiar
+  // de mesa con items pendientes el autosave los persistía bajo la mesa
+  // NUEVA → quedaban "items fantasma" que se rehidrataban después y salían
+  // comandados a cocina en una mesa que nunca los pidió. null = hidratación
+  // en curso (autosave bloqueado).
+  const cartOwnerTabIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!activeTab?.id) {
       lastLoadedCartTabIdRef.current = null;
+      cartOwnerTabIdRef.current = null;
       return;
     }
     // Solo rehidratar cuando cambia la mesa, no en cada render.
     if (lastLoadedCartTabIdRef.current === activeTab.id) return;
+    const isTabSwitch = lastLoadedCartTabIdRef.current !== null;
     lastLoadedCartTabIdRef.current = activeTab.id;
+    // Bloquear el autosave YA (ref es síncrono — el effect de autosave de
+    // este mismo commit todavía ve el carrito de la mesa anterior).
+    cartOwnerTabIdRef.current = null;
+    // Al CAMBIAR de mesa el carrito pendiente NO viaja con el mesero: ya
+    // quedó persistido bajo su mesa original y se restaura al volver a ella.
+    if (isTabSwitch) setCart([]);
     let cancelled = false;
-    loadCart(activeTab.id).then((record) => {
-      if (cancelled || !record) return;
-      // Solo rehidratamos si el carrito local está vacío. Si el mesero ya
-      // empezó a agregar ítems en esta sesión, NO machacar lo que tiene en
-      // pantalla con lo cacheado (sería peor UX que perderlo).
-      setCart((current) => (current.length > 0 ? current : (record.items as CartItem[])));
-    });
+    loadCart(activeTab.id)
+      .then((record) => {
+        if (cancelled) return;
+        // TTL: un carrito pendiente legítimo tiene minutos u horas (mismo
+        // turno). Registros más viejos son basura de sesiones anteriores
+        // (incluidos los contaminados pre-§83) → se descartan, no se
+        // restauran productos de hace días a una mesa nueva.
+        const CART_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+        if (record && Date.now() - record.updatedAt > CART_CACHE_TTL_MS) {
+          void deleteCart(activeTab.id);
+          return;
+        }
+        const cached = ((record?.items as CartItem[] | undefined) ?? []);
+        if (cached.length === 0) return;
+        // Solo rehidratamos si el carrito local está vacío. Si el mesero ya
+        // empezó a agregar ítems en esta sesión, NO machacar lo que tiene en
+        // pantalla con lo cacheado (sería peor UX que perderlo).
+        setCart((current) => {
+          if (current.length > 0) return current;
+          // Aviso SIEMPRE visible: nada de items silenciosos en el carrito.
+          toast(
+            `${cached.length} producto(s) pendientes restaurados de esta mesa — revisá el carrito antes de enviar a cocina`,
+            { duration: 6000 },
+          );
+          return cached;
+        });
+      })
+      .finally(() => {
+        if (!cancelled) cartOwnerTabIdRef.current = activeTab.id;
+      });
     return () => { cancelled = true; };
   }, [activeTab?.id]);
 
@@ -614,6 +652,10 @@ export default function POSMeseroPage() {
   // usuario (no en cadenas de render rápidas).
   useEffect(() => {
     if (!activeTab?.id) return;
+    // §83: solo persistir si el carrito en memoria pertenece a esta mesa.
+    // Durante la hidratación tras un cambio de mesa el ref es null — sin
+    // este guard se borraba/escribía el registro de la mesa equivocada.
+    if (cartOwnerTabIdRef.current !== activeTab.id) return;
     if (cart.length === 0) {
       // Carrito vacío → borrar registro para no acumular basura.
       deleteCart(activeTab.id);
@@ -855,7 +897,7 @@ export default function POSMeseroPage() {
         setIsProcessing(false);
       }
     }, {
-      blockedMessage: "Sin conexión. La orden quedó en el carrito local; se enviará cuando vuelva la señal.",
+      blockedMessage: "Sin conexión. La orden quedó guardada en el carrito de esta mesa — tocá 'Enviar a cocina' de nuevo cuando vuelva la señal.",
     });
     // guardMutation devuelve undefined si estaba offline; el carrito ya está
     // persistido por el useEffect de auto-guardado, así que nada que hacer aquí.
