@@ -10,7 +10,7 @@ import { PERM } from '@/lib/constants/permissions-registry';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 
-export async function requireConversacionesPage(): Promise<{ tenantId: string }> {
+export async function requireConversacionesPage(): Promise<{ tenantId: string; role: string }> {
     const session = await getSession();
     if (!session) redirect('/login');
 
@@ -35,5 +35,5 @@ export async function requireConversacionesPage(): Promise<{ tenantId: string }>
     }
     if (!enabled) redirect('/dashboard');
 
-    return { tenantId };
+    return { tenantId, role: session.role };
 }

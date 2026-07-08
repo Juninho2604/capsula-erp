@@ -12,9 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Bot, UserCircle2, Search, Check, CheckCheck, AlertTriangle, Clock,
     Send, FileText, MapPin, Image as ImageIcon, Receipt, X as XIcon,
-    MessageSquareOff, Hand, Undo2, Loader2, ShieldAlert,
+    MessageSquareOff, Hand, Undo2, Loader2, ShieldAlert, Settings, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
     listWaConversationsAction,
@@ -23,6 +24,8 @@ import {
     releaseWaConversationAction,
     sendWaHumanMessageAction,
     markWaConversationReadAction,
+    getWaSettingsAction,
+    saveWaSettingsAction,
 } from '@/app/actions/wa.actions';
 
 // ─── Tipos (espejo de las actions) ──────────────────────────────────────────
@@ -75,7 +78,24 @@ interface Props {
     initialConversations: ConversationRow[];
     templates: Template[];
     health: { hasCredential: boolean; credentialActive: boolean; displayPhone: string | null };
+    /** true solo para OWNER/ADMIN_MANAGER — habilita el modal de credencial. */
+    canConfigure: boolean;
 }
+
+interface SettingsForm {
+    phoneNumberId: string;
+    wabaId: string;
+    displayPhone: string;
+    graphApiVersion: string;
+    accessToken: string;
+    appSecret: string;
+    active: boolean;
+}
+
+const EMPTY_SETTINGS: SettingsForm = {
+    phoneNumberId: '', wabaId: '', displayPhone: '', graphApiVersion: 'v21.0',
+    accessToken: '', appSecret: '', active: true,
+};
 
 type Filter = 'ALL' | 'BOT' | 'HUMAN' | 'EXPIRING';
 
@@ -125,7 +145,8 @@ function DeliveryTicks({ status, error }: { status: Message['deliveryStatus']; e
 
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function ConversationsView({ initialConversations, templates, health }: Props) {
+export default function ConversationsView({ initialConversations, templates, health, canConfigure }: Props) {
+    const router = useRouter();
     const [conversations, setConversations] = useState<ConversationRow[]>(initialConversations);
     const [filter, setFilter] = useState<Filter>('ALL');
     const [search, setSearch] = useState('');
@@ -141,6 +162,79 @@ export default function ConversationsView({ initialConversations, templates, hea
     const bottomRef = useRef<HTMLDivElement | null>(null);
     const selectedIdRef = useRef<string | null>(null);
     selectedIdRef.current = selectedId;
+
+    // ── Configuración de credencial (solo OWNER/ADMIN_MANAGER) ──────────────
+    const [showSettings, setShowSettings] = useState(false);
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [settingsForm, setSettingsForm] = useState<SettingsForm>(EMPTY_SETTINGS);
+    const [tokenMasked, setTokenMasked] = useState<string | null>(null);
+    const [hasExistingCred, setHasExistingCred] = useState(false);
+
+    const openSettings = async () => {
+        setShowSettings(true);
+        setSettingsLoading(true);
+        try {
+            const res = await getWaSettingsAction();
+            if (!res.success) {
+                toast.error(res.message ?? 'Error cargando configuración');
+                setShowSettings(false);
+                return;
+            }
+            if (res.data) {
+                setHasExistingCred(true);
+                setTokenMasked(res.data.tokenMasked ?? null);
+                setSettingsForm({
+                    phoneNumberId: res.data.phoneNumberId ?? '',
+                    wabaId: res.data.wabaId ?? '',
+                    displayPhone: res.data.displayPhone ?? '',
+                    graphApiVersion: res.data.graphApiVersion ?? 'v21.0',
+                    accessToken: '',
+                    appSecret: '',
+                    active: res.data.active ?? true,
+                });
+            } else {
+                setHasExistingCred(false);
+                setTokenMasked(null);
+                setSettingsForm(EMPTY_SETTINGS);
+            }
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        if (!settingsForm.phoneNumberId.trim() || !settingsForm.wabaId.trim()) {
+            toast.error('Phone Number ID y WABA ID son obligatorios');
+            return;
+        }
+        if (!hasExistingCred && (!settingsForm.accessToken.trim() || !settingsForm.appSecret.trim())) {
+            toast.error('Access Token y App Secret son obligatorios en la primera configuración');
+            return;
+        }
+        setSettingsSaving(true);
+        try {
+            const res = await saveWaSettingsAction({
+                phoneNumberId: settingsForm.phoneNumberId,
+                wabaId: settingsForm.wabaId,
+                displayPhone: settingsForm.displayPhone || undefined,
+                graphApiVersion: settingsForm.graphApiVersion || undefined,
+                accessToken: settingsForm.accessToken.trim() || undefined,
+                appSecret: settingsForm.appSecret.trim() || undefined,
+                active: settingsForm.active,
+            });
+            if (res.success) {
+                toast.success(res.message ?? 'Configuración guardada');
+                setShowSettings(false);
+                // Re-render del server component → banner de salud actualizado.
+                router.refresh();
+            } else {
+                toast.error(res.message ?? 'Error guardando', { duration: 8000 });
+            }
+        } finally {
+            setSettingsSaving(false);
+        }
+    };
 
     // Reloj para contadores de ventana
     useEffect(() => {
@@ -280,11 +374,23 @@ export default function ConversationsView({ initialConversations, templates, hea
         <div className="flex h-[calc(100vh-7rem)] flex-col gap-3">
             {/* Banner rojo: credencial caída / ausente */}
             {(!health.hasCredential || !health.credentialActive) && (
-                <div className="flex items-center gap-2 rounded-xl bg-[#F7E3DB] px-4 py-2.5 text-sm font-semibold text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]">
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#F7E3DB] px-4 py-2.5 text-sm font-semibold text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8]">
                     <ShieldAlert className="h-4 w-4 shrink-0" />
-                    {!health.hasCredential
-                        ? 'Sin credencial de WhatsApp configurada — los mensajes humanos no se pueden enviar. Configurala con un OWNER/ADMIN.'
-                        : 'El token de WhatsApp está inválido o expiró — renovalo en la configuración del módulo.'}
+                    <span className="flex-1">
+                        {!health.hasCredential
+                            ? 'Sin credencial de WhatsApp configurada — los mensajes humanos no se pueden enviar.'
+                            : 'El token de WhatsApp está inválido o expiró — renovalo en la configuración del módulo.'}
+                    </span>
+                    {canConfigure ? (
+                        <button
+                            onClick={openSettings}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-capsula-navy-deep px-3 py-1.5 text-xs font-semibold text-capsula-cream hover:bg-capsula-navy"
+                        >
+                            <Settings className="h-3.5 w-3.5" /> Configurar credencial
+                        </button>
+                    ) : (
+                        <span className="shrink-0 text-xs font-medium opacity-80">Pedile a un OWNER/ADMIN que la configure.</span>
+                    )}
                 </div>
             )}
 
@@ -292,14 +398,25 @@ export default function ConversationsView({ initialConversations, templates, hea
                 {/* ══ PANEL IZQUIERDO — BANDEJA ══════════════════════════════ */}
                 <aside className={`${selectedId ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-capsula-line md:w-[340px] md:shrink-0`}>
                     <div className="space-y-2 border-b border-capsula-line p-3">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Buscar por nombre o teléfono…"
-                                className="pos-input w-full pl-9"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                                <input
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Buscar por nombre o teléfono…"
+                                    className="pos-input w-full pl-9"
+                                />
+                            </div>
+                            {canConfigure && (
+                                <button
+                                    onClick={openSettings}
+                                    title="Configuración de WhatsApp (credencial)"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted transition hover:border-capsula-navy-deep/40 hover:text-capsula-ink"
+                                >
+                                    <Settings className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
                         <div className="flex gap-1.5">
                             {([['ALL', 'Todas'], ['BOT', 'Bot'], ['HUMAN', 'Humano'], ['EXPIRING', 'Por expirar']] as [Filter, string][]).map(([f, label]) => (
@@ -555,6 +672,117 @@ export default function ConversationsView({ initialConversations, templates, hea
                     )}
                 </section>
             </div>
+
+            {/* ══ MODAL: CONFIGURACIÓN CREDENCIAL z-[60] ═════════════════════ */}
+            {showSettings && (
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-capsula-ink/60 p-4 backdrop-blur-sm sm:items-center">
+                    <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-3xl border border-capsula-line bg-capsula-ivory shadow-2xl sm:rounded-3xl">
+                        <div className="flex shrink-0 items-center justify-between border-b border-capsula-line p-5">
+                            <div>
+                                <h3 className="text-lg font-semibold tracking-[-0.02em] text-capsula-ink">Credencial de WhatsApp</h3>
+                                <p className="mt-0.5 text-xs text-capsula-ink-muted">Datos de Meta (WhatsApp Cloud API). Los secretos se guardan cifrados.</p>
+                            </div>
+                            <button onClick={() => setShowSettings(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-capsula-ink-muted hover:bg-capsula-coral/10 hover:text-capsula-coral">
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+                        {settingsLoading ? (
+                            <div className="flex items-center justify-center p-12 text-capsula-ink-muted">
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                        ) : (
+                            <div className="space-y-4 overflow-y-auto p-5">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Phone Number ID *</label>
+                                        <input
+                                            value={settingsForm.phoneNumberId}
+                                            onChange={e => setSettingsForm(f => ({ ...f, phoneNumberId: e.target.value }))}
+                                            placeholder="Ej: 123456789012345"
+                                            className="pos-input w-full tabular-nums"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">WABA ID *</label>
+                                        <input
+                                            value={settingsForm.wabaId}
+                                            onChange={e => setSettingsForm(f => ({ ...f, wabaId: e.target.value }))}
+                                            placeholder="WhatsApp Business Account ID"
+                                            className="pos-input w-full tabular-nums"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Teléfono visible</label>
+                                        <input
+                                            value={settingsForm.displayPhone}
+                                            onChange={e => setSettingsForm(f => ({ ...f, displayPhone: e.target.value }))}
+                                            placeholder="Ej: +58 412 1234567"
+                                            className="pos-input w-full"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Versión Graph API</label>
+                                        <input
+                                            value={settingsForm.graphApiVersion}
+                                            onChange={e => setSettingsForm(f => ({ ...f, graphApiVersion: e.target.value }))}
+                                            placeholder="v21.0"
+                                            className="pos-input w-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                        <Lock className="h-3 w-3" /> Access Token {hasExistingCred ? '' : '*'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={settingsForm.accessToken}
+                                        onChange={e => setSettingsForm(f => ({ ...f, accessToken: e.target.value }))}
+                                        placeholder={hasExistingCred ? `Guardado (${tokenMasked ?? '••••'}) — dejar vacío para mantener` : 'Token permanente de la app de Meta'}
+                                        autoComplete="off"
+                                        className="pos-input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                        <Lock className="h-3 w-3" /> App Secret {hasExistingCred ? '' : '*'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={settingsForm.appSecret}
+                                        onChange={e => setSettingsForm(f => ({ ...f, appSecret: e.target.value }))}
+                                        placeholder={hasExistingCred ? 'Guardado — dejar vacío para mantener' : 'App secret (firma de webhooks)'}
+                                        autoComplete="off"
+                                        className="pos-input w-full"
+                                    />
+                                </div>
+
+                                <label className="flex cursor-pointer items-center gap-2 text-sm text-capsula-ink">
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsForm.active}
+                                        onChange={e => setSettingsForm(f => ({ ...f, active: e.target.checked }))}
+                                        className="rounded"
+                                    />
+                                    Credencial activa (habilita el envío de mensajes)
+                                </label>
+                            </div>
+                        )}
+                        <div className="flex shrink-0 gap-3 border-t border-capsula-line p-4">
+                            <button onClick={() => setShowSettings(false)} disabled={settingsSaving} className="pos-btn-secondary flex-1 py-3">Cancelar</button>
+                            <button
+                                onClick={handleSaveSettings}
+                                disabled={settingsSaving || settingsLoading}
+                                className="pos-btn inline-flex flex-[2] items-center justify-center gap-2 py-3 disabled:opacity-40"
+                            >
+                                {settingsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ══ MODAL: PLANTILLAS z-[60] ═══════════════════════════════════ */}
             {showTemplateModal && (
