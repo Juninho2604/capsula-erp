@@ -11214,3 +11214,24 @@ si además hay linkedMenuItemId. El cambio de vínculo NO borra el badge OWN.
 
 Gates: tsc 0 · vitest 478 passed. Requiere `migrate deploy` (§44) al
 deployar — la migración es safe (solo CREATE).
+
+### §80.1 Fix: decimales pequeños en formulario de recetas (2026-07-06)
+
+Christian no podía escribir `0.009` como cantidad de un ingrediente en
+`recetas/nueva/RecipeForm.tsx`. Causa: inputs numéricos CONTROLADOS con
+estado number + `parseFloat(e.target.value) || 0` por tecla — al tipear
+"0." el intermedio parsea a 0, React re-renderiza `value={0 || ''} = ''`
+y el input se limpia; imposible completar cualquier decimal. Además
+`step="0.01"` invalidaba 0.009.
+
+Fix (patrón correcto — el mismo del modal de receta propia §80): estado
+STRING mientras se tipea, `parseFloat` solo al usar el valor:
+- `outputQuantityStr` / `yieldPercentageStr` (derivan number con
+  `parseFloat || fallback`), `newQuantityStr` / `newWasteStr`.
+- Todos los inputs de cantidad con `step="any"`.
+- Botón Agregar valida `parseFloat(newQuantityStr) > 0`.
+- Display de la lista con `formatNumber(q, 4)` (antes 2 decimales →
+  0.009 se mostraba "0,01").
+
+REGLA para inputs numéricos con decimales en React: nunca guardar number
+y parsear por tecla; guardar string y parsear al submit. `step="any"`.
