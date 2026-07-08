@@ -21,7 +21,9 @@ import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
+import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
+import { hasChildGroup, purgeChildSelections, childGroupsValid } from "@/lib/pos-child-group";
 import { computeTabPreviewTotals } from "@/lib/sales/tab-preview";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -52,10 +54,13 @@ interface ModifierOption {
   name: string;
   priceAdjustment: number;
   isAvailable: boolean;
+  /** Sub-grupo anidado (§82): se despliega al seleccionar esta opción. */
+  childGroup?: ModifierGroup | null;
 }
 interface ModifierGroup {
   id: string;
   name: string;
+  isActive?: boolean;
   minSelections: number;
   maxSelections: number;
   isRequired: boolean;
@@ -671,10 +676,12 @@ export default function POSMeseroPage() {
       if (group.maxSelections === 1) {
         if (totalSelected >= 1 && existing) return;
         if (totalSelected >= 1 && !existing) {
-          setCurrentModifiers([
+          // purge: al reemplazar la opción (radio) se limpian las
+          // selecciones del sub-grupo de la opción anterior (§82).
+          setCurrentModifiers(purgeChildSelections([
             ...currentModifiers.filter((m) => m.groupId !== group.id),
             { groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: 1 },
-          ]);
+          ], group));
           return;
         }
       }
@@ -689,7 +696,7 @@ export default function POSMeseroPage() {
     } else if (newQty > 0) {
       mods.push({ groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: newQty });
     }
-    setCurrentModifiers(mods);
+    setCurrentModifiers(purgeChildSelections(mods, group));
   };
 
   // Toggle SIN/CON/NEUTRAL por ingrediente — agrupa modifiers con convención
@@ -720,6 +727,7 @@ export default function POSMeseroPage() {
   const confirmAddToCart = () => {
     if (!selectedItemForModifier) return;
     if (!selectedItemForModifier.modifierGroups.every((g) => isGroupValid(g.modifierGroup))) return;
+    if (!childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))) return;
     const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
     const lineTotal = (selectedItemForModifier.price + modTotal) * itemQuantity;
     const exploded = currentModifiers.flatMap((m) =>
@@ -2238,8 +2246,10 @@ export default function POSMeseroPage() {
                               const qty = existing?.quantity || 0;
                               const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                               const isRadio = group.maxSelections === 1;
+                              const modOption = mod as unknown as ModifierOption;
                               return (
-                                <div key={mod.id} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line hover:border-capsula-navy-deep/40"}`}>
+                                <div key={mod.id}>
+                                <div className={`flex justify-between items-center p-3 rounded-xl border transition-all ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line hover:border-capsula-navy-deep/40"}`}>
                                   <div>
                                     <div className="font-semibold text-sm text-capsula-ink">{mod.name}</div>
                                     {mod.priceAdjustment !== 0 && (
@@ -2260,6 +2270,15 @@ export default function POSMeseroPage() {
                                       <button onClick={() => updateModifierQuantity(group, mod as any, 1)} disabled={isMax} className={`h-7 w-7 rounded-lg font-semibold transition ${isMax ? "text-capsula-ink-faint opacity-40" : "bg-capsula-navy-deep text-capsula-cream hover:bg-capsula-navy-deep/90"}`}>+</button>
                                     </div>
                                   )}
+                                </div>
+                                {/* Sub-grupo anidado (§82): se despliega con la opción seleccionada */}
+                                {qty > 0 && hasChildGroup(modOption) && (
+                                  <ChildGroupSelector
+                                    childGroup={modOption.childGroup}
+                                    selections={currentModifiers}
+                                    onSelect={(cg, child, change) => updateModifierQuantity(cg as ModifierGroup, child as ModifierOption, change)}
+                                  />
+                                )}
                                 </div>
                               );
                             })}
@@ -2292,7 +2311,10 @@ export default function POSMeseroPage() {
               <button onClick={() => setShowModifierModal(false)} className="pos-btn-secondary flex-1 py-4 text-sm">Cancelar</button>
               <button
                 onClick={confirmAddToCart}
-                disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
+                disabled={
+                  selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup)) ||
+                  !childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))
+                }
                 className="pos-btn flex-[2] py-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 <PlusIcon className="h-4 w-4" />

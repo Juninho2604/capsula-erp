@@ -36,6 +36,8 @@ import ComandasDelDiaModal from "@/components/pos/ComandasDelDiaModal";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
+import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
+import { hasChildGroup, purgeChildSelections, childGroupsValid } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from "@/lib/sales/tip-calculation";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
@@ -50,10 +52,13 @@ interface ModifierOption {
   name: string;
   priceAdjustment: number;
   isAvailable: boolean;
+  /** Sub-grupo anidado (§82): se despliega al seleccionar esta opción. */
+  childGroup?: ModifierGroup | null;
 }
 interface ModifierGroup {
   id: string;
   name: string;
+  isActive?: boolean;
   minSelections: number;
   maxSelections: number;
   isRequired: boolean;
@@ -756,7 +761,9 @@ export default function POSSportBarPage() {
       if (group.maxSelections > 1 && totalSelected >= group.maxSelections) return;
       if (group.maxSelections === 1) {
         const others = currentModifiers.filter((m) => m.groupId !== group.id);
-        setCurrentModifiers([
+        // purge: al reemplazar la opción (radio) se limpian las selecciones
+        // del sub-grupo de la opción anterior (§82).
+        setCurrentModifiers(purgeChildSelections([
           ...others,
           {
             groupId: group.id,
@@ -766,7 +773,7 @@ export default function POSSportBarPage() {
             priceAdjustment: modifier.priceAdjustment,
             quantity: 1,
           },
-        ]);
+        ], group));
         return;
       }
     }
@@ -788,7 +795,7 @@ export default function POSSportBarPage() {
         quantity: newQty,
       });
     }
-    setCurrentModifiers(mods);
+    setCurrentModifiers(purgeChildSelections(mods, group));
   };
 
   /**
@@ -842,6 +849,7 @@ export default function POSSportBarPage() {
   const confirmAddToCart = () => {
     if (!selectedItemForModifier) return;
     if (!selectedItemForModifier.modifierGroups.every((g) => isGroupValid(g.modifierGroup))) return;
+    if (!childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))) return;
     const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
     const lineTotal = (selectedItemForModifier.price + modTotal) * itemQuantity;
     const exploded = currentModifiers.flatMap((m) =>
@@ -3960,9 +3968,10 @@ export default function POSSportBarPage() {
                               const sel = currentModifiers.find((m) => m.id === modifier.id && m.groupId === group.id);
                               const qty = sel?.quantity || 0;
                               const isRadio = group.maxSelections === 1;
+                              const modOption = modifier as unknown as ModifierOption;
                               return (
+                                <div key={modifier.id}>
                                 <div
-                                  key={modifier.id}
                                   className={`flex items-center justify-between rounded-lg px-3 py-2 border transition ${qty > 0 ? "bg-capsula-navy-soft border-capsula-navy-deep" : "bg-capsula-ivory border-capsula-line"}`}
                                 >
                                   <div>
@@ -3995,6 +4004,15 @@ export default function POSSportBarPage() {
                                       </button>
                                     </div>
                                   )}
+                                </div>
+                                {/* Sub-grupo anidado (§82) */}
+                                {qty > 0 && hasChildGroup(modOption) && (
+                                  <ChildGroupSelector
+                                    childGroup={modOption.childGroup}
+                                    selections={currentModifiers}
+                                    onSelect={(cg, child, change) => updateModifierQuantity(cg as ModifierGroup, child as ModifierOption, change)}
+                                  />
+                                )}
                                 </div>
                               );
                             })}
@@ -4063,7 +4081,10 @@ export default function POSSportBarPage() {
               </button>
               <button
                 onClick={confirmAddToCart}
-                disabled={selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup))}
+                disabled={
+                  selectedItemForModifier.modifierGroups.some((g) => !isGroupValid(g.modifierGroup)) ||
+                  !childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))
+                }
                 className="pos-btn flex-[2] py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 <PlusIcon className="h-4 w-4" />

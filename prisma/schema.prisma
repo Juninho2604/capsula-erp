@@ -1099,6 +1099,10 @@ model MenuModifierGroup {
   modifiers MenuModifier[]
   menuItems MenuItemModifierGroup[]
 
+  // Modificadores (de otros grupos) que despliegan ESTE grupo como
+  // sub-selección al ser elegidos en el POS (§82 — anidación de 1 nivel).
+  parentModifiers MenuModifier[] @relation("ModifierChildGroup")
+
   createdAt DateTime @default(now())
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
@@ -1124,6 +1128,14 @@ model MenuModifier {
   linkedMenuItemId String?
   linkedMenuItem   MenuItem? @relation("ModifierLinkedItem", fields: [linkedMenuItemId], references: [id])
 
+  // Sub-grupo anidado (§82): al seleccionar este modificador en el POS se
+  // despliega childGroup para una segunda selección (ej. "Pincho Mixto" →
+  // elegir sabores de las varas). UN solo nivel de anidación; los hijos
+  // viajan como modifiers normales en el carrito (precio/inventario/cocina
+  // funcionan sin cambios).
+  childGroupId String?
+  childGroup   MenuModifierGroup? @relation("ModifierChildGroup", fields: [childGroupId], references: [id])
+
   // Relaciones
   orderItemModifiers SalesOrderItemModifier[]
 
@@ -1142,6 +1154,7 @@ model MenuModifier {
 
   @@index([groupId])
   @@index([linkedMenuItemId])
+  @@index([childGroupId])
   @@index([deletedAt])
   @@index([tenantId])
 }

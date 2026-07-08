@@ -48,6 +48,7 @@ export async function getModifierGroupsWithItemsAction() {
                                 ingredientItem: { select: { name: true } },
                             },
                         },
+                        childGroup: { select: { id: true, name: true, isActive: true } },
                     }
                 },
                 menuItems: {
@@ -281,6 +282,38 @@ export async function setModifierIngredientsAction(
     } catch (error) {
         console.error('Error setting modifier ingredients:', error);
         return { success: false, message: 'Error guardando receta del modificador' };
+    }
+}
+
+/**
+ * Sub-grupo anidado (§82): al seleccionar el modificador en el POS se
+ * despliega el grupo hijo como segunda selección. null = quitar anidación.
+ */
+export async function setModifierChildGroupAction(modifierId: string, childGroupId: string | null) {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const modifier = await db.menuModifier.findFirst({ where: { id: modifierId } });
+        if (!modifier) return { success: false, message: 'Modificador no encontrado' };
+
+        if (childGroupId) {
+            if (childGroupId === modifier.groupId) {
+                return { success: false, message: 'Un modificador no puede desplegar su propio grupo' };
+            }
+            const ownedGroup = await db.menuModifierGroup.findFirst({ where: { id: childGroupId } });
+            if (!ownedGroup) return { success: false, message: 'Grupo no encontrado' };
+        }
+
+        await db.menuModifier.updateMany({
+            where: { id: modifierId },
+            data: { childGroupId },
+        });
+        revalidatePath('/dashboard/menu/modificadores');
+        return { success: true };
+    } catch (error) {
+        console.error('Error setting modifier child group:', error);
+        return { success: false, message: 'Error guardando sub-grupo' };
     }
 }
 

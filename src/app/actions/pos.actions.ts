@@ -1136,7 +1136,20 @@ export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean }) 
                                     include: {
                                         modifiers: {
                                             where: { isAvailable: true, deletedAt: null },
-                                            orderBy: { sortOrder: 'asc' }
+                                            orderBy: { sortOrder: 'asc' },
+                                            include: {
+                                                // Sub-grupo anidado (§82): un nivel.
+                                                // isActive se filtra en la UI
+                                                // (include to-one no acepta where).
+                                                childGroup: {
+                                                    include: {
+                                                        modifiers: {
+                                                            where: { isAvailable: true, deletedAt: null },
+                                                            orderBy: { sortOrder: 'asc' }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }

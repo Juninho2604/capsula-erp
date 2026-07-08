@@ -11258,3 +11258,57 @@ Gap detectado al activar el módulo en pokepok: el banner rojo decía
 Requisito de entorno: `WA_TOKEN_ENC_KEY` (64 hex, `openssl rand -hex 32`)
 en el .env del VPS — sin ella `encryptToken` lanza y la action devuelve
 el error legible en el toast. Restart pm2 tras agregarla.
+
+## §82 Modificadores anidados — sub-grupo al seleccionar (2026-07-08)
+
+Pedido de Omar (caso Shanklish): en "Arma tu Shanklish", al marcar "Pincho
+Mixto" debe desplegarse una segunda selección — vara mixta o combinación de
+sabores por unidad (pollo/carne/kafta/mixto). Se vende la vara mixta o la
+ración armada.
+
+### Modelo
+`MenuModifier.childGroupId String?` → FK a MenuModifierGroup (relación
+"ModifierChildGroup", ON DELETE SET NULL). Migración
+`20260708100000_menu_modifier_child_group` (ADD COLUMN NULLABLE + índice +
+FK — safe). **UN solo nivel de anidación** (el POS renderiza un nivel; un
+childGroupId dentro de un sub-grupo se ignora).
+
+### Diseño clave — los hijos son modifiers NORMALES
+La selección hija vive en el MISMO `currentModifiers` de cada página POS
+(con `groupId = childGroup.id`) y se explota igual al carrito
+(`{modifierId, name, priceAdjustment}`). Por eso NO hubo cambios en:
+persistencia (SalesOrderItemModifier), impresión de comanda (string[] de
+names), precio (priceAdjustment × qty) ni descargo de inventario (receta
+propia §80 / linkedMenuItem del hijo funcionan igual).
+
+### Piezas
+- `src/lib/pos-child-group.ts` (PURO, 13 tests): `hasChildGroup` (activo y
+  con opciones), `purgeChildSelections` (al deseleccionar/reemplazar el
+  padre se limpian los hijos — llamar tras CADA mutación del grupo),
+  `childGroupsValid` (padre elegido + childGroup requerido → suma de qty
+  hijas ≥ max(minSelections, isRequired?1:0)), `childGroupSelectedTotal`.
+- `src/components/pos/ChildGroupSelector.tsx`: panel anidado (kicker +
+  badge n/max, radio si maxSelections===1, stepper si no). Reusa el
+  `updateModifierQuantity(group, modifier, change)` de cada página
+  pasándole el childGroup como `group` → el max lo aplica la función
+  existente de la página.
+- `getMenuForPOSAction`: include `childGroup { modifiers }` (isActive del
+  hijo se filtra en UI — include to-one no acepta where).
+- 5 POS actualizados (mesero, restaurante, delivery, pedidosya, wink):
+  tipo `ModifierOption.childGroup`, purge en updateModifierQuantity (set
+  final + radio replace), gate `childGroupsValid` en confirmAddToCart y en
+  el disabled del botón, render de ChildGroupSelector bajo la opción
+  seleccionada (solo passThrough; toggles SIN/CON no anidan).
+- Admin (/dashboard/menu/modificadores): select "Al elegir despliega:" por
+  modificador (icono ListTree, verde si tiene sub-grupo) →
+  `setModifierChildGroupAction` (valida tenant, prohíbe self-group).
+
+### Setup operativo del caso Pincho Mixto
+1. Crear grupo "Sabores Pincho Mixto" (min/max según ración, ej. 1-4) con
+   modificadores Vara Mixta / Pincho de Pollo / Carne / Kafta, cada uno con
+   receta propia (§80) o vínculo para el descargo. NO vincularlo a ningún
+   plato (solo se usa anidado).
+2. En el grupo "Principales Arma tu Shanklish", al modificador "Pincho
+   Mixto" → "Al elegir despliega: Sabores Pincho Mixto".
+
+Gates: tsc 0 · vitest 491 passed. Requiere `migrate deploy` (safe).

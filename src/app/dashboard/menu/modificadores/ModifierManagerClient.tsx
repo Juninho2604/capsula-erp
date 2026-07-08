@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight, Plus, X as XIcon } from 'lucide-react';
+import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight, Plus, X as XIcon, ListTree } from 'lucide-react';
 import {
     linkModifierToMenuItemAction,
     toggleModifierAvailabilityAction,
@@ -14,6 +14,7 @@ import {
     linkGroupToMenuItemAction,
     unlinkGroupFromMenuItemAction,
     setModifierIngredientsAction,
+    setModifierChildGroupAction,
 } from '@/app/actions/modifier.actions';
 
 interface MenuItem {
@@ -57,6 +58,8 @@ interface Modifier {
     linkedMenuItemId: string | null;
     linkedMenuItem: { id: string; name: string } | null;
     ingredients?: ModifierIngredient[];
+    /** Sub-grupo anidado (§82): se despliega en el POS al elegir esta opción. */
+    childGroup?: { id: string; name: string; isActive: boolean } | null;
     deduction?: ModifierDeduction;
 }
 
@@ -170,6 +173,34 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
         });
         startTransition(async () => {
             await toggleModifierAvailabilityAction(modifier.id, newVal);
+        });
+    };
+
+    // =========================================================================
+    // SUB-GRUPO ANIDADO (§82)
+    // =========================================================================
+    const handleSetChildGroup = (groupIdx: number, modIdx: number, childGroupId: string | null) => {
+        const mod = localGroups[groupIdx].modifiers[modIdx];
+        const child = childGroupId ? localGroups.find(g => g.id === childGroupId) : null;
+        setLocalGroups(prev => {
+            const next = [...prev];
+            next[groupIdx] = {
+                ...next[groupIdx],
+                modifiers: next[groupIdx].modifiers.map((m, idx) => idx === modIdx
+                    ? { ...m, childGroup: child ? { id: child.id, name: child.name, isActive: true } : null }
+                    : m),
+            };
+            return next;
+        });
+        startTransition(async () => {
+            const res = await setModifierChildGroupAction(mod.id, childGroupId);
+            if (res.success) {
+                showToast(childGroupId
+                    ? `"${mod.name}" ahora despliega "${child?.name}"`
+                    : `"${mod.name}" ya no despliega sub-grupo`);
+            } else if (res.message) {
+                showToast(res.message);
+            }
         });
     };
 
@@ -672,6 +703,23 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
                                                 </span>
                                             </p>
                                         )}
+
+                                        {/* Sub-grupo anidado (§82): se despliega en el POS al elegir la opción */}
+                                        <div className="flex items-center gap-2 pl-7">
+                                            <ListTree className={`h-3 w-3 shrink-0 ${modifier.childGroup ? 'text-[#2F6B4E] dark:text-[#6FB88F]' : 'text-capsula-ink-faint'}`} />
+                                            <span className="text-[11px] text-capsula-ink-muted shrink-0">Al elegir despliega:</span>
+                                            <select
+                                                value={modifier.childGroup?.id ?? ''}
+                                                onChange={e => handleSetChildGroup(groupIdx, modIdx, e.target.value || null)}
+                                                disabled={isPending}
+                                                className="rounded-lg border border-capsula-line bg-capsula-ivory px-2 py-1 text-[11px] text-capsula-ink focus:border-capsula-navy-deep focus:outline-none disabled:opacity-50"
+                                            >
+                                                <option value="">— Nada (opción simple) —</option>
+                                                {localGroups.filter(g => g.id !== group.id).map(g => (
+                                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         </div>
                                     );
                                 })}

@@ -8,6 +8,8 @@ import { createWinkOrderAction } from '@/app/actions/wink.actions';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 import { SinConToggle } from '@/components/pos/SinConToggle';
+import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
+import { hasChildGroup, purgeChildSelections, childGroupsValid } from '@/lib/pos-child-group';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import toast from 'react-hot-toast';
 
@@ -16,11 +18,14 @@ interface ModifierOption {
     name: string;
     priceAdjustment: number;
     isAvailable: boolean;
+    /** Sub-grupo anidado (§82): se despliega al seleccionar esta opción. */
+    childGroup?: ModifierGroup | null;
 }
 
 interface ModifierGroup {
     id: string;
     name: string;
+    isActive?: boolean;
     minSelections: number;
     maxSelections: number;
     isRequired: boolean;
@@ -118,7 +123,8 @@ export default function POSWinkPage() {
             if (group.maxSelections > 1 && totalSelected >= group.maxSelections) return;
             if (group.maxSelections === 1) {
                 const others = currentModifiers.filter(m => m.groupId !== group.id);
-                setCurrentModifiers([...others, { groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: 1 }]);
+                // purge §82: radio replace limpia el sub-grupo del anterior
+                setCurrentModifiers(purgeChildSelections([...others, { groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: 1 }], group));
                 return;
             }
         }
@@ -131,7 +137,7 @@ export default function POSWinkPage() {
         } else if (newQty > 0) {
             mods.push({ groupId: group.id, groupName: group.name, id: modifier.id, name: modifier.name, priceAdjustment: modifier.priceAdjustment, quantity: newQty });
         }
-        setCurrentModifiers(mods);
+        setCurrentModifiers(purgeChildSelections(mods, group));
     };
 
     const setIngredientToggleState = (
@@ -166,6 +172,7 @@ export default function POSWinkPage() {
     const confirmAddToCart = () => {
         if (!selectedItemForModifier) return;
         if (!selectedItemForModifier.modifierGroups.every(g => isGroupValid(g.modifierGroup))) return;
+        if (!childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map(g => g.modifierGroup))) return;
         const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
         const winkBase = getWinkPrice(selectedItemForModifier);
         const lineTotal = (winkBase + modTotal) * itemQuantity;
@@ -552,11 +559,12 @@ export default function POSWinkPage() {
                                                         {passThrough.map(mod => {
                                                             const existing = currentModifiers.find(m => m.id === mod.id && m.groupId === group.id);
                                                             const qty = existing ? existing.quantity : 0;
+                                                            const modOption = mod as unknown as ModifierOption;
                                                             const isMax = group.maxSelections > 1 && totalSelected >= group.maxSelections;
                                                             const isRadio = group.maxSelections === 1;
                                                             return (
+                                                                <div key={mod.id}>
                                                                 <div
-                                                                    key={mod.id}
                                                                     className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
                                                                         qty > 0
                                                                             ? 'border-capsula-navy-deep bg-capsula-navy-soft'
@@ -613,6 +621,15 @@ export default function POSWinkPage() {
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {/* Sub-grupo anidado (§82) */}
+                                                    {qty > 0 && hasChildGroup(modOption) && (
+                                                        <ChildGroupSelector
+                                                            childGroup={modOption.childGroup}
+                                                            selections={currentModifiers}
+                                                            onSelect={(cg, child, change) => updateModifierQuantity(cg as ModifierGroup, child as ModifierOption, change)}
+                                                        />
+                                                    )}
+                                                    </div>
                                                 );
                                             })}
                                                     </>
@@ -661,7 +678,10 @@ export default function POSWinkPage() {
                             </button>
                             <button
                                 onClick={confirmAddToCart}
-                                disabled={selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup))}
+                                disabled={
+                                    selectedItemForModifier?.modifierGroups.some(g => !isGroupValid(g.modifierGroup)) ||
+                                    !childGroupsValid(currentModifiers, selectedItemForModifier?.modifierGroups.map(g => g.modifierGroup) ?? [])
+                                }
                                 className="pos-btn flex-[2] !min-h-0 py-3 text-sm tracking-[0.04em] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Agregar al pedido
