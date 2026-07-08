@@ -310,7 +310,14 @@ export async function getDailyInventoryAction(
                     include: {
                         menuItem: { select: { recipeId: true } },
                         modifiers: {
-                            select: { modifier: { select: { linkedMenuItem: { select: { recipeId: true } } } } },
+                            select: {
+                                modifier: {
+                                    select: {
+                                        linkedMenuItem: { select: { recipeId: true } },
+                                        ingredients: { select: { ingredientItemId: true, quantity: true } },
+                                    },
+                                },
+                            },
                         },
                     },
                 },
@@ -719,7 +726,14 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
                     include: {
                         menuItem: { select: { recipeId: true } },
                         modifiers: {
-                            select: { modifier: { select: { linkedMenuItem: { select: { recipeId: true } } } } },
+                            select: {
+                                modifier: {
+                                    select: {
+                                        linkedMenuItem: { select: { recipeId: true } },
+                                        ingredients: { select: { ingredientItemId: true, quantity: true } },
+                                    },
+                                },
+                            },
                         },
                     },
                 },

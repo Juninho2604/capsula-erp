@@ -16,15 +16,18 @@ export interface OrderForConsumption {
         quantity: number;
         menuItem: { recipeId: string | null } | null;
         /**
-         * Modificadores de la línea con su receta vinculada (vía
-         * MenuModifier.linkedMenuItem.recipeId). El POS descuenta la receta
-         * del modificador × la cantidad de la línea (§67 pos.actions) — el
-         * consumo teórico debe reflejar lo mismo. Opcional: los callers que
-         * no incluyan modifiers en su query siguen funcionando (solo receta
-         * principal).
+         * Modificadores de la línea. El POS descuenta (§67/§80, en este
+         * orden de prioridad): (1) la receta PROPIA del modificador
+         * (`ingredients` directos de inventario), (2) la receta del
+         * MenuItem vinculado (`linkedMenuItem.recipeId`). El consumo
+         * teórico refleja lo mismo. Opcional: los callers que no incluyan
+         * modifiers en su query siguen funcionando (solo receta principal).
          */
         modifiers?: Array<{
-            modifier?: { linkedMenuItem?: { recipeId: string | null } | null } | null;
+            modifier?: {
+                linkedMenuItem?: { recipeId: string | null } | null;
+                ingredients?: Array<{ ingredientItemId: string; quantity: number }> | null;
+            } | null;
         } | null> | null;
     }>;
 }
@@ -65,7 +68,17 @@ export function computeConsumptionFromOrders(
             addRecipe(item.menuItem?.recipeId, item.quantity);
             // Modificadores: cada entrada es UNA selección aplicada a cada
             // unidad de la línea (mismo criterio que el descargo del POS).
+            // Receta propia (§80) tiene prioridad sobre el item vinculado.
             for (const mod of item.modifiers ?? []) {
+                const direct = mod?.modifier?.ingredients;
+                if (direct && direct.length > 0) {
+                    for (const ing of direct) {
+                        if (!Number.isFinite(ing.quantity) || ing.quantity <= 0) continue;
+                        const prev = consumption.get(ing.ingredientItemId) ?? 0;
+                        consumption.set(ing.ingredientItemId, prev + ing.quantity * item.quantity);
+                    }
+                    continue;
+                }
                 addRecipe(mod?.modifier?.linkedMenuItem?.recipeId, item.quantity);
             }
         }
