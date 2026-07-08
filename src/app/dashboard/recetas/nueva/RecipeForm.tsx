@@ -56,9 +56,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
     const [type, setType] = useState<'SUB_RECIPE' | 'FINISHED_GOOD'>(
         initialData?.outputItem?.type === 'FINISHED_GOOD' ? 'FINISHED_GOOD' : 'SUB_RECIPE'
     );
-    const [outputQuantity, setOutputQuantity] = useState<number>(initialData?.outputQuantity || 1);
+    // Cantidades como STRING mientras se tipea: un estado numérico +
+    // parseFloat por tecla rompe los decimales ("0.009" → el "0." intermedio
+    // se parsea a 0 y el input se resetea). Se parsean al usar.
+    const [outputQuantityStr, setOutputQuantityStr] = useState<string>(String(initialData?.outputQuantity ?? 1));
+    const outputQuantity = parseFloat(outputQuantityStr) || 0;
     const [outputUnit, setOutputUnit] = useState<UnitOfMeasure>(initialData?.outputUnit || 'KG');
-    const [yieldPercentage, setYieldPercentage] = useState<number>(initialData?.yieldPercentage || 100);
+    const [yieldPercentageStr, setYieldPercentageStr] = useState<string>(String(initialData?.yieldPercentage ?? 100));
+    const yieldPercentage = parseFloat(yieldPercentageStr) || 100;
     const [prepTime, setPrepTime] = useState<number>(initialData?.prepTime || 0);
     const [cookTime, setCookTime] = useState<number>(initialData?.cookTime || 0);
 
@@ -81,7 +86,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
     );
     const [showAddIngredient, setShowAddIngredient] = useState(false);
 
-    // Estado para nuevo ingrediente
+    // Estado para nuevo ingrediente (cantidad/merma como string, ver arriba)
     const [newIngredient, setNewIngredient] = useState<Partial<DraftIngredient>>({
         inventoryItemId: '',
         quantity: 0,
@@ -89,6 +94,8 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         wastePercentage: 0,
         notes: '',
     });
+    const [newQuantityStr, setNewQuantityStr] = useState('');
+    const [newWasteStr, setNewWasteStr] = useState('');
 
     // Estado para crear insumo nuevo
     const [showCreateItem, setShowCreateItem] = useState(false);
@@ -145,19 +152,22 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
 
     // Agregar ingrediente
     const addIngredient = () => {
-        if (!newIngredient.inventoryItemId || !newIngredient.quantity) return;
+        const qty = parseFloat(newQuantityStr);
+        if (!newIngredient.inventoryItemId || !Number.isFinite(qty) || qty <= 0) return;
 
         const newIng: DraftIngredient = {
             id: `temp-${Date.now()}`,
             inventoryItemId: newIngredient.inventoryItemId,
-            quantity: newIngredient.quantity || 0,
+            quantity: qty,
             unit: newIngredient.unit || 'KG',
-            wastePercentage: newIngredient.wastePercentage || 0,
+            wastePercentage: parseFloat(newWasteStr) || 0,
             notes: newIngredient.notes || '',
         };
 
         setIngredients([...ingredients, newIng]);
         setNewIngredient({ inventoryItemId: '', quantity: 0, unit: 'KG', wastePercentage: 0, notes: '' });
+        setNewQuantityStr('');
+        setNewWasteStr('');
         setShowAddIngredient(false);
     };
 
@@ -366,10 +376,10 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                 <div className="flex gap-2">
                                     <input
                                         type="number"
-                                        value={outputQuantity}
-                                        onChange={(e) => setOutputQuantity(parseFloat(e.target.value) || 0)}
+                                        value={outputQuantityStr}
+                                        onChange={(e) => setOutputQuantityStr(e.target.value)}
                                         min="0"
-                                        step="0.1"
+                                        step="any"
                                         className="w-24 rounded-lg border border-capsula-line bg-capsula-ivory px-4 py-2.5 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                     />
                                     <select
@@ -391,10 +401,11 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                 <div className="relative">
                                     <input
                                         type="number"
-                                        value={yieldPercentage}
-                                        onChange={(e) => setYieldPercentage(parseFloat(e.target.value) || 100)}
+                                        value={yieldPercentageStr}
+                                        onChange={(e) => setYieldPercentageStr(e.target.value)}
                                         min="1"
                                         max="100"
+                                        step="any"
                                         className="w-full rounded-lg border border-capsula-line bg-white px-4 py-2.5 pr-10 text-capsula-ink focus:border-capsula-navy-deep focus:outline-none focus:ring-2 focus:ring-capsula-navy-deep/20"
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-capsula-ink-muted">%</span>
@@ -463,7 +474,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         </p>
                                         <div className="flex items-center gap-2 text-sm text-capsula-ink-muted">
                                             <span>
-                                                {formatNumber(ing.quantity)} {ing.unit}
+                                                {formatNumber(ing.quantity, 4)} {ing.unit}
                                             </span>
                                             {ing.wastePercentage > 0 && (
                                                 <span className="rounded bg-[#F3EAD6] px-1.5 py-0.5 text-xs text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
@@ -613,10 +624,10 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <div className="flex gap-2">
                                             <input
                                                 type="number"
-                                                value={newIngredient.quantity || ''}
-                                                onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
+                                                value={newQuantityStr}
+                                                onChange={(e) => setNewQuantityStr(e.target.value)}
                                                 min="0"
-                                                step="0.01"
+                                                step="any"
                                                 placeholder="1"
                                                 className="w-20 rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
                                             />
@@ -638,10 +649,11 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         </label>
                                         <input
                                             type="number"
-                                            value={newIngredient.wastePercentage || ''}
-                                            onChange={(e) => setNewIngredient({ ...newIngredient, wastePercentage: parseFloat(e.target.value) || 0 })}
+                                            value={newWasteStr}
+                                            onChange={(e) => setNewWasteStr(e.target.value)}
                                             min="0"
                                             max="99"
+                                            step="any"
                                             placeholder="0"
                                             className="w-full rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
                                         />
@@ -657,7 +669,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     </button>
                                     <button
                                         onClick={addIngredient}
-                                        disabled={!newIngredient.inventoryItemId || !newIngredient.quantity}
+                                        disabled={!newIngredient.inventoryItemId || !(parseFloat(newQuantityStr) > 0)}
                                         className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         Agregar
