@@ -38,7 +38,7 @@ import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
-import { hasChildGroup, purgeChildSelections, childGroupsValid } from "@/lib/pos-child-group";
+import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from "@/lib/sales/tip-calculation";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
@@ -868,8 +868,9 @@ export default function POSSportBarPage() {
     if (!childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))) return;
     const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
     const lineTotal = (selectedItemForModifier.price + modTotal) * itemQuantity;
+    const parentModIds = collectParentModifierIds(selectedItemForModifier.modifierGroups);
     const exploded = currentModifiers.flatMap((m) =>
-      Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment }),
+      Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment, hideFromKitchen: parentModIds.has(m.id) }),
     );
     setCart((prev) => [
       ...prev,

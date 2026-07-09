@@ -11540,3 +11540,35 @@ el comercio creara/renombrara/eliminara sus propias categorías.
 
 Sin migración (MenuCategory ya tenía name/description/sortOrder/isActive/
 deletedAt). Gates: tsc 0 · vitest 524.
+
+## §90 Comanda: ocultar el modificador padre + tablas de pinchos exactas (2026-07-09)
+
+Cierre del pedido de pinchos de Omar (confirmado 09/07).
+
+### Parte 1 — Comanda limpia (código)
+El renglón del modificador PADRE de un sub-grupo anidado (ej. "Pincho Mixto")
+es redundante en la comanda: el cocinero solo necesita las varas/hijos. Ahora
+NO se imprime.
+- `CartItem.modifiers[].hideFromKitchen?: boolean` — marca el padre. Sigue
+  contando para precio e inventario; solo se oculta del papel.
+- `collectParentModifierIds(modifierGroups)` (pos-child-group, +2 tests): ids
+  de modificadores con sub-grupo utilizable.
+- Los 5 POS marcan `hideFromKitchen: parentIds.has(m.id)` al explotar los
+  modificadores al carrito.
+- `buildKitchenItems` filtra `!hideFromKitchen` → la comanda muestra solo las
+  varas. (El recibo del cliente NO cambia; voids/reimpresiones desde histórico
+  siguen mostrando el padre porque no guardan el flag — aceptable.)
+
+### Parte 2 — Tablas x1/x2/x4 con cantidad EXACTA (script)
+`scripts/setup-tabla-pinchos.ts` (dry-run default, --apply): crea un grupo
+"Pinchos (Tabla xN)" POR tabla con min=max=1/2/4 y 4 varas (Pollo/Carne/Kafta/
+Mixto, stepper para repetir). No toca "Platos Principales (Tabla)". Idempotente
+(IDs deterministas), reversible desde el admin. Los modificadores se crean SIN
+descargo — el descargo por vara se configura después (receta propia §80) para
+no descargar cantidades equivocadas.
+
+Motivo del grupo-por-tabla: las 3 tablas comparten el grupo de principales, así
+que un solo "Pincho Mixto" no puede desplegar 1 vara en la x1 y 4 en la x4. Un
+grupo dedicado por tabla da la cantidad exacta.
+
+Gates: tsc 0 · vitest 526.

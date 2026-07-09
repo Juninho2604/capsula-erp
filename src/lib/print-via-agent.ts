@@ -217,7 +217,7 @@ export function buildKitchenItems(
         menuItemId: string;
         name: string;
         quantity: number;
-        modifiers: Array<{ name: string }>;
+        modifiers: Array<{ name: string; hideFromKitchen?: boolean }>;
         notes?: string;
     }>,
     menuItemCategoryMap: Map<string, string>
@@ -225,7 +225,9 @@ export function buildKitchenItems(
     return cart.map((c) => ({
         name: c.name,
         quantity: c.quantity,
-        modifiers: c.modifiers.map((m) => m.name),
+        // §90: no imprimir los modificadores PADRE de un sub-grupo (ej.
+        // "Pincho Mixto") — redundante; el cocinero ve solo las varas/hijos.
+        modifiers: c.modifiers.filter((m) => !m.hideFromKitchen).map((m) => m.name),
         notes: c.notes,
         categoryName: menuItemCategoryMap.get(c.menuItemId),
     }));

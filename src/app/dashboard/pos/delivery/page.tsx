@@ -16,7 +16,7 @@ import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } fr
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
 import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
-import { hasChildGroup, purgeChildSelections, childGroupsValid } from '@/lib/pos-child-group';
+import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from '@/lib/pos-child-group';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import { searchCustomersAction, type CustomerSummary } from '@/app/actions/customer.actions';
 import toast from 'react-hot-toast';
@@ -331,7 +331,8 @@ export default function POSDeliveryPage() {
         const modTotal = currentModifiers.reduce((s, m) => s + (m.priceAdjustment * m.quantity), 0);
         const lineTotal = (selectedItemForModifier.price + modTotal) * itemQuantity;
 
-        const explodedModifiers = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment }));
+        const parentModIds = collectParentModifierIds(selectedItemForModifier.modifierGroups);
+        const explodedModifiers = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment, hideFromKitchen: parentModIds.has(m.id) }));
 
         setCart([...cart, {
             menuItemId: selectedItemForModifier.id, name: selectedItemForModifier.name, quantity: itemQuantity, unitPrice: selectedItemForModifier.price,

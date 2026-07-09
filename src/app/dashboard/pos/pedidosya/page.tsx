@@ -11,7 +11,7 @@ import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
 import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
-import { hasChildGroup, purgeChildSelections, childGroupsValid } from '@/lib/pos-child-group';
+import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from '@/lib/pos-child-group';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import toast from 'react-hot-toast';
 
@@ -181,7 +181,8 @@ export default function POSPedidosYAPage() {
         const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
         const pyaBase = getPYAPrice(selectedItemForModifier);
         const lineTotal = (pyaBase + modTotal) * itemQuantity;
-        const exploded = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment }));
+        const parentModIds = collectParentModifierIds(selectedItemForModifier.modifierGroups);
+        const exploded = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment, hideFromKitchen: parentModIds.has(m.id) }));
         setCart([...cart, {
             menuItemId: selectedItemForModifier.id, name: selectedItemForModifier.name, quantity: itemQuantity,
             unitPrice: pyaBase, modifiers: exploded, notes: itemNotes || undefined, lineTotal

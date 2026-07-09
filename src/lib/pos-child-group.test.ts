@@ -4,6 +4,7 @@ import {
     purgeChildSelections,
     childGroupsValid,
     childGroupSelectedTotal,
+    collectParentModifierIds,
 } from './pos-child-group';
 
 const sabores = {
@@ -113,6 +114,33 @@ describe('childGroupsValid', () => {
             modifiers: [{ id: 'mixto', childGroup: { ...sabores, isActive: false } }],
         };
         expect(childGroupsValid([sel('g', 'mixto')], [inactivo])).toBe(true);
+    });
+});
+
+describe('collectParentModifierIds (§90 — ocultar padre en comanda)', () => {
+    it('devuelve los ids de modificadores con sub-grupo utilizable', () => {
+        const modifierGroups = [
+            { modifierGroup: { modifiers: [
+                { id: 'mixto', childGroup: sabores },
+                { id: 'falafel', childGroup: null },
+                { id: 'kibbe' },
+            ] } },
+        ];
+        const ids = collectParentModifierIds(modifierGroups);
+        expect(ids.has('mixto')).toBe(true);
+        expect(ids.has('falafel')).toBe(false);
+        expect(ids.has('kibbe')).toBe(false);
+        expect(ids.size).toBe(1);
+    });
+
+    it('sub-grupo vacío o inactivo NO cuenta como padre', () => {
+        const modifierGroups = [
+            { modifierGroup: { modifiers: [
+                { id: 'a', childGroup: { ...sabores, modifiers: [] } },
+                { id: 'b', childGroup: { ...sabores, isActive: false } },
+            ] } },
+        ];
+        expect(collectParentModifierIds(modifierGroups).size).toBe(0);
     });
 });
 

@@ -24,7 +24,7 @@ import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { hasChildGroup, purgeChildSelections, childGroupsValid } from "@/lib/pos-child-group";
+import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { computeTabPreviewTotals } from "@/lib/sales/tab-preview";
 import toast from "react-hot-toast";
 import { PriceDisplay } from "@/components/pos/PriceDisplay";
@@ -780,8 +780,9 @@ export default function POSMeseroPage() {
     if (!childGroupsValid(currentModifiers, selectedItemForModifier.modifierGroups.map((g) => g.modifierGroup))) return;
     const modTotal = currentModifiers.reduce((s, m) => s + m.priceAdjustment * m.quantity, 0);
     const lineTotal = (selectedItemForModifier.price + modTotal) * itemQuantity;
+    const parentModIds = collectParentModifierIds(selectedItemForModifier.modifierGroups);
     const exploded = currentModifiers.flatMap((m) =>
-      Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment }),
+      Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment, hideFromKitchen: parentModIds.has(m.id) }),
     );
     setCart((prev) => [...prev, {
       menuItemId: selectedItemForModifier.id,

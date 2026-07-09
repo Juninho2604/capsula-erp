@@ -79,6 +79,11 @@ export interface CartItem {
         modifierId: string;
         name: string;
         priceAdjustment: number;
+        // §90: modificador PADRE de un sub-grupo anidado (ej. "Pincho Mixto").
+        // No se imprime en la comanda de cocina —redundante, el cocinero ve
+        // solo las varas/hijos seleccionados. Sigue contando para precio e
+        // inventario; solo se oculta del papel.
+        hideFromKitchen?: boolean;
     }[];
     notes?: string;
     lineTotal: number;

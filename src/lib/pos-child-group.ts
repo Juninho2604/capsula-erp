@@ -99,3 +99,20 @@ export function childGroupsValid(
 export function childGroupSelectedTotal(selections: SelectionShape[], childGroupId: string): number {
     return selections.filter(s => s.groupId === childGroupId).reduce((sum, s) => sum + s.quantity, 0);
 }
+
+/**
+ * IDs de los modificadores PADRE (los que despliegan un sub-grupo) de un item.
+ * Se usan para marcar `hideFromKitchen` (§90): el renglón del padre (ej.
+ * "Pincho Mixto") no se imprime en la comanda; solo las varas/hijos.
+ */
+export function collectParentModifierIds(
+    modifierGroups: Array<{ modifierGroup: { modifiers: Array<{ id: string; childGroup?: ChildGroupData | null }> } }>,
+): Set<string> {
+    const ids = new Set<string>();
+    for (const g of modifierGroups) {
+        for (const m of g.modifierGroup.modifiers) {
+            if (hasChildGroup(m)) ids.add(m.id);
+        }
+    }
+    return ids;
+}
