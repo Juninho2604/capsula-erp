@@ -11655,3 +11655,38 @@ global (#DEL-0042) queda intacto.
    (node-windows / pm2). Sin esto la comanda NUNCA mostrará el número.
 
 Gates: tsc 0 · vitest 536.
+
+---
+
+## §92 Postres con ruteo DUAL: comanda por barra + cocina (2026-07-09)
+
+Pedido de Omar: "las comandas de los postres (cheesecake helado, Brooklyn) deben
+salir también por la comandera de la barra y no solo por la de cocina". La barra
+es NOUR ("Barra / Área de café y postres") → los postres se preparan ahí, pero
+cocina también los debe ver.
+
+### Cambio
+Nuevo módulo PURO `src/lib/print/station-routing.ts` (extraído de
+`print-via-agent.ts`, que es 'use client' e intesteable):
+- `classifyStation(cat)` → barra (bebidas/licores/café…) o cocina (default).
+  Igual que antes (mismas BAR_CATEGORIES/BAR_KEYWORDS).
+- `isDualStationDessert(item)` → true si la categoría O el nombre del producto
+  matchea `DESSERT_DUAL_KEYWORDS` = postre, dessert, reposter, helado,
+  cheesecake, brooklyn. Insensible a acentos/mayúsculas.
+- `stationsForItem(item)` → postre = `['bar','kitchen']` (sale por AMBAS
+  comanderas); bebida = `['bar']`; resto = `['kitchen']`. Nunca vacío.
+
+`enqueueKitchenCommand` (split) ahora itera `stationsForItem(item)`: un mismo
+ítem puede caer en 2 grupos → se encola 1 job por estación con ese ítem, así el
+postre sale por barra Y cocina. Aplica también a anulaciones (VOID_KITCHEN).
+
+Para sumar un postre nuevo al ruteo dual: agregar su palabra a
+`DESSERT_DUAL_KEYWORDS`. +10 tests (`station-routing.test.ts`).
+
+### Despliegue
+Solo requiere deploy de la APP (`deploy-vps.sh`). El print-agent on-prem NO
+necesita rebuild: el ruteo/split ocurre en la app (setea `station` por job); el
+agente solo imprime los ítems de cada job en su impresora. (Contrastar con
+§84.1, que sí tocó el render del agente.)
+
+Gates: tsc 0 · vitest 546.

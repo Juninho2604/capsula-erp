@@ -22,6 +22,7 @@ import {
     enqueuePrintJobAction,
     type EnqueuePrintJobInput,
 } from '@/app/actions/print-agent.actions';
+import { stationsForItem } from '@/lib/print/station-routing';
 
 export interface AgentReceiptPayload {
     type: 'RECEIPT' | 'PRECUENTA';
@@ -111,74 +112,11 @@ export interface AgentKitchenPayload {
 }
 
 /**
- * Categorías del menú que se imprimen en la BARRA.
- * Si una categoría no está aquí (ni hace match con palabras clave de bar),
- * se considera de cocina.
- *
- * Cuando llegue la 4ta impresora (línea fría), añadiremos
- * `CATEGORIES_BY_STATION` con `kitchen-pase`, `kitchen-caliente` y
- * `kitchen-frio` y este array quedará junto a ellos. Hoy solo
- * separamos bar vs kitchen y la cocina está en modo espejo (las 2
- * comanderas físicas reciben todo).
+ * El ruteo por estación (barra/cocina) + el ruteo DUAL de postres viven en
+ * `@/lib/print/station-routing` (puro + testeado). Acá solo se consume vía
+ * `stationsForItem`. Cuando llegue la 4ta impresora (línea fría) se amplía
+ * allí, no aquí.
  */
-const BAR_CATEGORIES: readonly string[] = ['Bebidas'];
-
-/**
- * Palabras clave (case-insensitive) en el nombre de la categoría que la
- * marcan automáticamente como BARRA, aunque la categoría exacta no esté
- * en `BAR_CATEGORIES`. Útil para categorías nuevas que el admin agregue
- * sin acordarse de actualizar BAR_CATEGORIES (ej. "Licores", "Cocteles
- * de la casa", "Vinos premium", "Cervezas artesanales", "Café").
- *
- * Si quieres que un item con categoría "X" vaya a barra, asegúrate que
- * X contenga alguna de estas palabras. Si no aplica ninguna, agregalo
- * a BAR_CATEGORIES (match exacto).
- */
-const BAR_KEYWORDS: readonly string[] = [
-    'bebida',
-    'licor',
-    'coctel',  // cubre "cocteles", "coctelería"
-    'cocktail',
-    'cerveza',
-    'vino',
-    'champaña',
-    'champagne',
-    'espumante',
-    'whisky',
-    'whiskey',
-    'ron',
-    'vodka',
-    'gin',
-    'ginebra',
-    'tequila',
-    'aperitivo',
-    'destilado',
-    'jugo',
-    'refresco',
-    'soda',
-    'agua',
-    'cafe',
-    'café',
-    'te',
-    'té',
-    'infusi',  // infusión, infusiones
-];
-
-function classifyStation(categoryName?: string): 'bar' | 'kitchen' {
-    if (!categoryName) return 'kitchen';
-    // 1. Match exacto (rápido)
-    if (BAR_CATEGORIES.includes(categoryName)) return 'bar';
-    // 2. Match por palabra clave (case-insensitive, sin acentos)
-    const normalized = categoryName
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, ''); // quita acentos
-    for (const kw of BAR_KEYWORDS) {
-        const kwNorm = kw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-        if (normalized.includes(kwNorm)) return 'bar';
-    }
-    return 'kitchen';
-}
 
 /**
  * Construye un mapa `menuItemId → categoryName` a partir de las categorías
@@ -375,13 +313,17 @@ export async function enqueueKitchenCommand(
         return;
     }
 
-    // Modo split: agrupar items por estación según categoryName.
+    // Modo split: agrupar items por estación. Bebidas → barra; resto → cocina.
+    // Postres (cheesecake helado, Brooklyn, helados…) → salen DUPLICADOS por
+    // barra Y cocina (`stationsForItem` devuelve ambas). Un mismo ítem puede
+    // caer en 2 grupos → sale en las 2 comanderas.
     const groups = new Map<'bar' | 'kitchen', AgentKitchenItem[]>();
     for (const item of payload.items) {
-        const station = classifyStation(item.categoryName);
-        const arr = groups.get(station) ?? [];
-        arr.push(item);
-        groups.set(station, arr);
+        for (const station of stationsForItem(item)) {
+            const arr = groups.get(station) ?? [];
+            arr.push(item);
+            groups.set(station, arr);
+        }
     }
 
     if (groups.size === 0) return;
