@@ -316,6 +316,14 @@ export default function POSSportBarPage() {
 
   // ── 10% Servicio — default ON; eximir requiere PIN de capitán o gerente ──
   const [serviceFeeIncluded, setServiceFeeIncluded] = useState(true);
+  // % de servicio editable al cobro (§85). Default 10; string mientras se
+  // tipea para permitir borrar/decimales sin resetear el input.
+  const [serviceFeePercentStr, setServiceFeePercentStr] = useState("10");
+  const serviceFeePercent = (() => {
+    const n = parseFloat(serviceFeePercentStr);
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 10;
+  })();
+  const serviceRate = serviceFeeIncluded ? serviceFeePercent / 100 : 0;
   const [skipServiceFeePin, setSkipServiceFeePin] = useState('');
   const [showSkipServiceFeeModal, setShowSkipServiceFeeModal] = useState(false);
 
@@ -686,7 +694,7 @@ export default function POSSportBarPage() {
   // único; topa a balanceDue/3. Para mixto todo-divisas converge al precio
   // correcto; en divisas+Bs solo descuenta la porción en divisas. (fix TAB-3048)
   const mixedDivisasDiscount = activeTab && isTableMixedMode
-    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded }).discountAmount
+    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded, serviceRate }).discountAmount
     : 0;
 
   const paymentBaseAmount = activeTab
@@ -703,8 +711,8 @@ export default function POSSportBarPage() {
   // En modo mixto NO se redondea: el target del MixedPaymentSelector debe ser el monto exacto
   // (PDV/Bs methods no se redondean; aplicar roundToWhole del single-method causaría underpay/overpay)
   const paymentAmountToCharge = isTableMixedMode
-    ? (serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount)
-    : roundDivisasChargeUp(serviceFeeIncluded ? paymentBaseAmount * 1.1 : paymentBaseAmount, paymentMethod);
+    ? paymentBaseAmount * (1 + serviceRate)
+    : roundDivisasChargeUp(paymentBaseAmount * (1 + serviceRate), paymentMethod);
 
   // ============================================================================
   // OPEN TAB
@@ -1113,6 +1121,7 @@ export default function POSSportBarPage() {
             balanceDue: activeTab.balanceDue,
             receivedUSD: rawReceived,
             serviceFeeIncluded,
+            serviceRate,
           });
           discountAmount = divisasSettlement.discountAmount;
           discountLabel = " · -33.33% Divisas";
@@ -1158,7 +1167,7 @@ export default function POSSportBarPage() {
         : Math.max(0, activeTab.balanceDue - discountAmount);
       const serviceFee = divisasSettlement
         ? divisasSettlement.serviceFee
-        : (serviceFeeIncluded ? totalAntesServicio * 0.1 : 0);
+        : totalAntesServicio * serviceRate;
       // ── REDONDEO → PROPINA (divisas efectivo/zelle) ──────────────────────
       // El POS le dice a la cajera cobrar el dólar entero hacia arriba
       // (roundDivisasChargeUp == paymentAmountToCharge). Esa diferencia debe
@@ -1208,6 +1217,7 @@ export default function POSSportBarPage() {
         discountType: effectiveDiscountType,
         discountReason: discountReasonText,
         serviceFeeIncluded,
+        serviceFeePercent,
         skipServiceFeeAuthPin: !serviceFeeIncluded ? skipServiceFeePin : undefined,
       });
       if (!result.success) {
@@ -1246,6 +1256,7 @@ export default function POSSportBarPage() {
             : undefined,
         total: totalAntesServicio,
         serviceFee,
+        serviceFeePercent: serviceFeeIncluded ? serviceFeePercent : undefined,
         tipAmount: tipVal > 0 ? tipVal : undefined,
         branding,
       });
@@ -1301,7 +1312,7 @@ export default function POSSportBarPage() {
       : discountType === "CORTESIA_PERCENT" ? base * (cortesiaPercentNum / 100)
       : 0;
     const afterDiscount = base - discountAmt;
-    const svcFee = serviceFeeIncluded ? afterDiscount * 0.1 : 0;
+    const svcFee = afterDiscount * serviceRate;
     const discountReason = discountAmt > 0
       ? (withDivisasDiscount ? "Pago en Divisas (33.33%)"
           : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
@@ -1321,6 +1332,7 @@ export default function POSSportBarPage() {
       discount: discountAmt > 0 ? discountAmt : undefined,
       discountReason,
       serviceFee: svcFee > 0 ? svcFee : undefined,
+      serviceFeePercent: serviceFeeIncluded ? serviceFeePercent : undefined,
       total: afterDiscount,  // printReceipt suma serviceFee internamente para el total final
       isPrecuenta: true,
       branding,
@@ -2995,33 +3007,67 @@ export default function POSSportBarPage() {
                     )}
                   </div>
 
-                  {/* 1.b Servicio 10% — default ON, eximir con PIN capitán/gerente */}
+                  {/* 1.b Servicio — % editable al cobro (§85), default 10%. Eximir con PIN capitán/gerente */}
                   <div className="mb-3 rounded-xl border border-capsula-line bg-capsula-ivory p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold text-capsula-ink">10% Servicio</p>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-capsula-ink">Servicio</p>
                         <p className="text-[10px] text-capsula-ink-muted">
-                          {serviceFeeIncluded ? 'Aplica al cobro' : 'Eximido — autorizado por PIN'}
+                          {serviceFeeIncluded ? 'Editable — aplica al cobro' : 'Eximido — autorizado por PIN'}
                         </p>
                       </div>
                       {serviceFeeIncluded ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowSkipServiceFeeModal(true)}
-                          className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-coral hover:text-capsula-coral"
-                        >
-                          Quitar 10%
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center rounded-lg border border-capsula-line bg-capsula-ivory-surface px-2 py-1">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min={0}
+                              max={100}
+                              step="any"
+                              value={serviceFeePercentStr}
+                              onChange={(e) => setServiceFeePercentStr(e.target.value)}
+                              className="w-12 bg-transparent text-right text-sm font-semibold text-capsula-ink tabular-nums focus:outline-none"
+                              aria-label="Porcentaje de servicio"
+                            />
+                            <span className="text-sm font-semibold text-capsula-ink-muted">%</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowSkipServiceFeeModal(true)}
+                            className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-coral hover:text-capsula-coral"
+                          >
+                            Quitar
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => { setServiceFeeIncluded(true); setSkipServiceFeePin(''); }}
-                          className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-navy-deep"
+                          className="text-xs font-semibold rounded-lg border border-capsula-line bg-capsula-ivory-surface px-3 py-1.5 hover:border-capsula-navy-deep shrink-0"
                         >
-                          Restaurar 10%
+                          Restaurar servicio
                         </button>
                       )}
                     </div>
+                    {serviceFeeIncluded && (
+                      <div className="mt-1.5 flex gap-1.5">
+                        {[10, 12, 15, 20].map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setServiceFeePercentStr(String(p))}
+                            className={`flex-1 rounded-lg border px-2 py-1 text-[11px] font-semibold tabular-nums transition ${
+                              serviceFeePercent === p
+                                ? 'border-capsula-navy-deep bg-capsula-navy-soft text-capsula-ink'
+                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-muted hover:border-capsula-navy-deep/40'
+                            }`}
+                          >
+                            {p}%
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {showSkipServiceFeeModal && (
@@ -3234,8 +3280,10 @@ export default function POSSportBarPage() {
                   {activeTab.paymentSplits.length > 0 && (
                     <div className="mt-2 space-y-1">
                       {activeTab.paymentSplits.map((p) => {
-                        const hasService = (p.splitLabel || "").includes("| +10% serv");
-                        const label = (p.splitLabel || "").replace(" | +10% serv", "");
+                        // El label del server trae "| +N% serv" (N editable §85).
+                        const svcMatch = (p.splitLabel || "").match(/\s*\|\s*\+(\d+)% serv/);
+                        const hasService = Boolean(svcMatch);
+                        const label = (p.splitLabel || "").replace(/\s*\|\s*\+\d+% serv/, "");
                         return (
                           <div
                             key={p.id}
@@ -3244,7 +3292,7 @@ export default function POSSportBarPage() {
                             <span>
                               {label}
                               {hasService && (
-                                <span className="ml-1 text-capsula-ink font-semibold">+10%</span>
+                                <span className="ml-1 text-capsula-ink font-semibold">+{svcMatch![1]}%</span>
                               )}
                             </span>
                             <span className="text-capsula-ink font-semibold tabular-nums">${p.paidAmount.toFixed(2)}</span>

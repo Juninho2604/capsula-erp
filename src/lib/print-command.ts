@@ -79,6 +79,8 @@ interface ReceiptData {
     deliveryFee?: number;
     total: number;
     serviceFee?: number;
+    /** % de servicio aplicado (§85). Si se omite, el label imprime "10%". */
+    serviceFeePercent?: number;
     tipAmount?: number;
     /** Cuando true imprime "PRE-CUENTA" en lugar de "RECIBO DE PAGO" y añade aviso informativo */
     isPrecuenta?: boolean;
@@ -287,7 +289,7 @@ export function printReceipt(data: ReceiptData) {
         ` : ''}
         ${serviceFee > 0 ? `
         <div class="total-row">
-            <span>10% Servicio:</span>
+            <span>${data.serviceFeePercent != null ? `${Number(data.serviceFeePercent)}%` : '10%'} Servicio:</span>
             <span>$${serviceFee.toFixed(2)}</span>
         </div>
         ` : ''}

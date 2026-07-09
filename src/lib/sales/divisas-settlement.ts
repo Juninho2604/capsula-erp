@@ -31,8 +31,11 @@ export interface DivisasSettlementInput {
     balanceDue: number;
     /** Divisas recibidas en este pago (lo que entrega el cliente). */
     receivedUSD: number;
-    /** Si este cobro incluye el 10% de servicio. */
+    /** Si este cobro incluye el cargo de servicio. */
     serviceFeeIncluded: boolean;
+    /** Tasa de servicio (fracción, ej. 0.10 = 10%). Default 0.10 (§85 —
+     *  editable al cobro). Solo aplica si serviceFeeIncluded. */
+    serviceRate?: number;
 }
 
 export interface DivisasSettlement {
@@ -54,7 +57,10 @@ const TWO_THIRDS = 2 / 3;
 export function computeDivisasSettlement(input: DivisasSettlementInput): DivisasSettlement {
     const balanceDue = Math.max(0, Number.isFinite(input.balanceDue) ? input.balanceDue : 0);
     const received = Math.max(0, Number.isFinite(input.receivedUSD) ? input.receivedUSD : 0);
-    const serviceMult = input.serviceFeeIncluded ? 1.1 : 1.0;
+    const rate = input.serviceFeeIncluded
+        ? (Number.isFinite(input.serviceRate as number) && (input.serviceRate as number) >= 0 ? (input.serviceRate as number) : 0.10)
+        : 0;
+    const serviceMult = 1 + rate;
 
     // Bruto que cubre lo recibido, topado al saldo de la mesa. Para un pago
     // completo (received ≥ target full divisas) el min() elige balanceDue →
@@ -62,7 +68,7 @@ export function computeDivisasSettlement(input: DivisasSettlementInput): Divisas
     const grossSettled = Math.min(balanceDue, received / (TWO_THIRDS * serviceMult));
     const discountAmount = grossSettled / 3;
     const netItemsApplied = grossSettled - discountAmount; // = grossSettled · ⅔
-    const serviceFee = input.serviceFeeIncluded ? netItemsApplied * 0.1 : 0;
+    const serviceFee = netItemsApplied * rate;
     const facturaReal = netItemsApplied + serviceFee;
 
     return { grossSettled, discountAmount, netItemsApplied, serviceFee, facturaReal };

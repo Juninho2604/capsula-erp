@@ -160,7 +160,8 @@ export interface RegisterOpenTabPaymentInput {
     discountAmount?: number;
     discountType?: string;   // 'DIVISAS_33', 'CORTESIA_100', 'CORTESIA_PERCENT', 'NONE'
     discountReason?: string; // texto auditable: "Pago en Divisas (33.33%)", etc.
-    serviceFeeIncluded?: boolean; // Si el cliente pagó el 10% servicio (sala principal). Default: true para TABLE_SERVICE.
+    serviceFeeIncluded?: boolean; // Si el cliente pagó el cargo de servicio (sala principal). Default: true para TABLE_SERVICE.
+    serviceFeePercent?: number; // % de servicio editable al cobro (§85). Default 10 si serviceFeeIncluded y no se pasa.
     /**
      * Dinero realmente entregado por el cliente, a registrar como `paidAmount`
      * del split. Se usa cuando `amount` lleva el NETO de ítems aplicado (no el
@@ -382,6 +383,12 @@ const DELIVERY_FEE_DIVISAS = 3;
 
 /** Redondea a 2 decimales. */
 function round2(n: number): number { return Math.round(n * 100) / 100; }
+
+/** % de servicio editable (§85) → fracción segura. Default 10%. Clamp 0–100. */
+function normalizeServiceRate(percent: number | undefined | null): number {
+    if (percent == null || !Number.isFinite(percent)) return 0.10;
+    return Math.min(100, Math.max(0, percent)) / 100;
+}
 
 /** Redondea a 2 decimales: ≥0.5 sube, <0.5 baja. Aplica antes de guardar en BD. */
 function roundCents(n: number): number {
@@ -2176,11 +2183,12 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const nextOrderPaymentStatus = newBalance === 0 ? 'PAID' : 'PARTIAL';
         const nextPaymentMethod = openTab.paymentSplits.length > 0 ? 'MULTIPLE' : data.paymentMethod;
 
-        // 10% service charge: default ON para TABLE_SERVICE; eximir requiere
-        // PIN de capitán/gerente.
+        // Cargo de servicio: default ON para TABLE_SERVICE; eximir requiere
+        // PIN de capitán/gerente. El % es editable al cobro (§85), default 10.
         const isTableService = openTab.serviceType === 'TABLE_SERVICE';
         const wantsSkipServiceFee = isTableService && data.serviceFeeIncluded === false;
-        let serviceCharge = isTableService ? appliedAmount * 0.10 : 0;
+        const serviceRate = normalizeServiceRate(data.serviceFeePercent);
+        let serviceCharge = isTableService ? appliedAmount * serviceRate : 0;
 
         // Tasa BCV del momento del cobro — se persiste en el split (BUG #3:
         // los cobros de mesa no guardaban tasa ni Bs → dual-currency
@@ -3497,6 +3505,7 @@ export async function paySubAccountAction(data: {
     paymentMethod: POSPaymentMethod;
     amount: number;
     serviceFeeIncluded?: boolean;
+    serviceFeePercent?: number; // % de servicio editable al cobro (§85)
     splitLabel?: string;
     /**
      * Tipo de descuento aplicado a la subcuenta. Default: NONE.
@@ -3551,14 +3560,15 @@ export async function paySubAccountAction(data: {
             ? sub.subtotal * (1 / 3)
             : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
+        const subServiceRate = normalizeServiceRate(data.serviceFeePercent);
         const serviceChargeApplied = applyServiceFee
-            ? subtotalAfterDiscount * 0.1
+            ? subtotalAfterDiscount * subServiceRate
             : 0;
         const totalApplied = subtotalAfterDiscount + serviceChargeApplied;
         const baseLabel = data.splitLabel || sub.label;
         const labelParts: string[] = [baseLabel];
         if (discountType === 'DIVISAS_33') labelParts.push('-33% divisas');
-        if (applyServiceFee) labelParts.push('+10% serv');
+        if (applyServiceFee) labelParts.push(`+${Math.round(subServiceRate * 100)}% serv`);
         const splitLabel = labelParts.join(' | ');
 
         // Tasa BCV del momento del cobro (dual currency — BUG #3, FASE B)

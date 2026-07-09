@@ -49,6 +49,8 @@ export interface AgentReceiptPayload {
     discountReason?: string;
     deliveryFee?: number;
     serviceFee?: number;
+    /** % de servicio aplicado (§85). Si se omite, el label imprime "10%". */
+    serviceFeePercent?: number;
     tipAmount?: number;
     total: number;
     isPrecuenta?: boolean;

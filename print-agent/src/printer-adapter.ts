@@ -54,6 +54,8 @@ export interface ReceiptPayload {
     discountReason?: string;
     deliveryFee?: number;
     serviceFee?: number;
+    /** % de servicio aplicado (§85); si se omite el label no muestra %. */
+    serviceFeePercent?: number;
     tipAmount?: number;
     total: number;
     isPrecuenta?: boolean;
@@ -255,7 +257,7 @@ function renderReceipt(printer: ThermalPrinter, p: ReceiptPayload): void {
         printLeftRight(printer, `Descuento${p.discountReason ? ' (' + p.discountReason + ')' : ''}:`, `-$${discount.toFixed(2)}`);
     }
     if (deliveryFee > 0) printLeftRight(printer, 'Delivery:', `$${deliveryFee.toFixed(2)}`);
-    if (serviceFee > 0) printLeftRight(printer, 'Servicio:', `$${serviceFee.toFixed(2)}`);
+    if (serviceFee > 0) printLeftRight(printer, `Servicio${p.serviceFeePercent != null ? ` (${p.serviceFeePercent}%)` : ''}:`, `$${serviceFee.toFixed(2)}`);
     if (tipAmount > 0) printLeftRight(printer, 'Propina:', `$${tipAmount.toFixed(2)}`);
 
     printer.bold(true);
