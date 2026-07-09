@@ -11349,3 +11349,45 @@ items pendientes los enviaba a la mesa nueva.
 REGLA: cualquier POS con carrito persistido por contexto debe (a) limpiar
 el cart al cambiar de contexto, (b) gatear el autosave por dueño, (c) TTL
 + aviso visible al restaurar.
+
+## §84 Número de orden del día por canal (2026-07-09)
+
+Pedido de Omar: en la impresión (comanda + nota de entrega) debe verse "cuál
+orden del día es", como el PK-14 de pickup, pero para delivery, restaurante y
+todos los canales — además del correlativo global.
+
+### Modelo
+`DailyOrderCounter` (tenantId, scope, dayKey) unique → `lastValue`. `dayKey`
+= YYYY-MM-DD Caracas → reseteo diario implícito. Distinto de InvoiceCounter
+(global, nunca resetea). `SalesOrder.dailyNumber/dailyLabel` y
+`OpenTab.dailyNumber/dailyLabel` (nullable). Migración
+`20260709100000_daily_order_counter` (safe: 2 cols nullable ×2 + tabla).
+
+### Helper `src/lib/sales/daily-order-number.ts` (5 tests)
+`nextDailyNumber(client, tenantId, scope, now)` → upsert atómico +
+`{dailyNumber, dailyLabel}`. Prefijos 2 letras DISTINTOS del correlativo
+(REST/DEL/WNK/PYA/PKP) para no confundir en el papel:
+- RESTAURANT → `MS` (mesa/salón), DELIVERY → `DL`, WINK → `WK`, PEDIDOSYA → `PY`.
+Ej: DL-14, MS-23.
+
+### Asignación (§ pos.actions / wink / pedidosya)
+- `openTabAction`: MS-N a la mesa al abrir; las comandas la heredan
+  (`addItemsToOpenTabAction` copia dailyNumber/label del OpenTab).
+- `createSalesOrderAction`: DL (delivery) o MS (restaurante directo), calculado
+  UNA vez fuera del retry loop. **Pickup queda afuera**: mantiene su PK propio
+  (marcador en notes, gap-filling) — se detecta por `notes` "Venta Directa
+  Pickup" y NO se le asigna dailyNumber.
+- wink → WK, pedidosya → PY.
+
+### Impresión
+`dailyLabel` agregado a payloads: `AgentReceiptPayload`/`AgentKitchenPayload`
+(print-via-agent), `ReceiptData` (print-command), y render en
+`print-agent/src/printer-adapter.ts` (grande centrado en recibo; "N° MS-14"
+prominente en comanda) + HTML de print-command. Los POS pasan
+`result.data.dailyLabel`; reimpresión de historial (sales/page.tsx) pasa
+`sale.dailyLabel`. Pickup sigue mostrando su PK vía tableLabel (sin cambios).
+
+Nota: el delivery del bot (DeliveryOrder/n8n) tiene su propio correlativo
+PP-##### y no pasa por acá.
+
+Gates: tsc 0 · vitest 495 passed. Requiere migrate deploy (safe).

@@ -889,6 +889,7 @@ export default function POSSportBarPage() {
         void enqueueKitchenCommand({
           type: "KITCHEN",
           orderNumber: result.data.orderNumber,
+          dailyLabel: (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined,
           orderType: "RESTAURANT",
           orderTypeLabel: "MESA",
           tabCode: activeTab.tabCode,

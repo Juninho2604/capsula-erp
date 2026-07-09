@@ -81,7 +81,7 @@ export default function POSPedidosYAPage() {
     const [itemNotes, setItemNotes] = useState('');
 
     // Last order for reprint
-    const [lastOrder, setLastOrder] = useState<{ orderNumber: string; items: CartItem[]; customerName: string } | null>(null);
+    const [lastOrder, setLastOrder] = useState<{ orderNumber: string; dailyLabel?: string; items: CartItem[]; customerName: string } | null>(null);
 
     useEffect(() => {
         getMenuForPOSAction({ applyPromotions: false }).then(res => {
@@ -209,16 +209,18 @@ export default function POSPedidosYAPage() {
                 // del local). El agent hace split por categoría: bebidas →
                 // barra, resto → cocina.
                 const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+                const pyaDailyLabel = (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined;
                 void enqueueKitchenCommand({
                     type: 'KITCHEN',
                     orderNumber: result.data.orderNumber,
+                    dailyLabel: pyaDailyLabel,
                     orderType: 'DELIVERY',
                     orderTypeLabel: 'PEDIDOSYA',
                     customerName: customerName || 'PedidosYA',
                     items: buildKitchenItems(cart, menuItemCategoryMap),
                     createdAt: new Date().toISOString(),
                 });
-                setLastOrder({ orderNumber: result.data.orderNumber, items: [...cart], customerName: customerName || 'PedidosYA' });
+                setLastOrder({ orderNumber: result.data.orderNumber, dailyLabel: pyaDailyLabel, items: [...cart], customerName: customerName || 'PedidosYA' });
                 setCart([]);
                 setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setExternalOrderId(''); setNotes('');
                 toast.success(`Pedido registrado: ${result.data.orderNumber}`);
@@ -248,6 +250,7 @@ export default function POSPedidosYAPage() {
         void enqueueKitchenCommand({
             type: 'KITCHEN',
             orderNumber: lastOrder.orderNumber,
+            dailyLabel: (lastOrder as { dailyLabel?: string }).dailyLabel,
             orderType: 'DELIVERY',
             orderTypeLabel: 'PEDIDOSYA',
             customerName: lastOrder.customerName,

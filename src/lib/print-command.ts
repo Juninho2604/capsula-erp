@@ -56,6 +56,9 @@ interface ReceiptPayment {
 
 interface ReceiptData {
     orderNumber: string;
+    /** Número de orden del día por canal (§84), ej. "DL-14". Se imprime
+     *  junto al correlativo. Ausente en pickup (usa tableLabel PK). */
+    dailyLabel?: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: Date | string;
     cashierName: string;
@@ -202,6 +205,9 @@ export function printReceipt(data: ReceiptData) {
     
     <div class="separator"></div>
     
+    ${data.dailyLabel ? `
+    <div style="text-align:center;font-size:20px;font-weight:900;margin:2px 0;">${data.dailyLabel}</div>
+    <div class="separator"></div>` : ''}
     <div class="info-row">
         <span class="info-label">Control / Correlativo:</span>
         <span class="bold">${data.orderNumber}</span>
@@ -482,6 +488,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     <div class="sep">--------------------------------</div>
     <div class="title">${stationLabel}</div>
     <div class="order-num">#${orderNum}</div>
+    ${data.dailyLabel ? `<div class="order-type" style="font-size:22px;font-weight:900;">N° ${data.dailyLabel}</div>` : ''}
     <div class="order-type">${
         data.orderType === 'DELIVERY'
             ? 'DELIVERY'

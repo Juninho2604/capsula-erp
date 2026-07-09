@@ -171,6 +171,7 @@ export default function SalesHistoryPage() {
         const isDivisasDiscount = sale.discountType === 'DIVISAS_33';
         printReceipt({
             orderNumber: sale.orderNumber,
+            dailyLabel: sale.dailyLabel ?? undefined,
             orderType: (sale.orderType || 'RESTAURANT') as 'RESTAURANT' | 'DELIVERY',
             date: sale.createdAt,
             cashierName: `${sale.createdBy?.firstName || 'Cajera'} ${sale.createdBy?.lastName || ''}`.trim(),

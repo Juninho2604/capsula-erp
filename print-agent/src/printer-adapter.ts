@@ -30,6 +30,9 @@ export interface PrinterConfig {
 export interface ReceiptPayload {
     type: 'RECEIPT' | 'PRECUENTA';
     orderNumber: string;
+    /** Número de orden del día por canal (§84), ej. "DL-14". Se imprime
+     *  junto al correlativo global. Ausente en pickup (usa tableLabel PK). */
+    dailyLabel?: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: string;
     cashierName: string;
@@ -60,6 +63,9 @@ export interface ReceiptPayload {
 export interface KitchenPayload {
     type: 'KITCHEN' | 'VOID_KITCHEN';
     orderNumber: string;
+    /** Número de orden del día por canal (§84), ej. "MS-14". Referencia
+     *  rápida del turno; se imprime prominente bajo el número grande. */
+    dailyLabel?: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     /**
      * Label visible en la comanda para identificar el tipo operativo
@@ -198,6 +204,18 @@ function renderReceipt(printer: ThermalPrinter, p: ReceiptPayload): void {
     printer.println(isPrecuenta ? 'PRE-CUENTA' : 'RECIBO DE PAGO');
     printer.drawLine();
 
+    // Número de orden del día (§84), grande y centrado: es la referencia
+    // rápida del turno (ej. DL-14). El correlativo global va debajo.
+    if (p.dailyLabel) {
+        printer.alignCenter();
+        printer.bold(true);
+        printer.setTextSize(1, 1);
+        printer.println(p.dailyLabel);
+        printer.setTextNormal();
+        printer.bold(false);
+        printer.drawLine();
+    }
+
     printer.alignLeft();
     printer.println(`Orden:    #${p.orderNumber}`);
     printer.println(`Fecha:    ${formatDateTime(p.date)}`);
@@ -298,6 +316,14 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     if (p.orderTypeLabel) {
         printer.bold(true);
         printer.println(`[ ${p.orderTypeLabel} ]`);
+        printer.bold(false);
+    }
+    // Número de orden del día (§84): referencia rápida del turno por canal.
+    if (p.dailyLabel) {
+        printer.bold(true);
+        printer.setTextSize(1, 1);
+        printer.println(`N° ${p.dailyLabel}`);
+        printer.setTextNormal();
         printer.bold(false);
     }
     printer.alignLeft();

@@ -26,6 +26,8 @@ import {
 export interface AgentReceiptPayload {
     type: 'RECEIPT' | 'PRECUENTA';
     orderNumber: string;
+    /** Número de orden del día por canal (§84), ej. "DL-14". */
+    dailyLabel?: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: string; // ISO
     cashierName: string;
@@ -69,6 +71,8 @@ export interface AgentKitchenItem {
 export interface AgentKitchenPayload {
     type: 'KITCHEN' | 'VOID_KITCHEN';
     orderNumber: string;
+    /** Número de orden del día por canal (§84), ej. "MS-14". */
+    dailyLabel?: string;
     orderType: 'RESTAURANT' | 'DELIVERY';
     /**
      * Label visible en la comanda para identificar el tipo operativo:

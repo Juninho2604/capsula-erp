@@ -76,7 +76,7 @@ export default function POSWinkPage() {
     const [itemQuantity, setItemQuantity] = useState(1);
     const [itemNotes, setItemNotes] = useState('');
 
-    const [lastOrder, setLastOrder] = useState<{ orderNumber: string; items: CartItem[]; customerName: string } | null>(null);
+    const [lastOrder, setLastOrder] = useState<{ orderNumber: string; dailyLabel?: string; items: CartItem[]; customerName: string } | null>(null);
 
     useEffect(() => {
         getMenuForPOSAction({ applyPromotions: false }).then(res => {
@@ -201,16 +201,18 @@ export default function POSWinkPage() {
 
             if (result.success && result.data) {
                 const menuItemCategoryMap = buildMenuItemCategoryMap(categories);
+                const winkDailyLabel = (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined;
                 void enqueueKitchenCommand({
                     type: 'KITCHEN',
                     orderNumber: result.data.orderNumber,
+                    dailyLabel: winkDailyLabel,
                     orderType: 'DELIVERY',
                     orderTypeLabel: 'WINK',
                     customerName: customerName || 'WINK',
                     items: buildKitchenItems(cart, menuItemCategoryMap),
                     createdAt: new Date().toISOString(),
                 });
-                setLastOrder({ orderNumber: result.data.orderNumber, items: [...cart], customerName: customerName || 'WINK' });
+                setLastOrder({ orderNumber: result.data.orderNumber, dailyLabel: winkDailyLabel, items: [...cart], customerName: customerName || 'WINK' });
                 setCart([]);
                 setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setExternalOrderId(''); setNotes('');
                 toast.success(`Pedido registrado: ${result.data.orderNumber}`);
@@ -240,6 +242,7 @@ export default function POSWinkPage() {
         void enqueueKitchenCommand({
             type: 'KITCHEN',
             orderNumber: lastOrder.orderNumber,
+            dailyLabel: (lastOrder as { dailyLabel?: string }).dailyLabel,
             orderType: 'DELIVERY',
             orderTypeLabel: 'WINK',
             customerName: lastOrder.customerName,

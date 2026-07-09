@@ -38,6 +38,7 @@ import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
+import { nextDailyNumber } from '@/lib/sales/daily-order-number';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
@@ -1427,6 +1428,15 @@ export async function createSalesOrderAction(
         ]);
         const orderBranchId = salesArea.branchId ?? activeBranch?.id ?? null;
 
+        // Número de orden del día (§84). Pickup queda afuera: mantiene su PK
+        // propio (marcador en notes). Se calcula UNA vez, fuera del retry loop,
+        // para no consumir números en reintentos por colisión de orderNumber.
+        const isPickupDirect = data.orderType === 'RESTAURANT'
+            && (finalNotes ?? '').startsWith('Venta Directa Pickup');
+        const dailyOrder = isPickupDirect
+            ? null
+            : await nextDailyNumber(db, tenantId, data.orderType === 'DELIVERY' ? 'DELIVERY' : 'RESTAURANT');
+
         let newOrder;
         for (let attempt = 0; attempt < 10; attempt++) {
             try {
@@ -1470,6 +1480,8 @@ export async function createSalesOrderAction(
                         authorizedById: data.authorizedById && data.authorizedById !== 'demo-master-id' ? data.authorizedById : undefined,
 
                         notes: finalNotes,
+                        dailyNumber: dailyOrder?.dailyNumber ?? null,
+                        dailyLabel: dailyOrder?.dailyLabel ?? null,
 
                         createdById: session.activeCashierId ?? session.id,
                         areaId: areaId,
@@ -1828,6 +1840,9 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
         const tabCode = await generateTabCode();
 
         const tab = await db.$transaction(async (tx) => {
+            // Número de orden del día de la mesa (§84): se asigna al abrir la
+            // cuenta y todas las comandas de la mesa lo heredan (MS-14).
+            const daily = await nextDailyNumber(tx, tenantId, 'RESTAURANT');
             const createdTab = await tx.openTab.create({
                 data: {
                     tenantId,
@@ -1842,6 +1857,8 @@ export async function openTabAction(data: OpenTabInput): Promise<ActionResult> {
                     openedById: session.id,
                     waiterLabel: data.waiterLabel || null, // Guardar label del mesonero (ej: "Mesonero 1")
                     waiterProfileId: data.waiterProfileId || null,
+                    dailyNumber: daily.dailyNumber,
+                    dailyLabel: daily.dailyLabel,
                 },
                 include: {
                     openedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
@@ -1991,6 +2008,9 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                     openTabId: openTab.id,
                     waiterProfileId: data.waiterProfileId || openTab.waiterProfileId || null,
                     notes: data.notes,
+                    // §84: la comanda hereda el número del día de la mesa
+                    dailyNumber: openTab.dailyNumber,
+                    dailyLabel: openTab.dailyLabel,
                     createdById: session.activeCashierId ?? session.id,
                     items: {
                         create: data.items.map((item, idx) => ({

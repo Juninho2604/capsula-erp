@@ -100,6 +100,7 @@ model Tenant {
   gameStations          GameStation[]
   gameSessions          GameSession[]
   invoiceCounters       InvoiceCounter[]
+  dailyOrderCounters    DailyOrderCounter[]
   systemConfigs         SystemConfig[]
   reservations          Reservation[]
   printJobs             PrintJob[]
@@ -1203,6 +1204,13 @@ model SalesOrder {
   orderType     String @default("RESTAURANT") // RESTAURANT, DELIVERY
   serviceFlow   String @default("DIRECT_SALE") // DIRECT_SALE, OPEN_TAB, TAB_CLOSING
   sourceChannel String @default("POS_RESTAURANT")
+
+  // Número de orden del día por canal (§84). Correlativo corto que resetea
+  // cada día — ej. DL-14 (delivery 14 del día), MS-23 (mesa/restaurante).
+  // Se imprime junto al orderNumber global. Pickup mantiene su propio PK
+  // (sistema aparte). null en órdenes viejas / canales sin numeración diaria.
+  dailyNumber Int?
+  dailyLabel  String?
 
   // Cliente (opcional)
   customerName    String?
@@ -2482,6 +2490,8 @@ model OpenTab {
   totalTip           Float           @default(0) // Propina voluntaria acumulada
   tipPercent         Float? // Propina seleccionada por el cliente (0, 10, 15, 20)
   tipAmount          Float? // tipPercent/100 × runningTotal (neto post-descuento) — ver §46
+  dailyNumber        Int? // Número de orden del día de la mesa (§84); las comandas lo heredan
+  dailyLabel         String? // Ej. "MS-14" — mismo en todas las comandas de la mesa
   version            Int             @default(0)
   openedAt           DateTime        @default(now())
   closedAt           DateTime?
@@ -2677,6 +2687,23 @@ model InvoiceCounter {
 
   @@unique([tenantId, channel])
   @@index([tenantId])
+}
+
+// Contador del número de orden del DÍA por canal (§84). Resetea implícito por
+// día vía `dayKey` (YYYY-MM-DD Caracas) en el unique compuesto. Ej: DL-14 =
+// delivery 14 del día. Distinto de InvoiceCounter (global, nunca resetea).
+model DailyOrderCounter {
+  id        String   @id @default(cuid())
+  scope     String // canal: RESTAURANT | DELIVERY | WINK | PEDIDOSYA
+  dayKey    String // "YYYY-MM-DD" en timezone Caracas
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, scope, dayKey])
+  @@index([tenantId, dayKey])
 }
 
 model ExchangeRate {

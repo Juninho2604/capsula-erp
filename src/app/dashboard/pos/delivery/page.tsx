@@ -458,6 +458,7 @@ export default function POSDeliveryPage() {
                 void enqueueKitchenCommand({
                     type: 'KITCHEN',
                     orderNumber: result.data.orderNumber,
+                    dailyLabel: (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined,
                     orderType: 'DELIVERY',
                     orderTypeLabel: 'DELIVERY',
                     customerName: `${customerName} (${customerPhone})`,
@@ -468,6 +469,7 @@ export default function POSDeliveryPage() {
                 });
                 const receiptData = {
                     orderNumber: result.data.orderNumber,
+                    dailyLabel: (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined,
                     orderType: 'DELIVERY' as const,
                     date: new Date(),
                     cashierName: 'Delivery',

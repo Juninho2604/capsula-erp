@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
+import { nextDailyNumber } from '@/lib/sales/daily-order-number';
 import { revalidatePath } from 'next/cache';
 
 export interface PedidosYAItem {
@@ -44,6 +45,7 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
 
         const subtotal = data.items.reduce((s, i) => s + i.lineTotal, 0);
         const orderNumber = await generatePYAOrderNumber();
+        const daily = await nextDailyNumber(db, tenantId, 'PEDIDOSYA');
 
         const notes = [
             data.externalOrderId ? `PedidosYA #${data.externalOrderId}` : '',
@@ -71,6 +73,8 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
                 amountPaid: subtotal,
                 change: 0,
                 notes,
+                dailyNumber: daily.dailyNumber,
+                dailyLabel: daily.dailyLabel,
                 createdById: session.id,
                 areaId: salesArea.id,
                 items: {
