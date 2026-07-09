@@ -49,6 +49,11 @@ export const FEATURE_FLAGS = {
         description:
             'Cambia cómo se cobra en efectivo divisas (CASH_USD, CASH_EUR, ZELLE) en VENTA DIRECTA (pickup/delivery). Sin el flag (histórico): el total de la venta se redondea al dólar entero, inflando lo facturado. Con el flag: la VENTA registra el monto EXACTO (ej. 27,70) y el POS sugiere cobrar el dólar entero hacia ARRIBA (28). La diferencia (0,30) se registra como PROPINA del personal, no como venta. Si el cliente pide el vuelto de esos centavos, la cajera lo da y deja de ser propina. NOTA: el cobro de MESA ya aplica este mismo redondeo→propina SIEMPRE (no depende de este flag), vía roundingTipForCharge — recibo, sistema y lo cobrado coinciden (decisión del dueño 16/06).',
     },
+    priceListsEnabled: {
+        label: 'Activar listas de precios por canal',
+        description:
+            'Cuando está activo, el POS toma el precio de la LISTA DE PRECIOS activa para cada canal (restaurante, delivery, wink, pedidosya). Los gerentes crean listas en el módulo "Listas de precios", les asignan canales y las activan/desactivan; los items sin precio en la lista usan su precio base. Sin el flag, todos los canales usan el precio base (y winkPrice/pedidosYaPrice como hoy).',
+    },
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

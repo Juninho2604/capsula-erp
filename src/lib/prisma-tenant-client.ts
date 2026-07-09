@@ -76,6 +76,7 @@ const TENANT_MODELS = new Set<string>([
     'ManagerNote',
     'OpenTab',
     'PosTerminal',
+    'PriceList',
     'PrintJob',
     'ProcessingTemplateOutput',
     'ProductFamily',

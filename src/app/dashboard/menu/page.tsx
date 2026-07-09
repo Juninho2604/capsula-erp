@@ -9,6 +9,7 @@ import {
     X as XIcon,
     Pencil,
     RefreshCw,
+    Tag as TagIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -284,6 +285,13 @@ export default function MenuManagementPage() {
                     <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                    <a
+                        href="/dashboard/menu/listas-precios"
+                        className="pos-btn-secondary px-5 py-3 text-sm inline-flex items-center gap-2"
+                        title="Precios por canal: delivery, wink, restaurante"
+                    >
+                        <TagIcon className="h-4 w-4" /> Listas de precios
+                    </a>
                     <button
                         onClick={() => {
                             setResaleItem(prev => ({

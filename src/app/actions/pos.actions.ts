@@ -45,6 +45,8 @@ import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
 import { updateSessionCashier } from '@/lib/auth';
 import { consumeRateLimit, getClientIp } from '@/lib/rate-limit';
 import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCart } from '@/lib/promotions/server';
+import { loadChannelPriceMap } from '@/lib/pricing/server';
+import type { PriceListChannel } from '@/lib/pricing/price-list';
 import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
 import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
 import { embedTabCode } from '@/lib/sales/collective-tip-ref';
@@ -1125,7 +1127,7 @@ export async function retryInventoryDeductionFromOutbox(
 // LECTURA DE MENÚ PARA POS
 // ============================================================================
 
-export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean }) {
+export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean; channel?: PriceListChannel }) {
     const { db, tenantId } = await getTenantCtx();
     try {
         const categories = await db.menuCategory.findMany({
@@ -1168,6 +1170,27 @@ export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean }) 
             },
             orderBy: { sortOrder: 'asc' }
         });
+
+        // Listas de precios por canal (§86): antes de promociones. La lista
+        // activa del canal define el precio base del item para ESTE canal; el
+        // POS lo consume por el mismo campo que hoy (price, o winkPrice/
+        // pedidosYaPrice según el canal). Gated por flag priceListsEnabled.
+        if (opts?.channel) {
+            const priceMap = await loadChannelPriceMap(db, tenantId, opts.channel);
+            if (priceMap.size > 0) {
+                for (const cat of categories) {
+                    for (const item of cat.items as any[]) {
+                        const override = priceMap.get(item.id);
+                        if (override == null) continue;
+                        item.listPriceBase = item.price; // precio base original
+                        item.priceListApplied = true;
+                        if (opts.channel === 'WINK') item.winkPrice = override;
+                        else if (opts.channel === 'PEDIDOSYA') item.pedidosYaPrice = override;
+                        else item.price = override;
+                    }
+                }
+            }
+        }
 
         // Promociones (happy hour): aplican al precio mostrado/cobrado en el
         // POS. Opt-out para PedidosYA (usa su propio pricing). Gated por flag.
@@ -1398,10 +1421,13 @@ export async function createSalesOrderAction(
         const salesArea = await ensureBaseSalesArea();
         const areaId = salesArea.id;
 
-        // Promociones: re-aplicación autoritativa desde el precio base de BD.
-        // (PedidosYA usa su propia action, no pasa por acá.) Muta data.items y
-        // devuelve auditoría por índice para snapshot en SalesOrderItem.
-        const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
+        // Promociones: re-aplicación autoritativa desde el precio base de BD
+        // (o de la lista de precios del canal §86, si aplica). PedidosYA usa su
+        // propia action. Muta data.items y devuelve auditoría por índice.
+        const promoAudit = await applyPromotionsToCart(
+            db, tenantId, data.items as any, new Date(),
+            data.orderType === 'DELIVERY' ? 'DELIVERY' : 'RESTAURANT',
+        );
 
         // Flag: venta exacta + redondeo de efectivo divisas a propina.
         const exactCashTip = await tenantFeatureEnabled(tenantId, 'exactCashSaleTip').catch(() => false);
@@ -1940,8 +1966,8 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
         const salesArea = await resolveSalesAreaForBranch(openTab.branchId);
 
         // Promociones: re-aplicación autoritativa desde el precio base de BD
-        // antes de calcular totales. Muta data.items + auditoría por índice.
-        const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any);
+        // (o lista de precios del canal RESTAURANT §86). Muta data.items.
+        const promoAudit = await applyPromotionsToCart(db, tenantId, data.items as any, new Date(), 'RESTAURANT');
 
         const { subtotal, total } = calculateCartTotals({
             orderType: 'RESTAURANT',

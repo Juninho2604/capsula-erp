@@ -11391,3 +11391,48 @@ Nota: el delivery del bot (DeliveryOrder/n8n) tiene su propio correlativo
 PP-##### y no pasa por acá.
 
 Gates: tsc 0 · vitest 495 passed. Requiere migrate deploy (safe).
+
+## §86 Listas de precios por canal (2026-07-09)
+
+Pedido de Omar: que los gerentes creen/eliminen listas de precios y las
+activen/desactiven por canal (delivery, wink, restaurante, pedidosya). Antes
+solo había columnas ad-hoc (winkPrice, pedidosYaPrice) y promociones.
+
+### Modelo (migración 20260709120000, safe: 2 tablas)
+- `PriceList` (tenant-aware, en TENANT_MODELS → 73): name, description,
+  `channels` (JSON array de keys), `priority`, `isActive`, soft-delete.
+- `PriceListItem` (hereda scope por FK, patrón RecipeIngredient): priceListId
+  + menuItemId + price, `@@unique([priceListId, menuItemId])`. Item sin fila
+  → usa `price` base del MenuItem.
+- Flag `priceListsEnabled` (default off). PERM `MANAGE_PRICE_LISTS`
+  (OWNER/ADMIN_MANAGER/OPS_MANAGER) + módulo `price_lists`.
+
+### Resolución (src/lib/pricing/)
+- `price-list.ts` (PURO, 12 tests): `parseChannels`, `pickListForChannel`
+  (mayor priority, empate → updatedAt), `channelPriceMap` (solo la lista
+  GANADORA aporta; precios ≤0 ignorados).
+- `server.ts`: `loadChannelPriceMap(db, tenantId, channel)` gateado por flag.
+
+### Integración POS
+- `getMenuForPOSAction({ channel })`: ANTES de promociones, override del
+  precio del item para el canal (RESTAURANT/DELIVERY → `price`; WINK →
+  `winkPrice`; PEDIDOSYA → `pedidosYaPrice`), guardando `listPriceBase`. Los
+  5 POS pasan su canal.
+- `applyPromotionsToCart(..., channel?)`: la promo se calcula sobre el precio
+  de LISTA (no el base) → display y cobro coinciden. createSalesOrder y
+  addItemsToOpenTab pasan el canal. Sin promo activa, el server respeta el
+  unitPrice del cliente (= precio de lista), igual que hoy con winkPrice.
+
+### CRUD + UI
+- `price-lists.actions.ts`: get/create/update/toggle/delete + getItems +
+  `setPriceListItemsAction` (replace-all, valida tenant del list y de cada
+  MenuItem, precio >0). Todo gated por MANAGER_ROLES.
+- `/dashboard/menu/listas-precios`: crear lista + chips de canales +
+  activar/desactivar + eliminar; modal "Editar precios" con buscador,
+  filtro por categoría, precio por producto (placeholder = base). Enlace
+  desde Gestión de menú. OWNER puede prender/apagar el flag desde el banner.
+
+Precedencia: lista de precios del canal → (promo encima) → base. WINK y
+PedidosYa confían en el precio mostrado (no re-derivan server-side, igual
+que hoy). Gates: tsc 0 · vitest 508. Requiere migrate deploy (safe) + prender
+el flag priceListsEnabled.

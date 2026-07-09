@@ -15,6 +15,8 @@
 import type { TenantPrismaClient } from '@/lib/prisma-tenant-client';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { resolveBestPromotion, type PromotionRule, type ItemForPricing } from './engine';
+import { loadChannelPriceMap } from '@/lib/pricing/server';
+import type { PriceListChannel } from '@/lib/pricing/price-list';
 
 type PromoRow = {
     id: string; name: string; discountType: string; discountValue: number;
@@ -98,6 +100,7 @@ export async function applyPromotionsToCart(
     tenantId: string,
     items: CartItemLike[],
     at: Date = new Date(),
+    channel?: PriceListChannel,
 ): Promise<(PromoAudit | null)[]> {
     const result: (PromoAudit | null)[] = items.map(() => null);
     const rules = await loadActivePromotionRules(db, tenantId);
@@ -109,11 +112,15 @@ export async function applyPromotionsToCart(
         select: { id: true, price: true, categoryId: true },
     });
     const menuMap = new Map(menuItems.map(m => [m.id, m]));
+    // §86: si hay lista de precios activa para el canal, la promo se calcula
+    // sobre el precio de lista (no el base) → display y cobro coinciden.
+    const listPrices = channel ? await loadChannelPriceMap(db, tenantId, channel) : null;
 
     items.forEach((item, idx) => {
         const mi = menuMap.get(item.menuItemId);
         if (!mi) return; // item desconocido → no tocar (defensivo)
-        const priced = priceItemWithPromotions(mi.price, mi.id, mi.categoryId, rules, at);
+        const base = listPrices?.get(item.menuItemId) ?? mi.price;
+        const priced = priceItemWithPromotions(base, mi.id, mi.categoryId, rules, at);
         if (!priced.appliedPromotionId || priced.originalUnitPrice == null) return;
         const modSum = (item.modifiers ?? []).reduce((s, m) => s + (m.priceAdjustment || 0), 0);
         item.unitPrice = priced.unitPrice;

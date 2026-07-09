@@ -387,7 +387,7 @@ export default function POSMeseroPage() {
     // 2. Refetch fresh — si llega lo reemplaza
     try {
       const [menuResult, layoutResult, rate] = await Promise.all([
-        getMenuForPOSAction(),
+        getMenuForPOSAction({ channel: 'RESTAURANT' }),
         getRestaurantLayoutAction(),
         getExchangeRateValue(),
       ]);

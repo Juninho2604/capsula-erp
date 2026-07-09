@@ -38,6 +38,7 @@ export const PERM = {
   CONFIGURE_SYSTEM:     'CONFIGURE_SYSTEM',      // Módulos, métodos de pago, fees (solo OWNER)
   MANAGE_BROADCAST:     'MANAGE_BROADCAST',      // Crear/editar anuncios al equipo
   EDIT_WINK_PRICE:      'EDIT_WINK_PRICE',       // Modificar el precio WINK de un producto (gerente)
+  MANAGE_PRICE_LISTS:   'MANAGE_PRICE_LISTS',    // Crear/editar/activar listas de precios por canal (gerente)
 
   // Reportes — permisos granulares por familia (reportes.<familia>.ver)
   REPORTES_VENTAS_VER:      'REPORTES_VENTAS_VER',      // reportes.ventas.ver
@@ -92,6 +93,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.MANAGE_PINS,
     PERM.MANAGE_BROADCAST,
     PERM.EDIT_WINK_PRICE,
+    PERM.MANAGE_PRICE_LISTS,
     PERM.CONVERSATIONS_MANAGE,
     PERM.REPORTES_VENTAS_VER,
     PERM.REPORTES_OPERATIVOS_VER,
@@ -118,6 +120,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
     PERM.CLOSE_CASH_REGISTER,
     PERM.MANAGE_BROADCAST,
     PERM.EDIT_WINK_PRICE,
+    PERM.MANAGE_PRICE_LISTS,
     PERM.CONVERSATIONS_MANAGE,
     // Reportes: operación completa SIN gerencial (solo roles administrativos)
     PERM.REPORTES_VENTAS_VER,
@@ -235,6 +238,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.VIEW_SALES_HISTORY]:  { label: 'Ver historial de ventas', description: 'Historial de órdenes en solo lectura (sin método de pago, sin exportar ni anular)' },
   [PERM.REPRINT_COMANDA]:     { label: 'Re-imprimir comanda',   description: 'Volver a imprimir comanda de cocina' },
   [PERM.EDIT_WINK_PRICE]:     { label: 'Editar precio WINK',    description: 'Modificar el precio WINK de un producto (gerente)' },
+  [PERM.MANAGE_PRICE_LISTS]:  { label: 'Gestionar listas de precios', description: 'Crear/editar/activar listas de precios por canal (gerente)' },
   [PERM.CONVERSATIONS_MANAGE]:{ label: 'Conversaciones WA',     description: 'Bandeja de WhatsApp: ver chats, tomar el control del bot y responder' },
   [PERM.ADJUST_STOCK]:        { label: 'Ajustar inventario',    description: 'Crear ajuste manual de stock' },
   [PERM.APPROVE_TRANSFER]:    { label: 'Aprobar transferencias',description: 'Aprobar requisición de transferencia entre áreas' },

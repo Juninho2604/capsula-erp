@@ -441,7 +441,7 @@ export default function POSSportBarPage() {
     setLayoutError("");
     try {
       const [menuResult, layoutResult, usersResult, rate] = await Promise.all([
-        getMenuForPOSAction(),
+        getMenuForPOSAction({ channel: 'RESTAURANT' }),
         getRestaurantLayoutAction(),
         getUsersForTabAction(),
         getExchangeRateValue(),

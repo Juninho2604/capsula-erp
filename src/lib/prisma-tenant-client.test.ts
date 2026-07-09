@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 72 modelos esperados (delivery +9, Tesorería +5, WhatsApp +4: WaConversation/WaCredential/WaMessage/WaTemplate)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(72);
+    it('Contiene los 73 modelos esperados (delivery +9, Tesorería +5, WhatsApp +4, PriceList +1)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(73);
     });
 
     it('Incluye los modelos multi-tenant del módulo Conversaciones WhatsApp', () => {
@@ -160,6 +160,11 @@ describe('TENANT_AWARE_MODELS', () => {
         expect(TENANT_AWARE_MODELS).toContain('WaMessage');
         expect(TENANT_AWARE_MODELS).toContain('WaTemplate');
         expect(TENANT_AWARE_MODELS).toContain('WaCredential');
+    });
+
+    it('Incluye PriceList (§86, tenant-aware); PriceListItem hereda por FK', () => {
+        expect(TENANT_AWARE_MODELS).toContain('PriceList');
+        expect(TENANT_AWARE_MODELS).not.toContain('PriceListItem');
     });
 
     it('Incluye modelos críticos del POS', () => {

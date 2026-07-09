@@ -163,7 +163,7 @@ export default function POSDeliveryPage() {
         async function loadMenu() {
             try {
                 const [menuResult, rate] = await Promise.all([
-                    getMenuForPOSAction(),
+                    getMenuForPOSAction({ channel: 'DELIVERY' }),
                     getExchangeRateValue(),
                 ]);
                 if (menuResult.success && menuResult.data) {

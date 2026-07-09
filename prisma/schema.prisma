@@ -109,6 +109,7 @@ model Tenant {
   // a nivel app: solo SUPER_ADMIN consulta vía prisma directo.
   tenantPayments        TenantPayment[]
   promotions            Promotion[]
+  priceLists            PriceList[]
   // Conteo físico semanal como entidad (§51.A)
   weeklyCounts          WeeklyCount[]
   // Tesorería / Conciliación bancaria (Fase 0+)
@@ -993,6 +994,9 @@ model MenuItem {
   // Relaciones
   orderItems SalesOrderItem[]
 
+  // Precios por lista/canal (§86). Item sin override → usa `price` base.
+  priceListItems PriceListItem[] @relation("MenuItemPriceListItems")
+
   // ── Service routing ─────────────────────────────────────────────────────
   serviceCategory String? // FOOD, BEVERAGE, GAME_TIME, MERCHANDISE
   kitchenRouting  String? // BAR, KITCHEN, GRILL, COLD_STATION — destino de comanda
@@ -1081,6 +1085,51 @@ model Promotion {
 
   @@index([tenantId])
   @@index([isActive])
+}
+
+// §86 — Listas de precios por canal. Un gerente crea listas, les asigna
+// canales (delivery/wink/restaurante/pedidosya) y las activa/desactiva. La
+// lista ACTIVA de mayor priority que cubre un canal define el precio de sus
+// items en ese canal; los items sin override caen al price base del MenuItem.
+model PriceList {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  // Canales que cubre (JSON array de keys: "RESTAURANT","DELIVERY","WINK",
+  // "PEDIDOSYA","PICKUP"). Vacío = no aplica a ningún canal (inerte).
+  channels String @default("[]")
+
+  // Si dos listas activas cubren el mismo canal, gana mayor priority; empate
+  // → la de updatedAt más reciente.
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+
+  items PriceListItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+model PriceListItem {
+  id          String    @id @default(cuid())
+  priceListId String
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  menuItemId String
+  menuItem   MenuItem @relation("MenuItemPriceListItems", fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  price Float // USD para este item en esta lista
+
+  @@unique([priceListId, menuItemId])
+  @@index([menuItemId])
 }
 
 model MenuModifierGroup {

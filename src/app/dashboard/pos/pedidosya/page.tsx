@@ -84,7 +84,7 @@ export default function POSPedidosYAPage() {
     const [lastOrder, setLastOrder] = useState<{ orderNumber: string; dailyLabel?: string; items: CartItem[]; customerName: string } | null>(null);
 
     useEffect(() => {
-        getMenuForPOSAction({ applyPromotions: false }).then(res => {
+        getMenuForPOSAction({ applyPromotions: false, channel: 'PEDIDOSYA' }).then(res => {
             if (res.success && res.data) {
                 setCategories(res.data);
                 if (res.data.length > 0) setSelectedCategory(res.data[0].id);
