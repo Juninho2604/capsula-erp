@@ -4,7 +4,7 @@
  * Utilidad para imprimir recibos y comandas con formato térmico 80mm
  */
 
-// ... imports ...
+import { humanDailyLabel } from '@/lib/sales/daily-order-number';
 
 /**
  * IMPRESIÓN DIRECTA SIN DIÁLOGO (Intento)
@@ -108,6 +108,7 @@ function escHtml(s: string | null | undefined): string {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+
 export function printReceipt(data: ReceiptData) {
     const printWindow = window.open('', '_blank', 'width=400,height=700');
     if (!printWindow) {
@@ -208,7 +209,7 @@ export function printReceipt(data: ReceiptData) {
     <div class="separator"></div>
     
     ${data.dailyLabel ? `
-    <div style="text-align:center;font-size:20px;font-weight:900;margin:2px 0;">${data.dailyLabel}</div>
+    <div style="text-align:center;font-size:20px;font-weight:900;margin:2px 0;">${escHtml(humanDailyLabel(data.dailyLabel, data.orderType === 'DELIVERY' ? 'DELIVERY' : undefined))}</div>
     <div class="separator"></div>` : ''}
     <div class="info-row">
         <span class="info-label">Control / Correlativo:</span>
@@ -490,7 +491,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     <div class="sep">--------------------------------</div>
     <div class="title">${stationLabel}</div>
     <div class="order-num">#${orderNum}</div>
-    ${data.dailyLabel ? `<div class="order-type" style="font-size:22px;font-weight:900;">N° ${data.dailyLabel}</div>` : ''}
+    ${data.dailyLabel ? `<div class="order-type" style="font-size:22px;font-weight:900;">${escHtml(humanDailyLabel(data.dailyLabel, data.orderType === 'DELIVERY' ? 'DELIVERY' : (data.tableName ? 'MESA' : undefined)))}</div>` : ''}
     <div class="order-type">${
         data.orderType === 'DELIVERY'
             ? 'DELIVERY'

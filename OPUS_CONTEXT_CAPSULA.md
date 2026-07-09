@@ -11610,3 +11610,48 @@ la cortesía sobre TODO el pedido, envío incluido.
   flag si algún día lo mandan).
 
 Gates: tsc 0 · vitest 533.
+
+---
+
+## §84.1 El número de orden del día NO salía en la comanda (2026-07-09)
+
+Reporte de Omar en pre-operación: salió un delivery, la cajera lo cargó, pero la
+comanda impresa NO mostró el número de orden del día (§84).
+
+### Diagnóstico (código OK, artefacto viejo)
+Rastreado end-to-end, TODO el pipeline del repo maneja `dailyLabel`:
+- `createSalesOrderAction` genera y guarda `dailyNumber/dailyLabel` (scope por
+  canal) y lo devuelve en `result.data`.
+- Los 5 POS lo pasan a `enqueueKitchenCommand` / recibo.
+- `POST enqueuePrintJobAction` lo guarda tal cual en `PrintJob.payload` (JSON) y
+  `GET /api/print-agent/jobs` lo devuelve completo.
+- `print-agent/printer-adapter.ts` lo renderiza (`renderKitchen`/`renderReceipt`).
+
+**Causa raíz: el print-agent es un build SEPARADO.** `scripts/deploy-vps.sh`
+solo redespliega la app Next (pm2). El print-agent corre como servicio aparte
+(`node dist/index.js`, `tsc` propio) en la PC on-prem conectada a las térmicas.
+El render de `dailyLabel` se agregó hoy → la PC seguía con un build viejo SIN esa
+línea. ⇒ **Cada cambio en `print-agent/` requiere rebuild + restart del servicio
+en la PC del local; el deploy de la VPS NO lo cubre.**
+
+### Cambio de código (§84.1)
+Label legible por canal en la impresión, matcheando cómo lo pide el negocio
+("DELIVERY N° 1", "MESA N° 7") en vez del código cripto "DL-1". El correlativo
+global (#DEL-0042) queda intacto.
+- `humanDailyLabel(label, channelHint?)` en `daily-order-number.ts` (exportado,
+  +3 tests): `DL-01` → `DELIVERY N° 1`. Mapa de prefijo→palabra, defensivo.
+- `print-agent/printer-adapter.ts`: `renderKitchen`/`renderReceipt` usan el
+  formateo (copia local — proyecto separado, no puede importar de `src/`). En
+  cocina, si hay `dailyLabel` se imprime la línea legible; si no, cae al tag
+  `[ DELIVERY ]` (no se pierde el tipo operativo).
+- `print-command.ts` (fallback window.print): usa el helper compartido.
+
+### Checklist de despliegue (para que SÍ salga)
+1. App VPS: `bash scripts/deploy-vps.sh main` (genera/guarda `dailyLabel`).
+2. `npx prisma migrate status` → "up to date" (tabla `DailyOrderCounter` +
+   columnas `dailyNumber/dailyLabel` deben existir).
+3. **Print-agent on-prem**: en la PC del local, `git pull` → `cd print-agent`
+   → `npm install` (si cambió deps) → `npm run build` → reiniciar el servicio
+   (node-windows / pm2). Sin esto la comanda NUNCA mostrará el número.
+
+Gates: tsc 0 · vitest 536.

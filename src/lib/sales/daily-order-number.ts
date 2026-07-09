@@ -42,6 +42,35 @@ export function dailyLabel(scope: DailyScope, n: number): string {
 }
 
 /**
+ * Palabra de canal por prefijo, para imprimir el label del día en forma
+ * legible ("DL-1" → "DELIVERY N° 1") en comanda y nota de entrega. Incluye
+ * "PK" (pickup) aunque su contador viva aparte: los recibos de pickup también
+ * pasan por este formateo.
+ */
+const DAILY_PREFIX_WORD: Record<string, string> = {
+    MS: 'MESA',
+    DL: 'DELIVERY',
+    WK: 'WINK',
+    PY: 'PEDIDOSYA',
+    PK: 'PICKUP',
+};
+
+/**
+ * Convierte un label del día ("DL-1", "MS-07") en una línea legible por canal:
+ * "DELIVERY N° 1", "MESA N° 7". El correlativo global (DEL-0042) NO se toca —
+ * se imprime aparte. `channelHint` sobreescribe el prefijo cuando el canal ya
+ * se conoce (ej. el recibo sabe que es DELIVERY). Defensivo: si el label no
+ * matchea el formato, lo devuelve tal cual anteponiendo la palabra de canal.
+ */
+export function humanDailyLabel(label: string, channelHint?: string): string {
+    const dash = label.lastIndexOf('-');
+    const prefix = dash > 0 ? label.slice(0, dash) : label;
+    const num = parseInt(dash > 0 ? label.slice(dash + 1) : '', 10);
+    const word = channelHint || DAILY_PREFIX_WORD[prefix] || prefix;
+    return Number.isFinite(num) ? `${word} N° ${num}` : `${word} ${label}`;
+}
+
+/**
  * Cliente Prisma mínimo que necesita el helper (tx o cliente crudo).
  * `dailyOrderCounter` NO es tenant-aware en la extensión, así que siempre se
  * pasa el tenantId explícito.

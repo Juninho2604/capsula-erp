@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { dailyLabel, nextDailyNumber, type DailyScope } from './daily-order-number';
+import { dailyLabel, humanDailyLabel, nextDailyNumber, type DailyScope } from './daily-order-number';
 
 describe('dailyLabel', () => {
     it('formatea con prefijo de 2 letras y padding 2', () => {
@@ -41,5 +41,25 @@ describe('nextDailyNumber', () => {
         expect(arg.where.tenantId_scope_dayKey.scope).toBe('RESTAURANT');
         expect(arg.create.lastValue).toBe(1);
         expect(arg.update.lastValue).toEqual({ increment: 1 });
+    });
+});
+
+describe('humanDailyLabel — línea legible por canal para la comanda (§84.1)', () => {
+    it('traduce el prefijo a palabra + número sin ceros a la izquierda', () => {
+        expect(humanDailyLabel('DL-01')).toBe('DELIVERY N° 1');
+        expect(humanDailyLabel('MS-07')).toBe('MESA N° 7');
+        expect(humanDailyLabel('WK-12')).toBe('WINK N° 12');
+        expect(humanDailyLabel('PY-03')).toBe('PEDIDOSYA N° 3');
+        expect(humanDailyLabel('PK-14')).toBe('PICKUP N° 14');
+    });
+
+    it('channelHint sobreescribe el prefijo cuando el canal ya se conoce', () => {
+        expect(humanDailyLabel('DL-05', 'DELIVERY')).toBe('DELIVERY N° 5');
+        expect(humanDailyLabel('MS-02', 'MESA')).toBe('MESA N° 2');
+    });
+
+    it('defensivo: prefijo desconocido o sin numero no rompe', () => {
+        expect(humanDailyLabel('ZZ-09')).toBe('ZZ N° 9');
+        expect(humanDailyLabel('DL-')).toBe('DELIVERY DL-');
     });
 });

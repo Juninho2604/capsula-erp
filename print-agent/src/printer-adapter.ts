@@ -207,12 +207,14 @@ function renderReceipt(printer: ThermalPrinter, p: ReceiptPayload): void {
     printer.drawLine();
 
     // Número de orden del día (§84), grande y centrado: es la referencia
-    // rápida del turno (ej. DL-14). El correlativo global va debajo.
+    // rápida del turno POR CANAL, legible (ej. "DELIVERY N° 1"). El
+    // correlativo global (#DEL-0042) va debajo, intacto.
     if (p.dailyLabel) {
+        const channelHint = p.orderType === 'DELIVERY' ? 'DELIVERY' : undefined;
         printer.alignCenter();
         printer.bold(true);
         printer.setTextSize(1, 1);
-        printer.println(p.dailyLabel);
+        printer.println(humanDailyLabel(p.dailyLabel, channelHint));
         printer.setTextNormal();
         printer.bold(false);
         printer.drawLine();
@@ -312,20 +314,19 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
         // Comanda secundaria → label discreto con orderNumber
         printer.println(`Comanda #${p.orderNumber}`);
     }
-    // Label de tipo (MESA / PICKUP / DELIVERY / PEDIDOSYA) en negrita
-    // debajo del número — permite al cocinero priorizar al ojo: los
-    // pickups y deliveries van con prisa, las mesas pueden esperar.
-    if (p.orderTypeLabel) {
-        printer.bold(true);
-        printer.println(`[ ${p.orderTypeLabel} ]`);
-        printer.bold(false);
-    }
-    // Número de orden del día (§84): referencia rápida del turno por canal.
+    // Número de orden del día (§84): referencia rápida del turno POR CANAL,
+    // legible y en grande — ej. "DELIVERY N° 1", "MESA N° 7". El correlativo
+    // global (#DEL-0042) queda arriba intacto. Si no hay label del día, se
+    // cae al tag simple [ DELIVERY ] para no perder el tipo operativo.
     if (p.dailyLabel) {
         printer.bold(true);
         printer.setTextSize(1, 1);
-        printer.println(`N° ${p.dailyLabel}`);
+        printer.println(humanDailyLabel(p.dailyLabel, p.orderTypeLabel));
         printer.setTextNormal();
+        printer.bold(false);
+    } else if (p.orderTypeLabel) {
+        printer.bold(true);
+        printer.println(`[ ${p.orderTypeLabel} ]`);
         printer.bold(false);
     }
     printer.alignLeft();
@@ -407,4 +408,26 @@ function formatDateTime(iso: string): string {
 function formatTime(iso: string): string {
     const d = new Date(iso);
     return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/**
+ * Convierte el label del día (§84) en una línea legible para la comanda/recibo:
+ * "DL-1" → "DELIVERY N° 1", "MS-7" → "MESA N° 7", etc. El correlativo global
+ * (DEL-0042) NO se toca — sigue imprimiéndose aparte. Si el label no matchea el
+ * formato esperado se imprime tal cual (defensivo, nunca rompe la impresión).
+ */
+const DAILY_PREFIX_WORD: Record<string, string> = {
+    DL: 'DELIVERY',
+    MS: 'MESA',
+    WK: 'WINK',
+    PY: 'PEDIDOSYA',
+    PK: 'PICKUP',
+};
+function humanDailyLabel(dailyLabel: string, channelHint?: string): string {
+    const dash = dailyLabel.lastIndexOf('-');
+    const prefix = dash > 0 ? dailyLabel.slice(0, dash) : dailyLabel;
+    const rawNum = dash > 0 ? dailyLabel.slice(dash + 1) : '';
+    const num = parseInt(rawNum, 10);
+    const word = channelHint || DAILY_PREFIX_WORD[prefix] || prefix;
+    return Number.isFinite(num) ? `${word} N° ${num}` : `${word} ${dailyLabel}`;
 }
