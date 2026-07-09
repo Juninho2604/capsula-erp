@@ -8,6 +8,7 @@ import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction,
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+import { getDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
@@ -141,6 +142,15 @@ export default function POSDeliveryPage() {
     // divisas). Compatible con cualquier `discountType`. Default OFF: si no se
     // activa, la lógica de cálculo se comporta idéntico al previo.
     const [freeDelivery, setFreeDelivery] = useState(false);
+
+    // Descuento por divisas configurable (§87). Del server; default 1/3. Aplica
+    // SOLO a ítems — el fee de delivery mantiene su piso de $3 al motorizado.
+    const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+    const divisasRate = divisasPercent / 100;
+    const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
+    useEffect(() => {
+        getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
+    }, []);
 
     // PROPINA COLECTIVA
     const [showTipModal, setShowTipModal] = useState(false);
@@ -370,7 +380,7 @@ export default function POSDeliveryPage() {
     // Si freeDelivery está activo el fee efectivo es 0 (la promo lo waivea).
     const deliveryFee = freeDelivery ? 0 : deliveryFeeBase;
     const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas
-        ? cartSubtotal - (isMixedMode ? (divisasUsdAmount ?? 0) / 3 : cartSubtotal / 3)
+        ? cartSubtotal - (isMixedMode ? (divisasUsdAmount ?? 0) * divisasRate : cartSubtotal * divisasRate)
         : discountType === 'CORTESIA_100' ? 0
         : discountType === 'CORTESIA_PERCENT' ? cartSubtotal * (1 - cortesiaPercentNum / 100)
         : cartSubtotal;
@@ -496,7 +506,7 @@ export default function POSDeliveryPage() {
                             : 0;
                         if (discountType === 'DIVISAS_33' && isPagoDivisas) {
                             const base = isMixedMode ? (divisasUsdAmount ?? cartSubtotal) : cartSubtotal;
-                            return base / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS) + freeDeliveryDelta;
+                            return base * divisasRate + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS) + freeDeliveryDelta;
                         }
                         if (discountType === 'CORTESIA_100') return cartSubtotal + DELIVERY_FEE_NORMAL;
                         if (discountType === 'CORTESIA_PERCENT') return (cartSubtotal * cortesiaPercentNum / 100) + freeDeliveryDelta;
@@ -910,7 +920,7 @@ export default function POSDeliveryPage() {
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
                                 <div className="flex justify-between rounded-lg border border-[#D3E2D8] bg-[#E5EDE7]/40 px-2 py-1 text-xs font-medium text-[#2F6B4E]">
                                     <span>Dto. Divisas</span>
-                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) / 3 + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) * divisasRate + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
@@ -1092,7 +1102,7 @@ export default function POSDeliveryPage() {
                                         <div className="space-y-0.5 rounded-xl border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-2 text-xs text-capsula-ink-soft">
                                             <div className="flex justify-between">
                                                 <span>Divisas sobre ${(divisasUsdAmount ?? 0).toFixed(2)} USD</span>
-                                                <span className="font-medium tabular-nums">-${((divisasUsdAmount ?? 0) / 3).toFixed(2)}</span>
+                                                <span className="font-medium tabular-nums">-${((divisasUsdAmount ?? 0) * divisasRate).toFixed(2)}</span>
                                             </div>
                                             <div className="flex justify-between font-medium text-capsula-ink">
                                                 <span>Total a cobrar</span>

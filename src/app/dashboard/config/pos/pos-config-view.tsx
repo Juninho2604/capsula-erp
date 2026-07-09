@@ -2,16 +2,41 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { getPOSConfig, setPOSConfig, type POSConfig } from '@/lib/pos-settings';
-import { setStockValidationEnabled } from '@/app/actions/system-config.actions';
+import { setStockValidationEnabled, setDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
+import toast from 'react-hot-toast';
 
 interface Props {
   initialStockValidation: boolean;
+  initialDivisasPercent: number;
+  canEditDivisas: boolean;
 }
 
-export function POSConfigView({ initialStockValidation }: Props) {
+export function POSConfigView({ initialStockValidation, initialDivisasPercent, canEditDivisas }: Props) {
   const [config, setConfig] = useState<POSConfig | null>(null);
   const [stockValidation, setStockValidation] = useState(initialStockValidation);
+  const [divisasStr, setDivisasStr] = useState(String(Math.round(initialDivisasPercent * 100) / 100));
+  const [savedDivisas, setSavedDivisas] = useState(Math.round(initialDivisasPercent * 100) / 100);
+  const [savingDivisas, setSavingDivisas] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const handleSaveDivisas = async () => {
+    const n = parseFloat(divisasStr);
+    if (!Number.isFinite(n) || n < 0 || n > 90) {
+      toast.error('Ingresá un porcentaje entre 0 y 90');
+      return;
+    }
+    setSavingDivisas(true);
+    const res = await setDivisasDiscountPercentAction(n);
+    setSavingDivisas(false);
+    if (res.ok) {
+      const v = res.value ?? n;
+      setSavedDivisas(v);
+      setDivisasStr(String(Math.round(v * 100) / 100));
+      toast.success(`Descuento en divisas: ${Math.round(v * 100) / 100}%`);
+    } else {
+      toast.error(res.error ?? 'Error guardando');
+    }
+  };
 
   useEffect(() => {
     setConfig(getPOSConfig());
@@ -80,6 +105,44 @@ export function POSConfigView({ initialStockValidation }: Props) {
               </button>
             </label>
           </div>
+        </div>
+
+        {/* ── Descuento por divisas (§87) ──────────────────────────────── */}
+        <div className="bg-gray-800 rounded-xl border border-amber-500/40 p-5">
+          <h2 className="font-bold text-lg text-amber-300 mb-1 flex items-center gap-2">Descuento por pago en divisas</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Descuento que se aplica cuando el cliente paga en efectivo USD/EUR o Zelle. Aplica a los ítems en todos los POS (mesa, delivery, pickup). Editable por dueño, auditor o administrador. El fee de delivery mantiene su piso de $3 al motorizado — este % no lo toca.
+          </p>
+          {canEditDivisas ? (
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 mb-1">Porcentaje de descuento</label>
+                <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={90}
+                    step="any"
+                    value={divisasStr}
+                    onChange={(e) => setDivisasStr(e.target.value)}
+                    className="w-24 bg-transparent text-right text-lg font-semibold text-white tabular-nums focus:outline-none"
+                  />
+                  <span className="text-lg font-semibold text-gray-400 ml-1">%</span>
+                </div>
+              </div>
+              <button
+                onClick={handleSaveDivisas}
+                disabled={savingDivisas || parseFloat(divisasStr) === savedDivisas}
+                className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+              >
+                {savingDivisas ? 'Guardando…' : 'Guardar'}
+              </button>
+              <p className="text-xs text-gray-500 self-center">Actual: <span className="font-semibold text-amber-300">{savedDivisas}%</span></p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-300">Descuento actual: <span className="font-semibold text-amber-300">{savedDivisas}%</span> — solo dueño, auditor o administrador pueden cambiarlo.</p>
+          )}
         </div>
 
         {/* ── POS Delivery ─────────────────────────────────────────────── */}

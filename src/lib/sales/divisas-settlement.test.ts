@@ -74,6 +74,21 @@ describe('computeDivisasSettlement — descuento divisas proporcional al pago', 
         expect(withDefault).toEqual(withExplicit);
     });
 
+    it('discountRate custom (§87): 40% cambia neto y descuento; default 1/3 intacto', () => {
+        // Pago completo mesa $90 sin servicio, 40% off: paga 60% = $54.
+        const r = computeDivisasSettlement({ balanceDue: 90, receivedUSD: 54, serviceFeeIncluded: false, discountRate: 0.40 });
+        expect(r.grossSettled).toBeCloseTo(90, 2);
+        expect(r.discountAmount).toBeCloseTo(36, 2);      // 40% de 90
+        expect(r.netItemsApplied).toBeCloseTo(54, 2);     // 60% de 90
+    });
+
+    it('discountRate ausente → default 1/3 (compat con tests históricos)', () => {
+        const a = computeDivisasSettlement({ balanceDue: 72, receivedUSD: 48, serviceFeeIncluded: false });
+        const b = computeDivisasSettlement({ balanceDue: 72, receivedUSD: 48, serviceFeeIncluded: false, discountRate: 1 / 3 });
+        expect(a).toEqual(b);
+        expect(a.discountAmount).toBeCloseTo(24, 2);       // 72/3
+    });
+
     it('recibido 0 o saldo 0 → todo en cero (sin NaN)', () => {
         expect(computeDivisasSettlement({ balanceDue: 50, receivedUSD: 0, serviceFeeIncluded: true }))
             .toMatchObject({ grossSettled: 0, discountAmount: 0, netItemsApplied: 0, serviceFee: 0 });

@@ -16,6 +16,7 @@ import {
   type ModifyTabItemModification,
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
+import { getDivisasDiscountPercentAction } from "@/app/actions/system-config.actions";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
@@ -265,6 +266,13 @@ export default function POSMeseroPage() {
   // visualización del modal, no se persiste; el cobro real se hace en la
   // pantalla de pago donde la cajera selecciona método.
   const [divisasPreview, setDivisasPreview] = useState(false);
+  // Descuento por divisas configurable (§87). Del server; default 1/3.
+  const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+  const divisasRate = divisasPercent / 100;
+  const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
+  useEffect(() => {
+    getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
+  }, []);
   // Sub-cuenta seleccionada en el modal. 'general' = vista total de la
   // mesa; un id de sub-cuenta = solo items asignados a esa sub. Permite
   // al mesero mostrar al cliente UNA sub-cuenta a la vez cuando dividen.
@@ -1810,7 +1818,7 @@ export default function POSMeseroPage() {
         const paidPartial  = selectedSub
             ? (selectedSub.paidAmount ?? 0)
             : paidSplits.reduce((s, p) => s + p.paidAmount, 0);
-        const divisasDiscount = divisasPreview ? subtotal / 3 : 0;
+        const divisasDiscount = divisasPreview ? subtotal * divisasRate : 0;
 
         const totals = computeTabPreviewTotals({
             subtotal,
@@ -1973,7 +1981,7 @@ export default function POSMeseroPage() {
                         : 'text-capsula-ink-muted hover:text-capsula-ink'
                     }`}
                   >
-                    Divisas −33,33%
+                    Divisas −{divisasPctLabel}%
                   </button>
                 </div>
 
@@ -1991,7 +1999,7 @@ export default function POSMeseroPage() {
                   )}
                   {divisasDiscount > 0.001 && (
                     <div className="flex justify-between text-xs text-capsula-coral">
-                      <span className="font-semibold uppercase tracking-wider">Descuento Divisas (−33,33%)</span>
+                      <span className="font-semibold uppercase tracking-wider">Descuento Divisas (−{divisasPctLabel}%)</span>
                       <span className="font-semibold tabular-nums">−${divisasDiscount.toFixed(2)}</span>
                     </div>
                   )}
@@ -2123,7 +2131,7 @@ export default function POSMeseroPage() {
                         '',
                         `Subtotal:       $${subtotal.toFixed(2)}`,
                         ...(discount > 0.001 ? [`Descuento:     -$${discount.toFixed(2)}`] : []),
-                        ...(divisasDiscount > 0.001 ? [`Divisas -33,33%: -$${divisasDiscount.toFixed(2)}`] : []),
+                        ...(divisasDiscount > 0.001 ? [`Divisas -${divisasPctLabel}%: -$${divisasDiscount.toFixed(2)}`] : []),
                         ...(serviceCharge > 0.001 ? [`Servicio${activeTab.tipPercent != null && activeTab.tipPercent > 0 ? ` ${activeTab.tipPercent}%` : ''}:  $${serviceCharge.toFixed(2)}`] : []),
                         `TOTAL USD:      $${grandTotal.toFixed(2)}`,
                         ...(totalBs !== null ? [`Bs equiv.:      ${formatBs(totalBs)}`] : []),

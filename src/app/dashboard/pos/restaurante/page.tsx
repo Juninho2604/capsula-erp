@@ -24,6 +24,7 @@ import {
 import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
+import { getDivisasDiscountPercentAction } from "@/app/actions/system-config.actions";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
 import { useTenantFeatureFlags } from "@/lib/hooks/use-feature-flags";
@@ -326,6 +327,13 @@ export default function POSSportBarPage() {
   const serviceRate = serviceFeeIncluded ? serviceFeePercent / 100 : 0;
   const [skipServiceFeePin, setSkipServiceFeePin] = useState('');
   const [showSkipServiceFeeModal, setShowSkipServiceFeeModal] = useState(false);
+  // Descuento por divisas configurable (§87). Cargado del server; default 1/3.
+  const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+  const divisasRate = divisasPercent / 100;
+  const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
+  useEffect(() => {
+    getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
+  }, []);
 
   // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -694,14 +702,14 @@ export default function POSSportBarPage() {
   // único; topa a balanceDue/3. Para mixto todo-divisas converge al precio
   // correcto; en divisas+Bs solo descuenta la porción en divisas. (fix TAB-3048)
   const mixedDivisasDiscount = activeTab && isTableMixedMode
-    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded, serviceRate }).discountAmount
+    ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded, serviceRate, discountRate: divisasRate }).discountAmount
     : 0;
 
   const paymentBaseAmount = activeTab
     ? discountType === "DIVISAS_33"
       ? isTableMixedMode
-        ? activeTab.balanceDue - mixedDivisasDiscount       // partial: only USD lines get -33%
-        : (activeTab.balanceDue * 2) / 3                     // full: entire balance -33%
+        ? activeTab.balanceDue - mixedDivisasDiscount       // partial: only USD lines get divisas discount
+        : activeTab.balanceDue * (1 - divisasRate)          // full: entire balance con descuento divisas
       : discountType === "CORTESIA_100"
       ? 0
       : discountType === "CORTESIA_PERCENT"
@@ -1122,9 +1130,10 @@ export default function POSSportBarPage() {
             receivedUSD: rawReceived,
             serviceFeeIncluded,
             serviceRate,
+            discountRate: divisasRate,
           });
           discountAmount = divisasSettlement.discountAmount;
-          discountLabel = " · -33.33% Divisas";
+          discountLabel = ` · -${divisasPctLabel}% Divisas`;
         }
       } else if (discountType === "CORTESIA_100") {
         discountAmount = activeTab.balanceDue;
@@ -1146,8 +1155,8 @@ export default function POSSportBarPage() {
       const discountReasonText = discountAmount > 0
         ? (discountType === "DIVISAS_33"
             ? (isTableMixedMode && divisasUsdAmountTable > 0 && divisasUsdAmountTable < activeTab.balanceDue - 0.01
-                ? `Pago Mixto Divisas (33.33% sobre $${divisasUsdAmountTable.toFixed(2)})`
-                : 'Pago en Divisas (33.33%)')
+                ? `Pago Mixto Divisas (${divisasPctLabel}% sobre $${divisasUsdAmountTable.toFixed(2)})`
+                : `Pago en Divisas (${divisasPctLabel}%)`)
             : discountType === "CORTESIA_100"
               ? "Cortesía Autorizada (100%)"
               : discountType === "CORTESIA_PERCENT"
@@ -1305,7 +1314,7 @@ export default function POSSportBarPage() {
     // Use runningTotal as base — balanceDue decrements with partial payments, causing
     // a false "discount" line when items sum doesn't match the printed subtotal.
     const base = activeTab.runningTotal;
-    const divisasDiscountAmt = withDivisasDiscount ? base / 3 : 0;
+    const divisasDiscountAmt = withDivisasDiscount ? base * divisasRate : 0;
     const discountAmt =
       withDivisasDiscount ? divisasDiscountAmt
       : discountType === "CORTESIA_100" ? base
@@ -1314,7 +1323,7 @@ export default function POSSportBarPage() {
     const afterDiscount = base - discountAmt;
     const svcFee = afterDiscount * serviceRate;
     const discountReason = discountAmt > 0
-      ? (withDivisasDiscount ? "Pago en Divisas (33.33%)"
+      ? (withDivisasDiscount ? `Pago en Divisas (${divisasPctLabel}%)`
           : discountType === "CORTESIA_100" ? "Cortesía Autorizada (100%)"
           : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
           : undefined)
@@ -1568,8 +1577,8 @@ export default function POSSportBarPage() {
         : isDivisasMethod(paymentMethod);
       const pickupDiscount = (discountType === "DIVISAS_33" && pickupDivisasQualifies)
         ? rc(isPickupMixedMode && divisasUsdAmountPickup != null
-            ? divisasUsdAmountPickup / 3            // partial: only divisas portion gets -33%
-            : cartTotal / 3)                        // full: entire order in USD
+            ? divisasUsdAmountPickup * divisasRate  // partial: solo la porción divisas
+            : cartTotal * divisasRate)              // full: toda la orden en divisas
         : discountType === "CORTESIA_100" ? rc(cartTotal)
         : discountType === "CORTESIA_PERCENT" ? rc(cartTotal * (cortesiaPercentNum / 100))
         : 0;
@@ -2520,7 +2529,7 @@ export default function POSSportBarPage() {
                 {/* Modo de pago + total calculado */}
                 {(() => {
                   const baseDiscount = discountType === "DIVISAS_33"
-                    ? (isPickupMixedMode ? Math.round((divisasUsdAmountPickup ?? 0) / 3 * 100) / 100 : Math.round(cartTotal / 3 * 100) / 100)
+                    ? (isPickupMixedMode ? Math.round((divisasUsdAmountPickup ?? 0) * divisasRate * 100) / 100 : Math.round(cartTotal * divisasRate * 100) / 100)
                     : discountType === "CORTESIA_100" ? cartTotal
                     : discountType === "CORTESIA_PERCENT" ? cartTotal * (cortesiaPercentNum / 100)
                     : 0;
@@ -2574,10 +2583,10 @@ export default function POSSportBarPage() {
                             </div>
                           )}
                           {/* Vuelto para efectivo USD */}
-                          {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0)) && (
+                          {!isBsPayMethod && paymentMethod === 'CASH_USD' && paidAmount > 0 && paidAmount > (cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal * divisasRate * 100) / 100 : 0)) && (
                             <div className="flex justify-between text-sm font-semibold px-1">
                               <span className="text-capsula-ink">Vuelto</span>
-                              <span className="text-capsula-ink tabular-nums">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal / 3 * 100) / 100 : 0))).toFixed(2)}</span>
+                              <span className="text-capsula-ink tabular-nums">${Math.max(0, paidAmount - Math.max(0, cartTotal - (discountType === 'DIVISAS_33' ? Math.round(cartTotal * divisasRate * 100) / 100 : 0))).toFixed(2)}</span>
                             </div>
                           )}
                         </div>
@@ -2595,7 +2604,7 @@ export default function POSSportBarPage() {
                             <div className="rounded-xl bg-capsula-navy-soft border border-capsula-line-strong px-3 py-2 text-xs text-capsula-ink space-y-0.5">
                               <div className="flex justify-between">
                                 <span>Divisas sobre ${(divisasUsdAmountPickup ?? 0).toFixed(2)} USD</span>
-                                <span className="font-semibold tabular-nums">−${((divisasUsdAmountPickup ?? 0) / 3).toFixed(2)}</span>
+                                <span className="font-semibold tabular-nums">−${((divisasUsdAmountPickup ?? 0) * divisasRate).toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between font-semibold text-capsula-ink">
                                 <span>Total a cobrar</span>
@@ -2996,8 +3005,8 @@ export default function POSSportBarPage() {
                     </div>
                     {discountType === "DIVISAS_33" && (
                       <p className="text-xs text-capsula-ink-soft mt-1.5 tabular-nums">
-                        Descuento: −${(activeTab.balanceDue / 3).toFixed(2)} → Total: $
-                        {((activeTab.balanceDue * 2) / 3).toFixed(2)}
+                        Descuento: −${(activeTab.balanceDue * divisasRate).toFixed(2)} → Total: $
+                        {(activeTab.balanceDue * (1 - divisasRate)).toFixed(2)}
                       </p>
                     )}
                     {(discountType === "CORTESIA_100" || discountType === "CORTESIA_PERCENT") && (
@@ -3148,7 +3157,7 @@ export default function POSSportBarPage() {
                         {discountType === "DIVISAS_33" && divisasUsdAmountTable > 0 && (() => {
                           return (
                             <div className="rounded-xl bg-capsula-navy-soft border border-capsula-line-strong px-2 py-1.5 text-[10px] text-capsula-ink space-y-0.5 tabular-nums">
-                              <div className="flex justify-between"><span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span><span>−${(divisasUsdAmountTable / 3).toFixed(2)}</span></div>
+                              <div className="flex justify-between"><span>Divisas ${divisasUsdAmountTable.toFixed(2)}</span><span>−${(divisasUsdAmountTable * divisasRate).toFixed(2)}</span></div>
                               <div className="flex justify-between font-semibold text-capsula-ink"><span>Total a cobrar</span><span>${paymentAmountToCharge.toFixed(2)}</span></div>
                             </div>
                           );
@@ -3168,7 +3177,7 @@ export default function POSSportBarPage() {
                         {discountType === "DIVISAS_33" && (
                           <div className="flex justify-between text-capsula-ink-soft">
                             <span>Descuento divisas</span>
-                            <span>−${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                            <span>−${(activeTab.balanceDue * divisasRate).toFixed(2)}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between mt-2 rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-3 py-1.5">
@@ -3606,8 +3615,8 @@ export default function POSSportBarPage() {
                 </div>
                 {discountType === "DIVISAS_33" && activeTab && (
                   <div className="flex justify-between text-capsula-ink-soft text-xs">
-                    <span>Descuento −33.33%:</span>
-                    <span>−${(activeTab.balanceDue / 3).toFixed(2)}</span>
+                    <span>Descuento −{divisasPctLabel}%:</span>
+                    <span>−${(activeTab.balanceDue * divisasRate).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">

@@ -39,6 +39,7 @@ import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber } from '@/lib/sales/daily-order-number';
+import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
@@ -381,7 +382,11 @@ async function resolveSalesAreaForBranch(branchId?: string) {
 }
 
 const DELIVERY_FEE_NORMAL = 4.5;
-const DELIVERY_FEE_DIVISAS = 3;
+// PISO del fee de delivery en divisas (§87): SIEMPRE $3 mínimo — se le paga al
+// motorizado sí o sí. El descuento por divisas (editable) aplica SOLO a los
+// ítems, nunca al fee. Por eso el fee en divisas es un swap fijo NORMAL→$3, no
+// un %; el Math.max lo blinda ante un cambio accidental del constante.
+const DELIVERY_FEE_DIVISAS = Math.max(MIN_DELIVERY_FEE_DIVISAS, 3);
 
 /** Redondea a 2 decimales. */
 function round2(n: number): number { return Math.round(n * 100) / 100; }
@@ -390,6 +395,16 @@ function round2(n: number): number { return Math.round(n * 100) / 100; }
 function normalizeServiceRate(percent: number | undefined | null): number {
     if (percent == null || !Number.isFinite(percent)) return 0.10;
     return Math.min(100, Math.max(0, percent)) / 100;
+}
+
+/** Fracción de descuento por divisas (§87), leída de SystemConfig. Default 1/3. */
+async function loadDivisasDiscountRate(db: TenantPrismaClient): Promise<number> {
+    try {
+        const cfg = await db.systemConfig.findFirst({ where: { key: DIVISAS_DISCOUNT_CONFIG_KEY } });
+        return divisasDiscountRate(parseDivisasPercent(cfg?.value));
+    } catch {
+        return divisasDiscountRate(null);
+    }
 }
 
 /** Redondea a 2 decimales: ≥0.5 sube, <0.5 baja. Aplica antes de guardar en BD. */
@@ -433,6 +448,9 @@ function roundToWhole(amount: number, paymentMethod?: string, exactTotal = false
 function calculateCartTotals(
     data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery'>,
     exactTotal = false,
+    // Fracción de descuento por divisas (§87). Default 1/3 (33,33% histórico).
+    // Aplica SOLO a los ítems; el fee de delivery mantiene su piso de $3.
+    divisasRate: number = 1 / 3,
 ) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
@@ -444,14 +462,18 @@ function calculateCartTotals(
         let discountReason = '';
 
         if (data.discountType === 'DIVISAS_33') {
-            // Partial divisas: only the USD portion gets -33%
+            // Divisas parcial: solo la porción en USD recibe el descuento. El
+            // descuento aplica a los ÍTEMS; el fee de delivery baja de NORMAL a
+            // DIVISAS ($3) y ahí queda su piso (nunca menos — se le paga al
+            // motorizado sí o sí). El % es editable (§87) pero NO toca el fee.
             const divisasBase = data.divisasUsdAmount ?? itemsSubtotal;
+            const pctLabel = Math.round(divisasRate * 10000) / 100;
             subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = roundCents(divisasBase / 3 + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS));
+            discount = roundCents(divisasBase * divisasRate + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS));
             total = subtotal - discount;
             discountReason = divisasBase < itemsSubtotal - 0.01
-                ? `Pago Mixto Divisas (33.33% sobre $${divisasBase.toFixed(2)}) - Delivery $3`
-                : 'Pago en Divisas (33.33%) - Delivery $3';
+                ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)}) - Delivery $${DELIVERY_FEE_DIVISAS}`
+                : `Pago en Divisas (${pctLabel}%) - Delivery $${DELIVERY_FEE_DIVISAS}`;
         } else if (data.discountType === 'CORTESIA_100') {
             subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
             discount = subtotal;
@@ -508,10 +530,11 @@ function calculateCartTotals(
 
     if (data.discountType === 'DIVISAS_33') {
         const divisasBase = data.divisasUsdAmount ?? subtotal;
-        discount = roundCents(divisasBase / 3);
+        const pctLabel = Math.round(divisasRate * 10000) / 100;
+        discount = roundCents(divisasBase * divisasRate);
         discountReason = divisasBase < subtotal - 0.01
-            ? `Pago Mixto Divisas (33.33% sobre $${divisasBase.toFixed(2)})`
-            : 'Pago en Divisas (33.33%)';
+            ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)})`
+            : `Pago en Divisas (${pctLabel}%)`;
     } else if (data.discountType === 'CORTESIA_100') {
         discount = subtotal;
         discountReason = 'Cortesía Autorizada (100%)';
@@ -1431,7 +1454,9 @@ export async function createSalesOrderAction(
 
         // Flag: venta exacta + redondeo de efectivo divisas a propina.
         const exactCashTip = await tenantFeatureEnabled(tenantId, 'exactCashSaleTip').catch(() => false);
-        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip);
+        // Descuento divisas configurable (§87), leído del server (autoritativo).
+        const divisasRate = await loadDivisasDiscountRate(db);
+        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip, divisasRate);
         // Con el flag, en efectivo divisas el excedente (redondeo hacia arriba)
         // es PROPINA, no vuelto: forzamos change=0 salvo que la cajera pida
         // dar vuelto explícito (keepChangeAsTip=false + tipAtCheckout marcado).
@@ -3582,8 +3607,9 @@ export async function paySubAccountAction(data: {
         const discountType = (data.discountType === 'DIVISAS_33' && isDivisasPayment)
             ? 'DIVISAS_33'
             : 'NONE';
+        const subDivisasRate = await loadDivisasDiscountRate(db);
         const discountAmount = discountType === 'DIVISAS_33'
-            ? sub.subtotal * (1 / 3)
+            ? sub.subtotal * subDivisasRate
             : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
         const subServiceRate = normalizeServiceRate(data.serviceFeePercent);
@@ -3631,7 +3657,7 @@ export async function paySubAccountAction(data: {
                     amountBs: isBsSubPayment && splitRate ? round2(totalApplied * splitRate) : null,
                     exchangeRate: splitRate ?? null,
                     paidAt: new Date(),
-                    notes: discountType === 'DIVISAS_33' ? 'Pago en Divisas (33.33%)' : undefined,
+                    notes: discountType === 'DIVISAS_33' ? `Pago en Divisas (${Math.round(subDivisasRate * 10000) / 100}%)` : undefined,
                 },
             });
 

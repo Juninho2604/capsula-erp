@@ -39,6 +39,12 @@ import {
 import { getTenantFeatureFlags } from '@/lib/feature-flags';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import {
+    DIVISAS_DISCOUNT_CONFIG_KEY,
+    DEFAULT_DIVISAS_DISCOUNT_PERCENT,
+    normalizeDivisasPercent,
+    parseDivisasPercent,
+} from '@/lib/sales/divisas-config';
 
 const ENABLED_MODULES_KEY = 'enabled_modules';
 const STOCK_VALIDATION_KEY = 'pos_stock_validation_enabled';
@@ -221,4 +227,39 @@ export async function setStockValidationEnabled(enabled: boolean): Promise<{ ok:
 
     revalidatePath('/dashboard/config/pos');
     return { ok: true };
+}
+
+// ── Descuento por pago en divisas (§87) — editable por dueño/auditor/admin ──
+
+/** Porcentaje de descuento por pagar en divisas (default 33,33%). */
+export async function getDivisasDiscountPercentAction(): Promise<number> {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const config = await db.systemConfig.findFirst({
+            where: { key: DIVISAS_DISCOUNT_CONFIG_KEY },
+        });
+        return parseDivisasPercent(config?.value);
+    } catch {
+        return DEFAULT_DIVISAS_DISCOUNT_PERCENT;
+    }
+}
+
+const DIVISAS_DISCOUNT_ROLES = ['OWNER', 'AUDITOR', 'ADMIN_MANAGER'];
+
+export async function setDivisasDiscountPercentAction(percent: number): Promise<{ ok: boolean; error?: string; value?: number }> {
+    const session = await getSession();
+    if (!session) return { ok: false, error: 'No autorizado' };
+    if (!DIVISAS_DISCOUNT_ROLES.includes(session.role)) {
+        return { ok: false, error: 'Solo dueño, auditor o administrador pueden cambiar el descuento en divisas' };
+    }
+    const normalized = normalizeDivisasPercent(percent);
+    const { tenantId } = await resolveTenantContext();
+    await prisma.systemConfig.upsert({
+        where: { tenantId_key: { tenantId, key: DIVISAS_DISCOUNT_CONFIG_KEY } },
+        create: { key: DIVISAS_DISCOUNT_CONFIG_KEY, value: String(normalized), updatedBy: session.id, tenantId },
+        update: { value: String(normalized), updatedBy: session.id },
+    });
+    revalidatePath('/dashboard/config/pos');
+    return { ok: true, value: normalized };
 }

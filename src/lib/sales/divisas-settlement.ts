@@ -36,6 +36,9 @@ export interface DivisasSettlementInput {
     /** Tasa de servicio (fracción, ej. 0.10 = 10%). Default 0.10 (§85 —
      *  editable al cobro). Solo aplica si serviceFeeIncluded. */
     serviceRate?: number;
+    /** Fracción de descuento por divisas (§87). Default 1/3 (33,33% histórico),
+     *  editable por dueño/auditor/admin. Se clampa a [0, 0.9]. */
+    discountRate?: number;
 }
 
 export interface DivisasSettlement {
@@ -52,8 +55,6 @@ export interface DivisasSettlement {
     facturaReal: number;
 }
 
-const TWO_THIRDS = 2 / 3;
-
 export function computeDivisasSettlement(input: DivisasSettlementInput): DivisasSettlement {
     const balanceDue = Math.max(0, Number.isFinite(input.balanceDue) ? input.balanceDue : 0);
     const received = Math.max(0, Number.isFinite(input.receivedUSD) ? input.receivedUSD : 0);
@@ -61,13 +62,19 @@ export function computeDivisasSettlement(input: DivisasSettlementInput): Divisas
         ? (Number.isFinite(input.serviceRate as number) && (input.serviceRate as number) >= 0 ? (input.serviceRate as number) : 0.10)
         : 0;
     const serviceMult = 1 + rate;
+    // Fracción de descuento por divisas (§87). Default 1/3, clamp [0, 0.9].
+    const discRate = Number.isFinite(input.discountRate as number)
+        ? Math.min(0.9, Math.max(0, input.discountRate as number))
+        : 1 / 3;
+    const netFactor = 1 - discRate; // porción que el cliente paga por los ítems
 
-    // Bruto que cubre lo recibido, topado al saldo de la mesa. Para un pago
-    // completo (received ≥ target full divisas) el min() elige balanceDue →
-    // discount = balanceDue/3 (idéntico al comportamiento previo).
-    const grossSettled = Math.min(balanceDue, received / (TWO_THIRDS * serviceMult));
-    const discountAmount = grossSettled / 3;
-    const netItemsApplied = grossSettled - discountAmount; // = grossSettled · ⅔
+    // Bruto que cubre lo recibido, topado al saldo de la mesa. Con netFactor=⅔
+    // (33,33%) y pago completo, discount = balanceDue/3 (histórico).
+    const grossSettled = netFactor > 0
+        ? Math.min(balanceDue, received / (netFactor * serviceMult))
+        : 0;
+    const discountAmount = grossSettled * discRate;
+    const netItemsApplied = grossSettled - discountAmount; // = grossSettled · netFactor
     const serviceFee = netItemsApplied * rate;
     const facturaReal = netItemsApplied + serviceFee;
 

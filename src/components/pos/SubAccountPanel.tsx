@@ -22,6 +22,7 @@ import {
     voidSubAccountAction,
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
+import { getDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 
@@ -259,13 +260,15 @@ interface SubAccountCardProps {
     onPrint: (sub: SubAccount, includeService: boolean) => void;
     onVoid: (sub: SubAccount) => void;
     canCharge: boolean;
+    /** Fracción de descuento por divisas (§87). Default 1/3. */
+    divisasRate?: number;
 }
 
-// Cash USD/EUR/Zelle aplican descuento de 33% automático ("divisas").
+// Cash USD/EUR/Zelle aplican descuento de divisas automático.
 const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
     m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3 }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -282,7 +285,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     // Si el método es divisas (cash USD/EUR/Zelle) → aplica 33% descuento automático.
     // Sólo cuenta si la cajera HA ELEGIDO un método (payMethodTouched).
     const applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod);
-    const discountAmount = applyDivisasDiscount ? sub.subtotal * (1 / 3) : 0;
+    const discountAmount = applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
     const subtotalAfterDiscount = sub.subtotal - discountAmount;
     const serviceChargeAfterDiscount = serviceIncluded ? subtotalAfterDiscount * 0.1 : 0;
     const totalWithService = subtotalAfterDiscount + serviceChargeAfterDiscount;
@@ -557,6 +560,13 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const branding = useTenantBranding();
+    // Descuento por divisas configurable (§87). Del server; default 1/3.
+    const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+    const divisasRate = divisasPercent / 100;
+    const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
+    useEffect(() => {
+        getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
+    }, []);
 
     // New subcuenta form
     const [newLabel, setNewLabel] = useState('');
@@ -763,7 +773,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             sub.paymentMethod === 'ZELLE'
         );
         const applyDivisasDiscount = paidWithDivisas ?? inferredDivisas;
-        const discountAmount = applyDivisasDiscount ? sub.subtotal * (1 / 3) : 0;
+        const discountAmount = applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
         const serviceFee = includeService ? subtotalAfterDiscount * 0.1 : 0;
         const subAccountLabel = sub.label || `Subcuenta ${sub.sortOrder + 1}`;
@@ -777,7 +787,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             items,
             subtotal: sub.subtotal,
             discount: discountAmount > 0 ? discountAmount : undefined,
-            discountReason: applyDivisasDiscount ? 'Pago en Divisas (33.33%)' : undefined,
+            discountReason: applyDivisasDiscount ? `Pago en Divisas (${divisasPctLabel}%)` : undefined,
             hideDiscount: applyDivisasDiscount,
             total: subtotalAfterDiscount,
             serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
@@ -882,6 +892,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onPrint={handlePrintSubAccount}
                         onVoid={openVoidModal}
                         canCharge={canCharge}
+                        divisasRate={divisasRate}
                     />
                 ))}
 

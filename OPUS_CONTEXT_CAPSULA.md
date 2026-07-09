@@ -11436,3 +11436,40 @@ Precedencia: lista de precios del canal → (promo encima) → base. WINK y
 PedidosYa confían en el precio mostrado (no re-derivan server-side, igual
 que hoy). Gates: tsc 0 · vitest 508. Requiere migrate deploy (safe) + prender
 el flag priceListsEnabled.
+
+## §87 Descuento de divisas editable + piso $3 del fee de delivery (2026-07-09)
+
+Pedidos de Omar: (1) el descuento por pagar en divisas (33,33% fijo) debe ser
+editable por dueño/auditor/admin (depende de la situación cambiaria); (2) el
+fee de delivery nunca puede bajar de $3 en divisas (se le paga al motorizado
+sí o sí).
+
+### Config editable (SystemConfig key `divisas_discount_percent`)
+- `src/lib/sales/divisas-config.ts` (PURO, 3 grupos de tests): default
+  33,33%, `normalizeDivisasPercent` clamp [0, 90], `divisasDiscountRate`
+  (% → fracción), `MIN_DELIVERY_FEE_DIVISAS = 3`.
+- Actions en system-config: `getDivisasDiscountPercentAction` (default si no
+  hay config) + `setDivisasDiscountPercentAction` gated a
+  OWNER/AUDITOR/ADMIN_MANAGER.
+- UI en `/dashboard/config/pos`: input % editable (solo esos roles; los demás
+  ven el valor readonly).
+
+### Threading del rate (antes 33,33% hardcodeado como `/3`)
+- Server (`pos.actions.ts`): `loadDivisasDiscountRate(db)` desde SystemConfig.
+  `calculateCartTotals(..., divisasRate)` (delivery + pickup directo) y
+  `paySubAccountAction` (subcuenta) usan el rate autoritativo del server. El
+  descuento aplica a los ÍTEMS, nunca al fee.
+- `computeDivisasSettlement(..., discountRate?)` (mesa): netFactor = 1 - rate.
+  Default 1/3 (tests históricos intactos). +2 tests.
+- Cliente (restaurante, mesero, delivery, SubAccountPanel): cargan el % con
+  `getDivisasDiscountPercentAction` en mount; todos los `/3` y textos
+  "33,33%" pasaron a `* divisasRate` y `{divisasPctLabel}%`.
+
+### Piso $3 del fee de delivery (§87)
+Ya era estructural: en divisas el fee es un swap fijo NORMAL($4.5)→DIVISAS($3)
+y el descuento (editable) aplica solo a ítems, así que el fee nunca baja de $3
+por más que cambie el %. Se blindó: `DELIVERY_FEE_DIVISAS = Math.max(
+MIN_DELIVERY_FEE_DIVISAS, 3)` + comentario del invariante. (La promo "Delivery
+Gratis" es aparte: decisión explícita de regalar el envío, no un descuento.)
+
+Sin migración (solo lógica/UI + SystemConfig). Gates: tsc 0 · vitest 514.
