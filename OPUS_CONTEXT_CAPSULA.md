@@ -11512,3 +11512,31 @@ casos (cliente réplica vs helper): 0 mismatches.
   cuadran al centavo.
 
 Sin migración. Gates: tsc 0 · vitest 524.
+
+## §89 Categorías del menú configurables por el comercio (2026-07-09)
+
+Pedido de Omar: al crear un producto las categorías estaban preestablecidas
+(solo se sembraban 4 con ensureBasicCategoriesAction); no había forma de que
+el comercio creara/renombrara/eliminara sus propias categorías.
+
+### Actions (menu.actions.ts, gated OWNER/ADMIN_MANAGER/OPS_MANAGER)
+- `createMenuCategoryAction({name, description?})`: valida nombre único
+  (entre no borradas), sortOrder = max+1.
+- `updateMenuCategoryAction(id, {name?, description?, sortOrder?})`: rename
+  con chequeo de duplicado.
+- `deleteMenuCategoryAction(id)`: soft-delete (deletedAt + isActive:false).
+  BLOQUEA si la categoría tiene productos vivos (`menuItem.count` categoryId
+  + deletedAt null > 0) → hay que mover/eliminar los productos primero (evita
+  items huérfanos en el POS).
+- `getCategoriesAction` y `getFullMenuAction` ahora filtran `deletedAt: null`.
+
+### UI (/dashboard/menu)
+- Botón "Categorías" en el header → modal de gestión: lista con contador de
+  productos, renombrar inline (lápiz), eliminar (bloqueado con tooltip si
+  tiene productos), y crear nueva abajo.
+- Link "+ Nueva" junto al selector de categoría en AMBOS formularios de
+  producto (plato preparado y reventa) → abre el mismo modal, para crear la
+  categoría sin salir del flujo.
+
+Sin migración (MenuCategory ya tenía name/description/sortOrder/isActive/
+deletedAt). Gates: tsc 0 · vitest 524.

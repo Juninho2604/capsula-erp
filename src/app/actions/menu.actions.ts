@@ -46,6 +46,7 @@ export async function getFullMenuAction() {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
         const categories = await db.menuCategory.findMany({
+            where: { deletedAt: null },
             include: {
                 items: {
                     orderBy: { name: 'asc' },
@@ -86,11 +87,103 @@ export async function getCategoriesAction() {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
         const categories = await db.menuCategory.findMany({
+            where: { deletedAt: null },
             orderBy: { sortOrder: 'asc' }
         });
         return { success: true, data: categories };
     } catch (error) {
         return { success: false, message: 'Error al cargar categorías' };
+    }
+}
+
+// ============================================================================
+// CRUD CATEGORÍAS DEL MENÚ (§89 — configurables por el comercio)
+// ============================================================================
+
+const CATEGORY_MANAGER_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+
+async function assertCategoryManager() {
+    const session = await getSession();
+    if (!session || !CATEGORY_MANAGER_ROLES.includes(session.role)) return null;
+    return session;
+}
+
+export async function createMenuCategoryAction(data: { name: string; description?: string }): Promise<ActionResult> {
+    try {
+        if (!(await assertCategoryManager())) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const name = data.name?.trim();
+        if (!name) return { success: false, message: 'El nombre de la categoría es obligatorio' };
+        const dupe = await db.menuCategory.findFirst({ where: { name, deletedAt: null } });
+        if (dupe) return { success: false, message: `Ya existe una categoría "${name}"` };
+        const maxSort = await db.menuCategory.aggregate({ _max: { sortOrder: true } });
+        const category = await db.menuCategory.create({
+            data: {
+                tenantId,
+                name,
+                description: data.description?.trim() || null,
+                sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
+                isActive: true,
+            },
+        });
+        revalidatePath('/dashboard/menu');
+        return { success: true, message: 'Categoría creada', data: category };
+    } catch (error) {
+        console.error('createMenuCategoryAction', error);
+        return { success: false, message: 'Error al crear la categoría' };
+    }
+}
+
+export async function updateMenuCategoryAction(id: string, data: { name?: string; description?: string | null; sortOrder?: number }): Promise<ActionResult> {
+    try {
+        if (!(await assertCategoryManager())) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        if (data.name !== undefined) {
+            const name = data.name.trim();
+            if (!name) return { success: false, message: 'El nombre no puede quedar vacío' };
+            const dupe = await db.menuCategory.findFirst({ where: { name, deletedAt: null, id: { not: id } } });
+            if (dupe) return { success: false, message: `Ya existe una categoría "${name}"` };
+        }
+        const res = await db.menuCategory.updateMany({
+            where: { id, deletedAt: null },
+            data: {
+                ...(data.name !== undefined && { name: data.name.trim() }),
+                ...(data.description !== undefined && { description: data.description?.trim() || null }),
+                ...(data.sortOrder !== undefined && Number.isFinite(data.sortOrder) && { sortOrder: data.sortOrder }),
+            },
+        });
+        if (res.count === 0) return { success: false, message: 'Categoría no encontrada' };
+        revalidatePath('/dashboard/menu');
+        return { success: true, message: 'Categoría actualizada' };
+    } catch (error) {
+        console.error('updateMenuCategoryAction', error);
+        return { success: false, message: 'Error al actualizar la categoría' };
+    }
+}
+
+export async function deleteMenuCategoryAction(id: string): Promise<ActionResult> {
+    try {
+        if (!(await assertCategoryManager())) return { success: false, message: 'No autorizado' };
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        // No se puede borrar una categoría con productos vivos: el POS quedaría
+        // con items huérfanos. Hay que mover/eliminar los productos primero.
+        const itemCount = await db.menuItem.count({ where: { categoryId: id, deletedAt: null } });
+        if (itemCount > 0) {
+            return { success: false, message: `No se puede eliminar: la categoría tiene ${itemCount} producto(s). Movelos a otra categoría o eliminalos primero.` };
+        }
+        const res = await db.menuCategory.updateMany({
+            where: { id, deletedAt: null },
+            data: { deletedAt: new Date(), isActive: false },
+        });
+        if (res.count === 0) return { success: false, message: 'Categoría no encontrada' };
+        revalidatePath('/dashboard/menu');
+        return { success: true, message: 'Categoría eliminada' };
+    } catch (error) {
+        console.error('deleteMenuCategoryAction', error);
+        return { success: false, message: 'Error al eliminar la categoría' };
     }
 }
 

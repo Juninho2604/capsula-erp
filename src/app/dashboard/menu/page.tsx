@@ -22,6 +22,9 @@ import {
     getCategoriesAction,
     createRecipeStubForMenuItemAction,
     createResaleProductAction,
+    createMenuCategoryAction,
+    updateMenuCategoryAction,
+    deleteMenuCategoryAction,
 } from '@/app/actions/menu.actions';
 import { getAreasAction } from '@/app/actions/areas.actions';
 import { calcPedidosYaPrice } from '@/lib/pedidosya-price';
@@ -59,6 +62,56 @@ export default function MenuManagementPage() {
         description: '',
     });
     const [isSavingResale, setIsSavingResale] = useState(false);
+
+    // ── Gestión de categorías (§89 — configurables por el comercio) ──
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [savingCategory, setSavingCategory] = useState(false);
+    const [editingCatId, setEditingCatId] = useState<string | null>(null);
+    const [editingCatName, setEditingCatName] = useState('');
+
+    const handleCreateCategory = async () => {
+        const name = newCategoryName.trim();
+        if (!name) return;
+        setSavingCategory(true);
+        const res = await createMenuCategoryAction({ name });
+        setSavingCategory(false);
+        if (res.success && res.data) {
+            setCategories((prev) => [...prev, { ...(res.data as any), items: [] }]);
+            setNewCategoryName('');
+            toast.success(`Categoría "${name}" creada`);
+        } else {
+            toast.error(res.message || 'Error creando categoría');
+        }
+    };
+
+    const handleRenameCategory = async (id: string) => {
+        const name = editingCatName.trim();
+        if (!name) return;
+        const res = await updateMenuCategoryAction(id, { name });
+        if (res.success) {
+            setCategories((prev) => prev.map((c: any) => (c.id === id ? { ...c, name } : c)));
+            setEditingCatId(null);
+            toast.success('Categoría actualizada');
+        } else {
+            toast.error(res.message || 'Error actualizando');
+        }
+    };
+
+    const handleDeleteCategory = async (id: string, name: string, itemCount: number) => {
+        if (itemCount > 0) {
+            toast.error(`"${name}" tiene ${itemCount} producto(s). Movelos o eliminalos antes de borrar la categoría.`);
+            return;
+        }
+        if (!confirm(`¿Eliminar la categoría "${name}"?`)) return;
+        const res = await deleteMenuCategoryAction(id);
+        if (res.success) {
+            setCategories((prev) => prev.filter((c: any) => c.id !== id));
+            toast.success('Categoría eliminada');
+        } else {
+            toast.error(res.message || 'Error eliminando');
+        }
+    };
 
     // Estado para edición inline de nombre
     const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -285,6 +338,13 @@ export default function MenuManagementPage() {
                     <p className="mt-1 text-sm text-capsula-ink-soft">Administra precios, productos y disponibilidad</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={() => setShowCategoryModal(true)}
+                        className="pos-btn-secondary px-5 py-3 text-sm inline-flex items-center gap-2"
+                        title="Crear, renombrar y eliminar categorías del menú"
+                    >
+                        <Pencil className="h-4 w-4" /> Categorías
+                    </button>
                     <a
                         href="/dashboard/menu/listas-precios"
                         className="pos-btn-secondary px-5 py-3 text-sm inline-flex items-center gap-2"
@@ -554,9 +614,18 @@ export default function MenuManagementPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
-                                        Categoría
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                            Categoría
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCategoryModal(true)}
+                                            className="text-[10px] font-semibold text-capsula-coral hover:underline inline-flex items-center gap-0.5"
+                                        >
+                                            <PlusIcon className="h-3 w-3" /> Nueva
+                                        </button>
+                                    </div>
                                     <select
                                         className="pos-input w-full"
                                         value={newItem.categoryId}
@@ -643,9 +712,18 @@ export default function MenuManagementPage() {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">
-                                        Categoría del menú *
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                            Categoría del menú *
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCategoryModal(true)}
+                                            className="text-[10px] font-semibold text-capsula-coral hover:underline inline-flex items-center gap-0.5"
+                                        >
+                                            <PlusIcon className="h-3 w-3" /> Nueva
+                                        </button>
+                                    </div>
                                     <select
                                         value={resaleItem.categoryId}
                                         onChange={e => setResaleItem({ ...resaleItem, categoryId: e.target.value })}
@@ -774,6 +852,97 @@ export default function MenuManagementPage() {
                             >
                                 {isSavingResale ? 'Creando…' : 'Crear producto'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Gestión de Categorías (§89) */}
+            {showCategoryModal && (
+                <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between shrink-0">
+                            <div>
+                                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Categorías del menú</h3>
+                                <p className="text-xs text-capsula-ink-muted mt-0.5">Crea, renombra y elimina las categorías de tu carta.</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowCategoryModal(false); setEditingCatId(null); }}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center shrink-0"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-2 overflow-y-auto">
+                            {categories.length === 0 && (
+                                <p className="text-sm text-capsula-ink-muted text-center py-4">Aún no hay categorías. Crea la primera abajo.</p>
+                            )}
+                            {categories.map((cat: any) => {
+                                const itemCount = (cat.items ?? []).length;
+                                return (
+                                    <div key={cat.id} className="flex items-center gap-2 rounded-xl border border-capsula-line bg-capsula-ivory-surface px-3 py-2">
+                                        {editingCatId === cat.id ? (
+                                            <>
+                                                <input
+                                                    value={editingCatName}
+                                                    onChange={(e) => setEditingCatName(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') handleRenameCategory(cat.id); }}
+                                                    autoFocus
+                                                    className="flex-1 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink px-2 py-1.5 text-sm"
+                                                />
+                                                <button onClick={() => handleRenameCategory(cat.id)} className="p-1.5 rounded-lg text-[#2F6B4E] dark:text-[#6FB88F] hover:bg-capsula-navy-soft" title="Guardar">
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => setEditingCatId(null)} className="p-1.5 rounded-lg text-capsula-ink-muted hover:bg-capsula-ivory-alt" title="Cancelar">
+                                                    <XIcon className="h-4 w-4" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-capsula-ink truncate">{cat.name}</p>
+                                                    <p className="text-[10px] text-capsula-ink-faint">{itemCount} producto(s)</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}
+                                                    className="p-1.5 rounded-lg text-capsula-ink-muted hover:text-capsula-navy-deep hover:bg-capsula-navy-soft"
+                                                    title="Renombrar"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteCategory(cat.id, cat.name, itemCount)}
+                                                    className={`p-1.5 rounded-lg ${itemCount > 0 ? 'text-capsula-ink-faint cursor-not-allowed' : 'text-capsula-ink-muted hover:text-capsula-coral hover:bg-capsula-coral/10'}`}
+                                                    title={itemCount > 0 ? 'Tiene productos: movelos primero' : 'Eliminar'}
+                                                >
+                                                    <XIcon className="h-3.5 w-3.5" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="border-t border-capsula-line p-4 shrink-0">
+                            <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Nueva categoría</label>
+                            <div className="flex gap-2">
+                                <input
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory(); }}
+                                    placeholder="Ej: Entradas, Cócteles, Postres…"
+                                    className="flex-1 rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink px-3 py-2 text-sm"
+                                />
+                                <button
+                                    onClick={handleCreateCategory}
+                                    disabled={!newCategoryName.trim() || savingCategory}
+                                    className="pos-btn px-4 py-2 text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    <PlusIcon className="h-4 w-4" /> {savingCategory ? '…' : 'Crear'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
