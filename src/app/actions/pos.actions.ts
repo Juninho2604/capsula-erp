@@ -40,6 +40,7 @@ import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
+import { computeDeliveryTotals } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
@@ -454,71 +455,47 @@ function calculateCartTotals(
 ) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
-    // DELIVERY: $4.5 fee normal, $3 en divisas. Sin 10% servicio.
+    // DELIVERY: envío $4.5 normal / $3 divisas (piso). Sin 10% servicio.
+    // §88: la matemática vive en computeDeliveryTotals (pura + testeada), la
+    // MISMA regla que usa el POS → cliente y server no pueden divergir. La
+    // cortesía en % descuenta SOLO los ítems; el envío se cobra completo.
     if (data.orderType === 'DELIVERY') {
-        let subtotal: number;
-        let discount: number;
-        let total: number;
-        let discountReason = '';
+        const dt = (data.discountType === 'DIVISAS_33' || data.discountType === 'CORTESIA_100' || data.discountType === 'CORTESIA_PERCENT')
+            ? data.discountType : 'NONE';
+        const { subtotal, total: preRoundTotal, deliveryFee } = computeDeliveryTotals({
+            itemsSubtotal,
+            discountType: dt,
+            discountPercent: data.discountType === 'CORTESIA_PERCENT' ? data.discountPercent : null,
+            divisasBase: data.discountType === 'DIVISAS_33' ? (data.divisasUsdAmount ?? null) : null,
+            divisasRate,
+            freeDelivery: data.freeDelivery === true,
+            feeNormal: DELIVERY_FEE_NORMAL,
+            feeDivisas: DELIVERY_FEE_DIVISAS,
+        });
 
-        if (data.discountType === 'DIVISAS_33') {
-            // Divisas parcial: solo la porción en USD recibe el descuento. El
-            // descuento aplica a los ÍTEMS; el fee de delivery baja de NORMAL a
-            // DIVISAS ($3) y ahí queda su piso (nunca menos — se le paga al
-            // motorizado sí o sí). El % es editable (§87) pero NO toca el fee.
+        // Razón auditable del descuento.
+        let discountReason = '';
+        if (dt === 'DIVISAS_33') {
             const divisasBase = data.divisasUsdAmount ?? itemsSubtotal;
             const pctLabel = Math.round(divisasRate * 10000) / 100;
-            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = roundCents(divisasBase * divisasRate + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS));
-            total = subtotal - discount;
             discountReason = divisasBase < itemsSubtotal - 0.01
-                ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)}) - Delivery $${DELIVERY_FEE_DIVISAS}`
-                : `Pago en Divisas (${pctLabel}%) - Delivery $${DELIVERY_FEE_DIVISAS}`;
-        } else if (data.discountType === 'CORTESIA_100') {
-            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = subtotal;
-            total = 0;
+                ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)}) - Delivery $${deliveryFee}`
+                : `Pago en Divisas (${pctLabel}%) - Delivery $${deliveryFee}`;
+        } else if (dt === 'CORTESIA_100') {
             discountReason = 'Cortesía Autorizada (100%)';
-        } else if (data.discountType === 'CORTESIA_PERCENT' && data.discountPercent != null) {
-            const pct = Math.min(100, Math.max(0, data.discountPercent)) / 100;
-            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = roundCents(subtotal * pct);
-            total = subtotal - discount;
+        } else if (dt === 'CORTESIA_PERCENT' && data.discountPercent != null) {
             discountReason = `Cortesía Autorizada (${data.discountPercent}%)`;
-        } else {
-            subtotal = itemsSubtotal + DELIVERY_FEE_NORMAL;
-            discount = 0;
-            total = subtotal;
+        }
+        if (data.freeDelivery === true && deliveryFee === 0 && dt !== 'CORTESIA_100') {
+            discountReason = discountReason
+                ? `${discountReason} + Delivery Gratis (Promo)`
+                : 'Delivery Gratis (Promo)';
         }
 
-        // ──────────────────────────────────────────────────────────────────
-        // PROMO "Delivery Gratis" — aditivo. Calcula el fee REMANENTE después
-        // de aplicar el descuento previo, y lo waivea sumándolo a `discount`.
-        // El `subtotal` se mantiene (sigue incluyendo el fee bruto, para no
-        // distorsionar reportes de "precio de lista"). Solo se mueve el
-        // `discount`, `total` y `discountReason`. Si freeDelivery está
-        // off/undefined, este bloque es no-op total.
-        if (data.freeDelivery === true) {
-            const pct = data.discountType === 'CORTESIA_PERCENT' && data.discountPercent != null
-                ? Math.min(100, Math.max(0, data.discountPercent)) / 100
-                : null;
-            const remainingFee =
-                data.discountType === 'CORTESIA_100' ? 0                                  // ya está todo descontado
-                : data.discountType === 'DIVISAS_33' ? DELIVERY_FEE_DIVISAS                // queda el fee divisas
-                : pct !== null ? roundCents(DELIVERY_FEE_NORMAL * (1 - pct))               // queda lo no descontado
-                : DELIVERY_FEE_NORMAL;                                                     // sin descuento previo
-
-            if (remainingFee > 0) {
-                discount = roundCents(discount + remainingFee);
-                total = roundCents(total - remainingFee);
-                if (total < 0) total = 0;
-                discountReason = discountReason
-                    ? `${discountReason} + Delivery Gratis (Promo)`
-                    : 'Delivery Gratis (Promo)';
-            }
-        }
-
-        total = roundToWhole(total, data.paymentMethod, exactTotal);
+        const total = roundToWhole(preRoundTotal, data.paymentMethod, exactTotal);
+        // El descuento reportado reconcilia con el total realmente cobrado
+        // (post-redondeo): subtotal - total. Así recibo, venta y caja cuadran.
+        const discount = roundCents(subtotal - total);
         const change = (data.amountPaid || 0) - total;
         return { subtotal, discount, total, change: change > 0 ? change : 0, discountReason };
     }

@@ -11473,3 +11473,42 @@ MIN_DELIVERY_FEE_DIVISAS, 3)` + comentario del invariante. (La promo "Delivery
 Gratis" es aparte: decisión explícita de regalar el envío, no un descuento.)
 
 Sin migración (solo lógica/UI + SystemConfig). Gates: tsc 0 · vitest 514.
+
+## §88 BUG de descuadre en delivery: cortesía % descontaba el envío (2026-07-09)
+
+Reportado por Omar: un delivery de 2 shawarmas "no daba" en el cierre.
+Auditoría a fondo (cliente vs servidor) → 4 discrepancias, la principal
+CONFIRMADA y con impacto en caja.
+
+### Bug principal — CORTESÍA en % sobre delivery
+El POS (cliente) descontaba la cortesía % SOLO a los ítems (envío completo);
+el servidor la descontaba a ítems + envío. Con cortesía 50% sobre 2 shawarmas
+($16 + $4.5 envío): cajera cobra/imprime $12.50, sistema registra $10.25 →
+descuadre de $2.25 (= envío × %cortesía) y un "vuelto" fantasma. En el cierre,
+la caja tenía más que el reporte.
+
+Decisión del dueño (09/07): la cortesía % descuenta SOLO los productos; el
+envío se le paga al motorizado siempre. Cortesía 100% (botón dedicado) = comp
+total. Se corrigió el SERVIDOR para que coincida con el cliente y la política.
+
+### Fix estructural — helper puro compartido
+`src/lib/sales/delivery-totals.ts` (`computeDeliveryTotals`, 11 tests):
+encoda las reglas (cortesía a ítems, envío con piso $3 en divisas, promo
+Delivery Gratis waivea envío, cortesía 100% comp total). El servidor
+(`calculateCartTotals` rama DELIVERY) ahora usa este helper → una sola fuente
+de verdad, cliente y server no pueden divergir. Verificado con matriz de 960
+casos (cliente réplica vs helper): 0 mismatches.
+
+### Discrepancias secundarias corregidas
+- Redondeo por método: el cliente redondeaba CASH_BS y omitía CASH_EUR (al
+  revés del server). Alineado: divisas efectivo (USD/EUR/Zelle) redondean al
+  dólar; Bs no.
+- Recibo: en cortesía + Delivery Gratis el descuento doble-contaba el envío
+  (no reconciliaba). Ahora descuento = solo ítems; el envío va en su línea
+  (0 si gratis) → subtotal - descuento + envío = total siempre.
+- Cortesía % = 100 por el campo de %: el cliente regalaba el envío; ahora lo
+  cobra (para "todo gratis" está Cortesía 100%). Coincide con el server.
+- `discount` guardado = subtotal - total POST-redondeo → recibo, venta y caja
+  cuadran al centavo.
+
+Sin migración. Gates: tsc 0 · vitest 524.

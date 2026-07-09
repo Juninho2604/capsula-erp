@@ -361,7 +361,10 @@ export default function POSDeliveryPage() {
         if (featureFlags.exactCashSaleTip && (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')) {
             return Math.ceil(amount);
         }
-        return (method === 'CASH_USD' || method === 'ZELLE' || method === 'CASH_BS') ? Math.round(amount) : amount;
+        // §88: alinear con el servidor (isCashDivisaMethod). Divisas efectivo
+        // (USD/EUR/Zelle) redondean al dólar entero; Bs NO (el monto en Bs es
+        // exacto). Antes redondeaba CASH_BS y omitía CASH_EUR → descuadre.
+        return (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE') ? Math.round(amount) : amount;
     };
     const isDivisasMethod = (m: string) => m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
     // Bs methods: user enters amount in Bs, needs conversion to USD
@@ -385,8 +388,10 @@ export default function POSDeliveryPage() {
         : discountType === 'CORTESIA_PERCENT' ? cartSubtotal * (1 - cortesiaPercentNum / 100)
         : cartSubtotal;
     const finalTotal = roundToWhole(
+        // §88: cortesía en % descuenta SOLO ítems; el envío se cobra siempre
+        // (para "todo gratis" está la Cortesía 100%). Coincide con el server.
         (discountType === 'CORTESIA_100') ? 0
-        : discountType === 'CORTESIA_PERCENT' ? itemsAfterDiscount + (cortesiaPercentNum >= 100 ? 0 : deliveryFee)
+        : discountType === 'CORTESIA_PERCENT' ? itemsAfterDiscount + deliveryFee
         : itemsAfterDiscount + deliveryFee,
         paymentMethod
     );
@@ -494,24 +499,11 @@ export default function POSDeliveryPage() {
                         modifiers: i.modifiers.map(m => m.name)
                     })),
                     subtotal: cartSubtotal,
-                    discount: (() => {
-                        // Sumar fee waiveado si la promo está activa (excepto cuando
-                        // CORTESIA_100 ya descontó todo, o cuando NO había cargo previo)
-                        const freeDeliveryDelta = freeDelivery && discountType !== 'CORTESIA_100'
-                            ? (discountType === 'DIVISAS_33'
-                                ? DELIVERY_FEE_DIVISAS
-                                : discountType === 'CORTESIA_PERCENT'
-                                    ? DELIVERY_FEE_NORMAL * (1 - cortesiaPercentNum / 100)
-                                    : DELIVERY_FEE_NORMAL)
-                            : 0;
-                        if (discountType === 'DIVISAS_33' && isPagoDivisas) {
-                            const base = isMixedMode ? (divisasUsdAmount ?? cartSubtotal) : cartSubtotal;
-                            return base * divisasRate + (DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS) + freeDeliveryDelta;
-                        }
-                        if (discountType === 'CORTESIA_100') return cartSubtotal + DELIVERY_FEE_NORMAL;
-                        if (discountType === 'CORTESIA_PERCENT') return (cartSubtotal * cortesiaPercentNum / 100) + freeDeliveryDelta;
-                        return 0 + freeDeliveryDelta;
-                    })(),
+                    // §88: descuento = solo el de los ÍTEMS (subtotal - ítems
+                    // netos). El envío va en su propia línea (0 si es gratis o
+                    // cortesía 100%). Así subtotal - descuento + envío = total
+                    // SIEMPRE reconcilia, incluso en cortesía + delivery gratis.
+                    discount: Math.round((cartSubtotal - itemsAfterDiscount) * 100) / 100,
                     hideDiscount: discountType === 'DIVISAS_33',
                     discountReason: (() => {
                         const base = discountType === 'CORTESIA_100' ? 'Cortesía Autorizada (100%)'
