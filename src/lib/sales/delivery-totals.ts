@@ -9,7 +9,8 @@
  *   - El costo de ENVÍO se le paga al motorizado sí o sí:
  *       · Divisas: envío = feeDivisas ($3), y NUNCA menos.
  *       · Cortesía en % (parcial): el descuento aplica SOLO a los productos;
- *         el envío se cobra COMPLETO.
+ *         el envío se cobra COMPLETO — salvo que se marque `discountIncludesDelivery`
+ *         (§91), en cuyo caso el % también descuenta el envío (descuento global).
  *       · Cortesía 100%: comp total (todo gratis, incluido el envío).
  *       · Promo "Delivery Gratis": waivea el envío remanente (decisión
  *         explícita de regalar el envío).
@@ -29,6 +30,13 @@ export interface DeliveryTotalsInput {
     discountType: DeliveryDiscountType;
     /** Solo CORTESIA_PERCENT: 0–100. */
     discountPercent?: number | null;
+    /**
+     * §91 — Cortesía GLOBAL: aplica el % de cortesía TAMBIÉN al envío
+     * (descuento global). Solo tiene efecto con `CORTESIA_PERCENT`; con
+     * `CORTESIA_100` el envío ya va gratis y con `DIVISAS_33` el envío mantiene
+     * su piso al motorizado. Default/undefined = false → envío completo (§88).
+     */
+    discountIncludesDelivery?: boolean;
     /** Solo DIVISAS_33 en pago mixto: porción en divisas que recibe el
      *  descuento. null/undefined = todo el subtotal (pago full divisas). */
     divisasBase?: number | null;
@@ -63,7 +71,13 @@ export function computeDeliveryTotals(input: DeliveryTotalsInput): DeliveryTotal
 
     // Envío base según el tipo de pago (divisas usa su piso). Promo gratis → 0.
     const feeBase = input.discountType === 'DIVISAS_33' ? feeDivisasFloor : feeNormal;
-    const deliveryFee = input.freeDelivery ? 0 : feeBase;
+    // §91: cortesía global → el % también descuenta el envío. Solo aplica a
+    // CORTESIA_PERCENT; el resto de tipos mantienen su envío completo/piso.
+    const feeAfterCourtesy =
+        input.discountType === 'CORTESIA_PERCENT' && input.discountIncludesDelivery
+            ? feeBase * (1 - pct)
+            : feeBase;
+    const deliveryFee = input.freeDelivery ? 0 : round2(feeAfterCourtesy);
 
     // Descuento sobre los ÍTEMS (nunca sobre el envío, salvo comp total).
     let itemsAfterDiscount: number;

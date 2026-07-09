@@ -132,6 +132,14 @@ export interface CreateOrderData {
      * `undefined` → comportamiento idéntico al previo.
      */
     freeDelivery?: boolean;
+    /**
+     * §91 — Cortesía GLOBAL: cuando hay una cortesía en % (`CORTESIA_PERCENT`),
+     * aplica ese mismo % TAMBIÉN al costo de envío (descuento global). Solo
+     * afecta orderType = DELIVERY con `discountType = CORTESIA_PERCENT`. Con
+     * `CORTESIA_100` el envío ya va gratis; con divisas el envío mantiene su
+     * piso. Default `false`/`undefined` → envío completo (comportamiento §88).
+     */
+    discountIncludesDelivery?: boolean;
     // Hora de entrega solicitada (PICKUP/DELIVERY). ISO string desde el
     // cliente; la action la persiste como DateTime y la encola a la
     // comanda de cocina vía `enqueueKitchenCommand` cuando esté seteada.
@@ -452,7 +460,7 @@ function roundToWhole(amount: number, paymentMethod?: string, exactTotal = false
 }
 
 function calculateCartTotals(
-    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery'>,
+    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery' | 'discountIncludesDelivery'>,
     exactTotal = false,
     // Fracción de descuento por divisas (§87). Default 1/3 (33,33% histórico).
     // Aplica SOLO a los ítems; el fee de delivery mantiene su piso de $3.
@@ -474,6 +482,7 @@ function calculateCartTotals(
             divisasBase: data.discountType === 'DIVISAS_33' ? (data.divisasUsdAmount ?? null) : null,
             divisasRate,
             freeDelivery: data.freeDelivery === true,
+            discountIncludesDelivery: data.discountIncludesDelivery === true,
             feeNormal: DELIVERY_FEE_NORMAL,
             feeDivisas: DELIVERY_FEE_DIVISAS,
         });
@@ -489,7 +498,9 @@ function calculateCartTotals(
         } else if (dt === 'CORTESIA_100') {
             discountReason = 'Cortesía Autorizada (100%)';
         } else if (dt === 'CORTESIA_PERCENT' && data.discountPercent != null) {
-            discountReason = `Cortesía Autorizada (${data.discountPercent}%)`;
+            discountReason = data.discountIncludesDelivery === true
+                ? `Cortesía Autorizada (${data.discountPercent}% global — incl. envío)`
+                : `Cortesía Autorizada (${data.discountPercent}%)`;
         }
         if (data.freeDelivery === true && deliveryFee === 0 && dt !== 'CORTESIA_100') {
             discountReason = discountReason

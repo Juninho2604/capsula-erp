@@ -142,6 +142,10 @@ export default function POSDeliveryPage() {
     // divisas). Compatible con cualquier `discountType`. Default OFF: si no se
     // activa, la lógica de cálculo se comporta idéntico al previo.
     const [freeDelivery, setFreeDelivery] = useState(false);
+    // §91 — Cortesía GLOBAL: cuando hay una cortesía en %, aplicar ese mismo %
+    // TAMBIÉN al envío (descuento global). Solo relevante con CORTESIA_PERCENT;
+    // con Cortesía 100% el envío ya va gratis. Default OFF → envío completo (§88).
+    const [discountIncludesDelivery, setDiscountIncludesDelivery] = useState(false);
 
     // Descuento por divisas configurable (§87). Del server; default 1/3. Aplica
     // SOLO a ítems — el fee de delivery mantiene su piso de $3 al motorizado.
@@ -381,18 +385,25 @@ export default function POSDeliveryPage() {
         : undefined; // undefined = full total gets -33%
     const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
     const deliveryFeeBase = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    // §91: cortesía global → el % también descuenta el envío. Solo con
+    // CORTESIA_PERCENT + toggle activo. Coincide con computeDeliveryTotals.
+    const cortesiaGlobalActiva = discountType === 'CORTESIA_PERCENT' && discountIncludesDelivery;
+    const deliveryFeeAfterCortesia = cortesiaGlobalActiva
+        ? Math.round(deliveryFeeBase * (1 - cortesiaPercentNum / 100) * 100) / 100
+        : deliveryFeeBase;
     // Si freeDelivery está activo el fee efectivo es 0 (la promo lo waivea).
-    const deliveryFee = freeDelivery ? 0 : deliveryFeeBase;
+    const deliveryFee = freeDelivery ? 0 : deliveryFeeAfterCortesia;
     const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas
         ? cartSubtotal - (isMixedMode ? (divisasUsdAmount ?? 0) * divisasRate : cartSubtotal * divisasRate)
         : discountType === 'CORTESIA_100' ? 0
         : discountType === 'CORTESIA_PERCENT' ? cartSubtotal * (1 - cortesiaPercentNum / 100)
         : cartSubtotal;
     const finalTotal = roundToWhole(
-        // §88: cortesía en % descuenta SOLO ítems; el envío se cobra siempre
-        // (para "todo gratis" está la Cortesía 100%). Coincide con el server.
+        // §88: cortesía en % descuenta SOLO ítems; el envío se cobra siempre —
+        // salvo cortesía global (§91), donde el envío ya viene descontado en
+        // `deliveryFee`. Para "todo gratis" está la Cortesía 100%. Coincide con
+        // el server (computeDeliveryTotals).
         (discountType === 'CORTESIA_100') ? 0
-        : discountType === 'CORTESIA_PERCENT' ? itemsAfterDiscount + deliveryFee
         : itemsAfterDiscount + deliveryFee,
         paymentMethod
     );
@@ -462,6 +473,7 @@ export default function POSDeliveryPage() {
                 discountType,
                 discountPercent: discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum : undefined,
                 freeDelivery,
+                discountIncludesDelivery: discountType === 'CORTESIA_PERCENT' ? discountIncludesDelivery : undefined,
                 authorizedById: authorizedManager?.id,
                 notes: `Dirección: ${customerAddress}`
             });
@@ -508,8 +520,9 @@ export default function POSDeliveryPage() {
                     hideDiscount: discountType === 'DIVISAS_33',
                     discountReason: (() => {
                         const base = discountType === 'CORTESIA_100' ? 'Cortesía Autorizada (100%)'
-                            : discountType === 'CORTESIA_PERCENT' ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
-                            : undefined;
+                            : discountType === 'CORTESIA_PERCENT'
+                                ? `Cortesía Autorizada (${cortesiaPercentNum}%${discountIncludesDelivery ? ' global — incl. envío' : ''})`
+                                : undefined;
                         if (freeDelivery && discountType !== 'CORTESIA_100') {
                             return base ? `${base} + Delivery Gratis (Promo)` : 'Delivery Gratis (Promo)';
                         }
@@ -534,13 +547,14 @@ export default function POSDeliveryPage() {
                 setMixedPayments([]); setMixedPaymentsComplete(false); setIsMixedMode(false);
                 setDiscountType('NONE'); setAuthorizedManager(null);
                 setFreeDelivery(false);
+                setDiscountIncludesDelivery(false);
             } else toast.error(result.message ?? 'Error al procesar el pedido');
         } catch (e) { console.error(e); toast.error('Error al procesar el pedido'); } finally { setIsProcessing(false); }
     };
 
     const handleDiscountSelect = (t: string) => {
         if (t === 'CORTESIA_100') { setPinInput(''); setPinError(''); setCortesiaPercent('100'); setShowPinModal(true); }
-        else { setDiscountType(t as any); setAuthorizedManager(null); }
+        else { setDiscountType(t as any); setAuthorizedManager(null); setDiscountIncludesDelivery(false); }
     };
     const handlePinSubmit = async () => {
         const r = await validateManagerPinAction(pinInput);
@@ -906,6 +920,11 @@ export default function POSDeliveryPage() {
                                         <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>{' '}
                                         <span className="font-semibold text-[#2F6B4E]">GRATIS</span>
                                     </span>
+                                ) : cortesiaGlobalActiva ? (
+                                    <span className="tabular-nums">
+                                        <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>{' '}
+                                        <span className="font-semibold text-capsula-coral">+${deliveryFee.toFixed(2)}</span>
+                                    </span>
                                 ) : (
                                     <span className="tabular-nums text-capsula-ink">+${deliveryFee.toFixed(2)}</span>
                                 )}
@@ -977,6 +996,28 @@ export default function POSDeliveryPage() {
                                 <div className="text-center text-[11px] font-medium text-capsula-coral">
                                     Auth: {authorizedManager.name}
                                 </div>
+                            )}
+
+                            {/* §91 — Cortesía global: el % también descuenta el envío.
+                                Solo visible cuando hay cortesía en % (con 100% el
+                                envío ya va gratis). */}
+                            {discountType === 'CORTESIA_PERCENT' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDiscountIncludesDelivery(v => !v)}
+                                    className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                        discountIncludesDelivery
+                                            ? 'border-capsula-coral bg-capsula-coral-subtle text-capsula-coral'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-coral hover:text-capsula-coral'
+                                    }`}
+                                    aria-pressed={discountIncludesDelivery}
+                                    title="Aplica el % de cortesía también al costo de envío (descuento global)"
+                                >
+                                    <Gift className="h-3.5 w-3.5" />
+                                    {discountIncludesDelivery
+                                        ? `Descuento global — envío ${cortesiaPercentNum}% off`
+                                        : 'Incluir envío en el descuento'}
+                                </button>
                             )}
 
                             {/* Toggle promo "Delivery Gratis" */}

@@ -11572,3 +11572,41 @@ que un solo "Pincho Mixto" no puede desplegar 1 vara en la x1 y 4 en la x4. Un
 grupo dedicado por tabla da la cantidad exacta.
 
 Gates: tsc 0 · vitest 526.
+
+---
+
+## §91 Cortesía GLOBAL en delivery: el % también descuenta el envío (2026-07-09)
+
+Pedido de Omar: "añade una opción en los POS para que el descuento sea global e
+incluya también al delivery (en caso de que se le dé descuento por cortesía)".
+
+Contexto: §88 fijó que la cortesía en % descuenta SOLO los productos y el envío
+se cobra completo (se le paga al motorizado). Eso sigue siendo el **default**.
+§91 añade un **toggle opcional** para el caso en que el comercio quiere regalar
+la cortesía sobre TODO el pedido, envío incluido.
+
+### Regla
+- Nuevo flag `discountIncludesDelivery` (default `false`). Solo tiene efecto con
+  `discountType = CORTESIA_PERCENT` y orderType `DELIVERY`.
+- Cuando está ON: `deliveryFee = feeBase * (1 - pct)` (el envío recibe el mismo
+  % que los ítems). El total baja en consecuencia.
+- NO afecta a `DIVISAS_33` (el envío mantiene su piso $3 al motorizado, §87) ni a
+  `NONE`. Con `CORTESIA_100` el envío ya va gratis, así que el toggle no aplica
+  (solo se muestra en modo %).
+- `Delivery Gratis (Promo)` sigue ganando: si está activo, el envío es 0 sin
+  importar el flag.
+
+### Implementación
+- `computeDeliveryTotals` (delivery-totals.ts, puro): input `discountIncludesDelivery?`
+  → descuenta el envío en CORTESIA_PERCENT. +7 tests (§91). `discount = subtotal
+  - total` sigue reconciliando.
+- `CreateOrderData.discountIncludesDelivery?` + `calculateCartTotals` lo pasa al
+  helper. `discountReason` anota "(N% global — incl. envío)" para auditoría.
+- `pos/delivery/page.tsx`: estado `discountIncludesDelivery`, toggle visible solo
+  con cortesía en % (bajo la línea de Auth), math inline alineado al helper, se
+  envía al server, se resetea al cambiar de descuento y al cobrar. La línea de
+  Delivery en el panel muestra el envío tachado → precio con descuento.
+- wink/pedidosya no tienen UI de cortesía → no cambian (el server ya soporta el
+  flag si algún día lo mandan).
+
+Gates: tsc 0 · vitest 533.

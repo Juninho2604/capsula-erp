@@ -66,3 +66,66 @@ describe('computeDeliveryTotals — §88 (cortesía solo a ítems, envío al mot
         }
     });
 });
+
+describe('computeDeliveryTotals — §91 (cortesía GLOBAL: el % también descuenta el envío)', () => {
+    it('cortesía 50% global: descuenta ítems Y envío por igual', () => {
+        // 2 shawarmas $16, cortesía 50% global, envío $4.5.
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'CORTESIA_PERCENT', discountPercent: 50,
+            discountIncludesDelivery: true, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(2.25);    // 4.5 * 0.5
+        expect(r.total).toBe(10.25);         // 8 (ítems) + 2.25 (envío)
+        expect(r.discount).toBe(10.25);      // 20.5 - 10.25
+    });
+
+    it('cortesía 100% en modo % + global → envío también gratis (total 0)', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'CORTESIA_PERCENT', discountPercent: 100,
+            discountIncludesDelivery: true, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(0);
+        expect(r.total).toBe(0);
+    });
+
+    it('sin el flag, el envío se cobra completo (default §88 intacto)', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'CORTESIA_PERCENT', discountPercent: 50, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(4.5);
+        expect(r.total).toBe(12.5);
+    });
+
+    it('el flag NO afecta a divisas (el envío mantiene su piso al motorizado)', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'DIVISAS_33', divisasRate: 1 / 3,
+            discountIncludesDelivery: true, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(3); // ignora el flag: divisas no descuenta el envío
+    });
+
+    it('el flag NO afecta a NONE', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'NONE', discountIncludesDelivery: true, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(4.5);
+        expect(r.total).toBe(20.5);
+    });
+
+    it('cortesía global + delivery gratis: la promo gana, envío 0', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'CORTESIA_PERCENT', discountPercent: 50,
+            discountIncludesDelivery: true, freeDelivery: true, ...FEE,
+        });
+        expect(r.deliveryFee).toBe(0);
+        expect(r.total).toBe(8); // solo ítems*(1-0.5)
+    });
+
+    it('discount = subtotal - total también con cortesía global', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 23.4, discountType: 'CORTESIA_PERCENT', discountPercent: 30,
+            discountIncludesDelivery: true, ...FEE,
+        });
+        expect(r.discount).toBeCloseTo(r.subtotal - r.total, 2);
+    });
+});
