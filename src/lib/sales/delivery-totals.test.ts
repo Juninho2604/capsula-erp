@@ -129,3 +129,68 @@ describe('computeDeliveryTotals — §91 (cortesía GLOBAL: el % también descue
         expect(r.discount).toBeCloseTo(r.subtotal - r.total, 2);
     });
 });
+
+
+describe('computeDeliveryTotals — §97 (envío EXPLÍCITO por moneda, agregado manual)', () => {
+    it("feeMode 'DIVISAS' → $3 exactos, sin importar el descuento ni el método", () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'NONE', feeMode: 'DIVISAS', ...FEE });
+        expect(r.deliveryFee).toBe(3);
+        expect(r.total).toBe(19);
+        expect(r.discount).toBe(0); // el fee explícito no genera descuento fantasma
+    });
+
+    it("feeMode 'BS' → $4.50 aunque el pago sea 100% divisas (Zelle+Cash con dto. divisas)", () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 15, discountType: 'DIVISAS_33', divisasRate: 1 / 3, feeMode: 'BS', ...FEE });
+        expect(r.deliveryFee).toBe(4.5);
+        expect(r.total).toBeCloseTo(15 * (2 / 3) + 4.5, 2);
+    });
+
+    it("feeMode 'DIVISAS' con dto. divisas: fee $3 + descuento solo en ítems", () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 15, discountType: 'DIVISAS_33', divisasRate: 1 / 3, feeMode: 'DIVISAS', ...FEE });
+        expect(r.deliveryFee).toBe(3);
+        expect(r.total).toBeCloseTo(13, 2); // 10 + 3
+        expect(r.discount).toBeCloseTo(5, 2); // solo ítems (subtotal 18 - 13)
+    });
+
+    it("feeMode 'NONE' → sin envío en total NI en subtotal (se agrega manual)", () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'NONE', feeMode: 'NONE', ...FEE });
+        expect(r.deliveryFee).toBe(0);
+        expect(r.subtotal).toBe(16);
+        expect(r.total).toBe(16);
+        expect(r.discount).toBe(0);
+    });
+
+    it('freeDelivery gana sobre cualquier modo', () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'NONE', feeMode: 'BS', freeDelivery: true, ...FEE });
+        expect(r.deliveryFee).toBe(0);
+        expect(r.total).toBe(16);
+    });
+
+    it('cortesía 100% comp total también con modo explícito', () => {
+        const r = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'CORTESIA_100', feeMode: 'DIVISAS', ...FEE });
+        expect(r.total).toBe(0);
+    });
+
+    it('cortesía global (§91) descuenta el fee del modo elegido', () => {
+        const r = computeDeliveryTotals({
+            itemsSubtotal: 16, discountType: 'CORTESIA_PERCENT', discountPercent: 50,
+            discountIncludesDelivery: true, feeMode: 'BS', ...FEE,
+        });
+        expect(r.deliveryFee).toBe(2.25); // 4.5 × 0.5
+        expect(r.total).toBe(10.25);
+    });
+
+    it("sin feeMode (o 'AUTO') → comportamiento histórico intacto", () => {
+        const auto = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'DIVISAS_33', divisasRate: 1 / 3, feeMode: 'AUTO', ...FEE });
+        const legacy = computeDeliveryTotals({ itemsSubtotal: 16, discountType: 'DIVISAS_33', divisasRate: 1 / 3, ...FEE });
+        expect(auto).toEqual(legacy);
+        expect(auto.deliveryFee).toBe(3);
+    });
+
+    it('discount = subtotal - total reconcilia en todos los modos', () => {
+        for (const feeMode of ['DIVISAS', 'BS', 'NONE'] as const) {
+            const r = computeDeliveryTotals({ itemsSubtotal: 23.4, discountType: 'CORTESIA_PERCENT', discountPercent: 30, feeMode, ...FEE });
+            expect(r.discount).toBeCloseTo(r.subtotal - r.total, 2);
+        }
+    });
+});

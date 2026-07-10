@@ -11873,3 +11873,42 @@ Espejo exacto del patrón WINK: input "PYA $" por producto en /dashboard/menu
 cambia para no romper roles guardados). `updateMenuItemPedidosYaPriceAction`
 en pedidosya.actions.ts; vacío/null = borra el override → rige el precio del
 restaurante (fallback §96). Sin permiso se ve solo-lectura como antes.
+
+---
+
+## §97 Envío del delivery: EXPLÍCITO por moneda y agregado MANUAL (2026-07-10)
+
+Reporte de Omar: en pago mixto Zelle+Cash (100% divisas) el envío quedaba en
+$4.50 — el sistema asumía que mixto = dólares+bolívares. Causa raíz: el fee se
+INFERÍA de `discountType === 'DIVISAS_33' && isPagoDivisas`, y en modo mixto el
+descuento divisas ni siquiera se auto-activa. Decisión de Omar (confirmada):
+mismo cobro, pero el envío se mantiene aparte y SE SUMA MANUAL — nunca
+automático — para evitar desfases.
+
+### Regla nueva
+- `DeliveryFeeMode = 'AUTO' | 'DIVISAS' | 'BS' | 'NONE'` en
+  `computeDeliveryTotals` (delivery-totals.ts):
+  · DIVISAS → $3 exactos (piso motorizado §87)
+  · BS → $4.50 (se cobra en Bs a tasa)
+  · NONE → 0 (sin envío agregado)
+  · AUTO → inferencia histórica (solo compat; el POS ya no lo usa)
+- Con modo explícito el subtotal de lista usa el fee del modo (no genera
+  "descuento fantasma" de $1.50 como el AUTO histórico).
+- freeDelivery y CORTESIA_100 siguen ganando (fee 0 / comp total); la cortesía
+  global §91 descuenta el fee del modo elegido.
+- El descuento divisas de los ÍTEMS no cambia (porción divisas en mixto).
+
+### POS delivery
+- Selector "ENVÍO (agregar a la cuenta)": [Sin envío] [Divisas $3] [Bs $4.50]
+  — default SIN ENVÍO (manual). Con BS muestra el equivalente en Bs a tasa.
+- Línea Delivery del panel: "Sin envío — agregar abajo" / monto + moneda.
+- Guarda anti-olvido: al cobrar con NONE (sin promo gratis ni cortesía 100%)
+  pide confirmación "¿Cobrar SIN envío?".
+- `CreateOrderData.deliveryFeeMode` (saneado server-side; nunca se confía en
+  el cliente). Nota de entrega: "Envío / Delivery (Divisas|Bs): $X"
+  (`deliveryFeeLabel` en print-command).
+- Se quitó el delta de envío de la línea "Dto. Divisas" (ya no existe).
+
++9 tests §97 (564 total), AUTO cubierto como legacy idéntico.
+
+Gates: tsc 0 · vitest 564.

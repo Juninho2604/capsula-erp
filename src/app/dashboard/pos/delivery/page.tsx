@@ -147,6 +147,9 @@ export default function POSDeliveryPage() {
     // divisas). Compatible con cualquier `discountType`. Default OFF: si no se
     // activa, la lógica de cálculo se comporta idéntico al previo.
     const [freeDelivery, setFreeDelivery] = useState(false);
+    // §97 — Envío EXPLÍCITO: la cajera lo agrega manual (nunca automático,
+    // para evitar desfases con pagos mixtos). 'NONE' = sin envío agregado.
+    const [deliveryFeeMode, setDeliveryFeeMode] = useState<'NONE' | 'DIVISAS' | 'BS'>('NONE');
     // §91 — Cortesía GLOBAL: cuando hay una cortesía en %, aplicar ese mismo %
     // TAMBIÉN al envío (descuento global). Solo relevante con CORTESIA_PERCENT;
     // con Cortesía 100% el envío ya va gratis. Default OFF → envío completo (§88).
@@ -390,7 +393,11 @@ export default function POSDeliveryPage() {
         ? mixedPayments.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
         : undefined; // undefined = full total gets -33%
     const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
-    const deliveryFeeBase = discountType === 'DIVISAS_33' && isPagoDivisas ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    // §97: el envío ya NO se infiere del descuento/método — lo elige la cajera.
+    const deliveryFeeBase =
+        deliveryFeeMode === 'DIVISAS' ? DELIVERY_FEE_DIVISAS
+        : deliveryFeeMode === 'BS' ? DELIVERY_FEE_NORMAL
+        : 0;
     // §91: cortesía global → el % también descuenta el envío. Solo con
     // CORTESIA_PERCENT + toggle activo. Coincide con computeDeliveryTotals.
     const cortesiaGlobalActiva = discountType === 'CORTESIA_PERCENT' && discountIncludesDelivery;
@@ -440,6 +447,12 @@ export default function POSDeliveryPage() {
 
     const handleCheckout = async () => {
         if (cart.length === 0) return;
+        // §97: guarda anti-olvido — el envío se agrega manual; si no se agregó
+        // (y no es comp total ni promo gratis), confirmar antes de cobrar.
+        if (deliveryFeeMode === 'NONE' && !freeDelivery && discountType !== 'CORTESIA_100') {
+            const ok = window.confirm('No agregaste el ENVÍO a la cuenta.\n\n¿Cobrar SIN envío?');
+            if (!ok) return;
+        }
         setIsProcessing(true);
         try {
             const scheduledISO = scheduledTimeToISO(scheduledTime);
@@ -480,6 +493,7 @@ export default function POSDeliveryPage() {
                 discountPercent: discountType === 'CORTESIA_PERCENT' ? cortesiaPercentNum : undefined,
                 freeDelivery,
                 discountIncludesDelivery: discountType === 'CORTESIA_PERCENT' ? discountIncludesDelivery : undefined,
+                deliveryFeeMode,
                 authorizedById: authorizedManager?.id,
                 notes: `Dirección: ${customerAddress}`
             });
@@ -536,6 +550,8 @@ export default function POSDeliveryPage() {
                         return base;
                     })(),
                     deliveryFee: (discountType === 'CORTESIA_100' || freeDelivery) ? 0 : deliveryFee,
+                    // §97: moneda del envío en la nota de entrega
+                    deliveryFeeLabel: deliveryFeeMode === 'DIVISAS' ? 'Divisas' : deliveryFeeMode === 'BS' ? 'Bs' : undefined,
                     total: finalTotal,
                     // Forma de pago en la nota de entrega (pedido de la cajera):
                     // método + punto de venta. Mixto → cada línea; simple → una.
@@ -555,6 +571,7 @@ export default function POSDeliveryPage() {
                 setDiscountType('NONE'); setAuthorizedManager(null);
                 setFreeDelivery(false);
                 setDiscountIncludesDelivery(false);
+                setDeliveryFeeMode('NONE');
             } else toast.error(result.message ?? 'Error al procesar el pedido');
         } catch (e) { console.error(e); toast.error('Error al procesar el pedido'); } finally { setIsProcessing(false); }
     };
@@ -924,22 +941,29 @@ export default function POSDeliveryPage() {
                                 </span>
                                 {freeDelivery ? (
                                     <span className="tabular-nums">
-                                        <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>{' '}
+                                        {deliveryFeeBase > 0 && (
+                                            <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>
+                                        )}{' '}
                                         <span className="font-semibold text-[#2F6B4E]">GRATIS</span>
                                     </span>
+                                ) : deliveryFeeMode === 'NONE' ? (
+                                    <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-capsula-coral">Sin envío — agregar abajo</span>
                                 ) : cortesiaGlobalActiva ? (
                                     <span className="tabular-nums">
                                         <s className="text-capsula-ink-muted">+${deliveryFeeBase.toFixed(2)}</s>{' '}
                                         <span className="font-semibold text-capsula-coral">+${deliveryFee.toFixed(2)}</span>
                                     </span>
                                 ) : (
-                                    <span className="tabular-nums text-capsula-ink">+${deliveryFee.toFixed(2)}</span>
+                                    <span className="tabular-nums text-capsula-ink">
+                                        +${deliveryFee.toFixed(2)}
+                                        <span className="ml-1 text-[10px] font-semibold uppercase text-capsula-ink-muted">{deliveryFeeMode === 'DIVISAS' ? 'divisas' : 'Bs'}</span>
+                                    </span>
                                 )}
                             </div>
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
                                 <div className="flex justify-between rounded-lg border border-[#D3E2D8] bg-[#E5EDE7]/40 px-2 py-1 text-xs font-medium text-[#2F6B4E]">
                                     <span>Dto. Divisas</span>
-                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) * divisasRate + DELIVERY_FEE_NORMAL - DELIVERY_FEE_DIVISAS).toFixed(2)}</span>
+                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) * divisasRate).toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
@@ -962,6 +986,56 @@ export default function POSDeliveryPage() {
 
                         {/* Descuentos + Método + Cobro */}
                         <div className="space-y-3">
+
+                            {/* §97 — ENVÍO: se agrega MANUAL (nunca automático). La moneda
+                                define el monto: divisas $3 (piso motorizado) / Bs $4.50. */}
+                            <div className="space-y-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Envío (agregar a la cuenta)
+                                </span>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryFeeMode('NONE')}
+                                        className={`rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                            deliveryFeeMode === 'NONE'
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                    >
+                                        Sin envío
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryFeeMode('DIVISAS')}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                            deliveryFeeMode === 'DIVISAS'
+                                                ? 'border-[#2F6B4E] bg-[#2F6B4E] text-white'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-[#2F6B4E] hover:bg-[#E5EDE7]/60'
+                                        }`}
+                                    >
+                                        <DollarSign className="h-3.5 w-3.5" />
+                                        Divisas $3
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryFeeMode('BS')}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium uppercase tracking-[0.04em] transition-colors ${
+                                            deliveryFeeMode === 'BS'
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                                : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                    >
+                                        <Banknote className="h-3.5 w-3.5" />
+                                        Bs $4.50
+                                    </button>
+                                </div>
+                                {deliveryFeeMode === 'BS' && exchangeRate && (
+                                    <p className="px-1 text-[11px] tabular-nums text-capsula-ink-muted">
+                                        ≈ Bs {(DELIVERY_FEE_NORMAL * exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })} @ {exchangeRate.toFixed(0)}
+                                    </p>
+                                )}
+                            </div>
 
                             {/* Descuentos — 3 botones compactos en una fila */}
                             <div className="grid grid-cols-3 gap-1.5">

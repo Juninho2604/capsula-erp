@@ -146,6 +146,13 @@ export interface CreateOrderData {
      * piso. Default `false`/`undefined` → envío completo (comportamiento §88).
      */
     discountIncludesDelivery?: boolean;
+    /**
+     * §97 — Moneda del ENVÍO elegida explícitamente por la cajera en el POS
+     * delivery: 'DIVISAS' ($3), 'BS' ($4.50) o 'NONE' (sin envío — se agrega
+     * manual, nunca automático). Ausente = 'AUTO' (inferencia histórica por
+     * discountType, para compatibilidad).
+     */
+    deliveryFeeMode?: 'DIVISAS' | 'BS' | 'NONE';
     // Hora de entrega solicitada (PICKUP/DELIVERY). ISO string desde el
     // cliente; la action la persiste como DateTime y la encola a la
     // comanda de cocina vía `enqueueKitchenCommand` cuando esté seteada.
@@ -466,7 +473,7 @@ function roundToWhole(amount: number, paymentMethod?: string, exactTotal = false
 }
 
 function calculateCartTotals(
-    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery' | 'discountIncludesDelivery'>,
+    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery' | 'discountIncludesDelivery' | 'deliveryFeeMode'>,
     exactTotal = false,
     // Fracción de descuento por divisas (§87). Default 1/3 (33,33% histórico).
     // Aplica SOLO a los ítems; el fee de delivery mantiene su piso de $3.
@@ -489,6 +496,9 @@ function calculateCartTotals(
             divisasRate,
             freeDelivery: data.freeDelivery === true,
             discountIncludesDelivery: data.discountIncludesDelivery === true,
+            // §97: moneda del envío explícita (saneada — nunca confiar en el cliente).
+            feeMode: (data.deliveryFeeMode === 'DIVISAS' || data.deliveryFeeMode === 'BS' || data.deliveryFeeMode === 'NONE')
+                ? data.deliveryFeeMode : 'AUTO',
             feeNormal: DELIVERY_FEE_NORMAL,
             feeDivisas: DELIVERY_FEE_DIVISAS,
         });

@@ -25,6 +25,18 @@ function round2(n: number): number { return Math.round(n * 100) / 100; }
 
 export type DeliveryDiscountType = 'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT';
 
+/**
+ * §97 — Moneda del ENVÍO, elegida EXPLÍCITAMENTE por la cajera (nunca
+ * inferida del descuento/método de pago, que era la fuente de descuadres en
+ * pagos mixtos tipo Zelle+Cash):
+ *   'DIVISAS' → feeDivisas ($3, piso al motorizado)
+ *   'BS'      → feeNormal ($4.50, se cobra en Bs a tasa)
+ *   'NONE'    → sin envío agregado (default del POS — se suma manual)
+ *   'AUTO'    → comportamiento histórico (infiere por discountType). Solo
+ *               para compatibilidad de callers viejos; el POS ya no lo usa.
+ */
+export type DeliveryFeeMode = 'AUTO' | 'DIVISAS' | 'BS' | 'NONE';
+
 export interface DeliveryTotalsInput {
     itemsSubtotal: number;
     discountType: DeliveryDiscountType;
@@ -44,6 +56,8 @@ export interface DeliveryTotalsInput {
     divisasRate?: number;
     /** Promo "Delivery Gratis": waivea el envío remanente. */
     freeDelivery?: boolean;
+    /** §97: moneda del envío elegida por la cajera. Default 'AUTO' (histórico). */
+    feeMode?: DeliveryFeeMode;
     feeNormal: number;   // ej. 4.5
     feeDivisas: number;  // ej. 3 (piso — nunca menos)
 }
@@ -69,8 +83,14 @@ export function computeDeliveryTotals(input: DeliveryTotalsInput): DeliveryTotal
         : 1 / 3;
     const pct = Math.min(100, Math.max(0, input.discountPercent ?? 0)) / 100;
 
-    // Envío base según el tipo de pago (divisas usa su piso). Promo gratis → 0.
-    const feeBase = input.discountType === 'DIVISAS_33' ? feeDivisasFloor : feeNormal;
+    // §97: envío por modo EXPLÍCITO. 'AUTO' preserva la inferencia histórica
+    // (divisas usa su piso). Promo gratis → 0 más abajo.
+    const feeMode = input.feeMode ?? 'AUTO';
+    const feeBase =
+        feeMode === 'DIVISAS' ? feeDivisasFloor
+        : feeMode === 'BS' ? feeNormal
+        : feeMode === 'NONE' ? 0
+        : (input.discountType === 'DIVISAS_33' ? feeDivisasFloor : feeNormal);
     // §91: cortesía global → el % también descuenta el envío. Solo aplica a
     // CORTESIA_PERCENT; el resto de tipos mantienen su envío completo/piso.
     const feeAfterCourtesy =
@@ -102,7 +122,15 @@ export function computeDeliveryTotals(input: DeliveryTotalsInput): DeliveryTotal
         ? 0
         : round2(itemsAfterDiscount + deliveryFee);
 
-    const subtotal = round2(items + feeNormal);
+    // Valor de lista del envío para el subtotal: con modo explícito es el
+    // precio de ese modo (el fee no genera "descuento" fantasma); en AUTO se
+    // mantiene el histórico (feeNormal siempre).
+    const listFee =
+        feeMode === 'DIVISAS' ? feeDivisasFloor
+        : feeMode === 'BS' ? feeNormal
+        : feeMode === 'NONE' ? 0
+        : feeNormal;
+    const subtotal = round2(items + listFee);
     const discount = round2(subtotal - total);
 
     return { subtotal, deliveryFee, discount, total };

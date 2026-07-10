@@ -77,6 +77,8 @@ interface ReceiptData {
     discount?: number;
     discountReason?: string; // Ej: "Descuento aplicado"
     deliveryFee?: number;
+    /** §97: moneda del envío elegida por la cajera — 'Divisas' | 'Bs'. */
+    deliveryFeeLabel?: string;
     total: number;
     serviceFee?: number;
     /** % de servicio aplicado (§85). Si se omite, el label imprime "10%". */
@@ -274,7 +276,7 @@ export function printReceipt(data: ReceiptData) {
         </div>
         ${deliveryFeeAmount > 0 ? `
         <div class="total-row">
-            <span>Envío / Delivery:</span>
+            <span>Envío / Delivery${data.deliveryFeeLabel ? ` (${escHtml(data.deliveryFeeLabel)})` : ''}:</span>
             <span>$${deliveryFeeAmount.toFixed(2)}</span>
         </div>
         ` : ''}
