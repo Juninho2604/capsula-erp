@@ -79,6 +79,8 @@ interface ReceiptData {
     deliveryFee?: number;
     /** §97: moneda del envío elegida por la cajera — 'Divisas' | 'Bs'. */
     deliveryFeeLabel?: string;
+    /** §100.1: true = servicio EXIMIDO — se imprime explícito, nunca se omite en silencio. */
+    serviceFeeExempt?: boolean;
     total: number;
     serviceFee?: number;
     /** % de servicio aplicado (§85). Si se omite, el label imprime "10%". */
@@ -295,7 +297,12 @@ export function printReceipt(data: ReceiptData) {
             <span>${data.serviceFeePercent != null ? `${Number(data.serviceFeePercent)}%` : '10%'} Servicio:</span>
             <span>$${serviceFee.toFixed(2)}</span>
         </div>
-        ` : ''}
+        ` : (data.serviceFeeExempt ? `
+        <div class="total-row">
+            <span>Servicio:</span>
+            <span class="bold">EXIMIDO</span>
+        </div>
+        ` : '')}
         ${tipAmount > 0 ? `
         <div class="total-row">
             <span>Propina:</span>

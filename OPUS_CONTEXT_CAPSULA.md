@@ -12031,3 +12031,25 @@ servicio <9.5%. Veredicto incluido: cobros pre-§100 con $0 no son atribuibles
 a una persona desde los datos (cruzar hora del split con turno de caja).
 
 Gates: tsc 0 · vitest 564.
+
+### §100.1 El caso TAB-3567/3583 resuelto: pre-cuenta sin servicio por estado pegajoso
+Auditoría con el script §100: AMBAS mesas cobraron el 10% correcto (splits
+$4.50/$3.90, 10.00% exacto, PDV Superferro 21:56Z). Lo que falló fue la
+PRE-CUENTA de las 17:48 local (foto de Omar): salió SIN la línea de servicio
+(total $39/$45 planos).
+
+Causa: en el POS restaurante, `serviceFeeIncluded` / `serviceFeePercentStr` /
+`skipServiceFeePin` NO se reseteaban en `resetTableState()` → si se eximía o
+editaba el % en UNA mesa, el estado quedaba pegado para TODAS las mesas
+siguientes de esa sesión: pre-cuentas sin servicio, aunque al cobro alguien lo
+re-activara (como pasó aquí). Además el historial muestra el servicio desde
+`OpenTab.totalServiceCharge`, que es 0 mientras la mesa está ABIERTA — mirar
+el historial antes del cobro también "confirma" el falso negativo.
+
+Fixes:
+- `resetTableState()` restaura servicio ON al 10% y limpia el PIN — la
+  exención es POR MESA, nunca de sesión.
+- La pre-cuenta nunca omite el servicio en silencio: si está eximido imprime
+  "Servicio: EXIMIDO" (`serviceFeeExempt` en print-command).
+
+Gates: tsc 0 · vitest 564.

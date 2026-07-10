@@ -942,6 +942,13 @@ export default function POSSportBarPage() {
     setSubAccountMode(false);
     setCheckoutTip("");
     setPaymentMethodTouched(false);
+    // §100.1: el estado del servicio era PEGAJOSO entre mesas — si se eximía
+    // (o se editaba el %) en una mesa, las pre-cuentas de TODAS las mesas
+    // siguientes salían sin servicio (caso TAB-3567/3583). La exención es
+    // por mesa: cada mesa arranca con servicio ON al 10%.
+    setServiceFeeIncluded(true);
+    setServiceFeePercentStr("10");
+    setSkipServiceFeePin('');
   };
 
   // ============================================================================
@@ -1347,6 +1354,9 @@ export default function POSSportBarPage() {
       discountReason,
       serviceFee: svcFee > 0 ? svcFee : undefined,
       serviceFeePercent: serviceFeeIncluded ? serviceFeePercent : undefined,
+      // §100.1: nunca omitir el servicio en silencio — si está eximido, el
+      // papel lo dice explícito (evita "la pre-cuenta no traía el servicio").
+      serviceFeeExempt: !serviceFeeIncluded,
       total: afterDiscount,  // printReceipt suma serviceFee internamente para el total final
       isPrecuenta: true,
       branding,
