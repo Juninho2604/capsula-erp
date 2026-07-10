@@ -1510,7 +1510,45 @@ export async function createSalesOrderAction(
         const exactCashTip = await tenantFeatureEnabled(tenantId, 'exactCashSaleTip').catch(() => false);
         // Descuento divisas configurable (§87), leído del server (autoritativo).
         const divisasRate = await loadDivisasDiscountRate(db);
+
+        // §102 — Guardias de cobranza (auditoría 10/07). El server deja de
+        // confiar ciego en el cliente en los 3 puntos que permitían cobrar
+        // mal sin que nada lo detectara:
+
+        // (a) DIVISAS_33 solo si el pago realmente incluye divisas — espejo
+        // del safeguard de mesas. Cierra la carrera del useEffect donde un
+        // pago en Bs llegaba con discountType divisas y el server descontaba
+        // 33% que el cliente nunca vio (venta sub-reportada + vuelto falso).
+        const DIVISAS_METHODS = new Set(['CASH', 'CASH_USD', 'CASH_EUR', 'ZELLE']);
+        const hasDivisasPayment = data.payments && data.payments.length > 0
+            ? data.payments.some(pLine => DIVISAS_METHODS.has(pLine.method))
+            : DIVISAS_METHODS.has(data.paymentMethod || '');
+        if (data.discountType === 'DIVISAS_33' && !hasDivisasPayment) {
+            data = { ...data, discountType: undefined, divisasUsdAmount: undefined };
+        }
+
+        // (b) Cortesías requieren autorización registrada. El PIN se valida
+        // en el cliente, pero el server exigía nada: cualquier request con
+        // discountType=CORTESIA_100 generaba una venta en $0 sin autor.
+        if ((data.discountType === 'CORTESIA_100' || data.discountType === 'CORTESIA_PERCENT')
+            && (!data.authorizedById || data.authorizedById === 'demo-master-id')) {
+            return { success: false, message: 'La cortesía requiere autorización de gerencia (PIN).' };
+        }
+
         const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip, divisasRate);
+
+        // (c) El pago debe cubrir el total. Antes paymentStatus quedaba PAID
+        // hardcoded aunque las líneas mixtas no sumaran (ej. cajera olvida la
+        // segunda línea: quedaban $20 sin cobrar y sin rastro).
+        const declaredPaid = data.payments && data.payments.length > 0
+            ? data.payments.reduce((sum, pLine) => sum + (pLine.amountUSD || 0), 0)
+            : (data.amountPaid ?? total);
+        if (declaredPaid < total - 0.05) {
+            return {
+                success: false,
+                message: `El pago declarado ($${declaredPaid.toFixed(2)}) no cubre el total ($${total.toFixed(2)}). Revisá las líneas de pago.`,
+            };
+        }
         // Con el flag, en efectivo divisas el excedente (redondeo hacia arriba)
         // es PROPINA, no vuelto: forzamos change=0 salvo que la cajera pida
         // dar vuelto explícito (keepChangeAsTip=false + tipAtCheckout marcado).
@@ -2306,7 +2344,8 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         // para detectar la tablet problema. Chequeo: descuento esperado =
         // porciónBruta × rate, donde porciónBruta ≈ discount / clientRate se
         // aproxima por gross = neto aplicado + descuento.
-        if (data.discountType === 'DIVISAS_33' && discountAmount > 0) {
+        const isMixedTabPayment = (data.splitLabel || '').includes('Mixto') || (data.discountReason || '').includes('Mixto');
+        if (data.discountType === 'DIVISAS_33' && discountAmount > 0 && !isMixedTabPayment) {
             const serverRate = await loadDivisasDiscountRate(db);
             const grossPortion = data.amount + discountAmount;
             const expected = Math.round(grossPortion * serverRate * 100) / 100;

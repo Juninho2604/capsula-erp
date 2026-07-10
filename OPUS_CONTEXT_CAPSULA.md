@@ -12094,3 +12094,60 @@ Fixes (3 capas):
 
 El $1 de propina del caso real no existe físicamente (vuelto completo
 entregado) — ajustar el pool de propinas del día manualmente.
+
+---
+
+## §102 Auditoría de cobranza (4 auditores paralelos) + guardias batch 1 (2026-07-10)
+
+Auditoría pre-deploy pedida por Omar sobre TODOS los flujos de cobro. Cuatro
+revisiones paralelas: mesas, subcuentas/pool, ventas directas, capa
+transversal (redondeos/tasa/reportes). Hallazgos completos en el hilo; los
+CRÍTICOS y su estado:
+
+### Corregido en este bloque (batch 1 — guardias server, sin tocar matemática)
+- (a) createSalesOrder: DIVISAS_33 se descarta si el pago no incluye divisas
+  (espejo del safeguard de mesas; cierra la carrera useEffect donde un pago
+  Bs llegaba con -33% → venta sub-reportada + vuelto falso).
+- (b) createSalesOrder: CORTESIA_100/PERCENT sin authorizedById → rechazado
+  (antes cualquier request generaba venta $0 sin autor).
+- (c) createSalesOrder: pago declarado < total − $0.05 → rechazado (antes
+  paymentStatus=PAID hardcoded aunque las líneas mixtas no sumaran).
+- (d) Vigía §99: silenciado en pagos mixtos de mesa (data.amount ahí es bruto
+  → 100% falsos positivos que enmascaraban divergencias reales).
+- §101 (ya commiteado): saldo residual < 1¢ cierra la mesa + rechazo de cobro
+  sobre cuenta saldada.
+
+### PENDIENTE batch 2 (requiere trabajo cuidadoso + tests — NO hacer en caliente)
+1. [ALTA] Pagos PARCIALES de mesa (no-divisas): el cliente manda el bruto con
+   servicio y el server lo aplica al balance de solo-ítems y re-suma 10% —
+   la casa pierde ~el servicio de cada porción parcial (mesa $110 en dos
+   mitades cobra $104.50). Fix: cliente debe mandar el NETO de ítems del
+   parcial (como ya hace el camino divisas con netItemsApplied).
+2. [ALTA] registerOpenTabPayment aplica discountAmount/paidAmountOverride del
+   cliente sin recalcular (§99 solo loguea). Hacer server autoritativo.
+3. [ALTA] paySubAccountAction sin assertOpenTabVersionUpdate → lost update
+   con cobros concurrentes de subcuentas.
+4. [ALTA] voidSalesOrderAction/voidSubAccount no revierten runningSubtotal/
+   runningTotal/splits → Z-report/end-of-day descuadran vs cobrado tras
+   anulaciones de mesa.
+5. [ALTA] Anular/editar ítem ya pagado vía subcuenta: voidItemInTx borra
+   subAccountItems y resta lineTotal del balance sin chequear sub PAID →
+   la casa pierde el monto; sub OPEN queda con subtotal obsoleto (falta
+   recalcSubAccountTotals).
+6. [MEDIA] Universos inconsistentes de reportes: historial incluye CANCELLED,
+   Z/arqueo no; end-of-day deriva discount distinto (runningSubtotal−Total
+   vs runningDiscount); totalCollected derivado ≠ Σ paymentBreakdown;
+   propina colectiva según flag en Z/EOD pero siempre en arqueo. Unificar.
+7. [MEDIA] Pago mixto de mesa: Σ líneas ≠ objetivo no se valida (sobrante se
+   descarta silencioso; corto = parcial accidental → dispara el bug 1).
+8. [MEDIA] wink/pedidosya confían en lineTotal del cliente (sin re-precio).
+9. [MEDIA] split.subtotal con semántica distinta mesa (neto) vs subcuenta
+   (bruto); paySubAccount sin round2 y sin vigía de tasa.
+10. [MEDIA] Tasa cliente (split.amountBS) vs tasa server (order.totalBs)
+    pueden diferir si la tasa cambió mid-sesión; promo re-pricing en
+    checkout puede diferir de lo mostrado (ventana happy-hour).
+11. [BAJA] Servicio 0.01% evade §100 (rastro auditable, no bloqueado);
+    reintento de action sin clave de idempotencia; roundToWhole no aplica
+    en subcuentas.
+
+Gates: tsc 0 · vitest 564.
