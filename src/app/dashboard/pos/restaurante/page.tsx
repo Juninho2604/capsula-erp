@@ -2016,15 +2016,24 @@ export default function POSSportBarPage() {
         {/* ══ LEFT: TABLE GRID ═══════════════════════════════════════════ */}
         <aside className={`w-full lg:w-64 tablet-land:w-64 xl:w-72 shrink-0 border-r border-capsula-line bg-capsula-ivory flex flex-col overflow-hidden ${mobileTab === "tables" ? "flex" : "hidden"} lg:flex absolute lg:relative inset-0 z-10 lg:z-auto`}>
           {/* Zone selector */}
-          <div className="p-4 border-b border-capsula-line space-y-3">
-            <p className="text-[10px] font-semibold uppercase text-capsula-ink-muted tracking-[0.14em] pl-1">Secciones</p>
-            <div className="flex flex-col gap-2">
+          <div className="p-4 border-b border-capsula-line space-y-4">
+            {/* ── PICKUP / PARA LLEVAR — panel propio, separado de mesas (§96) ── */}
+            <div className={`rounded-2xl border p-3 space-y-2 transition-colors ${isPickupMode ? "border-capsula-navy-deep bg-capsula-navy-soft" : "border-capsula-line bg-capsula-ivory-alt"}`}>
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-capsula-ink-muted tracking-[0.14em] pl-1">
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Pickup / Para llevar
+                {pickupTabs.length > 0 && (
+                  <span className="ml-auto rounded-full bg-capsula-coral/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-capsula-coral">
+                    {pickupTabs.length} abierto{pickupTabs.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
               <button
                 onClick={openPickupModal}
-                className={`${isPickupMode ? "pos-btn" : "pos-btn-secondary"} py-3 text-sm inline-flex items-center justify-center gap-2`}
+                className={`${isPickupMode ? "pos-btn" : "pos-btn-secondary"} w-full py-3 text-sm inline-flex items-center justify-center gap-2`}
               >
-                <ShoppingBag className="h-4 w-4" />
-                {pickupTabs.length > 0 ? `Nuevo Pickup (${pickupTabs.length} abiertos)` : "Venta directa / Pickup"}
+                <PlusIcon className="h-4 w-4" />
+                Nuevo Pickup
               </button>
 
               {/* Lista de pickup tabs abiertos */}
@@ -2053,6 +2062,14 @@ export default function POSSportBarPage() {
                 </div>
               )}
 
+            </div>
+
+            {/* ── MESAS — zonas + grid (§96) ── */}
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-capsula-ink-muted tracking-[0.14em] pl-1">
+                <Armchair className="h-3.5 w-3.5" />
+                Mesas
+              </p>
               <div className="flex gap-2">
                 {layout?.serviceZones.map((z) => {
                   const ZoneIcon = z.zoneType === "BAR" ? Beer : Leaf;

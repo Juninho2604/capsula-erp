@@ -265,7 +265,7 @@ export default function SalesHistoryPage() {
             case 'TRANSFER': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">TRANSFER</span>;
             case 'CASH_BS': return <span className="bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] px-2 py-0.5 rounded text-xs font-semibold">Bs</span>;
             case 'CORTESIA': return <span className="bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9] px-2 py-0.5 rounded text-xs font-semibold">CORTESÍA</span>;
-            default: return <span className="bg-capsula-navy-soft text-capsula-cream px-2 py-0.5 rounded text-xs font-semibold">{method || '-'}</span>;
+            default: return <span className="bg-capsula-navy-soft text-capsula-ink px-2 py-0.5 rounded text-xs font-semibold">{method || '-'}</span>;
         }
     };
 
@@ -773,7 +773,7 @@ export default function SalesHistoryPage() {
                                             {itemCount > 0 ? (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleRow(sale.id); }}
-                                                    className="inline-flex items-center gap-1 bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream px-2 py-1 rounded text-xs font-semibold transition-colors"
+                                                    className="inline-flex items-center gap-1 bg-capsula-navy-soft hover:bg-capsula-navy hover:text-capsula-cream text-capsula-ink px-2 py-1 rounded text-xs font-semibold transition-colors"
                                                 >
                                                     {itemCount}
                                                     <span className={`transition-transform text-[10px] ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
@@ -788,9 +788,9 @@ export default function SalesHistoryPage() {
                                                 <button
                                                     onClick={(e) => handleReprint(sale, e)}
                                                     title="Reimprimir factura"
-                                                    className="bg-capsula-navy-soft hover:bg-capsula-navy-soft text-capsula-cream px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                                                    className="bg-capsula-navy-soft hover:bg-capsula-navy hover:text-capsula-cream text-capsula-ink px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                                                 >
-                                                    🖨️ Imprimir
+                                                    <Printer className="h-3.5 w-3.5 inline-block mr-1" />Imprimir
                                                 </button>
                                                 {!isVoided && canVoid && (
                                                     <button
@@ -806,7 +806,7 @@ export default function SalesHistoryPage() {
                                     </tr>
                                     {/* FILA EXPANDIDA - ÍTEMS */}
                                     {isExpanded && itemCount > 0 && (
-                                        <tr key={`${sale.id}-expanded`} className="bg-gray-900/60">
+                                        <tr key={`${sale.id}-expanded`} className="bg-capsula-ivory-alt/60">
                                             <td colSpan={11} className="px-6 py-4">
                                                 {/* Tabla de productos */}
                                                 <div className="rounded-lg overflow-hidden border border-capsula-line mb-3">
@@ -819,7 +819,7 @@ export default function SalesHistoryPage() {
                                                                 <th className="px-3 py-2 text-right">Subtotal</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y divide-gray-800">
+                                                        <tbody className="divide-y divide-capsula-line">
                                                             {(sale.items || []).map((item: any, idx: number) => {
                                                                 const unitPrice = item.unitPrice ?? (item.lineTotal / (item.quantity || 1));
                                                                 const modifiers = Array.isArray(item.modifiers)
@@ -827,13 +827,13 @@ export default function SalesHistoryPage() {
                                                                     : [];
                                                                 return (
                                                                     <tr key={idx} className="hover:bg-capsula-ivory-alt/40">
-                                                                        <td className="px-3 py-2 text-capsula-cream">
+                                                                        <td className="px-3 py-2 text-capsula-ink">
                                                                             {item.itemName || item.name}
                                                                             {modifiers.length > 0 && (
                                                                                 <div className="text-capsula-ink-muted text-[10px]">+ {modifiers.join(', ')}</div>
                                                                             )}
                                                                         </td>
-                                                                        <td className="px-3 py-2 text-center text-capsula-cream">×{item.quantity}</td>
+                                                                        <td className="px-3 py-2 text-center text-capsula-ink">×{item.quantity}</td>
                                                                         <td className="px-3 py-2 text-right text-capsula-ink-muted font-mono">${unitPrice.toFixed(2)}</td>
                                                                         <td className="px-3 py-2 text-right text-capsula-ink font-semibold font-mono">${(item.lineTotal || 0).toFixed(2)}</td>
                                                                     </tr>
@@ -917,7 +917,7 @@ export default function SalesHistoryPage() {
             {/* MODAL REPORTE Z                                                    */}
             {/* ================================================================ */}
             {showZReport && zReport && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-capsula-ink/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white text-black rounded-lg w-full max-w-sm p-8 font-mono shadow-2xl relative">
                         <button onClick={() => setShowZReport(false)} className="absolute top-2 right-2 text-capsula-ink-muted hover:text-[#B04A2E] dark:text-[#EFD2C8] font-semibold text-2xl tracking-[-0.02em] no-print">×</button>
                         <div className="text-center mb-6 border-b-2 border-dashed border-black pb-4">
@@ -1017,7 +1017,7 @@ export default function SalesHistoryPage() {
                                 onClick={() => window.print()}
                                 className="flex-1 bg-black text-capsula-ink py-3 rounded font-semibold hover:bg-capsula-ivory-alt transition"
                             >
-                                🖨️ Imprimir
+                                <Printer className="h-3.5 w-3.5 inline-block mr-1" />Imprimir
                             </button>
                         </div>
                     </div>
@@ -1028,8 +1028,8 @@ export default function SalesHistoryPage() {
             {/* MODAL CIERRE DEL DÍA                                               */}
             {/* ================================================================ */}
             {showDaySummary && daySummary && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-[#F3EAD6] dark:border-[#3B2F15] rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-capsula-ink/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-capsula-ivory border border-[#F3EAD6] dark:border-[#3B2F15] rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h2 className="font-semibold text-xl tracking-[-0.02em] text-[#946A1C] dark:text-[#E8D9B8]">Resumen de Cierre del Día</h2>
@@ -1126,7 +1126,7 @@ export default function SalesHistoryPage() {
                             onClick={() => printEndOfDaySummary(daySummary)}
                             className="w-full bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-ink py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
                         >
-                            🖨️ Imprimir Resumen
+                            <Printer className="h-3.5 w-3.5 inline-block mr-1" />Imprimir Resumen
                         </button>
                     </div>
                 </div>
@@ -1136,8 +1136,8 @@ export default function SalesHistoryPage() {
             {/* MODAL ANULACIÓN                                                    */}
             {/* ================================================================ */}
             {voidTarget && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-[#F7E3DB] dark:border-[#3B1F14] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                <div className="fixed inset-0 bg-capsula-ink/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-capsula-ivory border border-[#F7E3DB] dark:border-[#3B1F14] rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex items-center justify-between mb-5">
                             <div>
                                 <h2 className="font-semibold text-xl tracking-[-0.02em] text-[#B04A2E] dark:text-[#EFD2C8]">Anular Venta</h2>

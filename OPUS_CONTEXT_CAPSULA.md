@@ -11829,3 +11829,39 @@ Regla: toda superficie nueva que imprima modifiers (comanda O recibo) debe
 filtrar `hideFromKitchen` (persistido) o usar filterKitchenModifiers (§93).
 
 Gates: tsc 0 · vitest 555.
+
+---
+
+## §96 PY = precio restaurante · Pickup separado de Mesas · colores del historial (2026-07-10)
+
+Tres pedidos de Omar:
+
+### 1. PedidosYA usa el precio del restaurante
+`calcPedidosYaPrice` ya NO aplica el −33.33% histórico: devuelve el precio base.
+El override manual `MenuItem.pedidosYaPrice` sigue teniendo prioridad;
+`scripts/reset-pedidosya-prices.ts --tenant-slug=shanklish [--apply]` (dry-run
+default) anula los overrides existentes para que rija el precio de restaurante
+en todo el menú. Las listas de precios §86 (canal PEDIDOSYA) siguen pudiendo
+sobreescribir si se activan.
+
+### 2. POS Restaurante: Pickup separado de Mesas (sidebar)
+Antes ambos vivían bajo un único header "Secciones". Ahora:
+- Panel PICKUP propio (recuadro ivory-alt; navy-soft cuando está activo) con
+  kicker "Pickup / Para llevar" + badge de abiertos + botón "Nuevo Pickup" +
+  lista de pickups abiertos DENTRO del panel.
+- Sección MESAS con su propio kicker (icono Armchair) + zonas + grid.
+
+### 3. Historial de ventas: colores ilegibles (dark-mode bugs)
+El recuadro expandido del desglose usaba `bg-gray-900/60` (fijo oscuro) con
+tokens adaptativos encima → en modo claro no se leía. Además `text-capsula-cream`
+sobre `bg-capsula-navy-soft` (badge default de pago + botones ítems/imprimir)
+= texto claro sobre fondo claro. Fixes conforme CLAUDE.md:
+- Fila expandida → `bg-capsula-ivory-alt/60`; celdas cream → `text-capsula-ink`;
+  `divide-gray-800` → `divide-capsula-line`.
+- Modales Cierre del Día y Anulación: `bg-gray-900` → `bg-capsula-ivory`;
+  backdrops `bg-black/80` → `bg-capsula-ink/60` (el panel del Reporte Z queda
+  `bg-white` a propósito: preview imprimible).
+- cream sobre navy-soft → `text-capsula-ink` (hover navy → cream).
+- Emojis 🖨️ → icono `Printer` (regla no-emoji, mismo commit).
+
+Gates: tsc 0 · vitest 555.
