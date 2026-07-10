@@ -16,7 +16,7 @@ import {
   type ModifyTabItemModification,
 } from "@/app/actions/pos.actions";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
-import { getDivisasDiscountPercentAction } from "@/app/actions/system-config.actions";
+import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
@@ -272,12 +272,9 @@ export default function POSMeseroPage() {
   // pantalla de pago donde la cajera selecciona método.
   const [divisasPreview, setDivisasPreview] = useState(false);
   // Descuento por divisas configurable (§87). Del server; default 1/3.
-  const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+  const divisasPercent = useDivisasPercent();
   const divisasRate = divisasPercent / 100;
   const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
-  useEffect(() => {
-    getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
-  }, []);
   // Sub-cuenta seleccionada en el modal. 'general' = vista total de la
   // mesa; un id de sub-cuenta = solo items asignados a esa sub. Permite
   // al mesero mostrar al cliente UNA sub-cuenta a la vez cuando dividen.

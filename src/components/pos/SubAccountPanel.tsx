@@ -22,7 +22,7 @@ import {
     voidSubAccountAction,
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
-import { getDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
+import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 
@@ -561,12 +561,9 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const [isProcessing, setIsProcessing] = useState(false);
     const branding = useTenantBranding();
     // Descuento por divisas configurable (§87). Del server; default 1/3.
-    const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+    const divisasPercent = useDivisasPercent();
     const divisasRate = divisasPercent / 100;
     const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
-    useEffect(() => {
-        getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
-    }, []);
 
     // New subcuenta form
     const [newLabel, setNewLabel] = useState('');

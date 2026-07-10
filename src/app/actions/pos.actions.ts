@@ -2287,6 +2287,28 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             data.paymentMethod === 'ZELLE';
         const blockDivisasDiscount = data.discountType === 'DIVISAS_33' && !isDivisasPay;
         const discountAmount = blockDivisasDiscount ? 0 : (data.discountAmount || 0);
+
+        // §99 — Vigía de divergencia: el descuento divisas lo calcula el
+        // CLIENTE con el % que cargó al abrir el POS. Si una tablet quedó con
+        // un % viejo (carga fallida / build cacheado), su descuento difiere
+        // por céntimos del configurado. No bloqueamos el cobro (el monto ya
+        // fue acordado con el cliente en mesa) pero lo LOGUEAMOS con contexto
+        // para detectar la tablet problema. Chequeo: descuento esperado =
+        // porciónBruta × rate, donde porciónBruta ≈ discount / clientRate se
+        // aproxima por gross = neto aplicado + descuento.
+        if (data.discountType === 'DIVISAS_33' && discountAmount > 0) {
+            const serverRate = await loadDivisasDiscountRate(db);
+            const grossPortion = data.amount + discountAmount;
+            const expected = Math.round(grossPortion * serverRate * 100) / 100;
+            if (Math.abs(expected - discountAmount) > 0.02) {
+                console.warn(
+                    `[§99 divisas-divergencia] tab=${openTab.tabCode} cliente envió descuento $${discountAmount.toFixed(2)} ` +
+                    `pero con el ${Math.round(serverRate * 10000) / 100}% configurado se esperaba $${expected.toFixed(2)} ` +
+                    `(gross=$${grossPortion.toFixed(2)}, método=${data.paymentMethod}). ` +
+                    `Posible tablet con % desactualizado o build viejo.`,
+                );
+            }
+        }
         const newRunningDiscount = openTab.runningDiscount + discountAmount;
         const newRunningTotal = Math.max(0, openTab.runningTotal - discountAmount);
         const effectiveBalance = Math.max(0, openTab.balanceDue - discountAmount);

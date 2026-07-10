@@ -8,7 +8,7 @@ import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction,
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
-import { getDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
+import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
@@ -157,12 +157,9 @@ export default function POSDeliveryPage() {
 
     // Descuento por divisas configurable (§87). Del server; default 1/3. Aplica
     // SOLO a ítems — el fee de delivery mantiene su piso de $3 al motorizado.
-    const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+    const divisasPercent = useDivisasPercent();
     const divisasRate = divisasPercent / 100;
     const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
-    useEffect(() => {
-        getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
-    }, []);
 
     // PROPINA COLECTIVA
     const [showTipModal, setShowTipModal] = useState(false);

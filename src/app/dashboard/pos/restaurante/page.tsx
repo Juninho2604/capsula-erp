@@ -24,7 +24,7 @@ import {
 import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
-import { getDivisasDiscountPercentAction } from "@/app/actions/system-config.actions";
+import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
 import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
 import { useTenantFeatureFlags } from "@/lib/hooks/use-feature-flags";
@@ -331,12 +331,9 @@ export default function POSSportBarPage() {
   const [skipServiceFeePin, setSkipServiceFeePin] = useState('');
   const [showSkipServiceFeeModal, setShowSkipServiceFeeModal] = useState(false);
   // Descuento por divisas configurable (§87). Cargado del server; default 1/3.
-  const [divisasPercent, setDivisasPercent] = useState<number>(100 / 3);
+  const divisasPercent = useDivisasPercent();
   const divisasRate = divisasPercent / 100;
   const divisasPctLabel = (Math.round(divisasPercent * 100) / 100).toString();
-  useEffect(() => {
-    getDivisasDiscountPercentAction().then(setDivisasPercent).catch(() => {});
-  }, []);
 
   // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);

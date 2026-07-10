@@ -11961,3 +11961,39 @@ tokenVersion e invalida su JWT). Con eso recupera los defaults del rol,
 incluido el historial. Para AMPLIAR más allá del rol hace falta este deploy.
 
 Gates: tsc 0 · vitest 564.
+
+---
+
+## §99 Tablets con montos distintos por céntimos en descuento divisas (2026-07-10)
+
+Reporte de Omar: algunas tablets muestran (y cobran) un monto distinto por
+céntimos vs el POS restaurante cuando hay descuento en divisas.
+
+### Causa raíz (doble)
+1. Cada POS cargaba el % de divisas (§87) por su cuenta al montar, con
+   default 100/3 y `.catch(() => {})` SILENCIOSO. Si a una tablet le fallaba
+   esa carga (wifi del salón) quedaba en 33,33% mientras las demás usaban el
+   % configurado → mismos ítems, céntimos distintos por dispositivo. Un build
+   viejo cacheado en la PWA produce lo mismo.
+2. `registerOpenTabPaymentAction` CONFÍA en el `discountAmount` que envía el
+   cliente (no lo recalcula) → la divergencia no era solo visual: SE COBRABA.
+
+### Fixes
+- `useDivisasPercent()` (src/lib/hooks/use-divisas-percent.ts): carga con 3
+  reintentos + backoff; si falla definitivamente muestra toast de advertencia
+  (nunca más divergencia silenciosa). Reemplaza los 4 loads duplicados
+  (restaurante, mesero, delivery, SubAccountPanel).
+- Vigía server-side en registerOpenTabPaymentAction: si el descuento divisas
+  recibido difiere >$0.02 del esperado con el % configurado (gross = neto +
+  descuento), loguea `[§99 divisas-divergencia]` con tabCode/monto/método —
+  detecta LA tablet problema en pm2 logs sin bloquear el cobro (el monto ya
+  se acordó en mesa). Hacer el server autoritativo del descuento de mesas es
+  refactor mayor pendiente — no se toca en caliente.
+
+### Operativo
+- Detectar la tablet: pm2 logs | grep divisas-divergencia (post-deploy), o
+  comparar el % que muestra el botón de divisas en cada dispositivo.
+- Tablets PWA: cerrar y reabrir la app / recargar duro tras cada deploy para
+  no quedar con bundle viejo.
+
+Gates: tsc 0 · vitest 564.
