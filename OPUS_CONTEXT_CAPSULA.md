@@ -11865,3 +11865,11 @@ sobre `bg-capsula-navy-soft` (badge default de pago + botones ítems/imprimir)
 - Emojis 🖨️ → icono `Printer` (regla no-emoji, mismo commit).
 
 Gates: tsc 0 · vitest 555.
+
+### §96.1 Precio PedidosYA editable desde el submódulo Menú (2026-07-10)
+Espejo exacto del patrón WINK: input "PYA $" por producto en /dashboard/menu
+(update optimista + revert), gated por el MISMO permiso gerencial
+`EDIT_WINK_PRICE` (renombrado en labels a "Editar precios de canal" — la key no
+cambia para no romper roles guardados). `updateMenuItemPedidosYaPriceAction`
+en pedidosya.actions.ts; vacío/null = borra el override → rige el precio del
+restaurante (fallback §96). Sin permiso se ve solo-lectura como antes.

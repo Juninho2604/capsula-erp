@@ -7,6 +7,8 @@ import { getSession } from '@/lib/auth';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber } from '@/lib/sales/daily-order-number';
 import { revalidatePath } from 'next/cache';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 
 export interface PedidosYAItem {
     menuItemId: string;
@@ -137,5 +139,38 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
     } catch (error) {
         console.error('Error creando orden PedidosYA:', error);
         return { success: false, message: 'Error al registrar pedido' };
+    }
+}
+
+
+/**
+ * Actualiza el precio PedidosYA de un producto (override manual). Mismo gate
+ * gerencial que WINK (EDIT_WINK_PRICE — cubre precios de canal).
+ * `pedidosYaPrice = null` borra el override → el POS PYA usa el precio del
+ * restaurante (fallback §96).
+ */
+export async function updateMenuItemPedidosYaPriceAction(
+    id: string,
+    pedidosYaPrice: number | null,
+): Promise<{ success: boolean; message: string }> {
+    const guard = await checkActionPermission(PERM.EDIT_WINK_PRICE);
+    if (!guard.ok) return { success: false, message: guard.message };
+
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const value = pedidosYaPrice === null || Number.isNaN(pedidosYaPrice) ? null : Number(pedidosYaPrice);
+        if (value !== null && value < 0) return { success: false, message: 'El precio no puede ser negativo' };
+
+        const res = await withTenant(tenantId).menuItem.updateMany({
+            where: { id },
+            data: { pedidosYaPrice: value },
+        });
+        if (res.count === 0) return { success: false, message: 'Producto no encontrado' };
+
+        revalidatePath('/dashboard/menu');
+        revalidatePath('/dashboard/pos/pedidosya');
+        return { success: true, message: 'Precio PedidosYA actualizado' };
+    } catch {
+        return { success: false, message: 'Error al actualizar precio PedidosYA' };
     }
 }
