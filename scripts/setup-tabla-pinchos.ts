@@ -1,46 +1,44 @@
 /**
- * setup-tabla-pinchos.ts (§90)
- * ────────────────────────────
- * Crea/actualiza un grupo de modificadores "Pinchos (Tabla xN)" POR CADA
- * tabla, con selección de cantidad EXACTA de varas según el tamaño:
+ * setup-tabla-pinchos.ts (§90, rediseñado 10/07)
+ * ──────────────────────────────────────────────
+ * Configura la selección de varas de pincho en las tablas con el flujo
+ * ANIDADO (§82) que pidió Omar: al seleccionar "Pincho Mixto" dentro de los
+ * principales de la tabla se DESPLIEGA la selección de varas, limitada a la
+ * cantidad exacta según el tamaño:
  *
- *   Tabla x1 → 1 vara   (min=1, max=1)
- *   Tabla x2 → 2 varas  (min=2, max=2)
- *   Tabla x4 → 4 varas  (min=4, max=4)
+ *   Tabla x1 → Pincho Mixto despliega 1 vara   (min=max=1)
+ *   Tabla x2 → Pincho Mixto despliega 2 varas  (min=max=2)
+ *   Tabla x4 → Pincho Mixto despliega 4 varas  (min=max=4)
  *
- * Opciones (varas) en cada grupo: Pincho de Pollo, Pincho de Carne, Pincho
- * de Kafta, Pincho Mixto — con stepper para repetir sabores (ej. en la x4:
- * 2 pollo + 1 carne + 1 kafta). El mesero DEBE completar la cantidad exacta
- * antes de marchar (min = max).
+ * Varas: Pincho de Pollo, Pincho de Carne, Pincho de Kafta, Pincho Mixto
+ * (la VARA mixta — distinta de la ración mixta que la despliega), con
+ * stepper para repetir sabores.
  *
- * Por qué un grupo por tabla (y no anidado bajo un "Pincho Mixto"
- * compartido): las 3 tablas comparten el grupo "Platos Principales (Tabla)",
- * así que un solo modificador no puede desplegar 1 vara en la x1 y 4 en la
- * x4. Un grupo dedicado por tabla resuelve la cantidad exacta sin tocar la
- * config de principales.
+ * Problema de fondo: las tablas COMPARTEN el grupo "Platos Principales
+ * (Tabla)" y el childGroup vive en el modificador → un solo "Pincho Mixto"
+ * no puede desplegar 1 vara en la x1 y 4 en la x4. Solución: cuando el
+ * grupo de principales es compartido, el script lo CLONA por tabla
+ * (modificadores + receta propia + linkedMenuItem incluidos), asigna al
+ * "Pincho Mixto" del clon su sub-grupo dedicado, vincula la tabla al clon y
+ * la desvincula del compartido. Si el grupo ya es exclusivo de la tabla,
+ * solo le asigna el sub-grupo (sin clonar). Idempotente: IDs deterministas
+ * (`<origId>--<sku>`); re-correr actualiza en vez de duplicar.
  *
- * NO toca el grupo "Platos Principales (Tabla)". Es idempotente (IDs
- * deterministas) y reversible (podés desvincular/eliminar desde
- * /dashboard/menu/modificadores).
+ * LIMPIEZA que también hace:
+ *   - Desvincula de las tablas el grupo "PINCHOS" (mín. 3) de la ración si
+ *     quedó vinculado directo (el grupo queda intacto para la ración).
+ *   - Desvincula el grupo dedicado si una corrida anterior (v1) lo dejó
+ *     vinculado DIRECTO a la tabla (ahora es anidado bajo Pincho Mixto).
+ *   - "Pincho Mixto" duplicado dentro de un mismo grupo → soft-delete del
+ *     duplicado (el POS filtra deletedAt; el histórico de ventas no se toca).
  *
- * LIMPIEZA (fase 2): si las tablas quedaron vinculadas a otro grupo de
- * pinchos (ej. el "PINCHOS" mín. 3 de la ración, vinculado a mano), el
- * script LO DESVINCULA de las tablas (el grupo queda intacto para la
- * ración). Y si algún modificador de los grupos de las tablas despliega un
- * sub-grupo de pinchos (childGroup §82), lo desactiva ahí — el grupo
- * dedicado por tabla lo reemplaza. Sin esta limpieza, la tabla seguiría
- * exigiendo el mínimo del grupo compartido (ej. 3 varas en la x1).
- *
- * Los modificadores se crean SIN descargo de inventario. El descargo por
- * vara (gramos de pollo/carne/kafta) se configura después en el admin
- * (receta propia §80 o vínculo a plato), para no descargar cantidades
- * equivocadas automáticamente.
+ * Los modificadores de vara se crean SIN descargo de inventario (se
+ * configura después con receta propia §80). La receta propia de los
+ * modificadores clonados SÍ se copia del original.
  *
  * Uso:
- *   # Dry-run (default, no escribe nada):
- *   npx tsx scripts/setup-tabla-pinchos.ts --tenant-slug=shanklish
- *   # Aplicar:
- *   npx tsx scripts/setup-tabla-pinchos.ts --tenant-slug=shanklish --apply
+ *   npx tsx scripts/setup-tabla-pinchos.ts --tenant-slug=shanklish          # dry-run
+ *   npx tsx scripts/setup-tabla-pinchos.ts --tenant-slug=shanklish --apply  # aplica
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -52,13 +50,18 @@ const TABLAS: Array<{ sku: string; label: string; varas: number }> = [
 ];
 
 // Varas seleccionables (mismas 4 para las 3 tablas). ID determinista por
-// tabla+sabor → idempotente.
+// tabla+sabor → idempotente. "Pincho Mixto" acá es la VARA mixta.
 const SABORES: Array<{ key: string; name: string }> = [
     { key: 'pollo', name: 'Pincho de Pollo' },
     { key: 'carne', name: 'Pincho de Carne' },
     { key: 'kafta', name: 'Pincho de Kafta' },
     { key: 'mixto', name: 'Pincho Mixto' },
 ];
+
+/** ¿El modificador es la ración "Pincho Mixto" (la que despliega varas)? */
+const PINCHO_MIXTO_RE = /^\s*pincho\s+mixto\s*$/i;
+/** ¿El grupo es un grupo de selección de pinchos (ej. "PINCHOS" de la ración)? */
+const PINCHO_GROUP_RE = /pincho/i;
 
 interface Args { tenantSlug: string; apply: boolean; }
 
@@ -81,7 +84,7 @@ async function main() {
     const args = parseArgs();
     const prisma = new PrismaClient();
 
-    console.log('\n=== setup-tabla-pinchos (§90) ===');
+    console.log('\n=== setup-tabla-pinchos (§90 anidado) ===');
     console.log('Tenant:', args.tenantSlug, '| Modo:', args.apply ? 'APPLY' : 'DRY-RUN');
 
     const tenant = await prisma.tenant.findUnique({
@@ -104,107 +107,185 @@ async function main() {
 
     for (const t of TABLAS) {
         const item = bySku.get(t.sku)!;
-        const groupId = `mod-group-pinchos-${t.sku.toLowerCase()}`;
-        const groupName = `Pinchos (${t.label})`;
+        const skuLower = t.sku.toLowerCase();
+        const dedicatedId = `mod-group-pinchos-${skuLower}`;
+        const dedicatedName = `Pinchos (${t.label})`;
 
-        console.log(`\n── ${t.label} (${item.name}) — grupo "${groupName}" min=max=${t.varas}`);
-        for (const s of SABORES) console.log(`     + ${s.name}`);
+        console.log(`\n══ ${t.label} (${item.name}) ══`);
 
-        if (!args.apply) continue;
-
-        await prisma.menuModifierGroup.upsert({
-            where: { id: groupId },
-            create: {
-                id: groupId, tenantId: tenant.id, name: groupName,
-                isRequired: true, minSelections: t.varas, maxSelections: t.varas, sortOrder: 50,
-            },
-            update: {
-                tenantId: tenant.id, name: groupName,
-                isRequired: true, minSelections: t.varas, maxSelections: t.varas,
-            },
-        });
-
-        for (let i = 0; i < SABORES.length; i++) {
-            const s = SABORES[i];
-            const modId = `mod-pincho-${t.sku.toLowerCase()}-${s.key}`;
-            await prisma.menuModifier.upsert({
-                where: { id: modId },
-                create: { id: modId, tenantId: tenant.id, name: s.name, priceAdjustment: 0, groupId, sortOrder: i },
-                update: { tenantId: tenant.id, name: s.name, priceAdjustment: 0, groupId, sortOrder: i },
+        // ── 1. Sub-grupo dedicado de varas (min=max según tabla) ─────────
+        console.log(`   Sub-grupo "${dedicatedName}" min=max=${t.varas} · varas: ${SABORES.map(s => s.name).join(', ')}`);
+        if (args.apply) {
+            await prisma.menuModifierGroup.upsert({
+                where: { id: dedicatedId },
+                create: {
+                    id: dedicatedId, tenantId: tenant.id, name: dedicatedName,
+                    isRequired: true, minSelections: t.varas, maxSelections: t.varas, sortOrder: 50,
+                },
+                update: {
+                    tenantId: tenant.id, name: dedicatedName,
+                    isRequired: true, minSelections: t.varas, maxSelections: t.varas,
+                },
             });
+            for (let i = 0; i < SABORES.length; i++) {
+                const s = SABORES[i];
+                const modId = `mod-pincho-${skuLower}-${s.key}`;
+                await prisma.menuModifier.upsert({
+                    where: { id: modId },
+                    create: { id: modId, tenantId: tenant.id, name: s.name, priceAdjustment: 0, groupId: dedicatedId, sortOrder: i },
+                    update: { tenantId: tenant.id, name: s.name, priceAdjustment: 0, groupId: dedicatedId, sortOrder: i, deletedAt: null, isAvailable: true },
+                });
+            }
         }
 
-        await prisma.menuItemModifierGroup.upsert({
-            where: { menuItemId_modifierGroupId: { menuItemId: item.id, modifierGroupId: groupId } },
-            create: { menuItemId: item.id, modifierGroupId: groupId },
-            update: {},
+        // ── 2. Si una corrida v1 vinculó el dedicado DIRECTO a la tabla,
+        //       quitarlo: ahora se despliega anidado bajo "Pincho Mixto". ──
+        const directLink = await prisma.menuItemModifierGroup.findUnique({
+            where: { menuItemId_modifierGroupId: { menuItemId: item.id, modifierGroupId: dedicatedId } },
         });
-        console.log(`     ✓ grupo + ${SABORES.length} varas + vínculo a ${t.sku}`);
-    }
+        if (directLink) {
+            console.log(`   ✂ quitar vínculo DIRECTO del sub-grupo dedicado (v1) — pasa a anidado`);
+            if (args.apply) await prisma.menuItemModifierGroup.delete({ where: { id: directLink.id } });
+        }
 
-    // ── FASE 2: limpieza de grupos de pinchos legacy en las tablas ──────
-    // Sin esto, la tabla seguiría exigiendo el mínimo del grupo compartido
-    // (ej. "PINCHOS" mín. 3 de la ración) además del grupo dedicado.
-    console.log('\n── Limpieza: grupos/sub-grupos de pinchos legacy en las tablas');
-    const PINCHO_RE = /pincho/i;
-    const dedicatedIds = new Set(TABLAS.map(t => `mod-group-pinchos-${t.sku.toLowerCase()}`));
-    const tablaItemIds = new Set(tablas.map(t => t.id));
-
-    const links = await prisma.menuItemModifierGroup.findMany({
-        where: { menuItemId: { in: [...tablaItemIds] } },
-        include: {
-            menuItem: { select: { sku: true } },
-            modifierGroup: {
-                include: {
-                    modifiers: { include: { childGroup: { select: { id: true, name: true, minSelections: true } } } },
-                    menuItems: { select: { menuItemId: true } },
+        // ── 3. Grupos vinculados a la tabla: limpiar legacy y anidar ─────
+        const links = await prisma.menuItemModifierGroup.findMany({
+            where: { menuItemId: item.id },
+            include: {
+                modifierGroup: {
+                    include: {
+                        modifiers: {
+                            where: { deletedAt: null },
+                            orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+                            include: { ingredients: true },
+                        },
+                        menuItems: { select: { menuItemId: true } },
+                    },
                 },
             },
-        },
-    });
+        });
 
-    let cleanupCount = 0;
-    for (const link of links) {
-        const g = link.modifierGroup;
-        if (dedicatedIds.has(g.id)) continue;
+        let anidado = false;
+        for (const link of links) {
+            const g = link.modifierGroup;
+            if (g.id === dedicatedId) continue;
 
-        // Caso A: grupo de pinchos vinculado directo a la tabla (ej. el
-        // "PINCHOS" mín. 3 de la ración) → desvincular SOLO de la tabla.
-        // El grupo no se toca: la ración lo sigue usando.
-        if (PINCHO_RE.test(g.name)) {
-            cleanupCount++;
-            console.log(`   ✂ ${link.menuItem.sku}: desvincular grupo "${g.name}" (min ${g.minSelections}) — lo reemplaza el dedicado`);
-            if (args.apply) {
-                await prisma.menuItemModifierGroup.delete({ where: { id: link.id } });
-            }
-            continue;
-        }
-
-        // Caso B: dentro de un grupo de la tabla (ej. principales), un
-        // modificador despliega un sub-grupo de pinchos (§82). Quitarle el
-        // despliegue solo es seguro si el grupo es EXCLUSIVO de las tablas
-        // (si lo comparte la ración u otro item, se avisa y se deja).
-        const sharedOutsideTablas = g.menuItems.some(mi => !tablaItemIds.has(mi.menuItemId));
-        for (const mod of g.modifiers) {
-            if (!mod.childGroup || !PINCHO_RE.test(mod.childGroup.name)) continue;
-            if (sharedOutsideTablas) {
-                console.log(`   ⚠ "${g.name}" → "${mod.name}" despliega "${mod.childGroup.name}" (min ${mod.childGroup.minSelections}), pero el grupo lo comparten otros items — revisar a mano en /dashboard/menu/modificadores`);
+            // 3a. Grupo de pinchos vinculado directo (ej. "PINCHOS" mín. 3 de
+            // la ración) → desvincular SOLO de la tabla; el grupo no se toca.
+            if (PINCHO_GROUP_RE.test(g.name)) {
+                console.log(`   ✂ desvincular grupo "${g.name}" (min ${g.minSelections}) — lo reemplaza el despliegue anidado`);
+                if (args.apply) await prisma.menuItemModifierGroup.delete({ where: { id: link.id } });
                 continue;
             }
-            cleanupCount++;
-            console.log(`   ✂ "${g.name}" → "${mod.name}": quitar despliegue de "${mod.childGroup.name}" — lo reemplaza el grupo dedicado`);
-            if (args.apply) {
-                await prisma.menuModifier.update({ where: { id: mod.id }, data: { childGroupId: null } });
+
+            // 3b. Grupo con la ración "Pincho Mixto" adentro (principales).
+            const mixtos = g.modifiers.filter(m => PINCHO_MIXTO_RE.test(m.name));
+            if (mixtos.length === 0) continue;
+
+            const sharedWithOthers = g.menuItems.some(mi => mi.menuItemId !== item.id);
+
+            if (!sharedWithOthers) {
+                // Exclusivo de esta tabla (o clon de corrida previa) → in place.
+                const keep = mixtos[0];
+                for (const dup of mixtos.slice(1)) {
+                    console.log(`   ✂ "${g.name}": soft-delete "Pincho Mixto" DUPLICADO (id ${dup.id})`);
+                    if (args.apply) await prisma.menuModifier.update({ where: { id: dup.id }, data: { deletedAt: new Date() } });
+                }
+                if (keep.childGroupId !== dedicatedId) {
+                    console.log(`   ⚓ "${g.name}" → "Pincho Mixto" despliega "${dedicatedName}" (${t.varas} vara${t.varas > 1 ? 's' : ''})`);
+                    if (args.apply) await prisma.menuModifier.update({ where: { id: keep.id }, data: { childGroupId: dedicatedId } });
+                } else {
+                    console.log(`   ✓ "${g.name}" → "Pincho Mixto" ya despliega el sub-grupo correcto`);
+                }
+                anidado = true;
+                continue;
             }
+
+            // Compartido (las 3 tablas u otros items) → CLONAR para esta tabla.
+            const cloneId = `${g.id}--${skuLower}`;
+            const cloneName = g.name.includes(t.label) ? g.name : `${g.name} (${t.label})`;
+            const seenMixto = new Set<string>();
+            const modPlan = g.modifiers.filter(m => {
+                if (!PINCHO_MIXTO_RE.test(m.name)) return true;
+                if (seenMixto.has('mixto')) return false; // dedupe duplicado
+                seenMixto.add('mixto');
+                return true;
+            });
+            const dupes = g.modifiers.length - modPlan.length;
+            console.log(`   ⧉ clonar "${g.name}" (compartido) → "${cloneName}" [${modPlan.length} modificadores${dupes > 0 ? `, ${dupes} "Pincho Mixto" duplicado descartado` : ''}]`);
+            console.log(`     ⚓ en el clon, "Pincho Mixto" despliega "${dedicatedName}" (${t.varas} vara${t.varas > 1 ? 's' : ''})`);
+            console.log(`     ↪ ${t.sku} pasa a usar el clon; el grupo original queda para los demás`);
+
+            if (args.apply) {
+                await prisma.menuModifierGroup.upsert({
+                    where: { id: cloneId },
+                    create: {
+                        id: cloneId, tenantId: tenant.id, name: cloneName,
+                        isRequired: g.isRequired, minSelections: g.minSelections,
+                        maxSelections: g.maxSelections, sortOrder: g.sortOrder, isActive: g.isActive,
+                    },
+                    update: {
+                        tenantId: tenant.id, name: cloneName,
+                        isRequired: g.isRequired, minSelections: g.minSelections,
+                        maxSelections: g.maxSelections, sortOrder: g.sortOrder, isActive: g.isActive,
+                    },
+                });
+                for (const mod of modPlan) {
+                    const isMixto = PINCHO_MIXTO_RE.test(mod.name);
+                    const cloneModId = `${mod.id}--${skuLower}`;
+                    await prisma.menuModifier.upsert({
+                        where: { id: cloneModId },
+                        create: {
+                            id: cloneModId, tenantId: tenant.id, groupId: cloneId,
+                            name: mod.name, priceAdjustment: mod.priceAdjustment,
+                            isAvailable: mod.isAvailable, sortOrder: mod.sortOrder,
+                            linkedMenuItemId: mod.linkedMenuItemId,
+                            childGroupId: isMixto ? dedicatedId : mod.childGroupId,
+                        },
+                        update: {
+                            tenantId: tenant.id, groupId: cloneId,
+                            name: mod.name, priceAdjustment: mod.priceAdjustment,
+                            isAvailable: mod.isAvailable, sortOrder: mod.sortOrder,
+                            linkedMenuItemId: mod.linkedMenuItemId,
+                            childGroupId: isMixto ? dedicatedId : mod.childGroupId,
+                            deletedAt: null,
+                        },
+                    });
+                    // Receta propia (§80): refrescar desde el original.
+                    await prisma.menuModifierIngredient.deleteMany({ where: { modifierId: cloneModId } });
+                    if (mod.ingredients.length > 0) {
+                        await prisma.menuModifierIngredient.createMany({
+                            data: mod.ingredients.map(ing => ({
+                                modifierId: cloneModId,
+                                ingredientItemId: ing.ingredientItemId,
+                                quantity: ing.quantity,
+                                unit: ing.unit,
+                            })),
+                        });
+                    }
+                }
+                await prisma.menuItemModifierGroup.upsert({
+                    where: { menuItemId_modifierGroupId: { menuItemId: item.id, modifierGroupId: cloneId } },
+                    create: { menuItemId: item.id, modifierGroupId: cloneId },
+                    update: {},
+                });
+                await prisma.menuItemModifierGroup.delete({ where: { id: link.id } });
+            }
+            anidado = true;
+        }
+
+        if (!anidado) {
+            console.log(`   ⚠ ${t.sku}: ningún grupo vinculado contiene la ración "Pincho Mixto" — revisar en /dashboard/menu/modificadores`);
         }
     }
-    if (cleanupCount === 0) console.log('   (nada que limpiar)');
 
     if (!args.apply) {
         console.log('\n[DRY-RUN] No se escribió nada. Re-correr con --apply para aplicar.');
     } else {
-        console.log('\nListo. Probá agregar cada tabla en el POS — debe pedir la cantidad exacta de varas.');
-        console.log('Configurá el descargo por vara en /dashboard/menu/modificadores (receta propia).');
+        console.log('\nListo. Probá cada tabla en el POS: al seleccionar "Pincho Mixto" debe');
+        console.log('desplegarse la selección de varas con la cantidad exacta (1/2/4).');
+        console.log('La ración individual de Pincho Mixto no cambia (sigue con su grupo de 3).');
+        console.log('Descargo por vara: /dashboard/menu/modificadores (receta propia §80).');
     }
     await prisma.$disconnect();
 }

@@ -11571,15 +11571,22 @@ Motivo del grupo-por-tabla: las 3 tablas comparten el grupo de principales, así
 que un solo "Pincho Mixto" no puede desplegar 1 vara en la x1 y 4 en la x4. Un
 grupo dedicado por tabla da la cantidad exacta.
 
-**Fase 2 — limpieza (agregada 10/07):** en producción las tablas quedaron
-vinculadas al grupo "PINCHOS" mín. 3 de la ración (vinculado a mano en admin)
-→ la tabla x1 exigía 3 varas. El script ahora además: (a) DESVINCULA de las
-tablas cualquier otro grupo cuyo nombre matchee /pincho/i (el grupo queda
-intacto para la ración — solo se borra el link MenuItemModifierGroup); (b) si
-un modificador de un grupo de las tablas despliega un sub-grupo de pinchos
-(childGroup §82), le quita el despliegue (childGroupId=null) SOLO si ese grupo
-es exclusivo de las tablas; si lo comparten otros items, avisa para revisar a
-mano. Todo visible en dry-run antes de aplicar.
+**Rediseño ANIDADO (10/07, pedido de Omar con capturas):** el flujo final NO
+es un grupo aparte siempre obligatorio, sino el despliegue §82: al seleccionar
+la ración "Pincho Mixto" DENTRO de los principales de la tabla se despliega la
+selección de varas con cantidad exacta (x1→1, x2→2, x4→4; min=max). La vara
+mixta es una de las 4 opciones (ración mixta ≠ vara mixta). Como el childGroup
+vive en el modificador y las tablas COMPARTEN el grupo de principales, el
+script CLONA el grupo por tabla (`<origId>--<sku>`, modificadores + receta
+propia §80 + linkedMenuItemId copiados), asigna al "Pincho Mixto" del clon su
+sub-grupo dedicado, vincula la tabla al clon y la desvincula del compartido.
+Side-benefit: cada tabla puede ajustar sus principales por separado en admin.
+Limpieza incluida: (a) desvincula de las tablas el grupo "PINCHOS" mín. 3 de
+la ración si quedó vinculado directo (el grupo queda intacto para la ración);
+(b) quita el vínculo DIRECTO del sub-grupo dedicado si una corrida v1 lo dejó
+(ahora es anidado); (c) "Pincho Mixto" duplicado en un mismo grupo →
+soft-delete del duplicado (el POS filtra deletedAt; histórico intacto). Todo
+visible en dry-run. Idempotente: re-correr actualiza los clones.
 
 Gates: tsc 0 · vitest 526.
 
