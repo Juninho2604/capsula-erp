@@ -63,7 +63,7 @@ async function main() {
 
         console.log(`┌─ ${tab.tabCode} · ${tab.status} · tipo=${tab.serviceType}`);
         console.log(`│ abierta:  ${ts(tab.openedAt)} por ${tab.openedBy?.firstName ?? '?'} ${tab.openedBy?.lastName ?? ''} (${tab.openedBy?.role ?? '?'})`);
-        console.log(`│ cerrada:  ${ts(tab.closedAt)} · mesonero: ${tab.waiterLabel ?? `${tab.assignedWaiter?.firstName ?? ''} ${tab.assignedWaiter?.lastName ?? ''}`.trim() || '—'}`);
+        console.log(`│ cerrada:  ${ts(tab.closedAt)} · mesonero: ${tab.waiterLabel ?? (`${tab.assignedWaiter?.firstName ?? ''} ${tab.assignedWaiter?.lastName ?? ''}`.trim() || '—')}`);
         console.log(`│ subtotal=${fmt(tab.runningSubtotal)} desc=${fmt(tab.runningDiscount)} total=${fmt(tab.runningTotal)}`);
         console.log(`│ SERVICIO TOTAL COBRADO: ${fmt(tab.totalServiceCharge)}  (esperado ~10% de lo cobrado si nadie lo quitó)`);
 
