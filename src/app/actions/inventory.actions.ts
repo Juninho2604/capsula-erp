@@ -211,7 +211,9 @@ export async function updateInventoryItemAction(id: string, data: any) {
                 category: data.category,
                 baseUnit: data.baseUnit,
                 minimumStock: data.minimumStock,
-                reorderPoint: data.reorderPoint
+                reorderPoint: data.reorderPoint,
+                // SIN estilo Xetux (§94) — solo se toca si el form lo envía
+                ...(typeof data.allowSin === 'boolean' ? { allowSin: data.allowSin } : {}),
             }
         });
         if (res.count === 0) return { success: false, message: 'Ítem no encontrado' };

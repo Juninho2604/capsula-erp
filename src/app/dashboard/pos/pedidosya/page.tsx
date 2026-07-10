@@ -10,6 +10,7 @@ import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } fr
 import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
+import { SinIngredientsSection, buildSinCartModifiers } from '@/components/pos/SinIngredientsSection';
 import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from '@/lib/pos-child-group';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
@@ -43,6 +44,8 @@ interface MenuItem {
     pedidosYaPrice?: number | null;
     pedidosYaEnabled?: boolean;
     modifierGroups: { modifierGroup: ModifierGroup }[];
+    /** SIN estilo Xetux (§94): insumos de la receta con allowSin activo. */
+    sinIngredients?: { id: string; name: string }[];
 }
 
 interface SelectedModifier {
@@ -79,6 +82,8 @@ export default function POSPedidosYAPage() {
     const [currentModifiers, setCurrentModifiers] = useState<SelectedModifier[]>([]);
     const [itemQuantity, setItemQuantity] = useState(1);
     const [itemNotes, setItemNotes] = useState('');
+    // §94: ids de InventoryItem marcados "SIN" en el modal actual.
+    const [sinSelected, setSinSelected] = useState<string[]>([]);
 
     // Last order for reprint
     const [lastOrder, setLastOrder] = useState<{ orderNumber: string; dailyLabel?: string; items: CartItem[]; customerName: string } | null>(null);
@@ -111,6 +116,7 @@ export default function POSPedidosYAPage() {
         setCurrentModifiers([]);
         setItemQuantity(1);
         setItemNotes('');
+        setSinSelected([]);
         setShowModifierModal(true);
     };
 
@@ -185,7 +191,7 @@ export default function POSPedidosYAPage() {
         const exploded = currentModifiers.flatMap(m => Array(m.quantity).fill({ modifierId: m.id, name: m.name, priceAdjustment: m.priceAdjustment, hideFromKitchen: parentModIds.has(m.id) }));
         setCart([...cart, {
             menuItemId: selectedItemForModifier.id, name: selectedItemForModifier.name, quantity: itemQuantity,
-            unitPrice: pyaBase, modifiers: exploded, notes: itemNotes || undefined, lineTotal
+            unitPrice: pyaBase, modifiers: [...exploded, ...buildSinCartModifiers(selectedItemForModifier.sinIngredients, sinSelected)], notes: itemNotes || undefined, lineTotal
         }]);
         setShowModifierModal(false);
     };
@@ -650,6 +656,11 @@ export default function POSPedidosYAPage() {
                                     </div>
                                 );
                             })}
+                            <SinIngredientsSection
+                                ingredients={selectedItemForModifier.sinIngredients ?? []}
+                                selected={sinSelected}
+                                onToggle={(id) => setSinSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                            />
                             <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-4">
                                 <label className="pos-label">Notas</label>
                                 <textarea

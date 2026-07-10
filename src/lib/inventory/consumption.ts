@@ -28,6 +28,12 @@ export interface OrderForConsumption {
                 linkedMenuItem?: { recipeId: string | null } | null;
                 ingredients?: Array<{ ingredientItemId: string; quantity: number }> | null;
             } | null;
+            /**
+             * SIN estilo Xetux (§94): si está seteado, la fila es una exclusión
+             * ("SIN Salsa de Ajo") — ese ingrediente NO se consume de la receta
+             * PRINCIPAL del item. No afecta recetas de otros modificadores.
+             */
+            excludedIngredientItemId?: string | null;
         } | null> | null;
     }>;
 }
@@ -51,12 +57,14 @@ export function computeConsumptionFromOrders(
 ): Map<string, number> {
     const consumption = new Map<string, number>();
 
-    const addRecipe = (recipeId: string | null | undefined, quantity: number) => {
+    const addRecipe = (recipeId: string | null | undefined, quantity: number, excluded?: Set<string>) => {
         if (!recipeId) return;
         const recipe = recipesById.get(recipeId);
         if (!recipe) return;
         for (const ing of recipe.ingredients) {
             if (!Number.isFinite(ing.quantity) || ing.quantity <= 0) continue;
+            // §94: ingrediente marcado "SIN" en el POS → no se consume.
+            if (excluded?.has(ing.ingredientItemId)) continue;
             const prev = consumption.get(ing.ingredientItemId) ?? 0;
             consumption.set(ing.ingredientItemId, prev + ing.quantity * quantity);
         }
@@ -65,7 +73,12 @@ export function computeConsumptionFromOrders(
     for (const order of orders) {
         for (const item of order.items) {
             if (!Number.isFinite(item.quantity) || item.quantity <= 0) continue;
-            addRecipe(item.menuItem?.recipeId, item.quantity);
+            // §94: exclusiones "SIN X" de esta línea (solo receta principal).
+            const excluded = new Set<string>();
+            for (const mod of item.modifiers ?? []) {
+                if (mod?.excludedIngredientItemId) excluded.add(mod.excludedIngredientItemId);
+            }
+            addRecipe(item.menuItem?.recipeId, item.quantity, excluded);
             // Modificadores: cada entrada es UNA selección aplicada a cada
             // unidad de la línea (mismo criterio que el descargo del POS).
             // Receta propia (§80) tiene prioridad sobre el item vinculado.

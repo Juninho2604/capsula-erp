@@ -76,7 +76,9 @@ export interface CartItem {
     quantity: number;
     unitPrice: number;
     modifiers: {
-        modifierId: string;
+        // null/undefined para pseudo-modificadores "SIN X" (§94): no existe
+        // MenuModifier detrás — la fila solo marca la exclusión.
+        modifierId?: string | null;
         name: string;
         priceAdjustment: number;
         // §90: modificador PADRE de un sub-grupo anidado (ej. "Pincho Mixto").
@@ -84,6 +86,10 @@ export interface CartItem {
         // solo las varas/hijos seleccionados. Sigue contando para precio e
         // inventario; solo se oculta del papel.
         hideFromKitchen?: boolean;
+        // SIN estilo Xetux (§94): id del InventoryItem que NO debe descargarse
+        // de la receta principal del item ("SIN Salsa de Ajo"). La comanda
+        // imprime el name normal; el recibo también (precio 0).
+        excludedIngredientItemId?: string;
     }[];
     notes?: string;
     lineTotal: number;
@@ -832,10 +838,18 @@ async function registerInventoryForCartItems(params: {
             where: { id: cartItem.menuItemId },
             select: { name: true, recipeId: true },
         });
+        // SIN estilo Xetux (§94): ingredientes marcados "SIN X" en el POS no
+        // se descargan de la receta principal (el plato salió sin ellos).
+        const sinExcluded = new Set(
+            (cartItem.modifiers ?? [])
+                .map(m => m.excludedIngredientItemId)
+                .filter((id): id is string => Boolean(id)),
+        );
         if (menuItem?.recipeId) {
             const recipe = await loadRecipe(menuItem.recipeId);
             if (recipe.isActive) {
                 for (const ing of recipe.ingredients) {
+                    if (sinExcluded.has(ing.ingredientItemId)) continue;
                     ops.push({
                         inventoryItemId: ing.ingredientItemId,
                         quantity: ing.quantity * cartItem.quantity,
@@ -1186,6 +1200,43 @@ export async function getMenuForPOSAction(opts?: { applyPromotions?: boolean; ch
             },
             orderBy: { sortOrder: 'asc' }
         });
+
+        // SIN estilo Xetux (§94): para cada item con receta, exponer los
+        // ingredientes cuya materia prima tiene `allowSin` activo. El POS los
+        // muestra como toggles "SIN <nombre>"; al marcar uno, el insumo no se
+        // descarga de inventario. MenuItem.recipeId es referencia suelta (sin
+        // relación Prisma) → batch-fetch aparte, una sola query.
+        {
+            const recipeIds = Array.from(new Set(
+                categories.flatMap(cat => (cat.items as Array<{ recipeId?: string | null }>)
+                    .map(i => i.recipeId).filter((id): id is string => Boolean(id))),
+            ));
+            if (recipeIds.length > 0) {
+                const sinRows = await db.recipeIngredient.findMany({
+                    where: {
+                        recipeId: { in: recipeIds },
+                        ingredientItem: { allowSin: true, isActive: true, deletedAt: null },
+                    },
+                    select: {
+                        recipeId: true,
+                        ingredientItemId: true,
+                        ingredientItem: { select: { name: true } },
+                    },
+                    orderBy: { sortOrder: 'asc' },
+                });
+                const byRecipe = new Map<string, Array<{ id: string; name: string }>>();
+                for (const row of sinRows) {
+                    const arr = byRecipe.get(row.recipeId) ?? [];
+                    arr.push({ id: row.ingredientItemId, name: row.ingredientItem.name });
+                    byRecipe.set(row.recipeId, arr);
+                }
+                for (const cat of categories) {
+                    for (const item of cat.items as any[]) {
+                        item.sinIngredients = item.recipeId ? (byRecipe.get(item.recipeId) ?? []) : [];
+                    }
+                }
+            }
+        }
 
         // Listas de precios por canal (§86): antes de promociones. La lista
         // activa del canal define el precio base del item para ESTE canal; el
@@ -1561,7 +1612,9 @@ export async function createSalesOrderAction(
                                     create: item.modifiers?.map(m => ({
                                         name: m.name,
                                         priceAdjustment: m.priceAdjustment,
-                                        modifierId: m.modifierId
+                                        modifierId: m.modifierId ?? null,
+                                        // §94: exclusión "SIN X" — no descarga ese insumo
+                                        excludedIngredientItemId: m.excludedIngredientItemId ?? null
                                     }))
                                 }
                             }))
@@ -2080,9 +2133,11 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                             promotionDiscount: promoAudit[idx]?.promotionDiscount ?? null,
                             modifiers: {
                                 create: item.modifiers?.map(modifier => ({
-                                    modifierId: modifier.modifierId,
+                                    modifierId: modifier.modifierId ?? null,
                                     name: modifier.name,
-                                    priceAdjustment: modifier.priceAdjustment
+                                    priceAdjustment: modifier.priceAdjustment,
+                                    // §94: exclusión "SIN X" — no descarga ese insumo
+                                    excludedIngredientItemId: modifier.excludedIngredientItemId ?? null
                                 }))
                             }
                         }))
@@ -2527,6 +2582,11 @@ async function applyItemInventoryInTx(tx: any, params: {
     menuItemId: string;
     quantity: number;
     modifierIds: (string | null | undefined)[];
+    /**
+     * SIN estilo Xetux (§94): insumos excluidos del ítem ("SIN Salsa de Ajo").
+     * No se descargaron en la venta → tampoco se restauran/re-descargan aquí.
+     */
+    excludedIngredientItemIds?: (string | null | undefined)[];
     areaId: string;
     orderId: string;
     createdById: string;
@@ -2536,7 +2596,10 @@ async function applyItemInventoryInTx(tx: any, params: {
     type Op = { inventoryItemId: string; quantity: number; unit: string; note: string };
     const ops: Op[] = [];
 
-    const collectRecipe = async (recipeId: string | null | undefined, note: string) => {
+    const sinExcluded = new Set(
+        (params.excludedIngredientItemIds ?? []).filter((id): id is string => Boolean(id)),
+    );
+    const collectRecipe = async (recipeId: string | null | undefined, note: string, excluded?: Set<string>) => {
         if (!recipeId) return;
         const recipe = await tx.recipe.findUnique({
             where: { id: recipeId },
@@ -2544,6 +2607,7 @@ async function applyItemInventoryInTx(tx: any, params: {
         });
         if (!recipe?.isActive) return;
         for (const ing of recipe.ingredients) {
+            if (excluded?.has(ing.ingredientItemId)) continue;
             ops.push({
                 inventoryItemId: ing.ingredientItemId,
                 quantity: ing.quantity * quantity,
@@ -2557,7 +2621,8 @@ async function applyItemInventoryInTx(tx: any, params: {
         where: { id: params.menuItemId },
         select: { name: true, recipeId: true },
     });
-    await collectRecipe(menuItem?.recipeId, `${params.label}`);
+    // §94: exclusiones aplican SOLO a la receta principal (igual que la venta).
+    await collectRecipe(menuItem?.recipeId, `${params.label}`, sinExcluded);
 
     for (const modifierId of params.modifierIds) {
         if (!modifierId) continue;
@@ -2624,7 +2689,7 @@ async function voidItemInTx(
     item: {
         id: string; orderId: string; itemName: string; menuItemId: string;
         quantity: number; lineTotal: number;
-        modifiers: { modifierId: string | null }[];
+        modifiers: { modifierId: string | null; excludedIngredientItemId?: string | null }[];
         order: { areaId: string; createdById: string };
     },
     openTabId: string,
@@ -2677,6 +2742,7 @@ async function voidItemInTx(
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         modifierIds: item.modifiers.map(m => m.modifierId),
+        excludedIngredientItemIds: item.modifiers.map(m => m.excludedIngredientItemId),
         areaId: item.order.areaId,
         orderId: item.orderId,
         createdById: item.order.createdById,
@@ -2877,6 +2943,8 @@ export async function modifyTabItemAction({
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
                                 modifierId: m.modifierId,
+                                // §94: preservar la exclusión "SIN X" en el reemplazo
+                                excludedIngredientItemId: m.excludedIngredientItemId ?? null,
                             })),
                         },
                     },
@@ -2889,6 +2957,7 @@ export async function modifyTabItemAction({
                     menuItemId: item.menuItemId,
                     quantity: newQuantity,
                     modifierIds: item.modifiers.map(m => m.modifierId),
+                    excludedIngredientItemIds: item.modifiers.map(m => m.excludedIngredientItemId),
                     areaId: item.order.areaId,
                     orderId: item.orderId,
                     createdById: item.order.createdById,

@@ -21,7 +21,7 @@ export interface WinkItem {
     name: string;
     quantity: number;
     unitPrice: number;
-    modifiers: { modifierId: string; name: string; priceAdjustment: number }[];
+    modifiers: { modifierId?: string | null; name: string; priceAdjustment: number; hideFromKitchen?: boolean; excludedIngredientItemId?: string }[];
     notes?: string;
     lineTotal: number;
 }
@@ -100,9 +100,10 @@ export async function createWinkOrderAction(data: CreateWinkOrderData) {
                         lineTotal: item.lineTotal,
                         modifiers: {
                             create: item.modifiers.map(m => ({
-                                modifierId: m.modifierId,
+                                modifierId: m.modifierId ?? null,
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
+                                excludedIngredientItemId: m.excludedIngredientItemId ?? null,
                             }))
                         },
                     }))

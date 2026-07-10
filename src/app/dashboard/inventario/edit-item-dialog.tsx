@@ -22,6 +22,7 @@ export function ItemEditDialog({ item, isOpen, onClose }: Props) {
         baseUnit: item.baseUnit || 'UNI',
         minimumStock: item.minimumStock,
         reorderPoint: item.reorderPoint || 0,
+        allowSin: Boolean(item.allowSin),
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -147,6 +148,25 @@ export function ItemEditDialog({ item, isOpen, onClose }: Props) {
                                 />
                             </fieldset>
                         </div>
+
+                        {/* SIN estilo Xetux (§94) */}
+                        <fieldset className="flex items-start gap-3 rounded-xl border border-capsula-line bg-capsula-ivory-alt p-3">
+                            <input
+                                id="allow-sin"
+                                type="checkbox"
+                                checked={formData.allowSin}
+                                onChange={e => setFormData({ ...formData, allowSin: e.target.checked })}
+                                className="mt-0.5 h-4 w-4 accent-capsula-coral"
+                            />
+                            <label htmlFor="allow-sin" className="cursor-pointer select-none">
+                                <span className="block text-sm font-semibold text-capsula-ink">Permitir &quot;SIN&quot; en el POS</span>
+                                <span className="block text-xs text-capsula-ink-muted">
+                                    Los productos cuya receta incluya este insumo mostrarán el toggle
+                                    &quot;SIN {formData.name || 'ingrediente'}&quot;. Al marcarlo, el insumo no se
+                                    descuenta de inventario y la comanda lo imprime.
+                                </span>
+                            </label>
+                        </fieldset>
 
                         <div className="mt-2 flex gap-3 border-t border-capsula-line pt-4">
                             <button

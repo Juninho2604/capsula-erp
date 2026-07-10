@@ -13,7 +13,7 @@ export interface PedidosYAItem {
     name: string;
     quantity: number;
     unitPrice: number;
-    modifiers: { modifierId: string; name: string; priceAdjustment: number }[];
+    modifiers: { modifierId?: string | null; name: string; priceAdjustment: number; hideFromKitchen?: boolean; excludedIngredientItemId?: string }[];
     notes?: string;
     lineTotal: number;
 }
@@ -87,9 +87,10 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
                         lineTotal: item.lineTotal,
                         modifiers: {
                             create: item.modifiers.map(m => ({
-                                modifierId: m.modifierId,
+                                modifierId: m.modifierId ?? null,
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
+                                excludedIngredientItemId: m.excludedIngredientItemId ?? null,
                             }))
                         },
                     }))

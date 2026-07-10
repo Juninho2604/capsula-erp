@@ -11743,3 +11743,51 @@ Regla general: TODO surface nuevo que imprima comanda desde BD debe pasar los
 modifiers por `filterKitchenModifiers` (o exponer `hideFromKitchen`).
 
 Gates: tsc 0 · vitest 551.
+
+---
+
+## §94 "SIN" estilo Xetux: exclusión de ingredientes con inventario real (2026-07-10)
+
+Pedido de Omar: a cada materia prima poder activarle la opción "SIN"; al marcar
+"SIN Salsa de Ajo" en un Shawarma de Pollo en el POS, esa materia prima NO se
+descuenta de inventario. "Quiero que sea de igual forma que Xetux."
+
+El sistema SIN/CON previo (pos-modifier-grouping, convención de nombres "Sin X")
+era SOLO cosmético: imprimía pero el descargo seguía completo. Sigue existiendo
+para modifiers manuales; §94 agrega el camino con inventario real.
+
+### Schema (migración `20260710110801_sin_ingredientes_xetux`, ambas safe)
+- `InventoryItem.allowSin Boolean @default(false)` — activable por materia prima
+  en /dashboard/inventario (editar ítem → checkbox "Permitir SIN en el POS").
+- `SalesOrderItemModifier.excludedIngredientItemId String?` — la fila es una
+  EXCLUSIÓN: name="SIN X", modifierId=null, priceAdjustment=0.
+
+### Flujo
+1. Admin activa `allowSin` en la materia prima (ej. "Salsa de Ajo").
+2. `getMenuForPOSAction` expone por item `sinIngredients: [{id,name}]` =
+   ingredientes de su receta cuya materia prima tiene allowSin (batch-fetch por
+   recipeIds — MenuItem.recipeId es referencia suelta, sin relación Prisma).
+3. POS (los 5): sección "Quitar ingredientes (SIN)" en el modal
+   (`SinIngredientsSection` + `buildSinCartModifiers` en
+   components/pos/SinIngredientsSection.tsx). El carrito lleva pseudo-modifiers
+   `{modifierId:null, name:"SIN X", priceAdjustment:0, excludedIngredientItemId}`.
+4. Comanda y recibo imprimen "SIN X" (viaja como modifier normal; en server
+   surfaces la fila tiene modifier=null → filterKitchenModifiers la conserva).
+5. Descargo tiempo real (`registerInventoryForCartItems`): skip del ingrediente
+   excluido en la receta PRINCIPAL. Las recetas de otros modificadores no se
+   afectan.
+6. Consumo teórico (`computeConsumptionFromOrders`): exclusión POR LÍNEA sobre
+   la receta principal (+4 tests). Las 2 queries del sync diario seleccionan
+   `excludedIngredientItemId`.
+7. Void/ajuste de ítems de mesa (`applyItemInventoryInTx` + voidItemInTx):
+   exclusiones threaded — lo no descargado tampoco se restaura/re-descarga.
+
+### Reglas
+- CartItem.modifiers.modifierId ahora es `string | null` opcional (pseudo-SIN).
+  Los 5 create-sites persisten `modifierId ?? null` + excludedIngredientItemId.
+- La exclusión aplica SOLO a la receta principal del item (los modificadores
+  CON/extra siguen descargando lo suyo).
+- No afecta precio. El recibo muestra "SIN X" a $0 (igual que Xetux).
+- Padre sin hijos, defensivo: exclusión con id inexistente en la receta = no-op.
+
+Gates: tsc 0 · vitest 555.

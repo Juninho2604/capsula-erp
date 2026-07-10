@@ -37,6 +37,7 @@ import ComandasDelDiaModal from "@/components/pos/ComandasDelDiaModal";
 import { CashierShiftModal } from "@/components/pos/CashierShiftModal";
 import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
+import { SinIngredientsSection, buildSinCartModifiers } from "@/components/pos/SinIngredientsSection";
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
@@ -74,6 +75,8 @@ interface MenuItem {
   posGroup?: string | null;
   posSubcategory?: string | null;
   modifierGroups: { modifierGroup: ModifierGroup }[];
+  /** SIN estilo Xetux (§94): insumos de la receta con allowSin activo. */
+  sinIngredients?: { id: string; name: string }[];
 }
 interface SelectedModifier {
   groupId: string;
@@ -369,6 +372,8 @@ export default function POSSportBarPage() {
   const [currentModifiers, setCurrentModifiers] = useState<SelectedModifier[]>([]);
   const [itemQuantity, setItemQuantity] = useState(1);
   const [itemNotes, setItemNotes] = useState("");
+  // §94: ids de InventoryItem marcados "SIN" en el modal actual.
+  const [sinSelected, setSinSelected] = useState<string[]>([]);
   const [itemTakeaway, setItemTakeaway] = useState(false);
 
   // ── State flags ───────────────────────────────────────────────────────────
@@ -764,6 +769,7 @@ export default function POSSportBarPage() {
     setItemQuantity(1);
     setItemNotes("");
     setItemTakeaway(false);
+    setSinSelected([]);
     setShowModifierModal(true);
   };
 
@@ -879,7 +885,7 @@ export default function POSSportBarPage() {
         name: selectedItemForModifier.name,
         quantity: itemQuantity,
         unitPrice: selectedItemForModifier.price,
-        modifiers: exploded,
+        modifiers: [...exploded, ...buildSinCartModifiers(selectedItemForModifier.sinIngredients, sinSelected)],
         notes: itemNotes || undefined,
         lineTotal,
         takeaway: itemTakeaway || undefined,
@@ -4082,6 +4088,12 @@ export default function POSSportBarPage() {
                   </div>
                 );
               })}
+
+              <SinIngredientsSection
+                ingredients={selectedItemForModifier.sinIngredients ?? []}
+                selected={sinSelected}
+                onToggle={(id) => setSinSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+              />
 
               <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface p-4">
                 <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2">Notas</label>

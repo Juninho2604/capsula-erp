@@ -15,6 +15,7 @@ import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 import { SinConToggle } from '@/components/pos/SinConToggle';
+import { SinIngredientsSection, buildSinCartModifiers } from '@/components/pos/SinIngredientsSection';
 import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from '@/lib/pos-child-group';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
@@ -55,6 +56,8 @@ interface MenuItem {
     name: string;
     price: number;
     modifierGroups: { modifierGroup: ModifierGroup }[];
+    /** SIN estilo Xetux (§94): insumos de la receta con allowSin activo. */
+    sinIngredients?: { id: string; name: string }[];
 }
 
 interface SelectedModifier {
@@ -120,6 +123,8 @@ export default function POSDeliveryPage() {
     const [currentModifiers, setCurrentModifiers] = useState<SelectedModifier[]>([]);
     const [itemQuantity, setItemQuantity] = useState(1);
     const [itemNotes, setItemNotes] = useState('');
+    // §94: ids de InventoryItem marcados "SIN" en el modal actual.
+    const [sinSelected, setSinSelected] = useState<string[]>([]);
 
     // PAYMENT STATE
     const [isMixedMode, setIsMixedMode] = useState(false);
@@ -256,6 +261,7 @@ export default function POSDeliveryPage() {
         setCurrentModifiers([]);
         setItemQuantity(1);
         setItemNotes('');
+        setSinSelected([]);
         setShowModifierModal(true);
     };
 
@@ -340,7 +346,7 @@ export default function POSDeliveryPage() {
 
         setCart([...cart, {
             menuItemId: selectedItemForModifier.id, name: selectedItemForModifier.name, quantity: itemQuantity, unitPrice: selectedItemForModifier.price,
-            modifiers: explodedModifiers, notes: itemNotes || undefined, lineTotal
+            modifiers: [...explodedModifiers, ...buildSinCartModifiers(selectedItemForModifier.sinIngredients, sinSelected)], notes: itemNotes || undefined, lineTotal
         }]);
         setShowModifierModal(false); setSelectedItemForModifier(null);
     };
@@ -1344,6 +1350,12 @@ export default function POSDeliveryPage() {
                                     </div>
                                 );
                             })}
+
+                            <SinIngredientsSection
+                                ingredients={selectedItemForModifier.sinIngredients ?? []}
+                                selected={sinSelected}
+                                onToggle={(id) => setSinSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                            />
 
                             <div className="rounded-2xl border border-capsula-line bg-capsula-ivory-alt p-6">
                                 <label className="pos-label mb-3">Instrucciones especiales (opcional)</label>

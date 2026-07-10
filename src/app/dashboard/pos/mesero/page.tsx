@@ -22,6 +22,7 @@ import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
+import { SinIngredientsSection, buildSinCartModifiers } from "@/components/pos/SinIngredientsSection";
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
@@ -76,6 +77,8 @@ interface MenuItem {
   posGroup?: string | null;
   posSubcategory?: string | null;
   modifierGroups: { modifierGroup: ModifierGroup }[];
+  /** SIN estilo Xetux (§94): insumos de la receta con allowSin activo. */
+  sinIngredients?: { id: string; name: string }[];
 }
 interface SelectedModifier {
   groupId: string;
@@ -217,6 +220,8 @@ export default function POSMeseroPage() {
   const [currentModifiers, setCurrentModifiers] = useState<SelectedModifier[]>([]);
   const [itemQuantity, setItemQuantity] = useState(1);
   const [itemNotes, setItemNotes] = useState("");
+  // §94: ids de InventoryItem marcados "SIN" en el modal actual.
+  const [sinSelected, setSinSelected] = useState<string[]>([]);
 
   // ── Modificar ítem enviado (void / ajuste cantidad / reemplazo) ──────────
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -713,6 +718,7 @@ export default function POSMeseroPage() {
     setCurrentModifiers([]);
     setItemQuantity(1);
     setItemNotes("");
+    setSinSelected([]);
     setShowModifierModal(true);
   };
 
@@ -789,7 +795,7 @@ export default function POSMeseroPage() {
       name: selectedItemForModifier.name,
       quantity: itemQuantity,
       unitPrice: selectedItemForModifier.price,
-      modifiers: exploded,
+      modifiers: [...exploded, ...buildSinCartModifiers(selectedItemForModifier.sinIngredients, sinSelected)],
       notes: itemNotes || undefined,
       lineTotal,
     }]);
@@ -2341,6 +2347,11 @@ export default function POSMeseroPage() {
                   </div>
                 );
               })}
+              <SinIngredientsSection
+                ingredients={selectedItemForModifier.sinIngredients ?? []}
+                selected={sinSelected}
+                onToggle={(id) => setSinSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+              />
               <div className="bg-capsula-ivory-surface p-4 rounded-2xl border border-capsula-line">
                 <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-2 block">Instrucciones especiales</label>
                 <textarea

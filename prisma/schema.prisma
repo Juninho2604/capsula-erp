@@ -311,6 +311,11 @@ model InventoryItem {
   reorderPoint   Float    @default(0)
   isActive       Boolean  @default(true)
   isCritical     Boolean  @default(false)
+  // SIN estilo Xetux (§94): si está activo, todo producto cuya receta incluya
+  // esta materia prima ofrece el toggle "SIN <nombre>" en el POS. Al marcarlo,
+  // el ingrediente NO se descarga de inventario (tiempo real ni consumo
+  // teórico) y la comanda imprime "SIN <nombre>".
+  allowSin       Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1463,6 +1468,11 @@ model SalesOrderItemModifier {
   // Snapshot del nombre y ajuste de precio al momento de la venta
   name            String // Nombre del modificador
   priceAdjustment Float  @default(0)
+
+  // SIN estilo Xetux (§94): si está seteado, esta fila es una EXCLUSIÓN
+  // ("SIN Salsa de Ajo"): el InventoryItem referenciado NO se descarga de la
+  // receta principal del item. modifierId queda null (no hay MenuModifier).
+  excludedIngredientItemId String?
 
   @@index([orderItemId])
 }

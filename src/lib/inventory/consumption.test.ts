@@ -262,3 +262,61 @@ describe('collectReferencedRecipeIds', () => {
         expect(ids).toEqual(['b']);
     });
 });
+
+describe('SIN estilo Xetux (§94) — exclusiones no consumen', () => {
+    it('modificador con excludedIngredientItemId resta ese insumo de la receta PRINCIPAL', () => {
+        // 2x Arepa "SIN queso": harina se consume, queso NO.
+        const out = computeConsumptionFromOrders(
+            [{ items: [{
+                quantity: 2,
+                menuItem: { recipeId: 'arepa' },
+                modifiers: [{ excludedIngredientItemId: 'queso' }],
+            }] }],
+            new Map([['arepa', recipeArepa]]),
+        );
+        expect(out.get('harina')).toBeCloseTo(0.2, 5);
+        expect(out.has('queso')).toBe(false);
+    });
+
+    it('la exclusión NO afecta las recetas de otros modificadores', () => {
+        // Arepa SIN queso + modificador con receta propia que usa queso →
+        // el queso del modificador SÍ se consume (la exclusión es de la receta base).
+        const out = computeConsumptionFromOrders(
+            [{ items: [{
+                quantity: 1,
+                menuItem: { recipeId: 'arepa' },
+                modifiers: [
+                    { excludedIngredientItemId: 'queso' },
+                    { modifier: { ingredients: [{ ingredientItemId: 'queso', quantity: 0.1 }] } },
+                ],
+            }] }],
+            new Map([['arepa', recipeArepa]]),
+        );
+        expect(out.get('queso')).toBeCloseTo(0.1, 5);   // solo el del modificador
+        expect(out.get('harina')).toBeCloseTo(0.1, 5);
+    });
+
+    it('la exclusión es POR LÍNEA: otra línea del mismo insumo consume normal', () => {
+        const out = computeConsumptionFromOrders(
+            [{ items: [
+                { quantity: 1, menuItem: { recipeId: 'arepa' }, modifiers: [{ excludedIngredientItemId: 'queso' }] },
+                { quantity: 1, menuItem: { recipeId: 'arepa' } },
+            ] }],
+            new Map([['arepa', recipeArepa]]),
+        );
+        expect(out.get('queso')).toBeCloseTo(0.05, 5);  // solo la línea sin exclusión
+        expect(out.get('harina')).toBeCloseTo(0.2, 5);
+    });
+
+    it('excludedIngredientItemId null/undefined no excluye nada', () => {
+        const out = computeConsumptionFromOrders(
+            [{ items: [{
+                quantity: 1,
+                menuItem: { recipeId: 'arepa' },
+                modifiers: [{ excludedIngredientItemId: null }, {}],
+            }] }],
+            new Map([['arepa', recipeArepa]]),
+        );
+        expect(out.get('queso')).toBeCloseTo(0.05, 5);
+    });
+});

@@ -311,6 +311,8 @@ export async function getDailyInventoryAction(
                         menuItem: { select: { recipeId: true } },
                         modifiers: {
                             select: {
+                                // §94: exclusión "SIN X" — el consumo teórico la resta
+                                excludedIngredientItemId: true,
                                 modifier: {
                                     select: {
                                         linkedMenuItem: { select: { recipeId: true } },
@@ -727,6 +729,8 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
                         menuItem: { select: { recipeId: true } },
                         modifiers: {
                             select: {
+                                // §94: exclusión "SIN X" — el consumo teórico la resta
+                                excludedIngredientItemId: true,
                                 modifier: {
                                     select: {
                                         linkedMenuItem: { select: { recipeId: true } },
