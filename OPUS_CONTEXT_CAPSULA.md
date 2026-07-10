@@ -11912,3 +11912,11 @@ automático — para evitar desfases.
 +9 tests §97 (564 total), AUTO cubierto como legacy idéntico.
 
 Gates: tsc 0 · vitest 564.
+
+### §97.1 Refinamiento del selector de envío (mismo día, pedido de Omar)
+Sin opción "Sin envío": la pregunta es "¿Cómo cobras el envío?" con DOS
+opciones — [Dólares · $3.00] [Bolívares · $4.50] — y DEFAULT Bolívares.
+Panel propio prominente (icono Bike + pregunta en semibold), equivalente en
+Bs a tasa cuando está en Bolívares. Se quitó la guarda anti-olvido (ya no
+aplica). El modo 'NONE' sigue soportado en helper/server (compat y casos
+futuros), pero el POS no lo ofrece. Reset post-venta → 'BS'.
