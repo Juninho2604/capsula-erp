@@ -45,7 +45,9 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
         if (!salesArea) salesArea = await db.area.findFirst();
         if (!salesArea) return { success: false, message: 'No hay área configurada' };
 
-        const subtotal = data.items.reduce((s, i) => s + i.lineTotal, 0);
+        // §103: re-precio autoritativo — el server recomputa desde la BD del
+        // canal y corrige cualquier lineTotal desfasado del cliente.
+        const { subtotal } = await repriceChannelCart(db, data.items, mi => mi.pedidosYaPrice ?? mi.price);
         const orderNumber = await generatePYAOrderNumber();
         const daily = await nextDailyNumber(db, tenantId, 'PEDIDOSYA');
 
@@ -173,4 +175,48 @@ export async function updateMenuItemPedidosYaPriceAction(
     } catch {
         return { success: false, message: 'Error al actualizar precio PedidosYA' };
     }
+}
+
+/**
+ * §103 — Re-precio autoritativo del carrito de canal (Wink/PedidosYA).
+ * El server deja de confiar en el lineTotal del cliente: recomputa cada
+ * línea desde el precio de BD del canal (+ ajustes de modificadores reales)
+ * y usa SUS valores. Devuelve los items corregidos y el subtotal. Los
+ * pseudo-modificadores SIN (modifierId null) valen $0 por definición.
+ */
+async function repriceChannelCart(
+    db: ReturnType<typeof withTenant>,
+    items: Array<{ menuItemId: string; quantity: number; unitPrice: number; lineTotal: number; modifiers: Array<{ modifierId?: string | null; priceAdjustment: number }> }>,
+    channelPriceOf: (mi: { price: number; winkPrice: number | null; pedidosYaPrice: number | null }) => number,
+): Promise<{ subtotal: number; corrected: boolean }> {
+    const ids = Array.from(new Set(items.map(i => i.menuItemId)));
+    const modIds = Array.from(new Set(items.flatMap(i => i.modifiers.map(m => m.modifierId).filter((x): x is string => Boolean(x)))));
+    const [menuItems, mods] = await Promise.all([
+        db.menuItem.findMany({ where: { id: { in: ids } }, select: { id: true, price: true, winkPrice: true, pedidosYaPrice: true } }),
+        modIds.length > 0
+            ? db.menuModifier.findMany({ where: { id: { in: modIds } }, select: { id: true, priceAdjustment: true } })
+            : Promise.resolve([] as Array<{ id: string; priceAdjustment: number }>),
+    ]);
+    const priceById = new Map(menuItems.map(mi => [mi.id, channelPriceOf(mi)]));
+    const modById = new Map(mods.map(m => [m.id, m.priceAdjustment]));
+    let subtotal = 0;
+    let corrected = false;
+    for (const item of items) {
+        const base = priceById.get(item.menuItemId);
+        if (base == null) { subtotal += item.lineTotal; continue; } // item desconocido: no inventar
+        // Los modifiers del carrito vienen "explotados" POR UNIDAD (una
+        // entrada por selección de una unidad) → su suma es el ajuste por
+        // unidad, y la línea = (base + ajustesUnidad) × cantidad.
+        const perUnitModSum = item.modifiers.reduce((s, m) => s + (m.modifierId ? (modById.get(m.modifierId) ?? m.priceAdjustment) : 0), 0);
+        const unit = Math.round(base * 100) / 100;
+        const line = Math.round((base + perUnitModSum) * item.quantity * 100) / 100;
+        if (Math.abs(line - item.lineTotal) > 0.01) {
+            console.warn(`[§103 reprice] item ${item.menuItemId}: cliente $${item.lineTotal.toFixed(2)} → server $${line.toFixed(2)}`);
+            item.lineTotal = line;
+            item.unitPrice = unit;
+            corrected = true;
+        }
+        subtotal += item.lineTotal;
+    }
+    return { subtotal: Math.round(subtotal * 100) / 100, corrected };
 }

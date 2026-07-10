@@ -95,3 +95,29 @@ export function keptAmountForSplit(args: {
     const tip = Math.max(0, args.tip || 0);
     return Math.min(received, factura) + tip;
 }
+
+/**
+ * §103 — Porción NETA de ítems que un pago cubre (parcial o completo).
+ *
+ * El server espera `amount` = neto de ÍTEMS aplicado al balance (él le suma
+ * el % de servicio encima). El bug de parciales: el cliente mandaba el BRUTO
+ * recibido (ítems + servicio) → el server lo restaba del balance de ítems y
+ * re-sumaba el 10% → cada porción parcial pagaba el servicio "gratis" para
+ * el cliente (mesa $110 en dos mitades cobraba $104.50).
+ *
+ * Fórmula: retenido para factura = min(recibido, facturaReal); de eso, la
+ * porción de ítems = retenido / (1 + serviceRate). Con serviceRate 0 (exento
+ * o no TABLE_SERVICE) es identidad. Redondeado a centavos.
+ */
+export function netItemsPortionForPayment(args: {
+    amountPaid: number;
+    totalAntesServicio: number;
+    serviceFee: number;
+    serviceRate: number;
+}): number {
+    const factura = Math.max(0, (args.totalAntesServicio || 0) + (args.serviceFee || 0));
+    const received = Math.max(0, args.amountPaid || 0);
+    const keptForFactura = Math.min(received, factura);
+    const rate = Number.isFinite(args.serviceRate) && args.serviceRate > 0 ? args.serviceRate : 0;
+    return Math.round((keptForFactura / (1 + rate)) * 100) / 100;
+}

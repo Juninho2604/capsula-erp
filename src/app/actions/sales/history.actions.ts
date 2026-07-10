@@ -267,16 +267,21 @@ export async function getSalesHistoryAction(date?: string) {
                 const amountPaid = o.amountPaid || ordTotal;
                 const change = o.change || 0;
                 const netReceived = amountPaid - change;
-                const propina = Math.max(0, netReceived - ordTotal);
+                // §103: anuladas se MUESTRAN pero no suman al cobrado — antes
+                // el historial contaba $X de una orden CANCELLED que Z-report y
+                // arqueo excluían → "los reportes no cuadran entre sí".
+                const isCancelledOrder = o.status === 'CANCELLED';
+                const effectiveReceived = isCancelledOrder ? 0 : netReceived;
+                const propina = Math.max(0, effectiveReceived - (isCancelledOrder ? 0 : ordTotal));
                 const mixedLines = o.orderPayments || [];
                 const paymentBreakdown = mixedLines.length > 0
                     ? mixedLines.map(p => ({ method: p.method, amount: p.amountUSD, amountBS: p.amountBS ?? undefined, exchangeRate: p.exchangeRate ?? undefined }))
-                    : [{ method: o.paymentMethod || 'CASH', amount: netReceived }];
+                    : [{ method: o.paymentMethod || 'CASH', amount: effectiveReceived }];
                 result.push({
                     ...o,
                     _consolidated: false,
                     totalFactura: ordTotal,
-                    totalCobrado: netReceived,
+                    totalCobrado: effectiveReceived,
                     totalProductos: ordTotal,
                     servicioAmount: 0,
                     propina,

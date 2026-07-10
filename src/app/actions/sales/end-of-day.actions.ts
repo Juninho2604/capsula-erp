@@ -147,7 +147,10 @@ export async function getEndOfDaySummaryAction(date?: string): Promise<{ success
 
             const tab = group[0].openTab!;
             const netProds = tab.runningTotal;
-            const discount = tab.runningSubtotal - tab.runningTotal;
+            // §103: mismo campo que el Z-report (runningDiscount) — la derivada
+            // runningSubtotal−runningTotal divergía por redondeos acumulados y
+            // los dos reportes mostraban descuentos distintos para la misma mesa.
+            const discount = tab.runningDiscount;
 
             const splits = (tab.paymentSplits ?? []) as { paymentMethod: string | null; paidAmount: number }[];
             const serviceFee = tab.totalServiceCharge ?? 0;

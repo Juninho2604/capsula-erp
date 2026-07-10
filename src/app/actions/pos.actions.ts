@@ -2324,7 +2324,21 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             data.paymentMethod === 'CASH_EUR' ||
             data.paymentMethod === 'ZELLE';
         const blockDivisasDiscount = data.discountType === 'DIVISAS_33' && !isDivisasPay;
-        const discountAmount = blockDivisasDiscount ? 0 : (data.discountAmount || 0);
+        let discountAmount = blockDivisasDiscount ? 0 : (data.discountAmount || 0);
+        // §103 — Clamp autoritativo: el descuento divisas NUNCA puede superar
+        // el máximo teórico (balance completo × % configurado). Cierra el
+        // vector "tablet manda discountAmount=90 sobre mesa de 100" que §99
+        // solo logueaba. Parciales/mixtos legítimos siempre quedan debajo.
+        if (data.discountType === 'DIVISAS_33' && discountAmount > 0) {
+            const clampRate = await loadDivisasDiscountRate(db);
+            const maxDivisasDiscount = Math.round(openTab.balanceDue * clampRate * 100) / 100 + 0.01;
+            if (discountAmount > maxDivisasDiscount) {
+                console.warn(`[§103 clamp] tab=${openTab.tabCode}: discountAmount $${discountAmount.toFixed(2)} > máx $${maxDivisasDiscount.toFixed(2)} — recortado.`);
+                discountAmount = maxDivisasDiscount;
+            }
+        }
+        // Cualquier descuento queda topado al saldo (no puede dejar balance negativo "gratis").
+        discountAmount = Math.min(discountAmount, openTab.balanceDue);
 
         // §101 — Guardia de cuenta saldada: el descuento divisas (1/3) deja
         // residuos de punto flotante (< 1¢) que mantenían la mesa
@@ -2457,7 +2471,9 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                     total: appliedAmount + serviceCharge,
                     // En el cobro divisas proporcional, `amount` es el NETO aplicado;
                     // el dinero realmente entregado viene en paidAmountOverride.
-                    paidAmount: data.paidAmountOverride ?? data.amount,
+                    // §103: piso — lo retenido nunca puede ser menor que el
+                    // neto aplicado (un override bajo subreportaría caja).
+                    paidAmount: Math.max(data.paidAmountOverride ?? data.amount, appliedAmount),
                     // Dual currency (FASE B): Bs equivalente del total cobrado
                     // + tasa histórica. Null si no hay tasa configurada.
                     amountBs: isBsTabPayment && splitRate
@@ -2818,7 +2834,26 @@ async function voidItemInTx(
     });
 
     // Limpiar asignaciones de subcuenta
+    // §103 — Ítems ya COBRADOS vía subcuenta no se pueden anular por esta
+    // ruta: el dinero ya entró y restar su lineTotal del balance regalaba el
+    // monto (la casa perdía lo pagado). Anular la subcuenta primero.
+    const paidLinks = await tx.subAccountItem.findMany({
+        where: { salesOrderItemId: item.id, subAccount: { status: 'PAID' } },
+        select: { subAccountId: true },
+    });
+    if (paidLinks.length > 0) {
+        throw new Error('Este ítem ya fue cobrado en una subcuenta — anulá la subcuenta antes de anular el ítem.');
+    }
+    // Guardar las subcuentas OPEN afectadas para recalcular sus totales
+    // (antes quedaban con subtotal/total obsoletos tras el void).
+    const openLinks = await tx.subAccountItem.findMany({
+        where: { salesOrderItemId: item.id },
+        select: { subAccountId: true },
+    });
     await tx.subAccountItem.deleteMany({ where: { salesOrderItemId: item.id } });
+    for (const link of Array.from(new Set(openLinks.map((l: { subAccountId: string }) => l.subAccountId)))) {
+        await recalcSubAccountTotals(tx, link as string);
+    }
 
     // Recalcular total de la orden (solo ítems NO void)
     const remaining = await tx.salesOrderItem.findMany({
@@ -3781,10 +3816,12 @@ export async function paySubAccountAction(data: {
             ? 'DIVISAS_33'
             : 'NONE';
         const subDivisasRate = await loadDivisasDiscountRate(db);
+        // §103: desglose redondeado a centavos — antes se persistían floats
+        // largos y split.total ≠ paidAmount por fracciones de céntimo.
         const discountAmount = discountType === 'DIVISAS_33'
-            ? sub.subtotal * subDivisasRate
+            ? round2(sub.subtotal * subDivisasRate)
             : 0;
-        const subtotalAfterDiscount = sub.subtotal - discountAmount;
+        const subtotalAfterDiscount = round2(sub.subtotal - discountAmount);
         const subServiceRate = normalizeServiceRate(data.serviceFeePercent);
         // §100: en subcuentas no existe ruta de exención con PIN — 0% directo
         // queda bloqueado (eximir se hace desde la cuenta principal).
@@ -3795,9 +3832,9 @@ export async function paySubAccountAction(data: {
             };
         }
         const serviceChargeApplied = applyServiceFee
-            ? subtotalAfterDiscount * subServiceRate
+            ? round2(subtotalAfterDiscount * subServiceRate)
             : 0;
-        const totalApplied = subtotalAfterDiscount + serviceChargeApplied;
+        const totalApplied = round2(subtotalAfterDiscount + serviceChargeApplied);
         const baseLabel = data.splitLabel || sub.label;
         const labelParts: string[] = [baseLabel];
         if (discountType === 'DIVISAS_33') labelParts.push('-33% divisas');
@@ -3829,11 +3866,14 @@ export async function paySubAccountAction(data: {
                     splitType: 'CUSTOM',
                     paymentMethod: data.paymentMethod,
                     status: 'PAID',
-                    subtotal: sub.subtotal,
+                    // §103: subtotal del split = NETO aplicado (post-descuento),
+                    // misma semántica que los splits de mesa — antes subcuenta
+                    // guardaba el bruto y los reportes mezclaban ambas.
+                    subtotal: subtotalAfterDiscount,
                     discount: discountAmount,
                     serviceChargeAmount: serviceChargeApplied,
                     total: totalApplied,
-                    paidAmount: data.amount,
+                    paidAmount: Math.max(data.amount, totalApplied),
                     // Dual currency (FASE B): Bs del total cobrado + tasa histórica
                     amountBs: isBsSubPayment && splitRate ? round2(totalApplied * splitRate) : null,
                     exchangeRate: splitRate ?? null,
@@ -3853,8 +3893,13 @@ export async function paySubAccountAction(data: {
             );
             const tabClosed = newBalance <= 0.01 && allSubsPaid;
 
-            await tx.openTab.update({
-                where: { id: openTab.id },
+            // §103: guardia de versión — dos subcuentas cobradas a la vez
+            // leían el mismo balanceDue y una resta se perdía (lost update).
+            // Mismo patrón que registerOpenTabPayment/closeOpenTab.
+            await assertOpenTabVersionUpdate({
+                tx,
+                openTabId: openTab.id,
+                expectedVersion: openTab.version,
                 data: {
                     balanceDue: newBalance,
                     status: tabClosed ? 'CLOSED' : 'PARTIALLY_PAID',
@@ -3863,7 +3908,6 @@ export async function paySubAccountAction(data: {
                     // Service charge cobrado se acumula con el realmente aplicado
                     // (sobre el subtotal post-descuento), no el pre-computado.
                     totalServiceCharge: openTab.totalServiceCharge + serviceChargeApplied,
-                    version: { increment: 1 },
                 },
             });
 

@@ -12151,3 +12151,45 @@ CRÍTICOS y su estado:
     en subcuentas.
 
 Gates: tsc 0 · vitest 564.
+
+---
+
+## §103 Batch 2 de la auditoría de cobranza — implementado (2026-07-10)
+
+Todos los ALTA y la mayoría de MEDIA de §102, en un solo bloque para un deploy:
+
+1. PARCIALES DE MESA (el más caro): `netItemsPortionForPayment` en
+   tip-calculation (+6 tests) — el cliente manda SIEMPRE el neto de ítems
+   (`amount`) y el retenido real va en `paidAmountOverride`, en single Y
+   mixto. Antes el bruto con servicio se restaba del balance de ítems y el
+   server re-sumaba el 10% (mesa $110 en dos mitades cobraba $104.50).
+   Tablets con build viejo siguen con el comportamiento anterior hasta
+   recargar (sin romper — por eso recargar tablets post-deploy es OBLIGATORIO).
+2. Server autoritativo en mesas: clamp de `discountAmount` divisas al máximo
+   teórico (balance × % configurado) + topado al saldo; `paidAmount` con piso
+   en el neto aplicado. El §99 pasa de "solo log" a log+clamp.
+3. `paySubAccountAction`: guardia de versión (assertOpenTabVersionUpdate) —
+   dos subcuentas concurrentes ya no pierden una resta del balance; round2 en
+   todo el desglose; split.subtotal = NETO (misma semántica que mesa);
+   paidAmount con piso en totalApplied.
+4. `voidItemInTx`: ítem cobrado en subcuenta PAID → anulación BLOQUEADA
+   (anular la subcuenta primero); subcuentas OPEN afectadas se recalculan
+   (recalcSubAccountTotals) — antes quedaban con totales obsoletos.
+5. `voidSalesOrderAction`: órdenes de MESA rechazadas (se anulan por ítem
+   desde el POS — la anulación entera no revertía running*/splits).
+6. Reportes unificados: historial no suma órdenes CANCELLED al cobrado (se
+   muestran igual); end-of-day usa runningDiscount (mismo campo que Z);
+   Z-report totalCollected = Σ real del desglose por método (antes derivado
+   ≠ su propio desglose por los redondeos→propina).
+7. Pago mixto de mesa: sobrante vs factura+propina > $0.05 → confirmación
+   explícita (antes se descartaba en silencio → caja descuadrada).
+8. Wink/PedidosYA: `repriceChannelCart` — el server recomputa cada línea
+   desde el precio de BD del canal + ajustes reales de modificadores (por
+   unidad) y corrige lineTotal desfasados (log [§103 reprice]).
+
+Pendientes CONSCIENTES (baja/diseño, no bloquean): clave de idempotencia de
+actions (reenvío por timeout), ventana de re-precio promo en checkout, tasa
+cliente vs server en amountBs, servicio 0.01% (auditable, no bloqueado),
+roundToWhole en subcuentas, propina colectiva + excedente misma mesa (operativo).
+
+Gates: tsc 0 · vitest 570.

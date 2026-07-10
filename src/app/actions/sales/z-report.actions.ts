@@ -259,7 +259,11 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         }
 
         const netTotal       = grossTotal - totalDiscounts;
-        const totalCollected = netTotal + totalServiceFee + totalTips;
+        // §103: total cobrado = SUMA REAL del desglose por método (lo que
+        // entró a caja), no el derivado netTotal+servicio+propinas — el
+        // derivado divergía del propio desglose por los redondeos al dólar
+        // (routeDeltaToTip) y el Z no cuadraba consigo mismo.
+        const totalCollected = Math.round(Object.values(pay).reduce((s, v) => s + (v || 0), 0) * 100) / 100;
 
         // Strip server-side: si el rol no debe ver el método y el flag está
         // activo, devolvemos el desglose en cero para que ni siquiera viaje

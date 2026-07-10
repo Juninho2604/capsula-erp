@@ -386,6 +386,23 @@ export async function voidSalesOrderAction(
     }
 
     try {
+        // §103: las órdenes de MESA no se anulan enteras por acá — sus
+        // acumulados (runningSubtotal/Total, balance, splits) viven en la
+        // OpenTab y este update no los revierte → Z-report/cierre quedaban
+        // descuadrados. La ruta correcta es anular por ítem desde el POS
+        // (voidItemInTx sí revierte todo).
+        const target = await db.salesOrder.findFirst({
+            where: { id: orderId },
+            select: { openTabId: true, status: true },
+        });
+        if (!target) return { success: false, message: 'Venta no encontrada' };
+        if (target.status === 'CANCELLED') return { success: false, message: 'Esta venta ya está anulada' };
+        if (target.openTabId) {
+            return {
+                success: false,
+                message: 'Las órdenes de mesa se anulan por ítem desde el POS Restaurante (la anulación completa descuadraría la cuenta).',
+            };
+        }
         const res = await db.salesOrder.updateMany({
             where: { id: orderId },
             data: {

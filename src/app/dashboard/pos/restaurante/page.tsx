@@ -41,7 +41,7 @@ import { SinIngredientsSection, buildSinCartModifiers } from "@/components/pos/S
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from "@/lib/sales/tip-calculation";
+import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from "@/lib/sales/tip-calculation";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
@@ -1245,13 +1245,38 @@ export default function POSSportBarPage() {
         if (!okTip) return;
       }
 
+      // §103 — Sobrante en pago MIXTO: las líneas superan la factura+propina.
+      // En single-cash el exceso es el vuelto físico; en mixto cada línea se
+      // cobró de verdad (PDV/Zelle) → un exceso quedaría cobrado y SIN
+      // registrar. Confirmación explícita antes de descartar.
+      if (isTableMixedMode && rawReceived > facturaReal + tipVal + 0.05) {
+        const sobrante = rawReceived - facturaReal - tipVal;
+        const okExceso = window.confirm(
+          `Las líneas de pago suman $${rawReceived.toFixed(2)} pero la factura es $${(facturaReal + tipVal).toFixed(2)}.\n\n` +
+          `El sobrante de $${sobrante.toFixed(2)} NO quedará registrado en el sistema.\n\n` +
+          `Si es un error de tecleo, cancelá y corregí las líneas.`
+        );
+        if (!okExceso) return;
+      }
+
+      // §103 — `amount` SIEMPRE lleva el NETO de ítems (el server le suma el
+      // servicio encima). Antes, en cobros no-divisas se mandaba el BRUTO
+      // (effectiveAmount, con servicio) y en PARCIALES el server lo restaba
+      // del balance de ítems y re-sumaba el 10% → la casa perdía ~el servicio
+      // de cada porción (mesa $110 en dos mitades cobraba $104.50). El dinero
+      // retenido real (factura + propina) viaja en paidAmountOverride.
+      const netItemsForServer = divisasSettlement
+        ? divisasSettlement.netItemsApplied
+        : netItemsPortionForPayment({
+            amountPaid: rawReceived,
+            totalAntesServicio,
+            serviceFee,
+            serviceRate: serviceFeeIncluded ? serviceRate : 0,
+          });
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
-        // En divisas proporcional, `amount` lleva el NETO de ítems aplicado para
-        // que el servidor descuente bien saldo y 10%; el dinero entregado va en
-        // paidAmountOverride. En el resto de cobros, `amount` = effectiveAmount.
-        amount: divisasSettlement ? divisasSettlement.netItemsApplied : effectiveAmount,
-        paidAmountOverride: divisasSettlement ? effectiveAmount : undefined,
+        amount: netItemsForServer,
+        paidAmountOverride: effectiveAmount,
         paymentMethod: effectiveMethod,
         splitLabel: effectiveLabel,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,

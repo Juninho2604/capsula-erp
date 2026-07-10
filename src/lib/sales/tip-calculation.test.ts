@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggestedTipAmount, cappedTipForPayment, keptAmountForSplit, roundingTipForCharge } from './tip-calculation';
+import { suggestedTipAmount, cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from './tip-calculation';
 
 describe('suggestedTipAmount — Bug A (§46): propina sobre total NETO, no bruto', () => {
     it('sin descuento: 10% de $48 = $4.80', () => {
@@ -175,5 +175,36 @@ describe('roundingTipForCharge — redondeo→propina (cobro mesa divisas, dueñ
         expect(tip).toBeCloseTo(0.5, 2);
         // Recibo: factura 16.50 + propina 0.50 = $17.00 (== lo cobrado)
         expect(15 + 1.5 + tip).toBeCloseTo(17, 2);
+    });
+});
+
+describe('netItemsPortionForPayment (§103 — parciales ya no pierden el servicio)', () => {
+    it('pago COMPLETO: neto = total antes de servicio', () => {
+        // mesa $100 + 10% = factura $110; cliente paga $110 → neto ítems $100
+        expect(netItemsPortionForPayment({ amountPaid: 110, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(100);
+    });
+
+    it('pago PARCIAL: el bruto recibido se divide entre 1+rate (el bug)', () => {
+        // mitad de la mesa: $55 recibidos → neto $50 (server le suma $5 de servicio)
+        expect(netItemsPortionForPayment({ amountPaid: 55, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(50);
+        // dos mitades cubren exactamente la mesa: 50 + 50 = 100 de ítems, servicio 10 → caja $110 ✓
+    });
+
+    it('sobrepago: se recorta a la factura antes de dividir', () => {
+        expect(netItemsPortionForPayment({ amountPaid: 200, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(100);
+    });
+
+    it('sin servicio (exento o no TABLE_SERVICE): identidad', () => {
+        expect(netItemsPortionForPayment({ amountPaid: 55, totalAntesServicio: 100, serviceFee: 0, serviceRate: 0 })).toBe(55);
+    });
+
+    it('% de servicio editable (§85): usa el rate real', () => {
+        // 12%: factura 112, pago 56 → neto 50
+        expect(netItemsPortionForPayment({ amountPaid: 56, totalAntesServicio: 100, serviceFee: 12, serviceRate: 0.12 })).toBe(50);
+    });
+
+    it('defensivo: negativos y NaN → 0', () => {
+        expect(netItemsPortionForPayment({ amountPaid: -5, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(0);
+        expect(netItemsPortionForPayment({ amountPaid: NaN, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(0);
     });
 });
