@@ -8,6 +8,7 @@ import { getEndOfDaySummaryAction, type EndOfDaySummary } from '@/app/actions/sa
 import { voidSalesOrderAction } from '@/app/actions/sales/void.actions';
 import { getSalesAuditAction } from '@/app/actions/sales/audit-export.actions';
 import { validateManagerPinAction } from '@/app/actions/pos.actions';
+import toast from 'react-hot-toast';
 import { printReceipt, printEndOfDaySummary } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { exportZReportToExcel } from '@/lib/export-z-report';
@@ -61,7 +62,14 @@ export default function SalesHistoryPage() {
     const loadData = async (date?: string) => {
         setIsLoading(true);
         const result = await getSalesHistoryAction(date || undefined);
-        if (result.success && result.data) setSales(result.data as any[]);
+        if (result.success && result.data) {
+            setSales(result.data as any[]);
+        } else if (!result.success) {
+            // §98: antes el error se tragaba y la página mostraba "sin ventas"
+            // — enmascaraba problemas de permisos como si no hubiera ventas.
+            setSales([]);
+            toast.error((result as { message?: string }).message || 'Error cargando historial');
+        }
         const r = result as { hidePaymentMethod?: boolean; canExport?: boolean; canVoid?: boolean };
         setHidePaymentMethod(Boolean(r.hidePaymentMethod));
         // Si el server no manda la capacidad (respuesta vieja), default a false

@@ -11920,3 +11920,44 @@ Panel propio prominente (icono Bike + pregunta en semibold), equivalente en
 Bs a tasa cuando está en Bolívares. Se quitó la guarda anti-olvido (ya no
 aplica). El modo 'NONE' sigue soportado en helper/server (compat y casos
 futuros), pero el POS no lo ofrece. Reset post-venta → 'BS'.
+
+---
+
+## §98 Módulos por usuario no ampliaban + historial "vacío" enmascaraba permisos (2026-07-10)
+
+Reporte de Omar en operación: con el usuario de David el historial de ventas
+mostraba "ninguna venta nunca" y los submódulos que intentó habilitarle "no
+aparecían". Desde el usuario master todo funcionaba.
+
+### Diagnóstico (cadena completa)
+1. El editor /dashboard/config/modulos-usuario SOLO ofrecía toggles de módulos
+   que el ROL del usuario ya tenía (`roleDefaultModules.includes(m.id)`) →
+   imposible AMPLIAR, aunque el gate (getVisibleModules: "la lista es la única
+   autoridad") y la capa 2 de permisos sí lo soportan. Por eso "no le
+   aparecían" los submódulos a habilitar.
+2. Bug adicional del toggle: con estado null (sin lista), togglear un módulo
+   EXTRA lo descartaba (`roleDefaultModules.filter(id => id !== modId)` sobre
+   una lista que no lo contiene).
+3. Al guardar CUALQUIER lista, la capa 2 (has-permission) DENIEGA todo permiso
+   cuyo módulo (PERM_TO_MODULES) no esté en ella. Si `sales_history` no quedó
+   en la lista de David → `VIEW_SALES_HISTORY` denegado → la action devolvía
+   "No autorizado"…
+4. …y sales/page.tsx TRAGABA el `success:false` sin mostrar el message → la
+   página rendía la lista vacía = "no hubo ventas hoy ni ayer ni nunca".
+   El error de permisos se disfrazaba de "sin ventas".
+
+### Fixes
+- Editor: ofrece TODOS los módulos habilitados del tenant (OWNER-only
+  excluidos para no-OWNER — el gate los bloquearía igual); toggle con base =
+  módulos del rol cuando la lista es null; badge "Extra al rol" en los que
+  amplían; isChecked con null marca los del rol.
+- sales/page: `success:false` → toast con el message real (y lista vacía).
+  Nunca más un problema de permisos disfrazado de "sin ventas".
+
+### Remediación operativa inmediata (sin deploy)
+Desde el usuario master: Módulos por usuario → David → "Restablecer a rol"
+(guarda null) → David cierra sesión y entra de nuevo (el save incrementa
+tokenVersion e invalida su JWT). Con eso recupera los defaults del rol,
+incluido el historial. Para AMPLIAR más allá del rol hace falta este deploy.
+
+Gates: tsc 0 · vitest 564.

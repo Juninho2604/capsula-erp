@@ -49,28 +49,33 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
       }).map(m => m.id)
     : [];
 
-  // Módulos habilitados en la instancia + accesibles por rol
-  const availableModules = MODULE_REGISTRY.filter(m =>
-    (enabledModuleIds.includes(m.id) || m.id === 'module_config') &&
-    roleDefaultModules.includes(m.id)
-  );
+  // §98 — Módulos habilitados en la instancia. ANTES se filtraba también por
+  // roleDefaultModules → era imposible AMPLIAR más allá del rol (los toggles
+  // "no aparecían"), aunque el gate (getVisibleModules + capa 2 de permisos)
+  // sí soporta la lista como autoridad final. Ahora se ofrecen TODOS los del
+  // tenant; los OWNER-only quedan fuera para usuarios no-OWNER (el gate los
+  // bloquea igual — sería un toggle mentiroso).
+  const availableModules = MODULE_REGISTRY.filter(m => {
+    if (!(enabledModuleIds.includes(m.id) || m.id === 'module_config')) return false;
+    const roles = MODULE_ROLE_ACCESS[m.id];
+    const ownerOnly = roles && roles.length === 1 && roles[0] === 'OWNER';
+    if (ownerOnly && selected?.role !== 'OWNER') return false;
+    return true;
+  });
 
   const isChecked = (modId: string) => {
-    if (moduleState === null) return true; // null = usa rol por defecto (todos)
+    // null = usa rol por defecto → marcados los del rol, extras desmarcados.
+    if (moduleState === null) return roleDefaultModules.includes(modId);
     return moduleState.includes(modId);
   };
 
   const toggleModule = (modId: string) => {
-    if (moduleState === null) {
-      // Primera vez editando: partir desde rol completo
-      setModuleState(roleDefaultModules.filter(id => id !== modId));
-    } else {
-      if (moduleState.includes(modId)) {
-        setModuleState(moduleState.filter(id => id !== modId));
-      } else {
-        setModuleState([...moduleState, modId]);
-      }
-    }
+    // Primera edición: partir de los módulos del rol y aplicar el toggle
+    // (antes, togglear un módulo EXTRA con estado null lo descartaba).
+    const base = moduleState === null ? roleDefaultModules : moduleState;
+    setModuleState(
+      base.includes(modId) ? base.filter(id => id !== modId) : [...base, modId],
+    );
   };
 
   const resetToRole = () => setModuleState(null);
@@ -186,6 +191,11 @@ export default function ModulosUsuarioView({ users, enabledModuleIds, currentUse
                           />
                           <span className="text-sm">{m.icon}</span>
                           <span className="text-sm text-foreground font-medium">{m.label}</span>
+                          {!roleDefaultModules.includes(m.id) && (
+                            <span className="ml-auto shrink-0 rounded-full bg-capsula-coral/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-capsula-coral">
+                              Extra al rol
+                            </span>
+                          )}
                         </label>
                       ))}
                     </div>
