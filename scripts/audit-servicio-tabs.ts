@@ -87,7 +87,10 @@ async function main() {
             const pct = base > 0 ? (sp.serviceChargeAmount / base) * 100 : 0;
             const isAnomaly = tab.serviceType === 'TABLE_SERVICE' && base > 0.01 && pct < 9.5;
             if (isAnomaly) anomalies++;
-            console.log(`│   ${isAnomaly ? '⚠' : '·'} ${ts(sp.createdAt)} · ${sp.splitLabel} · ${sp.paymentMethod} · base=${fmt(base)} servicio=${fmt(sp.serviceChargeAmount)} (${pct.toFixed(2)}%) · desc=${fmt(sp.discount)}${sp.notes ? `\n│       notas: ${sp.notes}` : ''}`);
+            // §100.2: retenido vs factura → propina registrada en este split
+            const propina = Math.max(0, (sp.paidAmount ?? sp.total) - sp.total);
+            const propinaTag = propina > 0.009 ? ` · PROPINA REGISTRADA=${fmt(propina)} ⚠` : '';
+            console.log(`│   ${isAnomaly ? '⚠' : '·'} ${ts(sp.createdAt)} · ${sp.splitLabel} · ${sp.paymentMethod} · base=${fmt(base)} servicio=${fmt(sp.serviceChargeAmount)} (${pct.toFixed(2)}%) · desc=${fmt(sp.discount)} · retenido=${fmt(sp.paidAmount)}${propinaTag}${sp.notes ? `\n│       notas: ${sp.notes}` : ''}`);
         }
 
         console.log(`│\n│ VEREDICTO:`);
