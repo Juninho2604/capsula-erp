@@ -2288,6 +2288,16 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const blockDivisasDiscount = data.discountType === 'DIVISAS_33' && !isDivisasPay;
         const discountAmount = blockDivisasDiscount ? 0 : (data.discountAmount || 0);
 
+        // §101 — Guardia de cuenta saldada: el descuento divisas (1/3) deja
+        // residuos de punto flotante (< 1¢) que mantenían la mesa
+        // PARTIALLY_PAID; el POS los redondeaba hacia arriba y ofrecía
+        // "A cobrar $1.00" fantasma (caso TAB-3587: split de $1 con base $0
+        // registrado como propina). Si no queda nada real que aplicar, el
+        // cobro se rechaza.
+        if (Math.max(0, openTab.balanceDue - discountAmount) < 0.01) {
+            return { success: false, message: 'La cuenta ya está saldada — no queda saldo por cobrar.' };
+        }
+
         // §99 — Vigía de divergencia: el descuento divisas lo calcula el
         // CLIENTE con el % que cargó al abrir el POS. Si una tablet quedó con
         // un % viejo (carga fallida / build cacheado), su descuento difiere
@@ -2313,7 +2323,10 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const newRunningTotal = Math.max(0, openTab.runningTotal - discountAmount);
         const effectiveBalance = Math.max(0, openTab.balanceDue - discountAmount);
         const appliedAmount = Math.min(data.amount, effectiveBalance);
-        const newBalance = Math.max(0, effectiveBalance - appliedAmount);
+        // §101: residuo < 1¢ = cuenta saldada (cierra la mesa; sin esto el
+        // float de 1/3 dejaba $0.0003 pendientes y la mesa nunca cerraba).
+        const rawNewBalance = Math.max(0, effectiveBalance - appliedAmount);
+        const newBalance = rawNewBalance < 0.01 ? 0 : rawNewBalance;
         const nextTabStatus = newBalance === 0 ? 'CLOSED' : 'PARTIALLY_PAID';
         const nextOrderPaymentStatus = newBalance === 0 ? 'PAID' : 'PARTIAL';
         const nextPaymentMethod = openTab.paymentSplits.length > 0 ? 'MULTIPLE' : data.paymentMethod;

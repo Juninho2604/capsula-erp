@@ -12070,3 +12070,27 @@ Fixes:
 
 Regla operativa: si el cliente pide su vuelto completo, la propina debe ir
 en 0 antes de confirmar.
+
+---
+
+## §101 Cobro fantasma de $1: residuo flotante del descuento divisas (2026-07-10)
+
+Caso TAB-3587 CONFIRMADO CON DATOS (audit-servicio-tabs): dos splits —
+22:55 retenido $22.00 limpio; 23:11 split de $1.00 con base $0.00 registrado
+como propina. Entre ambos, el POS mostraba "Saldo $0.00 / A cobrar $1.00".
+
+Cadena exacta: computeDivisasSettlement con 1/3 deja un residuo de punto
+flotante (~$0.0003) en balanceDue → la mesa queda PARTIALLY_PAID en vez de
+CLOSED → paymentBaseAmount = residuo×(2/3)×1.1 ≈ $0.0002 →
+roundDivisasChargeUp = Math.ceil(...) = $1.00 → la cajera cobra el $1
+"pedido" por la pantalla → appliedAmount=0, todo excedente → propina.
+
+Fixes (3 capas):
+- Server registerOpenTabPayment: (a) rechaza el cobro si el saldo efectivo
+  < $0.01 ("La cuenta ya está saldada"); (b) newBalance < $0.01 se cierra a 0
+  (la mesa CIERRA — antes quedaba abierta por fracciones de centavo).
+- Cliente restaurante: balanceDue < $0.01 se trata como 0 en
+  paymentBaseAmount → el ceil ya no puede inflar residuos a $1.
+
+El $1 de propina del caso real no existe físicamente (vuelto completo
+entregado) — ajustar el pool de propinas del día manualmente.

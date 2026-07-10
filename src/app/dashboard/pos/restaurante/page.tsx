@@ -707,16 +707,20 @@ export default function POSSportBarPage() {
     ? computeDivisasSettlement({ balanceDue: activeTab.balanceDue, receivedUSD: divisasUsdAmountTable, serviceFeeIncluded, serviceRate, discountRate: divisasRate }).discountAmount
     : 0;
 
+  // §101: residuos de punto flotante (< 1¢) del descuento divisas se tratan
+  // como saldo CERO — sin esto, roundDivisasChargeUp los inflaba a
+  // "A cobrar $1.00" sobre una mesa ya saldada (caso TAB-3587).
+  const effectiveBalanceDue = activeTab && activeTab.balanceDue >= 0.01 ? activeTab.balanceDue : 0;
   const paymentBaseAmount = activeTab
     ? discountType === "DIVISAS_33"
       ? isTableMixedMode
-        ? activeTab.balanceDue - mixedDivisasDiscount       // partial: only USD lines get divisas discount
-        : activeTab.balanceDue * (1 - divisasRate)          // full: entire balance con descuento divisas
+        ? effectiveBalanceDue - mixedDivisasDiscount        // partial: only USD lines get divisas discount
+        : effectiveBalanceDue * (1 - divisasRate)           // full: entire balance con descuento divisas
       : discountType === "CORTESIA_100"
       ? 0
       : discountType === "CORTESIA_PERCENT"
-      ? activeTab.balanceDue * (1 - cortesiaPercentNum / 100)
-      : activeTab.balanceDue
+      ? effectiveBalanceDue * (1 - cortesiaPercentNum / 100)
+      : effectiveBalanceDue
     : 0;
   // En modo mixto NO se redondea: el target del MixedPaymentSelector debe ser el monto exacto
   // (PDV/Bs methods no se redondean; aplicar roundToWhole del single-method causaría underpay/overpay)
