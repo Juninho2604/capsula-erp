@@ -1224,6 +1224,23 @@ export default function POSSportBarPage() {
         tip: tipVal,
       });
 
+      // §100.2 — Confirmación explícita de PROPINA MANUAL (caso TAB-3587: $1
+      // tipeado en el campo → la cajera entregó el vuelto completo y la caja
+      // quedó descuadrada). Solo aplica a propina tipeada por encima del
+      // redondeo automático de divisas (ese es política del 16/06, rutina, y
+      // no debe generar fricción en cada cobro).
+      const manualTipTyped = parseFloat(checkoutTip) || 0;
+      if (tipVal > 0.009 && manualTipTyped > roundingTip + 0.009) {
+        const vueltoConPropina = Math.max(0, rawReceived - facturaReal - tipVal);
+        const vueltoSinPropina = Math.max(0, rawReceived - facturaReal);
+        const okTip = window.confirm(
+          `Estás registrando $${tipVal.toFixed(2)} de PROPINA.\n\n` +
+          `El vuelto a entregar es $${vueltoConPropina.toFixed(2)} (NO $${vueltoSinPropina.toFixed(2)}).\n\n` +
+          `Si el cliente pide su vuelto completo, cancelá y borrá la propina antes de cobrar.`
+        );
+        if (!okTip) return;
+      }
+
       const result = await registerOpenTabPaymentAction({
         openTabId: activeTab.id,
         // En divisas proporcional, `amount` lleva el NETO de ítems aplicado para

@@ -12053,3 +12053,20 @@ Fixes:
   "Servicio: EXIMIDO" (`serviceFeeExempt` en print-command).
 
 Gates: tsc 0 · vitest 564.
+
+### §100.2 Propina "bloqueada" en TAB-3587 + confirmación de propina manual
+Caso: factura $22 exacta, cliente pagó $25, vuelto $3 — pero el sistema
+registró $1 de propina (retenido $23) → caja física $1 corta vs sistema.
+Mecánica: el campo Propina tenía $1.00 al confirmar el cobro; el sistema lo
+respetó (cap correcto: mín(1, excedente 3)) y esperaba vuelto de $2. No es
+bug de cálculo — es propina tipeada/olvidada en el campo.
+
+Fixes:
+- Confirmación explícita al cobrar mesa cuando hay PROPINA MANUAL tipeada
+  (por encima del redondeo automático de divisas — la política del 16/06 vía
+  roundingTipForCharge sigue sin fricción): muestra propina y el vuelto
+  correcto vs el completo, con opción de cancelar y borrar.
+- audit-servicio-tabs.ts imprime `retenido` y `PROPINA REGISTRADA` por split.
+
+Regla operativa: si el cliente pide su vuelto completo, la propina debe ir
+en 0 antes de confirmar.
