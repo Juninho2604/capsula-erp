@@ -25,6 +25,7 @@
  */
 
 import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { isParentWithChildren } from '@/lib/print/kitchen-modifiers';
 import { hasPermission } from '@/lib/permissions/has-permission';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
@@ -41,7 +42,8 @@ export interface ComandaItem {
     lineTotal: number;
     notes: string | null;
     categoryName: string | null;
-    modifiers: { name: string }[];
+    /** §93: true = padre de un sub-grupo anidado — no imprimir en comanda (el recibo sí lo muestra). */
+    modifiers: { name: string; hideFromKitchen?: boolean }[];
 }
 
 export interface ComandaOrder {
@@ -146,7 +148,7 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
                                 category: { select: { name: true } },
                             },
                         },
-                        modifiers: { select: { name: true } },
+                        modifiers: { select: { name: true, modifier: { select: { groupId: true, childGroupId: true } } } },
                     },
                 },
             },
@@ -189,7 +191,7 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
                 lineTotal: i.lineTotal,
                 notes: i.notes ?? null,
                 categoryName: i.menuItem?.category?.name ?? null,
-                modifiers: i.modifiers.map((m) => ({ name: m.name })),
+                modifiers: i.modifiers.map((m) => ({ name: m.name, hideFromKitchen: isParentWithChildren(m, i.modifiers) })),
             })),
         }));
 

@@ -11707,3 +11707,39 @@ agente solo imprime los ítems de cada job en su impresora. (Contrastar con
 §84.1, que sí tocó el render del agente.)
 
 Gates: tsc 0 · vitest 546.
+
+---
+
+## §93 Comanda: el padre también se oculta en superficies server-side (2026-07-10)
+
+Reporte de Omar (foto de comanda de ayer, queja del cocinero "me está arrojando
+5 principales"): al seleccionar la ración "Pincho Mixto", la comanda mostraba el
+renglón padre como "título" Y las varas seleccionadas. Quiere SOLO la selección
+definitiva.
+
+§90 ya filtraba el padre con `hideFromKitchen`, pero SOLO en el camino del POS
+(flag en el carrito → `buildKitchenItems`). Las superficies que imprimen/
+muestran comanda desde datos GUARDADOS no tenían el flag:
+- `/api/kitchen/orders` → displays `/kitchen` y `/kitchen/barra` + su
+  AUTO-IMPRESIÓN (`printKitchenCommand`) — por acá salió la comanda de la foto.
+- `getComandasDelDiaAction` → reimpresión de comandas del día.
+
+### Fix — helper puro `src/lib/print/kitchen-modifiers.ts` (+5 tests)
+`SalesOrderItemModifier.modifierId` referencia al MenuModifier vivo → se puede
+detectar el padre server-side. Regla (más precisa que la del POS, por-orden):
+ocultar la fila si su MenuModifier tiene `childGroupId` Y en el MISMO item hay
+un hermano cuyo `MenuModifier.groupId === childGroupId` (hijos realmente
+elegidos). Sin hijos → el padre se muestra (no perder info). Se filtra por
+RELACIÓN, no por nombre → la VARA mixta ("Pincho Mixto" del sub-grupo) nunca se
+oculta aunque se llame igual que la ración.
+- `/api/kitchen/orders`: include `modifier { groupId, childGroupId }` +
+  `filterKitchenModifiers` → display y auto-print limpios.
+- `getComandasDelDiaAction`: cada modifier sale con `hideFromKitchen`; el modal
+  filtra SOLO al reimprimir comanda — el recibo mantiene el padre (lleva el
+  precio).
+- El módulo delivery-bot (`comanda` JSON propio, sin anidación) no aplica.
+
+Regla general: TODO surface nuevo que imprima comanda desde BD debe pasar los
+modifiers por `filterKitchenModifiers` (o exponer `hideFromKitchen`).
+
+Gates: tsc 0 · vitest 551.

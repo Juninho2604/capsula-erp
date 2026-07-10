@@ -172,7 +172,10 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                 items: order.items.map((i) => ({
                     name: i.itemName,
                     quantity: i.quantity,
-                    modifiers: i.modifiers.map((m) => m.name),
+                    // §93: la comanda omite el padre del sub-grupo anidado (ej.
+                    // ración "Pincho Mixto") — solo la selección definitiva. El
+                    // recibo (abajo) sí lo muestra: lleva el precio.
+                    modifiers: i.modifiers.filter((m) => !m.hideFromKitchen).map((m) => m.name),
                     notes: i.notes ?? undefined,
                     categoryName: i.categoryName ?? undefined,
                 })),

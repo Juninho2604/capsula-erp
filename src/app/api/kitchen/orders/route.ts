@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { prisma } from '@/lib/prisma';
+import { filterKitchenModifiers } from '@/lib/print/kitchen-modifiers';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,10 @@ export async function GET(request: NextRequest) {
                 items: {
                     include: {
                         menuItem: { include: { category: true } },
-                        modifiers: true
+                        // §90/§93: la relación `modifier` trae childGroupId/groupId
+                        // para ocultar el PADRE de un sub-grupo anidado (ej. la
+                        // ración "Pincho Mixto") — cocina ve solo las varas.
+                        modifiers: { include: { modifier: { select: { groupId: true, childGroupId: true } } } }
                     }
                 },
                 tableOrStation: true
@@ -68,7 +72,8 @@ export async function GET(request: NextRequest) {
                     items: stationItems.map(item => ({
                         name: item.menuItem?.name || item.itemName || 'Item',
                         quantity: item.quantity,
-                        modifiers: item.modifiers.map(mod => ({ name: mod.name })),
+                        // §93: sin el padre del sub-grupo — solo la selección definitiva
+                        modifiers: filterKitchenModifiers(item.modifiers).map(mod => ({ name: mod.name })),
                         notes: item.notes
                     }))
                 };
