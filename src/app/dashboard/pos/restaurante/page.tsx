@@ -1252,7 +1252,7 @@ export default function POSSportBarPage() {
           quantity: i.quantity,
           unitPrice: (i.lineTotal || 0) / (i.quantity || 1),
           total: i.lineTotal || 0,
-          modifiers: (i.modifiers || []).map((m: any) => m.name),
+          modifiers: (i.modifiers || []).filter((m: any) => !m?.hideFromKitchen).map((m: any) => m.name),
         }))
       );
       if (getPOSConfig().printReceiptOnRestaurant) {
@@ -1314,6 +1314,7 @@ export default function POSSportBarPage() {
         unitPrice: item.lineTotal / Math.max(1, item.quantity),
         total: item.lineTotal,
         modifiers: ((item as any).modifiers || [])
+          .filter((m: any) => typeof m === "string" || !m?.hideFromKitchen)
           .map((m: any) => (typeof m === "string" ? m : m?.name))
           .filter(Boolean) as string[],
       }))
@@ -1643,7 +1644,8 @@ export default function POSSportBarPage() {
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           total: i.lineTotal,
-          modifiers: i.modifiers.map((m) => m.name),
+          // §95: el padre del sub-grupo no sale en el recibo
+          modifiers: i.modifiers.filter((m) => !m.hideFromKitchen).map((m) => m.name),
         }));
         const pickupTipVal = parseFloat(checkoutTip) || 0;
         const pickupReceiptData = {

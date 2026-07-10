@@ -1614,7 +1614,9 @@ export async function createSalesOrderAction(
                                         priceAdjustment: m.priceAdjustment,
                                         modifierId: m.modifierId ?? null,
                                         // §94: exclusión "SIN X" — no descarga ese insumo
-                                        excludedIngredientItemId: m.excludedIngredientItemId ?? null
+                                        excludedIngredientItemId: m.excludedIngredientItemId ?? null,
+                                        // §95: padre de sub-grupo — no imprimir en comanda/recibo
+                                        hideFromKitchen: m.hideFromKitchen ?? false
                                     }))
                                 }
                             }))
@@ -2137,7 +2139,9 @@ export async function addItemsToOpenTabAction(data: AddItemsToOpenTabInput): Pro
                                     name: modifier.name,
                                     priceAdjustment: modifier.priceAdjustment,
                                     // §94: exclusión "SIN X" — no descarga ese insumo
-                                    excludedIngredientItemId: modifier.excludedIngredientItemId ?? null
+                                    excludedIngredientItemId: modifier.excludedIngredientItemId ?? null,
+                                    // §95: padre de sub-grupo — no imprimir en comanda/recibo
+                                    hideFromKitchen: modifier.hideFromKitchen ?? false
                                 }))
                             }
                         }))
@@ -2943,8 +2947,9 @@ export async function modifyTabItemAction({
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
                                 modifierId: m.modifierId,
-                                // §94: preservar la exclusión "SIN X" en el reemplazo
+                                // §94/§95: preservar exclusión y renglón interno en el reemplazo
                                 excludedIngredientItemId: m.excludedIngredientItemId ?? null,
+                                hideFromKitchen: (m as { hideFromKitchen?: boolean }).hideFromKitchen ?? false,
                             })),
                         },
                     },
@@ -3218,7 +3223,7 @@ export async function voidEntireTabOrderAction({
                     voidedItem: {
                         name: i.itemName,
                         quantity: i.quantity,
-                        modifiers: i.modifiers.map(m => m.name),
+                        modifiers: i.modifiers.filter(m => !m.hideFromKitchen).map(m => m.name),
                     },
                 })),
             },

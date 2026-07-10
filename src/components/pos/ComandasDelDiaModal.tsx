@@ -172,9 +172,9 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                 items: order.items.map((i) => ({
                     name: i.itemName,
                     quantity: i.quantity,
-                    // §93: la comanda omite el padre del sub-grupo anidado (ej.
-                    // ración "Pincho Mixto") — solo la selección definitiva. El
-                    // recibo (abajo) sí lo muestra: lleva el precio.
+                    // §93/§95: omitir el padre del sub-grupo anidado (ej. la
+                    // ración "Pincho Mixto") — solo la selección definitiva.
+                    // Aplica a comanda Y recibo (abajo).
                     modifiers: i.modifiers.filter((m) => !m.hideFromKitchen).map((m) => m.name),
                     notes: i.notes ?? undefined,
                     categoryName: i.categoryName ?? undefined,
@@ -265,7 +265,7 @@ export default function ComandasDelDiaModal({ isOpen, onClose }: ComandasDelDiaM
                     quantity: i.quantity,
                     unitPrice: i.unitPrice ?? (i.lineTotal / (i.quantity || 1)),
                     total: i.lineTotal,
-                    modifiers: i.modifiers.map((m) => m.name),
+                    modifiers: i.modifiers.filter((m) => !m.hideFromKitchen).map((m) => m.name),
                 })),
             });
             toast.success(`Recibo ${order.orderNumber} reimprimiendo…`);

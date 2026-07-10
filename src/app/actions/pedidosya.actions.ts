@@ -91,6 +91,7 @@ export async function createPedidosYAOrderAction(data: CreatePedidosYAOrderData)
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
                                 excludedIngredientItemId: m.excludedIngredientItemId ?? null,
+                                hideFromKitchen: m.hideFromKitchen ?? false,
                             }))
                         },
                     }))

@@ -515,7 +515,8 @@ export default function POSDeliveryPage() {
                         quantity: i.quantity,
                         unitPrice: i.unitPrice,
                         total: i.lineTotal,
-                        modifiers: i.modifiers.map(m => m.name)
+                        // §95: el padre del sub-grupo no sale en el recibo
+                        modifiers: i.modifiers.filter(m => !m.hideFromKitchen).map(m => m.name)
                     })),
                     subtotal: cartSubtotal,
                     // §88: descuento = solo el de los ÍTEMS (subtotal - ítems

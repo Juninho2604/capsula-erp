@@ -931,7 +931,7 @@ export default function POSMeseroPage() {
       itemName: item.itemName,
       quantity: item.quantity,
       lineTotal: item.lineTotal,
-      modifiers: (item.modifiers ?? []).map((m) => m.name),
+      modifiers: (item.modifiers ?? []).filter((m: any) => !m?.hideFromKitchen).map((m) => m.name),
     });
     setRemoveModType("VOID");
     setRemoveNewQty(Math.max(1, item.quantity - 1));
@@ -2160,8 +2160,11 @@ export default function POSMeseroPage() {
                         quantity: it.quantity,
                         unitPrice: it.lineTotal / (it.quantity || 1),
                         total: it.lineTotal,
-                        modifiers: (it.modifiers ?? []).map((m: { name?: string } | string) =>
-                            typeof m === 'string' ? m : (m?.name ?? '')),
+                        modifiers: (it.modifiers ?? [])
+                            .filter((m: { name?: string; hideFromKitchen?: boolean } | string) =>
+                                typeof m === 'string' || !m?.hideFromKitchen)
+                            .map((m: { name?: string } | string) =>
+                                typeof m === 'string' ? m : (m?.name ?? '')),
                       }));
                       const titleSuffix = selectedSub ? ` (${selectedSub.label})` : '';
                       printReceipt({

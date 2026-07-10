@@ -1474,6 +1474,12 @@ model SalesOrderItemModifier {
   // receta principal del item. modifierId queda null (no hay MenuModifier).
   excludedIngredientItemId String?
 
+  // §95: renglón interno — modificador PADRE de un sub-grupo anidado (ej. la
+  // ración "Pincho Mixto"). No se imprime NI en comanda NI en recibo; solo
+  // las varas/hijos. Precio e inventario no cambian. Persistido desde el
+  // carrito para que reimpresiones y recibos desde BD filtren directo.
+  hideFromKitchen Boolean @default(false)
+
   @@index([orderItemId])
 }
 

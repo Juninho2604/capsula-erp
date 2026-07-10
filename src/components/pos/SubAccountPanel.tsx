@@ -757,9 +757,10 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             quantity: it.quantity,
             unitPrice: it.salesOrderItem.unitPrice,
             total: it.lineTotal,
-            modifiers: (it.salesOrderItem.modifiers ?? []).map(m =>
-                typeof m === 'string' ? m : m?.name ?? ''
-            ).filter(Boolean),
+            modifiers: (it.salesOrderItem.modifiers ?? [])
+                .filter(m => typeof m === 'string' || !(m as { hideFromKitchen?: boolean })?.hideFromKitchen)
+                .map(m => typeof m === 'string' ? m : m?.name ?? '')
+                .filter(Boolean),
         }));
         // Determinar si se aplicó descuento del 33% por divisas.
         // - Tras cobro: usar el flag explícito paidWithDivisas (autoritativo).

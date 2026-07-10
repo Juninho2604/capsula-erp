@@ -148,7 +148,7 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
                                 category: { select: { name: true } },
                             },
                         },
-                        modifiers: { select: { name: true, modifier: { select: { groupId: true, childGroupId: true } } } },
+                        modifiers: { select: { name: true, hideFromKitchen: true, modifier: { select: { groupId: true, childGroupId: true } } } },
                     },
                 },
             },
@@ -191,7 +191,8 @@ export async function getComandasDelDiaAction(): Promise<ComandasResult> {
                 lineTotal: i.lineTotal,
                 notes: i.notes ?? null,
                 categoryName: i.menuItem?.category?.name ?? null,
-                modifiers: i.modifiers.map((m) => ({ name: m.name, hideFromKitchen: isParentWithChildren(m, i.modifiers) })),
+                // §95: flag persistido en la venta OR detección por relación (órdenes previas al flag)
+                modifiers: i.modifiers.map((m) => ({ name: m.name, hideFromKitchen: m.hideFromKitchen || isParentWithChildren(m, i.modifiers) })),
             })),
         }));
 

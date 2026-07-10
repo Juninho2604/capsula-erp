@@ -104,6 +104,7 @@ export async function createWinkOrderAction(data: CreateWinkOrderData) {
                                 name: m.name,
                                 priceAdjustment: m.priceAdjustment,
                                 excludedIngredientItemId: m.excludedIngredientItemId ?? null,
+                                hideFromKitchen: m.hideFromKitchen ?? false,
                             }))
                         },
                     }))

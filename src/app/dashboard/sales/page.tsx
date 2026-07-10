@@ -190,7 +190,7 @@ export default function SalesHistoryPage() {
                 quantity: item.quantity,
                 unitPrice: item.unitPrice ?? (item.lineTotal / (item.quantity || 1)),
                 total: item.lineTotal || item.total,
-                modifiers: Array.isArray(item.modifiers) ? item.modifiers.map((m: any) => typeof m === 'string' ? m : m?.name) : []
+                modifiers: Array.isArray(item.modifiers) ? item.modifiers.filter((m: any) => typeof m === 'string' || !m?.hideFromKitchen).map((m: any) => typeof m === 'string' ? m : m?.name) : []
             })),
             // Forma de pago en la nota reimpresa. Respeta el blindaje cajera:
             // si hidePaymentMethod, el server ya stripeó los datos y acá se omite.

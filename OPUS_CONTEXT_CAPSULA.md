@@ -11791,3 +11791,41 @@ para modifiers manuales; §94 agrega el camino con inventario real.
 - Padre sin hijos, defensivo: exclusión con id inexistente en la receta = no-op.
 
 Gates: tsc 0 · vitest 555.
+
+---
+
+## §95 El padre del sub-grupo tampoco sale en el RECIBO (2026-07-10)
+
+Reporte de Omar con pre-cuenta TAB-3545: "Tabla x4 + …, Pincho Mixto, Pincho de
+Pollo, …" — el renglón padre se imprimía en recibos/pre-cuentas junto a las
+varas y "se presta para confusiones". §90/§93 solo cubrían la COMANDA; ahora el
+padre no sale NI en comanda NI en recibo. Precio e inventario no cambian (el
+padre sigue sumando su priceAdjustment al lineTotal; solo se oculta el nombre).
+
+### Persistencia (clave del fix)
+`SalesOrderItemModifier.hideFromKitchen Boolean @default(false)` (migración
+`20260710124028`, safe). Los items de mesa se cargan con `modifiers: true`
+SIN la relación al MenuModifier vivo → no se podía detectar el padre en el
+cliente. Persistir el flag del carrito en la venta lo resuelve para SIEMPRE y
+para cualquier superficie futura. Los 5 create-sites lo guardan (pos ×3 incl.
+copia de reemplazo, wink, pya).
+
+### Superficies de recibo filtradas (`!hideFromKitchen`)
+- delivery: recibo post-venta (cart).
+- restaurante: pickup receipt + reimpresión lastPickupOrder (cart), cierre de
+  mesa y pre-cuenta (rows guardadas).
+- mesero: pre-cuenta + payload de anulación (rows guardadas).
+- SubAccountPanel: recibo de subcuenta.
+- sales/page: reimpresión desde historial.
+- ComandasDelDiaModal: reimpresión de recibo (la comanda ya filtraba §93).
+- pos.actions: comanda de anulación de ítem.
+
+`getComandasDelDiaAction` devuelve `hideFromKitchen = flag persistido OR
+isParentWithChildren(...)` (relación §93) → cubre también órdenes creadas
+ANTES de esta migración. Órdenes viejas en las demás superficies muestran el
+padre hasta que naturalmente salgan del día (transicional, aceptable).
+
+Regla: toda superficie nueva que imprima modifiers (comanda O recibo) debe
+filtrar `hideFromKitchen` (persistido) o usar filterKitchenModifiers (§93).
+
+Gates: tsc 0 · vitest 555.
