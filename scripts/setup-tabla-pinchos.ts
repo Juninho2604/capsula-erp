@@ -23,6 +23,14 @@
  * deterministas) y reversible (podés desvincular/eliminar desde
  * /dashboard/menu/modificadores).
  *
+ * LIMPIEZA (fase 2): si las tablas quedaron vinculadas a otro grupo de
+ * pinchos (ej. el "PINCHOS" mín. 3 de la ración, vinculado a mano), el
+ * script LO DESVINCULA de las tablas (el grupo queda intacto para la
+ * ración). Y si algún modificador de los grupos de las tablas despliega un
+ * sub-grupo de pinchos (childGroup §82), lo desactiva ahí — el grupo
+ * dedicado por tabla lo reemplaza. Sin esta limpieza, la tabla seguiría
+ * exigiendo el mínimo del grupo compartido (ej. 3 varas en la x1).
+ *
  * Los modificadores se crean SIN descargo de inventario. El descargo por
  * vara (gramos de pollo/carne/kafta) se configura después en el admin
  * (receta propia §80 o vínculo a plato), para no descargar cantidades
@@ -133,6 +141,64 @@ async function main() {
         });
         console.log(`     ✓ grupo + ${SABORES.length} varas + vínculo a ${t.sku}`);
     }
+
+    // ── FASE 2: limpieza de grupos de pinchos legacy en las tablas ──────
+    // Sin esto, la tabla seguiría exigiendo el mínimo del grupo compartido
+    // (ej. "PINCHOS" mín. 3 de la ración) además del grupo dedicado.
+    console.log('\n── Limpieza: grupos/sub-grupos de pinchos legacy en las tablas');
+    const PINCHO_RE = /pincho/i;
+    const dedicatedIds = new Set(TABLAS.map(t => `mod-group-pinchos-${t.sku.toLowerCase()}`));
+    const tablaItemIds = new Set(tablas.map(t => t.id));
+
+    const links = await prisma.menuItemModifierGroup.findMany({
+        where: { menuItemId: { in: [...tablaItemIds] } },
+        include: {
+            menuItem: { select: { sku: true } },
+            modifierGroup: {
+                include: {
+                    modifiers: { include: { childGroup: { select: { id: true, name: true, minSelections: true } } } },
+                    menuItems: { select: { menuItemId: true } },
+                },
+            },
+        },
+    });
+
+    let cleanupCount = 0;
+    for (const link of links) {
+        const g = link.modifierGroup;
+        if (dedicatedIds.has(g.id)) continue;
+
+        // Caso A: grupo de pinchos vinculado directo a la tabla (ej. el
+        // "PINCHOS" mín. 3 de la ración) → desvincular SOLO de la tabla.
+        // El grupo no se toca: la ración lo sigue usando.
+        if (PINCHO_RE.test(g.name)) {
+            cleanupCount++;
+            console.log(`   ✂ ${link.menuItem.sku}: desvincular grupo "${g.name}" (min ${g.minSelections}) — lo reemplaza el dedicado`);
+            if (args.apply) {
+                await prisma.menuItemModifierGroup.delete({ where: { id: link.id } });
+            }
+            continue;
+        }
+
+        // Caso B: dentro de un grupo de la tabla (ej. principales), un
+        // modificador despliega un sub-grupo de pinchos (§82). Quitarle el
+        // despliegue solo es seguro si el grupo es EXCLUSIVO de las tablas
+        // (si lo comparte la ración u otro item, se avisa y se deja).
+        const sharedOutsideTablas = g.menuItems.some(mi => !tablaItemIds.has(mi.menuItemId));
+        for (const mod of g.modifiers) {
+            if (!mod.childGroup || !PINCHO_RE.test(mod.childGroup.name)) continue;
+            if (sharedOutsideTablas) {
+                console.log(`   ⚠ "${g.name}" → "${mod.name}" despliega "${mod.childGroup.name}" (min ${mod.childGroup.minSelections}), pero el grupo lo comparten otros items — revisar a mano en /dashboard/menu/modificadores`);
+                continue;
+            }
+            cleanupCount++;
+            console.log(`   ✂ "${g.name}" → "${mod.name}": quitar despliegue de "${mod.childGroup.name}" — lo reemplaza el grupo dedicado`);
+            if (args.apply) {
+                await prisma.menuModifier.update({ where: { id: mod.id }, data: { childGroupId: null } });
+            }
+        }
+    }
+    if (cleanupCount === 0) console.log('   (nada que limpiar)');
 
     if (!args.apply) {
         console.log('\n[DRY-RUN] No se escribió nada. Re-correr con --apply para aplicar.');

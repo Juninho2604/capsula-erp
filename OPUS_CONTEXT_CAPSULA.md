@@ -11571,6 +11571,16 @@ Motivo del grupo-por-tabla: las 3 tablas comparten el grupo de principales, así
 que un solo "Pincho Mixto" no puede desplegar 1 vara en la x1 y 4 en la x4. Un
 grupo dedicado por tabla da la cantidad exacta.
 
+**Fase 2 — limpieza (agregada 10/07):** en producción las tablas quedaron
+vinculadas al grupo "PINCHOS" mín. 3 de la ración (vinculado a mano en admin)
+→ la tabla x1 exigía 3 varas. El script ahora además: (a) DESVINCULA de las
+tablas cualquier otro grupo cuyo nombre matchee /pincho/i (el grupo queda
+intacto para la ración — solo se borra el link MenuItemModifierGroup); (b) si
+un modificador de un grupo de las tablas despliega un sub-grupo de pinchos
+(childGroup §82), le quita el despliegue (childGroupId=null) SOLO si ese grupo
+es exclusivo de las tablas; si lo comparten otros items, avisa para revisar a
+mano. Todo visible en dry-run antes de aplicar.
+
 Gates: tsc 0 · vitest 526.
 
 ---
