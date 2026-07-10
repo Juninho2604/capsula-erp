@@ -11997,3 +11997,37 @@ céntimos vs el POS restaurante cuando hay descuento en divisas.
   no quedar con bundle viejo.
 
 Gates: tsc 0 · vitest 564.
+
+---
+
+## §100 Auditoría del cargo de servicio + cierre de huecos (2026-07-10)
+
+Reporte de Omar: TAB-3567 y TAB-3583 sin cargo de servicio — ¿falla del
+sistema o intervención humana?
+
+### Hallazgos del código (pre-fix)
+El sistema NUNCA pone el servicio en $0 solo. Había DOS rutas humanas, ambas
+SIN rastro de autor:
+1. "Quitar servicio" con PIN de capitán/gerente: el PIN se validaba pero el
+   nombre del autorizador SE DESCARTABA (ni notas ni log).
+2. Editar el % de servicio a 0 al cobrar: `normalizeServiceRate` clampa 0–100
+   y el input UI permite min=0 → 0% pasaba SIN PIN. En subcuentas
+   (`paySubAccountAction`) ni siquiera existe ruta de exención: el % del
+   cliente se aplicaba directo.
+
+### Fixes
+- `registerOpenTabPaymentAction`: (a) 0% sin marcar exención → RECHAZADO con
+  mensaje que dirige a la ruta con PIN; (b) la exención ahora persiste
+  "Exención servicio autorizada por: <nombre>" en las notas del split; (c) %
+  editado ≠ 10 deja marcador "Servicio X% (editado al cobro)" en las notas.
+- `paySubAccountAction`: 0% bloqueado (la exención se autoriza desde la
+  cuenta principal).
+
+### Herramienta
+`scripts/audit-servicio-tabs.ts --tenant-slug=X --tabs=TAB-A,TAB-B` (solo
+lectura): por mesa imprime cuenta, órdenes con autor, subcuentas y cada split
+con su % de servicio implícito, marcando ⚠ los cobros TABLE_SERVICE con
+servicio <9.5%. Veredicto incluido: cobros pre-§100 con $0 no son atribuibles
+a una persona desde los datos (cruzar hora del split con turno de caja).
+
+Gates: tsc 0 · vitest 564.

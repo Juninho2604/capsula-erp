@@ -2331,6 +2331,17 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         const splitRate = await getExchangeRateValue().catch(() => null);
         const isBsTabPayment = BS_PAYMENT_METHODS.has(data.paymentMethod);
 
+        // §100: 0% de servicio SIN marcar exención = mismo efecto que eximir
+        // pero sin PIN ni rastro. Se bloquea: el 0% solo entra por la ruta
+        // autorizada ("Quitar servicio" + PIN).
+        if (isTableService && !wantsSkipServiceFee && serviceRate <= 0) {
+            return {
+                success: false,
+                message: 'Servicio 0% equivale a eximirlo — usá "Quitar servicio" con PIN de capitán o gerente.',
+            };
+        }
+
+        let skipAuthName: string | null = null;
         if (wantsSkipServiceFee) {
             const pin = (data.skipServiceFeeAuthPin || '').trim();
             if (pin.length < 4) {
@@ -2341,6 +2352,8 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
                 return { success: false, message: 'PIN de capitán o gerente incorrecto.' };
             }
             serviceCharge = 0;
+            // §100: dejar rastro auditable de QUIÉN autorizó (antes se descartaba).
+            skipAuthName = auth.name;
         }
 
         const updatedTab = await db.$transaction(async (tx) => {
@@ -2367,9 +2380,18 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             //  · serviceCharge  = 10% sobre el subtotal post-descuento (si aplica)
             //  · total          = subtotal + serviceCharge (lo que el cliente pagó)
             //  · paidAmount     = efectivo entregado (puede ser mayor; cambio aparte)
-            const splitNotes = data.notes
-                ? `${data.notes}${data.discountReason ? ` | ${data.discountReason}` : ''}`
-                : data.discountReason;
+            // §100: marcadores auditables — exención autorizada y % editado.
+            const serviceAuditMarks: string[] = [];
+            if (skipAuthName) serviceAuditMarks.push(`Exención servicio autorizada por: ${skipAuthName}`);
+            else if (isTableService && Math.abs(serviceRate - 0.10) > 0.0001) {
+                serviceAuditMarks.push(`Servicio ${Math.round(serviceRate * 10000) / 100}% (editado al cobro)`);
+            }
+            const splitNotesParts = [
+                data.notes,
+                data.discountReason,
+                ...serviceAuditMarks,
+            ].filter(Boolean);
+            const splitNotes = splitNotesParts.length > 0 ? splitNotesParts.join(' | ') : undefined;
             await tx.paymentSplit.create({
                 data: {
                     openTabId: openTab.id,
@@ -3712,6 +3734,14 @@ export async function paySubAccountAction(data: {
             : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
         const subServiceRate = normalizeServiceRate(data.serviceFeePercent);
+        // §100: en subcuentas no existe ruta de exención con PIN — 0% directo
+        // queda bloqueado (eximir se hace desde la cuenta principal).
+        if (applyServiceFee && subServiceRate <= 0) {
+            return {
+                success: false,
+                message: 'Servicio 0% no permitido en subcuentas — la exención se autoriza con PIN desde la cuenta principal.',
+            };
+        }
         const serviceChargeApplied = applyServiceFee
             ? subtotalAfterDiscount * subServiceRate
             : 0;
