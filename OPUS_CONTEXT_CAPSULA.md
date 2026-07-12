@@ -12193,3 +12193,42 @@ cliente vs server en amountBs, servicio 0.01% (auditable, no bloqueado),
 roundToWhole en subcuentas, propina colectiva + excedente misma mesa (operativo).
 
 Gates: tsc 0 · vitest 570.
+
+---
+
+## §104 Pedidos FUTUROS: hora/día programado + comanda diferida (2026-07-10)
+
+Pedido de Omar: en pickup (POS Restaurante) y delivery poder elegir INMEDIATO
+o una hora/día específico; la comanda del pedido futuro se imprime SOLA al
+llegar su hora, marcada "PEDIDO FUTURO"; las normales dicen "DE INMEDIATO".
+
+### Diseño (cero impacto en el flujo normal)
+- `PrintJob.scheduledFor DateTime?` (migración safe + índice). El job queda
+  PENDING pero `GET /api/print-agent/jobs` NO lo entrega hasta
+  `scheduledFor <= now()`. El agente sondea cada ~1s → imprime puntual SIN
+  rebuild on-prem (el diferimiento es 100% server-side). Null = ya (histórico).
+- `enqueuePrintJobAction.scheduledFor` + `enqueueKitchenCommand(payload,
+  station?, { scheduledFor })`.
+- `/api/kitchen/orders` también oculta pedidos futuros hasta su hora → el
+  display de cocina/barra y su auto-print aparecen sincronizados con el papel.
+- Helpers puros `pos-scheduled-order.ts` (+7 tests): `scheduledInputToISO`
+  (datetime-local con hora Y día; acepta legacy HH:MM de pickups guardados,
+  vacío = inmediato), `isFutureSchedule` (umbral 90s), `printJobScheduledFor`.
+
+### UI
+- POS Restaurante (pickup, tab activo y modal nuevo) y POS Delivery: el input
+  pasa de `type="time"` a `type="datetime-local"` — hora Y día. Vacío = DE
+  INMEDIATO (semántica previa intacta). El ISO va a
+  `SalesOrder.scheduledDeliveryTime` como siempre.
+- Los enqueue de comanda de pickup y delivery pasan
+  `scheduledFor: printJobScheduledFor(iso)` — solo difieren si es >90s futuro.
+
+### Comanda (renderers)
+- Con hora: "*** PEDIDO FUTURO ***" + "ENTREGAR HH:MM" (o "DD/MM HH:MM" si no
+  es hoy). Sin hora y no-MESA: "DE INMEDIATO". MESA queda igual.
+- Cambio en printer-adapter.ts → REQUIERE rebuild del print-agent on-prem
+  para ver las etiquetas nuevas (§84.1 checklist). SIN rebuild, el diferido
+  igual funciona y el build viejo imprime el "ENTREGAR HH:MM" de siempre
+  (degradación elegante). print-command (fallback navegador) también.
+
+Gates: tsc 0 · vitest 577.

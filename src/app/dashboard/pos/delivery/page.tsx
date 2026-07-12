@@ -18,6 +18,7 @@ import { SinConToggle } from '@/components/pos/SinConToggle';
 import { SinIngredientsSection, buildSinCartModifiers } from '@/components/pos/SinIngredientsSection';
 import ChildGroupSelector from '@/components/pos/ChildGroupSelector';
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from '@/lib/pos-child-group';
+import { scheduledInputToISO, printJobScheduledFor } from '@/lib/pos-scheduled-order';
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from '@/lib/pos-modifier-grouping';
 import { searchCustomersAction, type CustomerSummary } from '@/app/actions/customer.actions';
 import toast from 'react-hot-toast';
@@ -355,13 +356,10 @@ export default function POSDeliveryPage() {
     // HOY en la zona local del navegador. Si la hora ya pasó (ej. cajera
     // marcó 14:30 y son las 15:00), asumimos que es para MAÑANA — la
     // cocina necesita esa info para no priorizar mal.
-    const scheduledTimeToISO = (hhmm: string): string | undefined => {
-        if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return undefined;
-        const [h, m] = hhmm.split(':').map(Number);
-        const d = new Date();
-        d.setHours(h, m, 0, 0);
-        if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
-        return d.toISOString();
+    const scheduledTimeToISO = (value: string): string | undefined => {
+        // §104: helper compartido — acepta datetime-local (hora Y día) y el
+        // legacy HH:MM. Vacío = DE INMEDIATO.
+        return scheduledInputToISO(value);
     };
 
     const cartSubtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
@@ -502,7 +500,7 @@ export default function POSDeliveryPage() {
                     scheduledDeliveryTime: scheduledISO ?? null,
                     items: buildKitchenItems(cart, menuItemCategoryMap),
                     createdAt: new Date().toISOString(),
-                });
+                }, undefined, { scheduledFor: printJobScheduledFor(scheduledISO) });
                 const receiptData = {
                     orderNumber: result.data.orderNumber,
                     dailyLabel: (result.data as { dailyLabel?: string | null }).dailyLabel ?? undefined,
@@ -739,7 +737,7 @@ export default function POSDeliveryPage() {
                             <div className="relative" title="Hora de entrega solicitada — opcional. Se imprime grande en la comanda de cocina/barra.">
                                 <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
                                 <input
-                                    type="time"
+                                    type="datetime-local"
                                     value={scheduledTime}
                                     onChange={e => setScheduledTime(e.target.value)}
                                     className="w-full rounded-xl border border-capsula-line bg-capsula-ivory py-2.5 pl-9 pr-2 text-sm font-semibold text-capsula-ink transition-colors focus:border-capsula-navy-deep focus:outline-none tabular-nums"

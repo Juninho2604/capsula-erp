@@ -512,7 +512,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     }</div>
     <div class="sep">--------------------------------</div>
     <div class="meta">${formattedTime}</div>
-    ${data.scheduledDeliveryTime ? `<div class="scheduled"><span class="scheduled-label">ENTREGAR A LAS</span>${new Date(data.scheduledDeliveryTime).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false })}</div>` : ''}
+    ${data.scheduledDeliveryTime ? `<div class="scheduled"><span class="scheduled-label">*** PEDIDO FUTURO ***<br>ENTREGAR</span>${(() => { const d = new Date(data.scheduledDeliveryTime); const t = new Date(); const same = d.toDateString() === t.toDateString(); const hh = d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false }); return same ? hh : `${d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' })} ${hh}`; })()}</div>` : (data.orderType === 'DELIVERY' || !data.tableName ? `<div class="order-type" style="font-weight:900;">DE INMEDIATO</div>` : '')}
     ${data.customerName ? `<div class="customer">${data.customerName}</div>` : ''}
     ${waiterLabel ? `<div style="text-align:center;font-size:13px;font-weight:bold;margin:2px 0;">‍${waiterLabel}</div>` : ''}
     ${data.address ? `<div style="text-align:center;font-size:12px;font-weight:normal;margin:2px 4px;">${data.address}</div>` : ''}

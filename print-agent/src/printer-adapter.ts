@@ -335,14 +335,23 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     if (p.customerName) printer.println(`Cliente: ${p.customerName}`);
     if (p.customerAddress) printer.println(`Direcc.: ${p.customerAddress}`);
     if (p.scheduledDeliveryTime) {
-        // Hora de entrega solicitada — recuadro grande en negrita para que
-        // cocina/barra prioricen vs. los "ASAP". Pickup y Delivery.
+        // §104 — PEDIDO FUTURO: recuadro grande con día (si no es hoy) y hora.
+        // Esta comanda salió de la impresora JUSTO a su hora (impresión
+        // diferida server-side) — cocina/barra arrancan al verla.
         printer.drawLine();
         printer.alignCenter();
         printer.bold(true);
+        printer.println('*** PEDIDO FUTURO ***');
         printer.setTextSize(1, 1);
-        printer.println(`ENTREGAR ${formatTime(p.scheduledDeliveryTime)}`);
+        printer.println(`ENTREGAR ${formatScheduled(p.scheduledDeliveryTime)}`);
         printer.setTextNormal();
+        printer.bold(false);
+        printer.alignLeft();
+    } else if (p.orderTypeLabel && p.orderTypeLabel !== 'MESA' && !isVoid) {
+        // §104 — Pedidos normales de pickup/delivery: explícito.
+        printer.alignCenter();
+        printer.bold(true);
+        printer.println('DE INMEDIATO');
         printer.bold(false);
         printer.alignLeft();
     }
@@ -408,6 +417,19 @@ function formatDateTime(iso: string): string {
 function formatTime(iso: string): string {
     const d = new Date(iso);
     return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/** §104: "HH:MM" si es hoy; "DD/MM HH:MM" si es otro día. */
+function formatScheduled(iso: string): string {
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay = d.getFullYear() === today.getFullYear()
+        && d.getMonth() === today.getMonth()
+        && d.getDate() === today.getDate();
+    const hhmm = d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (sameDay) return hhmm;
+    const ddmm = d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' });
+    return `${ddmm} ${hhmm}`;
 }
 
 /**

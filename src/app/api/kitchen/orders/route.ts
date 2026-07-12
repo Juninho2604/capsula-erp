@@ -33,7 +33,14 @@ export async function GET(request: NextRequest) {
             where: {
                 status: { in: ['PENDING', 'CONFIRMED', 'PREPARING'] },
                 kitchenStatus: 'SENT',
-                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+                // §104: pedidos FUTUROS aparecen en el display (y su
+                // auto-impresión) recién al llegar su hora — igual que la
+                // comanda física diferida.
+                OR: [
+                    { scheduledDeliveryTime: null },
+                    { scheduledDeliveryTime: { lte: new Date() } },
+                ],
             },
             include: {
                 items: {

@@ -27,6 +27,9 @@ export interface EnqueuePrintJobInput {
     /** Payload completo serializable. Ver `print-agent/src/printer-adapter.ts`
      *  para el shape esperado por tipo (ReceiptPayload, KitchenPayload). */
     payload: Record<string, unknown>;
+    /** §104 — Pedido FUTURO: ISO datetime. El job no se entrega al agente
+     *  hasta esa hora (la comanda se imprime sola al llegar). Omitir = ya. */
+    scheduledFor?: string;
 }
 
 export interface EnqueuePrintJobResult {
@@ -59,6 +62,10 @@ export async function enqueuePrintJobAction(
             station: input.station ?? null,
             payload: input.payload as Prisma.InputJsonValue,
             enqueuedById: session.id,
+            // §104: impresión diferida — inválidas se ignoran (imprime ya).
+            scheduledFor: input.scheduledFor && !Number.isNaN(Date.parse(input.scheduledFor))
+                ? new Date(input.scheduledFor)
+                : null,
         },
         select: { id: true },
     });

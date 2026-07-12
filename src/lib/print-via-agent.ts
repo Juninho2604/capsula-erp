@@ -291,9 +291,12 @@ export async function enqueueVoidKitchenCommand(data: {
  */
 export async function enqueueKitchenCommand(
     payload: AgentKitchenPayload,
-    stationOverride?: string
+    stationOverride?: string,
+    /** §104 — Pedido futuro: la comanda se imprime sola a esta hora (ISO). */
+    opts?: { scheduledFor?: string | null },
 ): Promise<void> {
     const jobType = payload.type === 'VOID_KITCHEN' ? 'VOID_KITCHEN' : 'KITCHEN';
+    const scheduledFor = opts?.scheduledFor ?? undefined;
 
     // Modo override: un solo job con la estación que diga el caller.
     if (stationOverride) {
@@ -302,6 +305,7 @@ export async function enqueueKitchenCommand(
                 type: jobType,
                 station: stationOverride,
                 payload: payload as unknown as Record<string, unknown>,
+                scheduledFor,
             });
             if (!res.success) {
                 toast.error(`No se pudo encolar la comanda: ${res.message ?? 'error desconocido'}`);
@@ -337,6 +341,7 @@ export async function enqueueKitchenCommand(
                     type: jobType,
                     station,
                     payload: subPayload as unknown as Record<string, unknown>,
+                    scheduledFor,
                 });
                 if (!res.success) {
                     toast.error(`No se pudo encolar comanda (${station}): ${res.message ?? 'error desconocido'}`);

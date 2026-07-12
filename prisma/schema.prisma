@@ -3273,6 +3273,12 @@ model PrintJob {
   retries      Int            @default(0)
   errorMessage String?
 
+  // §104 — Impresión DIFERIDA (pedidos futuros): el job queda PENDING pero el
+  // API no lo entrega al print-agent hasta que scheduledFor <= now(). Null =
+  // imprimir ya (comportamiento histórico intacto). El agente no cambia:
+  // sondea cada ~1s y el job "aparece" a la hora asignada.
+  scheduledFor DateTime?
+
   createdAt   DateTime  @default(now())
   claimedAt   DateTime?
   completedAt DateTime?
@@ -3281,6 +3287,7 @@ model PrintJob {
   enqueuedBy   User?   @relation("PrintJobEnqueuedBy", fields: [enqueuedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, createdAt])
+  @@index([tenantId, status, scheduledFor])
   @@index([tenantId, completedAt])
 }
 

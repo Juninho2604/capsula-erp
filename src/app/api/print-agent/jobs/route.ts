@@ -35,7 +35,16 @@ export async function GET(req: Request) {
     }
 
     const jobs = await prisma.printJob.findMany({
-        where: { tenantId: auth.tenantId, status: statusParam },
+        where: {
+            tenantId: auth.tenantId,
+            status: statusParam,
+            // §104: los jobs de pedidos FUTUROS quedan invisibles para el
+            // agente hasta su hora — se imprimen solos al llegar (el agente
+            // sondea cada ~1s; no requiere rebuild on-prem).
+            ...(statusParam === 'PENDING'
+                ? { OR: [{ scheduledFor: null }, { scheduledFor: { lte: new Date() } }] }
+                : {}),
+        },
         orderBy: { createdAt: 'asc' },
         take: limit,
         select: {

@@ -42,6 +42,7 @@ import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from "@/lib/sales/tip-calculation";
+import { scheduledInputToISO, printJobScheduledFor } from "@/lib/pos-scheduled-order";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
 
@@ -226,13 +227,10 @@ function formatDateTime(d: string | Date) {
  * en la zona local. Si la hora ya pasó (ej. son las 15:00 y se marca 14:30)
  * asumimos que es para MAÑANA para que cocina priorice correctamente.
  */
-function scheduledTimeToISO(hhmm: string): string | undefined {
-  if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return undefined;
-  const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
-  return d.toISOString();
+function scheduledTimeToISO(value: string): string | undefined {
+  // §104: delega en el helper compartido — acepta datetime-local (hora Y día)
+  // y el legacy HH:MM de pickups guardados antes del cambio.
+  return scheduledInputToISO(value);
 }
 
 // ============================================================================
@@ -1686,7 +1684,7 @@ export default function POSSportBarPage() {
           scheduledDeliveryTime: pickupScheduledISO ?? null,
           items: buildKitchenItems(cart, menuItemCategoryMap),
           createdAt: new Date().toISOString(),
-        });
+        }, undefined, { scheduledFor: printJobScheduledFor(pickupScheduledISO) });
         const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
         const discount = pickupDiscount;
         const discountReason = discountType === "CORTESIA_100" ? 'Cortesía Autorizada (100%)'
@@ -2461,7 +2459,7 @@ export default function POSSportBarPage() {
                     className="w-full bg-capsula-ivory border border-capsula-line text-capsula-ink rounded-lg py-2 px-3 text-sm font-medium placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                   />
                   <input
-                    type="time"
+                    type="datetime-local"
                     value={activePickupTab?.scheduledTime ?? ""}
                     onChange={(e) => {
                       if (!activePickupTabId) return;
@@ -3552,7 +3550,7 @@ export default function POSSportBarPage() {
                   Hora de entrega <span className="text-capsula-ink-faint font-normal normal-case">(opcional)</span>
                 </label>
                 <input
-                  type="time"
+                  type="datetime-local"
                   value={newPickupTime}
                   onChange={(e) => setNewPickupTime(e.target.value)}
                   className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-2.5 text-capsula-ink text-sm font-semibold tabular-nums placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
