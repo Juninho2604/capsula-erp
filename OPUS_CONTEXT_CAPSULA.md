@@ -12374,7 +12374,11 @@ operación genera la salida de los $ y el ingreso a los bancos seleccionados.
 - **Registro**: módulo `cambio_divisas` en MODULE_REGISTRY (sección admin,
   sortOrder 586, `enabledByDefault: true` → se auto-habilita en tenants
   existentes), MODULE_PERMISSIONS OWNER/ADMIN_MANAGER/AUDITOR, icono
-  `ArrowLeftRight` en module-icons.
+  `ArrowLeftRight` en module-icons. OJO: el Sidebar arma sus grupos con una
+  lista FIJA de moduleIds (Sidebar.tsx) — registrar un módulo en
+  MODULE_REGISTRY no basta para que aparezca; hay que añadirlo también al
+  grupo correspondiente del Sidebar (fix aplicado: entre cuentas_bancarias
+  y conciliacion). Recordar esto para todo módulo nuevo.
 
 Nota deliberada: las cuentas bancarias NO llevan saldo corriente en KPSULA
 (la conciliación se deriva de ventas); el cambio de divisas es un registro de
