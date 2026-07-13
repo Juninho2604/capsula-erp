@@ -218,6 +218,54 @@ export function POSConfigView({ initialStockValidation, initialDivisasPercent, c
             </label>
           </div>
         </div>
+
+        {/* ── Impresora de recibo (§111) ───────────────────────────────── */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
+          <h2 className="font-bold text-lg text-green-300 mb-1">Impresora del recibo</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Por defecto el recibo sale por la ventana del navegador (requiere confirmar el diálogo de impresión).
+            Actívalo para que salga <strong>automático y silencioso</strong> por la impresora térmica de caja en la red (vía Print Agent).
+          </p>
+          <div className="space-y-4">
+            <label className="flex items-start justify-between gap-4 cursor-pointer">
+              <div>
+                <p className="text-gray-300 font-medium">Imprimir recibo por impresora de red (agente)</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Encola el recibo al Print Agent → sale directo en la impresora de caja, sin diálogo del navegador.
+                </p>
+              </div>
+              <button
+                onClick={() => toggle('printReceiptViaAgent', !config.printReceiptViaAgent)}
+                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+                  config.printReceiptViaAgent ? 'bg-green-600' : 'bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                    config.printReceiptViaAgent ? 'left-7' : 'left-1'
+                  }`}
+                />
+              </button>
+            </label>
+            {config.printReceiptViaAgent && (
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">
+                  Nombre de la estación de la impresora de caja
+                </label>
+                <input
+                  type="text"
+                  value={config.receiptStation}
+                  onChange={(e) => { const next = setPOSConfig({ receiptStation: e.target.value }); setConfig(next); }}
+                  placeholder="caja"
+                  className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Debe coincidir con el <code>station</code> de la impresora de caja en el <code>PRINTERS_JSON</code> del agente (ej. <code>caja</code> o <code>cajera-1</code>).
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <p className="mt-6 text-xs text-gray-500">

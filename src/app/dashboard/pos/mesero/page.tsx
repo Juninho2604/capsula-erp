@@ -18,7 +18,7 @@ import {
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
-import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printReceipt, emitReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
@@ -2165,7 +2165,7 @@ export default function POSMeseroPage() {
                                 typeof m === 'string' ? m : (m?.name ?? '')),
                       }));
                       const titleSuffix = selectedSub ? ` (${selectedSub.label})` : '';
-                      printReceipt({
+                      emitReceipt({
                         orderNumber: `${activeTab.tabCode}${titleSuffix}`,
                         orderType: 'RESTAURANT',
                         date: new Date(),

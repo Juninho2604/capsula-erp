@@ -25,7 +25,7 @@ import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
-import { printReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { printReceipt, emitReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
 import { useTenantFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
@@ -1305,7 +1305,7 @@ export default function POSSportBarPage() {
         }))
       );
       if (getPOSConfig().printReceiptOnRestaurant) {
-      printReceipt({
+      emitReceipt({
         orderNumber: activeTab.tabCode,
         orderType: "RESTAURANT",
         date: new Date(),
@@ -1385,7 +1385,7 @@ export default function POSSportBarPage() {
           : discountType === "CORTESIA_PERCENT" ? `Cortesía Autorizada (${cortesiaPercentNum}%)`
           : undefined)
       : undefined;
-    printReceipt({
+    emitReceipt({
       orderNumber: activeTab.tabCode,
       orderType: "RESTAURANT",
       date: new Date(),
@@ -1720,7 +1720,7 @@ export default function POSSportBarPage() {
           tipAmount: pickupTipVal > 0 ? pickupTipVal : undefined,
         };
         if (getPOSConfig().printReceiptOnRestaurant) {
-          printReceipt({ ...pickupReceiptData, branding });
+          emitReceipt({ ...pickupReceiptData, branding });
         }
         setLastPickupOrder({
           orderNumber: result.data.orderNumber,
@@ -2778,7 +2778,7 @@ export default function POSSportBarPage() {
                 {lastPickupOrder && (
                   <button
                     onClick={() => {
-                      printReceipt({
+                      emitReceipt({
                         orderNumber: lastPickupOrder.orderNumber,
                         orderType: "RESTAURANT",
                         date: new Date(),

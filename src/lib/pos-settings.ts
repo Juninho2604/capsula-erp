@@ -15,6 +15,16 @@ export interface POSConfig {
   /** Imprimir factura al cerrar cuenta (Restaurante) */
   printReceiptOnRestaurant: boolean;
   /**
+   * §111: enrutar el recibo/pre-cuenta por el Print Agent (impresora
+   * térmica de red) en vez de la ventana del navegador. Silencioso, sin
+   * diálogo de impresión. Requiere que `receiptStation` exista en el
+   * PRINTERS_JSON del agente. Default false = comportamiento navegador
+   * de siempre (no rompe setups sin agente de caja).
+   */
+  printReceiptViaAgent: boolean;
+  /** §111: nombre de la estación de la impresora de caja en PRINTERS_JSON. */
+  receiptStation: string;
+  /**
    * Validar stock de ingredientes antes de confirmar una orden.
    * Si está activo y faltan insumos, la orden se bloquea.
    * Desactivado por defecto hasta completar la carga de recetas.
@@ -27,6 +37,8 @@ const DEFAULTS: POSConfig = {
   printReceiptOnDelivery: true,
   printComandaOnRestaurant: true,
   printReceiptOnRestaurant: true,
+  printReceiptViaAgent: false,
+  receiptStation: 'caja',
   stockValidationEnabled: false,
 };
 

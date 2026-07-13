@@ -9,7 +9,7 @@ import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
-import { printReceipt } from '@/lib/print-command';
+import { printReceipt, emitReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
 import { enqueueKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from '@/lib/print-via-agent';
@@ -548,7 +548,7 @@ export default function POSDeliveryPage() {
                         : [{ method: paymentMethod, amountUSD: finalTotal }],
                 };
                 if (cfg.printReceiptOnDelivery) {
-                    printReceipt({ ...receiptData, branding });
+                    emitReceipt({ ...receiptData, branding });
                 }
                 setCart([]); setCustomerName(''); setCustomerPhone(''); setCustomerAddress(''); setSelectedCustomerId(null);
                 setScheduledTime('');

@@ -12525,3 +12525,40 @@ Config → POS). Diagnóstico estándar: (1) verificar el toggle en ESE equipo,
 popups"), permitir popups para kpsula.app.
 
 Gates: tsc 0 · vitest 593.
+
+## §111 Recibo de pago por el Print Agent (impresora de caja) — automático y silencioso (2026-07-13)
+
+**Problema (OWNER, en sitio):** el recibo de pago no salía automático. Causa
+raíz: TODAS las pantallas POS emitían el recibo con `printReceipt`
+(print-command.ts) = popup del navegador + `window.print()`. Eso exige
+confirmar el diálogo del SO (o lo bloquea el navegador), y en tablets Android
+ni siquiera puede alcanzar la térmica de red. Las comandas SÍ salían porque
+van por el agente; los recibos no. `enqueueReceipt`/`renderReceipt` (camino
+por agente) existían pero NINGÚN caller los usaba.
+
+**Fix — enrutar el recibo por el agente, opt-in por estación:**
+- `pos-settings.ts`: `printReceiptViaAgent` (default false) + `receiptStation`
+  (default 'caja'), guardado en localStorage por navegador/estación.
+- `print-command.ts` `emitReceipt(data)`: si `printReceiptViaAgent` → mapea
+  `ReceiptData` → `AgentReceiptPayload` y `enqueueReceipt(payload, receiptStation)`
+  (sale silencioso en la térmica de caja, misma vía que comandas). Si no →
+  `printReceipt(data)` de siempre. Default OFF = cero cambio para otros setups.
+- Call sites migrados `printReceipt(` → `emitReceipt(` en las 3 pantallas POS
+  (restaurante ×4: cobro mesa, pre-cuenta, cobro pickup, reimpresión pickup;
+  mesero ×1; delivery ×1). La reimpresión desde Historial de ventas sigue en
+  navegador (acción manual de gestión).
+- `AgentReceiptPayload.businessName` + agent `renderReceipt` imprime
+  `p.businessName ?? 'CAPSULA'` (antes hardcodeaba "CAPSULA"; ahora sale el
+  nombre del tenant vía `data.branding.name`).
+
+**Requiere (Shanklish, cobran desde la PC principal, hay térmica de caja en
+la red):** (1) deploy web; (2) rebuild del agente en la PC (printer-adapter
+cambió — también trae §110 mesonero); (3) en PRINTERS_JSON del `.env` del
+agente debe existir una entrada con `station` = valor de `receiptStation`
+(ej. `{"station":"caja","ip":"192.168.1.5x","port":9100}`); (4) activar el
+toggle en Config → POS → "Impresora del recibo" en el navegador de la caja.
+
+Diagnóstico previo (§110) actualizado: el recibo NO era del agente entonces
+porque nada lo enrutaba; §111 lo enruta.
+
+Gates: tsc 0 · vitest 593 · agent build 0.

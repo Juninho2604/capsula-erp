@@ -36,6 +36,8 @@ export interface ReceiptPayload {
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: string;
     cashierName: string;
+    /** §111: nombre del negocio para el encabezado (fallback "CAPSULA"). */
+    businessName?: string;
     customerName?: string;
     customerAddress?: string;
     customerPhone?: string;
@@ -202,7 +204,7 @@ function renderReceipt(printer: ThermalPrinter, p: ReceiptPayload): void {
     printer.alignCenter();
     printer.bold(true);
     printer.setTextSize(1, 1);
-    printer.println('CAPSULA');
+    printer.println((p.businessName ?? 'CAPSULA').toUpperCase());
     printer.setTextNormal();
     printer.bold(false);
     printer.println(isPrecuenta ? 'PRE-CUENTA' : 'RECIBO DE PAGO');

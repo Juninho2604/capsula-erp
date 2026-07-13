@@ -32,6 +32,8 @@ export interface AgentReceiptPayload {
     orderType: 'RESTAURANT' | 'DELIVERY';
     date: string; // ISO
     cashierName: string;
+    /** §111: razón social/nombre del tenant para el encabezado (fallback "CAPSULA"). */
+    businessName?: string;
     customerName?: string;
     customerAddress?: string;
     customerPhone?: string;

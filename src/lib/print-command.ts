@@ -5,6 +5,8 @@
  */
 
 import { humanDailyLabel } from '@/lib/sales/daily-order-number';
+import { enqueueReceipt, type AgentReceiptPayload } from '@/lib/print-via-agent';
+import { getPOSConfig } from '@/lib/pos-settings';
 
 /**
  * IMPRESIÓN DIRECTA SIN DIÁLOGO (Intento)
@@ -341,6 +343,68 @@ export function printReceipt(data: ReceiptData) {
 
     printWindow.document.write(html);
     printWindow.document.close();
+}
+
+/**
+ * §111 — Emite el recibo/pre-cuenta respetando la config de la estación.
+ *
+ * Si `printReceiptViaAgent` está activo (config POS por navegador), encola
+ * el recibo en el Print Agent → sale silencioso en la impresora térmica de
+ * caja (misma vía que las comandas, sin diálogo del navegador). Si no,
+ * mantiene el flujo de siempre: ventana + window.print().
+ *
+ * Motivo (§111): en Shanklish cobran desde la PC principal y el recibo
+ * automático no salía porque dependía de un popup del navegador (diálogo
+ * manual / bloqueado). Enrutarlo por el agente lo vuelve automático y
+ * silencioso. Default OFF → cero cambio para setups sin impresora de caja
+ * en red.
+ */
+export function emitReceipt(data: ReceiptData): void {
+    let cfg: { printReceiptViaAgent: boolean; receiptStation: string };
+    try {
+        cfg = getPOSConfig();
+    } catch {
+        printReceipt(data);
+        return;
+    }
+    if (!cfg.printReceiptViaAgent) {
+        printReceipt(data);
+        return;
+    }
+    const subtotal = data.subtotal ?? data.items.reduce((s, i) => s + i.total, 0);
+    const payload: AgentReceiptPayload = {
+        type: data.isPrecuenta ? 'PRECUENTA' : 'RECEIPT',
+        orderNumber: data.orderNumber,
+        dailyLabel: data.dailyLabel,
+        orderType: data.orderType,
+        date: new Date(data.date).toISOString(),
+        cashierName: data.cashierName,
+        businessName: data.branding?.name,
+        customerName: data.customerName,
+        customerAddress: data.customerAddress,
+        customerPhone: data.customerPhone,
+        tableLabel: data.tableLabel,
+        tableLabelTitle: data.tableLabelTitle,
+        items: data.items.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice ?? (i.total / (i.quantity || 1)),
+            total: i.total,
+            modifiers: Array.isArray(i.modifiers) ? i.modifiers : [],
+        })),
+        subtotal,
+        discount: data.discount,
+        discountReason: data.discountReason,
+        deliveryFee: data.deliveryFee,
+        serviceFee: data.serviceFee,
+        serviceFeePercent: data.serviceFeePercent,
+        tipAmount: data.tipAmount,
+        total: data.total,
+        isPrecuenta: data.isPrecuenta,
+        hideDiscount: data.hideDiscount,
+    };
+    // Fire-and-forget: la impresión es accesoria, no debe bloquear el cobro.
+    void enqueueReceipt(payload, cfg.receiptStation || undefined);
 }
 
 /**
