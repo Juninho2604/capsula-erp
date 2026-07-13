@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban, DollarSign, Zap, CreditCard, Smartphone, Banknote, Euro, Printer } from "lucide-react";
+import { ChefHat, Lock, LogOut, RefreshCw, Phone, AlertTriangle, Search, X as XIcon, ArrowLeft, Plus as PlusIcon, ShoppingCart, Flame, Check, Armchair, ClipboardList, UtensilsCrossed, Receipt, Divide, ArrowLeftRight, Pencil, Ban, DollarSign, Zap, CreditCard, Smartphone, Banknote, Euro, Printer, Star } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   addItemsToOpenTabAction,
@@ -19,6 +19,7 @@ import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
 import { moveTabBetweenTablesAction } from "@/app/actions/waiter.actions";
 import { printReceipt, emitReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
+import { SatisfactionSurveyCard } from "@/components/pos/SatisfactionSurveyCard";
 import { enqueueKitchenCommand, enqueueVoidKitchenCommand, buildMenuItemCategoryMap, buildKitchenItems } from "@/lib/print-via-agent";
 import { getPOSConfig } from "@/lib/pos-settings";
 import { SinConToggle } from "@/components/pos/SinConToggle";
@@ -316,6 +317,8 @@ export default function POSMeseroPage() {
 
   // ── Identificación del mesonero ───────────────────────────────────────────
   const [activeWaiter, setActiveWaiter] = useState<ActiveWaiter | null>(null);
+  // §113: encuesta de satisfacción — el mesonero puede abrirla desde su tablet.
+  const [showSurvey, setShowSurvey] = useState(false);
   const [waiterHydrated, setWaiterHydrated] = useState(false);
   const canUseCaptainFeatures =
     activeWaiter?.isCaptain || MANAGER_ROLES.includes(currentUser?.role ?? "");
@@ -1277,6 +1280,12 @@ export default function POSMeseroPage() {
                 Abrió: <span className="text-capsula-ink">{activeTab.openedBy.firstName}</span>
                 <span className="text-capsula-ink-muted"> · {formatTime(activeTab.openedAt)}</span>
               </div>
+              <button
+                onClick={() => setShowSurvey(true)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-capsula-line bg-capsula-ivory px-2.5 py-1.5 text-[11px] font-semibold text-capsula-ink-soft hover:border-capsula-navy-deep hover:text-capsula-ink transition-colors"
+              >
+                <Star className="h-3 w-3" /> Encuesta de satisfacción
+              </button>
             </div>
           )}
         </aside>
@@ -2746,6 +2755,17 @@ export default function POSMeseroPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* §113 — Encuesta de satisfacción (manual, desde la tablet del mesonero). */}
+      {showSurvey && activeTab && (
+        <SatisfactionSurveyCard
+          openTabId={activeTab.id}
+          tabCode={activeTab.tabCode}
+          tableName={selectedTable?.name}
+          waiterName={activeWaiter ? `${activeWaiter.firstName} ${activeWaiter.lastName}`.trim() : undefined}
+          onDone={() => setShowSurvey(false)}
+        />
       )}
 
     </div>

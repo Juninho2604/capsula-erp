@@ -12659,3 +12659,44 @@ debajo del sidebar `z-50`. Visible al usar el navegador a media pantalla
   Menú → Modificadores.
 
 Gates: tsc 0 · vitest 600.
+
+## §113 Encuesta de satisfacción del cliente (2026-07-13)
+
+Pedido del dueño: calificación de satisfacción rellenable por el mesonero
+desde la tablet, con respuestas predeterminadas + texto opcional, SIN
+interferir el cobro, "una vez casi finalizado el proceso".
+
+**Diseño (elegido por defecto — la tool de preguntas falló):** calificación
+GENERAL de 1 toque (Excelente/Buena/Regular/Mala con emoji) + comentario
+opcional colapsado. Columnas de dimensión (food/service/ambiance) quedan
+nullable en el schema para extender a multi-dimensión después sin migración.
+
+**Punto de captura (no interfiere el cobro):**
+- **POS Restaurante**: la tarjeta aparece AUTOMÁTICA tras `closeOpenTabAction`
+  (cerrar cuenta) — el cobro y la liberación de la mesa YA ocurrieron. Se
+  capturan tabCode/tableName/waiterLabel ANTES de limpiar el estado. Siempre
+  omitible ("Omitir" / X).
+- **POS Mesero** (tablet del mesonero): botón manual "Encuesta de
+  satisfacción" en el footer de la mesa activa → abre la misma tarjeta con
+  el mesonero activo atribuido.
+
+**Componentes/archivos:**
+- `src/lib/sales/satisfaction.ts` (puro): escala SATISFACTION_RATINGS +
+  SATISFACTION_META (emoji/score/tone) + summarizeSatisfaction (conteos,
+  promedio 1–4, % positivo). 4 tests.
+- `SatisfactionSurvey` model + migración `20260713180000_satisfaction_survey`
+  (solo CREATE TABLE — safe en vivo). Back-relations Tenant + User.
+- `satisfaction.actions.ts`: submit (roles POS: OWNER/ADMIN/OPS/CASHIER/
+  WAITER/AREA_LEAD) + getSatisfactionSurveysAction (resultados por día
+  Caracas, resumen + por-mesonero; lectura OWNER/ADMIN/OPS/AUDITOR).
+- `components/pos/SatisfactionSurveyCard.tsx`: tarjeta reutilizable
+  (ModalPortal z-[65], emojis intencionales = contenido, no chrome).
+- Módulo `/dashboard/encuestas` (registry `encuestas`, sortOrder 545,
+  enabledByDefault, icono Star, en Sidebar admin): KPIs (respuestas,
+  promedio, % positivas, distribución), ranking por mesonero, detalle con
+  comentarios. Permisos OWNER/ADMIN_MANAGER/OPS_MANAGER/AUDITOR.
+
+Requiere deploy con migración (migrate deploy la aplica). Sin rebuild de
+agente (no toca impresión).
+
+Gates: tsc 0 · vitest 604.

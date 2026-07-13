@@ -609,6 +609,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   // ADMINISTRACIÓN FINANCIERA
   // ═══════════════════════════════════════════
   {
+    id: 'encuestas',
+    label: 'Satisfacción',
+    description: 'Resultados de las encuestas de satisfacción llenadas en el POS al cerrar cada mesa',
+    icon: '⭐',
+    href: '/dashboard/encuestas',
+    section: 'admin',
+    enabledByDefault: true,
+    sortOrder: 545,
+    tags: ['encuesta', 'satisfaccion', 'calidad', 'clientes', 'nps'],
+  },
+  {
     id: 'finanzas',
     label: 'Dashboard Financiero',
     description: 'Estado de resultados (P&L), flujo de caja y análisis financiero mensual',
@@ -776,6 +787,7 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   anuncios: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   metas: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'AUDITOR'],
   // Módulo Financiero
+  encuestas:     ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   finanzas:      ['OWNER', 'ADMIN_MANAGER', 'AUDITOR'],
   gastos:        ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   caja:          ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CASHIER', 'AUDITOR'],

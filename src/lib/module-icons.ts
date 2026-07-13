@@ -6,7 +6,7 @@ import {
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
     Flag, Wallet, Receipt, Banknote, FileText, ClipboardList, Tag, UserCircle2,
-    FileSpreadsheet, Landmark, Scale, HandCoins, MessagesSquare,
+    FileSpreadsheet, Landmark, Scale, HandCoins, MessagesSquare, Star,
 } from 'lucide-react';
 
 /**
@@ -79,6 +79,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     metas:             Flag,
 
     // FINANZAS
+    encuestas:         Star,
     finanzas:          Wallet,
     gastos:            Receipt,
     caja:              Banknote,

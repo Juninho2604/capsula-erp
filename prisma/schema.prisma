@@ -79,6 +79,7 @@ model Tenant {
   accountsPayable       AccountPayable[]
   accountPayments       AccountPayment[]
   currencyExchanges     CurrencyExchange[]
+  satisfactionSurveys   SatisfactionSurvey[]
   purchaseOrders        PurchaseOrder[]
   productionOrders      ProductionOrder[]
   proteinProcessings    ProteinProcessing[]
@@ -225,6 +226,7 @@ model User {
   createdAccountsPayable AccountPayable[] @relation("AccountPayableCreator")
   createdAccountPayments AccountPayment[] @relation("AccountPaymentCreator")
   createdCurrencyExchanges CurrencyExchange[] @relation("CurrencyExchangeCreator")
+  createdSatisfactionSurveys SatisfactionSurvey[] @relation("SatisfactionSurveyCreator")
 
   // Fase 2 — propuestas 001/002 (audit trail)
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
@@ -3819,4 +3821,45 @@ model CurrencyExchangeDestination {
 
   @@index([currencyExchangeId])
   @@index([bankAccountId])
+}
+
+/// §113 — Encuesta de satisfacción del cliente, llenada por el mesonero/caja
+/// desde la tablet al final del servicio (al cerrar la cuenta o manualmente).
+/// No bloquea el cobro: es un registro opcional, omitible.
+///
+/// `rating` es la calificación GENERAL (siempre presente). Las columnas de
+/// dimensión (food/service/ambiance) quedan nullable para poder pasar a una
+/// encuesta multi-dimensión más adelante sin migración destructiva.
+model SatisfactionSurvey {
+  id String @id @default(cuid())
+
+  // Vínculo a la mesa (snapshot: la mesa puede cerrarse/reabrirse).
+  openTabId  String?
+  tabCode    String? // ej. "TAB-3691"
+  tableName  String? // ej. "SP-09"
+  waiterName String? // mesonero atribuido a la mesa
+
+  /// Calificación general: EXCELENTE | BUENA | REGULAR | MALA.
+  rating String
+
+  /// Dimensiones opcionales (misma escala) — reservadas para el futuro.
+  foodRating    String?
+  serviceRating String?
+  ambianceRating String?
+
+  /// Comentario libre opcional (cuando la respuesta no es la esperada).
+  comment String?
+
+  createdById   String
+  createdBy     User   @relation("SatisfactionSurveyCreator", fields: [createdById], references: [id])
+  createdByName String // snapshot del nombre de quien la registró
+  createdAt     DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
+  @@index([rating])
+  @@index([openTabId])
 }

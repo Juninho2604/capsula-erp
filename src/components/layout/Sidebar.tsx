@@ -96,6 +96,7 @@ const SIDEBAR_TREE: SectionDef[] = [
     {
         id: 'finanzas', label: 'Finanzas', scheme: 'navy',
         items: [
+            { kind: 'link', moduleId: 'encuestas' },
             { kind: 'link', moduleId: 'finanzas' },
             { kind: 'link', moduleId: 'gastos' },
             { kind: 'link', moduleId: 'caja' },

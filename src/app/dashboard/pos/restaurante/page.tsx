@@ -39,6 +39,7 @@ import { SubAccountPanel } from "@/components/pos/SubAccountPanel";
 import { SinConToggle } from "@/components/pos/SinConToggle";
 import { SinIngredientsSection, buildSinCartModifiers } from "@/components/pos/SinIngredientsSection";
 import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
+import { SatisfactionSurveyCard } from "@/components/pos/SatisfactionSurveyCard";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from "@/lib/sales/tip-calculation";
@@ -374,6 +375,8 @@ export default function POSSportBarPage() {
   // ── State flags ───────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  // §113: encuesta de satisfacción tras cerrar la cuenta (omitible).
+  const [surveyFor, setSurveyFor] = useState<{ openTabId: string; tabCode: string; tableName?: string; waiterName?: string } | null>(null);
   const [layoutError, setLayoutError] = useState("");
 
   const [mobileTab, setMobileTab] = useState<"tables" | "menu" | "account">("tables");
@@ -1418,6 +1421,14 @@ export default function POSSportBarPage() {
     if (!confirm("¿Cerrar esta cuenta?")) return;
     setIsProcessing(true);
     try {
+      // §113: capturar datos de la mesa ANTES de limpiar el estado, para la
+      // encuesta de satisfacción (se muestra tras el cierre, es omitible).
+      const surveyContext = {
+        openTabId: activeTab.id,
+        tabCode: activeTab.tabCode,
+        tableName: selectedTable?.name,
+        waiterName: (activeTab as any).waiterLabel || undefined,
+      };
       const result = await closeOpenTabAction(activeTab.id);
       if (!result.success) {
         toast.error(result.message);
@@ -1427,6 +1438,9 @@ export default function POSSportBarPage() {
       try { window.localStorage.removeItem(`posResto:copiedConsumos:${activeTab.id}`); } catch {}
       await loadData();
       setSelectedTableId("");
+      // Mostrar la encuesta al final — el cobro y el cierre ya ocurrieron, no
+      // los interfiere. Solo para servicio de mesa (no bar tabs de paso).
+      setSurveyFor(surveyContext);
     } finally {
       setIsProcessing(false);
     }
@@ -4274,6 +4288,17 @@ export default function POSSportBarPage() {
           pending?.onConfirm();
         }}
       />
+
+      {/* §113 — Encuesta de satisfacción tras cerrar la cuenta (omitible). */}
+      {surveyFor && (
+        <SatisfactionSurveyCard
+          openTabId={surveyFor.openTabId}
+          tabCode={surveyFor.tabCode}
+          tableName={surveyFor.tableName}
+          waiterName={surveyFor.waiterName}
+          onDone={() => setSurveyFor(null)}
+        />
+      )}
     </div>
   );
 }
