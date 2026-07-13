@@ -141,15 +141,27 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                     <option value="ALL">Todas las categorías</option>
                     {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
-                    className="pos-input sm:w-44"
-                >
-                    <option value="ALL">Todos los tipos</option>
-                    <option value="SUB_RECIPE">Sub-recetas</option>
-                    <option value="FINISHED_GOOD">Productos finales</option>
-                </select>
+                {/* §112: división visible sub-recetas / productos (antes era un
+                    select discreto que pasaba desapercibido). */}
+                <div className="flex rounded-xl border border-capsula-line overflow-hidden text-xs font-semibold shrink-0">
+                    {([
+                        { value: 'ALL', label: `Todas (${recipes.length})` },
+                        { value: 'SUB_RECIPE', label: `Sub-recetas (${recipes.filter(r => r.type === 'SUB_RECIPE').length})` },
+                        { value: 'FINISHED_GOOD', label: `Productos (${recipes.filter(r => r.type === 'FINISHED_GOOD').length})` },
+                    ] as const).map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => setTypeFilter(opt.value)}
+                            className={`px-3 py-2 transition-colors ${
+                                typeFilter === opt.value
+                                    ? 'bg-capsula-navy-deep text-capsula-cream'
+                                    : 'bg-capsula-ivory-surface text-capsula-ink-muted hover:bg-capsula-ivory-alt'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
                 <span className="text-sm text-capsula-ink-muted tabular-nums shrink-0">
                     {filteredRecipes.length} de {recipes.length}
                 </span>

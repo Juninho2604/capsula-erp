@@ -12,6 +12,7 @@ import { createRecipeAction, updateRecipeAction } from '@/app/actions/recipe.act
 import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
+import { ModalPortal } from '@/components/ui/modal-portal';
 
 interface IngredientOption {
     id: string;
@@ -564,6 +565,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             siempre a la vista aunque la lista sea larga; cero scroll.
                             Queda abierto tras agregar para cargar varios seguidos. */}
                         {showAddIngredient && (
+                            <ModalPortal>
                             <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
                             <div className="bg-capsula-ivory border border-capsula-line w-full max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
                             <div className="border-b border-capsula-line p-5 flex items-center justify-between sticky top-0 bg-capsula-ivory z-10">
@@ -662,7 +664,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         <Combobox
                                             items={availableOptions.map(item => ({
                                                 value: item.id,
-                                                label: `${item.type === 'SUB_RECIPE' ? '' : ''} ${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
+                                                // §112: sub-recetas identificadas en el buscador (antes el
+                                                // prefijo era un string vacío y todo se veía igual).
+                                                label: `${item.type === 'SUB_RECIPE' ? '[Sub-receta] ' : ''}${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
                                             }))}
                                             value={newIngredient.inventoryItemId || ''}
                                             onChange={(val) => {
@@ -755,6 +759,7 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             </div>
                             </div>
                             </div>
+                            </ModalPortal>
                         )}
                     </div>
                 </div>

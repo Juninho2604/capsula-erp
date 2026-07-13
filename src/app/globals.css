@@ -431,7 +431,11 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .text-pretty  { text-wrap: pretty; }
-  .animate-in   { animation: fade-in 0.3s ease-out forwards; }
+  /* Sin `forwards`: una animación de opacidad "filled" crea un stacking
+     context permanente y los modales fixed de la página quedan bajo el
+     sidebar (§112, bug reportado a media pantalla). El keyframe termina
+     en opacity:1 = valor natural, quitarlo es visualmente idéntico. */
+  .animate-in   { animation: fade-in 0.3s ease-out; }
 }
 
 /* Drawer / fade keyframes kept for compatibility */

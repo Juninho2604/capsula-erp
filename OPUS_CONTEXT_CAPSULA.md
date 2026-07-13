@@ -12595,3 +12595,67 @@ Retomar en próxima sesión. Contexto recopilado en sitio:
 
 Estado del código: §111 ya mergeado (opt-in, OFF por defecto — no afecta).
 Falta solo la config por-PC (kiosk-printing), sin cambios de código.
+
+## §112 Sprint: divisas mixto con gross-up, modales sobre el sidebar, sub-recetas visibles (2026-07-13)
+
+### 1. Delivery: divisas solo a comida + envío en Bs (bug de 25% efectivo)
+
+**Bug:** en pago mixto el descuento divisas era `pagado × rate` — con ⅓ eso
+es 25% efectivo sobre la base cubierta, no 33,33%. Caso del OWNER: comida
+$30 + envío Bs $4.50; el cliente debía pagar $20 divisas + $4.50 Bs, pero el
+sistema solo descontaba $6.67 y quedaba saldo fantasma.
+
+**Fix — gross-up (espejo de computeDivisasSettlement de mesa):**
+- `divisasBaseFromPaid(paidUsd, itemsSubtotal, rate)` en delivery-totals.ts:
+  base bruta cubierta = `pagado / (1 − rate)`, topada al subtotal de ítems.
+  7 tests (incluye integración: $30 comida + fee BS → total $24.50, desc $10,
+  y regresión documentando la fórmula vieja).
+- Server `calculateCartTotals`: gross-up en la rama DELIVERY (divisasBase
+  hacia computeDeliveryTotals + discountReason "sobre $X de consumo") y en
+  la rama RESTAURANT/PICKUP mixta (misma clase de bug).
+- Cliente delivery/page.tsx: `divisasCoveredBase` con el mismo helper; hints
+  muestran "$20.00 en divisas cubren $30.00 de consumo (−$10.00)".
+- **Reparto sugerido**: con DIVISAS_33 + envío Bs, botón "Reparto sugerido:
+  comida en divisas $X + envío en Bs $Y (Bs Z)" que pre-carga las 2 líneas
+  del pago mixto (CASH_USD comida con descuento + CASH_BS fee a tasa),
+  editables (pueden cambiar método a Zelle/PM). Soporte `initialLines` en
+  MixedPaymentSelector (opcional, remount por key — sin cambio para otros).
+- **Alineación de redondeo en mixto**: el server NO redondea en mixto (no
+  recibe paymentMethod) pero el cliente redondeaba con el método single →
+  divergencia por céntimos y el reparto exacto nunca "completaba". Ahora el
+  cliente tampoco redondea en mixto (`roundToWhole(x, isMixedMode ? '' : method)`).
+
+### 2. Modales bajo el sidebar a media pantalla (reporte Christian)
+
+**Causa raíz:** `.animate-in` usaba `animation: fade-in .3s forwards` — una
+animación de opacidad "filled" crea un **stacking context permanente**
+(Chrome), y cualquier modal `fixed z-[60]` DENTRO de la página queda pintado
+debajo del sidebar `z-50`. Visible al usar el navegador a media pantalla
+(layout móvil → sidebar-drawer encima del contenido).
+
+**Fix doble:**
+- `globals.css`: quitar `forwards` (el keyframe termina en opacity:1 = valor
+  natural → visualmente idéntico, y el stacking context muere al terminar).
+- `src/components/ui/modal-portal.tsx` (nuevo): `ModalPortal` renderiza el
+  modal en `document.body` vía createPortal (SSR-safe). Aplicado al modal de
+  Agregar ingrediente de RecipeForm. REGLA: para futuros modales dentro de
+  páginas del dashboard, envolver en `<ModalPortal>` si hay riesgo de
+  ancestros con transform/animación.
+
+### 3. Sub-recetas vs productos finales + receta de modificadores
+
+- **Recetas (RecipeList)**: el filtro por tipo existía como select discreto
+  y pasaba desapercibido → ahora chips visibles "Todas (N) | Sub-recetas (N)
+  | Productos (N)" estilo segmented control.
+- **Buscador de insumos de RecipeForm**: el prefijo de tipo era un string
+  VACÍO (emoji removido en migración) → todo se veía igual. Ahora
+  "[Sub-receta] Nombre (KG) - $X".
+- **Inventario**: ya tenía chips por tipo (Insumo/Sub-receta/Producto) desde
+  junio — sin cambios.
+- **Receta de modificadores**: el editor EXISTÍA (§80, modal "Receta propia")
+  pero su punto de entrada era un icono de matraz sin etiqueta → nadie lo
+  encontraba. Ahora es botón etiquetado: "Crear receta" (sin receta propia) /
+  "Receta propia" (verde, ya definida), en cada fila de modificador en
+  Menú → Modificadores.
+
+Gates: tsc 0 · vitest 600.

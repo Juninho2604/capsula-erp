@@ -21,6 +21,13 @@ interface Props {
   disabled?: boolean;
   /** If true, shows the CORTESIA method button */
   allowCortesia?: boolean;
+  /**
+   * §112: líneas pre-cargadas al montar (ej. reparto sugerido "comida en
+   * divisas + envío en Bs" del POS delivery). Para re-aplicar un preset,
+   * remontar el componente cambiando su `key`. Editables como cualquier
+   * línea. Default: sin líneas (comportamiento de siempre).
+   */
+  initialLines?: PaymentLine[];
 }
 
 type MethodDef = {
@@ -57,8 +64,9 @@ export default function MixedPaymentSelector({
   onChange,
   disabled,
   allowCortesia = false,
+  initialLines,
 }: Props) {
-  const [lines, setLines] = useState<PaymentLine[]>([]);
+  const [lines, setLines] = useState<PaymentLine[]>(() => initialLines ?? []);
 
   const totalPaid = lines.reduce((s, l) => s + l.amountUSD, 0);
   const remaining = Math.max(0, totalAmount - totalPaid);

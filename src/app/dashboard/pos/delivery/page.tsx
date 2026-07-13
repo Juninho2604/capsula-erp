@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { createSalesOrderAction, recordCollectiveTipAction, getMenuForPOSAction, validateManagerPinAction, type CartItem, type PaymentLine } from '@/app/actions/pos.actions';
 import MixedPaymentSelector from '@/components/pos/MixedPaymentSelector';
+import { divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
+import type { PaymentLine as UIPaymentLine } from '@/components/pos/MixedPaymentSelector';
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
@@ -135,6 +137,10 @@ export default function POSDeliveryPage() {
     // Mixed-payment mode
     const [mixedPayments, setMixedPayments] = useState<PaymentLine[]>([]);
     const [mixedPaymentsComplete, setMixedPaymentsComplete] = useState(false);
+    // §112: reparto sugerido "comida en divisas + envío en Bs" — se inyecta
+    // al selector mixto remontándolo con initialLines (key = presetKey).
+    const [mixedPresetLines, setMixedPresetLines] = useState<UIPaymentLine[] | undefined>(undefined);
+    const [mixedPresetKey, setMixedPresetKey] = useState(0);
     const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
     // DISCOUNT STATE
@@ -398,8 +404,14 @@ export default function POSDeliveryPage() {
         : deliveryFeeBase;
     // Si freeDelivery está activo el fee efectivo es 0 (la promo lo waivea).
     const deliveryFee = freeDelivery ? 0 : deliveryFeeAfterCortesia;
+    // §112: en mixto, lo pagado en divisas cubre `pagado/(1-rate)` de consumo
+    // (gross-up) y el descuento es el rate PLENO sobre esa base — antes se
+    // descontaba `pagado x rate` (25% efectivo). Espejo exacto del server.
+    const divisasCoveredBase = isMixedMode
+        ? divisasBaseFromPaid(divisasUsdAmount ?? 0, cartSubtotal, divisasRate)
+        : cartSubtotal;
     const itemsAfterDiscount = discountType === 'DIVISAS_33' && isPagoDivisas
-        ? cartSubtotal - (isMixedMode ? (divisasUsdAmount ?? 0) * divisasRate : cartSubtotal * divisasRate)
+        ? cartSubtotal - divisasCoveredBase * divisasRate
         : discountType === 'CORTESIA_100' ? 0
         : discountType === 'CORTESIA_PERCENT' ? cartSubtotal * (1 - cortesiaPercentNum / 100)
         : cartSubtotal;
@@ -410,7 +422,10 @@ export default function POSDeliveryPage() {
         // el server (computeDeliveryTotals).
         (discountType === 'CORTESIA_100') ? 0
         : itemsAfterDiscount + deliveryFee,
-        paymentMethod
+        // §112: en mixto el server NO redondea (no recibe paymentMethod) — el
+        // cliente tampoco debe, o divergen por céntimos y el reparto exacto
+        // (comida divisas + envío Bs) nunca "completa".
+        isMixedMode ? '' : paymentMethod
     );
     const totalMixedPaid = mixedPayments.reduce((s, p) => s + p.amountUSD, 0);
 
@@ -947,7 +962,7 @@ export default function POSDeliveryPage() {
                             {discountType === 'DIVISAS_33' && isPagoDivisas && (
                                 <div className="flex justify-between rounded-lg border border-[#D3E2D8] bg-[#E5EDE7]/40 px-2 py-1 text-xs font-medium text-[#2F6B4E]">
                                     <span>Dto. Divisas</span>
-                                    <span className="tabular-nums">-${((divisasUsdAmount ?? cartSubtotal) * divisasRate).toFixed(2)}</span>
+                                    <span className="tabular-nums">-${(divisasCoveredBase * divisasRate).toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="flex items-baseline justify-between border-t border-capsula-line pt-2">
@@ -1179,10 +1194,41 @@ export default function POSDeliveryPage() {
                             ) : (
                                 /* ── Pago Mixto ── */
                                 <div className="space-y-2">
+                                    {discountType === 'DIVISAS_33' && deliveryFeeMode === 'BS' && cartSubtotal > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                // §112: comida en divisas (con el % pleno aplicado) + envío en Bs.
+                                                const foodDivisas = Math.round(cartSubtotal * (1 - divisasRate) * 100) / 100;
+                                                const feeUsd = deliveryFee;
+                                                const stamp = Date.now();
+                                                const preset: UIPaymentLine[] = [
+                                                    { id: `preset-usd-${stamp}`, method: 'CASH_USD', amountUSD: foodDivisas },
+                                                    {
+                                                        id: `preset-bs-${stamp}`,
+                                                        method: 'CASH_BS',
+                                                        amountUSD: feeUsd,
+                                                        amountBS: exchangeRate ? parseFloat((feeUsd * exchangeRate).toFixed(0)) : undefined,
+                                                        exchangeRate: exchangeRate ?? undefined,
+                                                    },
+                                                ];
+                                                setMixedPresetLines(preset);
+                                                setMixedPresetKey(k => k + 1);
+                                                setMixedPayments(preset);
+                                                setMixedPaymentsComplete(true);
+                                            }}
+                                            className="w-full rounded-xl border border-dashed border-capsula-navy-deep/40 bg-capsula-navy-soft px-3 py-2.5 text-left text-xs font-semibold text-capsula-ink transition-colors hover:border-capsula-navy-deep"
+                                        >
+                                            Reparto sugerido: comida en divisas ${(Math.round(cartSubtotal * (1 - divisasRate) * 100) / 100).toFixed(2)} + envío en Bs ${deliveryFee.toFixed(2)}
+                                            {exchangeRate ? ` (Bs ${(deliveryFee * exchangeRate).toFixed(0)})` : ''}
+                                            <span className="block text-[10px] font-normal text-capsula-ink-muted">Toca para cargar las dos líneas — puedes cambiar el método de cada una (Zelle, Pago Móvil…)</span>
+                                        </button>
+                                    )}
                                     <MixedPaymentSelector
-                                        key={`delivery-mixed-${isMixedMode}`}
+                                        key={`delivery-mixed-${isMixedMode}-${mixedPresetKey}`}
                                         totalAmount={finalTotal}
                                         exchangeRate={exchangeRate}
+                                        initialLines={mixedPresetLines}
                                         onChange={(lines, _paid, complete) => {
                                             setMixedPayments(lines);
                                             setMixedPaymentsComplete(complete);
@@ -1192,8 +1238,8 @@ export default function POSDeliveryPage() {
                                     {discountType === 'DIVISAS_33' && (divisasUsdAmount ?? 0) > 0 && (
                                         <div className="space-y-0.5 rounded-xl border border-capsula-navy/10 bg-capsula-navy-soft px-3 py-2 text-xs text-capsula-ink-soft">
                                             <div className="flex justify-between">
-                                                <span>Divisas sobre ${(divisasUsdAmount ?? 0).toFixed(2)} USD</span>
-                                                <span className="font-medium tabular-nums">-${((divisasUsdAmount ?? 0) * divisasRate).toFixed(2)}</span>
+                                                <span>${(divisasUsdAmount ?? 0).toFixed(2)} en divisas cubren ${divisasCoveredBase.toFixed(2)} de consumo</span>
+                                                <span className="font-medium tabular-nums">-${(divisasCoveredBase * divisasRate).toFixed(2)}</span>
                                             </div>
                                             <div className="flex justify-between font-medium text-capsula-ink">
                                                 <span>Total a cobrar</span>

@@ -40,7 +40,7 @@ import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
-import { computeDeliveryTotals } from '@/lib/sales/delivery-totals';
+import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
 import { pbkdf2Hex, hashPin } from '@/app/actions/user.actions';
@@ -492,7 +492,16 @@ function calculateCartTotals(
             itemsSubtotal,
             discountType: dt,
             discountPercent: data.discountType === 'CORTESIA_PERCENT' ? data.discountPercent : null,
-            divisasBase: data.discountType === 'DIVISAS_33' ? (data.divisasUsdAmount ?? null) : null,
+            // §112: divisasUsdAmount es lo PAGADO en divisas — se convierte a
+            // base bruta cubierta con gross-up (pagado/(1−rate)) para que el
+            // descuento sea el 33,33% pleno de la porción de consumo, no el
+            // 25% efectivo que daba `pagado × rate`. Espejo del settlement
+            // de mesa (computeDivisasSettlement).
+            divisasBase: data.discountType === 'DIVISAS_33'
+                ? (data.divisasUsdAmount != null
+                    ? divisasBaseFromPaid(data.divisasUsdAmount, itemsSubtotal, divisasRate)
+                    : null)
+                : null,
             divisasRate,
             freeDelivery: data.freeDelivery === true,
             discountIncludesDelivery: data.discountIncludesDelivery === true,
@@ -506,10 +515,13 @@ function calculateCartTotals(
         // Razón auditable del descuento.
         let discountReason = '';
         if (dt === 'DIVISAS_33') {
-            const divisasBase = data.divisasUsdAmount ?? itemsSubtotal;
+            // §112: la razón auditable reporta la base BRUTA cubierta (gross-up).
+            const divisasBase = data.divisasUsdAmount != null
+                ? divisasBaseFromPaid(data.divisasUsdAmount, itemsSubtotal, divisasRate)
+                : itemsSubtotal;
             const pctLabel = Math.round(divisasRate * 10000) / 100;
             discountReason = divisasBase < itemsSubtotal - 0.01
-                ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)}) - Delivery $${deliveryFee}`
+                ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)} de consumo) - Delivery $${deliveryFee}`
                 : `Pago en Divisas (${pctLabel}%) - Delivery $${deliveryFee}`;
         } else if (dt === 'CORTESIA_100') {
             discountReason = 'Cortesía Autorizada (100%)';
@@ -538,11 +550,15 @@ function calculateCartTotals(
     let discountReason = '';
 
     if (data.discountType === 'DIVISAS_33') {
-        const divisasBase = data.divisasUsdAmount ?? subtotal;
+        // §112: mismo gross-up que en delivery — lo pagado en divisas cubre
+        // `pagado/(1−rate)` de consumo y el descuento es rate pleno sobre esa base.
+        const divisasBase = data.divisasUsdAmount != null
+            ? divisasBaseFromPaid(data.divisasUsdAmount, subtotal, divisasRate)
+            : subtotal;
         const pctLabel = Math.round(divisasRate * 10000) / 100;
         discount = roundCents(divisasBase * divisasRate);
         discountReason = divisasBase < subtotal - 0.01
-            ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)})`
+            ? `Pago Mixto Divisas (${pctLabel}% sobre $${divisasBase.toFixed(2)} de consumo)`
             : `Pago en Divisas (${pctLabel}%)`;
     } else if (data.discountType === 'CORTESIA_100') {
         discount = subtotal;

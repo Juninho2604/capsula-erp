@@ -673,9 +673,10 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
                                                 <button
                                                     onClick={() => openRecipeEditor(groupIdx, modIdx)}
                                                     title={(modifier.ingredients?.length ?? 0) > 0 ? 'Editar receta propia' : 'Definir receta propia (insumos directos)'}
-                                                    className={`p-1 rounded ${(modifier.ingredients?.length ?? 0) > 0 ? 'text-[#2F6B4E] dark:text-[#6FB88F] hover:bg-capsula-navy-soft' : 'text-capsula-ink-muted hover:text-capsula-navy-deep hover:bg-capsula-navy-soft'}`}
+                                                    className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${(modifier.ingredients?.length ?? 0) > 0 ? 'border-[#A8C8B0] bg-[#E5EDE7] text-[#2F6B4E] dark:border-[#2A4D38] dark:bg-[#1E3B2C] dark:text-[#6FB88F]' : 'border-capsula-line text-capsula-ink-muted hover:border-capsula-navy-deep hover:text-capsula-ink'}`}
                                                 >
                                                     <FlaskConical className="h-3.5 w-3.5" />
+                                                    {(modifier.ingredients?.length ?? 0) > 0 ? 'Receta propia' : 'Crear receta'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteModifier(groupIdx, modIdx)}

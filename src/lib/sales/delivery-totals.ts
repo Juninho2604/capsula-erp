@@ -23,6 +23,36 @@
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
 
+/**
+ * §112 — Base BRUTA de consumo que cubre un pago en divisas (gross-up).
+ *
+ * Bug que corrige: en pago mixto el descuento divisas se calculaba como
+ * `pagado × ⅓` (efectivo 25% sobre la base cubierta). La regla real (misma
+ * que computeDivisasSettlement de mesa) es: lo pagado en divisas ya trae el
+ * beneficio, así que la porción de consumo que salda es
+ * `pagado / (1 − rate)` y el descuento es `base × rate` (33,33% pleno).
+ *
+ * Caso canónico (pedido del OWNER): comida $30, envío Bs $4.50. El cliente
+ * paga $20 en divisas + $4.50 en Bs → base cubierta = 20/(2/3) = $30 →
+ * descuento $10 (33,33% de la comida) → total $24.50 = 20 + 4.50. Con la
+ * fórmula vieja el descuento era $6.67 y quedaba saldo fantasma.
+ *
+ * Se topa a `itemsSubtotal`: pagar de más en divisas no genera descuento
+ * sobre consumo inexistente (el exceso es vuelto/propina, no base).
+ */
+export function divisasBaseFromPaid(
+    paidUsd: number,
+    itemsSubtotal: number,
+    rate: number = 1 / 3,
+): number {
+    const paid = Math.max(0, Number.isFinite(paidUsd) ? paidUsd : 0);
+    const items = Math.max(0, Number.isFinite(itemsSubtotal) ? itemsSubtotal : 0);
+    const r = Math.min(0.9, Math.max(0, Number.isFinite(rate) ? rate : 1 / 3));
+    const netFactor = 1 - r;
+    if (netFactor <= 0) return items;
+    return Math.min(items, round2(paid / netFactor));
+}
+
 export type DeliveryDiscountType = 'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT';
 
 /**

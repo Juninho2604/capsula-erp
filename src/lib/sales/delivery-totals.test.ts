@@ -194,3 +194,51 @@ describe('computeDeliveryTotals — §97 (envío EXPLÍCITO por moneda, agregado
         }
     });
 });
+
+// ─── §112: gross-up del pago mixto en divisas ────────────────────────────────
+
+import { divisasBaseFromPaid } from './delivery-totals';
+
+describe('divisasBaseFromPaid — base cubierta por lo pagado en divisas (§112)', () => {
+    it('caso canónico: comida $30, paga $20 divisas → base $30, descuento pleno 33,33%', () => {
+        const base = divisasBaseFromPaid(20, 30);
+        expect(base).toBe(30);
+        expect(Math.round(base * (1 / 3) * 100) / 100).toBe(10); // descuento $10
+    });
+
+    it('pago parcial: $10 divisas cubren $15 de consumo', () => {
+        expect(divisasBaseFromPaid(10, 30)).toBe(15);
+    });
+
+    it('se topa al subtotal: pagar de más no descuenta consumo inexistente', () => {
+        expect(divisasBaseFromPaid(50, 30)).toBe(30);
+    });
+
+    it('cero pagado = cero base', () => {
+        expect(divisasBaseFromPaid(0, 30)).toBe(0);
+    });
+
+    it('rate configurable (§87): 20% → base = pagado / 0.8', () => {
+        expect(divisasBaseFromPaid(16, 100, 0.2)).toBe(20);
+    });
+
+    it('integración con computeDeliveryTotals: $30 comida + envío Bs, paga $20 divisas + $4.50 Bs', () => {
+        const base = divisasBaseFromPaid(20, 30);
+        const t = computeDeliveryTotals({
+            itemsSubtotal: 30,
+            discountType: 'DIVISAS_33',
+            divisasBase: base,
+            feeMode: 'BS',
+            feeNormal: 4.5,
+            feeDivisas: 3,
+        });
+        expect(t.deliveryFee).toBe(4.5);
+        expect(t.total).toBe(24.5); // 20 divisas + 4.50 Bs
+        expect(t.discount).toBe(10);
+    });
+
+    it('regresión: la fórmula vieja (pagado × rate) NO reproduce el 33,33% pleno', () => {
+        // Documenta el bug: 20 × ⅓ = 6.67 ≠ 10.
+        expect(Math.round(20 * (1 / 3) * 100) / 100).not.toBe(10);
+    });
+});
