@@ -21,11 +21,28 @@ import { UnitOfMeasure } from '@/types'; // Assuming this exists, otherwise we u
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
+import { qtyToBaseUnit } from '@/lib/inventory/unit-conversion';
 
 export interface ActionResult {
     success: boolean;
     message: string;
     data?: any;
+}
+
+/**
+ * §109.1: convierte cada ingrediente a la unidad BASE de su insumo antes de
+ * persistir (200 G de un insumo en KG → 0.2 KG). Unidades de familia
+ * distinta o desconocidas quedan tal cual (qtyToBaseUnit nunca inventa).
+ */
+function normalizeIngredientUnits<T extends { itemId: string; quantity: number; unit: string }>(
+    ingredients: T[],
+    items: { id: string; baseUnit: string }[],
+): T[] {
+    const baseById = new Map(items.map(i => [i.id, i.baseUnit]));
+    return ingredients.map(ing => {
+        const norm = qtyToBaseUnit(ing.quantity, ing.unit, baseById.get(ing.itemId));
+        return { ...ing, quantity: norm.quantity, unit: norm.unit || ing.unit };
+    });
 }
 
 // Zod schemas — validación de boundary input. La forma exportada como tipo
@@ -287,11 +304,17 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
         const ingredientIds = input.ingredients.map(i => i.itemId);
         const ownedIngredients = await db.inventoryItem.findMany({
             where: { id: { in: ingredientIds } },
-            select: { id: true },
+            select: { id: true, baseUnit: true },
         });
         if (ownedIngredients.length !== new Set(ingredientIds).size) {
             return { success: false, message: 'Uno o más ingredientes no pertenecen a este tenant' };
         }
+
+        // §109.1: normalizar cada ingrediente a la unidad BASE de su insumo
+        // (200 G de un insumo en KG → 0.2 KG). El stock y todo el descargo
+        // viven en unidad base; convertir acá, una sola vez, mantiene el
+        // resto del sistema correcto sin tocar el camino de ventas.
+        const normalizedIngredients = normalizeIngredientUnits(input.ingredients, ownedIngredients);
 
         // Generate SKU roughly
         const sku = `REC-${input.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
@@ -329,7 +352,7 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
                     isApproved: true, // Auto-approve for now
                     // createdById: input.userId, // Temporarily disabled until client regen
                     ingredients: {
-                        create: input.ingredients.map((ing, index) => ({
+                        create: normalizedIngredients.map((ing, index) => ({
                             ingredientItemId: ing.itemId,
                             quantity: ing.quantity,
                             unit: ing.unit,
@@ -403,11 +426,14 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
         const ingredientIds = input.ingredients.map(i => i.itemId);
         const ownedIngredients = await db.inventoryItem.findMany({
             where: { id: { in: ingredientIds } },
-            select: { id: true },
+            select: { id: true, baseUnit: true },
         });
         if (ownedIngredients.length !== new Set(ingredientIds).size) {
             return { success: false, message: 'Uno o más ingredientes no pertenecen a este tenant' };
         }
+
+        // §109.1: normalizar a unidad base del insumo (ver createRecipeAction).
+        const normalizedIngredients = normalizeIngredientUnits(input.ingredients, ownedIngredients);
 
         const result = await db.$transaction(async (tx) => {
             // 1. Get existing recipe to know output item (ya validado arriba, pero
@@ -455,7 +481,7 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
 
             // Create new (createMany is faster)
             await tx.recipeIngredient.createMany({
-                data: input.ingredients.map((ing, index) => ({
+                data: normalizedIngredients.map((ing, index) => ({
                     recipeId: input.id,
                     ingredientItemId: ing.itemId,
                     quantity: ing.quantity,

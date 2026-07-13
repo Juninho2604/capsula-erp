@@ -44,6 +44,21 @@ const UNITS: { value: UnitOfMeasure; label: string }[] = [
     { value: 'PORTION', label: 'Porciones' },
 ];
 
+// §109.1: familias de unidades compatibles por unidad base del insumo.
+// Al elegir un insumo, su unidad se auto-rellena y el selector solo ofrece
+// conversiones seguras de la misma familia (masa↔masa, volumen↔volumen) —
+// imposible asignarle "Unidades" a un aceite en litros por error humano.
+const UNIT_FAMILIES: Record<string, UnitOfMeasure[]> = {
+    KG: ['KG', 'G'],
+    G: ['G', 'KG'],
+    L: ['L', 'ML'],
+    ML: ['ML', 'L'],
+    UNIT: ['UNIT'],
+    PORTION: ['PORTION'],
+};
+
+const unitLabel = (v: string) => UNITS.find(u => u.value === v)?.label ?? v;
+
 export default function RecipeForm({ availableIngredients, initialData }: RecipeFormProps) {
     const router = useRouter();
     const { user, canViewCosts } = useAuthStore();
@@ -154,6 +169,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
     // Foco directo a Cantidad al elegir el insumo — evita el click extra.
     const qtyInputRef = useRef<HTMLInputElement>(null);
 
+    // §109.1: insumo seleccionado en el modal y sus unidades compatibles.
+    const selectedNewItem = localIngredients.find(i => i.id === newIngredient.inventoryItemId) ?? null;
+    const newUnitOptions: UnitOfMeasure[] = selectedNewItem
+        ? (UNIT_FAMILIES[selectedNewItem.baseUnit] ?? UNITS.map(u => u.value))
+        : [];
+
     // Agregar ingrediente. El modal QUEDA ABIERTO y listo para el siguiente
     // (flujo típico: cargar varios ingredientes seguidos sin re-abrir ni
     // hacer scroll). Se cierra con "Listo".
@@ -162,11 +183,17 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         if (!newIngredient.inventoryItemId || !Number.isFinite(qty) || qty <= 0) return;
 
         const item = localIngredients.find(i => i.id === newIngredient.inventoryItemId);
+        // §109.1: la unidad SIEMPRE dentro de la familia del insumo; si por
+        // algún estado viejo no lo está, cae a la unidad base del insumo.
+        const family = item ? (UNIT_FAMILIES[item.baseUnit] ?? []) : [];
+        const safeUnit: UnitOfMeasure = newIngredient.unit && family.includes(newIngredient.unit)
+            ? newIngredient.unit
+            : ((item?.baseUnit as UnitOfMeasure) || 'KG');
         const newIng: DraftIngredient = {
             id: `temp-${Date.now()}`,
             inventoryItemId: newIngredient.inventoryItemId,
             quantity: qty,
-            unit: newIngredient.unit || 'KG',
+            unit: safeUnit,
             wastePercentage: parseFloat(newWasteStr) || 0,
             notes: newIngredient.notes || '',
         };
@@ -674,13 +701,22 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             <select
                                                 value={newIngredient.unit}
                                                 onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value as UnitOfMeasure })}
-                                                className="flex-1 rounded-lg border border-capsula-line bg-white px-2 py-2 text-sm"
+                                                disabled={!selectedNewItem || newUnitOptions.length <= 1}
+                                                className="flex-1 rounded-lg border border-capsula-line bg-capsula-ivory px-2 py-2.5 text-sm text-capsula-ink focus:border-capsula-navy-deep focus:outline-none disabled:opacity-60"
                                             >
-                                                {UNITS.map(u => (
-                                                    <option key={u.value} value={u.value}>{u.label}</option>
+                                                {!selectedNewItem && <option value="">— elige el insumo —</option>}
+                                                {newUnitOptions.map(v => (
+                                                    <option key={v} value={v}>{unitLabel(v)}</option>
                                                 ))}
                                             </select>
                                         </div>
+                                        {selectedNewItem && (
+                                            <p className="mt-1 text-[11px] text-capsula-ink-muted">
+                                                {newUnitOptions.length > 1
+                                                    ? <>Unidad del insumo: <span className="font-semibold">{unitLabel(selectedNewItem.baseUnit)}</span> — puedes cambiar a {newUnitOptions.filter(v => v !== selectedNewItem.baseUnit).map(unitLabel).join(', ')}</>
+                                                    : <>Unidad fija del insumo: <span className="font-semibold">{unitLabel(selectedNewItem.baseUnit)}</span></>}
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>

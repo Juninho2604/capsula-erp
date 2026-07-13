@@ -12452,3 +12452,52 @@ chrome → lucide (➕→Plus, 🗑️→Trash2, ✕/＋→XIcon/Plus, ⏳→Loa
 `bg-capsula-ivory` (dark-aware).
 
 Gates: tsc 0 · vitest 583.
+
+## §109.1 Recetas: unidad auto-rellenada + normalización a unidad base (2026-07-13)
+
+Pedido del OWNER: al agregar un insumo a una receta/subreceta, la unidad se
+pedía de nuevo (redundante, error humano). Auditoría reveló algo más grave:
+
+**Hallazgo crítico (pre-existente):** las recetas guardaban la unidad que
+eligiera el usuario y NINGÚN camino downstream convertía a la unidad base
+del stock: ni la validación de stock (`addRequirement` en pos.actions), ni
+el descargo de venta (`registerInventoryForCartItems`), ni la reversión por
+anulación (`applyItemInventoryInTx`), ni el consumo teórico
+(`consumption.ts`, que ni siquiera recibe unidades). Una receta con "200 G"
+de un insumo en KG descontaba **200 KG** del stock. Estaba enmascarado
+porque la UI pre-seleccionaba la unidad base.
+
+**Fix — normalizar EN EL ORIGEN (un solo punto, sin tocar código de ventas):**
+- `src/lib/inventory/unit-conversion.ts`: `qtyToBaseUnit(qty, unit, baseUnit)`
+  — convierte SOLO dentro de la misma familia (masa: KG/G/LB/OZ; volumen:
+  L/ML/GAL; conteo: UNIT/DOZEN; PORTION identidad). Familia distinta o
+  unidad desconocida → sin cambios (nunca inventa). 10 tests.
+- `createRecipeAction` / `updateRecipeAction`: `normalizeIngredientUnits`
+  convierte cada ingrediente a la unidad base de su insumo ANTES de
+  persistir. Desde ahora `RecipeIngredient.unit === ingredientItem.baseUnit`
+  siempre (para familias compatibles) → validación, descargo, void y teórico
+  quedan correctos por construcción.
+
+**UI (`RecipeForm.tsx`, aplica a receta Y subreceta — mismo form):**
+- Al seleccionar el insumo, la unidad se rellena sola con la del insumo.
+- El selector queda limitado a la familia compatible (KG↔G, L↔ML); si la
+  familia tiene una sola unidad (UNIT), queda deshabilitado con la unidad
+  fija. Antes de elegir insumo: deshabilitado ("— elige el insumo —").
+- Hint bajo el campo: "Unidad del insumo: Litros — puedes cambiar a
+  Mililitros". `addIngredient` blinda: unidad fuera de familia → baseUnit.
+
+**Datos legacy:** `scripts/audit-recetas-unidades.ts` — lista ingredientes
+de recetas Y de modificadores con unit ≠ baseUnit; dry-run por defecto,
+`--apply` normaliza los convertibles (G→KG etc.) y deja reporte de los de
+familia distinta (corrección manual). CORRERLO POST-DEPLOY:
+```bash
+npx tsx scripts/audit-recetas-unidades.ts --tenant-slug=shanklish          # ver
+npx tsx scripts/audit-recetas-unidades.ts --tenant-slug=shanklish --apply  # normalizar
+```
+
+Deuda consciente: los caminos de descargo siguen SIN convertir (confían en
+que la receta esté en unidad base — garantizado hacia adelante por el fix
+de origen + script para lo viejo). Si algún día se re-abren unidades libres,
+convertir también en descargo.
+
+Gates: tsc 0 · vitest 593.
