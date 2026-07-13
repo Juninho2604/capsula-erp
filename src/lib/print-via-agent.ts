@@ -92,6 +92,11 @@ export interface AgentKitchenPayload {
      */
     tabCode?: string;
     tableName?: string | null;
+    /**
+     * §110: nombre del mesonero que comanda (mesa). El agent lo imprime
+     * bajo la línea de Mesa para que cocina/barra sepan a quién avisar.
+     */
+    waiterName?: string | null;
     customerName?: string | null;
     /**
      * Dirección de entrega — solo aplica a DELIVERY. Si está presente,

@@ -916,6 +916,7 @@ export default function POSSportBarPage() {
           orderTypeLabel: "MESA",
           tabCode: activeTab.tabCode,
           tableName: selectedTable?.name ?? null,
+          waiterName: activeTab.waiterLabel || null,
           customerName: activeTab.customerLabel || null,
           items: buildKitchenItems(cart, menuItemCategoryMap),
           createdAt: new Date().toISOString(),

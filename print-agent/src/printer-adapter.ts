@@ -86,6 +86,8 @@ export interface KitchenPayload {
      */
     tabCode?: string;
     tableName?: string | null;
+    /** §110: mesonero que comanda (mesa). */
+    waiterName?: string | null;
     customerName?: string | null;
     customerAddress?: string | null;
     /**
@@ -332,6 +334,11 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     printer.alignLeft();
     printer.println(`Hora:   ${formatDateTime(p.createdAt)}`);
     if (p.tableName) printer.println(`Mesa:   ${p.tableName}`);
+    if (p.waiterName) {
+        printer.bold(true);
+        printer.println(`Mesero: ${p.waiterName}`);
+        printer.bold(false);
+    }
     if (p.customerName) printer.println(`Cliente: ${p.customerName}`);
     if (p.customerAddress) printer.println(`Direcc.: ${p.customerAddress}`);
     if (p.scheduledDeliveryTime) {

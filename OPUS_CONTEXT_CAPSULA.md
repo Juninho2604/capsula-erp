@@ -12501,3 +12501,27 @@ de origen + script para lo viejo). Si algún día se re-abren unidades libres,
 convertir también en descargo.
 
 Gates: tsc 0 · vitest 593.
+
+## §110 Comanda de mesa: nombre del mesonero + diagnóstico recibo automático (2026-07-13)
+
+**Mesonero en comanda (pedido OWNER):** `AgentKitchenPayload.waiterName`
+(nuevo, opcional). POS mesero lo manda con el mesonero ACTIVO que comanda
+(`activeWaiter`); POS restaurante con el asignado a la mesa
+(`activeTab.waiterLabel`). El agent (`printer-adapter.ts renderKitchen`)
+imprime `Mesero: X` en negrita bajo la línea de Mesa — REQUIERE rebuild del
+agente en la PC del local (git pull + npm.cmd run build + reinicio del
+servicio "KPSULA Print Agent"). El fallback navegador (`printKitchenCommand`)
+ya soportaba `waiterLabel` — sin cambios.
+
+**Recibo de pago "no imprime automático" (reportado tras actualizar el
+agente):** FALSA PISTA del agente — los recibos NUNCA pasan por el print
+agent. `printReceipt` (print-command.ts) abre popup del navegador +
+window.print() en el dispositivo que cobra. `enqueueReceipt` existe en
+print-via-agent pero NO tiene callers. El auto-print al cobrar mesa está
+gateado por `getPOSConfig().printReceiptOnRestaurant` (localStorage POR
+ESTACIÓN, clave `shanklish_pos_config`, default true, toggle en
+Config → POS). Diagnóstico estándar: (1) verificar el toggle en ESE equipo,
+(2) bloqueador de popups del navegador (window.open null → alert "Habilite
+popups"), permitir popups para kpsula.app.
+
+Gates: tsc 0 · vitest 593.
