@@ -84,6 +84,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     caja:              Banknote,
     cuentas_pagar:     FileText,
     cuentas_bancarias: Landmark,
+    cambio_divisas:    ArrowLeftRight,
     conciliacion:      Scale,
     cuentas_cobrar:    HandCoins,
     compras_documentos: Receipt,

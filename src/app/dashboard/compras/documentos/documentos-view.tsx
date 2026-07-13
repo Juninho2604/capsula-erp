@@ -12,6 +12,7 @@ import {
   voidSupplierDocumentAction, getPurchaseReconciliationReportAction,
   type SupplierDocumentData,
 } from '@/app/actions/supplier-document.actions';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 
 const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d: Date | string | null) => d ? new Date(d).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
@@ -232,7 +233,19 @@ function ReconciliationTab() {
 
 // ─── Modales ────────────────────────────────────────────────────────────────
 
-interface Line { inventoryItemId: string; itemName: string; quantity: string; unit: string; unitCost: string }
+interface Line {
+  inventoryItemId: string;
+  itemName: string;
+  // §108: soporte de presentación — "5 bultos x 12 paquetes por $X el bulto".
+  // quantity = cantidad de bultos (o unidades sueltas si unitsPerPack queda en 1).
+  quantity: string;
+  unitsPerPack: string; // unidades del insumo por bulto (default 1)
+  unitCost: string;     // costo POR BULTO en la moneda del documento
+  unit: string;
+}
+
+const lineUnits = (l: Line) => (parseFloat(l.quantity) || 0) * (parseFloat(l.unitsPerPack) || 1);
+const lineTotal = (l: Line) => (parseFloat(l.quantity) || 0) * (parseFloat(l.unitCost) || 0);
 
 function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: () => void; onSaved: () => void }) {
   const [documentType, setType] = useState('FACTURA');
@@ -241,11 +254,24 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
   const [supplierName, setSupplierName] = useState('');
   const [documentDate, setDate] = useState(todayStamp());
   const [paymentCondition, setCond] = useState('CONTADO');
-  const [lines, setLines] = useState<Line[]>([{ inventoryItemId: '', itemName: '', quantity: '', unit: '', unitCost: '' }]);
+  // §108: moneda del documento. En Bs se convierte a USD al guardar (el
+  // costeo de inventario y las CXP viven en USD) con la tasa auditada.
+  const [currency, setCurrency] = useState<'USD' | 'BS'>('USD');
+  const [rateStr, setRateStr] = useState('');
+  const [dayRate, setDayRate] = useState<number | null>(null);
+  const [lines, setLines] = useState<Line[]>([{ inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const total = lines.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.unitCost) || 0), 0);
+  useEffect(() => {
+    getExchangeRateValue().then((r) => {
+      if (r) { setDayRate(r); setRateStr((prev) => prev || String(r)); }
+    }).catch(() => {});
+  }, []);
+
+  const rate = parseFloat(rateStr) || 0;
+  const total = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const totalUsd = currency === 'BS' ? (rate > 0 ? total / rate : 0) : total;
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines((ls) => ls.map((l, i) => i === idx ? { ...l, ...patch } : l));
@@ -256,72 +282,140 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
   }
 
   async function submit() {
-    setError(''); setSaving(true);
+    setError('');
+    if (currency === 'BS' && rate <= 0) { setError('Indica la tasa Bs/USD para convertir el documento'); return; }
+    setSaving(true);
     const res = await createSupplierDocumentAction({
       documentType, documentNumber,
       supplierId: supplierId || undefined,
       supplierName: supplierId ? undefined : (supplierName || undefined),
       documentDate, paymentCondition,
-      items: lines.filter((l) => l.inventoryItemId && parseFloat(l.quantity) > 0).map((l) => ({
-        inventoryItemId: l.inventoryItemId, itemName: l.itemName,
-        quantity: parseFloat(l.quantity) || 0, unit: l.unit, unitCost: parseFloat(l.unitCost) || 0,
-      })),
+      inputCurrency: currency,
+      exchangeRate: currency === 'BS' ? rate : undefined,
+      items: lines.filter((l) => l.inventoryItemId && lineUnits(l) > 0).map((l) => {
+        const units = lineUnits(l);
+        const perPack = parseFloat(l.unitsPerPack) || 1;
+        return {
+          inventoryItemId: l.inventoryItemId, itemName: l.itemName,
+          quantity: units, unit: l.unit,
+          // costo por unidad base (el server lo convierte a USD si es Bs)
+          unitCost: (parseFloat(l.unitCost) || 0) / perPack,
+        };
+      }),
     });
     setSaving(false);
     if (!res.success) { setError(res.error ?? 'Error'); return; }
     onSaved();
   }
 
+  const sym = currency === 'BS' ? 'Bs' : '$';
+
   return (
     <ModalShell title="Nuevo documento" onClose={onClose} wide>
       <div className="p-5 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Tipo">
-            <select className="pos-input w-full" value={documentType} onChange={(e) => setType(e.target.value)}>
+            <select className="pos-input w-full py-3" value={documentType} onChange={(e) => setType(e.target.value)}>
               <option value="FACTURA">Factura</option>
               <option value="NOTA_ENTREGA">Nota de entrega</option>
             </select>
           </Field>
-          <Field label="N° de documento"><input className="pos-input w-full" value={documentNumber} onChange={(e) => setNumber(e.target.value)} /></Field>
+          <Field label="N° de documento"><input className="pos-input w-full py-3" value={documentNumber} onChange={(e) => setNumber(e.target.value)} /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Proveedor (sistema)">
-            <select className="pos-input w-full" value={supplierId} onChange={(e) => { setSupplierId(e.target.value); if (e.target.value) setSupplierName(''); }}>
+            <select className="pos-input w-full py-3" value={supplierId} onChange={(e) => { setSupplierId(e.target.value); if (e.target.value) setSupplierName(''); }}>
               <option value="">— ninguno —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label="o Nombre libre"><input className="pos-input w-full" value={supplierName} disabled={!!supplierId} onChange={(e) => setSupplierName(e.target.value)} placeholder="Si no está en el sistema" /></Field>
+          <Field label="o Nombre libre"><input className="pos-input w-full py-3" value={supplierName} disabled={!!supplierId} onChange={(e) => setSupplierName(e.target.value)} placeholder="Si no está en el sistema" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Fecha"><input className="pos-input w-full" type="date" value={documentDate} onChange={(e) => setDate(e.target.value)} /></Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Fecha"><input className="pos-input w-full py-3" type="date" value={documentDate} onChange={(e) => setDate(e.target.value)} /></Field>
           <Field label="Condición">
-            <select className="pos-input w-full" value={paymentCondition} onChange={(e) => setCond(e.target.value)}>
+            <select className="pos-input w-full py-3" value={paymentCondition} onChange={(e) => setCond(e.target.value)}>
               <option value="CONTADO">Contado</option>
               <option value="CREDITO">Crédito</option>
             </select>
           </Field>
         </div>
 
+        {/* §108: moneda del documento */}
+        <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">¿En qué moneda está la factura?</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 flex-1 min-w-[220px]">
+              {(['USD', 'BS'] as const).map((c) => (
+                <button key={c} type="button" onClick={() => setCurrency(c)}
+                  className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${currency === c ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream' : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:border-capsula-navy-deep/40'}`}>
+                  {c === 'USD' ? 'Dólares $' : 'Bolívares Bs'}
+                </button>
+              ))}
+            </div>
+            {currency === 'BS' && (
+              <label className="flex items-center gap-2 text-sm text-capsula-ink">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Tasa Bs/USD</span>
+                <input type="number" step="0.01" min="0" inputMode="decimal"
+                  className="pos-input w-28 py-2.5 tabular-nums" value={rateStr} onChange={(e) => setRateStr(e.target.value)} />
+              </label>
+            )}
+          </div>
+          {currency === 'BS' && (
+            <p className="text-[11px] text-capsula-ink-muted">
+              Los costos se escriben en Bs y el sistema los guarda convertidos a USD a esta tasa
+              {dayRate ? ` (tasa del día: Bs ${dayRate.toLocaleString('es-VE')})` : ''}. La tasa queda auditada en el documento.
+            </p>
+          )}
+        </div>
+
+        {/* §108: líneas con presentación bulto × unidades */}
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Líneas</p>
-          {lines.map((l, idx) => (
-            <div key={idx} className="flex gap-2 items-center">
-              <select className="pos-input flex-[3] min-w-0" value={l.inventoryItemId} onChange={(e) => pickItem(idx, e.target.value)}>
-                <option value="">— insumo —</option>
-                {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-              <input className="pos-input w-16 tabular-nums" type="number" step="0.01" placeholder="Cant" value={l.quantity} onChange={(e) => setLine(idx, { quantity: e.target.value })} />
-              <input className="pos-input w-20 tabular-nums" type="number" step="0.01" placeholder="Costo$" value={l.unitCost} onChange={(e) => setLine(idx, { unitCost: e.target.value })} />
-              <button onClick={() => setLines((ls) => ls.length > 1 ? ls.filter((_, i) => i !== idx) : ls)} className="text-capsula-ink-muted hover:text-capsula-coral shrink-0" aria-label="Quitar"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          ))}
-          <button onClick={() => setLines((ls) => [...ls, { inventoryItemId: '', itemName: '', quantity: '', unit: '', unitCost: '' }])} className="text-xs font-semibold text-capsula-ink-muted hover:text-capsula-ink inline-flex items-center gap-1">
+          <div className="hidden sm:grid grid-cols-[minmax(0,4fr)_minmax(80px,1fr)_minmax(90px,1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-muted px-1">
+            <span>Insumo</span><span>Bultos</span><span>Unid./bulto</span><span>Costo bulto {sym}</span><span className="text-right">Total línea</span><span />
+          </div>
+          {lines.map((l, idx) => {
+            const units = lineUnits(l);
+            return (
+              <div key={idx} className="grid grid-cols-2 sm:grid-cols-[minmax(0,4fr)_minmax(80px,1fr)_minmax(90px,1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 items-center border-b border-capsula-line/60 sm:border-0 pb-2 sm:pb-0">
+                <select className="pos-input w-full py-3 min-w-0 col-span-2 sm:col-span-1" value={l.inventoryItemId} onChange={(e) => pickItem(idx, e.target.value)}>
+                  <option value="">— insumo —</option>
+                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder="Cant." title="Cantidad de bultos (o unidades sueltas)"
+                  value={l.quantity} onChange={(e) => setLine(idx, { quantity: e.target.value })} />
+                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder="×1" title="Unidades por bulto (deja vacío si compras por unidad)"
+                  value={l.unitsPerPack} onChange={(e) => setLine(idx, { unitsPerPack: e.target.value })} />
+                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder={`Costo ${sym}`} title={`Costo por bulto en ${sym}`}
+                  value={l.unitCost} onChange={(e) => setLine(idx, { unitCost: e.target.value })} />
+                <div className="text-right text-sm tabular-nums text-capsula-ink-soft">
+                  <p className="font-semibold text-capsula-ink">{sym} {fmt(lineTotal(l))}</p>
+                  {units > 0 && <p className="text-[10px] text-capsula-ink-muted">{fmt(units)} {l.unit || 'unid.'}</p>}
+                </div>
+                <button onClick={() => setLines((ls) => ls.length > 1 ? ls.filter((_, i) => i !== idx) : ls)} className="text-capsula-ink-muted hover:text-capsula-coral shrink-0 justify-self-end" aria-label="Quitar"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            );
+          })}
+          <button onClick={() => setLines((ls) => [...ls, { inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }])} className="text-xs font-semibold text-capsula-ink-muted hover:text-capsula-ink inline-flex items-center gap-1">
             <Plus className="h-3.5 w-3.5" /> Agregar línea
           </button>
+          <p className="text-[11px] text-capsula-ink-muted">
+            Ej: 5 bultos de harina × 12 paquetes c/u a {sym} 30 el bulto → escribe Bultos 5, Unid./bulto 12, Costo bulto 30.
+            Si compras por unidad, deja «Unid./bulto» vacío.
+          </p>
         </div>
-        <div className="flex justify-between font-semibold text-capsula-ink border-t border-capsula-line pt-2">
-          <span>Total</span><span className="tabular-nums">${fmt(total)}</span>
+
+        <div className="border-t border-capsula-line pt-2 space-y-0.5">
+          <div className="flex justify-between font-semibold text-capsula-ink">
+            <span>Total</span><span className="tabular-nums">{sym} {fmt(total)}</span>
+          </div>
+          {currency === 'BS' && (
+            <div className="flex justify-between text-xs text-capsula-ink-muted tabular-nums">
+              <span>Equivalente USD (a tasa {rate > 0 ? fmt(rate) : '—'})</span>
+              <span>${fmt(totalUsd)}</span>
+            </div>
+          )}
         </div>
         {error && <p className="text-sm text-capsula-coral">{error}</p>}
       </div>
@@ -397,7 +491,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ModalShell({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-      <div className={`bg-capsula-ivory border border-capsula-line w-full ${wide ? 'max-w-lg' : 'max-w-md'} rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto`}>
+      <div className={`bg-capsula-ivory border border-capsula-line w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto`}>
         <div className="border-b border-capsula-line p-5 flex items-center justify-between sticky top-0 bg-capsula-ivory">
           <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">{title}</h3>
           <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center" aria-label="Cerrar">

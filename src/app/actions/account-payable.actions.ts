@@ -28,6 +28,8 @@ export interface AccountPayableData {
   payments: {
     id: string;
     amountUsd: number;
+    amountBs: number | null;
+    exchangeRate: number | null;
     paymentMethod: string;
     paymentRef: string | null;
     paidAt: Date;
@@ -92,6 +94,8 @@ export async function getAccountsPayableAction(filters?: {
         payments: a.payments.map(p => ({
           id: p.id,
           amountUsd: p.amountUsd,
+          amountBs: p.amountBs,
+          exchangeRate: p.exchangeRate,
           paymentMethod: p.paymentMethod,
           paymentRef: p.paymentRef,
           paidAt: p.paidAt,

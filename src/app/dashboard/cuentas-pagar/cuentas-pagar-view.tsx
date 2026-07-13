@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { toast } from 'react-hot-toast';
 import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText, Clock } from 'lucide-react';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
   type AccountPayableData, type CreditCandidatePO,
 } from '@/app/actions/account-payable.actions';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import type { BadgeProps } from '@/components/ui/Badge';
@@ -20,6 +21,10 @@ const PAYMENT_METHODS = [
   { value: 'MOBILE_PAY', label: 'Pago Móvil' },
   { value: 'CHECK', label: 'Cheque' },
 ];
+
+// §108: métodos cuyo pago físico ocurre en bolívares — para esos se persiste
+// el equivalente Bs y la tasa usada en el AccountPayment.
+const BS_METHODS = new Set(['CASH_BS', 'BANK_TRANSFER', 'MOBILE_PAY', 'CHECK']);
 
 type StatusVariant = NonNullable<BadgeProps['variant']>;
 const STATUS_CONFIG: Record<string, { label: string; variant: StatusVariant }> = {
@@ -65,6 +70,12 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
   const [isPending, startTransition] = useTransition();
 
   const canManage = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(currentUserRole);
+
+  // §108: tasa Bs/USD del día — para mostrar conversiones al cancelar facturas.
+  const [dayRate, setDayRate] = useState<number | null>(null);
+  useEffect(() => {
+    getExchangeRateValue().then((r) => setDayRate(r)).catch(() => {});
+  }, []);
 
   const [form, setForm] = useState({
     description: '', invoiceNumber: '', supplierId: '', creditorName: '',
@@ -131,8 +142,14 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
     if (!payTarget) return;
     if (!payForm.amountUsd || parseFloat(payForm.amountUsd) <= 0) { toast.error('Monto inválido'); return; }
     startTransition(async () => {
+      const amountUsdNum = parseFloat(payForm.amountUsd);
+      const isBsMethod = BS_METHODS.has(payForm.paymentMethod);
       const result = await registerPaymentAction(payTarget.id, {
-        amountUsd: parseFloat(payForm.amountUsd),
+        amountUsd: amountUsdNum,
+        // §108: si el pago físico es en Bs, persistimos el equivalente y la
+        // tasa del día para que quede auditado en el historial de pagos.
+        amountBs: isBsMethod && dayRate ? Math.round(amountUsdNum * dayRate * 100) / 100 : undefined,
+        exchangeRate: isBsMethod && dayRate ? dayRate : undefined,
         paymentMethod: payForm.paymentMethod,
         paymentRef: payForm.paymentRef || undefined,
         paidAt: payForm.paidAt,
@@ -422,6 +439,9 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
                               {a.payments.map(p => (
                                 <div key={p.id} className="flex items-center gap-4 text-xs text-capsula-ink-soft">
                                   <span className="text-capsula-ink font-semibold tabular-nums">${fmt(p.amountUsd)}</span>
+                                  {p.amountBs != null && p.amountBs > 0 && (
+                                    <span className="tabular-nums text-[#946A1C] dark:text-[#E8D9B8]">Bs {fmt(p.amountBs)}{p.exchangeRate ? ` @${fmt(p.exchangeRate)}` : ''}</span>
+                                  )}
                                   <span>{PAYMENT_METHODS.find(m => m.value === p.paymentMethod)?.label ?? p.paymentMethod}</span>
                                   {p.paymentRef && <span>Ref: {p.paymentRef}</span>}
                                   <span>{new Date(p.paidAt).toLocaleDateString('es-VE')}</span>
@@ -523,7 +543,14 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
           <form onSubmit={handlePay} className="space-y-4">
             <div className="rounded-xl bg-capsula-ivory border border-capsula-line p-4 text-sm space-y-1">
               <p className="font-semibold text-capsula-ink">{payTarget.description}</p>
-              <p className="text-capsula-ink-muted">Pendiente: <span className="font-semibold text-capsula-ink tabular-nums">${fmt(payTarget.remainingUsd)}</span></p>
+              <p className="text-capsula-ink-muted">Pendiente: <span className="font-semibold text-capsula-ink tabular-nums">${fmt(payTarget.remainingUsd)}</span>
+                {dayRate != null && <span className="tabular-nums"> · Bs {fmt(payTarget.remainingUsd * dayRate)}</span>}
+              </p>
+              {dayRate != null ? (
+                <p className="text-[11px] text-capsula-ink-muted tabular-nums">Tasa del día: 1 USD = Bs {fmt(dayRate)}</p>
+              ) : (
+                <p className="text-[11px] text-capsula-ink-muted">Sin tasa del día cargada — las conversiones a Bs no están disponibles.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -531,6 +558,11 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
                 <input type="number" step="0.01" min="0.01" value={payForm.amountUsd}
                   onChange={e => setPayForm(f => ({ ...f, amountUsd: e.target.value }))}
                   className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition tabular-nums" placeholder="0.00" required />
+                {dayRate != null && (parseFloat(payForm.amountUsd) || 0) > 0 && (
+                  <p className={`mt-1 text-xs tabular-nums ${BS_METHODS.has(payForm.paymentMethod) ? 'font-semibold text-capsula-ink' : 'text-capsula-ink-muted'}`}>
+                    ≈ Bs {fmt((parseFloat(payForm.amountUsd) || 0) * dayRate)} a tasa del día
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted mb-1">Fecha *</label>

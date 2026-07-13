@@ -78,6 +78,7 @@ model Tenant {
   expenses              Expense[]
   accountsPayable       AccountPayable[]
   accountPayments       AccountPayment[]
+  currencyExchanges     CurrencyExchange[]
   purchaseOrders        PurchaseOrder[]
   productionOrders      ProductionOrder[]
   proteinProcessings    ProteinProcessing[]
@@ -223,6 +224,7 @@ model User {
   closedCashRegisters    CashRegister[]   @relation("CashRegisterCloser")
   createdAccountsPayable AccountPayable[] @relation("AccountPayableCreator")
   createdAccountPayments AccountPayment[] @relation("AccountPaymentCreator")
+  createdCurrencyExchanges CurrencyExchange[] @relation("CurrencyExchangeCreator")
 
   // Fase 2 — propuestas 001/002 (audit trail)
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
@@ -2254,6 +2256,8 @@ model BankAccount {
   expenses           Expense[]
   accountPayments    AccountPayment[]
   reconciliations    BankReconciliation[]
+  exchangesFrom        CurrencyExchange[]            @relation("CurrencyExchangeFrom")
+  exchangeDestinations CurrencyExchangeDestination[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -3759,4 +3763,60 @@ model WaCredential {
   displayPhone    String? // +58 4XX ... para mostrar en UI
   graphApiVersion String  @default("v21.0")
   active          Boolean @default(true)
+}
+
+/// §108 — Cambio de divisas (Finanzas). Registra una operación de cambio:
+/// sale un monto en la moneda origen (típico: USD de la caja o Zelle) y
+/// entra el equivalente en la moneda destino repartido en una o más
+/// cuentas bancarias. La tasa implícita queda auditada (Bs por USD).
+model CurrencyExchange {
+  id String @id @default(cuid())
+
+  exchangeDate DateTime
+  // Moneda/monto que SALE (egreso) y que ENTRA (ingreso).
+  currencyOut String @default("USD") // USD | BS
+  amountOut   Float
+  currencyIn  String @default("BS") // BS | USD
+  amountIn    Float // = suma de destinations.amount
+  rate        Float // tasa implícita Bs por USD
+
+  // Cuenta de la que sale el dinero (opcional: efectivo sin cuenta).
+  fromAccountId String?
+  fromAccount   BankAccount? @relation("CurrencyExchangeFrom", fields: [fromAccountId], references: [id])
+
+  notes  String?
+  status String  @default("ACTIVE") // ACTIVE | VOID
+  voidReason String?
+
+  createdById String
+  createdBy   User     @relation("CurrencyExchangeCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  destinations CurrencyExchangeDestination[]
+
+  @@index([tenantId])
+  @@index([exchangeDate])
+  @@index([status])
+  @@index([fromAccountId])
+}
+
+/// Destino de un cambio de divisas: a qué cuenta bancaria entró qué monto
+/// (en la moneda destino del cambio). Sin tenantId: hereda vía el cambio.
+model CurrencyExchangeDestination {
+  id                 String           @id @default(cuid())
+  currencyExchangeId String
+  currencyExchange   CurrencyExchange @relation(fields: [currencyExchangeId], references: [id], onDelete: Cascade)
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  amount    Float // en currencyIn del cambio
+  reference String? // nº de transferencia / depósito
+
+  @@index([currencyExchangeId])
+  @@index([bankAccountId])
 }

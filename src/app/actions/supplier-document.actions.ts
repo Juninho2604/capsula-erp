@@ -117,6 +117,15 @@ export async function createSupplierDocumentAction(input: {
   documentDate: string;
   paymentCondition: string; // CONTADO | CREDITO
   currency?: string;
+  /**
+   * §108: moneda en la que el usuario TECLEÓ los costos. Si es 'BS', los
+   * unitCost llegan en Bs y acá se convierten a USD con `exchangeRate`
+   * (obligatoria en ese caso). El documento SIEMPRE se persiste en USD —
+   * el costeo de inventario y las cuentas por pagar viven en USD — y la
+   * tasa usada queda auditada en las notas.
+   */
+  inputCurrency?: 'USD' | 'BS';
+  exchangeRate?: number;
   documentUrl?: string | null;
   notes?: string | null;
   items: SupplierDocumentItemInput[];
@@ -131,8 +140,20 @@ export async function createSupplierDocumentAction(input: {
   const documentDate = new Date(input.documentDate);
   if (isNaN(documentDate.getTime())) return { success: false, error: 'Fecha inválida' };
 
-  const items = input.items.filter((i) => i.inventoryItemId && i.quantity > 0);
+  let items = input.items.filter((i) => i.inventoryItemId && i.quantity > 0);
   if (items.length === 0) return { success: false, error: 'Las líneas deben tener insumo y cantidad' };
+
+  // §108: documento tecleado en Bs → convertir costos a USD a la tasa dada.
+  const isBs = input.inputCurrency === 'BS';
+  const bsRate = input.exchangeRate ?? 0;
+  let bsNote: string | null = null;
+  if (isBs) {
+    if (!bsRate || bsRate <= 0) return { success: false, error: 'Indica una tasa Bs/USD válida para el documento en bolívares' };
+    const totalBs = Math.round(items.reduce((s, i) => s + i.quantity * (i.unitCost || 0), 0) * 100) / 100;
+    items = items.map((i) => ({ ...i, unitCost: (i.unitCost || 0) / bsRate }));
+    bsNote = `Cargado en Bs a tasa ${bsRate} (total Bs ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  }
+
   const totalAmount = Math.round(items.reduce((s, i) => s + i.quantity * (i.unitCost || 0), 0) * 100) / 100;
 
   try {
@@ -147,10 +168,11 @@ export async function createSupplierDocumentAction(input: {
         supplierName: input.supplierName?.trim() || null,
         documentDate,
         paymentCondition: input.paymentCondition === 'CREDITO' ? 'CREDITO' : 'CONTADO',
-        currency: input.currency || 'USD',
+        // §108: se persiste SIEMPRE en USD (los costos ya vienen convertidos).
+        currency: 'USD',
         documentUrl: input.documentUrl?.trim() || null,
         totalAmount,
-        notes: input.notes?.trim() || null,
+        notes: [input.notes?.trim(), bsNote].filter(Boolean).join(' · ') || null,
         createdById: session.id,
         items: {
           create: items.map((i) => ({

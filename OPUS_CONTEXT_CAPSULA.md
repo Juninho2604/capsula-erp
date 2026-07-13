@@ -12313,3 +12313,71 @@ ficticias PROPINA COLECTIVA, que siguen bajo su filtro "Propinas"). Solo
 client-side en `sales/page.tsx` — cero cambios de servidor ni de datos.
 
 Gates: tsc 0 · vitest 577.
+
+## §108 Finanzas multi-moneda: documento en Bs, conversiones CXP y submódulo Cambio de Divisas (2026-07-13)
+
+### 1. Nuevo documento (Compras → Documentos) en $ o Bs + presentación por bulto
+
+`documentos-view.tsx` CreateModal reescrito:
+- **Selector de moneda** del documento (Dólares $ / Bolívares Bs). En Bs se
+  pide la tasa Bs/USD (pre-cargada con la del día vía `getExchangeRateValue`,
+  editable para respetar la tasa de la factura física).
+- **Regla de oro**: el documento se persiste SIEMPRE en USD — el costeo de
+  inventario (costo promedio ponderado) y las CXP viven en USD. La conversión
+  ocurre server-side en `createSupplierDocumentAction` (nuevos params
+  `inputCurrency` + `exchangeRate`), y la tasa queda auditada en `notes`:
+  "Cargado en Bs a tasa X (total Bs Y)". NO se tocó `registrarEntradaMercancia`
+  ni `generatePayableFromDocumentAction` — reciben USD como siempre.
+- **Formato bulto** (caso: "5 bultos × 12 paquetes a $30 el bulto"): cada
+  línea ahora es Insumo · Bultos · Unid./bulto (default 1) · Costo por bulto.
+  El cliente deriva `quantity = bultos × unid/bulto` (en la unidad del insumo)
+  y `unitCost = costoBulto / unid.bulto` — la action no cambió de contrato.
+  Si se compra por unidad, «Unid./bulto» se deja vacío (= 1) y funciona igual
+  que antes.
+- Campos más anchos: modal `wide` pasó de max-w-lg a **max-w-2xl**, inputs
+  `py-3`, grid con columnas rotuladas y total por línea visible (antes los
+  inputs de 64/80px cortaban los montos).
+
+### 2. CXP: conversiones $/Bs al cancelar facturas
+
+`cuentas-pagar-view.tsx` + `account-payable.actions.ts`:
+- La vista carga la tasa del día al montar. El modal "Registrar pago" muestra:
+  Pendiente en $ **y su equivalente en Bs**, la línea "Tasa del día: 1 USD =
+  Bs X", y bajo el monto tecleado la conversión en vivo "≈ Bs Y a tasa del
+  día" (resaltada en negrita cuando el método es en Bs).
+- `BS_METHODS = {CASH_BS, BANK_TRANSFER, MOBILE_PAY, CHECK}`: para esos
+  métodos el pago persiste `amountBs` + `exchangeRate` en `AccountPayment`
+  (los campos existían en el schema desde siempre pero la UI nunca los
+  enviaba). El historial de pagos expandido ahora muestra "Bs X @tasa".
+
+### 3. Submódulo Cambio de Divisas (`/dashboard/cambio-divisas`)
+
+Caso de uso: se reciben $5.000 y se cambian a Bs para pagar proveedores — la
+operación genera la salida de los $ y el ingreso a los bancos seleccionados.
+
+- **Schema** (migración `20260713120000_currency_exchange`, solo CREATE TABLE
+  — safe en vivo): `CurrencyExchange` (fecha, currencyOut/amountOut,
+  currencyIn/amountIn, `rate` implícita SIEMPRE en Bs por USD, fromAccount
+  opcional, status ACTIVE/VOID con voidReason, auditoría) +
+  `CurrencyExchangeDestination` (bankAccountId, amount en moneda destino,
+  reference). Back-relations en Tenant, User y BankAccount.
+- **Action** `currency-exchange.actions.ts`: crear (valida que cada cuenta
+  destino sea de la moneda que entra y la origen de la que sale; `amountIn` =
+  Σ destinos; tasa implícita derivada), listar, anular con motivo (soft —
+  el registro queda visible como anulado), y `getExchangeBankAccountsAction`.
+  Roles: lectura OWNER/ADMIN_MANAGER/AUDITOR; escritura OWNER/ADMIN_MANAGER.
+- **Vista**: KPIs ($ cambiados del mes, Bs recibidos del mes, tasa del día),
+  lista de operaciones con chips por cuenta destino, modal de registro con
+  dirección (Dólares→Bs default, o Bs→$), multi-destino (repartir el ingreso
+  entre varias cuentas), tasa implícita en vivo y advertencia si difiere >5%
+  de la tasa del día.
+- **Registro**: módulo `cambio_divisas` en MODULE_REGISTRY (sección admin,
+  sortOrder 586, `enabledByDefault: true` → se auto-habilita en tenants
+  existentes), MODULE_PERMISSIONS OWNER/ADMIN_MANAGER/AUDITOR, icono
+  `ArrowLeftRight` en module-icons.
+
+Nota deliberada: las cuentas bancarias NO llevan saldo corriente en KPSULA
+(la conciliación se deriva de ventas); el cambio de divisas es un registro de
+tesorería auditado, no un asiento contable de doble partida.
+
+Gates: tsc 0 · vitest 577.
