@@ -12562,3 +12562,36 @@ Diagnóstico previo (§110) actualizado: el recibo NO era del agente entonces
 porque nada lo enrutaba; §111 lo enruta.
 
 Gates: tsc 0 · vitest 593 · agent build 0.
+
+## §111.1 PENDIENTE — Recibo automático en las 3 cajas de Shanklish (2026-07-13)
+
+Retomar en próxima sesión. Contexto recopilado en sitio:
+
+- **Objetivo:** que el recibo de pago salga **automático (silencioso, sin
+  diálogo)** en **3 computadoras, cada una con su propia impresora térmica**.
+- **Hardware confirmado (PC principal):** la impresora de caja es
+  `Comandera1` (POS-80C) conectada por **USB** (puerto `USB005`). El puerto
+  de red `192.168.1.120:9100` está MUERTO (ni ping ni TCP) — es un puerto
+  fantasma de Windows, no una impresora viva. Las de red que sí responden
+  son cocina/barra: bar `.140`, kitchen `.141`, kitchen `.142`.
+- **Implicación:** el Print Agent imprime por IP (TCP 9100), NO por USB →
+  el camino §111 (recibo por agente) NO sirve para cajas con impresora USB.
+  Por eso el toggle `printReceiptViaAgent` debe quedar APAGADO en Shanklish
+  (con él OFF, `emitReceipt` = `printReceipt` navegador de siempre, sin
+  regresión).
+- **Camino acordado (navegador silencioso, por PC):** en cada una de las 3
+  PC: (1) dejar su impresora térmica como **predeterminada** de Windows
+  (`(New-Object -ComObject WScript.Network).SetDefaultPrinter('<nombre>')`);
+  (2) abrir Chrome con `--kiosk-printing` (editar Destino del acceso directo,
+  cerrar todo Chrome antes); (3) abrir KPSULA SIEMPRE desde ese acceso
+  directo. Probable causa de que "dejó de imprimir": Chrome se reabrió sin
+  el flag o cambió la predeterminada.
+- **Falta por recopilar de las otras 2 PC:** nombre exacto de la impresora
+  (`Get-Printer`), que sea la predeterminada, y confirmar el acceso directo
+  de Chrome con `--kiosk-printing`. Cada PC es independiente (config local).
+- **Alternativa a evaluar si quieren red:** cambiar las 3 térmicas de caja a
+  Ethernet con IP fija y usar el agente (§111) con una estación por caja —
+  pero eso es cambio de hardware/red, no urgente.
+
+Estado del código: §111 ya mergeado (opt-in, OFF por defecto — no afecta).
+Falta solo la config por-PC (kiosk-printing), sin cambios de código.
