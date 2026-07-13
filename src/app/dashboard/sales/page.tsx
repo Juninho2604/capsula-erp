@@ -322,9 +322,13 @@ export default function SalesHistoryPage() {
         if (filterOrderType === 'PROPINAS') {
             if ((s.customerName || '') !== 'PROPINA COLECTIVA') return false;
         } else if (filterOrderType === 'RESTAURANT') {
-            // Mesa/Pickup: incluye RESTAURANT y PICKUP (propinas colectivas son PICKUP)
-            const ot = (s.orderType || '').toUpperCase();
-            if (ot !== 'RESTAURANT' && ot !== 'PICKUP') return false;
+            // §107: Mesa y Pickup separados. Mesa = solo RESTAURANT.
+            if ((s.orderType || '').toUpperCase() !== 'RESTAURANT') return false;
+        } else if (filterOrderType === 'PICKUP') {
+            // §107: Pickup excluye las propinas colectivas (son órdenes PICKUP
+            // ficticias — tienen su propio filtro "Propinas").
+            if ((s.orderType || '').toUpperCase() !== 'PICKUP') return false;
+            if ((s.customerName || '') === 'PROPINA COLECTIVA') return false;
         } else if (filterOrderType !== 'ALL') {
             if ((s.orderType || '').toUpperCase() !== filterOrderType) return false;
         }
@@ -485,8 +489,9 @@ export default function SalesHistoryPage() {
                         className="pos-input text-sm cursor-pointer"
                     >
                         <option value="ALL">Todos</option>
+                        <option value="RESTAURANT">Mesa</option>
+                        <option value="PICKUP">Pickup</option>
                         <option value="DELIVERY">Delivery</option>
-                        <option value="RESTAURANT">Mesa / Pickup</option>
                         <option value="PEDIDOSYA">PedidosYA</option>
                         <option value="PROPINAS">Propinas</option>
                     </select>
@@ -957,6 +962,18 @@ export default function SalesHistoryPage() {
                                 <div className="flex justify-between text-[#2F6B4E] dark:text-[#6FB88F]"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="flex justify-between font-semibold text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
+                            {(zReport.bsRate ?? 0) > 0 && (
+                                <>
+                                    <div className="flex justify-between font-semibold text-base tabular-nums">
+                                        <span>TOTAL EN Bs</span>
+                                        <span>Bs {(zReport.totalCollectedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-capsula-ink-muted tabular-nums">
+                                        <span>Tasa del día (al consultar)</span>
+                                        <span>1 USD = Bs {(zReport.bsRate ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                </>
+                            )}
                             {zReport.openTabsPending && zReport.openTabsPending.count > 0 && (
                                 <div className="mt-2 p-2 border border-dashed border-amber-600 rounded text-xs bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
                                     <span className="font-semibold">CUENTAS PENDIENTES ({zReport.openTabsPending.count})</span>{' — '}{formatMoney(zReport.openTabsPending.total)} no cobradas aún (excluidas del cierre)
@@ -971,7 +988,20 @@ export default function SalesHistoryPage() {
                                 <div className="space-y-0.5 text-sm">
                                     {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
                                     {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
-                                    {zReport.paymentBreakdown.card > 0 && <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>}
+                                    {zReport.paymentBreakdown.card > 0 && (
+                                        <>
+                                            <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>
+                                            {(zReport.pdvBreakdown?.shanklish ?? 0) > 0 && (
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Shanklish</span><span>{formatMoney(zReport.pdvBreakdown!.shanklish)}</span></div>
+                                            )}
+                                            {(zReport.pdvBreakdown?.superferro ?? 0) > 0 && (
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Superferro</span><span>{formatMoney(zReport.pdvBreakdown!.superferro)}</span></div>
+                                            )}
+                                            {(zReport.pdvBreakdown?.otherCard ?? 0) > 0 && (
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Otros PDV / tarjeta</span><span>{formatMoney(zReport.pdvBreakdown!.otherCard)}</span></div>
+                                            )}
+                                        </>
+                                    )}
                                     {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
                                     {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
                                     {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}

@@ -34,6 +34,11 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['(+) Servicio 10% mesas',          fmtOpt(zReport.totalServiceFee)],
         ['(+) Propinas del día',             fmtOpt(zReport.totalTips)],
         ['TOTAL COBRADO',                    fmt(zReport.totalCollected)],
+        // §107: equivalente en Bs a la tasa vigente al consultar.
+        ...(((zReport.bsRate ?? 0) > 0 ? [
+            ['TOTAL EN Bs',                  `Bs ${(zReport.totalCollectedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            ['Tasa del día (al consultar)',  `1 USD = Bs ${(zReport.bsRate ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ] : []) as [string, string][]),
         ['', ''],
 
         // ── arqueo por método de pago — omitido bajo blindaje cajera ────────
@@ -42,6 +47,10 @@ export function exportZReportToExcel(zReport: ZReportData) {
             ['Efectivo USD',                     fmtOpt(zReport.paymentBreakdown.cash)],
             ['Zelle',                            fmtOpt(zReport.paymentBreakdown.zelle)],
             ['Punto PDV',                        fmtOpt(zReport.paymentBreakdown.card)],
+            // §107: desglose por terminal PDV (solo si hay monto).
+            ...(((zReport.pdvBreakdown?.shanklish ?? 0) > 0 ? [['   PDV Shanklish', fmt(zReport.pdvBreakdown!.shanklish)]] : []) as [string, string][]),
+            ...(((zReport.pdvBreakdown?.superferro ?? 0) > 0 ? [['   PDV Superferro', fmt(zReport.pdvBreakdown!.superferro)]] : []) as [string, string][]),
+            ...(((zReport.pdvBreakdown?.otherCard ?? 0) > 0 ? [['   Otros PDV / tarjeta', fmt(zReport.pdvBreakdown!.otherCard)]] : []) as [string, string][]),
             ['Pago Móvil',                       fmtOpt(zReport.paymentBreakdown.mobile)],
             ['Transferencia',                    fmtOpt(zReport.paymentBreakdown.transfer)],
             ['PedidosYA / Externo',              fmtOpt(zReport.paymentBreakdown.external)],

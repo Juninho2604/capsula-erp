@@ -16,6 +16,7 @@ import { PERM } from '@/lib/constants/permissions-registry';
 import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { inferOrderTip } from '@/lib/sales/infer-tip';
+import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 
 export interface ZReportData {
     period: string;
@@ -62,6 +63,22 @@ export interface ZReportData {
         external: number;
         other: number;
     };
+
+    /**
+     * §107: desglose del rubro `card` por terminal punto de venta.
+     * shanklish + superferro + otherCard === paymentBreakdown.card.
+     * Opcional para no romper consumidores que serializaron el tipo viejo.
+     */
+    pdvBreakdown?: {
+        shanklish: number;
+        superferro: number;
+        otherCard: number;
+    };
+
+    /** §107: tasa Bs/USD vigente al momento de consultar (null si no hay tasa cargada). */
+    bsRate?: number | null;
+    /** §107: totalCollected expresado en Bs a `bsRate` (0 si no hay tasa). */
+    totalCollectedBs?: number;
 
     ordersByStatus: Record<string, number>;
     cancelledTotal: number;
@@ -137,11 +154,18 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         type Split = { paymentMethod: string | null; paidAmount: number; splitLabel: string };
 
         const pay = { cash: 0, card: 0, transfer: 0, mobile: 0, zelle: 0, external: 0, other: 0 };
+        // §107: dentro de `card`, discriminar por terminal PDV.
+        const pdv = { shanklish: 0, superferro: 0, otherCard: 0 };
         const addPayment = (pm: string | null | undefined, amt: number) => {
             const k = (pm ?? '').toUpperCase();
             if      (k === 'CASH' || k === 'CASH_USD' || k === 'CASH_EUR')                              pay.cash     += amt;
             else if (k === 'ZELLE')                                                                      pay.zelle    += amt;
-            else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH' || k === 'PDV_SUPERFERRO') pay.card     += amt;
+            else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH' || k === 'PDV_SUPERFERRO') {
+                pay.card += amt;
+                if      (k === 'PDV_SHANKLISH')  pdv.shanklish  += amt;
+                else if (k === 'PDV_SUPERFERRO') pdv.superferro += amt;
+                else                             pdv.otherCard  += amt;
+            }
             else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG')                      pay.mobile   += amt;
             else if (k === 'TRANSFER' || k === 'BANK_TRANSFER')                                          pay.transfer += amt;
             else if (k === 'PY')                                                                         pay.external += amt;
@@ -265,12 +289,21 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         // (routeDeltaToTip) y el Z no cuadraba consigo mismo.
         const totalCollected = Math.round(Object.values(pay).reduce((s, v) => s + (v || 0), 0) * 100) / 100;
 
+        // §107: tasa vigente AL MOMENTO DE CONSULTAR (no la histórica del día
+        // reportado) — es la referencia que la administración usa para el
+        // cuadre en Bs. Si no hay tasa cargada, el Z sale solo en USD.
+        const bsRate = await getExchangeRateValue().catch(() => null);
+        const totalCollectedBs = bsRate ? Math.round(totalCollected * bsRate * 100) / 100 : 0;
+
         // Strip server-side: si el rol no debe ver el método y el flag está
         // activo, devolvemos el desglose en cero para que ni siquiera viaje
         // al cliente (no se filtra en DevTools).
         const exposedPaymentBreakdown = hidePaymentMethod
             ? { cash: 0, zelle: 0, card: 0, mobile: 0, transfer: 0, external: 0, other: 0 }
             : pay;
+        const exposedPdvBreakdown = hidePaymentMethod
+            ? { shanklish: 0, superferro: 0, otherCard: 0 }
+            : pdv;
 
         return {
             success: true,
@@ -288,6 +321,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 totalCollected,
                 discountBreakdown: disc,
                 paymentBreakdown:  exposedPaymentBreakdown,
+                pdvBreakdown:      exposedPdvBreakdown,
+                bsRate,
+                totalCollectedBs,
                 hidePaymentMethod,
                 ordersByStatus: {
                     PAID:      byType.restaurant + byType.delivery + byType.pickup + byType.pedidosya + byType.wink + byType.evento + byType.tablePong - openTabsPending.count,
