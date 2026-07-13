@@ -12700,3 +12700,31 @@ Requiere deploy con migración (migrate deploy la aplica). Sin rebuild de
 agente (no toca impresión).
 
 Gates: tsc 0 · vitest 604.
+
+## §114 Sub-recetas agrupadas en el selector de ingredientes (2026-07-13)
+
+Reporte de Christian (Pomelos): "las sub recetas no me las toma para las
+recetas… la empanada lleva sofrito de kibbe pero no me deja verlo".
+
+**Diagnóstico:** `getIngredientOptionsAction` SÍ incluye sub-recetas desde
+junio (`type: { in: ['RAW_MATERIAL', 'SUB_RECIPE'] }`) — la función existe.
+Dos causas reales de lo que ve Christian:
+1. Pomelos corre código anterior a §112 → el listado de recetas no muestra
+   la división Todas/Sub-recetas/Productos. Se resuelve al desplegar.
+2. Para que un componente (sofrito de kibbe) aparezca como ingrediente debe
+   estar guardado como **"Sub-receta (Intermedio)"**, no "Producto Final
+   (Venta)". El picker toma insumos y sub-recetas, NUNCA productos de venta
+   (correcto por diseño — no metes un producto vendible en otra receta).
+
+**Mejora de código:** el `Combobox` ahora soporta `group?` opcional (compat
+hacia atrás: sin grupos = lista plana de siempre). En RecipeForm el selector
+de ingredientes agrupa **"Sub-recetas" arriba** e **"Insumos" abajo**, con
+encabezados y conteo, y ordena las sub-recetas primero. Antes era una lista
+plana con prefijo "[Sub-receta]" que se perdía entre insumos.
+
+Guía operativa: si una sub-receta no aparece al armar otra receta, verificar
+que se guardó con el radio "Sub-receta (Intermedio)". Un componente creado
+como "Producto Final" no aparece como ingrediente (hay que reabrirlo y
+cambiar el tipo).
+
+Gates: tsc 0 · vitest 604.

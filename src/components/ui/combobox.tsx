@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils"
 export interface ComboboxItem {
     value: string
     label: string
+    /** §114: agrupador opcional. Si algún item lo trae, la lista se muestra
+     *  agrupada con encabezados (ej. "Sub-recetas" / "Insumos"). Sin grupos
+     *  se renderiza plana como siempre (compatible hacia atrás). */
+    group?: string
 }
 
 interface ComboboxProps {
@@ -169,33 +173,63 @@ export function Combobox({
     ) : null
 
     // ====== ITEM LIST ======
-    const renderItemList = () => (
-        <>
-            {filteredItems.map((item) => (
-                <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => handleSelect(item.value)}
-                    className={cn(
-                        "relative flex w-full cursor-pointer select-none items-center rounded-lg outline-none transition-colors",
-                        "hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-amber-900/20 dark:hover:text-amber-300",
-                        "active:bg-amber-100 dark:active:bg-amber-900/30",
-                        value === item.value && "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300",
-                        isMobile ? "px-4 py-3.5 min-h-[48px] text-base gap-3" : "px-2 py-2 text-sm gap-2"
-                    )}
-                >
-                    <Check
-                        className={cn(
-                            "shrink-0",
-                            isMobile ? "h-5 w-5" : "h-4 w-4",
-                            value === item.value ? "opacity-100 text-amber-600" : "opacity-0"
-                        )}
-                    />
-                    <span className="truncate">{item.label}</span>
-                </button>
-            ))}
-        </>
+    const hasGroups = React.useMemo(() => filteredItems.some((i) => i.group), [filteredItems])
+
+    // Orden de grupos por primera aparición (preserva el orden que arma el caller).
+    const groupOrder = React.useMemo(() => {
+        const seen: string[] = []
+        for (const i of filteredItems) {
+            const g = i.group || ''
+            if (!seen.includes(g)) seen.push(g)
+        }
+        return seen
+    }, [filteredItems])
+
+    const renderOne = (item: ComboboxItem) => (
+        <button
+            key={item.value}
+            type="button"
+            onClick={() => handleSelect(item.value)}
+            className={cn(
+                "relative flex w-full cursor-pointer select-none items-center rounded-lg outline-none transition-colors",
+                "hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-amber-900/20 dark:hover:text-amber-300",
+                "active:bg-amber-100 dark:active:bg-amber-900/30",
+                value === item.value && "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300",
+                isMobile ? "px-4 py-3.5 min-h-[48px] text-base gap-3" : "px-2 py-2 text-sm gap-2"
+            )}
+        >
+            <Check
+                className={cn(
+                    "shrink-0",
+                    isMobile ? "h-5 w-5" : "h-4 w-4",
+                    value === item.value ? "opacity-100 text-amber-600" : "opacity-0"
+                )}
+            />
+            <span className="truncate">{item.label}</span>
+        </button>
     )
+
+    const renderItemList = () => {
+        if (!hasGroups) return <>{filteredItems.map(renderOne)}</>
+        return (
+            <>
+                {groupOrder.map((g) => {
+                    const groupItems = filteredItems.filter((i) => (i.group || '') === g)
+                    if (groupItems.length === 0) return null
+                    return (
+                        <div key={g || '_ungrouped'}>
+                            {g && (
+                                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                                    {g} <span className="tabular-nums">({groupItems.length})</span>
+                                </p>
+                            )}
+                            {groupItems.map(renderOne)}
+                        </div>
+                    )
+                })}
+            </>
+        )
+    }
 
     // ====== MOBILE DRAWER ======
     const mobileDrawer = open && isMobile ? ReactDOM.createPortal(

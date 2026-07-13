@@ -662,12 +662,19 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             Insumo / Sub-receta
                                         </label>
                                         <Combobox
-                                            items={availableOptions.map(item => ({
-                                                value: item.id,
-                                                // §112: sub-recetas identificadas en el buscador (antes el
-                                                // prefijo era un string vacío y todo se veía igual).
-                                                label: `${item.type === 'SUB_RECIPE' ? '[Sub-receta] ' : ''}${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
-                                            }))}
+                                            items={[...availableOptions]
+                                                // §114: sub-recetas primero para que salten a la vista.
+                                                .sort((a, b) => {
+                                                    const rank = (t: string) => (t === 'SUB_RECIPE' ? 0 : 1);
+                                                    return rank(a.type) - rank(b.type) || a.name.localeCompare(b.name);
+                                                })
+                                                .map(item => ({
+                                                    value: item.id,
+                                                    // §114: grupos visibles en el selector — "Sub-recetas" arriba,
+                                                    // "Insumos" abajo. Resuelve "no me deja ver las sub-recetas".
+                                                    group: item.type === 'SUB_RECIPE' ? 'Sub-recetas' : 'Insumos',
+                                                    label: `${item.name} (${item.baseUnit}) - $${formatNumber(item.currentCost)}`
+                                                }))}
                                             value={newIngredient.inventoryItemId || ''}
                                             onChange={(val) => {
                                                 const item = localIngredients.find(i => i.id === val);
