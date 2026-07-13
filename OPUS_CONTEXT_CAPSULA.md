@@ -12232,3 +12232,58 @@ llegar su hora, marcada "PEDIDO FUTURO"; las normales dicen "DE INMEDIATO".
   (degradación elegante). print-command (fallback navegador) también.
 
 Gates: tsc 0 · vitest 577.
+
+## §105 Incidente "se imprime un monto y el sistema registra otro" + guardián de versión de build (2026-07-13)
+
+**Incidente (12/07 ~20:30, operadora nazareth):** TAB-3691 (Mesa SP-09, ticket
+$83.00 + 10% = $91.30, voucher MAESTRO) y TAB-3690 (Mesa SP-08, ticket $49.50
++ 10% = $54.45, voucher VISA). El historial de ventas en las tablets del staff
+mostraba COBRADO $83.00 / $46.50 con "10% SERV: No" — como si el servicio no
+se hubiera registrado, pese a que el ticket impreso y el voucher del PDV
+confirmaban el cobro completo.
+
+**Diagnóstico:** la base de datos estaba CORRECTA todo el tiempo. Las tablets
+corrían el bundle PRE-deploy de esa misma noche. El deploy cambió (a) el
+formato de respuesta de `getSalesHistoryAction` (clave `data`, §98) y (b) el
+cálculo server-side del servicio en filas de mesa (`servicioAmount =
+tab.totalServiceCharge`, §103). Cliente viejo + servidor nuevo = campos
+desfasados renderizados como "SERV: No" y cobrado sin servicio. Al salir del
+sistema y volver a entrar ("Salgan del sistema y vuelvan a abrirlo"), las
+tablets bajaron el bundle nuevo y todo cuadró ("ahora si sale").
+
+**Por qué las tablets se quedan con bundle viejo:**
+1. El SW (`public/sw.js`) solo dispara `updatefound` si **cambia el archivo
+   sw.js** — y los deploys normales no lo tocan (`CACHE_VERSION` fijo).
+2. La SPA de Next.js con navegación client-side **nunca re-descarga el HTML**:
+   una tablet con la app abierta en memoria puede correr código de hace días.
+3. El checklist manual "recargar todas las tablets tras deploy" depende de
+   humanos en pleno servicio.
+
+**Fix — guardián de versión (§106 en código):**
+- `src/app/api/version/route.ts` (nuevo): devuelve `{ buildId }` leyendo
+  `.next/BUILD_ID` (existe en standalone del VPS). `force-dynamic` +
+  `Cache-Control: no-store`. Sin auth (hash opaco, alcanzable desde /login).
+  En dev devuelve `'dev'` constante → nunca dispara reload.
+- `src/components/pwa-register.tsx`: segundo `useEffect` que pollea
+  `/api/version` cada 5 min **y al volver la app a primer plano**
+  (`visibilitychange` — tablets que duermen la noche). Si el `buildId` del
+  servidor difiere del visto al cargar → `reloadWhenSafe()` (misma lógica
+  silenciosa existente: no recarga si hay input focuseado o modal abierto;
+  reintenta cada 5s, tope 60s). El selector de modal ahora incluye
+  `div.fixed.inset-0` (patrón de modales POS CLAUDE.md §7), además de
+  `[role="dialog"]` y `[data-state="open"]`.
+- El SW no interfiere: `/api/*` está excluido de todo cacheo en sw.js.
+
+**Regla operativa que reemplaza:** el paso manual "reload de todas las
+tablets tras cada deploy" pasa a ser red de seguridad, no requisito — máximo
+5 minutos después del deploy (o al despertar la tablet) todas las pantallas
+corren el bundle nuevo solas.
+
+**Scripts de auditoría relacionados:** `scripts/audit-servicio-tabs.ts`
+(--tabs=TAB-XXXX) muestra por mesa: serviceType, splits con base/servicio%/
+retenido/propina/notas y veredicto; `scripts/audit-orden.ts` (--orders=)
+hace lo propio para órdenes directas. Primer reflejo ante "el sistema
+registró otro monto": correr el audit — si la BD cuadra con el ticket físico,
+es render viejo en la tablet, no un bug de cobro.
+
+Gates: tsc 0 · vitest 577.
