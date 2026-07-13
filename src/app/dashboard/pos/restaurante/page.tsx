@@ -45,7 +45,7 @@ import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "
 import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from "@/lib/sales/tip-calculation";
 import { scheduledInputToISO, printJobScheduledFor } from "@/lib/pos-scheduled-order";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
-import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy } from "lucide-react";
+import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy, Star } from "lucide-react";
 
 // ============================================================================
 // TIPOS
@@ -2062,6 +2062,24 @@ export default function POSSportBarPage() {
             <Printer className="h-3.5 w-3.5" />
             Imprimir
           </button>
+          {/* §113 — Encuesta de satisfacción, acceso directo junto a Imprimir.
+              Requiere una mesa activa (para atribuir mesa/mesonero). */}
+          {activeTab && (
+            <button
+              type="button"
+              onClick={() => setSurveyFor({
+                openTabId: activeTab.id,
+                tabCode: activeTab.tabCode,
+                tableName: selectedTable?.name,
+                waiterName: (activeTab as any).waiterLabel || undefined,
+              })}
+              title="Registrar encuesta de satisfacción de la mesa"
+              className="px-3 py-2 rounded-xl bg-capsula-ivory-surface border border-capsula-line text-capsula-ink text-xs font-semibold uppercase tracking-wider hover:bg-capsula-navy-soft transition inline-flex items-center gap-1.5"
+            >
+              <Star className="h-3.5 w-3.5" />
+              Encuesta
+            </button>
+          )}
           <button
             type="button"
             onClick={openCollectiveTipModal}
