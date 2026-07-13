@@ -614,9 +614,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Resultados de las encuestas de satisfacción llenadas en el POS al cerrar cada mesa',
     icon: '⭐',
     href: '/dashboard/encuestas',
-    section: 'admin',
+    section: 'operations',
     enabledByDefault: true,
-    sortOrder: 545,
+    sortOrder: 55,
     tags: ['encuesta', 'satisfaccion', 'calidad', 'clientes', 'nps'],
   },
   {

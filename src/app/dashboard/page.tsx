@@ -91,11 +91,8 @@ export default async function DashboardPage() {
                 </Link>
             </div>
 
-            {/* Resumen Gerencial — solo roles gerenciales/superiores (petición del
-                dueño): dueño, administradores, gerentes de operaciones y auditores.
-                Otros roles que llegan al inicio (jefe de área, RRHH) ya no ven los
-                montos gerenciales del día. */}
-            {salesKPIs && ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'].includes(session?.role ?? '') && (
+            {/* Resumen Gerencial */}
+            {salesKPIs && (
                 <ExecutiveSummary
                     todayRevenue={salesKPIs.todayRevenue}
                     todayCollected={salesKPIs.todayCollected}

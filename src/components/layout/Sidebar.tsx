@@ -47,6 +47,7 @@ const SIDEBAR_TREE: SectionDef[] = [
         id: 'operations', label: 'Operaciones', scheme: 'coral',
         items: [
             { kind: 'link', moduleId: 'dashboard' },
+            { kind: 'link', moduleId: 'encuestas' },
             {
                 kind: 'subgroup', id: 'sg-inventario', label: 'Inventario', icon: '📦',
                 items: ['inventory', 'inventory_daily', 'inventory_count', 'inventory_quick_count', 'audits', 'transfers', 'inventory_history'],
@@ -96,7 +97,6 @@ const SIDEBAR_TREE: SectionDef[] = [
     {
         id: 'finanzas', label: 'Finanzas', scheme: 'navy',
         items: [
-            { kind: 'link', moduleId: 'encuestas' },
             { kind: 'link', moduleId: 'finanzas' },
             { kind: 'link', moduleId: 'gastos' },
             { kind: 'link', moduleId: 'caja' },
