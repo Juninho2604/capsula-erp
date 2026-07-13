@@ -12288,7 +12288,7 @@ es render viejo en la tablet, no un bug de cobro.
 
 Gates: tsc 0 · vitest 577.
 
-## §106 Reporte Z en Bs + arqueo por terminal PDV + filtro Mesa/Pickup separado (2026-07-13)
+## §107 Reporte Z en Bs + arqueo por terminal PDV + filtro Mesa/Pickup separado (2026-07-13)
 
 **Z en Bs (`z-report.actions.ts`):** el Z ahora incluye `bsRate` (tasa Bs/USD
 vigente AL MOMENTO DE CONSULTAR, vía `getExchangeRateValue()` — decisión del
