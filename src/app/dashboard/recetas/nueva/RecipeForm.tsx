@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { Plus, Trash2, X as XIcon, Check, Loader2, Save, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency } from '@/lib/utils';
@@ -150,11 +151,17 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
     const effectiveOutput = outputQuantity * (yieldPercentage / 100);
     const costPerUnit = effectiveOutput > 0 ? totalIngredientsCost / effectiveOutput : 0;
 
-    // Agregar ingrediente
+    // Foco directo a Cantidad al elegir el insumo — evita el click extra.
+    const qtyInputRef = useRef<HTMLInputElement>(null);
+
+    // Agregar ingrediente. El modal QUEDA ABIERTO y listo para el siguiente
+    // (flujo típico: cargar varios ingredientes seguidos sin re-abrir ni
+    // hacer scroll). Se cierra con "Listo".
     const addIngredient = () => {
         const qty = parseFloat(newQuantityStr);
         if (!newIngredient.inventoryItemId || !Number.isFinite(qty) || qty <= 0) return;
 
+        const item = localIngredients.find(i => i.id === newIngredient.inventoryItemId);
         const newIng: DraftIngredient = {
             id: `temp-${Date.now()}`,
             inventoryItemId: newIngredient.inventoryItemId,
@@ -168,7 +175,15 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
         setNewIngredient({ inventoryItemId: '', quantity: 0, unit: 'KG', wastePercentage: 0, notes: '' });
         setNewQuantityStr('');
         setNewWasteStr('');
-        setShowAddIngredient(false);
+        toast.success(`${item?.name ?? 'Ingrediente'} agregado`, { duration: 1500 });
+    };
+
+    // Enter en Cantidad/Merma = click en Agregar.
+    const submitOnEnter = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addIngredient();
+        }
     };
 
     // Crear insumo nuevo on-the-fly
@@ -206,6 +221,8 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                 setNewItemType('RAW_MATERIAL');
                 setNewItemCost(0);
                 setShowCreateItem(false);
+                // §109: insumo recién creado ya quedó seleccionado — foco a Cantidad.
+                setTimeout(() => qtyInputRef.current?.focus(), 0);
             } else {
                 toast.error(result.message || 'Error al crear el insumo');
             }
@@ -276,8 +293,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                     <Link
                         href="/dashboard/recetas"
                         className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
+                        aria-label="Volver a recetas"
                     >
-                        ←
+                        <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>
@@ -456,12 +474,12 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                 onClick={() => setShowAddIngredient(true)}
                                 className="inline-flex items-center gap-2 rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy"
                             >
-                                ➕ Agregar
+                                <Plus className="h-4 w-4" /> Agregar
                             </button>
                         </div>
 
                         {/* Lista de ingredientes */}
-                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <div className="divide-y divide-capsula-line">
                             {ingredientCosts.map((ing, index) => (
                                 <div key={ing.id} className="flex items-center gap-4 px-6 py-4">
                                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-capsula-navy-soft text-sm font-semibold text-capsula-ink">
@@ -498,8 +516,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                     <button
                                         onClick={() => removeIngredient(ing.id)}
                                         className="rounded-lg p-2 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
+                                        aria-label="Quitar ingrediente"
                                     >
-                                        🗑️
+                                        <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             ))}
@@ -514,25 +533,41 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                             )}
                         </div>
 
-                        {/* Modal para agregar ingrediente */}
+                        {/* Modal para agregar ingrediente — overlay centrado (§109):
+                            siempre a la vista aunque la lista sea larga; cero scroll.
+                            Queda abierto tras agregar para cargar varios seguidos. */}
                         {showAddIngredient && (
-                            <div className="border-t border-capsula-line bg-capsula-ivory-alt p-6">
-                                <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="font-medium text-capsula-ink">Agregar Ingrediente</h3>
+                            <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                            <div className="bg-capsula-ivory border border-capsula-line w-full max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+                            <div className="border-b border-capsula-line p-5 flex items-center justify-between sticky top-0 bg-capsula-ivory z-10">
+                                <div>
+                                    <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Agregar ingrediente</h3>
+                                    <p className="text-xs text-capsula-ink-muted">{ingredients.length} en la receta — agrega varios seguidos y cierra con «Listo»</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowAddIngredient(false)}
+                                    className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center"
+                                    aria-label="Cerrar"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="p-5">
+                                <div className="mb-4 flex justify-end">
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
                                         className="inline-flex items-center gap-1.5 rounded-lg border border-[#A8C8B0] bg-[#E5EDE7] px-3 py-1.5 text-xs font-semibold text-[#2F6B4E] transition-colors hover:opacity-80 dark:border-[#2A4D38] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
                                     >
-                                        {showCreateItem ? '✕ Cerrar' : '＋ Crear Insumo Nuevo'}
+                                        {showCreateItem ? <><XIcon className="h-3.5 w-3.5" /> Cerrar</> : <><Plus className="h-3.5 w-3.5" /> Crear Insumo Nuevo</>}
                                     </button>
                                 </div>
 
                                 {/* Mini-formulario para crear insumo nuevo */}
                                 {showCreateItem && (
-                                    <div className="mb-5 rounded-lg border border-capsula-line bg-capsula-ivory p-4">
+                                    <div className="mb-5 rounded-lg border border-capsula-line bg-capsula-ivory-surface p-4">
                                         <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-capsula-ink">
-                                            🆕 Crear Insumo Nuevo
+                                            Crear Insumo Nuevo
                                         </h4>
                                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                             <div className="sm:col-span-2">
@@ -584,9 +619,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                 type="button"
                                                 onClick={handleCreateItem}
                                                 disabled={!newItemName.trim() || isCreatingItem}
-                                                className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                {isCreatingItem ? '⏳ Creando...' : '✓ Crear Insumo'}
+                                                {isCreatingItem ? <><Loader2 className="h-4 w-4 animate-spin" /> Creando...</> : <><Check className="h-4 w-4" /> Crear Insumo</>}
                                             </button>
                                         </div>
                                     </div>
@@ -610,6 +645,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                                     inventoryItemId: val,
                                                     unit: (item?.baseUnit as UnitOfMeasure) || 'KG'
                                                 });
+                                                // §109: al elegir insumo, el foco salta directo a
+                                                // Cantidad — sin click ni scroll intermedio.
+                                                setTimeout(() => qtyInputRef.current?.focus(), 0);
                                             }}
                                             placeholder="Seleccionar..."
                                             searchPlaceholder="Buscar insumo..."
@@ -623,13 +661,15 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                         </label>
                                         <div className="flex gap-2">
                                             <input
+                                                ref={qtyInputRef}
                                                 type="number"
                                                 value={newQuantityStr}
                                                 onChange={(e) => setNewQuantityStr(e.target.value)}
+                                                onKeyDown={submitOnEnter}
                                                 min="0"
                                                 step="any"
                                                 placeholder="1"
-                                                className="w-20 rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
+                                                className="w-24 rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-sm text-capsula-ink tabular-nums focus:border-capsula-navy-deep focus:outline-none"
                                             />
                                             <select
                                                 value={newIngredient.unit}
@@ -651,30 +691,33 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                                             type="number"
                                             value={newWasteStr}
                                             onChange={(e) => setNewWasteStr(e.target.value)}
+                                            onKeyDown={submitOnEnter}
                                             min="0"
                                             max="99"
                                             step="any"
                                             placeholder="0"
-                                            className="w-full rounded-lg border border-capsula-line bg-white px-3 py-2 text-sm"
+                                            className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2.5 text-sm text-capsula-ink tabular-nums focus:border-capsula-navy-deep focus:outline-none"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="mt-4 flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setShowAddIngredient(false)}
-                                        className="rounded-lg px-4 py-2 text-sm font-semibold text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={addIngredient}
-                                        disabled={!newIngredient.inventoryItemId || !(parseFloat(newQuantityStr) > 0)}
-                                        className="rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        Agregar
-                                    </button>
-                                </div>
+                            </div>
+                            <div className="border-t border-capsula-line p-4 flex gap-3">
+                                <button
+                                    onClick={() => setShowAddIngredient(false)}
+                                    className="pos-btn-secondary flex-1 py-3"
+                                >
+                                    Listo
+                                </button>
+                                <button
+                                    onClick={addIngredient}
+                                    disabled={!newIngredient.inventoryItemId || !(parseFloat(newQuantityStr) > 0)}
+                                    className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Plus className="h-4 w-4" /> Agregar y seguir
+                                </button>
+                            </div>
+                            </div>
                             </div>
                         )}
                     </div>
@@ -730,14 +773,14 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
                     <button
                         onClick={handleSubmit}
                         disabled={!recipeName || ingredients.length === 0 || isSubmitting}
-                        className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="pos-btn w-full py-3 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <>
-                                <span className="animate-spin text-xl">⏳</span> Guardando...
+                                <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
                             </>
                         ) : (
-                            '💾 Guardar Receta'
+                            <><Save className="h-4 w-4" /> Guardar Receta</>
                         )}
                     </button>
                 </div>

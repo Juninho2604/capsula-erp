@@ -12425,3 +12425,30 @@ recalcula por línea con el costo unitario a 6 decimales — el descuadre
 posible es de fracciones de centavo en costo, NUNCA en cantidades.
 
 Gates: tsc 0 · vitest 583.
+
+## §109 Recetas: flujo de "Agregar ingrediente" en modal, cero scroll (2026-07-13)
+
+Reporte del OWNER: en `RecipeForm.tsx` (nueva/editar receta), el formulario
+de agregar ingrediente se renderizaba INLINE al fondo de la lista — con
+recetas largas había que hacer scroll tras cada selección para llegar al
+botón "Agregar", en desktop y móvil.
+
+**Rediseño del flujo de clicks:**
+1. El formulario ahora es un **modal centrado estándar** (§7 CLAUDE.md,
+   z-[60], max-w-2xl) — siempre a la vista, sin scroll, en cualquier pantalla.
+2. Al seleccionar el insumo en el Combobox, **el foco salta solo a Cantidad**
+   (`qtyInputRef`, setTimeout 0). Igual tras crear un insumo on-the-fly
+   (queda pre-seleccionado + foco a Cantidad).
+3. **Enter en Cantidad o Merma = Agregar** (submitOnEnter).
+4. El modal **queda abierto tras agregar** (toast breve de confirmación,
+   campos reseteados) para cargar varios ingredientes seguidos — se cierra
+   con «Listo». Botón primario: "Agregar y seguir". Flujo por ingrediente:
+   seleccionar → teclear cantidad → Enter. Cero scroll, cero re-aperturas.
+
+**Migraciones de estilo en el mismo commit (regla CLAUDE.md):** emojis del
+chrome → lucide (➕→Plus, 🗑️→Trash2, ✕/＋→XIcon/Plus, ⏳→Loader2, ✓→Check,
+💾→Save, ←→ArrowLeft), botón Guardar dejó el gradiente amber/white prohibido
+→ `pos-btn`, `divide-gray-*` → `divide-capsula-line`, `bg-white` de inputs →
+`bg-capsula-ivory` (dark-aware).
+
+Gates: tsc 0 · vitest 583.
