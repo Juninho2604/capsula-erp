@@ -12381,3 +12381,43 @@ Nota deliberada: las cuentas bancarias NO llevan saldo corriente en KPSULA
 tesorería auditado, no un asiento contable de doble partida.
 
 Gates: tsc 0 · vitest 577.
+
+## §108.1 Auditoría del flujo documento → almacén: cantidades exactas garantizadas (2026-07-13)
+
+Auditoría solicitada por el OWNER tras §108 ("si registro 5 bultos × 12 de
+harina pan, que al almacén entre la cantidad exacta"). Cadena revisada
+completa: modal → `createSupplierDocumentAction` → `enterDocumentToInventoryAction`
+→ `registrarEntradaMercancia` → InventoryMovement + InventoryLocation.
+
+**Hallazgo real (corregido):** `registrarEntradaMercancia` consultaba SIEMPRE
+la tabla legacy hardcodeada `UNIT_CONVERSIONS` ('ins-leche'/'INS-LECHE-001':
+UNIT→×20). Si un insumo coincidiera en id/sku con esas claves y su baseUnit
+fuera UNIT, una entrada de 60 se convertía en 1.200 silenciosamente. Fix:
+si `input.unit === item.baseUnit` la conversión es identidad SIEMPRE (la
+tabla solo aplica a unidades distintas). Los documentos §108 envían siempre
+baseUnit → entrada exacta garantizada.
+
+**Endurecimiento:** la matemática de bultos salió de la vista hacia
+`src/lib/purchases/pack-line.ts` (puro, compartido):
+- `packUnits` = bultos × unid/bulto, redondeo 4 dec (mata ruido FP:
+  0.1×3 = 0.3 exacto, no 0.30000000000000004).
+- `packUnitCost` = costoBulto / unid/bulto, 6 dec; `packLineTotal` 2 dec.
+- `unitsPerPack` vacío/0/inválido ⇒ 1 (nunca divide por cero).
+- 6 tests en `pack-line.test.ts` incluido el caso canónico 5×12@$30 →
+  60 unidades, $2.50 c/u, $150 línea, con invariante unidades×costo=total.
+
+**Verificación en producción:** `scripts/audit-documento-inventario.ts`
+(solo lectura) — compara cada línea del documento contra los movimientos
+PURCHASE con esa referencia (ventana ±10 min de la entrada) y la unidad base
+del insumo. Marca descuadres de cantidad, unidad distinta a la base y líneas
+sin movimiento. Uso:
+```bash
+npx tsx scripts/audit-documento-inventario.ts --tenant-slug=shanklish --docs=F-00123
+npx tsx scripts/audit-documento-inventario.ts --tenant-slug=shanklish --last=5
+```
+
+Nota conocida (pre-existente, sin cambio): el costo promedio ponderado se
+recalcula por línea con el costo unitario a 6 decimales — el descuadre
+posible es de fracciones de centavo en costo, NUNCA en cantidades.
+
+Gates: tsc 0 · vitest 583.

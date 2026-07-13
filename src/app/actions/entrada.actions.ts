@@ -94,8 +94,15 @@ export async function registrarEntradaMercancia(
         const area = await db.area.findUnique({ where: { id: input.areaId } });
         const areaName = area ? area.name : 'Almacén Desconocido';
 
-        // 2. Convertir cantidad a unidad base si es diferente
-        const conversionRate = getConversionRate(item.id, item.sku, input.unit);
+        // 2. Convertir cantidad a unidad base si es diferente.
+        // §108.1: si la unidad enviada YA es la unidad base del insumo, la
+        // conversión es identidad SIEMPRE — nunca consultar la tabla legacy
+        // UNIT_CONVERSIONS (evita que una coincidencia de id/sku multiplique
+        // la cantidad silenciosamente, ej. leche x20). Los documentos de
+        // proveedor (§108) envían siempre baseUnit, así que entran exactos.
+        const conversionRate = input.unit === item.baseUnit
+            ? 1
+            : getConversionRate(item.id, item.sku, input.unit);
         const quantityInBaseUnit = input.quantity * conversionRate;
 
         // 3. Calcular costo total

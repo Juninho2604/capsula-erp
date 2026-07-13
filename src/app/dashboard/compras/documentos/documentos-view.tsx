@@ -13,6 +13,7 @@ import {
   type SupplierDocumentData,
 } from '@/app/actions/supplier-document.actions';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+import { packUnits, packLineTotal, packUnitCost } from '@/lib/purchases/pack-line';
 
 const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d: Date | string | null) => d ? new Date(d).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
@@ -244,8 +245,9 @@ interface Line {
   unit: string;
 }
 
-const lineUnits = (l: Line) => (parseFloat(l.quantity) || 0) * (parseFloat(l.unitsPerPack) || 1);
-const lineTotal = (l: Line) => (parseFloat(l.quantity) || 0) * (parseFloat(l.unitCost) || 0);
+// §108.1: matemática en lib puro testeado (pack-line.test.ts).
+const lineUnits = (l: Line) => packUnits(l);
+const lineTotal = (l: Line) => packLineTotal(l);
 
 function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: () => void; onSaved: () => void }) {
   const [documentType, setType] = useState('FACTURA');
@@ -292,16 +294,12 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
       documentDate, paymentCondition,
       inputCurrency: currency,
       exchangeRate: currency === 'BS' ? rate : undefined,
-      items: lines.filter((l) => l.inventoryItemId && lineUnits(l) > 0).map((l) => {
-        const units = lineUnits(l);
-        const perPack = parseFloat(l.unitsPerPack) || 1;
-        return {
-          inventoryItemId: l.inventoryItemId, itemName: l.itemName,
-          quantity: units, unit: l.unit,
-          // costo por unidad base (el server lo convierte a USD si es Bs)
-          unitCost: (parseFloat(l.unitCost) || 0) / perPack,
-        };
-      }),
+      items: lines.filter((l) => l.inventoryItemId && lineUnits(l) > 0).map((l) => ({
+        inventoryItemId: l.inventoryItemId, itemName: l.itemName,
+        quantity: lineUnits(l), unit: l.unit,
+        // costo por unidad base (el server lo convierte a USD si es Bs)
+        unitCost: packUnitCost(l),
+      })),
     });
     setSaving(false);
     if (!res.success) { setError(res.error ?? 'Error'); return; }
