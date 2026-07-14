@@ -83,6 +83,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     finanzas:          Wallet,
     gastos:            Receipt,
     caja:              Banknote,
+    proveedores:       Building2,
     cuentas_pagar:     FileText,
     cuentas_bancarias: Landmark,
     cambio_divisas:    ArrowLeftRight,

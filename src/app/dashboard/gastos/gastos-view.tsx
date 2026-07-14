@@ -7,6 +7,7 @@ import {
   createExpenseCategoryAction,
   type ExpenseData, type ExpenseSummary, type ExpenseCategoryData,
 } from '@/app/actions/expense.actions';
+import { SupplierPaymentModal } from '@/components/finance/SupplierPaymentModal';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import ExcelJS from 'exceljs';
 
@@ -53,6 +54,7 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
   const [categories, setCategories] = useState<ExpenseCategoryData[]>(initialCategories);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [showSupplierPay, setShowSupplierPay] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showCatForm, setShowCatForm] = useState(false);
   const [voidTarget, setVoidTarget] = useState<ExpenseData | null>(null);
@@ -275,6 +277,10 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
                   + Categoría
                 </button>
               )}
+              <button onClick={() => setShowSupplierPay(true)}
+                className="rounded-lg border border-capsula-line px-4 py-2 text-sm font-semibold text-capsula-ink hover:bg-capsula-ivory-alt transition-colors">
+                Abonar a proveedor
+              </button>
               <button onClick={() => setShowForm(true)}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
                 + Registrar Gasto
@@ -507,6 +513,10 @@ export function GastosView({ initialExpenses, initialSummary, categories: initia
           </div>
         )}
       </div>
+
+      {showSupplierPay && (
+        <SupplierPaymentModal onClose={() => setShowSupplierPay(false)} onSaved={() => { setShowSupplierPay(false); loadPeriod(selectedMonth, selectedYear); }} />
+      )}
 
       {/* ── Modal: Nuevo Gasto ── */}
       {showForm && (

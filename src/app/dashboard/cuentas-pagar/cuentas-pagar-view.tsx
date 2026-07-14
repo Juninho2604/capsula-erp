@@ -8,6 +8,8 @@ import {
   type AccountPayableData, type CreditCandidatePO,
 } from '@/app/actions/account-payable.actions';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+import { setPayableRetentionsAction } from '@/app/actions/account-payable.actions';
+import { ModalPortal } from '@/components/ui/modal-portal';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import type { BadgeProps } from '@/components/ui/Badge';
@@ -66,6 +68,7 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
   const [filter, setFilter] = useState<string>('ACTIVE'); // ACTIVE | ALL | PAID
   const [showForm, setShowForm] = useState(false);
   const [payTarget, setPayTarget] = useState<AccountPayableData | null>(null);
+  const [retentionTarget, setRetentionTarget] = useState<AccountPayableData | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -423,10 +426,17 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
                         {canManage && (
                           <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                             {!['PAID', 'VOID'].includes(a.status) && (
-                              <button onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
-                                className="rounded-lg bg-capsula-navy-deep text-capsula-cream text-xs font-semibold px-3 py-1.5 hover:bg-capsula-navy-deep/90 transition">
-                                Registrar pago
-                              </button>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button onClick={() => { setPayTarget(a); setPayForm(f => ({ ...f, amountUsd: a.remainingUsd.toFixed(2) })); }}
+                                  className="rounded-lg bg-capsula-navy-deep text-capsula-cream text-xs font-semibold px-3 py-1.5 hover:bg-capsula-navy-deep/90 transition">
+                                  Registrar pago
+                                </button>
+                                <button onClick={() => setRetentionTarget(a)}
+                                  title="Retención IVA/ISLR — cierra el saldo sin salida de efectivo"
+                                  className="rounded-lg border border-capsula-line text-xs font-semibold px-3 py-1.5 text-capsula-ink-soft hover:border-capsula-navy-deep transition">
+                                  Retención
+                                </button>
+                              </div>
                             )}
                           </td>
                         )}
@@ -599,8 +609,85 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
           </form>
         </Modal>
       )}
+
+      {/* §115 — Modal: retención IVA/ISLR */}
+      {retentionTarget && (
+        <RetentionModal
+          account={retentionTarget}
+          onClose={() => setRetentionTarget(null)}
+          onSaved={() => { setRetentionTarget(null); reload(); }}
+        />
+      )}
       </div>
     </div>
+  );
+}
+
+function RetentionModal({ account, onClose, onSaved }: { account: AccountPayableData; onClose: () => void; onSaved: () => void }) {
+  const [iva, setIva] = useState(account.retentionIvaUsd ? String(account.retentionIvaUsd) : '');
+  const [islr, setIslr] = useState(account.retentionIslrUsd ? String(account.retentionIslrUsd) : '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const ivaN = parseFloat(iva) || 0;
+  const islrN = parseFloat(islr) || 0;
+  // Saldo tras aplicar estas retenciones (paid ya incluye lo pagado; el
+  // remaining actual = total - paid - retencionesActuales, así que
+  // paid = total - remaining - retActuales).
+  const paid = Math.max(0, account.totalAmountUsd - account.remainingUsd - account.retentionIvaUsd - account.retentionIslrUsd);
+  const newRemaining = Math.max(0, Math.round((account.totalAmountUsd - paid - ivaN - islrN) * 100) / 100);
+  const willClose = newRemaining <= 0.01;
+
+  const submit = async () => {
+    setError('');
+    setSaving(true);
+    const res = await setPayableRetentionsAction(account.id, { retentionIvaUsd: ivaN, retentionIslrUsd: islrN });
+    setSaving(false);
+    if (res.success) { toast.success(willClose ? 'Retención registrada — factura cerrada' : 'Retención registrada'); onSaved(); }
+    else setError(res.error ?? 'Error');
+  };
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+        <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+          <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+            <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Retención IVA / ISLR</h3>
+            <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center" aria-label="Cerrar"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="rounded-xl bg-capsula-ivory-alt border border-capsula-line p-3 text-sm">
+              <p className="font-semibold text-capsula-ink">{account.description}</p>
+              <p className="text-capsula-ink-muted tabular-nums">Total ${fmt(account.totalAmountUsd)} · pagado ${fmt(paid)} · saldo actual ${fmt(account.remainingUsd)}</p>
+            </div>
+            <p className="text-xs text-capsula-ink-muted">
+              Lo retenido NO sale al proveedor (se entera al fisco). Cierra el saldo de la factura sin salida de efectivo — útil cuando el adelanto no cubre el total.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Retención IVA (USD)</span>
+                <input type="number" step="0.01" min="0" inputMode="decimal" value={iva} onChange={e => setIva(e.target.value)} placeholder="0.00" className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink tabular-nums focus:border-capsula-navy-deep focus:outline-none" />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Retención ISLR (USD)</span>
+                <input type="number" step="0.01" min="0" inputMode="decimal" value={islr} onChange={e => setIslr(e.target.value)} placeholder="0.00" className="w-full bg-capsula-ivory border border-capsula-line rounded-xl px-3 py-2.5 text-sm text-capsula-ink tabular-nums focus:border-capsula-navy-deep focus:outline-none" />
+              </label>
+            </div>
+            <div className={`rounded-xl px-3 py-2 text-sm flex justify-between font-semibold ${willClose ? 'bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]' : 'bg-capsula-ivory-alt text-capsula-ink'}`}>
+              <span>Saldo tras retención</span>
+              <span className="tabular-nums">{willClose ? 'Cerrada ($0.00)' : `$${fmt(newRemaining)}`}</span>
+            </div>
+            {error && <p className="text-sm text-capsula-coral">{error}</p>}
+          </div>
+          <div className="border-t border-capsula-line p-4 flex gap-3">
+            <button onClick={onClose} className="pos-btn-secondary flex-1 py-3">Cancelar</button>
+            <button onClick={submit} disabled={saving} className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-60">
+              {saving ? 'Guardando…' : 'Guardar retención'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
   );
 }
 

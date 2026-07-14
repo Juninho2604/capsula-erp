@@ -12728,3 +12728,55 @@ como "Producto Final" no aparece como ingrediente (hay que reabrirlo y
 cambiar el tipo).
 
 Gates: tsc 0 · vitest 604.
+
+## §115 Proveedores, anticipos y retenciones IVA/ISLR (2026-07-13)
+
+Pedido del OWNER: submódulo de proveedores en Finanzas (reflejado en
+Documentos); abonar a facturas desde Gastos incluso ANTES de que exista la
+factura ("pago hoy, me facturan mañana"); retenciones IVA/ISLR para cerrar
+facturas que los adelantos no cubren — todo SIN duplicar operaciones.
+
+**Regla de oro anti-duplicado (egresos = Gastos + AccountPayment(isCash) +
+SupplierAdvance):**
+- Anticipo (SupplierAdvance) = efectivo sale UNA vez al crearlo → cuenta como
+  egreso.
+- Aplicar anticipo a factura = AccountPayment `isCash=false` → baja el saldo
+  de la factura pero NO vuelve a contar (el efectivo ya salió).
+- Retención IVA/ISLR = reduce saldo SIN salir efectivo al proveedor → nunca
+  es egreso; solo cierra la factura.
+
+**Schema (migración `20260713200000_suppliers_advances_retentions`, solo
+aditiva — safe en vivo):** Supplier.rif; AccountPayable.retentionIvaUsd/
+retentionIslrUsd; AccountPayment.isCash + supplierAdvanceId; modelo
+SupplierAdvance (anticipos).
+
+**Lib pura `src/lib/finance/payable-settlement.ts` (15 tests):**
+`settlePayable` (saldo = total − pagos − retenciones, status, isClosed),
+`checkPaymentFits` (no sobrepago contando retenciones), `applicableAdvance`,
+`advanceRemaining`. Todo `round2`.
+
+**Actions:**
+- `supplier.actions`: list (con pendiente + saldo de anticipos), upsert,
+  activar/desactivar.
+- `supplier-advance.actions`: crear (efectivo out, opcional aplicar de una),
+  aplicar anticipo existente (valida mismo proveedor + tope), anular (solo si
+  sin aplicaciones).
+- `account-payable.actions`: registerPayment usa settlePayable + respeta
+  retenciones al topar; nueva `setPayableRetentionsAction` (montos absolutos,
+  valida pagos+retenciones ≤ total, cierra si saldo < 1¢). isCash=true en
+  pagos normales.
+- `finance.actions`: outflows corregido (isCash + anticipos, sin duplicar).
+
+**UI:**
+- Submódulo `/dashboard/proveedores` (registry `proveedores`, sección admin,
+  sidebar Finanzas, permisos OWNER/ADMIN/OPS/AUDITOR): CRUD con RIF, KPIs
+  (por pagar total, anticipos a favor). Los proveedores se reflejan solos en
+  Documentos (getSuppliersAction) y Cuentas por pagar.
+- `SupplierPaymentModal` (desde Gastos → "Abonar a proveedor"): elegir
+  proveedor → "A una factura" (registerPayment cash) o "Anticipo sin factura"
+  (createSupplierAdvance). Sugiere anticipo si el proveedor no tiene facturas
+  pendientes.
+- Cuentas por pagar: botón "Retención" por factura → modal IVA/ISLR con
+  preview del saldo resultante y aviso de cierre.
+
+Gates: tsc 0 · vitest 619.
