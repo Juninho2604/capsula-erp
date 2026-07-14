@@ -6,6 +6,7 @@ import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
+import { settlePayable, checkPaymentFits, round2 as r2 } from '@/lib/finance/payable-settlement';
 
 export interface AccountPayableData {
   id: string;
@@ -23,6 +24,8 @@ export interface AccountPayableData {
   status: string;
   purchaseOrderId: string | null;
   purchaseOrderNumber: string | null;
+  retentionIvaUsd: number;
+  retentionIslrUsd: number;
   createdByName: string;
   createdAt: Date;
   payments: {
@@ -34,6 +37,7 @@ export interface AccountPayableData {
     paymentRef: string | null;
     paidAt: Date;
     notes: string | null;
+    isCash: boolean;
     createdByName: string;
   }[];
 }
@@ -89,6 +93,8 @@ export async function getAccountsPayableAction(filters?: {
         status: overdue ? 'OVERDUE' : a.status,
         purchaseOrderId: a.purchaseOrderId,
         purchaseOrderNumber: a.purchaseOrder?.orderNumber ?? null,
+        retentionIvaUsd: a.retentionIvaUsd,
+        retentionIslrUsd: a.retentionIslrUsd,
         createdByName: `${a.createdBy.firstName} ${a.createdBy.lastName}`,
         createdAt: a.createdAt,
         payments: a.payments.map(p => ({
@@ -100,6 +106,7 @@ export async function getAccountsPayableAction(filters?: {
           paymentRef: p.paymentRef,
           paidAt: p.paidAt,
           notes: p.notes,
+          isCash: p.isCash,
           createdByName: `${p.createdBy.firstName} ${p.createdBy.lastName}`,
         })),
       };
@@ -213,13 +220,24 @@ export async function registerPaymentAction(
     if (account.status === 'PAID' || account.status === 'VOID') {
       return { success: false, error: 'Esta cuenta ya está saldada o anulada' };
     }
-    if (input.amountUsd > account.remainingUsd + 0.01) {
-      return { success: false, error: `El pago ($${input.amountUsd}) supera el saldo pendiente ($${account.remainingUsd.toFixed(2)})` };
-    }
+    // §115: el tope respeta las retenciones ya aplicadas (saldo = total −
+    // pagado − retenciones). Antes topaba contra remainingUsd sin considerar
+    // que ya podía haber retenciones.
+    const fit = checkPaymentFits({
+      totalUsd: account.totalAmountUsd,
+      alreadyPaidUsd: account.paidAmountUsd,
+      alreadyRetainedUsd: r2(account.retentionIvaUsd + account.retentionIslrUsd),
+      newAmountUsd: input.amountUsd,
+    });
+    if (!fit.ok) return { success: false, error: fit.reason ?? 'Pago inválido' };
 
-    const newPaid = account.paidAmountUsd + input.amountUsd;
-    const newRemaining = account.totalAmountUsd - newPaid;
-    const isPaid = newRemaining <= 0.01;
+    const newPaid = r2(account.paidAmountUsd + input.amountUsd);
+    const st = settlePayable({
+      totalUsd: account.totalAmountUsd,
+      paidUsd: newPaid,
+      retentionIvaUsd: account.retentionIvaUsd,
+      retentionIslrUsd: account.retentionIslrUsd,
+    });
 
     await db.$transaction([
       db.accountPayment.create({
@@ -233,6 +251,7 @@ export async function registerPaymentAction(
           paymentRef: input.paymentRef?.trim() || null,
           paidAt,
           notes: input.notes?.trim() || null,
+          isCash: true, // §115: pago en efectivo real → cuenta como egreso.
           createdById: session.id,
         },
       }),
@@ -240,9 +259,9 @@ export async function registerPaymentAction(
         where: { id: accountPayableId },
         data: {
           paidAmountUsd: newPaid,
-          remainingUsd: Math.max(0, newRemaining),
-          status: isPaid ? 'PAID' : 'PARTIAL',
-          ...(isPaid && { fullyPaidAt: new Date() }),
+          remainingUsd: st.remainingUsd,
+          status: st.status,
+          ...(st.isClosed && { fullyPaidAt: new Date() }),
         },
       }),
     ]);
@@ -253,7 +272,7 @@ export async function registerPaymentAction(
       entityId: accountPayableId,
       description: `Registró pago $${input.amountUsd.toFixed(2)} a: ${account.description}`,
       module: 'CONFIG',
-      metadata: { newPaid, newRemaining, isPaid },
+      metadata: { newPaid, remaining: st.remainingUsd, status: st.status },
     });
 
     revalidatePath('/dashboard/cuentas-pagar');
@@ -262,6 +281,76 @@ export async function registerPaymentAction(
   } catch (e) {
     console.error('[registerPaymentAction]', e);
     return { success: false, error: 'Error al registrar pago' };
+  }
+}
+
+/**
+ * §115 — Registra/actualiza las RETENCIONES (IVA/ISLR) de una factura.
+ *
+ * Retener NO saca efectivo hacia el proveedor: es plata que le retienes para
+ * enterarla al fisco. Reduce el saldo de la factura y permite CERRARLA aunque
+ * los pagos no cubran el total (caso: adelanto no alcanza y se retiene el
+ * resto para no dejarla colgada). NO cuenta como egreso de caja.
+ *
+ * Los montos son ABSOLUTOS (reemplazan los actuales, no se suman) — así se
+ * puede corregir. Se valida que pagos + retenciones no superen el total.
+ */
+export async function setPayableRetentionsAction(
+  accountPayableId: string,
+  input: { retentionIvaUsd?: number; retentionIslrUsd?: number }
+): Promise<{ success: boolean; error?: string }> {
+  const { tenantId } = await resolveTenantContext();
+  const db = withTenant(tenantId);
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
+    return { success: false, error: 'Sin permisos para registrar retenciones' };
+  }
+  const iva = Math.max(0, r2(input.retentionIvaUsd ?? 0));
+  const islr = Math.max(0, r2(input.retentionIslrUsd ?? 0));
+
+  try {
+    const account = await db.accountPayable.findUnique({ where: { id: accountPayableId } });
+    if (!account) return { success: false, error: 'Cuenta por pagar no encontrada' };
+    if (account.status === 'VOID') return { success: false, error: 'Cuenta anulada' };
+
+    // pagos + retenciones nuevas no pueden superar el total.
+    if (r2(account.paidAmountUsd + iva + islr) > account.totalAmountUsd + 0.01) {
+      const maxRet = r2(Math.max(0, account.totalAmountUsd - account.paidAmountUsd));
+      return { success: false, error: `Las retenciones + lo pagado superan el total. Máximo a retener: $${maxRet.toFixed(2)}` };
+    }
+
+    const st = settlePayable({
+      totalUsd: account.totalAmountUsd,
+      paidUsd: account.paidAmountUsd,
+      retentionIvaUsd: iva,
+      retentionIslrUsd: islr,
+    });
+
+    await db.accountPayable.update({
+      where: { id: accountPayableId },
+      data: {
+        retentionIvaUsd: iva,
+        retentionIslrUsd: islr,
+        remainingUsd: st.remainingUsd,
+        status: st.status,
+        ...(st.isClosed && { fullyPaidAt: account.fullyPaidAt ?? new Date() }),
+      },
+    });
+
+    await logAudit({
+      userId: session.id, userName: `${session.firstName} ${session.lastName}`,
+      userRole: session.role, action: 'UPDATE', entityType: 'AccountPayable',
+      entityId: accountPayableId,
+      description: `Retenciones en ${account.invoiceNumber ?? account.description}: IVA $${iva.toFixed(2)} + ISLR $${islr.toFixed(2)}${st.isClosed ? ' (factura cerrada)' : ''}`,
+      module: 'CONFIG',
+    });
+    revalidatePath('/dashboard/cuentas-pagar');
+    revalidatePath('/dashboard/finanzas');
+    return { success: true };
+  } catch (e) {
+    console.error('[setPayableRetentionsAction]', e);
+    return { success: false, error: 'Error al registrar retenciones' };
   }
 }
 

@@ -205,11 +205,23 @@ export async function getFinancialSummaryAction(month?: number, year?: number): 
     const operatingMarginPct = totalSalesUsd > 0 ? (operatingProfit / totalSalesUsd) * 100 : 0;
 
     // 6. Cash Flow
-    const accountPayments = await db.accountPayment.aggregate({
-      where: { paidAt: { gte: startDate, lte: endDate } },
-      _sum: { amountUsd: true },
-    });
-    const outflows = totalExpensesUsd + (accountPayments._sum.amountUsd ?? 0);
+    // §115: egresos SIN duplicar. Solo cuenta el efectivo que SALIÓ de verdad:
+    //   - AccountPayment con isCash=true (pagos reales a facturas). Las
+    //     aplicaciones de anticipo (isCash=false) NO cuentan aquí — su efectivo
+    //     ya salió cuando se creó el anticipo.
+    //   - SupplierAdvance del período (el efectivo del anticipo).
+    // Las retenciones IVA/ISLR nunca son egreso (no salen al proveedor).
+    const [cashPayments, advancesOut] = await Promise.all([
+      db.accountPayment.aggregate({
+        where: { paidAt: { gte: startDate, lte: endDate }, isCash: true },
+        _sum: { amountUsd: true },
+      }),
+      db.supplierAdvance.aggregate({
+        where: { paidAt: { gte: startDate, lte: endDate }, status: { not: 'VOID' } },
+        _sum: { amountUsd: true },
+      }),
+    ]);
+    const outflows = totalExpensesUsd + (cashPayments._sum.amountUsd ?? 0) + (advancesOut._sum.amountUsd ?? 0);
     const cashFlow = {
       inflows: totalSalesUsd,
       outflows,
