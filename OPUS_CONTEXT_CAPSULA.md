@@ -12780,3 +12780,30 @@ SupplierAdvance (anticipos).
   preview del saldo resultante y aviso de cierre.
 
 Gates: tsc 0 · vitest 619.
+
+## §116 Fix: vuelto erróneo en pickup con métodos en Bs (2026-07-14)
+
+**Síntoma (Omar):** en POS Restaurante → Pickup, al seleccionar un método en
+Bs (pagomóvil, PDV, efectivo Bs) el "Vuelto a devolver" salía disparado (p.ej.
+$4980) — el vuelto se estaba calculando en $ restando un monto tecleado en Bs.
+
+**Causa:** `restaurante/page.tsx`, bloque de pickup pago único. Se usaba
+`singlePaidAmount = parseFloat(amountReceived)` (input crudo). Para métodos Bs
+el campo "Recibido" se teclea en **Bs** (rótulo Bs, línea ~2685), pero
+`pickupTotal` está en **USD** → `pickupChange = Bs − USD` = basura.
+
+**Fix:** el vuelto físico sólo aplica a efectivo USD. Se pasó a usar
+`paidAmount` (ya normalizado a USD, línea ~656) y se guardó con `!isBsPayMethod`,
+mismo patrón que el flujo de mesa (línea ~3331):
+```js
+const pickupChange = isPickupMixedMode
+  ? Math.max(0, totalMixedPickupPaid - pickupTotal)
+  : (!isBsPayMethod ? Math.max(0, paidAmount - pickupTotal) : 0);
+```
+Para métodos Bs → 0 (no se muestra vuelto ni propina-desde-vuelto; pagomóvil/PDV
+son electrónicos y exactos). Para USD → idéntico al comportamiento previo
+(paidAmount === rawAmount). No toca lo que se cobra ni escrituras en BD: sólo
+el display del vuelto y el tope de la propina voluntaria. Fix de presentación,
+sin cambio de schema/lógica de cobro.
+
+Gates: tsc 0 · vitest 619.

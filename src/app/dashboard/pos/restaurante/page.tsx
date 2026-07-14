@@ -2644,10 +2644,14 @@ export default function POSSportBarPage() {
                     : discountType === "CORTESIA_PERCENT" ? cartTotal * (cortesiaPercentNum / 100)
                     : 0;
                   const pickupTotal = roundToWhole(Math.max(0, cartTotal - baseDiscount), paymentMethod);
-                  const singlePaidAmount = parseFloat(amountReceived) || 0;
+                  // Vuelto sólo aplica a efectivo USD (único método con cambio físico en pickup).
+                  // Para métodos en Bs (pagomóvil, PDV, efectivo Bs) el "Recibido" se teclea en
+                  // Bs: restar ese monto contra un total en USD daba un vuelto erróneo (Bs − USD).
+                  // Usamos paidAmount (ya normalizado a USD) y sólo mostramos vuelto en no-Bs,
+                  // igual que el flujo de mesa (línea ~3331).
                   const pickupChange = isPickupMixedMode
                     ? Math.max(0, totalMixedPickupPaid - pickupTotal)
-                    : Math.max(0, singlePaidAmount - pickupTotal);
+                    : (!isBsPayMethod ? Math.max(0, paidAmount - pickupTotal) : 0);
                   return (
                     <div className="space-y-3 pt-2">
                       {/* Toggle Pago Único / Pago Mixto */}
