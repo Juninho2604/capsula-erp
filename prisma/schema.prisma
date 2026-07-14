@@ -80,6 +80,7 @@ model Tenant {
   accountPayments       AccountPayment[]
   currencyExchanges     CurrencyExchange[]
   satisfactionSurveys   SatisfactionSurvey[]
+  supplierAdvances      SupplierAdvance[]
   purchaseOrders        PurchaseOrder[]
   productionOrders      ProductionOrder[]
   proteinProcessings    ProteinProcessing[]
@@ -227,6 +228,7 @@ model User {
   createdAccountPayments AccountPayment[] @relation("AccountPaymentCreator")
   createdCurrencyExchanges CurrencyExchange[] @relation("CurrencyExchangeCreator")
   createdSatisfactionSurveys SatisfactionSurvey[] @relation("SatisfactionSurveyCreator")
+  createdSupplierAdvances SupplierAdvance[] @relation("SupplierAdvanceCreator")
 
   // Fase 2 — propuestas 001/002 (audit trail)
   cancelledDeductionRetries InventoryDeductionRetry[]  @relation("DeductionRetryCancelledBy")
@@ -1679,6 +1681,8 @@ model Supplier {
   address     String?
   notes       String?
 
+  rif         String? // §115: RIF fiscal — necesario para retenciones IVA/ISLR
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1701,6 +1705,8 @@ model Supplier {
   accountsPayable    AccountPayable[]
   // Histórico de precios (Fase 2 — propuesta 002)
   priceHistory       SupplierItemPriceHistory[]
+  // §115: anticipos (abonos sin factura)
+  advances           SupplierAdvance[]
 
   @@unique([tenantId, code])
   @@index([name])
@@ -2080,8 +2086,11 @@ model AccountPayable {
 
   // Montos
   totalAmountUsd Float // Monto total de la deuda en USD
-  paidAmountUsd  Float @default(0) // Monto pagado acumulado
-  remainingUsd   Float // Monto pendiente (calculado: total - paid)
+  paidAmountUsd  Float @default(0) // Monto pagado acumulado (efectivo + anticipos aplicados)
+  remainingUsd   Float // Saldo pendiente (total - paid - retenciones)
+  // §115: retenciones que cierran saldo SIN salida de efectivo al proveedor.
+  retentionIvaUsd  Float @default(0)
+  retentionIslrUsd Float @default(0)
 
   // Fechas
   invoiceDate DateTime // Fecha de la factura
@@ -2129,6 +2138,13 @@ model AccountPayment {
   paidAt        DateTime
 
   notes String?
+
+  // §115: false = aplicación de un anticipo (el efectivo ya salió antes) →
+  // NO cuenta como egreso de caja. true = pago en efectivo real.
+  isCash           Boolean @default(true)
+  // §115: si vino de aplicar un anticipo, cuál.
+  supplierAdvanceId String?
+  supplierAdvance   SupplierAdvance? @relation(fields: [supplierAdvanceId], references: [id])
 
   createdById String
   createdBy   User     @relation("AccountPaymentCreator", fields: [createdById], references: [id])
@@ -3862,4 +3878,45 @@ model SatisfactionSurvey {
   @@index([createdAt])
   @@index([rating])
   @@index([openTabId])
+}
+
+/// §115 — Anticipo (abono) a un proveedor SIN factura todavía.
+/// Caso: "pago ahorita y me facturan mañana". El efectivo sale al crearlo
+/// (cuenta como egreso una sola vez). Cuando llega la factura, se aplica el
+/// anticipo generando un AccountPayment isCash=false (no vuelve a contar).
+model SupplierAdvance {
+  id String @id @default(cuid())
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  amountUsd     Float
+  amountBs      Float?
+  exchangeRate  Float?
+  paymentMethod String
+  paymentRef    String?
+  paidAt        DateTime
+
+  /// Cuánto del anticipo ya se aplicó a facturas. remaining = amount - applied.
+  appliedAmountUsd Float  @default(0)
+  status           String @default("OPEN") // OPEN | APPLIED | VOID
+  voidReason       String?
+
+  notes String?
+
+  createdById String
+  createdBy   User     @relation("SupplierAdvanceCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Aplicaciones de este anticipo a facturas (AccountPayment isCash=false).
+  applications AccountPayment[]
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([paidAt])
 }
