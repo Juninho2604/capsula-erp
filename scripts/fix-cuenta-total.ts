@@ -75,17 +75,14 @@ async function main() {
             include: {
                 paymentSplits: true,
                 subAccounts: true,
+                // OpenTab.orders es SalesOrder[] directo (no la join table OpenTabOrder)
                 orders: {
-                    include: {
-                        salesOrder: {
-                            select: {
-                                id: true, orderNumber: true, status: true,
-                                subtotal: true, discount: true, tax: true, total: true,
-                                amountPaid: true, change: true,
-                                exchangeRateValue: true, totalBs: true,
-                                orderPayments: true,
-                            },
-                        },
+                    select: {
+                        id: true, orderNumber: true, status: true,
+                        subtotal: true, discount: true, tax: true, total: true,
+                        amountPaid: true, change: true,
+                        exchangeRateValue: true, totalBs: true,
+                        orderPayments: true,
                     },
                 },
             },
@@ -128,7 +125,7 @@ async function main() {
 
 // ── MESA ────────────────────────────────────────────────────────────────────
 async function handleTab(prisma: PrismaClient, tab: any, target: number, apply: boolean) {
-    const orders = (tab.orders ?? []).map((l: any) => l.salesOrder).filter(Boolean);
+    const orders = (tab.orders ?? []).filter(Boolean);
     const activeSplits = (tab.paymentSplits ?? []).filter((s: any) => s.status !== 'VOID');
     const totalFacturaActual = r2((tab.runningTotal ?? 0) + (tab.totalServiceCharge ?? 0));
     const totalCobradoActual = activeSplits.length
