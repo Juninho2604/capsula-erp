@@ -36,9 +36,21 @@ function siteUrl(request: NextRequest, target: string): URL {
         'https';
 
     const [pathname, search] = target.split('?');
+    // Hosts extra de confianza para despliegues locales (servidor del
+    // restaurante, ver docs/LOCAL_SERVER.md). CSV en env, ej.:
+    //   EXTRA_TRUSTED_HOSTS="192.168.1.10,capsula.local"
+    // El match ignora el puerto (la tablet puede pegar a :80 vía nginx o
+    // :3000 directo) pero la URL reconstruida conserva host:puerto tal como
+    // llegó. Vacío en el VPS público → no-op, comportamiento histórico.
+    const extraTrusted = (process.env.EXTRA_TRUSTED_HOSTS ?? '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+    const hostSinPuerto = host.split(':')[0];
     const isTrustedHost =
         host === 'kpsula.app' ||
-        host.endsWith('.kpsula.app');
+        host.endsWith('.kpsula.app') ||
+        extraTrusted.includes(hostSinPuerto);
 
     if (isTrustedHost) {
         const u = new URL(`${proto}://${host}${pathname}`);

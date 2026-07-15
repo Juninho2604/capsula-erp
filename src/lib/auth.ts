@@ -118,6 +118,21 @@ async function resolveCookieDomain(): Promise<string | undefined> {
     return undefined;
 }
 
+/**
+ * Flag `secure` de la cookie de sesión.
+ *
+ * Default: `true` en producción (comportamiento histórico, kpsula.app va
+ * siempre por HTTPS). El servidor local del restaurante (ver
+ * docs/LOCAL_SERVER.md) sirve a las tablets por HTTP plano dentro de la
+ * LAN (http://<ip-local>), donde una cookie `secure` jamás se almacena y
+ * el login queda roto. Ese despliegue setea `COOKIE_SECURE=false` en su
+ * `.env` — NUNCA setear esto en el VPS público.
+ */
+function cookieSecureFlag(): boolean {
+    if (process.env.COOKIE_SECURE === 'false') return false;
+    return process.env.NODE_ENV === 'production';
+}
+
 export async function createSession(payload: SessionPayload) {
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 día
     const session = await encrypt(payload);
@@ -126,7 +141,7 @@ export async function createSession(payload: SessionPayload) {
     (await cookies()).set('session', session, {
         expires,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: cookieSecureFlag(),
         sameSite: 'lax',
         path: '/',
         ...(domain ? { domain } : {}),
