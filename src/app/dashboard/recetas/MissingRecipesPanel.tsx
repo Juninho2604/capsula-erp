@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Loader2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -22,7 +22,24 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
     const router = useRouter();
     const [creating, setCreating] = useState<string | null>(null);
     const [created, setCreated] = useState<Set<string>>(new Set());
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    // §119.1: default CERRADO. La preferencia del usuario persiste en
+    // localStorage y se lee en useEffect (no en el initializer) para no
+    // divergir del HTML del servidor durante la hidratación.
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    useEffect(() => {
+        try {
+            if (window.localStorage.getItem('recetas:missingPanelOpen') === '1') {
+                setIsCollapsed(false);
+            }
+        } catch { /* localStorage bloqueado (modo privado) → queda cerrado */ }
+    }, []);
+    const toggleCollapsed = () => {
+        setIsCollapsed(prev => {
+            const next = !prev;
+            try { window.localStorage.setItem('recetas:missingPanelOpen', next ? '0' : '1'); } catch {}
+            return next;
+        });
+    };
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleCreateStub = async (itemId: string) => {
@@ -58,7 +75,7 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
     return (
         <div className="overflow-hidden rounded-xl border border-[#E8D9B8] bg-[#F3EAD6]/40 dark:border-[#5a4a22] dark:bg-[#3B2F15]/30">
             <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={toggleCollapsed}
                 className="flex w-full items-center justify-between px-5 py-4 transition-colors hover:bg-[#F3EAD6]/60 dark:hover:bg-[#3B2F15]/50"
             >
                 <div className="flex items-center gap-3 text-left">

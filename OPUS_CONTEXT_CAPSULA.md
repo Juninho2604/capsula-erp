@@ -12914,3 +12914,8 @@ client-side (nombre o categoría, filtrado en memoria — cero cambios de
 servidor), contador "N de M", empty-state y scroll interno (max-h 50vh)
 para listas largas. La lista principal de recetas (RecipeList) ya tenía
 buscador + filtros de categoría/tipo desde §112 — no se tocó.
+
+§119.1: el panel arranca CERRADO por defecto. La preferencia del usuario
+(abierto/cerrado) persiste en localStorage (`recetas:missingPanelOpen`) y se
+lee en useEffect post-montaje — nunca en el useState initializer — para no
+causar hydration mismatch con el HTML del servidor.
