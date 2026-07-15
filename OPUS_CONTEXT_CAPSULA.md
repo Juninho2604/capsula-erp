@@ -12807,3 +12807,34 @@ el display del vuelto y el tope de la propina voluntaria. Fix de presentación,
 sin cambio de schema/lógica de cobro.
 
 Gates: tsc 0 · vitest 619.
+
+## §117 Fix: platos "invisibles" en Recetas por receta colgante (2026-07-15)
+
+**Síntoma (Christian):** "No veo todas las recetas de los productos de venta;
+shawarma de carne no veo dónde crearle la receta."
+
+**Causa raíz — producto invisible:**
+- `deleteRecipeAction` hace soft-delete de la receta (`isActive=false`) pero a
+  propósito NO limpia `MenuItem.recipeId` (para poder re-vincular).
+- `getMenuItemsWithoutRecipeAction` solo mostraba `recipeId: null` → el plato con
+  receta muerta NO salía en el panel "Platos del Menú sin Receta".
+- `getRecipesAction` solo trae `isActive: true` → la receta muerta TAMPOCO salía
+  en la lista.
+- Resultado: el plato quedaba invisible, imposible recrearle receta.
+
+**Fix (sin schema, deploy-safe):**
+- `getMenuItemsWithoutRecipeAction`: un plato cuenta como "sin receta" si
+  `recipeId` es null O apunta a una receta muerta. Como `MenuItem` solo tiene el
+  escalar `recipeId` (sin relación `recipe`), se filtra contra el set de recetas
+  vivas (`isActive:true`) en memoria.
+- `createRecipeStubForMenuItemAction`: solo bloquea "ya tiene receta" si la
+  receta vinculada sigue VIVA; si el `recipeId` cuelga de una receta muerta,
+  permite recrear el stub (el updateMany re-apunta recipeId a la nueva). Así los
+  platos colgantes existentes se auto-reparan desde la UI, sin migración de datos.
+
+**Diagnóstico:** `scripts/audit-menu-recipe-links.ts` (solo lectura) — lista todos
+los links colgantes y busca un plato por nombre (`--buscar="shawarma"`),
+distinguiendo inactivo / sin receta / receta colgante / receta viva, y si el
+nombre existe como InventoryItem (insumo/sub-receta) en vez de plato.
+
+Gates: tsc 0 · vitest 619.

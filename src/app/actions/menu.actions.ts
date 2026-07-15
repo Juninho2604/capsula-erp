@@ -342,17 +342,25 @@ export async function getMenuItemsWithoutRecipeAction() {
     try {
         const { tenantId } = await resolveTenantContext();
         const db = withTenant(tenantId);
-        const items = await db.menuItem.findMany({
-            where: {
-                isActive: true,
-                recipeId: null,
-            },
-            include: {
-                category: { select: { name: true } }
-            },
-            orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }]
-        });
-        return { success: true, data: items };
+        // Un plato cuenta como "sin receta" si recipeId es null O si apunta a una
+        // receta MUERTA (borrada/inactiva). deleteRecipeAction hace soft-delete de
+        // la receta pero a propósito NO limpia MenuItem.recipeId; sin esta segunda
+        // condición el plato quedaba INVISIBLE: ni en este panel (recipeId != null)
+        // ni en la lista de recetas (isActive=false) → imposible recrearle receta
+        // (reporte de Christian: "shawarma de carne no veo donde crearle la receta").
+        // MenuItem no tiene relación `recipe` (solo el escalar recipeId), así que
+        // filtramos contra el set de recetas vivas en memoria.
+        const [items, liveRecipes] = await Promise.all([
+            db.menuItem.findMany({
+                where: { isActive: true },
+                include: { category: { select: { name: true } } },
+                orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
+            }),
+            db.recipe.findMany({ where: { isActive: true }, select: { id: true } }),
+        ]);
+        const liveIds = new Set(liveRecipes.map(r => r.id));
+        const missing = items.filter(it => !it.recipeId || !liveIds.has(it.recipeId));
+        return { success: true, data: missing };
     } catch (error) {
         console.error('Error fetching items without recipe:', error);
         return { success: false, message: 'Error al cargar items sin receta', data: [] };
@@ -398,7 +406,17 @@ export async function createRecipeStubForMenuItemAction(menuItemId: string): Pro
 
         const menuItem = await db.menuItem.findFirst({ where: { id: menuItemId } });
         if (!menuItem) return { success: false, message: 'Item no encontrado' };
-        if (menuItem.recipeId) return { success: false, message: 'El item ya tiene receta' };
+        // Sólo bloqueamos si la receta vinculada sigue VIVA. Si recipeId cuelga de
+        // una receta borrada/inactiva, permitimos recrear el stub — el updateMany
+        // de abajo re-apunta recipeId a la nueva receta y el plato deja de estar
+        // invisible (ver getMenuItemsWithoutRecipeAction).
+        if (menuItem.recipeId) {
+            const liveRecipe = await db.recipe.findFirst({
+                where: { id: menuItem.recipeId, isActive: true },
+                select: { id: true },
+            });
+            if (liveRecipe) return { success: false, message: 'El item ya tiene receta' };
+        }
 
         const invSku = `FG-${menuItem.name.substring(0, 5).toUpperCase().replace(/\s/g, '')}-${Date.now().toString().slice(-4)}`;
         const invItem = await db.inventoryItem.create({
