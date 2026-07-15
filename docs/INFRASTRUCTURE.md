@@ -10,6 +10,8 @@
 
 **Toda la stack de producción vive en el VPS Contabo.** BD, app server, reverse proxy, backups, crons — todo en el mismo host. No agregar deploys nuevos, jobs, crons, ni backups en otros providers (AWS, Vercel, Render, etc.) sin discutirlo y documentarlo acá primero.
 
+**Excepción planificada — servidor local del restaurante**: existe tooling y runbook (`docs/LOCAL_SERVER.md`, `scripts/local-server/`) para mover la fuente de verdad a un computador dedicado on-premise que sirve el POS por LAN, con kpsula.app ruteada por túnel SSH reverso desde el VPS y backups off-site local→VPS cada 6 h. **Cuando ese cutover se ejecute, actualizar esta página**: la BD viva pasa al local y el stack del VPS queda como contingencia.
+
 `.env.example` apunta a AWS RDS solo como referencia histórica — **no se carga en runtime**. El `.env` real del VPS apunta a localhost (verificable con `grep DATABASE_URL /var/www/capsula-erp/.env`).
 
 ---

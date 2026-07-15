@@ -12838,3 +12838,49 @@ distinguiendo inactivo / sin receta / receta colgante / receta viva, y si el
 nombre existe como InventoryItem (insumo/sub-receta) en vez de plato.
 
 Gates: tsc 0 · vitest 619.
+
+## §118 Servidor local del restaurante — arquitectura on-premise + túnel (2026-07-15)
+
+**Pedido (Omar):** instalar el computador dedicado en el restaurante para que el
+sistema se use localmente (tablets/cajas por LAN) y que ese equipo, prendido
+24/7, mantenga comunicación con la versión web en el VPS.
+
+**Arquitectura elegida — una sola fuente de verdad, sin sync de BDs:**
+- El computador dedicado (Ubuntu Server 24.04) corre el stack completo:
+  postgres :5432 (BD viva) + Next.js standalone :3000 (pm2) + nginx :80 para
+  la LAN. Tablets y print-agent apuntan a `http://<ip-fija-local>`. El POS
+  opera aunque se caiga internet.
+- kpsula.app NO se apaga: nginx del VPS proxea a un **túnel SSH reverso**
+  (`-R 127.0.0.1:3100 → local:3000`, systemd `capsula-tunnel.service` con
+  reconexión automática). El acceso remoto ve la misma BD en vivo. Se descartó
+  replicación bidireccional (conflictos irresolubles con ventas concurrentes).
+- **Backups off-site invertidos**: cron local cada 6 h hace `pg_dump` y lo
+  empuja al VPS (`/var/lib/postgresql/backups/local-server/`, retención 30 d)
+  vía llave SSH con forced-command. Contingencia documentada: si el equipo
+  local muere, el VPS restaura el último dump y `capsula-route-vps.sh`
+  devuelve kpsula.app al stack del VPS (pérdida máx ~6 h).
+
+**Cambios de código (env-gated, no-op en el VPS):**
+- `src/lib/auth.ts` → `cookieSecureFlag()`: `COOKIE_SECURE=false` permite login
+  por http en la LAN (cookie `secure` jamás se guarda sobre http). Default
+  intacto: `NODE_ENV === 'production'`.
+- `src/middleware.ts` → `siteUrl()` acepta hosts extra vía
+  `EXTRA_TRUSTED_HOSTS` (CSV, match sin puerto) para que los redirects del
+  middleware funcionen con `http://<ip-local>`. Vacío → comportamiento
+  histórico exacto (solo kpsula.app).
+
+**Tooling nuevo (`scripts/local-server/`):** `install-local-server.sh`
+(provisioning completo idempotente), `env.example`, `nginx-local.conf`,
+`setup-tunnel-local.sh` + `setup-tunnel-vps.sh` (usuario `capsula-tunnel`
+restringido con `restrict,permitlisten` / forced-command; helpers
+`capsula-route-local.sh` / `capsula-route-vps.sh` para el switch de nginx),
+`push-backup-to-vps.sh` (cron 6 h, + tar local de `storage/`), `watchdog.sh`
+(cron 2 min: app/postgres/túnel), `update-local-server.sh` (el CI solo
+despliega al VPS; el local se actualiza con este script, con backup previo y
+`migrate deploy`).
+
+**Runbook completo:** `docs/LOCAL_SERVER.md` (hardware/UPS, instalación,
+cutover de datos VPS→local con congelamiento de escrituras, verificación del
+túnel, operación diaria, contingencias, seguridad). `docs/INFRASTRUCTURE.md`
+anota la excepción a la regla "todo vive en el VPS" — al ejecutar el cutover
+real hay que actualizar esa página.
