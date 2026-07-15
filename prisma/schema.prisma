@@ -2475,10 +2475,12 @@ model TableTransfer {
   id                   String          @id @default(cuid())
   openTabId            String
   openTab              OpenTab         @relation(fields: [openTabId], references: [id], onDelete: Cascade)
-  fromWaiterId         String
-  fromWaiter           Waiter          @relation("TransferFrom", fields: [fromWaiterId], references: [id])
-  toWaiterId           String
-  toWaiter             Waiter          @relation("TransferTo", fields: [toWaiterId], references: [id])
+  // Nullable (§118): "Mover mesa" aplica también a cuentas SIN mesonero
+  // asignado (abiertas desde caja). La cesión mesonero→mesonero sí exige ambos.
+  fromWaiterId         String?
+  fromWaiter           Waiter?         @relation("TransferFrom", fields: [fromWaiterId], references: [id])
+  toWaiterId           String?
+  toWaiter             Waiter?         @relation("TransferTo", fields: [toWaiterId], references: [id])
   fromTableId          String?
   fromTable            TableOrStation? @relation("TransferFromTable", fields: [fromTableId], references: [id])
   toTableId            String?

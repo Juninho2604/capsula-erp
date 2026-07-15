@@ -12884,3 +12884,25 @@ cutover de datos VPS→local con congelamiento de escrituras, verificación del
 túnel, operación diaria, contingencias, seguridad). `docs/INFRASTRUCTURE.md`
 anota la excepción a la regla "todo vive en el VPS" — al ejecutar el cutover
 real hay que actualizar esa página.
+
+## §118 Mover mesa sin mesonero asignado (2026-07-15)
+
+**Reporte (grupo SISTEMA SC, día de partido):** "una mesa no deja hacer el
+movimiento porque dice que no tiene mesonero asignado".
+
+**Causa:** `moveTabBetweenTablesAction` exigía `openTab.waiterProfileId` solo
+porque `TableTransfer.fromWaiterId/toWaiterId` eran NOT NULL. Las cuentas
+abiertas desde caja no tienen mesonero → el movimiento quedaba bloqueado.
+
+**Fix:**
+- Schema: `TableTransfer.fromWaiterId/toWaiterId` ahora nullable (migración
+  `20260715170000_table_transfer_optional_waiters` — DROP NOT NULL + FKs
+  ON DELETE SET NULL; metadata-only, safe en vivo).
+- `moveTabBetweenTablesAction`: ya no bloquea; registra `waiterId ?? null`.
+  La autorización sigue siendo obligatoria (PIN capitán/gerente) y queda en
+  el registro de auditoría.
+- La CESIÓN mesonero→mesonero (`transferTableAction`) sigue exigiendo ambos
+  mesoneros — no cambió.
+- `operations-reports.getTableTransfers`: null-safe → "Sin mesonero".
+
+Gates: tsc 0 · vitest 619.

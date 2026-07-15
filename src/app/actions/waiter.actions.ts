@@ -476,8 +476,12 @@ export async function moveTabBetweenTablesAction({
             return { success: false, message: 'PIN de capitán o gerente incorrecto' };
         }
 
-        const waiterId = openTab.waiterProfileId;
-        if (!waiterId) return { success: false, message: 'La cuenta no tiene mesonero asignado' };
+        // §118: mover de mesa NO exige mesonero — cuentas abiertas desde caja
+        // no tienen waiterProfileId y también necesitan moverse (reporte del
+        // equipo: "varias mesas se han movido por el partido"). El registro de
+        // auditoría queda con el capitán/gerente que autorizó; los campos
+        // from/toWaiterId son nullable desde la migración §118.
+        const waiterId = openTab.waiterProfileId ?? null;
 
         // Transacción atómica (tenant-scoped vía db.$transaction)
         const transfer = await db.$transaction(async (tx) => {

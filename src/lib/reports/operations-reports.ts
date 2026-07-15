@@ -444,8 +444,9 @@ export async function getTableTransfers(f: ReportFilters): Promise<TableTransfer
     return rows.map(t => ({
         transferredAt: t.transferredAt.toISOString(),
         tabCode: t.openTab.tabCode,
-        fromWaiter: `${t.fromWaiter.firstName} ${t.fromWaiter.lastName}`.trim(),
-        toWaiter: `${t.toWaiter.firstName} ${t.toWaiter.lastName}`.trim(),
+        // §118: from/toWaiter son nullable (mover mesa sin mesonero asignado)
+        fromWaiter: t.fromWaiter ? `${t.fromWaiter.firstName} ${t.fromWaiter.lastName}`.trim() : 'Sin mesonero',
+        toWaiter: t.toWaiter ? `${t.toWaiter.firstName} ${t.toWaiter.lastName}`.trim() : 'Sin mesonero',
         fromTable: t.fromTable?.name ?? null,
         toTable: t.toTable?.name ?? null,
         authorizedBy: t.authorizedNote
