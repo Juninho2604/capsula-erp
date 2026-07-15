@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Loader2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Loader2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createRecipeStubForMenuItemAction } from '@/app/actions/menu.actions';
 
@@ -23,6 +23,7 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
     const [creating, setCreating] = useState<string | null>(null);
     const [created, setCreated] = useState<Set<string>>(new Set());
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleCreateStub = async (itemId: string) => {
         setCreating(itemId);
@@ -40,6 +41,17 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
     };
 
     const pendingItems = items.filter(i => !created.has(i.id));
+
+    // Buscador client-side (§119): el panel puede listar decenas de platos
+    // desde el fix §117 — filtrar por nombre o categoría, sin tocar servidor.
+    const visibleItems = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return pendingItems;
+        return pendingItems.filter(i =>
+            i.name.toLowerCase().includes(q) ||
+            (i.category?.name ?? '').toLowerCase().includes(q)
+        );
+    }, [pendingItems, searchQuery]);
 
     if (pendingItems.length === 0) return null;
 
@@ -67,8 +79,32 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
             </button>
 
             {!isCollapsed && (
-                <div className="border-t border-[#E8D9B8]/60 divide-y divide-[#E8D9B8]/40 dark:border-[#5a4a22]/60 dark:divide-[#5a4a22]/40">
-                    {pendingItems.map(item => (
+                <div className="border-t border-[#E8D9B8]/60 dark:border-[#5a4a22]/60">
+                    {/* Buscador (§119) */}
+                    <div className="flex items-center gap-3 px-5 py-3 border-b border-[#E8D9B8]/40 dark:border-[#5a4a22]/40">
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Buscar plato o categoría..."
+                                className="pos-input w-full pl-10"
+                            />
+                        </div>
+                        <span className="text-sm text-capsula-ink-muted tabular-nums shrink-0">
+                            {visibleItems.length} de {pendingItems.length}
+                        </span>
+                    </div>
+
+                    {visibleItems.length === 0 && (
+                        <div className="px-5 py-6 text-center text-sm text-capsula-ink-muted">
+                            Ningún plato coincide con &quot;{searchQuery}&quot;
+                        </div>
+                    )}
+
+                    <div className="divide-y divide-[#E8D9B8]/40 dark:divide-[#5a4a22]/40 max-h-[50vh] overflow-y-auto">
+                    {visibleItems.map(item => (
                         <div key={item.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#F3EAD6]/40 dark:hover:bg-[#3B2F15]/40">
                             <div>
                                 <span className="font-medium text-capsula-ink">{item.name}</span>
@@ -89,6 +125,7 @@ export default function MissingRecipesPanel({ items }: MissingRecipesPanelProps)
                             </div>
                         </div>
                     ))}
+                    </div>
                 </div>
             )}
         </div>

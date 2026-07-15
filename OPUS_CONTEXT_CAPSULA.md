@@ -12906,3 +12906,11 @@ abiertas desde caja no tienen mesonero → el movimiento quedaba bloqueado.
 - `operations-reports.getTableTransfers`: null-safe → "Sin mesonero".
 
 Gates: tsc 0 · vitest 619.
+
+## §119 Buscador en el panel "Platos del Menú sin Receta" (2026-07-15)
+
+Tras §117 el panel puede listar decenas de platos. Se añadió buscador
+client-side (nombre o categoría, filtrado en memoria — cero cambios de
+servidor), contador "N de M", empty-state y scroll interno (max-h 50vh)
+para listas largas. La lista principal de recetas (RecipeList) ya tenía
+buscador + filtros de categoría/tipo desde §112 — no se tocó.
