@@ -208,3 +208,53 @@ describe('netItemsPortionForPayment (§103 — parciales ya no pierden el servic
         expect(netItemsPortionForPayment({ amountPaid: NaN, totalAntesServicio: 100, serviceFee: 10, serviceRate: 0.1 })).toBe(0);
     });
 });
+
+// ── §121: propina automática por excedente en Bs electrónicos (mesa) ────────
+import { electronicBsExcessTip } from './tip-calculation';
+
+describe('electronicBsExcessTip (§121)', () => {
+    const base = { totalAntesServicio: 8.18, serviceFee: 0.82 }; // factura $9
+
+    it('caso del video del admin: pagomóvil $12 sobre factura $9 → propina $3', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'MOVIL_NG' })).toBeCloseTo(3, 2);
+    });
+
+    it('aplica a los tres métodos electrónicos', () => {
+        for (const m of ['MOVIL_NG', 'PDV_SHANKLISH', 'PDV_SUPERFERRO']) {
+            expect(electronicBsExcessTip({ ...base, amountPaid: 10, paymentMethod: m })).toBeCloseTo(1, 2);
+        }
+    });
+
+    it('CASH_BS NUNCA (vuelto físico real)', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'CASH_BS' })).toBe(0);
+    });
+
+    it('métodos USD/divisas NUNCA (los cubre roundingTip/vuelto)', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'CASH_USD' })).toBe(0);
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'ZELLE' })).toBe(0);
+    });
+
+    it('pago exacto o parcial → 0 (no inventa propina)', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 9, paymentMethod: 'MOVIL_NG' })).toBe(0);
+        expect(electronicBsExcessTip({ ...base, amountPaid: 5, paymentMethod: 'MOVIL_NG' })).toBe(0);
+    });
+
+    it('mixto → 0 (líneas exactas)', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'MOVIL_NG', isMixed: true })).toBe(0);
+    });
+
+    it('dismissed (cajera dará vuelto de caja) → 0', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'MOVIL_NG', dismissed: true })).toBe(0);
+    });
+
+    it('defensivo: NaN/negativos → 0', () => {
+        expect(electronicBsExcessTip({ ...base, amountPaid: NaN, paymentMethod: 'MOVIL_NG' })).toBe(0);
+        expect(electronicBsExcessTip({ ...base, amountPaid: -3, paymentMethod: 'MOVIL_NG' })).toBe(0);
+    });
+
+    it('composición con cappedTipForPayment: el cap no recorta el excedente real', () => {
+        const excess = electronicBsExcessTip({ ...base, amountPaid: 12, paymentMethod: 'MOVIL_NG' });
+        const tip = cappedTipForPayment({ intendedTip: excess, amountPaid: 12, totalAntesServicio: 8.18, serviceFee: 0.82 });
+        expect(tip).toBeCloseTo(3, 2);
+    });
+});

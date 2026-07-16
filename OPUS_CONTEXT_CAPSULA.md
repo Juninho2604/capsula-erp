@@ -12944,3 +12944,39 @@ Implementado 100% en UI — cero cambios de schema/BD, cero migraciones.
 
 Las recetas de reventa (RAW_MATERIAL) quedan fuera de ambas vistas por tipo —
 solo visibles en "Todas". Gates: tsc 0 · vitest 619.
+
+## §121 Propina automática por excedente en pagos Bs electrónicos — mesa (2026-07-16)
+
+**Reporte del administrador (video):** cobro por pagomóvil de $12 (en Bs) sobre
+factura de $9 → historial y recibo mostraban $9; los $3 de excedente (que YA
+entraron al banco) quedaban invisibles salvo tecleo manual de la cajera.
+
+**Causa:** la protección anti-propina-fantasma de §46 (`keptAmountForSplit`
+registra min(recibido, factura) + propina tecleada; el excedente se asume
+VUELTO) es correcta para efectivo, pero en pagomóvil/PDV no existe vuelto
+electrónico. En divisas el excedente de redondeo sí se auto-registra
+(`roundingTipForCharge`, política del dueño 16/06) — de ahí la asimetría.
+
+**Fix (mesa, pago único):**
+- Nuevo helper puro `electronicBsExcessTip` en `tip-calculation.ts` (9 tests):
+  excedente = recibido − factura, SOLO para MOVIL_NG/PDV_SHANKLISH/
+  PDV_SUPERFERRO; nunca CASH_BS (vuelto físico), nunca USD/Zelle (los cubre
+  roundingTip), nunca en mixto, y 0 si la cajera lo quitó (`dismissed`).
+- `handlePaymentPinConfirm`: intendedTip = max(tecleada, roundingTip,
+  bsExcessTip); el cap y el registro siguen siendo los mismos
+  (`cappedTipForPayment` + `keptAmountForSplit`) — cero matemática nueva.
+- Preview visible en el panel de cobro Bs: "Propina (excedente): $X · Bs Y —
+  se registrará como propina" con botón **Quitar** (si la cajera dará el
+  vuelto en efectivo de la caja → comportamiento anterior). `bsExcessDismissed`
+  se resetea al cambiar monto/método y tras cada cobro.
+- El confirm §100.2 NO se dispara para el excedente automático (solo para
+  propina tecleada por encima del redondeo) — misma fricción-cero que divisas.
+- Recibo, historial y Z ya discriminaban propina (infra §46): recibo imprime
+  línea "Propina" + TOTAL A PAGAR completo; historial muestra factura/cobrado/
+  propina; Z suma "Propinas" aparte. Pickup ya registraba el monto completo
+  (amountPaid) — sin cambios allí.
+
+**Operativo:** avisar a las cajeras que NO tecleen más la diferencia a mano en
+pagos Bs electrónicos — el sistema la propone solo.
+
+Gates: tsc 0 · vitest 628 (619 + 9 nuevos).

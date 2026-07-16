@@ -42,7 +42,7 @@ import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { SatisfactionSurveyCard } from "@/components/pos/SatisfactionSurveyCard";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment } from "@/lib/sales/tip-calculation";
+import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment, electronicBsExcessTip } from "@/lib/sales/tip-calculation";
 import { scheduledInputToISO, printJobScheduledFor } from "@/lib/pos-scheduled-order";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy, Star } from "lucide-react";
@@ -417,6 +417,10 @@ export default function POSSportBarPage() {
   // (o crea) la ficha en /dashboard/clientes (mismo upsert que delivery).
   const [pickupCustomerPhone, setPickupCustomerPhone] = useState("");
   const [checkoutTip, setCheckoutTip] = useState(''); // propina en el momento del cobro
+  // §121: la cajera quitó la propina automática por excedente Bs electrónico
+  // (dará el vuelto en efectivo de la caja). Se resetea al cambiar monto/método.
+  const [bsExcessDismissed, setBsExcessDismissed] = useState(false);
+  useEffect(() => { setBsExcessDismissed(false); }, [amountReceived, paymentMethod]);
 
   // ── Modal de comandas del día (reimpresión) ──────────────────────────────
   const [showComandasModal, setShowComandasModal] = useState(false);
@@ -1208,10 +1212,24 @@ export default function POSSportBarPage() {
         paymentMethod: effectiveMethod,
         isMixed: isTableMixedMode,
       });
-      // Propina = max(propina del mesero/cajera, delta de redondeo), capada al
-      // excedente realmente recibido (no se inventa propina sobre lo no pagado).
+      // §121: excedente en Bs ELECTRÓNICO (pagomóvil/PDV) → propina automática.
+      // El dinero ya entró al banco, no hay vuelto electrónico. La cajera puede
+      // quitarla desde el preview (bsExcessDismissed) si dará vuelto de caja.
+      // Caso del admin: pagomóvil $12 sobre factura $9 registraba $9 y los $3
+      // quedaban invisibles (solo tecleo manual). CASH_BS y USD no cambian.
+      const bsExcessTip = electronicBsExcessTip({
+        amountPaid: rawReceived,
+        totalAntesServicio,
+        serviceFee,
+        paymentMethod: effectiveMethod,
+        isMixed: isTableMixedMode,
+        dismissed: bsExcessDismissed,
+      });
+      // Propina = max(propina del mesero/cajera, delta de redondeo, excedente
+      // Bs electrónico), capada al excedente realmente recibido (no se inventa
+      // propina sobre lo no pagado).
       const tipVal = cappedTipForPayment({
-        intendedTip: Math.max(parseFloat(checkoutTip) || 0, roundingTip),
+        intendedTip: Math.max(parseFloat(checkoutTip) || 0, roundingTip, bsExcessTip),
         amountPaid: rawReceived,
         totalAntesServicio,
         serviceFee,
@@ -1332,6 +1350,7 @@ export default function POSSportBarPage() {
       setAmountReceived("");
       setPaymentPin("");
       setCheckoutTip('');
+      setBsExcessDismissed(false);
       clearDiscount();
       setShowPaymentPinModal(false);
       setIsTableMixedMode(false);
@@ -3330,6 +3349,30 @@ export default function POSSportBarPage() {
                       <span className="font-semibold text-capsula-ink tabular-nums">${(rawAmount / exchangeRate).toFixed(2)}</span>
                     </div>
                   )}
+
+                  {/* §121: Propina automática por excedente (Bs electrónico) */}
+                  {!isTableMixedMode && isBsPayMethod && paymentMethod !== 'CASH_BS' && exchangeRate && (() => {
+                    const excessUsd = paidAmount - paymentAmountToCharge;
+                    if (excessUsd <= 0.009) return null;
+                    if (bsExcessDismissed) return (
+                      <div className="flex items-center justify-between text-xs px-1 mb-2 text-capsula-ink-muted">
+                        <span>Excedente de ${excessUsd.toFixed(2)} NO se registrará (vuelto de caja)</span>
+                        <button type="button" onClick={() => setBsExcessDismissed(false)}
+                          className="font-semibold text-capsula-ink underline underline-offset-2">Registrar como propina</button>
+                      </div>
+                    );
+                    return (
+                      <div className="rounded-xl border border-[#D3E2D8] bg-[#E5EDE7]/40 dark:border-[#2c5540] dark:bg-[#1E3B2C]/40 px-3 py-2 mb-2 flex items-center justify-between gap-2">
+                        <div className="text-xs">
+                          <span className="text-[#2F6B4E] dark:text-[#6FB88F] font-semibold">Propina (excedente): ${excessUsd.toFixed(2)}</span>
+                          <span className="block text-capsula-ink-muted">Bs {(excessUsd * exchangeRate).toFixed(2)} por encima de la factura — se registrará como propina</span>
+                        </div>
+                        <button type="button" onClick={() => setBsExcessDismissed(true)}
+                          className="shrink-0 text-xs font-semibold text-capsula-ink-muted hover:text-capsula-coral underline underline-offset-2"
+                          title="Quitar si le darás el vuelto en efectivo de la caja">Quitar</button>
+                      </div>
+                    );
+                  })()}
 
                   {/* Vuelto + Propina inline (mesa, pago único en efectivo) */}
                   {!isTableMixedMode && !isBsPayMethod && paidAmount > paymentAmountToCharge + 0.001 && (() => {

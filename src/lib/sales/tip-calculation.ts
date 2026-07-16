@@ -70,6 +70,47 @@ export function roundingTipForCharge(args: {
 }
 
 /**
+ * §121 — Métodos Bs ELECTRÓNICOS: el dinero entra al banco, no existe vuelto
+ * automático. CASH_BS queda fuera a propósito (vuelto físico real).
+ */
+const BS_ELECTRONIC_METHODS = new Set(['MOVIL_NG', 'PDV_SHANKLISH', 'PDV_SUPERFERRO']);
+
+/**
+ * §121 — Propina automática por EXCEDENTE en pagos Bs electrónicos (mesa).
+ *
+ * Caso del administrador (video 16/07): cliente paga por pagomóvil el
+ * equivalente a $12 sobre una factura de $9. El excedente de $3 ya ENTRÓ al
+ * banco (no hay vuelto electrónico), pero el sistema registraba solo $9 y los
+ * $3 quedaban invisibles salvo que la cajera tecleara la propina a mano.
+ *
+ * Esta función propone ese excedente como propina, análogo a la política de
+ * redondeo en divisas (roundingTipForCharge, decisión del dueño 16/06).
+ *
+ * Reglas:
+ *   - Solo métodos Bs electrónicos (pagomóvil, PDV) — NUNCA CASH_BS ni USD,
+ *     donde el excedente es vuelto físico real.
+ *   - Nunca en pago mixto (las líneas son exactas).
+ *   - `dismissed` = la cajera la quitó explícitamente (dará el vuelto en
+ *     efectivo de la caja) → 0, comportamiento anterior.
+ *   - El cap final lo aplica cappedTipForPayment (idéntico a roundingTip).
+ */
+export function electronicBsExcessTip(args: {
+    amountPaid: number;
+    totalAntesServicio: number;
+    serviceFee: number;
+    paymentMethod: string;
+    isMixed?: boolean;
+    dismissed?: boolean;
+}): number {
+    if (args.isMixed || args.dismissed) return 0;
+    if (!BS_ELECTRONIC_METHODS.has((args.paymentMethod || '').toUpperCase())) return 0;
+    const factura = Math.max(0, (args.totalAntesServicio || 0) + (args.serviceFee || 0));
+    const received = Math.max(0, Number.isFinite(args.amountPaid) ? args.amountPaid : 0);
+    const excess = received - factura;
+    return excess > 0 ? excess : 0;
+}
+
+/**
  * Monto que el split de la mesa debe registrar como `paidAmount`: el dinero
  * RETENIDO por el local = factura + propina, NO el bruto recibido.
  *
