@@ -36,13 +36,18 @@ interface Recipe {
 
 interface RecipeListProps {
     recipes: Recipe[];
+    /**
+     * §120: fija la lista a un solo tipo (oculta el toggle Todas/Sub/Productos).
+     * Usado por la pestaña "Sub-recetas" del módulo Producción.
+     */
+    lockedType?: 'SUB_RECIPE' | 'FINISHED_GOOD';
 }
 
 import type { UserRole } from '@/types';
 
 const DELETE_ROLES: UserRole[] = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'];
 
-export default function RecipeList({ recipes }: RecipeListProps) {
+export default function RecipeList({ recipes, lockedType }: RecipeListProps) {
     const router = useRouter();
     const { canViewCosts, hasRole, user } = useAuthStore();
     const [showCosts, setShowCosts] = useState(false);
@@ -56,7 +61,10 @@ export default function RecipeList({ recipes }: RecipeListProps) {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('ALL');
-    const [typeFilter, setTypeFilter] = useState<'ALL' | 'SUB_RECIPE' | 'FINISHED_GOOD'>('ALL');
+    // §120: por defecto la lista abre en "Productos" (recetas del menú) — las
+    // sub-recetas viven en Producción → Sub-recetas. El toggle sigue
+    // permitiendo ver Todas/Sub-recetas cuando no hay lockedType.
+    const [typeFilter, setTypeFilter] = useState<'ALL' | 'SUB_RECIPE' | 'FINISHED_GOOD'>(lockedType ?? 'FINISHED_GOOD');
 
     const uniqueCategories = useMemo(() => {
         const cats = new Set(recipes.map(r => r.category || 'Sin Categoría'));
@@ -142,7 +150,9 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                     {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {/* §112: división visible sub-recetas / productos (antes era un
-                    select discreto que pasaba desapercibido). */}
+                    select discreto que pasaba desapercibido). §120: oculto si
+                    la lista está fijada a un tipo (pestaña Sub-recetas). */}
+                {!lockedType && (
                 <div className="flex rounded-xl border border-capsula-line overflow-hidden text-xs font-semibold shrink-0">
                     {([
                         { value: 'ALL', label: `Todas (${recipes.length})` },
@@ -162,6 +172,7 @@ export default function RecipeList({ recipes }: RecipeListProps) {
                         </button>
                     ))}
                 </div>
+                )}
                 <span className="text-sm text-capsula-ink-muted tabular-nums shrink-0">
                     {filteredRecipes.length} de {recipes.length}
                 </span>

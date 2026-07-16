@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Plus as PlusIcon,
     Search,
@@ -33,6 +34,7 @@ import { updateMenuItemWinkPriceAction, canEditWinkPriceAction } from '@/app/act
 import toast from 'react-hot-toast';
 
 export default function MenuManagementPage() {
+    const router = useRouter();
     const [categories, setCategories] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -317,6 +319,14 @@ export default function MenuManagementPage() {
         setCreatingRecipeFor(itemId);
         const result = await createRecipeStubForMenuItemAction(itemId);
         if (result.success) {
+            // §120: llevar directo al editor de la receta recién creada para
+            // completar los ingredientes "ahí mismo" (pedido del gerente),
+            // en vez de dejar al usuario buscándola en el módulo Recetas.
+            const newRecipeId = (result.data as any)?.recipeId;
+            if (newRecipeId) {
+                router.push(`/dashboard/recetas/${newRecipeId}/editar`);
+                return;
+            }
             loadData();
         } else {
             alert(result.message);
@@ -488,16 +498,32 @@ export default function MenuManagementPage() {
                                         {/* Receta Status — 3 estados */}
                                         {(() => {
                                             const rs = getRecipeStatus(item);
-                                            if (rs === 'COMPLETE') return (
-                                                <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F]">
-                                                    <Check className="h-3 w-3" /> Receta lista
+                                            // §120: reventa 1:1 (Pepsi, agua…) — su receta es técnica
+                                            // (descuenta 1 unidad de stock por venta). NO se ofrece
+                                            // edición: editarla dañaría el descargo de inventario.
+                                            const isResale = item._recipeOutputType === 'RAW_MATERIAL';
+                                            if (rs === 'COMPLETE' && isResale) return (
+                                                <span
+                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 bg-[#E6ECF4] text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]"
+                                                    title="Producto de reventa — vender 1 descuenta 1 del stock automáticamente. Sin receta que completar."
+                                                >
+                                                    <Check className="h-3 w-3" /> Reventa 1:1
                                                 </span>
+                                            );
+                                            if (rs === 'COMPLETE') return (
+                                                <a
+                                                    href={`/dashboard/recetas/${item.recipeId}`}
+                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F] hover:opacity-80"
+                                                    title="Ver / editar la receta de este plato"
+                                                >
+                                                    <Check className="h-3 w-3" /> Receta lista
+                                                </a>
                                             );
                                             if (rs === 'STUB') return (
                                                 <a
-                                                    href={`/dashboard/recetas`}
+                                                    href={`/dashboard/recetas/${item.recipeId}/editar`}
                                                     className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] hover:opacity-80"
-                                                    title="Receta creada pero sin ingredientes — complétala en Recetas"
+                                                    title="Receta creada pero sin ingredientes — click para completarla"
                                                 >
                                                     <AlertTriangle className="h-3 w-3" /> Receta vacía
                                                 </a>
@@ -507,7 +533,7 @@ export default function MenuManagementPage() {
                                                     onClick={() => handleCreateRecipeStub(item.id)}
                                                     disabled={creatingRecipeFor === item.id}
                                                     className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#F7E3DB] text-[#B04A2E] dark:bg-[#3B1F14] dark:text-[#EFD2C8] hover:opacity-80 disabled:opacity-50"
-                                                    title="Sin receta — click para crear estructura vacía"
+                                                    title="Sin receta — click para crearla y completar sus ingredientes"
                                                 >
                                                     {creatingRecipeFor === item.id ? (
                                                         <RefreshCw className="h-3 w-3 animate-spin" />

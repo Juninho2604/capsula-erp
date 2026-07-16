@@ -12919,3 +12919,28 @@ buscador + filtros de categoría/tipo desde §112 — no se tocó.
 (abierto/cerrado) persiste en localStorage (`recetas:missingPanelOpen`) y se
 lee en useEffect post-montaje — nunca en el useState initializer — para no
 causar hydration mismatch con el HTML del servidor.
+
+## §120 Separación recetas del menú vs sub-recetas (pedido del gerente general, 2026-07-15)
+
+"Dividir recetas del menú de las sub-recetas porque se empastela buscar; crear
+la receta del plato desde el catálogo; las sub-recetas desde producción."
+Implementado 100% en UI — cero cambios de schema/BD, cero migraciones.
+
+1. **Catálogo (Menú)** — la receta del plato se gestiona "ahí mismo":
+   - Badge "Sin receta" → crea el stub y navega DIRECTO a su editor.
+   - "Receta vacía" → link directo a `/dashboard/recetas/{id}/editar`.
+   - "Receta lista" → link a la vista de la receta.
+   - Reventa 1:1 (output type RAW_MATERIAL): badge azul "Reventa 1:1" SIN link
+     de edición — su receta es técnica (1 venta = 1 unidad de stock) y editarla
+     dañaría el descargo. `getMenuWithCategoriesAction` ahora enriquece
+     `_recipeOutputType` para detectarlo.
+2. **Recetas** — `RecipeList` abre por defecto en "Productos" (FINISHED_GOOD).
+   El toggle Todas/Sub-recetas/Productos sigue disponible. Nuevo prop
+   `lockedType` fija la lista a un tipo y oculta el toggle.
+3. **Producción** — nueva pestaña "Sub-recetas" (`SubRecetasTab.tsx`): lista
+   solo SUB_RECIPE (reutiliza RecipeList lockedType) + botón "Nueva
+   sub-receta" → `/dashboard/recetas/nueva?tipo=SUB_RECIPE`. `RecipeForm`
+   acepta `initialType` (solo para creación; en edición manda initialData).
+
+Las recetas de reventa (RAW_MATERIAL) quedan fuera de ambas vistas por tipo —
+solo visibles en "Todas". Gates: tsc 0 · vitest 619.

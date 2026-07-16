@@ -19,6 +19,7 @@ import {
 import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import toast from 'react-hot-toast';
+import SubRecetasTab from './SubRecetasTab';
 
 interface RecipeOption {
     id: string;
@@ -67,7 +68,7 @@ export default function ProduccionPage() {
     const { user } = useAuthStore();
 
     // Estado
-    const [activeTab, setActiveTab] = useState<'receta' | 'manual' | 'historial'>('receta');
+    const [activeTab, setActiveTab] = useState<'receta' | 'manual' | 'historial' | 'subrecetas'>('receta');
     const [recipes, setRecipes] = useState<RecipeOption[]>([]);
     const [areas, setAreas] = useState<AreaOption[]>([]);
     const [allItems, setAllItems] = useState<InventoryItemOption[]>([]);
@@ -328,8 +329,26 @@ export default function ProduccionPage() {
                         <Clock className="h-4 w-4" />
                         Historial ({productionHistory.length})
                     </button>
+                    <button
+                        onClick={() => setActiveTab('subrecetas')}
+                        className={cn(
+                            'flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
+                            activeTab === 'subrecetas'
+                                ? 'border-emerald-500 text-emerald-600'
+                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        )}
+                    >
+                        <ChefHat className="h-4 w-4" />
+                        Sub-recetas
+                    </button>
                 </nav>
             </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════
+                TAB: SUB-RECETAS (§120) — crear/editar las fichas de salsas,
+                masas, aderezos… aquí mismo, donde luego se producen.
+               ═══════════════════════════════════════════════════════════════════ */}
+            {activeTab === 'subrecetas' && <SubRecetasTab />}
 
             {/* ═══════════════════════════════════════════════════════════════════
                 TAB: PRODUCCIÓN DESDE RECETA

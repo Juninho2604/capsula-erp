@@ -25,6 +25,11 @@ interface IngredientOption {
 interface RecipeFormProps {
     availableIngredients: IngredientOption[];
     initialData?: any;
+    /**
+     * §120: tipo preseleccionado al crear (ej. desde Producción → Sub-recetas
+     * con ?tipo=SUB_RECIPE). Ignorado si hay initialData (edición).
+     */
+    initialType?: 'SUB_RECIPE' | 'FINISHED_GOOD';
 }
 
 interface DraftIngredient {
@@ -60,7 +65,7 @@ const UNIT_FAMILIES: Record<string, UnitOfMeasure[]> = {
 
 const unitLabel = (v: string) => UNITS.find(u => u.value === v)?.label ?? v;
 
-export default function RecipeForm({ availableIngredients, initialData }: RecipeFormProps) {
+export default function RecipeForm({ availableIngredients, initialData, initialType }: RecipeFormProps) {
     const router = useRouter();
     const { user, canViewCosts } = useAuthStore();
     const [showCosts, setShowCosts] = useState(false);
@@ -71,7 +76,9 @@ export default function RecipeForm({ availableIngredients, initialData }: Recipe
     const [category, setCategory] = useState<string>(initialData?.category || 'RECETAS PRODUCCION');
     const [description, setDescription] = useState(initialData?.description || '');
     const [type, setType] = useState<'SUB_RECIPE' | 'FINISHED_GOOD'>(
-        initialData?.outputItem?.type === 'FINISHED_GOOD' ? 'FINISHED_GOOD' : 'SUB_RECIPE'
+        initialData
+            ? (initialData?.outputItem?.type === 'FINISHED_GOOD' ? 'FINISHED_GOOD' : 'SUB_RECIPE')
+            : (initialType ?? 'SUB_RECIPE')
     );
     // Cantidades como STRING mientras se tipea: un estado numérico +
     // parseFloat por tecla rompe los decimales ("0.009" → el "0." intermedio

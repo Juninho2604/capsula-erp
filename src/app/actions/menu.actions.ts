@@ -61,17 +61,25 @@ export async function getFullMenuAction() {
         const recipesWithCounts = recipeIds.length
             ? await db.recipe.findMany({
                   where: { id: { in: recipeIds } },
-                  select: { id: true, _count: { select: { ingredients: true } } },
+                  select: {
+                      id: true,
+                      _count: { select: { ingredients: true } },
+                      // §120: tipo del output para distinguir reventa 1:1
+                      // (RAW_MATERIAL) de platos preparados (FINISHED_GOOD)
+                      outputItem: { select: { type: true } },
+                  },
               })
             : [];
         const recipeCountMap = new Map(recipesWithCounts.map((r) => [r.id, r._count.ingredients]));
+        const recipeTypeMap = new Map(recipesWithCounts.map((r) => [r.id, r.outputItem.type]));
 
-        // Enrich each item with _recipeIngredientCount
+        // Enrich each item with _recipeIngredientCount + _recipeOutputType
         const enrichedCategories = categories.map((cat) => ({
             ...cat,
             items: cat.items.map((item) => ({
                 ...item,
                 _recipeIngredientCount: item.recipeId ? (recipeCountMap.get(item.recipeId) ?? 0) : null,
+                _recipeOutputType: item.recipeId ? (recipeTypeMap.get(item.recipeId) ?? null) : null,
             })),
         }));
 
