@@ -110,6 +110,29 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
     );
     const [showAddIngredient, setShowAddIngredient] = useState(false);
 
+    // §122: edición INLINE de cantidades (pedido del gerente — antes había que
+    // eliminar el ingrediente y re-agregarlo). Draft string por fila mientras
+    // se tipea (mismo patrón que outputQuantityStr: estado numérico +
+    // parseFloat por tecla rompe los decimales "0.009"). Se commitea al estado
+    // real en cada tecla válida (>0) para que el costo en vivo se actualice;
+    // al salir del campo (blur) el draft se descarta y la celda muestra el
+    // último valor válido — un draft vacío/inválido nunca queda guardado.
+    const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({});
+    const handleQtyDraftChange = (id: string, raw: string) => {
+        setQtyDrafts(prev => ({ ...prev, [id]: raw }));
+        const parsed = parseFloat(raw.replace(',', '.'));
+        if (Number.isFinite(parsed) && parsed > 0) {
+            setIngredients(prev => prev.map(i => (i.id === id ? { ...i, quantity: parsed } : i)));
+        }
+    };
+    const handleQtyDraftBlur = (id: string) => {
+        setQtyDrafts(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+    };
+
     // Estado para nuevo ingrediente (cantidad/merma como string, ver arriba)
     const [newIngredient, setNewIngredient] = useState<Partial<DraftIngredient>>({
         inventoryItemId: '',
@@ -526,9 +549,17 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                             {ing.itemName}
                                         </p>
                                         <div className="flex items-center gap-2 text-sm text-capsula-ink-muted">
-                                            <span>
-                                                {formatNumber(ing.quantity, 4)} {ing.unit}
-                                            </span>
+                                            {/* §122: cantidad editable en línea */}
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={qtyDrafts[ing.id] ?? String(ing.quantity)}
+                                                onChange={(e) => handleQtyDraftChange(ing.id, e.target.value)}
+                                                onBlur={() => handleQtyDraftBlur(ing.id)}
+                                                aria-label={`Cantidad de ${ing.itemName}`}
+                                                className="w-24 rounded-lg border border-capsula-line bg-capsula-ivory px-2 py-1 text-sm font-semibold tabular-nums text-capsula-ink outline-none focus:border-capsula-navy-deep"
+                                            />
+                                            <span>{ing.unit}</span>
                                             {ing.wastePercentage > 0 && (
                                                 <span className="rounded bg-[#F3EAD6] px-1.5 py-0.5 text-xs text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
                                                     {ing.wastePercentage}% merma

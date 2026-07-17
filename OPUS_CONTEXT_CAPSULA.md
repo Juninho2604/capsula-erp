@@ -12980,3 +12980,24 @@ electrónico. En divisas el excedente de redondeo sí se auto-registra
 pagos Bs electrónicos — el sistema la propone solo.
 
 Gates: tsc 0 · vitest 628 (619 + 9 nuevos).
+
+## §122 Edición inline de cantidades en la ficha de receta (2026-07-16)
+
+**Pedido del gerente:** cambiar la cantidad de un ingrediente exigía eliminarlo
+y re-agregarlo.
+
+**Fix (UI pura, sin cambios de BD):** en `RecipeForm` (crear y editar, recetas
+y sub-recetas comparten el form) la cantidad de cada fila es un input inline.
+Patrón draft-string por fila (`qtyDrafts`): se tipea como string (decimales
+"0.009" no se rompen), se commitea al estado en cada tecla válida >0 (costo en
+vivo se actualiza), y al blur el draft se descarta — un valor vacío/inválido
+vuelve al último válido, nunca se guarda. El guardado pasa por la
+normalización de unidades de §109.1 (sin cambios ahí).
+
+Puntos 2 y 3 del gerente (misma reunión): el "SIN" ya existía (§94,
+`allowSin` en materia prima — activable sin deploy); las sub-recetas de
+descarga directa sin producción (tabule) quedaron planificadas en 3 fases
+para ejecutar con el local cerrado (helper puro+tests → flag+migración →
+integración en los 4 caminos de descargo).
+
+Gates: tsc 0 · vitest 628.
