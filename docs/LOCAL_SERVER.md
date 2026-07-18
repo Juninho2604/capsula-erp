@@ -194,6 +194,14 @@ VPS → local, y `capsula-route-local.sh` para devolver el ruteo.
 
 ## 8. Seguridad
 
+- **Usuarios del SO vs usuarios de la app**: en Linux existe UN solo usuario
+  humano (`capsula`, el administrador). El personal del restaurante usa
+  exclusivamente la aplicación web (sus usuarios/PINs/roles de siempre, que
+  viajan con la BD en el cutover). No crear cuentas Linux adicionales.
+- **Hardening base** (lo instala `install-local-server.sh`):
+  `unattended-upgrades` (parches de seguridad automáticos, sin auto-reboot) y
+  `fail2ban` (jail sshd, 5 intentos → ban). Verificar con
+  `fail2ban-client status sshd`.
 - El túnel usa el usuario `capsula-tunnel` **restringido**: la llave del túnel
   solo puede abrir `127.0.0.1:3100` en el VPS (`restrict,permitlisten`), y la
   llave de backup solo puede ejecutar el receptor de dumps (forced command).

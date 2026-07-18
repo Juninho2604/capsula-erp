@@ -44,7 +44,18 @@ echo "[1/9] Timezone + paquetes base..."
 timedatectl set-timezone America/Caracas
 apt-get update -qq
 apt-get install -y -qq git curl nginx ufw openssh-client ca-certificates \
-    postgresql-common sudo openssl cron
+    postgresql-common sudo openssl cron unattended-upgrades fail2ban
+
+# Hardening base: parches de seguridad automáticos + anti brute-force SSH.
+# unattended-upgrades: solo security updates (default Debian/Ubuntu), sin
+# reinicios automáticos — los updates de la app van por update-local-server.sh.
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+systemctl enable --now unattended-upgrades 2>/dev/null || true
+# fail2ban: jail sshd activo con defaults (5 intentos → ban 10 min).
+systemctl enable --now fail2ban
 
 # ── [2/9] Node 20 + pm2 ─────────────────────────────────────────────────────
 echo ""
