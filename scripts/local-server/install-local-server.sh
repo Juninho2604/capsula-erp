@@ -2,7 +2,8 @@
 # ============================================================================
 # Instalación del SERVIDOR LOCAL del restaurante (capsula-erp on-premise).
 #
-# Target: Ubuntu Server 24.04 LTS en el computador dedicado del local.
+# Target: Ubuntu Server 24.04 LTS o Debian 12/13 en el computador dedicado
+# del local (mismo script para ambos; postgres viene del repo PGDG).
 # Correr como root. Idempotente: se puede re-correr si un paso falla.
 #
 #   bash install-local-server.sh [branch]
@@ -10,7 +11,9 @@
 #
 # Qué instala:
 #   - Node.js 20 + pm2 (app Next.js standalone en 127.0.0.1:3000)
-#   - PostgreSQL (BD capsula_erp_prod, role capsula, puerto 5432)
+#   - PostgreSQL 18 vía PGDG (BD capsula_erp_prod, role capsula, :5432)
+#     — misma major version que el VPS para que el dump del cutover
+#     restaure sin problemas de compatibilidad
 #   - nginx sirviendo la app a la LAN por el puerto 80
 #   - ufw (solo SSH y 80 abiertos hacia la LAN)
 #   - Crons de watchdog (cada 2 min) y backup→VPS (cada 6 horas)
@@ -40,7 +43,8 @@ echo ""
 echo "[1/9] Timezone + paquetes base..."
 timedatectl set-timezone America/Caracas
 apt-get update -qq
-apt-get install -y -qq git curl nginx postgresql postgresql-contrib ufw openssh-client ca-certificates
+apt-get install -y -qq git curl nginx ufw openssh-client ca-certificates \
+    postgresql-common sudo openssl cron
 
 # ── [2/9] Node 20 + pm2 ─────────────────────────────────────────────────────
 echo ""
@@ -54,7 +58,17 @@ node -v && pm2 -v
 
 # ── [3/9] PostgreSQL ────────────────────────────────────────────────────────
 echo ""
-echo "[3/9] PostgreSQL (BD $DB_NAME, role $DB_USER, puerto $DB_PORT)..."
+echo "[3/9] PostgreSQL 18 (BD $DB_NAME, role $DB_USER, puerto $DB_PORT)..."
+# PostgreSQL 18 vía repo PGDG — la MISMA major version que corre el VPS.
+# Importante: el cutover restaura un dump hecho con pg_dump 18; restaurarlo
+# en el postgres que trae la distro (16 en Ubuntu 24.04, 15/17 en Debian)
+# puede fallar por incompatibilidad de versiones. PGDG funciona igual en
+# Ubuntu y Debian.
+if ! psql --version 2>/dev/null | grep -q ' 18'; then
+    /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+    apt-get install -y -qq postgresql-18
+    apt-get install -y -qq postgresql-contrib-18 2>/dev/null || true
+fi
 systemctl enable --now postgresql
 DB_PASS_FILE="/root/.capsula-db-pass"
 if [ ! -f "$DB_PASS_FILE" ]; then
