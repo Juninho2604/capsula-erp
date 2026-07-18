@@ -151,8 +151,29 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 73 modelos esperados (delivery +9, Tesorería +5, WhatsApp +4, PriceList +1)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(73);
+    it('Contiene los 66 modelos esperados (§123: -7 modelos hijos SIN columna tenantId)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(66);
+    });
+
+    // §123 — GUARDIA DE REGRESIÓN: inyectar where.tenantId sobre un modelo
+    // sin la columna revienta con PrismaClientValidationError en runtime
+    // ("Error al despachar" en requisiciones). Cada modelo de la lista DEBE
+    // tener tenantId en schema.prisma; los hijos FK-scoped quedan fuera.
+    it('§123: TODOS los modelos de la lista tienen columna tenantId en schema.prisma', () => {
+        const fs = require('fs') as typeof import('fs');
+        const path = require('path') as typeof import('path');
+        const schema = fs.readFileSync(path.join(process.cwd(), 'prisma', 'schema.prisma'), 'utf8');
+        const blocks = Array.from(schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm));
+        const hasTenantId = new Map(blocks.map(([, name, body]) => [name, /^\s*tenantId\s/m.test(body)]));
+        const offenders = TENANT_AWARE_MODELS.filter(m => !hasTenantId.get(m));
+        expect(offenders).toEqual([]);
+    });
+
+    it('§123: los modelos hijos FK-scoped NO están en la lista', () => {
+        for (const m of ['RequisitionItem', 'SupplierItem', 'MenuItemModifierGroup', 'InventoryAuditItem',
+                         'IntercompanyItemMapping', 'ProcessingTemplateOutput', 'RateLimitBucket']) {
+            expect(TENANT_AWARE_MODELS).not.toContain(m);
+        }
     });
 
     it('Incluye los modelos multi-tenant del módulo Conversaciones WhatsApp', () => {

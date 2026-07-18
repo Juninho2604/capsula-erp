@@ -13001,3 +13001,28 @@ para ejecutar con el local cerrado (helper puro+tests → flag+migración →
 integración en los 4 caminos de descargo).
 
 Gates: tsc 0 · vitest 628.
+
+## §123 Fix: "Error al despachar" requisiciones — modelos sin tenantId en TENANT_MODELS (2026-07-17)
+
+**Síntoma (foto del restaurante, despacho al Centro de Producción):**
+PrismaClientValidationError al despachar/aprobar una requisición — el
+`requisitionItem.updateMany` recibía un `where.tenantId` que el modelo no
+tiene.
+
+**Causa raíz:** `prisma-tenant-client.ts` inyecta `where.tenantId` en los
+modelos de TENANT_MODELS, pero **7 modelos de la lista NO tienen columna
+tenantId** en schema.prisma: RequisitionItem (el que explotó),
+SupplierItem, MenuItemModifierGroup, InventoryAuditItem,
+IntercompanyItemMapping, ProcessingTemplateOutput, RateLimitBucket.
+Crear la requisición funcionaba (el create anidado del padre no pasa por
+la inyección del hijo) — reventaba solo al despachar (updateMany directo).
+
+**Fix:** los 7 se removieron de la lista (73→66) — son tablas hijas que se
+aíslan por FK a su padre tenant-aware, mismo patrón ya documentado para
+SalesOrderPayment y DeliveryOrderEvent. Comentario-guardia en la lista.
+
+**Regresión bloqueada por test:** `prisma-tenant-client.test.ts` ahora
+parsea schema.prisma y falla si CUALQUIER modelo de la lista carece de
+columna tenantId (§123) — imposible reintroducir el bug.
+
+Gates: tsc 0 · vitest 630.

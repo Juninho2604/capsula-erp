@@ -60,9 +60,7 @@ const TENANT_MODELS = new Set<string>([
     'GameSession',
     'GameStation',
     'GameType',
-    'IntercompanyItemMapping',
     'InventoryAudit',
-    'InventoryAuditItem',
     'InventoryCycle',
     'InventoryItem',
     'InventoryLoan',
@@ -70,7 +68,6 @@ const TENANT_MODELS = new Set<string>([
     'ItemAvailability',
     'MenuCategory',
     'MenuItem',
-    'MenuItemModifierGroup',
     'MenuModifier',
     'MenuModifierGroup',
     'ManagerNote',
@@ -78,17 +75,14 @@ const TENANT_MODELS = new Set<string>([
     'PosTerminal',
     'PriceList',
     'PrintJob',
-    'ProcessingTemplateOutput',
     'ProductFamily',
     'ProductionOrder',
     'ProteinProcessing',
     'PurchaseOrder',
     'QueueTicket',
-    'RateLimitBucket',
     'ReceivablePayment',
     'Recipe',
     'Requisition',
-    'RequisitionItem',
     'Reservation',
     'RoutingRule',
     'SalesOrder',
@@ -102,7 +96,6 @@ const TENANT_MODELS = new Set<string>([
     'SkuCreationTemplate',
     'Supplier',
     'SupplierDocument',
-    'SupplierItem',
     'SystemConfig',
     'TableOrStation',
     'User',
@@ -114,6 +107,15 @@ const TENANT_MODELS = new Set<string>([
     'WaTemplate',
     'WeeklyCount',
     'WristbandPlan',
+    // ⚠️ NO agregar modelos SIN columna tenantId en schema.prisma. La
+    // inyección de where.tenantId sobre un modelo sin la columna revienta
+    // con PrismaClientValidationError en runtime (§123 — "Error al
+    // despachar" en requisiciones). Estos modelos hijos se aíslan por FK
+    // al padre tenant-aware y quedan FUERA de la lista a propósito:
+    // IntercompanyItemMapping, InventoryAuditItem, MenuItemModifierGroup,
+    // ProcessingTemplateOutput, RateLimitBucket, RequisitionItem,
+    // SupplierItem (además de SalesOrderPayment y DeliveryOrderEvent ya
+    // documentados arriba).
 ]);
 
 /** Operaciones a las que se les inyecta tenantId en el `where`. */
