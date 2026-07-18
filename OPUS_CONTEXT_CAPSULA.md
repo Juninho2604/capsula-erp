@@ -12885,6 +12885,19 @@ túnel, operación diaria, contingencias, seguridad). `docs/INFRASTRUCTURE.md`
 anota la excepción a la regla "todo vive en el VPS" — al ejecutar el cutover
 real hay que actualizar esa página.
 
+**Update 2026-07-18 (despliegue real, HP EliteDesk 800 G2 256GB):**
+- `install-local-server.sh` ahora instala **PostgreSQL 18 vía repo PGDG** en
+  vez del postgres de la distro. Razón: el VPS corre PG 18 y el dump del
+  cutover se restaura en el local — restaurar un dump de pg_dump 18 en el
+  PG 16 de Ubuntu 24.04 (o 15/17 de Debian) puede fallar por versión. PGDG
+  garantiza la misma major en cualquier distro.
+- Soporte oficial **Debian 12/13** además de Ubuntu (mismo script). Motivo
+  real: el BIOS del EliteDesk 800 G2 no aplicó el cambio de Secure Boot
+  (nunca mostró el código de confirmación) y el iPXE de netboot.xyz no está
+  firmado → rebote silencioso al boot menu. El instalador de Debian está
+  shim-signed y arranca con Secure Boot habilitado; además el netinst
+  (~700MB) cabe en pendrives chicos donde la ISO de Ubuntu (2.7GB) no entra.
+
 ## §118 Mover mesa sin mesonero asignado (2026-07-15)
 
 **Reporte (grupo SISTEMA SC, día de partido):** "una mesa no deja hacer el

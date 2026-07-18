@@ -59,7 +59,11 @@ Qué pasa en cada escenario:
 ## 2. Hardware y red (requisitos)
 
 - **Computador dedicado**: cualquier mini-PC/desktop con 8+ GB RAM, SSD 128+ GB,
-  Ethernet (no WiFi). Instalar **Ubuntu Server 24.04 LTS**.
+  Ethernet (no WiFi). Instalar **Ubuntu Server 24.04 LTS** o **Debian 12/13**
+  (mismo procedimiento; el instalador de Debian está firmado para Secure Boot,
+  útil en equipos cuyo BIOS no deja deshabilitarlo — caso real: HP EliteDesk
+  800 G2 del primer despliegue). En Debian, dejar la contraseña de root vacía
+  durante la instalación para que el usuario creado tenga sudo.
 - **UPS obligatorio**: el equipo debe sobrevivir cortes de luz (mínimo el
   tiempo de apagado limpio; ideal 30+ min para seguir cobrando).
 - **IP fija en la LAN** (reserva DHCP en el router o estática), ej. `192.168.1.10`.
@@ -78,6 +82,10 @@ git clone https://github.com/Juninho2604/capsula-erp.git /var/www/capsula-erp
 cd /var/www/capsula-erp/scripts/local-server
 bash install-local-server.sh          # ~10-20 min (build incluido)
 ```
+
+El script instala **PostgreSQL 18 desde el repo PGDG** (no el de la distro):
+misma major version que el VPS, para que el `pg_restore` del cutover no
+tropiece con incompatibilidades de versión.
 
 Al terminar:
 
