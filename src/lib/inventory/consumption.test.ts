@@ -320,3 +320,55 @@ describe('SIN estilo Xetux (§94) — exclusiones no consumen', () => {
         expect(out.get('queso')).toBeCloseTo(0.05, 5);
     });
 });
+
+describe('computeConsumptionFromOrders — §124 descarga directa (tabule)', () => {
+    it('sin directMap → comportamiento histórico (descuenta el item sub-receta)', () => {
+        const shawarma = { ingredients: [{ ingredientItemId: 'tabule', quantity: 0.15 }] };
+        const out = computeConsumptionFromOrders(
+            [{ items: [{ quantity: 2, menuItem: { recipeId: 'shawarma' } }] }],
+            new Map([['shawarma', shawarma]]),
+        );
+        expect(out.get('tabule')).toBeCloseTo(0.3, 5); // 0.15 * 2
+        expect(out.get('perejil')).toBeUndefined();
+    });
+
+    it('con directMap → explota el tabule en sus materias primas', () => {
+        const shawarma = { ingredients: [{ ingredientItemId: 'tabule', quantity: 0.15 }] };
+        const directMap = new Map([['tabule', {
+            outputBaseUnit: 'KG', outputQuantity: 2, outputUnit: 'KG',
+            ingredients: [
+                { ingredientItemId: 'perejil', quantity: 1, unit: 'KG' },
+                { ingredientItemId: 'trigo', quantity: 0.5, unit: 'KG' },
+            ],
+        }]]);
+        const out = computeConsumptionFromOrders(
+            [{ items: [{ quantity: 2, menuItem: { recipeId: 'shawarma' } }] }],
+            new Map([['shawarma', shawarma]]),
+            directMap,
+        );
+        // ratio 0.15/2 = 0.075, × 2 shawarmas: perejil 0.15, trigo 0.075
+        expect(out.get('perejil')).toBeCloseTo(0.15, 5);
+        expect(out.get('trigo')).toBeCloseTo(0.075, 5);
+        expect(out.get('tabule')).toBeUndefined(); // ya no se descuenta stock de tabule
+    });
+
+    it('SIN tabule (exclusión) → no consume nada del tabule ni sus insumos', () => {
+        const shawarma = { ingredients: [
+            { ingredientItemId: 'carne', quantity: 0.25 },
+            { ingredientItemId: 'tabule', quantity: 0.15 },
+        ] };
+        const directMap = new Map([['tabule', {
+            outputBaseUnit: 'KG', outputQuantity: 2, outputUnit: 'KG',
+            ingredients: [{ ingredientItemId: 'perejil', quantity: 1, unit: 'KG' }],
+        }]]);
+        const out = computeConsumptionFromOrders(
+            [{ items: [{ quantity: 1, menuItem: { recipeId: 'shawarma' },
+                modifiers: [{ excludedIngredientItemId: 'tabule' }] }] }],
+            new Map([['shawarma', shawarma]]),
+            directMap,
+        );
+        expect(out.get('carne')).toBeCloseTo(0.25, 5);
+        expect(out.get('perejil')).toBeUndefined();
+        expect(out.get('tabule')).toBeUndefined();
+    });
+});

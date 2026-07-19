@@ -13066,3 +13066,31 @@ voidSalesOrderAction/restoreRecipe, computeConsumptionFromOrders — un solo
 commit, con el flag default OFF → cero cambio para datos existentes).
 
 Gates: tsc 0 · vitest 641.
+
+## §124 Fase C — Descarga directa integrada en los 5 caminos de descargo (2026-07-19)
+
+Conecta el helper `expandDirectDischarge` (Fase A) leyendo el flag
+`Recipe.directDischarge` (Fase B) vía `loadDirectDischargeMap` (cargador
+server-only con fixpoint para anidamiento). Integrado en LOS 5 caminos que
+mueven inventario por venta (la auditoría encontró 5, no 4):
+
+1. `registerInventoryForCartItems` (pos.actions) — venta POS mesa/pickup/delivery.
+2. `applyItemInventoryInTx` (pos.actions) — ajuste/reversión de ítem de mesa
+   (RESTORE y DEDUCT expanden igual → espejo exacto).
+3. `restoreRecipe` en `voidSalesOrderAction` (void.actions) — anulación de orden.
+4. `computeConsumptionFromOrders` (consumption.ts, param directMap) — consumo
+   teórico; 2 callers en inventory-daily construyen el mapa. SIN se aplica ANTES
+   de expandir.
+5. `createSalesEntryAction` (sales-entry) — carga manual de ventas.
+
+**SEGURIDAD:** cada camino carga el mapa y solo expande si `size > 0`. Con el
+flag apagado en todas las sub-recetas (default), el mapa es vacío y el descargo
+es BYTE-idéntico al actual. Reversibilidad: apagar el flag del tabule vuelve al
+descargo legacy sin migración ni tocar datos.
+
+**Caveat operativo:** el flag se lee en tiempo de operación. No prender/apagar
+con órdenes abiertas sin cobrar/anular de por medio (venta en un modo + anulación
+en el otro descuadraría stock — mismo caso que editar una receta entre venta y
+anulación). Activar el tabule una vez y dejarlo.
+
+Tests nuevos: direct-discharge (11) + consumption directo (3). Gates: tsc 0 · vitest 649.

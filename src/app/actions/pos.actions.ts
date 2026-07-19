@@ -50,6 +50,8 @@ import { loadActivePromotionRules, priceItemWithPromotions, applyPromotionsToCar
 import { loadChannelPriceMap } from '@/lib/pricing/server';
 import type { PriceListChannel } from '@/lib/pricing/price-list';
 import { resolveCustomerForOrder, bumpCustomerStats } from '@/lib/customers/link';
+import { expandDirectDischarge } from '@/lib/inventory/direct-discharge';
+import { loadDirectDischargeMap } from '@/lib/inventory/direct-discharge-loader';
 import { suggestedTipAmount } from '@/lib/sales/tip-calculation';
 import { embedTabCode } from '@/lib/sales/collective-tip-ref';
 import { buildMenuItemCostMap, costSnapshotFields } from '@/lib/sales/menu-item-cost';
@@ -925,6 +927,22 @@ async function registerInventoryForCartItems(params: {
                     label,
                 });
             }
+        }
+    }
+
+    // §124 — expandir sub-recetas de descarga directa (ej. tabule) en sus
+    // materias primas. Mapa vacío (nadie activó el flag) → no-op exacto.
+    {
+        const directMap = await loadDirectDischargeMap(db, ops.map(o => o.inventoryItemId));
+        if (directMap.size > 0) {
+            const expanded: DeductOp[] = [];
+            for (const op of ops) {
+                for (const f of expandDirectDischarge([{ ingredientItemId: op.inventoryItemId, quantity: op.quantity, unit: op.unit }], directMap)) {
+                    expanded.push({ inventoryItemId: f.ingredientItemId, quantity: f.quantity, unit: f.unit, label: op.label });
+                }
+            }
+            ops.length = 0;
+            ops.push(...expanded);
         }
     }
 
@@ -2790,6 +2808,22 @@ async function applyItemInventoryInTx(tx: any, params: {
             continue;
         }
         await collectRecipe(menuModifier?.linkedMenuItem?.recipeId, note);
+    }
+
+    // §124 — expandir descarga directa igual que en la venta, para que la
+    // reversión/ajuste espeje EXACTAMENTE lo descargado. Mapa vacío → no-op.
+    {
+        const directMap = await loadDirectDischargeMap(tx, ops.map(o => o.inventoryItemId));
+        if (directMap.size > 0) {
+            const expanded: Op[] = [];
+            for (const op of ops) {
+                for (const f of expandDirectDischarge([{ ingredientItemId: op.inventoryItemId, quantity: op.quantity, unit: op.unit }], directMap)) {
+                    expanded.push({ inventoryItemId: f.ingredientItemId, quantity: f.quantity, unit: f.unit, note: op.note });
+                }
+            }
+            ops.length = 0;
+            ops.push(...expanded);
+        }
     }
 
     for (const op of ops) {

@@ -20,6 +20,8 @@ import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { expandDirectDischarge } from '@/lib/inventory/direct-discharge';
+import { loadDirectDischargeMap } from '@/lib/inventory/direct-discharge-loader';
 
 // ============================================================================
 // TIPOS
@@ -229,7 +231,15 @@ export async function createSalesEntryAction(
                     });
 
                     if (recipe && recipe.isActive) {
-                        for (const ingredient of recipe.ingredients) {
+                        // §124: expandir sub-recetas de descarga directa (tabule).
+                        // Mapa vacío (nadie activó el flag) → no-op exacto.
+                        const directMap = await loadDirectDischargeMap(
+                            db, recipe.ingredients.map(i => i.ingredientItemId));
+                        const dischargeIngredients = expandDirectDischarge(
+                            recipe.ingredients.map(i => ({ ingredientItemId: i.ingredientItemId, quantity: i.quantity, unit: i.unit })),
+                            directMap,
+                        );
+                        for (const ingredient of dischargeIngredients) {
                             const totalQty = ingredient.quantity * item.quantity;
 
                             await registerSale({

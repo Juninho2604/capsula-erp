@@ -26,6 +26,7 @@ import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import { getCaracasDayRange } from '@/lib/datetime';
 import { computeConsumptionFromOrders, collectReferencedRecipeIds } from '@/lib/inventory/consumption';
+import { loadDirectDischargeMap } from '@/lib/inventory/direct-discharge-loader';
 
 // ============================================================================
 // OBTENER INVENTARIO DIARIO (Sincronizado con Transferencias y Producciones)
@@ -332,7 +333,10 @@ export async function getDailyInventoryAction(
                 include: { ingredients: true },
             })
             : [];
-        const posConsumption = computeConsumptionFromOrders(posOrders, new Map(posRecipes.map(r => [r.id, r])));
+        // §124: mapa de sub-recetas de descarga directa (vacío → sin efecto).
+        const posDirectMap = await loadDirectDischargeMap(
+            db, posRecipes.flatMap(r => r.ingredients.map(i => i.ingredientItemId)));
+        const posConsumption = computeConsumptionFromOrders(posOrders, new Map(posRecipes.map(r => [r.id, r])), posDirectMap);
         for (const [id, qty] of Array.from(posConsumption.entries())) {
             autoSales.set(id, (autoSales.get(id) || 0) + qty);
         }
@@ -755,7 +759,10 @@ export async function syncSalesFromOrdersAction(dailyId: string): Promise<{ succ
             : [];
         const recipesById = new Map(recipesList.map(r => [r.id, r]));
 
-        const totalConsumption = computeConsumptionFromOrders(orders, recipesById);
+        // §124: mapa de sub-recetas de descarga directa (vacío → sin efecto).
+        const directMap = await loadDirectDischargeMap(
+            db, recipesList.flatMap(r => r.ingredients.map(i => i.ingredientItemId)));
+        const totalConsumption = computeConsumptionFromOrders(orders, recipesById, directMap);
 
         // Idempotente: setea `sales` al consumo recalculado para cada item afectado.
         // Re-correr el sync da el mismo resultado si las órdenes no cambian.

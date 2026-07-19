@@ -11,6 +11,8 @@
  * del caller.
  */
 
+import { expandDirectDischarge, type DirectDischargeMap } from './direct-discharge';
+
 export interface OrderForConsumption {
     items: Array<{
         quantity: number;
@@ -54,6 +56,9 @@ export interface RecipeForConsumption {
 export function computeConsumptionFromOrders(
     orders: OrderForConsumption[],
     recipesById: Map<string, RecipeForConsumption>,
+    // §124: sub-recetas de descarga directa (tabule). Vacío → identidad
+    // (comportamiento histórico intacto). El caller lo construye y lo pasa.
+    directMap: DirectDischargeMap = new Map(),
 ): Map<string, number> {
     const consumption = new Map<string, number>();
 
@@ -61,10 +66,17 @@ export function computeConsumptionFromOrders(
         if (!recipeId) return;
         const recipe = recipesById.get(recipeId);
         if (!recipe) return;
-        for (const ing of recipe.ingredients) {
+        // §94: exclusiones "SIN" se aplican sobre los ingredientes DIRECTOS de
+        // la receta ANTES de expandir (el toggle SIN referencia el item directo,
+        // no una materia prima interna de la sub-receta).
+        const kept = recipe.ingredients.filter(ing => !excluded?.has(ing.ingredientItemId));
+        // §124: expandir sub-recetas de descarga directa en sus insumos.
+        const flat = expandDirectDischarge(
+            kept.map(ing => ({ ingredientItemId: ing.ingredientItemId, quantity: ing.quantity, unit: '' })),
+            directMap,
+        );
+        for (const ing of flat) {
             if (!Number.isFinite(ing.quantity) || ing.quantity <= 0) continue;
-            // §94: ingrediente marcado "SIN" en el POS → no se consume.
-            if (excluded?.has(ing.ingredientItemId)) continue;
             const prev = consumption.get(ing.ingredientItemId) ?? 0;
             consumption.set(ing.ingredientItemId, prev + ing.quantity * quantity);
         }

@@ -17,6 +17,8 @@ import { checkActionPermission } from '@/lib/permissions/action-guard';
 import { PERM } from '@/lib/constants/permissions-registry';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
+import { expandDirectDischarge } from '@/lib/inventory/direct-discharge';
+import { loadDirectDischargeMap } from '@/lib/inventory/direct-discharge-loader';
 
 export async function voidSalesOrderAction(params: {
     orderId: string;
@@ -55,7 +57,18 @@ export async function voidSalesOrderAction(params: {
             });
             if (!recipe || !recipe.isActive) return;
 
-            for (const ingredient of recipe.ingredients) {
+            // §124 — reversión debe espejar el descargo: expandir sub-recetas de
+            // descarga directa en sus materias primas. Mapa vacío → no-op.
+            const directMap = await loadDirectDischargeMap(
+                db,
+                recipe.ingredients.map(i => i.ingredientItemId),
+            );
+            const restoreIngredients = expandDirectDischarge(
+                recipe.ingredients.map(i => ({ ingredientItemId: i.ingredientItemId, quantity: i.quantity, unit: i.unit })),
+                directMap,
+            );
+
+            for (const ingredient of restoreIngredients) {
                 const totalQty = ingredient.quantity * qty;
                 await prisma.inventoryMovement.create({
                     data: {
