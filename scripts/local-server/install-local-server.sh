@@ -133,7 +133,20 @@ set -a; source .env; set +a
 export PATH="$PWD/node_modules/.bin:$PATH"
 npm run build
 [ -f .next/standalone/server.js ] || { echo "ERROR: build no produjo standalone"; exit 1; }
-npx prisma migrate deploy
+# Esquema de BD según el caso:
+# - BD vacía (instalación nueva): `db push` crea el esquema completo desde
+#   schema.prisma. El historial de migraciones del repo NO reconstruye desde
+#   cero (la BD productiva evolucionó con db push en su era temprana y varias
+#   tablas nacieron fuera de migraciones — p.ej. PurchaseOrder). El cutover
+#   igual reemplaza esta BD con el dump del VPS, que trae _prisma_migrations.
+# - BD ya poblada (re-corrida post-cutover): migrate deploy normal.
+if sudo -u postgres psql -d "$DB_NAME" -p "$DB_PORT" -tAc \
+        "SELECT 1 FROM information_schema.tables WHERE table_name='_prisma_migrations'" | grep -q 1; then
+    npx prisma migrate deploy
+else
+    echo "    BD vacía sin historial de migraciones → prisma db push"
+    npx prisma db push --skip-generate
+fi
 cp -r public .next/standalone/
 cp -r .next/static .next/standalone/.next/
 
