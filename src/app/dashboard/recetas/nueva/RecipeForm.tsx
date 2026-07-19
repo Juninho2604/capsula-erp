@@ -80,6 +80,8 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
             ? (initialData?.outputItem?.type === 'FINISHED_GOOD' ? 'FINISHED_GOOD' : 'SUB_RECIPE')
             : (initialType ?? 'SUB_RECIPE')
     );
+    // §124: descarga directa en venta (solo aplica a sub-recetas, ej. tabule).
+    const [directDischarge, setDirectDischarge] = useState<boolean>(Boolean(initialData?.directDischarge));
     // Cantidades como STRING mientras se tipea: un estado numérico +
     // parseFloat por tecla rompe los decimales ("0.009" → el "0." intermedio
     // se parsea a 0 y el input se resetea). Se parsean al usar.
@@ -307,6 +309,8 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                 category,
                 description,
                 type,
+                // §124: solo tiene sentido en sub-recetas; forzamos false en producto final.
+                directDischarge: type === 'SUB_RECIPE' ? directDischarge : false,
                 outputQuantity,
                 outputUnit,
                 yieldPercentage,
@@ -431,6 +435,28 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                     </label>
                                 </div>
                             </div>
+
+                            {/* §124: descarga directa en venta (solo sub-recetas) */}
+                            {type === 'SUB_RECIPE' && (
+                                <div className="sm:col-span-2 rounded-xl border border-capsula-line bg-capsula-ivory-alt/50 p-4">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={directDischarge}
+                                            onChange={(e) => setDirectDischarge(e.target.checked)}
+                                            className="mt-0.5 h-4 w-4 accent-capsula-navy-deep focus:ring-capsula-navy-deep/20"
+                                        />
+                                        <span className="text-sm">
+                                            <span className="font-semibold text-capsula-ink">Descarga directa en venta (sin producción)</span>
+                                            <span className="block text-capsula-ink-muted mt-0.5">
+                                                Para preparaciones que se hacen al momento y NO se producen por tandas (ej. tabule).
+                                                Al vender un plato que la use, se descuentan directamente sus materias primas
+                                                (perejil, trigo…) en vez del stock de esta sub-receta.
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
 
                             <div className="sm:col-span-2">
                                 <label className="mb-1.5 block text-sm font-medium text-capsula-ink-soft">

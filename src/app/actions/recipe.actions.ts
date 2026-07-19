@@ -67,6 +67,8 @@ const CreateRecipeInputSchema = z.object({
     userId: z.string().min(1, 'userId requerido'),
     type: z.enum(['SUB_RECIPE', 'FINISHED_GOOD']).optional(),
     category: z.string().max(80).optional(),
+    // §124: descarga directa en venta (sub-recetas sin producción, ej. tabule).
+    directDischarge: z.boolean().optional(),
 });
 
 export type CreateRecipeInput = z.infer<typeof CreateRecipeInputSchema>;
@@ -349,6 +351,7 @@ export async function createRecipeAction(rawInput: CreateRecipeInput): Promise<A
                     yieldPercentage: input.yieldPercentage,
                     prepTime: input.prepTime,
                     cookTime: input.cookTime,
+                    directDischarge: input.directDischarge ?? false, // §124
                     isApproved: true, // Auto-approve for now
                     // createdById: input.userId, // Temporarily disabled until client regen
                     ingredients: {
@@ -468,6 +471,7 @@ export async function updateRecipeAction(rawInput: UpdateRecipeInput): Promise<A
                     yieldPercentage: input.yieldPercentage,
                     prepTime: input.prepTime,
                     cookTime: input.cookTime,
+                    directDischarge: input.directDischarge ?? false, // §124
                 }
             });
             const updatedRecipe = await tx.recipe.findFirst({ where: { id: input.id } });
