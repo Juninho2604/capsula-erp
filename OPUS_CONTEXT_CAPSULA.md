@@ -13039,3 +13039,30 @@ parsea schema.prisma y falla si CUALQUIER modelo de la lista carece de
 columna tenantId (§123) — imposible reintroducir el bug.
 
 Gates: tsc 0 · vitest 630.
+
+## §124 Fase A — Helper de sub-recetas de descarga directa (tabule) (2026-07-18)
+
+**Pedido del gerente (punto 2):** sub-recetas tipo tabule se hacen al momento y
+nadie registra su producción; al vender un shawarma debe descargar las materias
+primas del tabule directamente, en vez de stock de tabule (que se iría a
+negativo). Sin duplicar ingredientes en cada receta.
+
+**Fase A (esta entrega — SIN tocar runtime):** `src/lib/inventory/direct-discharge.ts`,
+función pura `expandDirectDischarge(ingredients, directMap)` con 11 tests:
+- Explota los ingredientes cuyo item es una sub-receta de descarga directa en
+  sus insumos, proporcional (ratio = cantidad usada ÷ rendimiento base) y
+  recursivo, con conversión de unidades (§109.1 / qtyToBaseUnit).
+- Guardas: anti-ciclo (A→B→A), tope de profundidad (MAX_DIRECT_DEPTH=6),
+  rendimiento inválido → fallback legacy, cantidades no positivas intactas.
+- **PROPIEDAD DE SEGURIDAD:** map vacío → salida idéntica a la entrada. Los 4
+  caminos de descargo podrán envolverse con esto y, sin flags activos, el
+  comportamiento es exactamente el actual.
+- Ningún archivo de runtime lo importa aún (verificado).
+
+PENDIENTE (con local cerrado): Fase B (flag `directDischarge` en Recipe +
+migración aditiva + toggle en la ficha de sub-receta) y Fase C (integrar el
+helper en los 4 caminos: registerInventoryForCartItems, applyItemInventoryInTx,
+voidSalesOrderAction/restoreRecipe, computeConsumptionFromOrders — un solo
+commit, con el flag default OFF → cero cambio para datos existentes).
+
+Gates: tsc 0 · vitest 641.
