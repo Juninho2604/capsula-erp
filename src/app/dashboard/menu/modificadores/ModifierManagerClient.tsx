@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight, Plus, X as XIcon, ListTree } from 'lucide-react';
+import { Check, AlertTriangle, Trash2, FlaskConical, ChevronDown, ChevronRight, Plus, X as XIcon, ListTree, Search } from 'lucide-react';
 import {
     linkModifierToMenuItemAction,
     toggleModifierAvailabilityAction,
@@ -108,6 +108,20 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
     const [recipeEditor, setRecipeEditor] = useState<{ groupIdx: number; modIdx: number } | null>(null);
     const [recipeRows, setRecipeRows] = useState<Array<{ ingredientItemId: string; quantity: string; unit: string }>>([]);
     const [recipeSearch, setRecipeSearch] = useState('');
+    // §128: buscador general de grupos. Filtra por nombre del grupo, nombres
+    // de sus opciones y platos vinculados. IMPORTANTE: el render itera
+    // localGroups con su índice original (los handlers editan por índice) y
+    // solo OCULTA los no coincidentes — nunca se re-indexa la lista.
+    const [groupSearch, setGroupSearch] = useState('');
+    const groupMatchesSearch = (group: (typeof localGroups)[number]): boolean => {
+        const q = groupSearch.trim().toLowerCase();
+        if (!q) return true;
+        if (group.name.toLowerCase().includes(q)) return true;
+        if (group.modifiers.some(m => m.name.toLowerCase().includes(q))) return true;
+        if (group.menuItems.some(m => m.menuItem.name.toLowerCase().includes(q))) return true;
+        return false;
+    };
+    const visibleGroupCount = localGroups.filter(groupMatchesSearch).length;
     const [savingRecipe, setSavingRecipe] = useState(false);
     const [recipeError, setRecipeError] = useState<string | null>(null);
 
@@ -449,11 +463,25 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
                 <strong>¿Cómo funciona?</strong> Crea grupos de modificadores y vincúlalos a los platos del menú (columna &quot;Aplica a platos del POS&quot;). Cada modificador puede vincularse a otro plato para descargar su receta del inventario.
             </div>
 
-            {/* Botón Nuevo Grupo */}
-            <div className="flex justify-end">
+            {/* §128: Buscador de grupos + Botón Nuevo Grupo */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-capsula-ink-muted" />
+                    <input
+                        type="text"
+                        value={groupSearch}
+                        onChange={e => setGroupSearch(e.target.value)}
+                        placeholder="Buscar grupo, opción o plato..."
+                        className="w-full rounded-lg border border-capsula-line bg-capsula-ivory text-capsula-ink pl-10 pr-3 py-2 text-sm placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none"
+                    />
+                </div>
+                <span className="text-sm text-capsula-ink-muted tabular-nums shrink-0">
+                    {visibleGroupCount} de {localGroups.length} grupos
+                </span>
+                <div className="flex-1" />
                 <button
                     onClick={() => setShowNewGroupForm(v => !v)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-cream text-sm font-semibold"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-capsula-navy-deep hover:bg-capsula-navy text-capsula-cream text-sm font-semibold shrink-0"
                 >
                     + Nuevo Grupo de Modificadores
                 </button>
@@ -515,8 +543,16 @@ export default function ModifierManagerClient({ groups, menuItems, inventoryItem
                 </div>
             )}
 
-            {/* Lista de grupos */}
-            {localGroups.map((group, groupIdx) => (
+            {/* §128: mensaje cuando el buscador no encuentra nada */}
+            {localGroups.length > 0 && visibleGroupCount === 0 && (
+                <div className="rounded-xl border border-capsula-line p-8 text-center text-capsula-ink-muted">
+                    Ningún grupo coincide con &quot;{groupSearch}&quot; — prueba con el nombre del grupo, de una opción o de un plato.
+                </div>
+            )}
+
+            {/* Lista de grupos — §128: el buscador solo OCULTA (return null),
+                nunca re-indexa: los handlers dependen del groupIdx original. */}
+            {localGroups.map((group, groupIdx) => !groupMatchesSearch(group) ? null : (
                 <div key={group.id} className="rounded-xl border border-capsula-line overflow-hidden">
                     {/* Header del grupo */}
                     <div className="flex items-center justify-between px-5 py-3 bg-capsula-ivory-alt">

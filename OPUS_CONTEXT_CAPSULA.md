@@ -13174,3 +13174,17 @@ pero la UI confundía y permitía elegir unidades de otra familia.)
   (antes ofrecía todas, incluido KG).
 
 Gates: tsc 0 · vitest 649 (8 tests nuevos de alias).
+
+## §128 Buscador en el submódulo Modificadores (2026-07-20)
+
+Pedido de Omar: el submódulo Catálogo → Modificadores no tenía búsqueda.
+
+- Buscador arriba de la lista: filtra por nombre del GRUPO, nombre de sus
+  OPCIONES y nombre de los PLATOS donde aplica (ej. "shawarma" muestra todos
+  los grupos vinculados a shawarmas). Contador "N de M grupos" + empty-state.
+- Detalle técnico clave: los handlers del componente editan por ÍNDICE de
+  localGroups → el buscador solo OCULTA con `return null` dentro del map
+  original, nunca re-indexa la lista (filtrar con .filter() habría hecho que
+  editar/borrar tocara el grupo equivocado).
+
+UI pura, sin BD. tsc 0 · vitest 649.
