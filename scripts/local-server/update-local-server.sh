@@ -13,6 +13,15 @@
 # ============================================================================
 set -euo pipefail
 
+# Auto-reexec desde /tmp: el git checkout de abajo REEMPLAZA este mismo
+# archivo mientras bash lo está leyendo (bash lee los scripts por pedazos)
+# → comportamiento indefinido. Corriendo la copia, el checkout es inocuo.
+if [ "${CAPSULA_UPDATE_REEXEC:-}" != "1" ]; then
+    TMP_SELF=$(mktemp /tmp/update-local-server-XXXXXX.sh)
+    cp "${BASH_SOURCE[0]}" "$TMP_SELF"
+    CAPSULA_UPDATE_REEXEC=1 exec bash "$TMP_SELF" "$@"
+fi
+
 BRANCH="${1:-main}"
 APP_DIR="/var/www/capsula-erp"
 CONF_FILE="/etc/capsula-local.conf"
@@ -42,8 +51,17 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 npm run build
 [ -f .next/standalone/server.js ] || { echo "ERROR: build no produjo standalone — la app vieja sigue corriendo"; exit 1; }
 
-echo "[4/5] prisma migrate deploy + assets..."
-npx prisma migrate deploy
+echo "[4/5] esquema de BD + assets..."
+# Misma lógica que install-local-server.sh: antes del cutover la BD local
+# no tiene _prisma_migrations (nació con db push) → migrate deploy fallaría.
+# Post-cutover (dump del VPS con historial) usa migrate deploy normal.
+if sudo -u postgres psql -d "$DB_NAME" -p "$DB_PORT" -tAc \
+        "SELECT 1 FROM information_schema.tables WHERE table_name='_prisma_migrations'" | grep -q 1; then
+    npx prisma migrate deploy
+else
+    echo "    BD sin historial de migraciones (pre-cutover) → prisma db push"
+    npx prisma db push --skip-generate
+fi
 cp -r public .next/standalone/
 cp -r .next/static .next/standalone/.next/
 
