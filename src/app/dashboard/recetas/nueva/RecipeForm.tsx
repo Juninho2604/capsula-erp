@@ -30,6 +30,12 @@ interface RecipeFormProps {
      * con ?tipo=SUB_RECIPE). Ignorado si hay initialData (edición).
      */
     initialType?: 'SUB_RECIPE' | 'FINISHED_GOOD';
+    /**
+     * §126: de dónde vino el usuario. 'menu' → la flecha de volver apunta al
+     * catálogo y al GUARDAR se regresa directo a /dashboard/menu (flujo del
+     * gerente: editar la receta del plato sin perderse entre módulos).
+     */
+    returnTo?: 'menu';
 }
 
 interface DraftIngredient {
@@ -65,7 +71,7 @@ const UNIT_FAMILIES: Record<string, UnitOfMeasure[]> = {
 
 const unitLabel = (v: string) => UNITS.find(u => u.value === v)?.label ?? v;
 
-export default function RecipeForm({ availableIngredients, initialData, initialType }: RecipeFormProps) {
+export default function RecipeForm({ availableIngredients, initialData, initialType, returnTo }: RecipeFormProps) {
     const router = useRouter();
     const { user, canViewCosts } = useAuthStore();
     const [showCosts, setShowCosts] = useState(false);
@@ -335,7 +341,11 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
 
             if (result.success) {
                 toast.success(initialData ? 'Receta actualizada' : 'Receta creada con éxito');
-                router.push(initialData ? `/dashboard/recetas/${initialData.id}` : '/dashboard/recetas');
+                // §126: si vino del catálogo, el guardado lo devuelve AL catálogo
+                // (antes caía en Recetas y tenía que navegar de vuelta a mano).
+                router.push(returnTo === 'menu'
+                    ? '/dashboard/menu'
+                    : (initialData ? `/dashboard/recetas/${initialData.id}` : '/dashboard/recetas'));
                 router.refresh();
             } else {
                 toast.error(result.message);
@@ -353,11 +363,12 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/dashboard/recetas"
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt"
-                        aria-label="Volver a recetas"
+                        href={returnTo === 'menu' ? '/dashboard/menu' : '/dashboard/recetas'}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-lg border border-capsula-line text-capsula-ink-muted transition-colors hover:bg-capsula-ivory-alt ${returnTo === 'menu' ? 'px-3' : 'w-10'}`}
+                        aria-label={returnTo === 'menu' ? 'Volver al Menú' : 'Volver a recetas'}
                     >
                         <ArrowLeft className="h-4 w-4" />
+                        {returnTo === 'menu' && <span className="text-sm font-medium">Volver al Menú</span>}
                     </Link>
                     <div>
                         <h1 className="font-semibold text-3xl tracking-[-0.02em] text-capsula-ink">{initialData ? 'Editar Receta' : 'Nueva Receta'}</h1>

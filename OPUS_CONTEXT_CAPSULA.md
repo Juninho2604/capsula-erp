@@ -13111,3 +13111,25 @@ sub-recetas como submódulo propio en el menú lateral, justo debajo de Recetas.
   solo lugar, "afuera").
 
 UI pura, sin cambios de BD. tsc 0 · vitest 649.
+
+## §126 Flujo Menú↔Receta sin viajes — "es lento ese proceso" (2026-07-20)
+
+**Queja del gerente:** editar la receta de un plato desde el catálogo lo
+redirigía al módulo Recetas y, al guardar, caía en la lista de Recetas —
+tenía que navegar de vuelta Catálogo→Menú y re-buscar el plato cada vez.
+
+**Fix (UI pura, sin BD):**
+- Los badges del catálogo ("Receta lista"/"Receta vacía") y la creación de
+  receta nueva van al EDITOR con `?volver=menu`.
+- `RecipeForm` acepta `returnTo: 'menu'`: la flecha de volver se convierte en
+  botón "← Volver al Menú", y al GUARDAR hace router.push('/dashboard/menu')
+  en vez de caer en Recetas. Sin el parámetro, el comportamiento histórico
+  queda intacto (Recetas → detalle/lista, como siempre).
+- El buscador del catálogo persiste en sessionStorage (`menu:searchTerm`,
+  restaurado en useEffect post-montaje — sin hydration mismatch): al volver
+  de editar, el filtro sigue donde estaba.
+
+Ciclo resultante: Menú → clic en badge → editar → Guardar → Menú (con el
+mismo filtro de búsqueda). Cero navegación manual entre módulos.
+
+Gates: tsc 0 · vitest 649.

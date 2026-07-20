@@ -38,6 +38,18 @@ export default function MenuManagementPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    // §126: el buscador del catálogo RECUERDA lo tecleado (sessionStorage) —
+    // al volver de editar una receta, el filtro sigue donde estaba. Se lee en
+    // useEffect post-montaje (no en el initializer) para no romper hidratación.
+    useEffect(() => {
+        try {
+            const saved = window.sessionStorage.getItem('menu:searchTerm');
+            if (saved) setSearchTerm(saved);
+        } catch { /* sessionStorage bloqueado → sin memoria, sin error */ }
+    }, []);
+    useEffect(() => {
+        try { window.sessionStorage.setItem('menu:searchTerm', searchTerm); } catch {}
+    }, [searchTerm]);
 
     // Estado para Modal Nuevo Producto (plato preparado — el original)
     const [showModal, setShowModal] = useState(false);
@@ -324,7 +336,7 @@ export default function MenuManagementPage() {
             // en vez de dejar al usuario buscándola en el módulo Recetas.
             const newRecipeId = (result.data as any)?.recipeId;
             if (newRecipeId) {
-                router.push(`/dashboard/recetas/${newRecipeId}/editar`);
+                router.push(`/dashboard/recetas/${newRecipeId}/editar?volver=menu`);
                 return;
             }
             loadData();
@@ -510,20 +522,22 @@ export default function MenuManagementPage() {
                                                     <Check className="h-3 w-3" /> Reventa 1:1
                                                 </span>
                                             );
+                                            // §126: ambos badges van al EDITOR con ?volver=menu —
+                                            // al guardar regresa al catálogo, sin viaje por Recetas.
                                             if (rs === 'COMPLETE') return (
                                                 <a
-                                                    href={`/dashboard/recetas/${item.recipeId}`}
+                                                    href={`/dashboard/recetas/${item.recipeId}/editar?volver=menu`}
                                                     className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#E5EDE7] text-[#2F6B4E] dark:bg-[#1E3B2C] dark:text-[#6FB88F] hover:opacity-80"
-                                                    title="Ver / editar la receta de este plato"
+                                                    title="Editar la receta de este plato (al guardar vuelves aquí)"
                                                 >
                                                     <Check className="h-3 w-3" /> Receta lista
                                                 </a>
                                             );
                                             if (rs === 'STUB') return (
                                                 <a
-                                                    href={`/dashboard/recetas/${item.recipeId}/editar`}
+                                                    href={`/dashboard/recetas/${item.recipeId}/editar?volver=menu`}
                                                     className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider inline-flex items-center gap-1 transition-colors bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8] hover:opacity-80"
-                                                    title="Receta creada pero sin ingredientes — click para completarla"
+                                                    title="Receta sin ingredientes — complétala (al guardar vuelves aquí)"
                                                 >
                                                     <AlertTriangle className="h-3 w-3" /> Receta vacía
                                                 </a>
