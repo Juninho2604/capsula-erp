@@ -13094,3 +13094,20 @@ en el otro descuadraría stock — mismo caso que editar una receta entre venta 
 anulación). Activar el tabule una vez y dejarlo.
 
 Tests nuevos: direct-discharge (11) + consumption directo (3). Gates: tsc 0 · vitest 649.
+
+## §125 Submódulo propio "Sub-recetas" en el sidebar (2026-07-19)
+
+Pedido de Omar: en vez de una pestaña dentro de Producción (§120), tener las
+sub-recetas como submódulo propio en el menú lateral, justo debajo de Recetas.
+
+- Registro: módulo `subrecetas` (section operations, sortOrder 61, href
+  /dashboard/subrecetas) + permisos [OWNER, AUDITOR, ADMIN_MANAGER,
+  OPS_MANAGER, CHEF] (igual que recipes).
+- Sidebar: `subrecetas` insertado después de `recipes` en el subgrupo
+  Producción. Icono `Layers`.
+- Página `/dashboard/subrecetas` reutiliza el componente SubRecetasTab
+  (lista SUB_RECIPE con RecipeList lockedType + buscador + "Nueva sub-receta").
+- Se removió la pestaña "Sub-recetas" de dentro de Producción (queda en un
+  solo lugar, "afuera").
+
+UI pura, sin cambios de BD. tsc 0 · vitest 649.

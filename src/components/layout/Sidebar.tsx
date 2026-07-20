@@ -54,7 +54,7 @@ const SIDEBAR_TREE: SectionDef[] = [
             },
             {
                 kind: 'subgroup', id: 'sg-produccion', label: 'Producción', icon: '🏭',
-                items: ['recipes', 'production', 'proteins', 'delivery_notes'],
+                items: ['recipes', 'subrecetas', 'production', 'proteins', 'delivery_notes'],
             },
             {
                 kind: 'subgroup', id: 'sg-costos', label: 'Costos', icon: '💰',

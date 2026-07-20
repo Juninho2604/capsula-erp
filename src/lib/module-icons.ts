@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
     BarChart3, TrendingUp, CalendarDays, Package, ClipboardCheck, Shield, ArrowLeftRight,
-    History, Coins, ChefHat, Factory, DollarSign, Target, ShoppingCart, Beef, UserCheck,
+    History, Coins, ChefHat, Layers, Factory, DollarSign, Target, ShoppingCart, Beef, UserCheck,
     Palette, Wand2, UtensilsCrossed, Settings2, Salad, Smartphone, Bike, Truck, Monitor,
     PlusSquare, FileClock, Flame, GlassWater, Wrench, Gamepad2, Calendar, Hand, ListChecks,
     Building2, Users, UserCog, KeyRound, SlidersHorizontal, Warehouse, RefreshCw, Megaphone,
@@ -31,6 +31,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
     inventory_history: History,
     loans:             Coins,
     recipes:           ChefHat,
+    subrecetas:        Layers,
     production:        Factory,
     costs:             DollarSign,
     margen:            Target,
