@@ -13,6 +13,7 @@ import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import { ModalPortal } from '@/components/ui/modal-portal';
+import { normalizeUnitCode } from '@/lib/inventory/unit-conversion';
 
 interface IngredientOption {
     id: string;
@@ -209,9 +210,16 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
     const qtyInputRef = useRef<HTMLInputElement>(null);
 
     // §109.1: insumo seleccionado en el modal y sus unidades compatibles.
+    // §127: la baseUnit se NORMALIZA (alias 'UND'→'UNIT', 'GR'→'G'…). Antes,
+    // una unidad no canónica no matcheaba la familia → el selector ofrecía
+    // TODAS las unidades y caía visualmente en KG ("el pan de shawarma está
+    // en unidades y me lo quiere poner en kilos"). Si la unidad es realmente
+    // desconocida, el selector queda FIJO en ella (nunca ofrecer KG a algo
+    // contado por unidades).
     const selectedNewItem = localIngredients.find(i => i.id === newIngredient.inventoryItemId) ?? null;
+    const selectedNewBase = selectedNewItem ? (normalizeUnitCode(selectedNewItem.baseUnit) as UnitOfMeasure) : '' as UnitOfMeasure;
     const newUnitOptions: UnitOfMeasure[] = selectedNewItem
-        ? (UNIT_FAMILIES[selectedNewItem.baseUnit] ?? UNITS.map(u => u.value))
+        ? (UNIT_FAMILIES[selectedNewBase] ?? [selectedNewBase])
         : [];
 
     // Agregar ingrediente. El modal QUEDA ABIERTO y listo para el siguiente
@@ -224,10 +232,12 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
         const item = localIngredients.find(i => i.id === newIngredient.inventoryItemId);
         // §109.1: la unidad SIEMPRE dentro de la familia del insumo; si por
         // algún estado viejo no lo está, cae a la unidad base del insumo.
-        const family = item ? (UNIT_FAMILIES[item.baseUnit] ?? []) : [];
+        // §127: familia y fallback con la unidad NORMALIZADA (alias → canónica).
+        const itemBase = normalizeUnitCode(item?.baseUnit) as UnitOfMeasure;
+        const family = item ? (UNIT_FAMILIES[itemBase] ?? []) : [];
         const safeUnit: UnitOfMeasure = newIngredient.unit && family.includes(newIngredient.unit)
             ? newIngredient.unit
-            : ((item?.baseUnit as UnitOfMeasure) || 'KG');
+            : (itemBase || 'KG');
         const newIng: DraftIngredient = {
             id: `temp-${Date.now()}`,
             inventoryItemId: newIngredient.inventoryItemId,
@@ -756,7 +766,8 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                                 setNewIngredient({
                                                     ...newIngredient,
                                                     inventoryItemId: val,
-                                                    unit: (item?.baseUnit as UnitOfMeasure) || 'KG'
+                                                    // §127: unidad normalizada (alias UND/GR/LT → canónica)
+                                                    unit: (normalizeUnitCode(item?.baseUnit) as UnitOfMeasure) || 'KG'
                                                 });
                                                 // §109: al elegir insumo, el foco salta directo a
                                                 // Cantidad — sin click ni scroll intermedio.
@@ -799,8 +810,8 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                         {selectedNewItem && (
                                             <p className="mt-1 text-[11px] text-capsula-ink-muted">
                                                 {newUnitOptions.length > 1
-                                                    ? <>Unidad del insumo: <span className="font-semibold">{unitLabel(selectedNewItem.baseUnit)}</span> — puedes cambiar a {newUnitOptions.filter(v => v !== selectedNewItem.baseUnit).map(unitLabel).join(', ')}</>
-                                                    : <>Unidad fija del insumo: <span className="font-semibold">{unitLabel(selectedNewItem.baseUnit)}</span></>}
+                                                    ? <>Unidad del insumo: <span className="font-semibold">{unitLabel(selectedNewBase)}</span> — puedes cambiar a {newUnitOptions.filter(v => v !== selectedNewBase).map(unitLabel).join(', ')}</>
+                                                    : <>Unidad fija del insumo: <span className="font-semibold">{unitLabel(selectedNewBase)}</span></>}
                                             </p>
                                         )}
                                     </div>

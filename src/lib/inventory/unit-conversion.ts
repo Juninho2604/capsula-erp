@@ -33,6 +33,33 @@ const UNIT_TABLE: Record<string, { family: Family; toCanonical: number }> = {
     // PORTION es deliberadamente ambigua (depende de la receta) — identidad.
 };
 
+/**
+ * §127 — Alias comunes (español / variantes) → código canónico de UNIT_TABLE.
+ * Caso real: "pan de shawarma está en unidades y la receta me lo quiere poner
+ * en kilos" — el insumo tenía baseUnit no canónica (ej. 'UND'); la tabla de
+ * familias no la reconocía y el selector caía visualmente en KG.
+ */
+const UNIT_ALIASES: Record<string, string> = {
+    UND: 'UNIT', UNID: 'UNIT', UNIDAD: 'UNIT', UNIDADES: 'UNIT', U: 'UNIT',
+    PZ: 'UNIT', PZA: 'UNIT', PIEZA: 'UNIT', PIEZAS: 'UNIT',
+    KGS: 'KG', KILO: 'KG', KILOS: 'KG', KILOGRAMO: 'KG', KILOGRAMOS: 'KG',
+    GR: 'G', GRS: 'G', GRAMO: 'G', GRAMOS: 'G',
+    LT: 'L', LTS: 'L', LITRO: 'L', LITROS: 'L',
+    MLS: 'ML', CC: 'ML', MILILITRO: 'ML', MILILITROS: 'ML',
+    DOC: 'DOZEN', DOCENA: 'DOZEN', DOCENAS: 'DOZEN',
+    PORCION: 'PORTION', PORCIONES: 'PORTION', PORCIÓN: 'PORTION',
+};
+
+/**
+ * §127 — Devuelve el código canónico de una unidad (resuelve alias y
+ * mayúsculas/espacios). Unidades desconocidas se devuelven en mayúsculas
+ * tal cual (nunca inventa).
+ */
+export function normalizeUnitCode(unit: string | null | undefined): string {
+    const u = (unit ?? '').toUpperCase().trim();
+    return UNIT_ALIASES[u] ?? u;
+}
+
 export interface NormalizedQty {
     quantity: number;
     unit: string;
@@ -53,8 +80,10 @@ export function qtyToBaseUnit(
     unit: string | null | undefined,
     baseUnit: string | null | undefined
 ): NormalizedQty {
-    const u = (unit ?? '').toUpperCase().trim();
-    const b = (baseUnit ?? '').toUpperCase().trim();
+    // §127: resolver alias ANTES de comparar/convertir ('UND'≡'UNIT', 'GR'≡'G').
+    // Los alias son 1:1 con su canónico → normalizar nunca cambia cantidades.
+    const u = normalizeUnitCode(unit);
+    const b = normalizeUnitCode(baseUnit);
     if (!u || !b || u === b) {
         return { quantity, unit: u || b, converted: false };
     }

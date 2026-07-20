@@ -13150,3 +13150,27 @@ ya lo sacamos a un submódulo no tiene sentido que siga ahí".
   auto-gestionadas desde Menú y no deben editarse.
 
 UI pura. tsc 0 · vitest 649.
+
+## §127 Alias de unidades — "el pan está en unidades y me lo pone en kilos" (2026-07-20)
+
+**Reporte del gerente:** el pan de shawarma (contado por unidades) al agregarse
+a una receta mostraba "Kilogramos" en el selector; otros insumos sí salían bien.
+
+**Causa:** el insumo tenía baseUnit NO canónica (ej. 'UND'/'UNIDADES' en vez de
+'UNIT'). La tabla UNIT_FAMILIES no la reconocía → el selector ofrecía TODAS las
+unidades y, como el value del <select> no estaba entre las opciones, el browser
+mostraba la primera: KG. (Guardar era seguro — el safeUnit caía a la baseUnit —
+pero la UI confundía y permitía elegir unidades de otra familia.)
+
+**Fix (§127):**
+- `normalizeUnitCode()` en unit-conversion.ts: alias español→canónico (UND/
+  UNIDAD/UNIDADES/PZ→UNIT, GR/GRS→G, LT/LTS→L, KILOS→KG, CC→ML, DOCENA→DOZEN,
+  PORCIÓN→PORTION…). Alias son 1:1 con su canónico → normalizar nunca cambia
+  cantidades.
+- `qtyToBaseUnit` normaliza ambos lados antes de comparar/convertir (ahora
+  "200 GR" de un item en KG sí convierte a 0.2 KG; antes quedaba identidad).
+- RecipeForm: familia/auto-fill/hint del selector usan la unidad normalizada.
+  Fallback endurecido: unidad realmente desconocida → selector FIJO en ella
+  (antes ofrecía todas, incluido KG).
+
+Gates: tsc 0 · vitest 649 (8 tests nuevos de alias).

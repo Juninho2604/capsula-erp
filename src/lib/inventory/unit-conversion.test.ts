@@ -46,3 +46,35 @@ describe('qtyToBaseUnit — normalización a unidad base (§109.1)', () => {
         expect(qtyToBaseUnit(200, 'g', 'kg')).toEqual({ quantity: 0.2, unit: 'KG', converted: true });
     });
 });
+
+// ── §127: alias de unidades en español ──────────────────────────────────────
+import { normalizeUnitCode } from './unit-conversion';
+
+describe('normalizeUnitCode (§127)', () => {
+    it('resuelve alias comunes a su canónico', () => {
+        expect(normalizeUnitCode('UND')).toBe('UNIT');
+        expect(normalizeUnitCode('unidades')).toBe('UNIT');
+        expect(normalizeUnitCode('Gr')).toBe('G');
+        expect(normalizeUnitCode('LT')).toBe('L');
+        expect(normalizeUnitCode('kilos')).toBe('KG');
+        expect(normalizeUnitCode('cc')).toBe('ML');
+    });
+    it('canónicos y desconocidos quedan tal cual (mayúsculas)', () => {
+        expect(normalizeUnitCode('KG')).toBe('KG');
+        expect(normalizeUnitCode('SACO')).toBe('SACO');
+        expect(normalizeUnitCode('')).toBe('');
+        expect(normalizeUnitCode(null)).toBe('');
+    });
+});
+
+describe('qtyToBaseUnit con alias (§127)', () => {
+    it("'UND' contra base 'UNIT' → identidad, unit canónica", () => {
+        expect(qtyToBaseUnit(3, 'UND', 'UNIT')).toEqual({ quantity: 3, unit: 'UNIT', converted: false });
+    });
+    it("'GR' contra base 'KG' → convierte (200 GR = 0.2 KG)", () => {
+        expect(qtyToBaseUnit(200, 'GR', 'KG')).toEqual({ quantity: 0.2, unit: 'KG', converted: true });
+    });
+    it("'unidades' contra base 'UND' → misma unidad tras normalizar, identidad", () => {
+        expect(qtyToBaseUnit(5, 'unidades', 'UND')).toEqual({ quantity: 5, unit: 'UNIT', converted: false });
+    });
+});
