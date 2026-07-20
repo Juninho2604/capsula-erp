@@ -13133,3 +13133,20 @@ Ciclo resultante: Menú → clic en badge → editar → Guardar → Menú (con 
 mismo filtro de búsqueda). Cero navegación manual entre módulos.
 
 Gates: tsc 0 · vitest 649.
+
+## §126.1 Recetas sin el toggle de sub-recetas (2026-07-20)
+
+Omar: "sub-recetas me sigue apareciendo dentro de Recetas en una pestaña; si
+ya lo sacamos a un submódulo no tiene sentido que siga ahí".
+
+- /dashboard/recetas ahora pasa lockedType="FINISHED_GOOD" a RecipeList con la
+  lista pre-filtrada a productos del menú → el toggle Todas/Sub-recetas/
+  Productos desaparece de Recetas. Header dice "N recetas de platos del menú".
+- "Nueva Receta" de esa página abre el form con tipo Producto Final
+  preseleccionado (?tipo=FINISHED_GOOD).
+- Las sub-recetas se gestionan SOLO en /dashboard/subrecetas (§125).
+- Nota: las recetas técnicas de reventa (output RAW_MATERIAL) ya no son
+  visibles en ninguna lista (antes solo bajo "Todas") — deliberado: son 1:1
+  auto-gestionadas desde Menú y no deben editarse.
+
+UI pura. tsc 0 · vitest 649.
