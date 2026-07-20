@@ -9,7 +9,7 @@
 #
 # Qué hace:
 #   1. Crea el usuario restringido `capsula-tunnel` (sin shell útil).
-#   2. Registra la llave del túnel SOLO para port-forwarding a 127.0.0.1:3100.
+#   2. Registra la llave del túnel SOLO para port-forwarding a 127.0.0.1:3210.
 #   3. Registra la llave de backup con forced-command que recibe dumps
 #      por stdin y los guarda en /var/lib/postgresql/backups/local-server/.
 #   4. Crea el snippet de nginx para rutear kpsula.app al túnel, y los
@@ -50,12 +50,12 @@ chmod 755 /usr/local/bin/capsula-receive-backup.sh
 mkdir -p "$BACKUP_DIR"
 chown "$TUNNEL_USER" "$BACKUP_DIR"
 
-# 3. authorized_keys: túnel solo puede abrir 127.0.0.1:3100; backup solo
+# 3. authorized_keys: túnel solo puede abrir 127.0.0.1:3210; backup solo
 #    puede ejecutar el receptor. Nada más.
 AK_DIR="/home/$TUNNEL_USER/.ssh"
 mkdir -p "$AK_DIR"
 cat > "$AK_DIR/authorized_keys" <<EOF
-restrict,port-forwarding,permitlisten="127.0.0.1:3100" $TUNNEL_PUBKEY
+restrict,port-forwarding,permitlisten="127.0.0.1:3210" $TUNNEL_PUBKEY
 restrict,command="/usr/local/bin/capsula-receive-backup.sh" $BACKUP_PUBKEY
 EOF
 chmod 700 "$AK_DIR"
@@ -71,12 +71,12 @@ EOF
 
 cat > /usr/local/bin/capsula-route-local.sh <<'EOF'
 #!/usr/bin/env bash
-# kpsula.app → SERVIDOR LOCAL del restaurante (vía túnel :3100)
+# kpsula.app → SERVIDOR LOCAL del restaurante (vía túnel :3210)
 set -euo pipefail
-echo 'proxy_pass http://127.0.0.1:3100;' > /etc/nginx/snippets/capsula-proxy-target.conf
+echo 'proxy_pass http://127.0.0.1:3210;' > /etc/nginx/snippets/capsula-proxy-target.conf
 sed -i '1i # Destino actual de kpsula.app. Cambiar con capsula-route-*.sh' /etc/nginx/snippets/capsula-proxy-target.conf
 nginx -t && systemctl reload nginx
-echo "kpsula.app ahora sirve desde el SERVIDOR LOCAL (túnel :3100)"
+echo "kpsula.app ahora sirve desde el SERVIDOR LOCAL (túnel :3210)"
 EOF
 
 cat > /usr/local/bin/capsula-route-vps.sh <<'EOF'
