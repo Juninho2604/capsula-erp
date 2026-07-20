@@ -41,7 +41,7 @@ find "$LOCAL_DIR" -name 'storage-*.tar.gz' -mtime +14 -delete
 # Push al VPS (la forced command del otro lado escribe el archivo).
 # Si no hay internet, no es fatal: el dump local queda y el próximo cron
 # vuelve a intentar con un dump fresco.
-if ssh -i "$BACKUP_KEY" \
+if ssh -T -i "$BACKUP_KEY" \
         -o ConnectTimeout=20 \
         -o StrictHostKeyChecking=accept-new \
         "$VPS_TUNNEL_USER@$VPS_HOST" < "$DUMP"; then
