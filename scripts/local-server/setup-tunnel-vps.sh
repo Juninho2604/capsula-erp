@@ -29,9 +29,14 @@ SNIPPET="/etc/nginx/snippets/capsula-proxy-target.conf"
 
 [ "$(id -u)" -eq 0 ] || { echo "ERROR: correr como root"; exit 1; }
 
-# 1. Usuario restringido
+# 1. Usuario restringido. Shell /bin/sh (NO nologin): sshd ejecuta las
+#    forced commands vía el shell del usuario — con nologin el receptor de
+#    backups muere con "This account is currently not available". El acceso
+#    real lo limitan las opciones de authorized_keys (command= en ambas
+#    llaves), no el shell.
 id "$TUNNEL_USER" >/dev/null 2>&1 \
-    || useradd -m -s /usr/sbin/nologin "$TUNNEL_USER"
+    || useradd -m -s /bin/sh "$TUNNEL_USER"
+usermod -s /bin/sh "$TUNNEL_USER"
 
 # 2. Receptor de backups (forced command: escribe stdin a archivo con timestamp)
 cat > /usr/local/bin/capsula-receive-backup.sh <<EOF
@@ -55,7 +60,7 @@ chown "$TUNNEL_USER" "$BACKUP_DIR"
 AK_DIR="/home/$TUNNEL_USER/.ssh"
 mkdir -p "$AK_DIR"
 cat > "$AK_DIR/authorized_keys" <<EOF
-restrict,port-forwarding,permitlisten="127.0.0.1:3210" $TUNNEL_PUBKEY
+restrict,command="/bin/false",port-forwarding,permitlisten="127.0.0.1:3210" $TUNNEL_PUBKEY
 restrict,command="/usr/local/bin/capsula-receive-backup.sh" $BACKUP_PUBKEY
 EOF
 chmod 700 "$AK_DIR"
