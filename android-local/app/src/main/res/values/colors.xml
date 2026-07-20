@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta Minimal Navy (mismos tonos que la app web) -->
+    <color name="navy">#1B2438</color>
+    <color name="cream">#F7F5F0</color>
+    <color name="cream_soft">#B9C0CE</color>
+</resources>
