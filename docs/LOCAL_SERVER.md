@@ -34,12 +34,12 @@ concurrentes). En su lugar:
 │  Computador dedicado (24/7)    │          │  nginx :443 (kpsula.app, SSL)    │
 │                                │          │   └─ include capsula-proxy-      │
 │  nginx :80 ◄── tablets/cajas   │          │      target.conf                 │
-│   └─ proxy 127.0.0.1:3000      │          │        ├─ :3100 = túnel → LOCAL  │
+│   └─ proxy 127.0.0.1:3000      │          │        ├─ :3210 = túnel → LOCAL  │
 │  pm2: Next.js standalone :3000 │          │        └─ :3000 = stack VPS      │
 │  postgres :5432 (FUENTE ÚNICA) │          │            (solo contingencia)   │
 │  print-agent → localhost       │          │                                  │
 │                                │  túnel   │  sshd ◄─ user capsula-tunnel     │
-│  capsula-tunnel.service ───────┼──SSH ───►│   -R 127.0.0.1:3100 → local:3000 │
+│  capsula-tunnel.service ───────┼──SSH ───►│   -R 127.0.0.1:3210 → local:3000 │
 │  (systemd, reconexión auto)    │  reverso │                                  │
 │                                │          │  backups/local-server/           │
 │  cron backup cada 6h ──────────┼──push───►│   (pg_dump, retención 30d)       │
@@ -203,7 +203,7 @@ VPS → local, y `capsula-route-local.sh` para devolver el ruteo.
   `fail2ban` (jail sshd, 5 intentos → ban). Verificar con
   `fail2ban-client status sshd`.
 - El túnel usa el usuario `capsula-tunnel` **restringido**: la llave del túnel
-  solo puede abrir `127.0.0.1:3100` en el VPS (`restrict,permitlisten`), y la
+  solo puede abrir `127.0.0.1:3210` en el VPS (`restrict,permitlisten`), y la
   llave de backup solo puede ejecutar el receptor de dumps (forced command).
   Ninguna da shell.
 - `ufw` en el local: solo SSH y :80 (LAN). Postgres y :3000 no se exponen.
