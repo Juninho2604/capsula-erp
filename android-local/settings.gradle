@@ -1,0 +1,18 @@
+// KPSULA Local — app Android para las tablets del restaurante.
+// Carga el servidor local (http://<ip-lan>) en un WebView a pantalla
+// completa, con reconexión automática silenciosa. Ver docs/LOCAL_SERVER.md.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "kpsula-local"
+include(":app")

@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'app.kpsula.local'
+    compileSdk 34
+
+    defaultConfig {
+        // packageId distinto al TWA (app.kpsula.erp) — pueden convivir.
+        applicationId 'app.kpsula.local'
+        minSdk 24
+        targetSdk 34
+        versionCode (findProperty('versionCode') ?: '1').toInteger()
+        versionName (findProperty('versionName') ?: '1.0.0')
+    }
+
+    signingConfigs {
+        release {
+            // El workflow android-local-build.yml exporta estas vars desde
+            // los mismos secrets del APK TWA (android-keystore-bootstrap.yml).
+            def ksFile = System.getenv('ANDROID_KEYSTORE_FILE')
+            if (ksFile != null) {
+                storeFile file(ksFile)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('ANDROID_KEYSTORE_FILE') != null) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // Sin dependencias: WebView + APIs de plataforma alcanzan y el APK queda mínimo.
+}

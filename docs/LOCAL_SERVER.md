@@ -150,6 +150,21 @@ Después del switch, apuntar el **print-agent** de la PC de impresión a
 `http://192.168.1.10` (o correrlo en el mismo servidor dedicado) — así la
 impresión tampoco depende de internet.
 
+### Tablets: app "KPSULA Local" (android-local/)
+
+El TWA existente (`android/`, app.kpsula.erp) está amarrado a
+`https://kpsula.app` y NO sirve para la LAN. Para las tablets del local existe
+**KPSULA Local** (`android-local/`): WebView nativo a pantalla completa que
+carga `http://<ip-del-servidor>`, mantiene la pantalla encendida y ante
+cualquier corte muestra su propio overlay "Conectando…" con reintento
+automático cada 4 s (nunca el error del navegador). La primera vez pide la IP
+del servidor; para cambiarla después, mantener presionado el overlay.
+
+Build: Actions → **Android Local APK Build** → Run workflow → descargar el
+artifact `kpsula-local-apk` e instalarlo (sideload) en cada tablet. Firma con
+el mismo keystore del TWA. Convive con la app vieja (packageId distinto:
+`app.kpsula.local`).
+
 ## 6. Operación diaria
 
 | Qué | Cómo |
