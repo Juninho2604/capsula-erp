@@ -225,11 +225,17 @@ export default function SalesHistoryPage() {
     const handleVoidPinConfirm = async () => {
         setVoidPinError('');
         setVoidLoading(true);
-        const res = await validateManagerPinAction(voidPin);
-        if (res.success && res.data) {
-            await executeVoid(res.data.managerId, res.data.managerName);
-        } else {
-            setVoidPinError('PIN inválido o sin permisos suficientes');
+        try {
+            const res = await validateManagerPinAction(voidPin);
+            if (res.success && res.data) {
+                await executeVoid(res.data.managerId, res.data.managerName);
+            } else {
+                setVoidPinError(res.message || 'PIN inválido o sin permisos suficientes');
+            }
+        } catch {
+            // §130: sin esto, un error de red dejaba el botón mudo en "Procesando".
+            setVoidPinError('Error de conexión validando el PIN. Intenta de nuevo.');
+        } finally {
             setVoidLoading(false);
         }
     };
@@ -237,23 +243,46 @@ export default function SalesHistoryPage() {
     const executeVoid = async (managerId: string, managerName: string) => {
         if (!voidTarget) return;
         const orderIds = voidTarget._orderIds || [voidTarget.id];
-        let lastError = '';
-        for (const orderId of orderIds) {
-            const res = await voidSalesOrderAction({
-                orderId,
-                voidReason,
-                authorizedById: managerId,
-                authorizedByName: managerName
-            });
-            if (!res.success) lastError = res.message || 'Error';
+        const isMesa = orderIds.length > 1;
+        let anyVoided = false;      // ≥1 comanda se anuló AHORA
+        let allResolved = true;     // todas quedaron anuladas (nuevas o ya lo estaban)
+        let hardError = '';
+        try {
+            for (const orderId of orderIds) {
+                const res = await voidSalesOrderAction({
+                    orderId,
+                    voidReason,
+                    authorizedById: managerId,
+                    authorizedByName: managerName,
+                });
+                if (res.success) {
+                    anyVoided = true;
+                } else if (/ya (está|fue) anulada/i.test(res.message || '')) {
+                    // §130: idempotente — una comanda ya anulada (por un intento
+                    // previo que murió a medias) NO es un error: cuenta como hecha.
+                } else {
+                    hardError = res.message || 'Error al anular';
+                    allResolved = false;
+                }
+            }
+        } catch {
+            hardError = 'Error de conexión al anular. Verifica el estado de la orden.';
+            allResolved = false;
         }
-        setVoidLoading(false);
-        if (!lastError) {
-            alert(`${orderIds.length > 1 ? 'Mesa anulada correctamente' : 'Orden anulada correctamente'}`);
+
+        // §130: SIEMPRE refrescamos para reflejar el estado real (antes, en el
+        // camino de error no se llamaba loadData → parecía que "no pasaba nada").
+        await loadData();
+
+        if (allResolved) {
             setVoidTarget(null);
-            loadData();
+            toast.success(
+                anyVoided
+                    ? (isMesa ? 'Mesa anulada correctamente' : 'Orden anulada correctamente')
+                    : 'La orden ya estaba anulada — vista actualizada'
+            );
         } else {
-            alert(`${lastError}`);
+            toast.error(hardError || 'No se pudo anular. Revisa el estado de la orden.');
         }
     };
 

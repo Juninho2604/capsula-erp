@@ -144,6 +144,19 @@ export async function getSalesHistoryAction(date?: string) {
                 const allSplits = tab?.paymentSplits ?? [];
                 const subAccounts = tab?.subAccounts ?? [];
 
+                // §130: mesa completamente anulada = TODAS sus comandas CANCELLED.
+                // La anulación cancela las órdenes pero NO toca subcuentas/splits;
+                // el camino de subcuentas mostraba las filas como PAGADAS (caso
+                // TAB-4008). Con esto, una mesa anulada se ve ANULADA y sale del
+                // totalizador. Usamos `every` (no `some`) para NO ocultar una
+                // mesa parcialmente anulada que sí tiene cobros vivos.
+                const tabAllVoided = sorted.length > 0 && sorted.every(x => x.status === 'CANCELLED');
+                const tabVoidMeta = {
+                    voidReason: sorted.find(x => x.voidReason)?.voidReason,
+                    voidedAt: sorted.find(x => x.voidedAt)?.voidedAt,
+                    voidedBy: sorted.find(x => x.voidedBy)?.voidedBy,
+                };
+
                 if (subAccounts.length > 0) {
                     // ── Expand: one row per sub-account ──────────────────────────
                     for (const sub of subAccounts) {
@@ -179,7 +192,8 @@ export async function getSalesHistoryAction(date?: string) {
                             total: sub.total,
                             items: allItems,
                             orders: sorted,
-                            status: sub.status === 'PAID' ? 'PAID' : 'OPEN',
+                            status: tabAllVoided ? 'CANCELLED' : (sub.status === 'PAID' ? 'PAID' : 'OPEN'),
+                            ...(tabAllVoided ? tabVoidMeta : {}),
                         });
                     }
 
@@ -214,7 +228,8 @@ export async function getSalesHistoryAction(date?: string) {
                             total: poolTotal,
                             items: allItems,
                             orders: sorted,
-                            status: 'PAID',
+                            status: tabAllVoided ? 'CANCELLED' : 'PAID',
+                            ...(tabAllVoided ? tabVoidMeta : {}),
                         });
                     }
                 } else {

@@ -13188,3 +13188,32 @@ Pedido de Omar: el submódulo Catálogo → Modificadores no tenía búsqueda.
   editar/borrar tocara el grupo equivocado).
 
 UI pura, sin BD. tsc 0 · vitest 649.
+
+## §130 Anulación de mesa: display de subcuentas + robustez del modal (2026-07-21)
+
+**Caso TAB-4008:** mesa cobrada por SUBCUENTAS, anulada. Las comandas quedaron
+CANCELLED pero el historial la seguía mostrando "activa/pagada" y sumando su
+cobro ($16.219 por un dedazo de propina). Además el modal de anulación se veía
+"mudo" (popup "ya fue anulada" sin refrescar).
+
+**Fix #1 — history.actions (solo lectura/presentación, NO toca dinero/BD):**
+`voidSalesOrderAction` cancela las órdenes pero no toca subAccounts/splits. El
+camino de subcuentas del historial marcaba las filas por `sub.status` ('PAID')
+sin mirar las comandas. Ahora: `tabAllVoided = sorted.every(status===CANCELLED)`
+→ las filas de subcuenta y "Otros" salen CANCELLED (badge ANULADA + fuera del
+totalizador de la pantalla). Se usa `every` (no `some`) para NO ocultar mesas
+parcialmente anuladas con cobros vivos. Reportes Z/arqueo ya excluían por
+comanda CANCELLED — no se tocan.
+
+**Fix #2 — sales/page executeVoid + handleVoidPinConfirm:**
+- try/catch en ambas → nunca más el botón mudo en "Procesando" ante error de red.
+- "Esta orden ya está anulada" se trata como ÉXITO IDEMPOTENTE (una comanda ya
+  anulada por un intento previo a medias no es error).
+- `loadData()` SIEMPRE (antes el camino de error no refrescaba → "no pasaba nada").
+- Mensajes claros vía toast: "Mesa anulada correctamente" / "La orden ya estaba
+  anulada — vista actualizada" / error real.
+
+PENDIENTE aprobado por Omar: #3 guardarraíl anti-propina-gigante (§131, camino
+del cobro — se despliega aparte tras verificar §130).
+
+Gates: tsc 0 · vitest 649.
