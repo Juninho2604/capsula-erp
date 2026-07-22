@@ -258,3 +258,32 @@ describe('electronicBsExcessTip (§121)', () => {
         expect(tip).toBeCloseTo(3, 2);
     });
 });
+
+// ── §131: guardarraíl anti-propina-gigante (dedazo TAB-4008) ────────────────
+import { isTipDisproportionate } from './tip-calculation';
+
+describe('isTipDisproportionate (§131)', () => {
+    it('caso TAB-4008: propina $16.197 sobre factura $22 → true', () => {
+        expect(isTipDisproportionate(16197.06, 22)).toBe(true);
+    });
+    it('propina normal (10-20%) → false', () => {
+        expect(isTipDisproportionate(5, 50)).toBe(false);   // 10%
+        expect(isTipDisproportionate(9, 60)).toBe(false);   // 15%
+    });
+    it('piso absoluto: propina ≤ $20 nunca molesta, aunque sea alta en %', () => {
+        expect(isTipDisproportionate(15, 10)).toBe(false);  // 150% pero < $20
+        expect(isTipDisproportionate(20, 1)).toBe(false);
+    });
+    it('propina > $20 Y > 50% de la factura → true; > $20 pero ≤ 50% → false', () => {
+        expect(isTipDisproportionate(21, 40)).toBe(true);   // >$20 y 52% > 50%
+        expect(isTipDisproportionate(30, 100)).toBe(false); // >$20 pero 30% ≤ 50%
+        expect(isTipDisproportionate(60, 100)).toBe(true);  // >$20 y 60% > 50%
+    });
+    it('factura 0 o negativa (anómala) + propina > $20 → true', () => {
+        expect(isTipDisproportionate(25, 0)).toBe(true);
+        expect(isTipDisproportionate(25, -5)).toBe(true);
+    });
+    it('defensivo: NaN → false (no bloquea)', () => {
+        expect(isTipDisproportionate(NaN, 50)).toBe(false);
+    });
+});

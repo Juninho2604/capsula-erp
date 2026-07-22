@@ -42,7 +42,7 @@ import ChildGroupSelector from "@/components/pos/ChildGroupSelector";
 import { SatisfactionSurveyCard } from "@/components/pos/SatisfactionSurveyCard";
 import { hasChildGroup, purgeChildSelections, childGroupsValid, collectParentModifierIds } from "@/lib/pos-child-group";
 import { groupModifiersForSinCon, toggleStateFor, type IngredientToggle } from "@/lib/pos-modifier-grouping";
-import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment, electronicBsExcessTip } from "@/lib/sales/tip-calculation";
+import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItemsPortionForPayment, electronicBsExcessTip, isTipDisproportionate } from "@/lib/sales/tip-calculation";
 import { scheduledInputToISO, printJobScheduledFor } from "@/lib/pos-scheduled-order";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy, Star } from "lucide-react";
@@ -1247,6 +1247,17 @@ export default function POSSportBarPage() {
         serviceFee,
         tip: tipVal,
       });
+
+      // §131 — Guardarraíl anti-dedazo (caso TAB-4008: $16.219 tecleado sobre
+      // una factura de $22 → el excedente se registró como propina gigante).
+      // Si la propina resultante es desproporcionada, confirmación explícita.
+      if (isTipDisproportionate(tipVal, facturaReal)) {
+        const okBig = window.confirm(
+          `⚠️ La PROPINA de este cobro sería $${tipVal.toFixed(2)} sobre una factura de $${facturaReal.toFixed(2)}.\n\n` +
+          `¿Es correcto? Si tecleaste mal el monto recibido, cancela y corrígelo.`
+        );
+        if (!okBig) return;
+      }
 
       // §100.2 — Confirmación explícita de PROPINA MANUAL (caso TAB-3587: $1
       // tipeado en el campo → la cajera entregó el vuelto completo y la caja

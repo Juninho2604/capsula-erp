@@ -37,6 +37,24 @@ export function cappedTipForPayment(args: {
     return capped > 0 ? capped : 0;
 }
 
+/**
+ * §131 — Guardarraíl anti-propina-gigante (dedazo). Caso TAB-4008: en un cobro
+ * de subcuenta de $22 se tecleó $16.219,06 → el excedente ($16.197) se registró
+ * como PROPINA sin que nadie lo notara.
+ *
+ * Devuelve true si la propina/excedente es DESPROPORCIONADA y merece una
+ * confirmación explícita antes de guardar: propina > $20 (piso absoluto, para
+ * no molestar en cuentas chicas) Y propina > 50% de la factura. Si la factura
+ * es ≤ 0 (dato anómalo) cualquier propina > $20 se considera desproporcionada.
+ */
+export function isTipDisproportionate(tip: number, factura: number): boolean {
+    const t = Number.isFinite(tip) ? tip : 0;
+    if (t <= 20) return false;
+    const f = Number.isFinite(factura) ? factura : 0;
+    if (f <= 0) return true;
+    return t > f * 0.5;
+}
+
 /** Métodos en divisas efectivo/zelle que se redondean al dólar entero. */
 const DIVISAS_CASH_METHODS = new Set(['CASH_USD', 'CASH_EUR', 'ZELLE']);
 

@@ -23,6 +23,7 @@ import {
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
+import { isTipDisproportionate } from '@/lib/sales/tip-calculation';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 
@@ -313,6 +314,18 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
         if (!payMethodTouched) { toast.error('Selecciona un método de pago'); return; }
         const amt = parseFloat(amountInput);
         if (isNaN(amt) || amt <= 0) { toast.error('Monto inválido'); return; }
+        // §131: guardarraíl anti-dedazo. Si el excedente sobre la factura de la
+        // subcuenta es desproporcionado, se registraría como PROPINA gigante
+        // (caso TAB-4008: $16.219 sobre $22). Exigir confirmación explícita.
+        const excess = amt - sub.total;
+        if (isTipDisproportionate(excess, sub.total)) {
+            const ok = window.confirm(
+                `⚠️ Vas a cobrar $${amt.toFixed(2)} en una subcuenta de $${sub.total.toFixed(2)}.\n\n` +
+                `El excedente de $${excess.toFixed(2)} se registraría como PROPINA.\n\n` +
+                `¿Es correcto? Si fue un error al teclear, cancela y corrige el monto.`
+            );
+            if (!ok) return;
+        }
         onPay(sub.id, payMethod, amt, serviceIncluded, applyDivisasDiscount ? 'DIVISAS_33' : 'NONE');
         setShowPayForm(false);
     }

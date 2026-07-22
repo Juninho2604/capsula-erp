@@ -13217,3 +13217,22 @@ PENDIENTE aprobado por Omar: #3 guardarraíl anti-propina-gigante (§131, camino
 del cobro — se despliega aparte tras verificar §130).
 
 Gates: tsc 0 · vitest 649.
+
+## §131 Guardarraíl anti-propina-gigante (dedazo TAB-4008) (2026-07-21)
+
+**Raíz del incidente:** en el cobro de una subcuenta de $22 se tecleó
+$16.219,06 → el excedente ($16.197) se registró como PROPINA sin alerta.
+
+**Fix:** helper puro `isTipDisproportionate(tip, factura)` (6 tests):
+desproporcionada = propina > $20 (piso, no molesta en cuentas chicas) Y
+propina > 50% de la factura; factura ≤ 0 + propina > $20 también. Cableado
+como `window.confirm()` explícito ANTES de registrar el cobro, en los DOS
+caminos donde el excedente se vuelve propina:
+- `SubAccountPanel.handlePayConfirm` (cobro de subcuenta — donde ocurrió).
+- `restaurante.handlePaymentPinConfirm` (cobro de mesa completa), antes del
+  confirm §100.2.
+Pickup NO aplica (cobra el total del carrito, el "recibido" solo calcula
+vuelto — no infla la venta). No cambia ningún cálculo; solo agrega una
+pregunta cuando el número es absurdo. Umbral ajustable.
+
+Gates: tsc 0 · vitest 655.
