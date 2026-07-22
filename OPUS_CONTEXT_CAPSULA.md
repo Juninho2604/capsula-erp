@@ -13245,3 +13245,21 @@ la tabla difuminada de fondo → Chrome renderiza banding de GPU en fondos
 claros. Fix: quitar el blur SOLO de ese modal (sales/page, overlay del
 voidTarget) y compensar con `bg-capsula-ink/70`. Los otros 2 modales de la
 página no fueron reportados — no se tocan. UI pura.
+
+## §132 Unicidad de PIN al asignar (2026-07-21)
+
+**Bug reportado (Omar):** los gerentes "usan el PIN de Omar". Causa:
+`validateManagerPinAction` devuelve el PRIMER gerente cuyo PIN coincide, y
+`updateUserPin` NO validaba unicidad → dos usuarios podían tener el mismo PIN
+(no se nota: se guarda hasheado con sal) y las autorizaciones se atribuían a
+quien la query devolviera primero.
+
+**Fix:** `updateUserPin` ahora compara el PIN crudo contra el hash de cada OTRO
+usuario con PIN (`pinMatches`, mismo esquema que verifyPin) y rechaza la
+colisión con aviso claro ("Ese PIN ya lo usa <nombre>…"). Además condición
+de rol: para autorizar, el usuario debe ser OWNER/ADMIN_MANAGER/OPS_MANAGER.
+
+Diagnóstico: `scripts/audit-pins.ts` (solo lectura, NO revela PINs) — lista
+rol, si el rol autoriza, y si tiene PIN asignado.
+
+Gates: tsc 0 · vitest 655.

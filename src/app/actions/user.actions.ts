@@ -60,6 +60,26 @@ export async function hashPin(pin: string): Promise<string> {
 }
 
 /**
+ * §132 — ¿el PIN crudo corresponde al hash guardado? (mismo esquema que
+ * verifyPin del POS: "saltHex:hashHex", con fallback legacy a texto plano).
+ * Usado para detectar PINs duplicados al asignar.
+ */
+async function pinMatches(rawPin: string, stored: string): Promise<boolean> {
+    try {
+        if (stored.includes(':')) {
+            const i = stored.indexOf(':');
+            const saltHex = stored.slice(0, i);
+            const storedHash = stored.slice(i + 1);
+            if (!saltHex || !storedHash) return false;
+            return (await pbkdf2Hex(rawPin, saltHex)) === storedHash;
+        }
+        return rawPin === stored;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Obtiene la lista de todos los usuarios
  */
 export async function getUsers() {
@@ -315,6 +335,24 @@ export async function updateUserPin(userId: string, rawPin: string) {
     const trimmed = rawPin.trim();
     if (!/^\d{4,6}$/.test(trimmed)) {
         return { success: false, message: 'El PIN debe ser numérico y tener entre 4 y 6 dígitos' };
+    }
+
+    // §132 — UNICIDAD DE PIN. Antes no se validaba: dos usuarios podían quedar
+    // con el mismo PIN y las autorizaciones se atribuían al primero que
+    // coincidiera (bug: "los gerentes usan el PIN de Omar"). Como el PIN se
+    // guarda hasheado con sal aleatoria, comparamos el PIN CRUDO contra el
+    // hash de cada OTRO usuario con PIN y rechazamos la colisión.
+    const othersWithPin = await db.user.findMany({
+        where: { id: { not: userId }, pin: { not: null } },
+        select: { id: true, firstName: true, lastName: true, pin: true },
+    });
+    for (const other of othersWithPin) {
+        if (other.pin && (await pinMatches(trimmed, other.pin))) {
+            return {
+                success: false,
+                message: `Ese PIN ya lo usa ${other.firstName} ${other.lastName}. Cada persona debe tener un PIN distinto — elige otro.`,
+            };
+        }
     }
 
     try {
