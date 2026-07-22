@@ -1203,7 +1203,10 @@ export default function SalesHistoryPage() {
             {/* MODAL ANULACIÓN                                                    */}
             {/* ================================================================ */}
             {voidTarget && (
-                <div className="fixed inset-0 bg-capsula-ink/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                // §129: sin backdrop-blur — en modo claro Chrome renderiza un
+                // remolino/banding sobre la tabla difuminada de fondo. Se
+                // compensa con un ink/70 un poco más opaco (misma separación).
+                <div className="fixed inset-0 bg-capsula-ink/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-capsula-ivory border border-[#F7E3DB] dark:border-[#3B1F14] rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex items-center justify-between mb-5">
                             <div>

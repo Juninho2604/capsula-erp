@@ -13236,3 +13236,12 @@ vuelto — no infla la venta). No cambia ningún cálculo; solo agrega una
 pregunta cuando el número es absurdo. Umbral ajustable.
 
 Gates: tsc 0 · vitest 655.
+
+## §129 Fix: remolino de colores en el modal "Anular Venta" (modo claro) (2026-07-22)
+
+Reporte de Omar (foto): artefacto tipo remolino/banding en el fondo del modal
+de anulación, solo en modo claro. Causa: `backdrop-blur-sm` del overlay sobre
+la tabla difuminada de fondo → Chrome renderiza banding de GPU en fondos
+claros. Fix: quitar el blur SOLO de ese modal (sales/page, overlay del
+voidTarget) y compensar con `bg-capsula-ink/70`. Los otros 2 modales de la
+página no fueron reportados — no se tocan. UI pura.
