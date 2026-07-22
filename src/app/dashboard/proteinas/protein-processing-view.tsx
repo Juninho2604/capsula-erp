@@ -15,6 +15,7 @@ import {
     RefreshCw,
     Link2,
     Droplets,
+    Scale,
     Save,
     Check,
     Loader2,
@@ -927,6 +928,12 @@ export default function ProteinProcessingView() {
                                             <Plus className="h-4 w-4" />
                                         </button>
                                     </div>
+                                    {newSubProductWeight > 0 && newSubProductUnits > 0 && (
+                                        <p className="inline-flex items-center gap-1.5 text-[11px] text-capsula-ink-muted">
+                                            <Scale className="h-3 w-3" />
+                                            Promedio: <span className="font-semibold tabular-nums text-capsula-ink">{formatNumber(newSubProductWeight / newSubProductUnits)} kg/unidad</span>
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -955,6 +962,9 @@ export default function ProteinProcessingView() {
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-mono text-sm tabular-nums text-capsula-ink">{formatNumber(sp.weight)} kg</span>
                                                     <span className="text-xs text-capsula-ink-muted tabular-nums">({sp.units} pza)</span>
+                                                    {sp.units > 1 && sp.weight > 0 && (
+                                                        <span className="hidden text-xs text-capsula-ink-muted tabular-nums sm:inline">· {formatNumber(sp.weight / sp.units)} kg/u</span>
+                                                    )}
                                                     <button
                                                         onClick={() => removeSubProduct(sp.id)}
                                                         className="rounded p-1 text-capsula-ink-muted transition-colors hover:bg-capsula-coral/10 hover:text-capsula-coral"
@@ -1093,6 +1103,9 @@ export default function ProteinProcessingView() {
                                         <div className="text-right">
                                             <span className="font-mono tabular-nums text-capsula-ink">{formatNumber(sp.weight)} kg</span>
                                             <span className="ml-2 text-xs text-capsula-ink-muted tabular-nums">({sp.units} pza)</span>
+                                            {sp.units > 1 && sp.weight > 0 && (
+                                                <p className="text-xs text-capsula-ink-muted tabular-nums">Prom. {formatNumber(sp.weight / sp.units)} kg/unidad</p>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
