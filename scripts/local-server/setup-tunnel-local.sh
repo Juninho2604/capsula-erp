@@ -2,8 +2,11 @@
 # ============================================================================
 # Túnel SSH reverso permanente: servidor local → VPS (lado LOCAL).
 #
-# Deja un servicio systemd que mantiene 24/7:
-#   VPS 127.0.0.1:3210  ──►  local 127.0.0.1:3000 (la app)
+# Deja un servicio systemd que mantiene 24/7 dos forwards:
+#   VPS 127.0.0.1:3210  ──►  local 127.0.0.1:3000 (la app, para nginx)
+#   VPS 127.0.0.1:2223  ──►  local 127.0.0.1:22   (canal de administración:
+#     desde el VPS, `ssh -p 2223 <user>@127.0.0.1` entra al servidor del
+#     restaurante — cutovers y mantenimiento remotos sin abrir puertos)
 # Con eso, nginx del VPS puede servir kpsula.app DESDE el servidor local
 # (una sola fuente de verdad, sin sincronización de BDs).
 #
@@ -46,6 +49,7 @@ ExecStart=/usr/bin/ssh -NT \\
     -o StrictHostKeyChecking=accept-new \\
     -i $TUNNEL_KEY \\
     -R 127.0.0.1:3210:127.0.0.1:3000 \\
+    -R 127.0.0.1:2223:127.0.0.1:22 \\
     $VPS_TUNNEL_USER@$VPS_HOST
 Restart=always
 RestartSec=5

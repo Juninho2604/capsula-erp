@@ -60,7 +60,7 @@ chown "$TUNNEL_USER" "$BACKUP_DIR"
 AK_DIR="/home/$TUNNEL_USER/.ssh"
 mkdir -p "$AK_DIR"
 cat > "$AK_DIR/authorized_keys" <<EOF
-restrict,command="/bin/false",port-forwarding,permitlisten="127.0.0.1:3210" $TUNNEL_PUBKEY
+restrict,command="/bin/false",port-forwarding,permitlisten="127.0.0.1:3210",permitlisten="127.0.0.1:2223" $TUNNEL_PUBKEY
 restrict,command="/usr/local/bin/capsula-receive-backup.sh" $BACKUP_PUBKEY
 EOF
 chmod 700 "$AK_DIR"

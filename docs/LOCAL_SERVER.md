@@ -165,6 +165,19 @@ artifact `kpsula-local-apk` e instalarlo (sideload) en cada tablet. Firma con
 el mismo keystore del TWA. Convive con la app vieja (packageId distinto:
 `app.kpsula.local`).
 
+### Administración remota (desde cualquier parte)
+
+El túnel lleva un segundo forward: `VPS 127.0.0.1:2223 → local :22`. Para
+entrar al servidor del restaurante desde fuera de su LAN:
+
+```bash
+ssh root@147.93.6.70          # 1. entrar al VPS
+ssh -p 2223 kpsula@127.0.0.1  # 2. saltar al servidor del restaurante
+```
+
+Sin puertos abiertos en el router del local — el canal viaja por dentro del
+túnel saliente. Sirve para cutovers, updates y diagnósticos sin ir al local.
+
 ## 6. Operación diaria
 
 | Qué | Cómo |
