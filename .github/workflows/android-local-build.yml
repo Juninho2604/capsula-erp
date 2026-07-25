@@ -51,30 +51,45 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Restore keystore from secret
+      # La firma release necesita las CUATRO credenciales. Si falta alguna se
+      # buildea debug (auto-firmado por Android, instalable por sideload) en
+      # vez de fallar: esta app es de LAN interna, no va a Play Store.
+      - name: Restore keystore + decide variant
+        id: signing
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           set -euo pipefail
-          if [ -z "${KEYSTORE_B64:-}" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. Run android-keystore-bootstrap.yml first."
-            exit 1
+          if [ -n "${KEYSTORE_B64:-}" ] && [ -n "${KEYSTORE_PASSWORD:-}" ] \
+             && [ -n "${KEY_PASSWORD:-}" ] && [ -n "${KEY_ALIAS:-}" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/android.keystore"
+            if [ -s "$RUNNER_TEMP/android.keystore" ]; then
+              echo "variant=release" >> "$GITHUB_OUTPUT"
+              echo "Firma release: credenciales completas."
+              exit 0
+            fi
+            echo "::warning::El keystore decodificado está vacío."
           fi
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/android.keystore"
-          test -s "$RUNNER_TEMP/android.keystore" || { echo "::error::Decoded keystore is empty"; exit 1; }
+          echo "variant=debug" >> "$GITHUB_OUTPUT"
+          echo "::warning::Faltan credenciales de firma release → se buildea debug (instalable por sideload)."
 
-      - name: Build release APK
+      - name: Build APK
         env:
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/android.keystore
+          ANDROID_KEYSTORE_FILE: ${{ steps.signing.outputs.variant == 'release' && format('{0}/android.keystore', runner.temp) || '' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          VARIANT: ${{ steps.signing.outputs.variant }}
         run: |
           set -euo pipefail
-          gradle -p android-local assembleRelease \
+          if [ "$VARIANT" = "release" ]; then TASK=assembleRelease; else TASK=assembleDebug; fi
+          gradle -p android-local "$TASK" --stacktrace \
             -PversionName="${{ inputs.version_name }}" \
             -PversionCode="${{ inputs.version_code }}"
-          APK=$(find android-local/app/build/outputs/apk/release -name '*.apk' | head -1)
+          APK=$(find android-local/app/build/outputs/apk -name '*.apk' | head -1)
           test -n "$APK" || { echo "::error::No se generó el APK"; exit 1; }
           cp "$APK" "kpsula-local-${{ inputs.version_name }}.apk"
           ls -lh kpsula-local-*.apk
