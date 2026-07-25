@@ -16,16 +16,24 @@ android {
         versionName (findProperty('versionName') ?: '1.0.0')
     }
 
+    // Firma release SOLO si están las CUATRO variables. Con alguna nula, AGP
+    // aborta el build con un críptico "Value is null" (pasó en el primer run
+    // real: el keystore estaba pero faltaban password/alias). Sin las cuatro
+    // se cae a debug, que se firma con la keystore de debug de Android y se
+    // instala igual por sideload — es una app de LAN interna, no va a Play.
+    def ksFile = System.getenv('ANDROID_KEYSTORE_FILE')
+    def ksPass = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+    def ksAlias = System.getenv('ANDROID_KEY_ALIAS')
+    def keyPass = System.getenv('ANDROID_KEY_PASSWORD')
+    def canSign = ksFile?.trim() && ksPass?.trim() && ksAlias?.trim() && keyPass?.trim()
+
     signingConfigs {
         release {
-            // El workflow android-local-build.yml exporta estas vars desde
-            // los mismos secrets del APK TWA (android-keystore-bootstrap.yml).
-            def ksFile = System.getenv('ANDROID_KEYSTORE_FILE')
-            if (ksFile != null) {
+            if (canSign) {
                 storeFile file(ksFile)
-                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('ANDROID_KEY_ALIAS')
-                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword keyPass
             }
         }
     }
@@ -33,7 +41,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            if (System.getenv('ANDROID_KEYSTORE_FILE') != null) {
+            if (canSign) {
                 signingConfig signingConfigs.release
             }
         }
