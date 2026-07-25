@@ -137,6 +137,33 @@ El `pm2 stop` del VPS es el congelamiento: sin él se pierden las ventas que
 entren entre el dump y el switch. El stack del VPS queda detenido a propósito
 — es la contingencia, no debe aceptar escrituras en paralelo.
 
+### ⚠️ Assets estáticos: el 404 que deja kpsula.app "en blanco"
+
+**Trampa real del cutover de Shanklish.** El server block de kpsula.app servía
+`/_next/static/` **desde el disco del VPS** (`root`/`alias`, como lo deja
+`deploy-vps.sh`: *"copia public/ y .next/static al standalone (nginx los
+sirve)"*). Tras el switch el HTML lo genera el servidor **local**, con los
+hashes de **su** build, pero nginx sigue buscando esos archivos en el VPS
+→ **404 en todos los chunks JS**. Síntoma: la página abre y **no carga nada**
+(el CSS puede dar 200 de casualidad si su contenido no cambió entre builds, lo
+que despista). El POS del local no se entera — va directo por LAN.
+
+Diagnóstico en 10 s desde cualquier parte:
+
+```bash
+CHUNK=$(curl -sk https://kpsula.app/login | grep -o '/_next/static/chunks/[^"]*\.js' | head -1)
+curl -sk -o /dev/null -w "%{http_code}\n" "https://kpsula.app$CHUNK"   # 404 = este bug
+```
+
+**Fix:** en el server block de kpsula.app, eliminar (o comentar) el `location
+/_next/static/ { ... }` que apunta al disco del VPS, para que esas peticiones
+caigan en el `location /` y viajen por el túnel al servidor local, que sirve
+sus propios assets. Respaldar el archivo, `nginx -t` y recargar.
+
+Regla general post-cutover: **kpsula.app no debe servir NADA desde el disco del
+VPS** — todo (HTML, JS, CSS, imágenes de `public/`) tiene que salir del túnel,
+o se mezclan dos builds distintos.
+
 ## 5. Túnel 24/7 con kpsula.app
 
 ```bash
