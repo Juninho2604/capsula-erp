@@ -50,7 +50,10 @@ const SIDEBAR_TREE: SectionDef[] = [
             { kind: 'link', moduleId: 'encuestas' },
             {
                 kind: 'subgroup', id: 'sg-inventario', label: 'Inventario', icon: '📦',
-                items: ['inventory', 'inventory_daily', 'inventory_count', 'inventory_quick_count', 'audits', 'transfers', 'inventory_history'],
+                // 'asistente' vive acá (antes: link suelto al final de
+                // Administración, donde nadie lo encontraba). Es el flujo
+                // guiado para crear insumos → pertenece a Inventario.
+                items: ['inventory', 'asistente', 'inventory_daily', 'inventory_count', 'inventory_quick_count', 'audits', 'transfers', 'inventory_history'],
             },
             {
                 kind: 'subgroup', id: 'sg-produccion', label: 'Producción', icon: '🏭',
@@ -129,7 +132,6 @@ const SIDEBAR_TREE: SectionDef[] = [
                 kind: 'subgroup', id: 'sg-gestion', label: 'Gestión', icon: '🏢',
                 items: ['almacenes', 'metas', 'anuncios'],
             },
-            { kind: 'link', moduleId: 'asistente' },
         ],
     },
 ];

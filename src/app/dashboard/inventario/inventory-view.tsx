@@ -22,6 +22,7 @@ import {
     Trash2,
     Loader2,
     Printer,
+    Plus,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency, getStockStatus, cn } from '@/lib/utils';
@@ -224,6 +225,19 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                        {/* Crear insumo: antes solo se llegaba desde el form de
+                            recetas o el Asistente (enterrado en Administración).
+                            Inventario es donde se busca naturalmente. El gate
+                            replica MODULE_ROLE_ACCESS.asistente — Inventario lo
+                            ven además AUDITOR y AREA_LEAD, que no entran ahí. */}
+                        {hasRole(['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF']) && (
+                            <Link
+                                href="/dashboard/asistente"
+                                className="pos-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                            >
+                                <Plus className="h-4 w-4" /> Nuevo Insumo
+                            </Link>
+                        )}
                         <Link
                             href="/dashboard/inventario/entrada"
                             className="pos-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"

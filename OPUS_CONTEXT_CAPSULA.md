@@ -13303,3 +13303,34 @@ Nota: el panel de transferencia masiva por categoría nunca tuvo el filtro, así
 que ahí las sub-recetas con categoría ya se movían.
 
 Gates: tsc 0 · vitest 655.
+
+## §135 "¿Dónde creo materias primas?" — botón Nuevo Insumo en Inventario (2026-07-22)
+
+Omar: "Antes las creaba por las recetas pero si quiero crear una no sé dónde es".
+
+Diagnóstico (4 caminos, ninguno donde uno lo busca):
+1. **Asistente de Nomenclatura** (`/dashboard/asistente`) — el flujo guiado y
+   más completo (categoría → autocompleta tipo, prefijo SKU, unidad base,
+   unidad de compra, conversión, mínimos, bebida/alcohol). 10 categorías.
+2. **Form de recetas** — sigue existiendo, pero anidado: Recetas → receta →
+   "Agregar Ingrediente" → dentro del panel, arriba a la derecha, "+ Crear
+   Insumo Nuevo". Solo alcanzable si ya estás agregando un ingrediente.
+3. **SKU Studio** — familias/plantillas, carga en volumen.
+4. **Transferencias** — QuickCreateItemDialog al vuelo.
+
+**El módulo Inventario no tenía ningún botón de crear** — justo donde se busca.
+Y el Asistente estaba en el sidebar como link suelto **al final de
+Administración**, después de los subgrupos: invisible en la práctica.
+
+Fix (UI pura, sin acciones ni BD):
+- `inventario/inventory-view.tsx`: botón primario **"+ Nuevo Insumo"** → enlaza
+  al Asistente. Gate `hasRole(['OWNER','ADMIN_MANAGER','OPS_MANAGER','CHEF'])`
+  que **replica `MODULE_ROLE_ACCESS.asistente`** — Inventario lo ven además
+  AUDITOR y AREA_LEAD, que no tienen acceso al Asistente y no deben ver el link.
+- `Sidebar.tsx`: `asistente` movido del final de Administración al subgrupo
+  **Inventario** de Operaciones. Sigue apareciendo una sola vez en
+  `TREE_MODULE_IDS` → no se dispara la red de huérfanos.
+- "Entrada de Mercancía" queda como estaba (`pos-btn`): es la acción diaria del
+  personal, no se toca su peso visual con el restaurante abierto.
+
+Gates: tsc 0 · vitest 655 · `npm run build` completo OK.
