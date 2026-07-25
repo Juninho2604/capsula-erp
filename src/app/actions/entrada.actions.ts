@@ -258,19 +258,30 @@ export async function registrarEntradaMercancia(
 // CONSULTAS
 // ============================================================================
 
-export async function getInventoryItemsForSelect() {
+/**
+ * Items seleccionables. Por defecto SOLO materia prima (es lo correcto para
+ * compras/entrada: al proveedor se le compra insumo base, no sub-recetas).
+ *
+ * Transferencias pasa `types: ['RAW_MATERIAL', 'SUB_RECIPE']` porque de
+ * Producción a Restaurante SÍ se mueven sub-recetas ya elaboradas (salsas,
+ * masas, macerados). Antes quedaban invisibles en el selector y no se podían
+ * transferir.
+ */
+export async function getInventoryItemsForSelect(opts?: { types?: string[] }) {
+    const types = opts?.types?.length ? opts.types : ['RAW_MATERIAL'];
     const { tenantId } = await resolveTenantContext();
     const db = withTenant(tenantId);
     try {
         const items = await db.inventoryItem.findMany({
             where: {
                 isActive: true,
-                type: 'RAW_MATERIAL', // Solo insumos base para compras
+                type: { in: types },
             },
             select: {
                 id: true,
                 sku: true,
                 name: true,
+                type: true,
                 baseUnit: true,
                 purchaseUnit: true,
                 conversionRate: true,
@@ -291,6 +302,7 @@ export async function getInventoryItemsForSelect() {
             id: item.id,
             sku: item.sku,
             name: item.name,
+            type: item.type,
             baseUnit: item.baseUnit,
             purchaseUnit: item.purchaseUnit,
             conversionRate: item.conversionRate ? Number(item.conversionRate) : 1,

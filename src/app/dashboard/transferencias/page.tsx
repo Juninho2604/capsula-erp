@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 export default async function TransferenciasPage() {
     // Cargar datos en paralelo para mejor rendimiento
     const [items, areas, requisitions] = await Promise.all([
-        getInventoryItemsForSelect(),
+        // Transferencias mueve insumos base Y sub-recetas ya elaboradas
+        // (salsas, masas, macerados) de Producción a Restaurante.
+        getInventoryItemsForSelect({ types: ['RAW_MATERIAL', 'SUB_RECIPE'] }),
         getAreasForSelect(),
         getRequisitions('ALL') // Cargamos todas para filtrar en cliente
     ]);

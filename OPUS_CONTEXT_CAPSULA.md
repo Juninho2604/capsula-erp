@@ -13263,3 +13263,43 @@ Diagnóstico: `scripts/audit-pins.ts` (solo lectura, NO revela PINs) — lista
 rol, si el rol autoriza, y si tiene PIN asignado.
 
 Gates: tsc 0 · vitest 655.
+
+## §133 Promedio de peso por unidad en Procesamiento (2026-07-22)
+
+Christian arma pinchos (u otro producto contable del catálogo) desde el módulo
+Procesamiento y necesita el peso promedio de cada pieza: "de 15 kg de lomito
+macerado salieron 15 pinchos, ¿cuánto pesa cada uno?".
+
+**Sin cambio de schema.** `ProteinSubProduct` ya guarda `weight` (kg), `units` y
+`outputItemId` (item del catálogo) → el promedio = `weight / units` es derivable.
+
+UI en `proteinas/protein-processing-view.tsx`:
+- Hint en vivo bajo los inputs peso/unidades: "Promedio: X kg/unidad".
+- Fila de la lista de subproductos: "· X kg/u" (solo si `units > 1`).
+- Detalle del procesamiento guardado: "Prom. X kg/unidad".
+
+Pendiente (fase 2): comparativo del promedio **entre tandas** (tendencia).
+
+## §134 Transferencias: las sub-recetas no aparecían en el selector (2026-07-22)
+
+Síntoma: "el sistema no muestra las sub recetas como materias primas para
+realizar las transferencias de producción a restaurante".
+
+Causa: `transferencias/page.tsx` reutilizaba `getInventoryItemsForSelect()` de
+`entrada.actions.ts`, que filtra `type: 'RAW_MATERIAL'` — correcto para
+compras/entrada (al proveedor se le compra insumo base), pero deja fuera los
+`SUB_RECIPE` (salsas, masas, macerados elaborados en Producción). El despacho
+(`requisition.actions.ts`) NO filtra por tipo: el bloqueo era solo el selector.
+
+Fix (mínimo, sin tocar Compras):
+- `getInventoryItemsForSelect(opts?: { types?: string[] })` — default
+  `['RAW_MATERIAL']`, así los otros 3 llamadores (compras/documentos,
+  inventario/entrada, inventario/compras) quedan idénticos. Devuelve `type`.
+- Transferencias pasa `{ types: ['RAW_MATERIAL', 'SUB_RECIPE'] }`.
+- El combobox etiqueta "Nombre · Sub-receta" para no confundirla con el insumo
+  base homónimo.
+
+Nota: el panel de transferencia masiva por categoría nunca tuvo el filtro, así
+que ahí las sub-recetas con categoría ya se movían.
+
+Gates: tsc 0 · vitest 655.

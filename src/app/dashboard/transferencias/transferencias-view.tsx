@@ -16,6 +16,7 @@ import { QuickCreateItemDialog } from '@/components/ui/quick-create-item-dialog'
 interface Item {
     id: string;
     name: string;
+    type?: string;
     baseUnit: string;
     currentStock?: number;
 }
@@ -66,7 +67,12 @@ interface TransferItemRowProps {
 
 function TransferItemRow({ index, item, itemsList, onUpdate, onRemove, onRequestCreate }: TransferItemRowProps) {
     // Map items for Combobox
-    const comboboxItems = itemsList.map(i => ({ value: i.id, label: i.name }));
+    // Las sub-recetas (elaboradas en Producción) se marcan para no confundirlas
+    // con el insumo base del mismo nombre al armar la transferencia.
+    const comboboxItems = itemsList.map(i => ({
+        value: i.id,
+        label: i.type === 'SUB_RECIPE' ? `${i.name} · Sub-receta` : i.name,
+    }));
 
     return (
         <tr>
