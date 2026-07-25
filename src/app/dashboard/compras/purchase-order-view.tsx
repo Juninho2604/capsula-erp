@@ -31,6 +31,7 @@ import {
     LowStockItem, StockConfigItem
 } from '@/app/actions/purchase.actions';
 import WhatsAppPurchaseOrderParser from '@/components/whatsapp-purchase-order-parser';
+import { copyToClipboard } from "@/lib/clipboard";
 
 type ViewMode = 'orders' | 'create' | 'auto' | 'config' | 'receive' | 'whatsapp';
 
@@ -178,7 +179,7 @@ export default function PurchaseOrderView() {
     async function handleExportWhatsApp(orderId: string) {
         const text = await exportPurchaseOrderTextAction(orderId);
         if (text) {
-            navigator.clipboard.writeText(text);
+            copyToClipboard(text);
             toast.success('Orden copiada al portapapeles');
         }
     }

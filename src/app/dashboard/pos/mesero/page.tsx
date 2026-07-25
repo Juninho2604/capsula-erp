@@ -45,6 +45,7 @@ import {
   deleteCart,
 } from "@/lib/offline-cache";
 import { useOfflineGuard } from "@/hooks/use-offline-guard";
+import { copyToClipboard } from "@/lib/clipboard";
 
 const ACTIVE_WAITER_KEY = "pos-mesero-active-waiter";
 
@@ -2151,7 +2152,7 @@ export default function POSMeseroPage() {
                         ...(totalBs !== null ? [`Bs equiv.:      ${formatBs(totalBs)}`] : []),
                         ...(paidSplits.length > 0 ? ['', `Saldo pendiente: $${saldoBruto.toFixed(2)}`] : []),
                       ];
-                      navigator.clipboard.writeText(lines.join('\n')).then(() => toast.success('Resumen copiado'));
+                      copyToClipboard(lines.join('\n')).then(() => toast.success('Resumen copiado'));
                     }}
                     className="flex-1 py-2.5 rounded-xl border border-capsula-line bg-capsula-ivory-surface hover:bg-capsula-navy-soft text-capsula-ink text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition"
                   >

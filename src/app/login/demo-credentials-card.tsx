@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, ChevronDown, Copy, Sparkles } from 'lucide-react';
+import { copyToClipboard } from "@/lib/clipboard";
 
 /**
  * Banner expandible en demo.kpsula.app/login con las credenciales públicas
@@ -64,7 +65,7 @@ export default function DemoCredentialsCard() {
 
     const copy = async (label: string, text: string) => {
         try {
-            await navigator.clipboard.writeText(text);
+            await copyToClipboard(text);
             setCopied(label);
             setTimeout(() => setCopied((c) => (c === label ? null : c)), 1500);
         } catch {
