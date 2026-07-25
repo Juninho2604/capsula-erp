@@ -13334,3 +13334,24 @@ Fix (UI pura, sin acciones ni BD):
   personal, no se toca su peso visual con el restaurante abierto.
 
 Gates: tsc 0 · vitest 655 · `npm run build` completo OK.
+
+## §136 Recetas: artefactos visuales y botones que no se veían (2026-07-22)
+
+Omar: "En recetas no veo nada. Creo que es visual, no veo ningún botón allí".
+
+Verificado primero que NO había fallo de render: `.pos-btn` está bien definido
+(navy + texto crema) y la página de Recetas sí tiene su "Nueva Receta". El
+problema era de visibilidad/artefactos, no de CSS roto.
+
+Defectos encontrados y corregidos en `recetas/nueva/RecipeForm.tsx`:
+- **3 `<span>` vacíos** (`text-4xl`/`text-2xl` sin contenido) — restos de la
+  migración de emojis: alguien borró el emoji y dejó el span, produciendo
+  huecos en blanco. Reemplazados por iconos lucide (`ClipboardList`,
+  `Calculator`, `Lock`) según la regla 2 de CLAUDE.md.
+- El disparador del panel decía solo **"Agregar"** → ahora **"Agregar
+  Ingrediente"** (era ambiguo en el header de la tarjeta Ingredientes).
+- **"+ Crear Insumo Nuevo"** era un chip `text-xs` alineado a la derecha, sin
+  contexto: pasaba desapercibido. Ahora es una fila explícita con fondo propio
+  y la pregunta "¿El insumo no está en la lista?" + botón `text-sm`.
+
+Gates: tsc 0 · vitest 655 · `npm run build` OK.

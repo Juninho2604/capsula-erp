@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Plus, Trash2, X as XIcon, Check, Loader2, Save, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, X as XIcon, Check, Loader2, Save, ArrowLeft, ClipboardList, Calculator, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency } from '@/lib/utils';
@@ -579,7 +579,7 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                 onClick={() => setShowAddIngredient(true)}
                                 className="inline-flex items-center gap-2 rounded-lg bg-capsula-navy-deep px-4 py-2 text-sm font-semibold text-capsula-cream transition-colors hover:bg-capsula-navy"
                             >
-                                <Plus className="h-4 w-4" /> Agregar
+                                <Plus className="h-4 w-4" /> Agregar Ingrediente
                             </button>
                         </div>
 
@@ -638,7 +638,7 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
 
                             {ingredients.length === 0 && !showAddIngredient && (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <span className="text-4xl"></span>
+                                    <ClipboardList className="h-10 w-10 text-capsula-ink-faint" />
                                     <p className="mt-2 text-capsula-ink-muted">
                                         No hay ingredientes. Agrega el primero.
                                     </p>
@@ -667,13 +667,19 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                                 </button>
                             </div>
                             <div className="p-5">
-                                <div className="mb-4 flex justify-end">
+                                {/* Antes era un chip xs alineado a la derecha que
+                                    pasaba desapercibido ("no veo ningún botón").
+                                    Ahora es una fila explícita con contexto. */}
+                                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-capsula-line bg-capsula-ivory-alt px-3 py-2.5">
+                                    <p className="text-xs text-capsula-ink-muted">
+                                        ¿El insumo no está en la lista?
+                                    </p>
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateItem(!showCreateItem)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#A8C8B0] bg-[#E5EDE7] px-3 py-1.5 text-xs font-semibold text-[#2F6B4E] transition-colors hover:opacity-80 dark:border-[#2A4D38] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#A8C8B0] bg-[#E5EDE7] px-3 py-2 text-sm font-semibold text-[#2F6B4E] transition-colors hover:opacity-80 dark:border-[#2A4D38] dark:bg-[#1E3B2C] dark:text-[#6FB88F]"
                                     >
-                                        {showCreateItem ? <><XIcon className="h-3.5 w-3.5" /> Cerrar</> : <><Plus className="h-3.5 w-3.5" /> Crear Insumo Nuevo</>}
+                                        {showCreateItem ? <><XIcon className="h-4 w-4" /> Cerrar</> : <><Plus className="h-4 w-4" /> Crear Insumo Nuevo</>}
                                     </button>
                                 </div>
 
@@ -863,7 +869,7 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                     {showCosts ? (
                         <div className="sticky top-24 rounded-xl border border-capsula-line bg-capsula-navy-soft p-6 shadow-sm">
                             <div className="mb-4 flex items-center gap-2">
-                                <span className="text-2xl"></span>
+                                <Calculator className="h-5 w-5 text-capsula-ink-muted" />
                                 <h3 className="font-semibold text-lg tracking-[-0.01em] text-capsula-ink">Resumen Estimado</h3>
                             </div>
 
@@ -896,7 +902,7 @@ export default function RecipeForm({ availableIngredients, initialData, initialT
                         </div>
                     ) : (
                         <div className="rounded-xl border border-capsula-line bg-capsula-ivory-alt p-6 text-center">
-                            <span className="text-4xl"></span>
+                            <Lock className="mx-auto h-8 w-8 text-capsula-ink-faint" />
                             <p className="mt-2 text-sm text-capsula-ink-muted">
                                 Los costos no están disponibles para tu rol.
                             </p>
