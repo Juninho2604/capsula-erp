@@ -102,25 +102,40 @@ Al terminar:
 
 Hacer **fuera de horario de servicio**. Orden exacto:
 
-```bash
-# EN EL VPS — dump fresco de producción
-sudo -u postgres pg_dump -p 5433 -Fc capsula_erp_prod > /root/cutover.dump
-scp /root/cutover.dump root@<ip-local-por-vpn-o-lan>:/root/   # o pendrive
+Tiempos medidos en el despliegue real de Shanklish (BD 9,5 MB / 16k ventas):
+dump 31 s · restore 5,5 s → **la ventana de escrituras congeladas es ~2 min**.
+Copiar `storage/` ANTES (fuera de la ventana): la primera vez es la lenta, y
+durante el cutover el rsync es incremental (segundos).
 
-# EN EL LOCAL — restaurar
+```bash
+# TODO desde el servidor LOCAL (jala del VPS; no hace falta scp).
+# ⚠️ El dump va a /tmp, NO a /root: pg_restore corre como usuario `postgres`
+#    y no puede leer /root → "Permiso denegado".
+
+# 0. PREVIO (sin congelar nada): traer uploads. Repetir en el paso 3.
+rsync -az root@147.93.6.70:/var/www/capsula-erp/storage/ /var/www/capsula-erp/storage/
+
+# 1. Congelar escrituras en el VPS — desde acá arranca la ventana
+ssh root@147.93.6.70 'pm2 stop capsula-erp'
+
+# 2. Dump fresco + restore  (~40 s)
+ssh root@147.93.6.70 'sudo -u postgres pg_dump -p 5433 -Fc capsula_erp_prod' > /tmp/cutover.dump
+chmod 644 /tmp/cutover.dump
 systemctl stop cron && pm2 stop capsula-erp
 sudo -u postgres dropdb capsula_erp_prod && sudo -u postgres createdb -O capsula capsula_erp_prod
-sudo -u postgres pg_restore -p 5432 -d capsula_erp_prod --no-owner --role=capsula /root/cutover.dump
-cd /var/www/capsula-erp && npx prisma migrate deploy   # por si el local trae migraciones más nuevas
+sudo -u postgres pg_restore -p 5432 -d capsula_erp_prod --no-owner --role=capsula /tmp/cutover.dump
+cd /var/www/capsula-erp && npx prisma migrate deploy   # el dump trae _prisma_migrations del VPS
 pm2 restart capsula-erp && systemctl start cron
 curl -fsS http://127.0.0.1:3000/api/health             # debe responder OK
+
+# 3. Uploads incrementales (segundos) y switch
+rsync -az root@147.93.6.70:/var/www/capsula-erp/storage/ /var/www/capsula-erp/storage/
+ssh root@147.93.6.70 'capsula-route-local.sh'          # kpsula.app → servidor local
 ```
 
-También copiar `storage/` del VPS (uploads: notas de entrega, comprobantes):
-`rsync -az root@147.93.6.70:/var/www/capsula-erp/storage/ /var/www/capsula-erp/storage/`
-
-**Congelar escrituras en el VPS durante el cutover** (parar pm2 del VPS o
-poner nginx en maintenance) para no perder ventas entre el dump y el switch.
+El `pm2 stop` del VPS es el congelamiento: sin él se pierden las ventas que
+entren entre el dump y el switch. El stack del VPS queda detenido a propósito
+— es la contingencia, no debe aceptar escrituras en paralelo.
 
 ## 5. Túnel 24/7 con kpsula.app
 
