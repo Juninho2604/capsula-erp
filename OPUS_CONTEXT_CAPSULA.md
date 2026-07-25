@@ -12898,6 +12898,25 @@ real hay que actualizar esa página.
   shim-signed y arranca con Secure Boot habilitado; además el netinst
   (~700MB) cabe en pendrives chicos donde la ISO de Ubuntu (2.7GB) no entra.
 
+**Update 2026-07-25 — ✅ CUTOVER EJECUTADO. Shanklish opera on-premise.**
+- Servidor en el local: `KPSULA-LOCAL`, IP LAN `192.168.1.164` (reserva DHCP,
+  MAC ec:8e:b5:77:cf:22). Tiempos reales de la ventana: dump 31 s (9,5 MB,
+  16.144 SalesOrder) + restore 5,5 s → ~2 min de ventas congeladas.
+- kpsula.app sirve desde el local vía túnel :3210 (`capsula-route-local.sh`
+  ejecutado). **La app pm2 del VPS quedó DETENIDA a propósito** — es la
+  contingencia; no re-arrancarla salvo failover (`capsula-route-vps.sh` +
+  restore del último dump de `backups/local-server/`).
+- Gotchas del día, ya corregidos en scripts/docs: dump a `/tmp` (no `/root`,
+  pg_restore corre como postgres); `rsync` no viene en Debian netinst
+  (`apt install rsync`); `storage/` no existía en el VPS (nunca hubo uploads);
+  el mensaje de `capsula-route-local.sh` decía ":3100" (cosmético — el
+  proxy_pass real quedó en :3210); Chrome de la caja bloqueaba el http de la
+  IP por HSTS/upgrade — las cajas usan acceso directo `--app=` (Edge/Chrome).
+- Pendientes post-cutover: whitelist fail2ban de la IP pública del local,
+  apuntar print-agent a `http://192.168.1.164`, fix de comanderas duplicadas
+  (§ print-agent: job COMPLETED si una de dos impresoras falla + retries sin
+  backoff), APK KPSULA Local en tablets, integración CONFIA (fiscal).
+
 ## §118 Mover mesa sin mesonero asignado (2026-07-15)
 
 **Reporte (grupo SISTEMA SC, día de partido):** "una mesa no deja hacer el
