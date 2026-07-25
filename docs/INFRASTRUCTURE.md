@@ -1,16 +1,29 @@
 # Infraestructura — Capsula ERP
 
 > **Fuente única de verdad** sobre dónde corre cada pieza en producción.
-> Última verificación operativa: **2026-05-18**.
-> Para detalle histórico del cutover ver `OPUS_CONTEXT_CAPSULA.md` §18.43.
+> Última verificación operativa: **2026-07-25** (cutover al servidor local).
+> Para detalle histórico ver `OPUS_CONTEXT_CAPSULA.md` §18.43 (VPS) y §118 (on-premise).
 
 ---
 
-## Regla operativa (no negociable)
+## Regla operativa (actualizada 2026-07-25 — CUTOVER EJECUTADO)
 
-**Toda la stack de producción vive en el VPS Contabo.** BD, app server, reverse proxy, backups, crons — todo en el mismo host. No agregar deploys nuevos, jobs, crons, ni backups en otros providers (AWS, Vercel, Render, etc.) sin discutirlo y documentarlo acá primero.
+**La fuente de verdad de Shanklish vive en el SERVIDOR LOCAL del restaurante**
+(HP EliteDesk 800 G2, Debian 13, hostname `KPSULA-LOCAL`, IP LAN
+`192.168.1.164`, MAC `ec:8e:b5:77:cf:22` con reserva DHCP). Ahí corren la BD
+(PG 18 vía PGDG, :5432) y la app (pm2 :3000, nginx LAN :80). Tablets, cajas y
+print-agent operan por LAN **sin depender de internet**. Runbook completo:
+`docs/LOCAL_SERVER.md`.
 
-**Excepción planificada — servidor local del restaurante**: existe tooling y runbook (`docs/LOCAL_SERVER.md`, `scripts/local-server/`) para mover la fuente de verdad a un computador dedicado on-premise que sirve el POS por LAN, con kpsula.app ruteada por túnel SSH reverso desde el VPS y backups off-site local→VPS cada 6 h. **Cuando ese cutover se ejecute, actualizar esta página**: la BD viva pasa al local y el stack del VPS queda como contingencia.
+**El VPS Contabo quedó de front público + contingencia**: su nginx sirve
+kpsula.app a través del túnel SSH reverso (`127.0.0.1:3210` → local `:3000`,
+snippet `capsula-proxy-target.conf`, switch con `capsula-route-local.sh` /
+`capsula-route-vps.sh`). Su app pm2 está **DETENIDA a propósito** (evita split
+brain) y su BD `:5433` quedó congelada al estado del cutover — solo se reactiva
+en contingencia restaurando el último dump de
+`/var/lib/postgresql/backups/local-server/` (llegan del local cada 6 h). El
+deploy CI sigue actualizando el código del VPS (mantiene la contingencia al
+día); el servidor local se actualiza con `update-local-server.sh`.
 
 `.env.example` apunta a AWS RDS solo como referencia histórica — **no se carga en runtime**. El `.env` real del VPS apunta a localhost (verificable con `grep DATABASE_URL /var/www/capsula-erp/.env`).
 
