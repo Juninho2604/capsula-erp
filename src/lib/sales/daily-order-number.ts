@@ -20,7 +20,7 @@
  * incremento.
  */
 
-import { getCaracasDateStamp } from '@/lib/datetime';
+import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 
 /** Canales con numeración diaria. Pickup queda afuera (usa su propio PK). */
 export type DailyScope = 'RESTAURANT' | 'DELIVERY' | 'WINK' | 'PEDIDOSYA';
@@ -103,4 +103,61 @@ export async function nextDailyNumber(
         create: { tenantId, scope, dayKey, lastValue: 1 },
     });
     return { dailyNumber: counter.lastValue, dailyLabel: dailyLabel(scope, counter.lastValue) };
+}
+
+/** Cliente mínimo para el cálculo con reutilización (tenant-aware). */
+interface OrdersClient {
+    salesOrder: {
+        findMany(args: {
+            where: {
+                dailyLabel: { startsWith: string };
+                status: { not: 'CANCELLED' };
+                createdAt: { gte: Date; lte: Date };
+            };
+            select: { dailyNumber: true };
+        }): Promise<{ dailyNumber: number | null }[]>;
+    };
+}
+
+/**
+ * Siguiente número del día REUTILIZANDO los que quedaron libres por anulación
+ * — mismo criterio que pickup (`getDailyPickupCountAction`): el menor entero
+ * positivo que no esté ocupado por una orden viva del día.
+ *
+ * Reportado por el auditor: al anular el delivery N°4 y volver a montarlo, el
+ * contador monótono daba N°5 y el 4 se perdía, mientras que pickup sí lo
+ * reusaba. Esta función iguala ambos comportamientos.
+ *
+ * Ojo — dos consecuencias asumidas a propósito:
+ * 1. Un número anulado puede reimprimirse el mismo día en otra orden (si la
+ *    comanda anulada ya está en cocina, conviven dos "DELIVERY N° 4"). Es
+ *    exactamente lo que pickup ya hace y lo que se pidió.
+ * 2. No es atómico como el upsert del contador: dos órdenes creadas en el
+ *    mismo instante podrían tomar el mismo hueco. Ventana de milisegundos y
+ *    mismo riesgo que pickup asume hoy. El correlativo global (DEL-0042), que
+ *    es el que importa contablemente, sigue siendo atómico e irrepetible.
+ */
+export async function nextDailyNumberReusingGaps(
+    client: OrdersClient,
+    scope: DailyScope,
+    now: Date = new Date(),
+): Promise<{ dailyNumber: number; dailyLabel: string }> {
+    const { start, end } = getCaracasDayRange(now);
+    const rows = await client.salesOrder.findMany({
+        where: {
+            dailyLabel: { startsWith: `${DAILY_PREFIX[scope]}-` },
+            status: { not: 'CANCELLED' },
+            createdAt: { gte: start, lte: end },
+        },
+        select: { dailyNumber: true },
+    });
+
+    const used = new Set<number>();
+    for (const r of rows) {
+        if (typeof r.dailyNumber === 'number') used.add(r.dailyNumber);
+    }
+    let next = 1;
+    while (used.has(next)) next++;
+
+    return { dailyNumber: next, dailyLabel: dailyLabel(scope, next) };
 }

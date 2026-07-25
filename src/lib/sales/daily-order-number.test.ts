@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { dailyLabel, humanDailyLabel, nextDailyNumber, type DailyScope } from './daily-order-number';
+import { dailyLabel, humanDailyLabel, nextDailyNumber, nextDailyNumberReusingGaps, type DailyScope } from './daily-order-number';
 
 describe('dailyLabel', () => {
     it('formatea con prefijo de 2 letras y padding 2', () => {
@@ -61,5 +61,57 @@ describe('humanDailyLabel — línea legible por canal para la comanda (§84.1)'
     it('defensivo: prefijo desconocido o sin numero no rompe', () => {
         expect(humanDailyLabel('ZZ-09')).toBe('ZZ N° 9');
         expect(humanDailyLabel('DL-')).toBe('DELIVERY DL-');
+    });
+});
+
+describe('nextDailyNumberReusingGaps', () => {
+    type WhereArg = {
+        dailyLabel: { startsWith: string };
+        status: { not: 'CANCELLED' };
+        createdAt: { gte: Date; lte: Date };
+    };
+    const makeOrdersClient = (dailyNumbers: (number | null)[]) => ({
+        salesOrder: {
+            findMany: vi.fn(async (_args: { where: WhereArg; select: { dailyNumber: true } }) =>
+                dailyNumbers.map((dailyNumber) => ({ dailyNumber })),
+            ),
+        },
+    });
+
+    it('reutiliza el hueco que dejó una anulación (el caso del auditor)', async () => {
+        // Existen DL-1, DL-2, DL-3, DL-5 vivos; el 4 fue anulado.
+        const client = makeOrdersClient([1, 2, 3, 5]);
+        const res = await nextDailyNumberReusingGaps(client, 'DELIVERY');
+        expect(res.dailyNumber).toBe(4);
+        expect(res.dailyLabel).toBe('DL-04');
+    });
+
+    it('sin huecos, continúa después del último', async () => {
+        const client = makeOrdersClient([1, 2, 3]);
+        const res = await nextDailyNumberReusingGaps(client, 'DELIVERY');
+        expect(res.dailyNumber).toBe(4);
+    });
+
+    it('primer pedido del día arranca en 1', async () => {
+        const client = makeOrdersClient([]);
+        const res = await nextDailyNumberReusingGaps(client, 'DELIVERY');
+        expect(res.dailyNumber).toBe(1);
+        expect(res.dailyLabel).toBe('DL-01');
+    });
+
+    it('ignora órdenes sin número del día', async () => {
+        const client = makeOrdersClient([1, null, 3]);
+        const res = await nextDailyNumberReusingGaps(client, 'DELIVERY');
+        expect(res.dailyNumber).toBe(2);
+    });
+
+    it('filtra por prefijo del canal, día Caracas y excluye anuladas', async () => {
+        const client = makeOrdersClient([1]);
+        await nextDailyNumberReusingGaps(client, 'DELIVERY', new Date('2026-07-10T01:00:00Z'));
+        const where = client.salesOrder.findMany.mock.calls[0]![0].where;
+        expect(where.dailyLabel).toEqual({ startsWith: 'DL-' });
+        expect(where.status).toEqual({ not: 'CANCELLED' });
+        // 2026-07-10 01:00 UTC = 2026-07-09 21:00 Caracas → rango del 09
+        expect(where.createdAt.gte.toISOString()).toBe('2026-07-09T04:00:00.000Z');
     });
 });
