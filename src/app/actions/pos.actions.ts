@@ -38,7 +38,7 @@ import { getSession } from '@/lib/auth';
 import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
-import { nextDailyNumber } from '@/lib/sales/daily-order-number';
+import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
 import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
@@ -1617,9 +1617,14 @@ export async function createSalesOrderAction(
         // para no consumir números en reintentos por colisión de orderNumber.
         const isPickupDirect = data.orderType === 'RESTAURANT'
             && (finalNotes ?? '').startsWith('Venta Directa Pickup');
+        // DELIVERY reutiliza los números liberados por anulación (igual que
+        // pickup): anular el N°4 y volver a montarlo devuelve N°4, no N°5.
+        // El resto de canales sigue con el contador monótono.
         const dailyOrder = isPickupDirect
             ? null
-            : await nextDailyNumber(db, tenantId, data.orderType === 'DELIVERY' ? 'DELIVERY' : 'RESTAURANT');
+            : data.orderType === 'DELIVERY'
+                ? await nextDailyNumberReusingGaps(db, 'DELIVERY')
+                : await nextDailyNumber(db, tenantId, 'RESTAURANT');
 
         let newOrder;
         for (let attempt = 0; attempt < 10; attempt++) {
