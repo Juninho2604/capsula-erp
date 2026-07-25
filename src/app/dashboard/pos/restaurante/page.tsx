@@ -25,6 +25,7 @@ import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
+import { localId } from "@/lib/local-id";
 import { printReceipt, emitReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
 import { useTenantFeatureFlags } from "@/lib/hooks/use-feature-flags";
@@ -46,6 +47,7 @@ import { cappedTipForPayment, keptAmountForSplit, roundingTipForCharge, netItems
 import { scheduledInputToISO, printJobScheduledFor } from "@/lib/pos-scheduled-order";
 import { computeDivisasSettlement, type DivisasSettlement } from "@/lib/sales/divisas-settlement";
 import { Wine, UserCog, Calendar, Plus as PlusIcon, X as XIcon, DollarSign, Euro, Zap, CreditCard, Smartphone, Banknote, ShoppingBag, Beer, Leaf, Phone as PhoneIcon, AlertTriangle, Search, ArrowLeft, Gift, Printer, Unlock, UserCircle2, Tag, Divide, Wallet, Lock, Armchair, UtensilsCrossed, Receipt as ReceiptIcon, Pencil, Ban, RefreshCw, Check, Copy, Star } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 // ============================================================================
 // TIPOS
@@ -995,7 +997,9 @@ export default function POSSportBarPage() {
       saveActivePickupCart(cart);
     }
     const newTab: PickupTabLocal = {
-      id: crypto.randomUUID(),
+      // localId(): crypto.randomUUID() no existe sobre http:// de LAN y
+      // reventaba el handler sin feedback (§118 — incidente Shanklish).
+      id: localId(),
       pickupNumber: newPickupNumber.trim() || `PK-${(pickupTabs.length + 1).toString().padStart(2, "0")}`,
       customerName: newPickupName.trim(),
       customerPhone: newPickupPhone.trim(),
@@ -1512,7 +1516,7 @@ export default function POSSportBarPage() {
     }
     const text = formatConsumosForClipboard(nuevos);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       const next = new Set(copiedConsumoIds);
       for (const it of nuevos) next.add(it.id);
       setCopiedConsumoIds(next);
@@ -1533,7 +1537,7 @@ export default function POSSportBarPage() {
     }
     const text = formatConsumosForClipboard(allItems);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       const next = new Set(allItems.map((it) => it.id));
       setCopiedConsumoIds(next);
       persistCopiedIds(activeTab.id, next);
@@ -1581,7 +1585,7 @@ export default function POSSportBarPage() {
     }
     const text = formatPickupCartForClipboard(nuevos);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       setCopiedPickupCount(cart.length);
       persistPickupCopiedCount(activePickupTabId, cart.length);
       toast.success(`${nuevos.length} consumo${nuevos.length === 1 ? "" : "s"} copiado${nuevos.length === 1 ? "" : "s"}`);
@@ -1598,7 +1602,7 @@ export default function POSSportBarPage() {
     }
     const text = formatPickupCartForClipboard(cart);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       setCopiedPickupCount(cart.length);
       persistPickupCopiedCount(activePickupTabId, cart.length);
       toast.success(`${cart.length} consumo${cart.length === 1 ? "" : "s"} copiado${cart.length === 1 ? "" : "s"}`);

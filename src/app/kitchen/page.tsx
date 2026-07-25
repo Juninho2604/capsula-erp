@@ -237,7 +237,7 @@ ${item.notes ? `<div class="notes">${item.notes}</div>` : ''}
                             });
                         }
 
-                        if (Notification.permission === 'granted') {
+                        if ('Notification' in window && Notification.permission === 'granted') {
                             new Notification('🍽️ Nueva Orden', {
                                 body: `${newOrderIds.length} nueva(s) orden(es) recibida(s)`,
                                 icon: '/favicon.ico'

@@ -115,7 +115,7 @@ export default function BarraDisplayPage() {
                             }, 'bar');
                         }
 
-                        if (Notification.permission === 'granted') {
+                        if ('Notification' in window && Notification.permission === 'granted') {
                             new Notification('🥤 Nueva Bebida', {
                                 body: `${newOrderIds.length} orden(es) de barra recibida(s)`,
                                 icon: '/favicon.ico'
