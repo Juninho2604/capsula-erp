@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Resueltos ANTES del bloque android: escribir
+//   versionCode (findProperty('versionCode') ?: '1').toInteger()
+// Groovy lo parsea como versionCode(...).toInteger() — invoca el setter con
+// un String y luego llama toInteger() sobre su retorno nulo → el build muere
+// con "IllegalArgumentException: Value is null" (falló así el run #2 real).
+def appVersionCode = ((project.findProperty('versionCode') ?: '1') as String).toInteger()
+def appVersionName = (project.findProperty('versionName') ?: '1.0.0') as String
+
 android {
     namespace 'app.kpsula.local'
     compileSdk 34
@@ -12,13 +20,12 @@ android {
         applicationId 'app.kpsula.local'
         minSdk 24
         targetSdk 34
-        versionCode (findProperty('versionCode') ?: '1').toInteger()
-        versionName (findProperty('versionName') ?: '1.0.0')
+        versionCode appVersionCode
+        versionName appVersionName
     }
 
-    // Firma release SOLO si están las CUATRO variables. Con alguna nula, AGP
-    // aborta el build con un críptico "Value is null" (pasó en el primer run
-    // real: el keystore estaba pero faltaban password/alias). Sin las cuatro
+    // Firma release SOLO si están las CUATRO variables — un signingConfig con
+    // algún valor nulo también aborta el build. Sin las cuatro
     // se cae a debug, que se firma con la keystore de debug de Android y se
     // instala igual por sideload — es una app de LAN interna, no va a Play.
     def ksFile = System.getenv('ANDROID_KEYSTORE_FILE')
