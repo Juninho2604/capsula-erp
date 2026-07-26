@@ -225,5 +225,19 @@ Después de cada cambio significativo (nueva convención, bug fix, nuevo campo d
 - **Contexto de negocio:** `OPUS_CONTEXT_CAPSULA.md`:
   - §18 / §18.38 → convenciones Minimal Navy
   - §20 → reglas de agregación de ventas, timezone Caracas, helper `sales-where.ts`
+  - §118 → servidor local on-premise (Shanklish)
+- **Infraestructura y on-premise:**
+  - `docs/INFRASTRUCTURE.md` → dónde corre cada pieza (topología vigente)
+  - `docs/LOCAL_SERVER.md` → runbook operativo del servidor del restaurante
+  - `docs/SHANKLISH_ONPREM_ASBUILT.md` → cómo se instaló, incidentes y causas raíz
+  - `docs/SECURITY_POSTURE.md` → estado de seguridad y plan por prioridad
+
+### ⚠️ Regla para UI servida por HTTP en LAN
+
+El POS on-premise se sirve por `http://<ip-lan>`, que **no es un secure
+context**: `crypto.randomUUID`, `navigator.clipboard`, `Notification` y el
+service worker **no existen ahí**. Usar los helpers `@/lib/local-id` y
+`@/lib/clipboard`, y guardar cualquier API de navegador con
+`'X' in window` antes de invocarla. Ver `docs/SHANKLISH_ONPREM_ASBUILT.md` §4.1.
 
 Cuando dudes entre dos patrones, elige el que coincide con `pos/mesero/page.tsx` o `pos/restaurante/page.tsx` — son las referencias vivas de la paleta.
