@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { formatNumber } from '@/lib/utils';
 
 export interface PrintItem {
@@ -20,6 +21,14 @@ interface Props {
     subtitle?: string;
     /** Si true, muestra columna "Mínimo" para que el operador vea la referencia */
     showMinimumColumn?: boolean;
+    /**
+     * Almacenes a contar (viene de Conteo Rápido vía ?areas=id1,id2,…).
+     * Con ≥1 entrada la tabla pasa a modo multi-almacén: un par de columnas
+     * "Sist. | Contado" POR almacén, con el nombre en el encabezado, para que
+     * la hoja impresa coincida exactamente con lo seleccionado en pantalla.
+     * Vacío/undefined → tabla clásica de una sola columna "Contado".
+     */
+    countAreas?: Array<{ id: string; name: string }>;
 }
 
 /**
@@ -41,7 +50,13 @@ export default function PhysicalCountLayout({
     selectedAreaName,
     subtitle,
     showMinimumColumn = true,
+    countAreas,
 }: Props) {
+    const multiAreas = countAreas ?? [];
+    const isMulti = multiAreas.length > 0;
+    /** Stock del item en un almacén concreto (0 si nunca tuvo ubicación ahí). */
+    const stockIn = (item: PrintItem, areaId: string) =>
+        item.stockByArea.find(s => s.areaId === areaId)?.quantity ?? 0;
     const today = new Date().toLocaleDateString('es-VE', {
         day: '2-digit',
         month: 'long',
@@ -65,7 +80,12 @@ export default function PhysicalCountLayout({
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Conteo físico de inventario</h1>
                         {subtitle && <p className="mt-1 text-sm">{subtitle}</p>}
-                        {selectedAreaName && (
+                        {isMulti ? (
+                            <p className="mt-1 text-sm">
+                                <strong>{multiAreas.length === 1 ? 'Almacén:' : `Almacenes (${multiAreas.length}):`}</strong>{' '}
+                                {multiAreas.map(a => a.name).join(' · ')}
+                            </p>
+                        ) : selectedAreaName && (
                             <p className="mt-1 text-sm">
                                 <strong>Área:</strong> {selectedAreaName}
                             </p>
@@ -96,17 +116,46 @@ export default function PhysicalCountLayout({
                     </h2>
                     <table className="w-full border-collapse text-xs">
                         <thead>
-                            <tr className="border-b border-black">
-                                <th className="w-[80px] px-2 py-1 text-left font-bold">SKU</th>
-                                <th className="px-2 py-1 text-left font-bold">Producto</th>
-                                <th className="w-[60px] px-2 py-1 text-center font-bold">Unidad</th>
-                                <th className="w-[70px] px-2 py-1 text-right font-bold">Sistema</th>
-                                {showMinimumColumn && (
-                                    <th className="w-[60px] px-2 py-1 text-right font-bold">Mín.</th>
-                                )}
-                                <th className="w-[90px] border-l border-black px-2 py-1 text-center font-bold">Contado</th>
-                                <th className="w-[90px] border-l border-black px-2 py-1 text-center font-bold">Varianza</th>
-                            </tr>
+                            {isMulti ? (
+                                <>
+                                    {/* Fila 1: nombre del almacén sobre su par de columnas */}
+                                    <tr className="border-b border-black/40">
+                                        <th className="px-2 py-1" colSpan={3} />
+                                        {multiAreas.map(a => (
+                                            <th
+                                                key={a.id}
+                                                colSpan={2}
+                                                className="border-l border-black px-2 py-1 text-center text-[10px] font-bold uppercase"
+                                            >
+                                                {a.name}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                    <tr className="border-b border-black">
+                                        <th className="w-[80px] px-2 py-1 text-left font-bold">SKU</th>
+                                        <th className="px-2 py-1 text-left font-bold">Producto</th>
+                                        <th className="w-[50px] px-2 py-1 text-center font-bold">Unidad</th>
+                                        {multiAreas.map(a => (
+                                            <Fragment key={a.id}>
+                                                <th className="w-[55px] border-l border-black px-1 py-1 text-right text-[10px] font-bold">Sist.</th>
+                                                <th className="w-[80px] px-1 py-1 text-center font-bold">Contado</th>
+                                            </Fragment>
+                                        ))}
+                                    </tr>
+                                </>
+                            ) : (
+                                <tr className="border-b border-black">
+                                    <th className="w-[80px] px-2 py-1 text-left font-bold">SKU</th>
+                                    <th className="px-2 py-1 text-left font-bold">Producto</th>
+                                    <th className="w-[60px] px-2 py-1 text-center font-bold">Unidad</th>
+                                    <th className="w-[70px] px-2 py-1 text-right font-bold">Sistema</th>
+                                    {showMinimumColumn && (
+                                        <th className="w-[60px] px-2 py-1 text-right font-bold">Mín.</th>
+                                    )}
+                                    <th className="w-[90px] border-l border-black px-2 py-1 text-center font-bold">Contado</th>
+                                    <th className="w-[90px] border-l border-black px-2 py-1 text-center font-bold">Varianza</th>
+                                </tr>
+                            )}
                         </thead>
                         <tbody>
                             {byCategory[cat].map(item => (
@@ -114,12 +163,25 @@ export default function PhysicalCountLayout({
                                     <td className="px-2 py-1.5 font-mono text-[10px]">{item.sku}</td>
                                     <td className="px-2 py-1.5">{item.name}</td>
                                     <td className="px-2 py-1.5 text-center text-[10px]">{item.baseUnit}</td>
-                                    <td className="px-2 py-1.5 text-right tabular-nums">{formatNumber(item.totalStock)}</td>
-                                    {showMinimumColumn && (
-                                        <td className="px-2 py-1.5 text-right tabular-nums text-black/60">{formatNumber(item.minimumStock)}</td>
+                                    {isMulti ? (
+                                        multiAreas.map(a => (
+                                            <Fragment key={a.id}>
+                                                <td className="border-l border-black px-1 py-1.5 text-right text-[10px] tabular-nums">
+                                                    {formatNumber(stockIn(item, a.id))}
+                                                </td>
+                                                <td className="px-1 py-1.5">&nbsp;</td>
+                                            </Fragment>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <td className="px-2 py-1.5 text-right tabular-nums">{formatNumber(item.totalStock)}</td>
+                                            {showMinimumColumn && (
+                                                <td className="px-2 py-1.5 text-right tabular-nums text-black/60">{formatNumber(item.minimumStock)}</td>
+                                            )}
+                                            <td className="border-l border-black px-2 py-1.5">&nbsp;</td>
+                                            <td className="border-l border-black px-2 py-1.5">&nbsp;</td>
+                                        </>
                                     )}
-                                    <td className="border-l border-black px-2 py-1.5">&nbsp;</td>
-                                    <td className="border-l border-black px-2 py-1.5">&nbsp;</td>
                                 </tr>
                             ))}
                         </tbody>

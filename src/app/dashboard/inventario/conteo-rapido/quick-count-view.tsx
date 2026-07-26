@@ -132,6 +132,20 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
         setItems(prev => prev.map(it => (it.sku === sku ? { ...it, [field]: value } : it)));
     };
 
+    /**
+     * Almacenes que se están contando, en el mismo orden que las columnas de
+     * la tabla. Es lo que se le pasa a la hoja de impresión (?areas=…) para
+     * que las columnas "Contado" coincidan con lo seleccionado acá.
+     */
+    const countedAreas = useMemo(() => {
+        const out: { id: string; name: string }[] = [];
+        const nameOf = (id: string) => areas.find(a => a.id === id)?.name ?? 'Almacén';
+        if (principalId) out.push({ id: principalId, name: nameOf(principalId) });
+        if (dualMode && productionId) out.push({ id: productionId, name: nameOf(productionId) });
+        return out;
+    }, [areas, principalId, productionId, dualMode]);
+    const countedAreaIds = useMemo(() => countedAreas.map(a => a.id), [countedAreas]);
+
     // ── Stats de progreso
     const totalItems = items.length;
     const countedItems = useMemo(
@@ -356,7 +370,7 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
                     </div>
                     <div className="flex items-center gap-2">
                         <Link
-                            href="/dashboard/inventario/imprimir?layout=count"
+                            href={`/dashboard/inventario/imprimir?layout=count&areas=${encodeURIComponent(countedAreaIds.join(','))}`}
                             target="_blank"
                             className="pos-btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                         >
@@ -420,6 +434,7 @@ export default function QuickCountView({ areas, defaultPrincipalId, defaultProdu
                     category={category}
                     rows={rows}
                     dualMode={dualMode}
+                    areaLabels={countedAreas}
                     onUpdate={updateItem}
                 />
             ))}
@@ -481,10 +496,12 @@ interface BlockProps {
     category: string;
     rows: CountedItem[];
     dualMode: boolean;
+    /** Nombres de los almacenes, en el mismo orden que las casillas. */
+    areaLabels: { id: string; name: string }[];
     onUpdate: (sku: string, field: 'countedPrincipal' | 'countedProduction', value: string) => void;
 }
 
-function CategoryBlock({ category, rows, dualMode, onUpdate }: BlockProps) {
+function CategoryBlock({ category, rows, dualMode, areaLabels, onUpdate }: BlockProps) {
     const contadosEnGrupo = rows.filter(r => r.countedPrincipal.trim() !== '' || r.countedProduction.trim() !== '').length;
     return (
         <div className="rounded-2xl border border-capsula-line bg-capsula-ivory overflow-hidden">
@@ -496,6 +513,22 @@ function CategoryBlock({ category, rows, dualMode, onUpdate }: BlockProps) {
                     {contadosEnGrupo}/{rows.length}
                 </span>
             </div>
+            {/* Rótulo de cada casilla: antes eran cajas sin nombre y no se
+                sabía cuál correspondía a cuál almacén. */}
+            {areaLabels.length > 0 && (
+                <div className="flex items-center gap-3 border-b border-capsula-line bg-capsula-ivory-surface/60 px-3 sm:px-4 py-1.5">
+                    <div className="flex-1 min-w-0" />
+                    {areaLabels.map(a => (
+                        <span
+                            key={a.id}
+                            title={a.name}
+                            className="w-20 sm:w-24 truncate text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-capsula-ink-muted"
+                        >
+                            {a.name}
+                        </span>
+                    ))}
+                </div>
+            )}
             <div className="divide-y divide-capsula-line">
                 {rows.map(r => (
                     <ItemRow key={r.sku} item={r} dualMode={dualMode} onUpdate={onUpdate} />

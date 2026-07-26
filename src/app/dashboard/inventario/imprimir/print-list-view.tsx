@@ -46,6 +46,14 @@ interface Area {
 interface Props {
     items: PrintItem[];
     areas: Area[];
+    /** Layout inicial según ?layout= (antes el parámetro se ignoraba). */
+    initialLayout?: Layout;
+    /**
+     * Almacenes que vienen de Conteo Rápido (?areas=…). Con ≥1, la hoja de
+     * conteo imprime un par "Sist. | Contado" por almacén y deja de mostrar
+     * "Todas las áreas": así coincide con lo seleccionado allá.
+     */
+    countAreas?: Area[];
 }
 
 /**
@@ -67,8 +75,8 @@ interface Props {
  * - "purchase": lista de compras agrupada por proveedor preferido,
  *   filtra automáticamente items donde stock < reorderPoint.
  */
-export default function PrintListView({ items, areas }: Props) {
-    const [layout, setLayout] = useState<Layout>('count');
+export default function PrintListView({ items, areas, initialLayout = 'count', countAreas = [] }: Props) {
+    const [layout, setLayout] = useState<Layout>(initialLayout);
     const [typeFilter, setTypeFilter] = useState<'ALL' | string>('ALL');
     const [stockFilter, setStockFilter] = useState<StockFilter>('ALL');
     const [areaId, setAreaId] = useState<string>('');
@@ -153,7 +161,12 @@ export default function PrintListView({ items, areas }: Props) {
     }, [filtered, areaId]);
 
     const selectedAreaName = areaId ? areas.find(a => a.id === areaId)?.name : undefined;
-    const subtitle = selectedAreaName ? `Solo área: ${selectedAreaName}` : 'Todas las áreas';
+    // En modo multi-almacén el propio layout imprime la línea "Almacenes (N): …",
+    // así que no repetimos ni mostramos "Todas las áreas" (que era justo lo que
+    // no coincidía con lo seleccionado en Conteo Rápido).
+    const subtitle = countAreas.length > 0
+        ? undefined
+        : selectedAreaName ? `Solo área: ${selectedAreaName}` : 'Todas las áreas';
 
     return (
         <div className="space-y-6 animate-in">
@@ -184,6 +197,18 @@ export default function PrintListView({ items, areas }: Props) {
                     <Printer className="h-4 w-4" /> Imprimir
                 </button>
             </div>
+
+            {/* Aviso: los almacenes vienen fijados desde Conteo Rápido */}
+            {countAreas.length > 0 && layout === 'count' && (
+                <div className="rounded-xl bg-[#E6ECF4] p-4 text-xs text-[#2A4060] print:hidden dark:bg-[#1A2636] dark:text-[#D1DCE9]">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider">Hoja para Conteo Rápido</p>
+                    <p className="mt-1 opacity-90">
+                        La hoja trae una columna <strong>Contado</strong> por cada almacén seleccionado allá:{' '}
+                        <strong>{countAreas.map(a => a.name).join(' · ')}</strong>. El filtro de área de abajo no
+                        cambia esas columnas.
+                    </p>
+                </div>
+            )}
 
             {/* Selector de layout — oculto al imprimir */}
             <div className="grid gap-2 print:hidden sm:grid-cols-2">
@@ -327,6 +352,7 @@ export default function PrintListView({ items, areas }: Props) {
                             items={itemsForLayout}
                             selectedAreaName={selectedAreaName}
                             subtitle={subtitle}
+                            countAreas={countAreas}
                         />
                     ) : (
                         <PurchaseListLayout
