@@ -151,8 +151,8 @@ describe('injectTenantInArgs — operaciones NO tocadas', () => {
 });
 
 describe('TENANT_AWARE_MODELS', () => {
-    it('Contiene los 66 modelos esperados (§123: -7 modelos hijos SIN columna tenantId)', () => {
-        expect(TENANT_AWARE_MODELS.length).toBe(66);
+    it('Contiene los 67 modelos esperados (§123: -7 modelos hijos SIN columna tenantId)', () => {
+        expect(TENANT_AWARE_MODELS.length).toBe(67);
     });
 
     // §123 — GUARDIA DE REGRESIÓN: inyectar where.tenantId sobre un modelo
@@ -171,9 +171,15 @@ describe('TENANT_AWARE_MODELS', () => {
 
     it('§123: los modelos hijos FK-scoped NO están en la lista', () => {
         for (const m of ['RequisitionItem', 'SupplierItem', 'MenuItemModifierGroup', 'InventoryAuditItem',
-                         'IntercompanyItemMapping', 'ProcessingTemplateOutput', 'RateLimitBucket']) {
+                         'IntercompanyItemMapping', 'ProcessingTemplateOutput', 'RateLimitBucket',
+                         // §138 — hijos de la sesión de conteo: se aíslan por FK
+                         'InventoryCountSessionArea', 'InventoryCountEntry', 'InventoryCountEvent']) {
             expect(TENANT_AWARE_MODELS).not.toContain(m);
         }
+    });
+
+    it('§138: la sesión de conteo SÍ está (tiene tenantId propio)', () => {
+        expect(TENANT_AWARE_MODELS).toContain('InventoryCountSession');
     });
 
     it('Incluye los modelos multi-tenant del módulo Conversaciones WhatsApp', () => {

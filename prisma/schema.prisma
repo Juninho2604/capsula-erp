@@ -115,6 +115,8 @@ model Tenant {
   priceLists            PriceList[]
   // Conteo físico semanal como entidad (§51.A)
   weeklyCounts          WeeklyCount[]
+  // Sesiones de conteo en progreso (§138)
+  countSessions         InventoryCountSession[]
   // Tesorería / Conciliación bancaria (Fase 0+)
   bankAccounts          BankAccount[]
   posTerminals          PosTerminal[]
@@ -237,6 +239,14 @@ model User {
   // Conteos físicos semanales (§51.A)
   createdWeeklyCounts WeeklyCount[]
 
+  // Sesiones de conteo (§138) — creador, aplicador, cancelador, autor de
+  // cada cantidad contada y autor de cada evento de la bitácora.
+  countSessionsCreated   InventoryCountSession[] @relation("CountSessionCreator")
+  countSessionsApplied   InventoryCountSession[] @relation("CountSessionApplier")
+  countSessionsCancelled InventoryCountSession[] @relation("CountSessionCanceller")
+  countEntries           InventoryCountEntry[]   @relation("CountEntryCounter")
+  countEvents            InventoryCountEvent[]   @relation("CountEventUser")
+
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -290,6 +300,9 @@ model Area {
   // Conteos semanales (§51.A)
   weeklyCountsAsPrincipal  WeeklyCount[] @relation("WeeklyCountPrincipal")
   weeklyCountsAsProduction WeeklyCount[] @relation("WeeklyCountProduction")
+
+  // Sesiones de conteo (§138) — N almacenes por sesión
+  countSessionAreas InventoryCountSessionArea[] @relation("CountSessionArea")
 
   // Multi-tenant (Fase 1.D-γ). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -382,6 +395,8 @@ model InventoryItem {
 
   // Conteos físicos semanales — items contados (§51.A)
   weeklyCountItems WeeklyCountItem[]
+  // Cantidades contadas en sesiones de conteo (§138)
+  countEntries     InventoryCountEntry[] @relation("CountEntryItem")
 
   // Multi-tenant (Fase 1.D-α). Opcional por ahora; NOT NULL en 1.E.
   tenantId String
@@ -3929,4 +3944,122 @@ model SupplierAdvance {
   @@index([supplierId])
   @@index([status])
   @@index([paidAt])
+}
+
+// ============================================================================
+// SESIÓN DE CONTEO DE INVENTARIO (§138)
+// ============================================================================
+// Antes el borrador del Conteo Rápido vivía SOLO en localStorage del navegador:
+// no se podía continuar desde otro dispositivo, se perdía al limpiar caché,
+// cabía un solo conteo a la vez y no quedaba rastro de quién contó qué.
+//
+// Estas tablas mueven el conteo EN PROGRESO al servidor, con trazabilidad por
+// renglón. Al aplicar se sigue generando el WeeklyCount de siempre (snapshot
+// inmutable) → los reportes existentes no cambian.
+
+model InventoryCountSession {
+  id   String  @id @default(cuid())
+  code String // Correlativo legible: "CNT-2026-07-001"
+  name String? // "Conteo semanal cocina", opcional
+
+  // OPEN (contando) | REVIEW (revisando diferencias) | APPLIED | CANCELLED
+  status String @default("OPEN")
+
+  /// Conteo a ciegas: el que cuenta NO ve el stock del sistema (evita que
+  /// "cuadre" el número). Se elige al abrir la sesión.
+  blindMode Boolean @default(false)
+
+  notes String?
+
+  createdById String
+  createdBy   User   @relation("CountSessionCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  /// Última vez que alguien tocó la sesión — para ordenar "en progreso".
+  lastActivityAt DateTime @default(now())
+
+  appliedById String?
+  appliedBy   User?     @relation("CountSessionApplier", fields: [appliedById], references: [id])
+  appliedAt   DateTime?
+
+  cancelledById String?
+  cancelledBy   User?     @relation("CountSessionCanceller", fields: [cancelledById], references: [id])
+  cancelledAt   DateTime?
+
+  /// Snapshot generado al aplicar (el WeeklyCount de siempre).
+  weeklyCountId String?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  areas   InventoryCountSessionArea[]
+  entries InventoryCountEntry[]
+  events  InventoryCountEvent[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([lastActivityAt])
+}
+
+/// Almacenes incluidos en la sesión. Reemplaza el par fijo principal/producción:
+/// acá van N (Shanklish cuenta 3), en el orden de las columnas de la pantalla.
+model InventoryCountSessionArea {
+  id        String                @id @default(cuid())
+  sessionId String
+  session   InventoryCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  areaId String
+  area   Area   @relation("CountSessionArea", fields: [areaId], references: [id])
+
+  sortOrder Int @default(0)
+
+  @@unique([sessionId, areaId])
+  @@index([sessionId])
+}
+
+/// Una cantidad contada, por item y por almacén. Se guarda apenas se escribe,
+/// con autor y hora → el rastro de quién contó qué renglón.
+model InventoryCountEntry {
+  id        String                @id @default(cuid())
+  sessionId String
+  session   InventoryCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation("CountEntryItem", fields: [inventoryItemId], references: [id])
+
+  areaId String
+
+  qtyCounted Float
+
+  /// Stock que el sistema tenía cuando se escribió la cantidad. Sirve para
+  /// mostrar la diferencia real del momento aunque después haya movimientos.
+  stockAtEntry Float
+
+  countedById String
+  countedBy   User   @relation("CountEntryCounter", fields: [countedById], references: [id])
+  countedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sessionId, inventoryItemId, areaId])
+  @@index([sessionId])
+  @@index([inventoryItemId])
+}
+
+/// Bitácora de la sesión: creada / retomada / enviada a revisión / aplicada /
+/// cancelada. Es lo que responde "¿quién y cuándo?" sin ambigüedad.
+model InventoryCountEvent {
+  id        String                @id @default(cuid())
+  sessionId String
+  session   InventoryCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// CREATED | RESUMED | REVIEW | APPLIED | CANCELLED | REOPENED
+  type String
+
+  userId String
+  user   User   @relation("CountEventUser", fields: [userId], references: [id])
+
+  at     DateTime @default(now())
+  detail String?
+
+  @@index([sessionId, at])
 }

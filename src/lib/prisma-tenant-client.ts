@@ -61,6 +61,11 @@ const TENANT_MODELS = new Set<string>([
     'GameStation',
     'GameType',
     'InventoryAudit',
+    // Sesiones de conteo (§138). Solo la sesión tiene tenantId:
+    // InventoryCountSessionArea / InventoryCountEntry / InventoryCountEvent NO
+    // van acá — se aíslan por FK a la sesión (mismo criterio que
+    // DeliveryOrderEvent). Agregarlos rompería con PrismaClientValidationError.
+    'InventoryCountSession',
     'InventoryCycle',
     'InventoryItem',
     'InventoryLoan',
