@@ -43,6 +43,7 @@ schema más nuevo que el código del stack de contingencia.
 | §137 | Conteo Rápido: la hoja impresa coincide con los almacenes seleccionados (columna Contado por almacén) + rótulos en las casillas | Bajo — UI | No |
 | §138.1 | Sesión de conteo persistente y auditable — 4 tablas nuevas + lógica pura (20 tests). **Nada la consume todavía** | Bajo — tablas nacen vacías | **Sí** (aditiva: solo CREATE TABLE/INDEX/FK) |
 | §139 | **Ítems anulados reaparecían en cuentas separadas y se podían cobrar** | **Alto — plata** | No |
+| §138.2 | Acciones del servidor del conteo auditable (crear/retomar/guardar/revisar/aplicar). **Sin UI todavía — nada las invoca** | Bajo — código muerto hasta §138.3 | No |
 
 ### Orden sugerido
 
