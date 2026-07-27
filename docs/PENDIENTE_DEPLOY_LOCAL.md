@@ -43,7 +43,8 @@ schema más nuevo que el código del stack de contingencia.
 | §137 | Conteo Rápido: la hoja impresa coincide con los almacenes seleccionados (columna Contado por almacén) + rótulos en las casillas | Bajo — UI | No |
 | §138.1 | Sesión de conteo persistente y auditable — 4 tablas nuevas + lógica pura (20 tests). **Nada la consume todavía** | Bajo — tablas nacen vacías | **Sí** (aditiva: solo CREATE TABLE/INDEX/FK) |
 | §139 | **Ítems anulados reaparecían en cuentas separadas y se podían cobrar** | **Alto — plata** | No |
-| §138.2 | Acciones del servidor del conteo auditable (crear/retomar/guardar/revisar/aplicar). **Sin UI todavía — nada las invoca** | Bajo — código muerto hasta §138.3 | No |
+| §138.2 | Acciones del servidor del conteo auditable (crear/retomar/guardar/revisar/aplicar) | Bajo | No |
+| §138.3 | **Pantallas del conteo**: lista para retomar, N almacenes, guardado automático al servidor, revisión de diferencias, bitácora. Reemplaza el flujo de localStorage | Medio — cambia el módulo que usa el chef | No |
 
 ### Orden sugerido
 
@@ -67,5 +68,8 @@ anula puede volver a cobrarse al pedir cuentas separadas.
    Operaciones → Inventario → "Asistente de Nomenclatura".
 4. **§134** — Transferencias → selector de ítem → una sub-receta debe aparecer
    con el sufijo "· Sub-receta".
-5. **§138.1** — `npx prisma migrate status` → "up to date". No hay nada visible
-   que probar: las tablas están dormidas por diseño.
+5. **§138** — Conteo Rápido ahora abre la lista de conteos. Probar el ciclo
+   completo: "Nuevo conteo" → elegir 2-3 almacenes → escribir una cantidad →
+   ver "Guardado" → **recargar la página** (la cantidad debe seguir ahí) →
+   "Revisar diferencias" → aplicar con un usuario de gerencia.
+   `npx prisma migrate status` → "up to date".

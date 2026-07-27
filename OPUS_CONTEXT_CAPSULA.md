@@ -13418,3 +13418,72 @@ post-deploy.
 Pendiente de decisión de Omar: que el pipeline avise o actualice el local
 automáticamente (el canal `:2223` del túnel ya existe para eso). No se tocó
 infraestructura viva sin su visto bueno.
+
+## §138 Conteo de inventario auditable y resumible (2026-07-27)
+
+Pregunta del chef: "si hoy comienzo a contar y mañana quiero continuar, ¿cómo
+podría hacerlo?". Respuesta honesta del sistema anterior: **casi no se podía**.
+
+Estado previo — el borrador vivía en `localStorage` con clave fija
+(`capsula-conteo-rapido-draft-v1`):
+- Solo continuable en ESE navegador y ESE dispositivo.
+- Se perdía al limpiar caché, sin aviso.
+- Cabía **un solo conteo a la vez** (clave fija → el segundo pisaba al primero).
+- Invisible para el resto: nadie sabía que había un conteo a medias.
+- Cero rastro de quién contó cada renglón.
+- `WeeklyCount.status` preveía `DRAFT` pero **nunca se escribía**: siempre
+  `APPLIED` directo. La idea estaba, quedó a medio construir.
+
+### Decisiones de Omar
+1. Conteo a ciegas **opcional al abrir** la sesión.
+2. **Revisar diferencias antes de aplicar** (no aplicar directo).
+3. **Solo gerencia aplica** (OWNER/ADMIN_MANAGER/OPS_MANAGER). Chef y jefes de
+   área cuentan y dejan la sesión lista.
+
+### §138.1 — Datos y lógica
+4 tablas nuevas (migración `20260726000000_inventory_count_session`, 100%
+aditiva: solo CREATE TABLE/INDEX/FK, ni un ALTER sobre lo existente):
+`InventoryCountSession`, `InventoryCountSessionArea` (N almacenes — Shanklish
+cuenta 3), `InventoryCountEntry` (cantidad por item+almacén con autor, hora y
+el stock del sistema en ese instante) e `InventoryCountEvent` (bitácora).
+
+Aislamiento: **solo la sesión** entra en `TENANT_MODELS` (tiene `tenantId`);
+los 3 hijos se aíslan por FK — meterlos ahí reventaría con
+`PrismaClientValidationError`, que fue el bug de §123. Guardia en el test.
+
+`lib/inventory/count-session.ts` (puro, 20 tests): varianzas por
+(item, almacén), diferencias que ameritan revisión ordenadas por magnitud,
+avance por almacén, correlativo `CNT-año-mes-NNN` y máquina de estados
+`OPEN → REVIEW → APPLIED` que **impide aplicar dos veces** (duplicaría los
+ajustes de stock).
+
+### §138.2 — Acciones
+`count-session.actions.ts`: crear / listar / abrir-retomar / guardar
+cantidades / calcular diferencias / enviar a revisión / reabrir / cancelar /
+aplicar.
+
+- En **modo a ciegas el stock ni siquiera viaja al cliente** — no se oculta
+  visualmente, no está en el payload.
+- `getCountSessionAction` registra `RESUMED` cuando se retoma tras >5 min de
+  inactividad → responde "¿quién siguió el conteo?".
+- `applyCountSessionAction` ajusta los N almacenes y **genera el `WeeklyCount`
+  de siempre**, así Variación Semanal y el histórico siguen funcionando sin
+  tocarlos. Doble candado contra doble aplicación: la máquina de estados y un
+  `updateMany` condicionado al estado previo DENTRO de la transacción, que
+  aborta si otro gerente ganó la carrera.
+- Limitación conocida: `WeeklyCount` solo tiene campos para 2 áreas
+  (principal/producción); se mapean las dos primeras. El detalle de los N vive
+  en las entradas de la sesión, que son permanentes.
+
+### §138.3 — Pantallas
+- `/inventario/conteo-rapido` — lista de conteos **en progreso** para retomar
+  (con quién lo abrió, hace cuánto y cuántas cantidades lleva) + alta de uno
+  nuevo eligiendo N almacenes y el modo a ciegas.
+- `/inventario/conteo-rapido/[sessionId]` — conteo con **una casilla rotulada
+  por almacén**, guardado automático al servidor (debounce 700 ms + reintento
+  en cola si falla la red + flush al ocultar la pestaña), avance por almacén,
+  buscador, "solo pendientes", pantalla de revisión de diferencias, botón de
+  aplicar solo para gerencia, y la bitácora visible.
+- Se eliminó `quick-count-view.tsx` (el flujo de localStorage).
+
+Gates: tsc 0 · vitest 681 · `npm run build` OK.

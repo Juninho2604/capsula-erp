@@ -1,11 +1,13 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { resolveDefaultCountAreasAction } from '@/app/actions/inventory-count.actions';
-import QuickCountView from './quick-count-view';
+import { getAreasForSelect } from '@/app/actions/entrada.actions';
+import { listCountSessionsAction } from '@/app/actions/count-session.actions';
+import CountSessionsView from './count-sessions-view';
 
 export const dynamic = 'force-dynamic';
 
 const ALLOWED = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'];
+const CAN_APPLY = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 
 export default async function ConteoRapidoPage() {
     const session = await getSession();
@@ -14,13 +16,16 @@ export default async function ConteoRapidoPage() {
         redirect('/dashboard/inventario');
     }
 
-    const { areas, principalId, productionId } = await resolveDefaultCountAreasAction();
+    const [areas, sessions] = await Promise.all([
+        getAreasForSelect(),
+        listCountSessionsAction(),
+    ]);
 
     return (
-        <QuickCountView
-            areas={areas}
-            defaultPrincipalId={principalId}
-            defaultProductionId={productionId}
+        <CountSessionsView
+            areas={areas.map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))}
+            initialSessions={sessions.data ?? []}
+            canApply={CAN_APPLY.includes(session.role)}
         />
     );
 }
