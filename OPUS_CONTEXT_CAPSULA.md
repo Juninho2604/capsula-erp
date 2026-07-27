@@ -13374,3 +13374,47 @@ Defectos encontrados y corregidos en `recetas/nueva/RecipeForm.tsx`:
   y la pregunta "¿El insumo no está en la lista?" + botón `text-sm`.
 
 Gates: tsc 0 · vitest 655 · `npm run build` OK.
+
+## §139 Ítems anulados reaparecían en cuentas separadas (2026-07-27)
+
+Reporte: un mesero marchó productos a una mesa, el cliente los cambió por
+otros y el mesero los anuló. Al pedir **cuentas separadas**, los anulados
+volvieron a aparecer — cobrables.
+
+Causa: `getOpenTabWithSubAccountsAction` cargaba `orders.items` **sin filtrar
+`voidedAt`** ni excluir órdenes `CANCELLED`. El panel arma el pool con
+`tab.orders.flatMap(o => o.items)` y deja los que tienen
+`totalAssignedQty(item) < item.quantity`. Al anular un ítem se borran sus
+`SubAccountItem` (correcto), así que el anulado quedaba con **0 asignado** →
+entraba al pool **siempre**. El filtro `voidedAt: null` ya se usaba en otras
+consultas del mismo archivo; acá faltaba.
+
+Fix en 3 puntos (money path):
+- `getOpenTabWithSubAccountsAction`: `items.where = { voidedAt: null }` y
+  `orders.where = { status: { not: 'CANCELLED' } }` — la raíz de lo que se vio.
+- `assignItemToSubAccountAction`: rechaza ítems anulados. Guardia de servidor
+  para que una pantalla vieja/cacheada no pueda cobrarlo igual.
+- `autoSplitEqualAction`: el reparto equitativo tampoco los distribuye.
+
+Sin cambios de schema.
+
+## §140 El CI despliega al VPS, pero Shanklish opera on-premise (2026-07-27)
+
+Omar: "No veo los últimos cambios aplicados, ni los del formato de impresión
+ni nada". Los CI estaban **todos en verde** (`5e9f9c0`, `e35cf00` incluidos).
+
+Causa: el cutover del 2026-07-25 movió la operación al equipo del restaurante
+(`KPSULA-LOCAL`); la app del VPS quedó **detenida** como contingencia y
+kpsula.app solo hace de espejo por el túnel. El workflow `ci.yml` sigue
+desplegando al VPS → **verde engañoso**: deploy exitoso, restaurante con
+código viejo. Está documentado en `docs/LOCAL_SERVER.md` §6 ("Actualizar la
+app — *el CI solo despliega al VPS*: `update-local-server.sh`"), pero nada lo
+recuerda en el flujo de trabajo.
+
+Mitigación inmediata: `docs/PENDIENTE_DEPLOY_LOCAL.md` acumula lo que falta
+aplicar al local, con riesgo, si trae migración y checklist de verificación
+post-deploy.
+
+Pendiente de decisión de Omar: que el pipeline avise o actualice el local
+automáticamente (el canal `:2223` del túnel ya existe para eso). No se tocó
+infraestructura viva sin su visto bueno.

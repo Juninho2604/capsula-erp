@@ -3613,6 +3613,11 @@ export async function assignItemToSubAccountAction(data: {
             include: { order: true, subAccountItems: true },
         });
         if (!item) return { success: false, message: 'Item no encontrado' };
+        // §139 — guardia de servidor: aunque una pantalla vieja o cacheada
+        // ofrezca el ítem, un anulado no se cobra jamás.
+        if (item.voidedAt) {
+            return { success: false, message: 'Ese producto fue anulado — no se puede cobrar.' };
+        }
 
         const sub = await prisma.tabSubAccount.findFirst({
             where: { id: data.subAccountId, openTab: { tenantId } },
@@ -3727,7 +3732,12 @@ export async function autoSplitEqualAction(data: {
         const tab = await db.openTab.findUnique({
             where: { id: data.openTabId },
             include: {
-                orders: { include: { items: true } },
+                // §139 — el reparto equitativo tampoco debe distribuir ítems
+                // anulados ni de órdenes canceladas.
+                orders: {
+                    where: { status: { not: 'CANCELLED' } },
+                    include: { items: { where: { voidedAt: null } } },
+                },
                 subAccounts: { orderBy: { sortOrder: 'asc' } },
             },
         });
@@ -4166,9 +4176,15 @@ export async function getOpenTabWithSubAccountsAction(openTabId: string): Promis
                     },
                 },
                 orders: {
+                    // §139 — un ítem anulado por el mesero (el cliente lo cambió
+                    // por otro) volvía a aparecer en el pool de cuentas separadas
+                    // y se podía cobrar. Al anular se borran sus SubAccountItem,
+                    // así que quedaba con 0 asignado → siempre entraba al pool.
+                    where: { status: { not: 'CANCELLED' } },
                     orderBy: { createdAt: 'asc' },
                     include: {
                         items: {
+                            where: { voidedAt: null },
                             include: {
                                 modifiers: true,
                                 subAccountItems: true,
