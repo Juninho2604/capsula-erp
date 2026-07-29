@@ -45,6 +45,9 @@ schema más nuevo que el código del stack de contingencia.
 | §139 | **Ítems anulados reaparecían en cuentas separadas y se podían cobrar** | **Alto — plata** | No |
 | §138.2 | Acciones del servidor del conteo auditable (crear/retomar/guardar/revisar/aplicar) | Bajo | No |
 | §138.3 | **Pantallas del conteo**: lista para retomar, N almacenes, guardado automático al servidor, revisión de diferencias, bitácora. Reemplaza el flujo de localStorage | Medio — cambia el módulo que usa el chef | No |
+| §141 | Documentos de proveedor: ya no salen "Sin proveedor" (los viejos se corrigen solos al listar) + botón **Editar** mientras no tengan entrada ni deuda | Medio — escritura en compras | No |
+| §142 | Pickups de caja ahora salen bajo el filtro "Pickup" del historial (antes "Mesa") y en el conteo Pickup/Mostrador del Z. ⚠ Mueve conteos del Z entre categorías (no montos) — avisar a la cajera | Bajo | No |
+| §143 | Costos: lapicito para editar el costo de un insumo directo en la tabla (Christian). Con historial y motivo | Bajo | No |
 
 ### Orden sugerido
 
@@ -68,7 +71,14 @@ anula puede volver a cobrarse al pedir cuentas separadas.
    Operaciones → Inventario → "Asistente de Nomenclatura".
 4. **§134** — Transferencias → selector de ítem → una sub-receta debe aparecer
    con el sufijo "· Sub-receta".
-5. **§138** — Conteo Rápido ahora abre la lista de conteos. Probar el ciclo
+5. **§141** — Compras → Documentos: los documentos que decían "Sin proveedor"
+   deben mostrar el nombre. En uno SIN ENTRADA y sin deuda: botón "Editar" →
+   agregar una línea → guardar → verificar el total.
+6. **§142** — Historial de ventas → filtro "Pickup": deben aparecer los
+   pickups cobrados en caja (PK-NN). El filtro "Mesa" ya no los muestra.
+7. **§143** — Costos: lapicito en una fila → cambiar el costo → guardar →
+   recargar y confirmar que quedó.
+8. **§138** — Conteo Rápido ahora abre la lista de conteos. Probar el ciclo
    completo: "Nuevo conteo" → elegir 2-3 almacenes → escribir una cantidad →
    ver "Guardado" → **recargar la página** (la cantidad debe seguir ahí) →
    "Revisar diferencias" → aplicar con un usuario de gerencia.
