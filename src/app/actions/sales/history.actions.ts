@@ -295,6 +295,12 @@ export async function getSalesHistoryAction(date?: string) {
                 result.push({
                     ...o,
                     _consolidated: false,
+                    // §142 — los pickups cobrados desde caja nacen con
+                    // orderType RESTAURANT y solo la nota los distingue. El
+                    // filtro Mesa/Pickup del cliente usa esta marca en lugar de
+                    // adivinar por tipo (los clasificaba como Mesa).
+                    isPickup: o.orderType === 'PICKUP'
+                        || (o.notes ?? '').includes('Venta Directa Pickup'),
                     totalFactura: ordTotal,
                     totalCobrado: effectiveReceived,
                     totalProductos: ordTotal,

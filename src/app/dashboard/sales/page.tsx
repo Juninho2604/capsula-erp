@@ -352,11 +352,17 @@ export default function SalesHistoryPage() {
             if ((s.customerName || '') !== 'PROPINA COLECTIVA') return false;
         } else if (filterOrderType === 'RESTAURANT') {
             // §107: Mesa y Pickup separados. Mesa = solo RESTAURANT.
+            // §142: los pickups de caja también son RESTAURANT (con marca
+            // isPickup del server) — NO son mesa.
             if ((s.orderType || '').toUpperCase() !== 'RESTAURANT') return false;
+            if (s.isPickup) return false;
         } else if (filterOrderType === 'PICKUP') {
             // §107: Pickup excluye las propinas colectivas (son órdenes PICKUP
             // ficticias — tienen su propio filtro "Propinas").
-            if ((s.orderType || '').toUpperCase() !== 'PICKUP') return false;
+            // §142: incluye los pickups de caja (orderType RESTAURANT +
+            // isPickup), que antes solo salían bajo "Mesa".
+            const isPickupRow = (s.orderType || '').toUpperCase() === 'PICKUP' || s.isPickup === true;
+            if (!isPickupRow) return false;
             if ((s.customerName || '') === 'PROPINA COLECTIVA') return false;
         } else if (filterOrderType !== 'ALL') {
             if ((s.orderType || '').toUpperCase() !== filterOrderType) return false;

@@ -259,9 +259,12 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
 
             const ot = (o.orderType || '').toUpperCase();
             const sc = (o.sourceChannel || '').toUpperCase();
+            // §142 — los pickups de caja nacen con orderType RESTAURANT y la
+            // marca "Venta Directa Pickup" en notes; contaban como Mesas.
+            const isCajaPickup = (o.notes ?? '').includes('Venta Directa Pickup');
             if      (ot === 'DELIVERY')                             byType.delivery++;
             else if (ot === 'PEDIDOSYA' || sc === 'POS_PEDIDOSYA') byType.pedidosya++;
-            else if (ot === 'PICKUP')                               byType.pickup++;
+            else if (ot === 'PICKUP' || isCajaPickup)               byType.pickup++;
             else if (ot === 'WINK' || sc === 'WINK')                byType.wink++;
             else if (ot === 'EVENTO' || sc === 'EVENTO')            byType.evento++;
             else if (ot === 'TABLE_PONG' || sc === 'TABLE_PONG')    byType.tablePong++;
