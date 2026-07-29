@@ -352,6 +352,14 @@ export async function updateItemCostAction(
         if (!session) {
             return { success: false, message: 'No autorizado' };
         }
+        // §143 — al exponerse en la UI, la acción necesita gate de rol (antes
+        // solo pedía sesión: cualquier usuario logueado podía cambiar costos).
+        if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF'].includes(session.role)) {
+            return { success: false, message: 'Sin permisos para modificar costos' };
+        }
+        if (!Number.isFinite(newCost) || newCost < 0) {
+            return { success: false, message: 'Costo inválido' };
+        }
 
         // Verificar que el item pertenece al tenant actual antes de tocar
         // CostHistory (que no es tenant-aware en sí — su scope viene de la FK).
