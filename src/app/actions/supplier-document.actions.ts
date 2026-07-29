@@ -76,6 +76,21 @@ export async function getSupplierDocumentsAction(filters?: {
       take: 300,
     });
 
+    // §141 — documentos creados antes del fix: supplierId guardado pero
+    // supplierName null → se mostraban "Sin proveedor". Se resuelve el nombre
+    // al leer (supplierId es escalar, no relación, así que se mapea a mano).
+    const missingIds = Array.from(new Set(
+      docs.filter((d) => d.supplierId && !d.supplierName).map((d) => d.supplierId as string),
+    ));
+    const nameById = new Map<string, string>();
+    if (missingIds.length > 0) {
+      const sups = await db.supplier.findMany({
+        where: { id: { in: missingIds } },
+        select: { id: true, name: true },
+      });
+      for (const s of sups) nameById.set(s.id, s.name);
+    }
+
     return {
       success: true,
       data: docs.map((d) => ({
@@ -83,7 +98,7 @@ export async function getSupplierDocumentsAction(filters?: {
         documentType: d.documentType,
         documentNumber: d.documentNumber,
         supplierId: d.supplierId,
-        supplierName: d.supplierName,
+        supplierName: d.supplierName ?? (d.supplierId ? nameById.get(d.supplierId) ?? null : null),
         documentDate: d.documentDate,
         paymentCondition: d.paymentCondition,
         totalAmount: d.totalAmount,
@@ -159,13 +174,28 @@ export async function createSupplierDocumentAction(input: {
   try {
     const { tenantId } = await resolveTenantContext();
     const db = withTenant(tenantId);
+
+    // §141 — el form manda supplierId SIN nombre cuando el proveedor es del
+    // sistema, y la lista muestra solo supplierName → el documento salía
+    // "Sin proveedor" aunque el id quedara bien guardado. Se denormaliza el
+    // nombre acá (y de paso se valida ownership del proveedor).
+    let resolvedSupplierName = input.supplierName?.trim() || null;
+    if (input.supplierId) {
+      const sup = await db.supplier.findFirst({
+        where: { id: input.supplierId },
+        select: { name: true },
+      });
+      if (!sup) return { success: false, error: 'Proveedor no encontrado' };
+      resolvedSupplierName = sup.name;
+    }
+
     const doc = await db.supplierDocument.create({
       data: {
         tenantId,
         documentType: input.documentType,
         documentNumber: input.documentNumber.trim(),
         supplierId: input.supplierId || null,
-        supplierName: input.supplierName?.trim() || null,
+        supplierName: resolvedSupplierName,
         documentDate,
         paymentCondition: input.paymentCondition === 'CREDITO' ? 'CREDITO' : 'CONTADO',
         // §108: se persiste SIEMPRE en USD (los costos ya vienen convertidos).
@@ -199,6 +229,133 @@ export async function createSupplierDocumentAction(input: {
     return { success: true, id: doc.id };
   } catch {
     return { success: false, error: 'Error al crear el documento' };
+  }
+}
+
+// ─── Editar (§141) ──────────────────────────────────────────────────────────
+
+/**
+ * Edita un documento SOLO mientras no haya propagado números: sin entrada al
+ * inventario, sin cuenta por pagar y no anulado. Después de eso, editar
+ * descuadraría inventario/CXP → se mantiene el flujo anular-y-recrear.
+ *
+ * Reemplaza encabezado y líneas completas (mismo input que crear). Evita
+ * tener que remontar 14 ítems porque faltó una línea.
+ */
+export async function updateSupplierDocumentAction(input: {
+  documentId: string;
+  documentType: string;
+  documentNumber: string;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  documentDate: string;
+  paymentCondition: string;
+  inputCurrency?: 'USD' | 'BS';
+  exchangeRate?: number;
+  documentUrl?: string | null;
+  notes?: string | null;
+  items: SupplierDocumentItemInput[];
+}): Promise<{ success: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!WRITE_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
+
+  if (!input.documentNumber.trim()) return { success: false, error: 'El número de documento es obligatorio' };
+  if (!['FACTURA', 'NOTA_ENTREGA'].includes(input.documentType)) return { success: false, error: 'Tipo de documento inválido' };
+  const documentDate = new Date(input.documentDate);
+  if (isNaN(documentDate.getTime())) return { success: false, error: 'Fecha inválida' };
+
+  let items = input.items.filter((i) => i.inventoryItemId && i.quantity > 0);
+  if (items.length === 0) return { success: false, error: 'Las líneas deben tener insumo y cantidad' };
+
+  const isBs = input.inputCurrency === 'BS';
+  const bsRate = input.exchangeRate ?? 0;
+  let bsNote: string | null = null;
+  if (isBs) {
+    if (!bsRate || bsRate <= 0) return { success: false, error: 'Indica una tasa Bs/USD válida para el documento en bolívares' };
+    const totalBs = Math.round(items.reduce((s, i) => s + i.quantity * (i.unitCost || 0), 0) * 100) / 100;
+    items = items.map((i) => ({ ...i, unitCost: (i.unitCost || 0) / bsRate }));
+    bsNote = `Cargado en Bs a tasa ${bsRate} (total Bs ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  }
+  const totalAmount = Math.round(items.reduce((s, i) => s + i.quantity * (i.unitCost || 0), 0) * 100) / 100;
+
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    const doc = await db.supplierDocument.findFirst({ where: { id: input.documentId } });
+    if (!doc) return { success: false, error: 'Documento no encontrado' };
+    if (doc.status === 'VOID') return { success: false, error: 'El documento está anulado — no se puede editar' };
+    if (doc.inventoryStatus === 'ENTERED') return { success: false, error: 'El documento ya entró al inventario — para corregirlo hay que anularlo y recrearlo' };
+    if (doc.accountPayableId) return { success: false, error: 'El documento ya generó una cuenta por pagar — no se puede editar' };
+
+    let resolvedSupplierName = input.supplierName?.trim() || null;
+    if (input.supplierId) {
+      const sup = await db.supplier.findFirst({
+        where: { id: input.supplierId },
+        select: { name: true },
+      });
+      if (!sup) return { success: false, error: 'Proveedor no encontrado' };
+      resolvedSupplierName = sup.name;
+    }
+
+    // Ownership de los insumos de las líneas nuevas.
+    const itemIds = Array.from(new Set(items.map((i) => i.inventoryItemId)));
+    const owned = await db.inventoryItem.findMany({ where: { id: { in: itemIds } }, select: { id: true } });
+    if (owned.length !== itemIds.length) return { success: false, error: 'Uno o más insumos no existen' };
+
+    await prisma.$transaction(async (tx) => {
+      // Re-chequeo del estado DENTRO de la tx: si alguien le dio entrada o
+      // generó deuda mientras se editaba, abortamos en vez de descuadrar.
+      const guard = await tx.supplierDocument.updateMany({
+        where: {
+          id: input.documentId,
+          status: { not: 'VOID' },
+          inventoryStatus: { not: 'ENTERED' },
+          accountPayableId: null,
+        },
+        data: {
+          documentType: input.documentType,
+          documentNumber: input.documentNumber.trim(),
+          supplierId: input.supplierId || null,
+          supplierName: resolvedSupplierName,
+          documentDate,
+          paymentCondition: input.paymentCondition === 'CREDITO' ? 'CREDITO' : 'CONTADO',
+          currency: 'USD',
+          documentUrl: input.documentUrl?.trim() || null,
+          totalAmount,
+          notes: [input.notes?.trim(), bsNote].filter(Boolean).join(' · ') || null,
+        },
+      });
+      if (guard.count === 0) {
+        throw new Error('El documento cambió de estado mientras editabas — recargá y verificá antes de reintentar');
+      }
+      await tx.supplierDocumentItem.deleteMany({ where: { supplierDocumentId: input.documentId } });
+      await tx.supplierDocumentItem.createMany({
+        data: items.map((i) => ({
+          supplierDocumentId: input.documentId,
+          inventoryItemId: i.inventoryItemId,
+          itemName: i.itemName,
+          quantity: i.quantity,
+          unit: i.unit,
+          unitCost: i.unitCost || 0,
+          lineTotal: Math.round(i.quantity * (i.unitCost || 0) * 100) / 100,
+        })),
+      });
+    });
+
+    await logAudit({
+      userId: session.id, userName: `${session.firstName} ${session.lastName}`,
+      userRole: session.role, action: 'UPDATE', entityType: 'SupplierDocument',
+      entityId: input.documentId,
+      description: `Editó ${input.documentType} ${input.documentNumber.trim()} — $${totalAmount.toFixed(2)} (antes: ${doc.documentNumber} $${doc.totalAmount.toFixed(2)})`,
+      module: 'CONFIG',
+    });
+
+    revalidate();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Error al editar el documento' };
   }
 }
 

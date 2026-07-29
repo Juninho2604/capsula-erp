@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText, Plus, X as XIcon, Check, PackageCheck, Link2, Receipt, Ban,
-  Info, Loader2, AlertTriangle, Trash2,
+  Info, Loader2, AlertTriangle, Trash2, Pencil,
 } from 'lucide-react';
 import {
-  createSupplierDocumentAction, enterDocumentToInventoryAction,
+  createSupplierDocumentAction, updateSupplierDocumentAction, enterDocumentToInventoryAction,
   linkDocumentToPurchaseOrderAction, generatePayableFromDocumentAction,
   voidSupplierDocumentAction, getPurchaseReconciliationReportAction,
   type SupplierDocumentData,
@@ -38,6 +38,7 @@ export function DocumentosView(props: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<'docs' | 'concil'>('docs');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editFor, setEditFor] = useState<SupplierDocumentData | null>(null);
   const [entryFor, setEntryFor] = useState<SupplierDocumentData | null>(null);
   const [linkFor, setLinkFor] = useState<SupplierDocumentData | null>(null);
   const refresh = () => router.refresh();
@@ -85,7 +86,8 @@ export function DocumentosView(props: Props) {
             <div className="space-y-2">
               {initialDocuments.map((d) => (
                 <DocRow key={d.id} doc={d} canEdit={canEdit}
-                  onEntry={() => setEntryFor(d)} onLink={() => setLinkFor(d)} onChanged={refresh} />
+                  onEntry={() => setEntryFor(d)} onLink={() => setLinkFor(d)}
+                  onEdit={() => setEditFor(d)} onChanged={refresh} />
               ))}
             </div>
           )}
@@ -94,6 +96,9 @@ export function DocumentosView(props: Props) {
 
       {createOpen && (
         <CreateModal {...props} onClose={() => setCreateOpen(false)} onSaved={() => { setCreateOpen(false); refresh(); }} />
+      )}
+      {editFor && (
+        <CreateModal {...props} editDoc={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); refresh(); }} />
       )}
       {entryFor && (
         <EntryModal doc={entryFor} areas={props.areas} onClose={() => setEntryFor(null)} onSaved={() => { setEntryFor(null); refresh(); }} />
@@ -116,11 +121,13 @@ function Badge({ label, tone }: { label: string; tone: 'info' | 'ok' | 'warn' | 
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.1em] ${cls}`}>{label}</span>;
 }
 
-function DocRow({ doc, canEdit, onEntry, onLink, onChanged }: {
-  doc: SupplierDocumentData; canEdit: boolean; onEntry: () => void; onLink: () => void; onChanged: () => void;
+function DocRow({ doc, canEdit, onEntry, onLink, onEdit, onChanged }: {
+  doc: SupplierDocumentData; canEdit: boolean; onEntry: () => void; onLink: () => void; onEdit: () => void; onChanged: () => void;
 }) {
   const [busy, setBusy] = useState('');
   const voided = doc.status === 'VOID';
+  // §141 — editable solo mientras no propagó números (sin entrada, sin deuda).
+  const editable = !voided && doc.inventoryStatus !== 'ENTERED' && !doc.accountPayableId;
 
   async function genPayable() {
     setBusy('pay');
@@ -159,6 +166,11 @@ function DocRow({ doc, canEdit, onEntry, onLink, onChanged }: {
       </div>
       {canEdit && !voided && (
         <div className="border-t border-capsula-line mt-3 pt-3 flex flex-wrap gap-2">
+          {editable && (
+            <button onClick={onEdit} className="pos-btn-secondary px-3 py-1.5 text-xs inline-flex items-center gap-1.5">
+              <Pencil className="h-3.5 w-3.5" /> Editar
+            </button>
+          )}
           {doc.inventoryStatus !== 'ENTERED' && (
             <button onClick={onEntry} className="pos-btn-secondary px-3 py-1.5 text-xs inline-flex items-center gap-1.5">
               <PackageCheck className="h-3.5 w-3.5" /> Dar entrada
@@ -249,19 +261,30 @@ interface Line {
 const lineUnits = (l: Line) => packUnits(l);
 const lineTotal = (l: Line) => packLineTotal(l);
 
-function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: () => void; onSaved: () => void }) {
-  const [documentType, setType] = useState('FACTURA');
-  const [documentNumber, setNumber] = useState('');
-  const [supplierId, setSupplierId] = useState('');
-  const [supplierName, setSupplierName] = useState('');
-  const [documentDate, setDate] = useState(todayStamp());
-  const [paymentCondition, setCond] = useState('CONTADO');
+function CreateModal({ items, suppliers, editDoc, onClose, onSaved }: Props & { editDoc?: SupplierDocumentData; onClose: () => void; onSaved: () => void }) {
+  // §141 — modo edición: mismo modal, sembrado con el documento. Las líneas
+  // guardadas están en unidades base y USD (la presentación bulto×unidades y
+  // la moneda Bs original no se persisten), así que se editan en USD.
+  const isEdit = !!editDoc;
+  const [documentType, setType] = useState(editDoc?.documentType ?? 'FACTURA');
+  const [documentNumber, setNumber] = useState(editDoc?.documentNumber ?? '');
+  const [supplierId, setSupplierId] = useState(editDoc?.supplierId ?? '');
+  const [supplierName, setSupplierName] = useState(editDoc?.supplierId ? '' : (editDoc?.supplierName ?? ''));
+  const [documentDate, setDate] = useState(editDoc ? new Date(editDoc.documentDate).toISOString().slice(0, 10) : todayStamp());
+  const [paymentCondition, setCond] = useState(editDoc?.paymentCondition ?? 'CONTADO');
   // §108: moneda del documento. En Bs se convierte a USD al guardar (el
   // costeo de inventario y las CXP viven en USD) con la tasa auditada.
   const [currency, setCurrency] = useState<'USD' | 'BS'>('USD');
   const [rateStr, setRateStr] = useState('');
   const [dayRate, setDayRate] = useState<number | null>(null);
-  const [lines, setLines] = useState<Line[]>([{ inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }]);
+  const [lines, setLines] = useState<Line[]>(
+    editDoc && editDoc.items.length > 0
+      ? editDoc.items.map((i) => ({
+          inventoryItemId: i.inventoryItemId, itemName: i.itemName,
+          quantity: String(i.quantity), unitsPerPack: '', unitCost: String(i.unitCost), unit: i.unit,
+        }))
+      : [{ inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }],
+  );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -287,7 +310,7 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
     setError('');
     if (currency === 'BS' && rate <= 0) { setError('Indica la tasa Bs/USD para convertir el documento'); return; }
     setSaving(true);
-    const res = await createSupplierDocumentAction({
+    const payload = {
       documentType, documentNumber,
       supplierId: supplierId || undefined,
       supplierName: supplierId ? undefined : (supplierName || undefined),
@@ -300,7 +323,10 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
         // costo por unidad base (el server lo convierte a USD si es Bs)
         unitCost: packUnitCost(l),
       })),
-    });
+    };
+    const res = isEdit
+      ? await updateSupplierDocumentAction({ documentId: editDoc!.id, ...payload })
+      : await createSupplierDocumentAction(payload);
     setSaving(false);
     if (!res.success) { setError(res.error ?? 'Error'); return; }
     onSaved();
@@ -309,7 +335,7 @@ function CreateModal({ items, suppliers, onClose, onSaved }: Props & { onClose: 
   const sym = currency === 'BS' ? 'Bs' : '$';
 
   return (
-    <ModalShell title="Nuevo documento" onClose={onClose} wide>
+    <ModalShell title={isEdit ? `Editar ${editDoc!.documentNumber}` : 'Nuevo documento'} onClose={onClose} wide>
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Tipo">

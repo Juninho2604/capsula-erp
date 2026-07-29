@@ -13487,3 +13487,64 @@ aplicar.
 - Se eliminó `quick-count-view.tsx` (el flujo de localStorage).
 
 Gates: tsc 0 · vitest 681 · `npm run build` OK.
+
+## §141 Documentos de proveedor: "Sin proveedor" + edición (2026-07-27)
+
+Reporte del gerente admin: montaba la factura con proveedor del sistema, al
+guardar salía "Sin proveedor" y sin forma de editarla — tuvo que remontar 14
+ítems por una línea faltante.
+
+Causa display: el form mandaba `supplierId` SIN nombre cuando el proveedor era
+del sistema (`supplierName: supplierId ? undefined : …`), el server guardaba
+`supplierName: null`, y la tarjeta muestra SOLO `supplierName` → "Sin
+proveedor" con el id bien guardado. `SupplierDocument.supplierId` es escalar
+(sin relación Prisma), así que no había join que lo salvara. La CXP generada
+sí hereda `supplierId` — solo la descripción perdía el nombre.
+
+Fix:
+- `createSupplierDocumentAction`: con supplierId, resuelve y denormaliza el
+  nombre (y valida ownership del proveedor).
+- `getSupplierDocumentsAction`: para docs viejos con id sin nombre, resuelve
+  los nombres en una query y los mapea → los ya montados se corrigen solos.
+- **`updateSupplierDocumentAction` (nuevo)**: edición completa (encabezado +
+  líneas) SOLO mientras el documento no propagó números — sin entrada al
+  inventario, sin CXP, no anulado. Guardia re-chequeada DENTRO de la tx
+  (updateMany condicionado): si alguien le dio entrada mientras se editaba,
+  aborta. Audit log con antes/después.
+- UI: botón "Editar" en la tarjeta (solo elegibles); mismo modal de crear,
+  sembrado. Las líneas guardadas están en unidades base y USD (la presentación
+  bulto×unidades y la moneda Bs original no se persisten) → se editan en USD.
+
+## §142 Pickups de caja clasificados como "Mesa" (2026-07-27)
+
+Los pickups cobrados desde caja nacen con `orderType: 'RESTAURANT'` (flujo de
+salón) y solo la nota "Venta Directa Pickup | PK-NN" los distingue. El filtro
+Mesa/Pickup del historial (§107) miraba solo `orderType` → caían en "Mesa" y
+"Pickup" no los encontraba. El conteo `ordersByType` del Reporte Z tenía el
+mismo punto ciego (solo conteos de órdenes; el dinero del cierre no estaba mal).
+
+Fix:
+- `history.actions.ts`: filas no-tab exponen `isPickup` calculado server-side
+  (orderType PICKUP o nota de venta directa pickup).
+- `sales/page.tsx`: filtro Mesa excluye `isPickup`; filtro Pickup lo incluye.
+- `z-report.actions.ts`: la clasificación byType cuenta como pickup los
+  RESTAURANT con la nota. ⚠ Mueve CONTEOS entre "Mesas" y "Pickup/Mostrador"
+  del Z (no montos) — avisar a la cajera.
+
+## §143 Costos: edición manual por ítem (2026-07-27)
+
+Christian: "hay un módulo de carga de costos pero solo deja por carga masiva;
+quiero ir actualizando los costos manualmente".
+
+`updateItemCostAction` YA existía (cierra CostHistory vigente + crea registro
+con autor y motivo) pero **ninguna pantalla la invocaba**. Además solo pedía
+sesión — sin gate de rol.
+
+Fix:
+- Gate de rol en la action: OWNER/ADMIN_MANAGER/OPS_MANAGER/CHEF + validación
+  de costo finito ≥ 0.
+- `costos/CurrentCostsTable.tsx` (nuevo, cliente): la tabla de costos actuales
+  ahora tiene buscador, "solo sin precio" y lapicito por fila → input de costo
+  (USD) + motivo opcional, Enter guarda / Esc cancela. Historial intacto: cada
+  cambio queda en CostHistory con autor.
+- La tabla migró de estilos legacy gray-* a tokens capsula (regla CLAUDE.md).
