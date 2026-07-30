@@ -1120,7 +1120,12 @@ export default function POSSportBarPage() {
     const rawReceived = isTableMixedMode
       ? mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0)
       : paidAmount; // paidAmount already in USD (Bs methods auto-converted above)
-    if (!activeTab || rawReceived <= 0) return;
+    // §144 — cortesía que salda todo: se registra un cobro de $0 (el descuento
+    // cubre el total). Antes este guard retornaba EN SILENCIO y la mesa con
+    // cortesía 100% quedaba imposible de cerrar.
+    const fullCortesiaZero = discountType === "CORTESIA_100"
+      || (discountType === "CORTESIA_PERCENT" && cortesiaPercentNum >= 100);
+    if (!activeTab || (rawReceived <= 0 && !fullCortesiaZero)) return;
     setPaymentPinError("");
     setIsProcessing(true);
     try {
@@ -3448,7 +3453,18 @@ export default function POSSportBarPage() {
                         setShowPaymentPinModal(true);
                       });
                     }}
-                    disabled={isTableMixedMode ? (totalMixedTablePaid <= 0 || isProcessing) : (paidAmount <= 0 || isProcessing || !paymentMethodTouched)}
+                    disabled={(() => {
+                      // §144 — cortesía 100%: no hay nada que cobrar, el botón
+                      // debe permitir registrar el cobro en $0 (sin exigir
+                      // monto ni método de pago).
+                      const fullCortesiaZero = discountType === "CORTESIA_100"
+                        || (discountType === "CORTESIA_PERCENT" && cortesiaPercentNum >= 100);
+                      if (isProcessing) return true;
+                      if (fullCortesiaZero) return false;
+                      return isTableMixedMode
+                        ? totalMixedTablePaid <= 0
+                        : (paidAmount <= 0 || !paymentMethodTouched);
+                    })()}
                     className="pos-btn w-full py-5 text-base disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                   >
                     <Lock className="h-4 w-4" />

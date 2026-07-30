@@ -48,6 +48,7 @@ schema más nuevo que el código del stack de contingencia.
 | §141 | Documentos de proveedor: ya no salen "Sin proveedor" (los viejos se corrigen solos al listar) + botón **Editar** mientras no tengan entrada ni deuda | Medio — escritura en compras | No |
 | §142 | Pickups de caja ahora salen bajo el filtro "Pickup" del historial (antes "Mesa") y en el conteo Pickup/Mostrador del Z. ⚠ Mueve conteos del Z entre categorías (no montos) — avisar a la cajera | Bajo | No |
 | §143 | Costos: lapicito para editar el costo de un insumo directo en la tabla (Christian). Con historial y motivo | Bajo | No |
+| §144 | **Cortesía 100% en mesa era imposible de cobrar** (3 candados en cadena; "Registrar pago" no hacía nada / "cuenta ya saldada") | Medio — money path, acotado a cortesía | No |
 
 ### Orden sugerido
 

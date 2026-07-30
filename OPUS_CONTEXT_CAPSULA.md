@@ -13548,3 +13548,31 @@ Fix:
   (USD) + motivo opcional, Enter guarda / Esc cancela. Historial intacto: cada
   cambio queda en CostHistory con autor.
 - La tabla migró de estilos legacy gray-* a tokens capsula (regla CLAUDE.md).
+
+## §144 Cortesía 100% en mesa era imposible de cobrar (2026-07-30)
+
+Omar en TAB-4350: cortesía 100% autorizada, "A cobrar $0.00", y "Registrar
+pago" no hacía nada (probó teclear 0.1 → "La cuenta ya está saldada").
+
+Tres candados en cadena, todos pensados para otros bugs:
+1. Botón deshabilitado con `paidAmount <= 0` (no hay nada que teclear).
+2. `handlePaymentPinConfirm`: `rawReceived <= 0` retornaba EN SILENCIO.
+3. Server `registerOpenTabPaymentAction`: `amount <= 0` → "monto mayor a
+   cero"; y aunque pasara, el guard §101 (splits fantasma de $1 sobre mesas
+   saldadas) rechazaba porque `balanceDue - discountAmount < 0.01` — que es
+   exactamente lo que ES una cortesía total.
+
+El pickup directo nunca tuvo el problema (va por createSalesOrderAction, que
+acepta total $0 con autorización §102b). Solo el flujo de MESA.
+
+Fix §144 (quirúrgico, preserva los 3 guards para todo lo demás):
+- Server: `isCortesiaType` permite amount=0 solo con discountType de
+  cortesía; `isFullCortesia` (descuento ≥ saldo) exime el guard §101 SOLO
+  cuando el descuento de este mismo cobro es lo que salda; cobro $0 con
+  cortesía PARCIAL sigue rechazado (splits vacíos). La matemática existente
+  cierra sola: appliedAmount 0, split con discount=saldo, serviceCharge 0
+  (cortesía 100% exime el servicio implícitamente), mesa CLOSED/PAID.
+- Cliente: guard del handler y disabled del botón permiten el caso
+  full-cortesía sin monto ni método de pago.
+
+Gates: tsc 0 · vitest 681 · build OK.

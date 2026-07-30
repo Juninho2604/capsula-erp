@@ -2337,7 +2337,12 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
             return { success: false, message: 'No autorizado' };
         }
 
-        if (data.amount <= 0) {
+        // §144 — cortesía 100% en mesa: el cobro llega con amount=0 (no hay
+        // nada que cobrar; el descuento salda todo). Solo en ese caso se
+        // permite 0 acá — la validación estricta para el resto sigue más
+        // abajo, cuando ya se conoce el saldo y el descuento reales.
+        const isCortesiaType = data.discountType === 'CORTESIA_100' || data.discountType === 'CORTESIA_PERCENT';
+        if (data.amount < 0 || (data.amount <= 0 && !isCortesiaType)) {
             return { success: false, message: 'El monto debe ser mayor a cero' };
         }
 
@@ -2385,8 +2390,18 @@ export async function registerOpenTabPaymentAction(data: RegisterOpenTabPaymentI
         // "A cobrar $1.00" fantasma (caso TAB-3587: split de $1 con base $0
         // registrado como propina). Si no queda nada real que aplicar, el
         // cobro se rechaza.
-        if (Math.max(0, openTab.balanceDue - discountAmount) < 0.01) {
+        // §144 — la cortesía que cubre TODO el saldo es el único caso legítimo
+        // en que "no queda nada por cobrar" dentro de este mismo cobro: el
+        // descuento es lo que lo salda. El guard §101 (splits fantasma de $1
+        // sobre mesas ya saldadas) se mantiene para todo lo demás.
+        const isFullCortesia = isCortesiaType && discountAmount >= openTab.balanceDue - 0.01;
+        if (Math.max(0, openTab.balanceDue - discountAmount) < 0.01 && !isFullCortesia) {
             return { success: false, message: 'La cuenta ya está saldada — no queda saldo por cobrar.' };
+        }
+        // §144 — con descuento parcial (o sin descuento), un cobro de $0 sigue
+        // prohibido: generaría splits vacíos sin mover el saldo.
+        if (data.amount <= 0 && !isFullCortesia) {
+            return { success: false, message: 'El monto debe ser mayor a cero' };
         }
 
         // §99 — Vigía de divergencia: el descuento divisas lo calcula el
