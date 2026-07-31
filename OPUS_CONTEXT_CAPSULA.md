@@ -13576,3 +13576,32 @@ Fix §144 (quirúrgico, preserva los 3 guards para todo lo demás):
   full-cortesía sin monto ni método de pago.
 
 Gates: tsc 0 · vitest 681 · build OK.
+
+## §145 Kardex por producto + conciliación de stock (2026-07-31)
+
+Reclamo del chef: aplicó un conteo con varios productos en cero y "las
+cantidades no concuerdan" — masa filo: cargó 39, el sistema muestra 42.
+Nota: el chef aún usa el conteo VIEJO (el módulo §138 sigue pendiente de
+deploy al local). Causas candidatas del 39→42, verificables ahora con el
+Kardex: (a) el conteo viejo cubre solo 2 almacenes y el "Stock Global" de
+Inventario suma TODAS las áreas — 3 unidades en un tercer almacén dan
+exactamente ese síntoma; (b) casilla en blanco ≠ cero: los ítems dejados en
+blanco NO se ajustan (conservan su stock); para poner algo en 0 hay que
+teclear 0 explícito; (c) movimientos posteriores al conteo (producción/venta).
+
+Nuevo módulo `/dashboard/inventario/kardex` (botón "Kardex" en Inventario):
+- `lib/inventory/kardex.ts` (puro, 11 tests): mapa entrada/salida por tipo de
+  movimiento (con heurística por sufijo para tipos legacy), saldo corrido
+  reconstruido HACIA ATRÁS desde el stock actual (no requiere recorrer toda
+  la historia), y `reconcile()` = stock actual − Σ deltas de toda la
+  historia → "N unidades sin movimiento que lo respalde".
+- `kardex.actions.ts` (solo lectura, roles de inventario): stock por almacén,
+  movimientos del rango (7/30/90/365 días, máx 500) con referencia legible
+  (orden de venta · referencia · razón · notas) y autor, aviso de movimientos
+  sin areaId excluidos del modo por-almacén, y conciliación completa.
+- Vista: combobox de producto (todo el catálogo), filtro por almacén o
+  global, banner ámbar con el descuadre explícito o verde si la historia
+  cuadra, tabla Fecha/Tipo/Detalle/Almacén/Entra/Sale/Saldo/Usuario + saldo
+  al inicio del rango.
+
+Gates: tsc 0 · vitest 692 · build OK.

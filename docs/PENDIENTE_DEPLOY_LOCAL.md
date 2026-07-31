@@ -49,6 +49,7 @@ schema más nuevo que el código del stack de contingencia.
 | §142 | Pickups de caja ahora salen bajo el filtro "Pickup" del historial (antes "Mesa") y en el conteo Pickup/Mostrador del Z. ⚠ Mueve conteos del Z entre categorías (no montos) — avisar a la cajera | Bajo | No |
 | §143 | Costos: lapicito para editar el costo de un insumo directo en la tabla (Christian). Con historial y motivo | Bajo | No |
 | §144 | **Cortesía 100% en mesa era imposible de cobrar** (3 candados en cadena; "Registrar pago" no hacía nada / "cuenta ya saldada") | Medio — money path, acotado a cortesía | No |
+| §145 | **Kardex por producto** (Inventario → botón Kardex): movimientos con saldo corrido, filtro por almacén, y conciliación explícita del descuadre (caso masa filo 39→42 del chef) | Bajo — solo lectura | No |
 
 ### Orden sugerido
 

@@ -23,6 +23,7 @@ import {
     Loader2,
     Printer,
     Plus,
+    BookOpenText,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { formatNumber, formatCurrency, getStockStatus, cn } from '@/lib/utils';
@@ -267,6 +268,12 @@ export default function InventoryView({ initialItems, initialAreas = [] }: Inven
                             className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                         >
                             <History className="h-4 w-4" /> Historial
+                        </Link>
+                        <Link
+                            href="/dashboard/inventario/kardex"
+                            className="pos-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                        >
+                            <BookOpenText className="h-4 w-4" /> Kardex
                         </Link>
                         <Link
                             href="/dashboard/inventario/imprimir"
