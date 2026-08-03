@@ -34,7 +34,10 @@
 set -euo pipefail
 
 BRANCH="${1:-main}"
-REPO_URL="https://github.com/Juninho2604/capsula-erp.git"
+# SSH por defecto: con el repo privado, HTTPS anónimo falla. El VPS necesita
+# una deploy key de solo lectura registrada en GitHub (Settings → Deploy keys)
+# y su ~/.ssh/config apuntando a ella. Override con REPO_URL=... si hiciera falta.
+REPO_URL="${REPO_URL:-git@github.com:Juninho2604/capsula-erp.git}"
 APP_DIR="/var/www/capsula-erp"
 TS=$(date +%Y%m%d-%H%M%S)
 NEW_DIR="/var/www/capsula-erp-NEW-$TS"

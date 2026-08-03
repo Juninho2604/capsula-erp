@@ -101,6 +101,23 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # El script de deploy se SUBE desde el runner (que ya tiene el repo
+      # clonado con credenciales de Actions) en vez de que el VPS lo baje de
+      # raw.githubusercontent.com: esa URL exige autenticación en un repo
+      # privado y el deploy moriría con 404.
+      - name: Checkout (para obtener scripts/deploy-vps.sh)
+        uses: actions/checkout@v4
+
+      - name: Subir deploy-vps.sh al VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          source: scripts/deploy-vps.sh
+          target: /tmp/capsula-deploy-${{ github.sha }}
+          strip_components: 1
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -115,16 +132,13 @@ jobs:
             export BUILD_SHA="$GITHUB_SHA"
             export BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-            # Bajar el script de deploy versionado, pinneado al commit que se
+            # Script subido por el step anterior, pinneado al commit que se
             # deploya. Corre desde /tmp (no desde /var/www/capsula-erp) porque
             # el propio script hace swap de ese directorio a mitad de ejecución.
-            DEPLOY_SCRIPT=$(mktemp /tmp/deploy-vps-XXXXXX.sh)
-            echo ">>> Descargando scripts/deploy-vps.sh @ $GITHUB_SHA"
-            curl -fsSL --retry 3 --retry-delay 2 \
-              "https://raw.githubusercontent.com/Juninho2604/capsula-erp/$GITHUB_SHA/scripts/deploy-vps.sh" \
-              -o "$DEPLOY_SCRIPT"
+            DEPLOY_SCRIPT="/tmp/capsula-deploy-$GITHUB_SHA/deploy-vps.sh"
+            test -s "$DEPLOY_SCRIPT" || { echo "ERROR: no llegó $DEPLOY_SCRIPT"; exit 1; }
 
             echo ">>> Ejecutando deploy-vps.sh (SHA: $BUILD_SHA)"
             bash "$DEPLOY_SCRIPT" main
-            rm -f "$DEPLOY_SCRIPT"
+            rm -rf "/tmp/capsula-deploy-$GITHUB_SHA"
             echo ">>> Deploy completado OK"
