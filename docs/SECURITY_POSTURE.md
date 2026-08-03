@@ -1,7 +1,8 @@
 # Estado de seguridad — Capsula / Shanklish
 
-> **Auditoría de situación al 2026-07-25**, tras el cutover on-premise.
-> Solo análisis: nada de lo aquí descrito se ha modificado todavía.
+> **Auditoría de situación al 2026-07-25**, revisada el 2026-07-27 con
+> verificación de bindings reales (§1). Solo análisis: nada de lo aquí descrito
+> se ha modificado todavía.
 > Este documento **no contiene secretos**; nombra dónde viven, nunca su valor.
 
 ---
@@ -12,9 +13,11 @@ La pieza nueva —el servidor del restaurante— es **la mejor protegida de toda
 la plataforma**: sin puertos abiertos a internet, firewall activo, parches
 automáticos y llaves SSH restringidas.
 
-El riesgo real está en el **VPS**, que además de kpsula.app aloja varios
-proyectos y tiene **servicios sensibles expuestos a internet**, y en que el
-**repositorio es público**.
+El riesgo principal es que el **repositorio es público**. En el **VPS** —que
+además de kpsula.app aloja varios proyectos— la superficie real resultó **menor
+de lo que sugerían las reglas del firewall**: se verificó que los servicios
+sensibles escuchan solo en `localhost` (ver §1). Lo que sí queda pendiente ahí
+es el SSH con autenticación por contraseña.
 
 | Ámbito | Estado |
 |---|---|
@@ -22,24 +25,39 @@ proyectos y tiene **servicios sensibles expuestos a internet**, y en que el
 | Túnel local ↔ VPS | 🟢 Bien diseñado |
 | Aplicación (sesiones, PINs, multi-tenant) | 🟡 Correcto con una salvedad grave |
 | Red del restaurante | 🟡 Tráfico en claro dentro de la LAN |
-| **VPS** | 🔴 **Superficie de ataque amplia** |
+| **VPS** | 🟠 **SSH con contraseña** (los puertos que parecían abiertos escuchan solo en localhost — verificado) |
 | **Repositorio público** | 🔴 **Código y detalles de infraestructura visibles** |
 
 ---
 
-## 1. 🔴 VPS — puertos abiertos a todo internet
+## 1. 🟠 VPS — reglas de firewall innecesarias (verificado: sin exposición real)
 
-Reglas observadas en `ufw status` (2026-07-25):
+> **Corrección del 2026-07-27.** La primera versión de este documento marcó
+> `5432` y `11434` como críticos leyendo **solo** `ufw status`. La verificación
+> del *binding* real (`ss -tlnp`) demostró que **no hay exposición**: los
+> servicios escuchan en `localhost`. Regla aprendida: **una regla de firewall
+> abierta no implica un servicio expuesto — hay que mirar la dirección de
+> escucha, no solo el puerto.**
 
-| Puerto | Servicio | Riesgo |
-|---|---|---|
-| **5432/tcp** | **PostgreSQL** | 🔴 **Crítico.** Una base de datos accesible desde cualquier IP del mundo. Aunque exija contraseña, queda expuesta a fuerza bruta y a cualquier vulnerabilidad del motor. **Ninguna BD debería estar abierta a internet.** |
-| **11434/tcp** | **Ollama** | 🔴 **Crítico.** Por defecto **no lleva autenticación**: cualquiera puede usar el modelo, leerlo, y en algunas versiones ejecutar operaciones sobre el host. Objetivo frecuente de escaneos automatizados. |
-| 8501/tcp | Streamlit | 🟠 Suele publicarse sin login. Revisar qué expone. |
-| 8080/tcp | (sin identificar) | 🟠 Identificar y cerrar si no es necesario. |
-| 22/tcp | SSH | 🟠 Con **autenticación por contraseña**. fail2ban acumula **2.856 baneos**: el puerto está bajo ataque permanente. |
-| 60000-61000/udp | mosh | 🟢 Aceptable. |
-| 80, 443 | nginx | 🟢 Esperado. |
+Estado verificado con `ss -tlnp`:
+
+| Puerto | Escucha en | Servicio | Riesgo real |
+|---|---|---|---|
+| 5432/tcp | `127.0.0.1` y `[::1]` | PostgreSQL | 🟢 **Inalcanzable desde fuera.** La regla ufw sobra |
+| 11434/tcp | — (no escucha) | Ollama | 🟢 No está corriendo. La regla sobra |
+| 8080/tcp | `127.0.0.1` | docker-proxy | 🟢 Solo local. La regla sobra |
+| 8501/tcp | `127.0.0.1` | docker-proxy | 🟢 Solo local. La regla sobra |
+| **22/tcp** | público | SSH | 🟠 **Riesgo real:** autenticación por contraseña, fail2ban acumula **2.856 baneos** — bajo ataque permanente |
+| 60000-61000/udp | público | mosh | 🟢 Aceptable |
+| 80, 443 | público | nginx | 🟢 Esperado |
+
+**Qué queda por hacer, y por qué:** las reglas de 5432/11434/8080/8501 pueden
+retirarse como **defensa en profundidad** — hoy no exponen nada, pero si alguno
+de esos servicios se reconfigurara mañana para escuchar en `0.0.0.0`, el
+firewall lo dejaría pasar sin que nadie lo note. Retirarlas es higiene, no
+urgencia.
+
+**La prioridad real del VPS es el SSH con contraseña** (sección 7, P1).
 
 Además corre **mailcow** (servidor de correo), que añade su propia superficie
 e interviene el firewall con su propia cadena de iptables.
@@ -156,10 +174,10 @@ middleware · aislamiento por tenant en las consultas · `print-agent` con API k
 
 ### P0 — esta semana
 
-1. **Cerrar PostgreSQL del VPS a internet.** Verificar antes quién lo usa:
-   `ss -tnp | grep :5432` y `ufw delete allow 5432/tcp`. Si algún servicio
-   externo lo necesita, restringir a esa IP concreta.
-2. **Cerrar Ollama (11434)** o dejarlo escuchando solo en `localhost`.
+1. ~~Cerrar PostgreSQL del VPS a internet.~~ **Verificado: no estaba
+   expuesto** (escucha en localhost). Retirar la regla ufw sigue siendo buena
+   higiene, pero baja a P2.
+2. ~~Cerrar Ollama (11434).~~ **No está corriendo.** Ídem.
 3. **Repositorio a privado** + registrar la deploy key en el servidor local y
    en el VPS (sección 2).
 4. **Eliminar `.env.copy` del repositorio** y rotar cualquier credencial suya
