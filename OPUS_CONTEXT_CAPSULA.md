@@ -13605,3 +13605,44 @@ Nuevo módulo `/dashboard/inventario/kardex` (botón "Kardex" en Inventario):
   al inicio del rango.
 
 Gates: tsc 0 · vitest 692 · build OK.
+
+## §146 "Se duplica el cobro" en pago múltiple — TAB-4607 (2026-08-05)
+
+Mauricio reportó cobros duplicados en pago múltiple. La auditoría de
+TAB-4607 (audit-servicio-tabs.ts) mostró que NO había duplicado real: Luis
+pagó su subcuenta por el panel ($19) y el resto de la mesa se cobró UN
+minuto después por el flujo general ($11). El dinero cuadraba.
+
+El "duplicado" era de PRESENTACIÓN, con causa doble:
+1. Cobrar el resto por el flujo general deja la subcuenta restante OPEN para
+   siempre (nadie la marca pagada) y su dinero entra como split sin
+   subAccountId (pool).
+2. En el historial, la fila de subcuenta usaba
+   `totalCobrado: sub.paidAmount || sub.total` — una subcuenta ABIERTA con
+   paidAmount 0 caía al fallback y figuraba cobrada por su total. Resultado:
+   el mismo dinero dos veces (subcuenta "pendiente" + fila pool) y el
+   totalizador del día inflado.
+
+Fixes (3, con OK de Omar):
+1. **Historial (display-only, sin tocar registros — corrige también las
+   mesas viejas)**: subcuenta NO pagada jamás cuenta como cobrada
+   (cobrado = paidAmount || 0); y en mesa CERRADA, las subcuentas OPEN sin
+   splits se ABSORBEN en la fila del pool (donde está su dinero real),
+   etiquetada `Resto (Cuenta 2)` en vez de `Otros`. Requirió exponer
+   `openTab.status` en el select del historial.
+2. **Aviso en POS**: "Registrar pago" de mesa con subcuentas abiertas pide
+   confirmación explícita (lista las subcuentas; sugiere el panel). Requirió
+   agregar `subAccounts {id,label,status}` al include del layout.
+3. **Guardia anti-reentrada (duplicado REAL potencial)**: la tecla Enter del
+   input de PIN disparaba handlePaymentPinConfirm sin chequear isProcessing;
+   un segundo Enter durante "Procesando…" que entrara tras el commit del
+   primero registraba el mismo pago parcial dos veces (el candado de versión
+   optimista solo ataja simultáneos, no secuenciales). `if (isProcessing)
+   return` al entrar + Enter gated + misma guardia en handleCheckoutPickup.
+
+Extra del caso: la mesa era del 04/08 (el historial agrupa por el día de las
+comandas, Caracas) — por eso "no aparecía" buscándola hoy. Y la propina de
+$3.67 del segundo cobro ($11 sobre factura $7.34) quedó para confirmar con
+la cajera.
+
+Gates: tsc 0 · vitest 692 · build OK.

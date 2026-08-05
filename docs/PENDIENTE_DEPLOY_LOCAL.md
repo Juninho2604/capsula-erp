@@ -50,6 +50,7 @@ schema más nuevo que el código del stack de contingencia.
 | §143 | Costos: lapicito para editar el costo de un insumo directo en la tabla (Christian). Con historial y motivo | Bajo | No |
 | §144 | **Cortesía 100% en mesa era imposible de cobrar** (3 candados en cadena; "Registrar pago" no hacía nada / "cuenta ya saldada") | Medio — money path, acotado a cortesía | No |
 | §145 | **Kardex por producto** (Inventario → botón Kardex): movimientos con saldo corrido, filtro por almacén, y conciliación explícita del descuadre (caso masa filo 39→42 del chef) | Bajo — solo lectura | No |
+| §146 | **"Cobro duplicado" en pago múltiple (TAB-4607)**: historial ya no muestra dos veces el dinero de subcuentas cobradas por el flujo general; aviso en POS antes de cobrar mesa completa con subcuentas abiertas; guardia anti-doble-Enter en el cobro (duplicado real potencial) | Medio — money path display + POS | No |
 
 ### Orden sugerido
 

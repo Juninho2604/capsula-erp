@@ -1116,6 +1116,12 @@ export default function POSSportBarPage() {
   // ============================================================================
 
   const handlePaymentPinConfirm = async () => {
+    // §146 — guardia anti-reentrada: el botón se deshabilita con isProcessing,
+    // pero la tecla Enter del input de PIN disparaba el handler igual. Un
+    // segundo Enter durante "Procesando…" que entrara DESPUÉS de que el primer
+    // cobro committeara registraba el mismo pago parcial dos veces (el candado
+    // de versión solo ataja los simultáneos). Cobro duplicado real.
+    if (isProcessing) return;
     // Monto BRUTO recibido del cliente (mixto = suma de líneas).
     const rawReceived = isTableMixedMode
       ? mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0)
@@ -1674,6 +1680,8 @@ export default function POSSportBarPage() {
 
   const handleCheckoutPickup = async () => {
     if (cart.length === 0) return;
+    // §146 — misma guardia anti-reentrada que el cobro de mesa.
+    if (isProcessing) return;
     setIsProcessing(true);
     try {
       // Snapshot del tab activo tomado antes de cualquier await — el estado puede
@@ -3439,6 +3447,23 @@ export default function POSSportBarPage() {
                   {/* Register payment (requiere PIN) */}
                   <button
                     onClick={() => {
+                      // §146 — TAB-4607: cobrar la mesa COMPLETA por acá cuando hay
+                      // subcuentas abiertas deja esas subcuentas OPEN para siempre y
+                      // el historial se lee como cobro doble. Confirmación explícita
+                      // para que la cajera use el panel de subcuentas o siga a
+                      // sabiendas.
+                      const openSubs = ((activeTab as any)?.subAccounts ?? [])
+                        .filter((s: { status: string }) => s.status === 'OPEN')
+                        .map((s: { label: string }) => s.label);
+                      if (openSubs.length > 0) {
+                        const okSubs = window.confirm(
+                          `Esta mesa tiene ${openSubs.length} subcuenta(s) abierta(s): ${openSubs.join(', ')}.\n\n` +
+                          `Este botón cobra el saldo COMPLETO de la mesa, no una subcuenta.\n` +
+                          `Si el cliente quiere pagar su subcuenta, usá "Dividir cuenta (subcuentas)".\n\n` +
+                          `¿Cobrar el saldo completo igual?`
+                        );
+                        if (!okSubs) return;
+                      }
                       const linesForConfirmation: PaymentConfirmationLine[] = isTableMixedMode
                         ? mixedPaymentsTable.map(p => ({ method: p.method, amountUSD: p.amountUSD, amountBS: p.amountBS }))
                         : [{ method: paymentMethod, amountUSD: paidAmount }];
@@ -3828,7 +3853,7 @@ export default function POSSportBarPage() {
                     setPaymentPin(e.target.value);
                     setPaymentPinError("");
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && handlePaymentPinConfirm()}
+                  onKeyDown={(e) => e.key === "Enter" && !isProcessing && handlePaymentPinConfirm()}
                   placeholder="••••••"
                   className="w-full bg-capsula-ivory-surface border border-capsula-line rounded-xl px-3 py-3 text-capsula-ink text-center text-xl tracking-[0.3em] placeholder:text-capsula-ink-muted focus:border-capsula-navy-deep focus:outline-none transition"
                 />

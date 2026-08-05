@@ -366,6 +366,9 @@ async function ensureRestaurantSetup() {
                                     openedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
                                     closedBy: { select: { id: true, firstName: true, lastName: true } },
                                     paymentSplits: true,
+                                    // §146 — el POS avisa antes de cobrar la mesa
+                                    // completa cuando hay subcuentas abiertas.
+                                    subAccounts: { select: { id: true, label: true, status: true } },
                                     orders: {
                                         include: {
                                             items: {

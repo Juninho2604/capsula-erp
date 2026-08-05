@@ -69,6 +69,7 @@ export async function getSalesHistoryAction(date?: string) {
                 openTab: {
                     select: {
                         tabCode: true,
+                        status: true,
                         customerLabel: true,
                         customerPhone: true,
                         runningSubtotal: true,
@@ -158,14 +159,41 @@ export async function getSalesHistoryAction(date?: string) {
                 };
 
                 if (subAccounts.length > 0) {
+                    // §146 — TAB-4607: cuando el RESTO de una mesa con subcuentas
+                    // se cobra por el flujo general (no por el panel), la subcuenta
+                    // queda OPEN para siempre y su plata entra como split sin
+                    // subAccountId (pool). Antes esa subcuenta mostraba
+                    // totalCobrado = sub.total (fallback) → el mismo dinero
+                    // aparecía DOS veces (subcuenta "pendiente" + pool) y el
+                    // totalizador del día se inflaba. "Se duplica el cobro".
+                    //
+                    // Display-only (no se tocan registros — corrige también las
+                    // mesas viejas): en mesa CERRADA, las subcuentas OPEN sin
+                    // splits se absorben en la fila del pool (que es donde está
+                    // su dinero real), etiquetada con sus nombres.
+                    const poolSplitsAll = allSplits.filter(sp => !sp.subAccountId);
+                    const tabClosed = tab?.status === 'CLOSED';
+                    const absorbedLabels: string[] = [];
+
                     // ── Expand: one row per sub-account ──────────────────────────
                     for (const sub of subAccounts) {
                         const subSplits = allSplits.filter(sp => sp.subAccountId === sub.id);
+                        const isUnpaidOpen = sub.status !== 'PAID' && subSplits.length === 0;
+                        if (isUnpaidOpen && tabClosed && poolSplitsAll.length > 0) {
+                            // Su consumo quedó cobrado en el pool — una sola fila.
+                            absorbedLabels.push(sub.label);
+                            continue;
+                        }
                         const paymentBreakdown = subSplits.length > 0
                             ? subSplits.map(sp => ({ method: sp.paymentMethod || 'CASH', amount: sp.paidAmount }))
-                            : sub.paymentMethod
+                            : sub.status === 'PAID' && sub.paymentMethod
                             ? [{ method: sub.paymentMethod, amount: sub.paidAmount || sub.total }]
                             : [];
+                        // §146 — una subcuenta NO pagada jamás cuenta como cobrada
+                        // (el viejo fallback `|| sub.total` la sumaba al totalizador).
+                        const subCobrado = sub.status === 'PAID'
+                            ? (sub.paidAmount || sub.total)
+                            : (sub.paidAmount || 0);
                         result.push({
                             id: `tab-${o.openTabId}-sub-${sub.id}`,
                             _consolidated: true,
@@ -173,7 +201,7 @@ export async function getSalesHistoryAction(date?: string) {
                             orderType: 'RESTAURANT',
                             serviceFeeIncluded: sub.serviceCharge > 0,
                             totalFactura: sub.total,
-                            totalCobrado: sub.paidAmount || sub.total,
+                            totalCobrado: subCobrado,
                             totalProductos: sub.subtotal,
                             servicioAmount: sub.serviceCharge,
                             propina: 0,
@@ -198,7 +226,11 @@ export async function getSalesHistoryAction(date?: string) {
                     }
 
                     // Pool: splits without a subAccountId (unassigned items paid directly)
-                    const poolSplits = allSplits.filter(sp => !sp.subAccountId);
+                    const poolSplits = poolSplitsAll;
+                    // §146 — si absorbió subcuentas abiertas, la fila lo dice.
+                    const poolLabel = absorbedLabels.length > 0
+                        ? `Resto (${absorbedLabels.join(', ')})`
+                        : 'Otros';
                     if (poolSplits.length > 0) {
                         const poolTotal = poolSplits.reduce((s, sp) => s + (sp.paidAmount || 0), 0);
                         const poolSvc   = poolSplits.reduce((s, sp) => s + (sp.serviceChargeAmount || 0), 0);
@@ -216,10 +248,10 @@ export async function getSalesHistoryAction(date?: string) {
                             paymentBreakdown: poolSplits.map(sp => ({ method: sp.paymentMethod || 'CASH', amount: sp.paidAmount })),
                             _orderIds: sorted.map(x => x.id),
                             orderNumber: `${tab?.tabCode || first.orderNumber}`,
-                            subAccountLabel: 'Otros',
+                            subAccountLabel: poolLabel,
                             orderNumbers: sorted.map(x => x.orderNumber),
                             createdAt: last.createdAt,
-                            customerName: `${tab?.customerLabel || first.customerName} — Otros`,
+                            customerName: `${tab?.customerLabel || first.customerName} — ${poolLabel}`,
                             customerPhone: tab?.customerPhone || first.customerPhone,
                             createdBy: last.createdBy,
                             paymentMethod: poolSplits[0]?.paymentMethod || first.paymentMethod,
