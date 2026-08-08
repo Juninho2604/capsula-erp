@@ -1,10 +1,11 @@
 /**
- * tenant-access.ts (§147) — Acceso a un tenant: listar usuarios y asignar
- * contraseña nueva.
+ * tenant-access.ts (§147) — Acceso a un tenant: listar usuarios, asignar
+ * contraseña y asignar PIN del POS.
  *
- * Las contraseñas se guardan hasheadas con PBKDF2-SHA256 (un solo sentido):
- * NO se pueden leer, ni con acceso total al servidor. Este script permite
- * lo único posible — ver QUIÉN puede entrar y ASIGNAR una clave nueva.
+ * Contraseñas y PINs se guardan hasheados con PBKDF2-SHA256 (un solo
+ * sentido): NO se pueden leer, ni con acceso total al servidor. Este script
+ * permite lo único posible — ver QUIÉN puede entrar y ASIGNAR credenciales
+ * nuevas.
  *
  * Uso:
  *   # 1) Listar los usuarios del tenant (solo lectura, no muestra claves)
@@ -15,6 +16,11 @@
  *   sudo bash -c 'cd /var/www/capsula-erp && \
  *     npx tsx scripts/tenant-access.ts --tenant-slug=tablepong \
  *       --email=juan@tablepong.com --set-password="LaQueVosElijas123"'
+ *
+ *   # 3) Asignar el PIN del POS (autorizar cobros, anulaciones, cortesías)
+ *   sudo bash -c 'cd /var/www/capsula-erp && \
+ *     npx tsx scripts/tenant-access.ts --tenant-slug=tablepong \
+ *       --email=gerente1@kpsula.app --set-pin=4821'
  *
  * La contraseña se pasa por parámetro y NO queda escrita en el código.
  * Al cambiarla se incrementa tokenVersion → las sesiones vivas de ESE
@@ -28,26 +34,52 @@
 import { PrismaClient } from '@prisma/client';
 import { webcrypto } from 'node:crypto';
 
-/** PBKDF2-SHA256, formato "saltHex:hashHex" — idéntico a src/lib/password.ts */
-async function hashPassword(password: string): Promise<string> {
-    const salt = webcrypto.getRandomValues(new Uint8Array(16));
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+const toHex = (bytes: Uint8Array) =>
+    Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+const fromHex = (hex: string) =>
+    new Uint8Array((hex.match(/.{2}/g) ?? []).map(b => parseInt(b, 16)));
+
+async function pbkdf2Hex(input: string, saltHex: string): Promise<string> {
     const keyMaterial = await webcrypto.subtle.importKey(
         'raw',
-        new TextEncoder().encode(password),
+        new TextEncoder().encode(input),
         'PBKDF2',
         false,
         ['deriveBits'],
     );
     const hashBuf = await webcrypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt: fromHex(saltHex), iterations: 100_000, hash: 'SHA-256' },
         keyMaterial,
         256,
     );
-    const hashHex = Array.from(new Uint8Array(hashBuf))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${saltHex}:${hashHex}`;
+    return toHex(new Uint8Array(hashBuf));
 }
+
+/**
+ * PBKDF2-SHA256, formato "saltHex:hashHex" — idéntico a src/lib/password.ts
+ * y al hashPin de user.actions.ts (el POS usa el mismo esquema para el PIN).
+ */
+async function hashSecret(secret: string): Promise<string> {
+    const saltHex = toHex(webcrypto.getRandomValues(new Uint8Array(16)));
+    return `${saltHex}:${await pbkdf2Hex(secret, saltHex)}`;
+}
+
+/** §132 — ¿el PIN crudo corresponde al guardado? (fallback legacy a texto plano) */
+async function pinMatches(rawPin: string, stored: string): Promise<boolean> {
+    try {
+        if (stored.includes(':')) {
+            const i = stored.indexOf(':');
+            const saltHex = stored.slice(0, i);
+            const storedHash = stored.slice(i + 1);
+            if (!saltHex || !storedHash) return false;
+            return (await pbkdf2Hex(rawPin, saltHex)) === storedHash;
+        }
+        return rawPin === stored;
+    } catch { return false; }
+}
+
+/** Roles cuyo PIN autoriza cobros/anulaciones/cortesías en el POS. */
+const MANAGER_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 
 async function main() {
     const args: Record<string, string> = {};
@@ -64,6 +96,7 @@ async function main() {
     }
     const email = args['email'];
     const newPassword = args['set-password'];
+    const newPin = args['set-pin'];
 
     const prisma = new PrismaClient();
     try {
@@ -76,6 +109,64 @@ async function main() {
             const all = await prisma.tenant.findMany({ select: { slug: true, name: true } });
             console.error('Tenants disponibles:', all.map(t => t.slug).join(', ') || '(ninguno)');
             process.exit(2);
+        }
+
+        // ── Modo 3: asignar PIN del POS ─────────────────────────────────────
+        if (newPin) {
+            if (!email) {
+                console.error('Para asignar PIN hace falta --email=<correo del usuario>');
+                process.exit(2);
+            }
+            const pin = newPin.trim();
+            if (!/^\d{4,6}$/.test(pin)) {
+                console.error('El PIN debe ser de 4 a 6 dígitos (solo números).');
+                process.exit(2);
+            }
+            const user = await prisma.user.findFirst({
+                where: { tenantId: tenant.id, email: { equals: email, mode: 'insensitive' } },
+                select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
+            });
+            if (!user) {
+                console.error(`No existe el usuario "${email}" en el tenant ${tenant.name}.`);
+                process.exit(2);
+            }
+
+            // §132 — unicidad: dos personas con el mismo PIN hacen imposible
+            // saber quién autorizó. Se rechaza igual que en la UI.
+            const others = await prisma.user.findMany({
+                where: { tenantId: tenant.id, id: { not: user.id }, pin: { not: null } },
+                select: { firstName: true, lastName: true, pin: true },
+            });
+            for (const o of others) {
+                if (o.pin && (await pinMatches(pin, o.pin))) {
+                    console.error(`\n❌ Ese PIN ya lo usa ${o.firstName} ${o.lastName}.`);
+                    console.error('   Cada persona debe tener un PIN distinto — elegí otro.\n');
+                    process.exit(2);
+                }
+            }
+
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { pin: await hashSecret(pin) },
+            });
+
+            console.log(`\n✅ PIN asignado.\n`);
+            console.log(`   Tenant:  ${tenant.name} (${slug})`);
+            console.log(`   Usuario: ${user.firstName} ${user.lastName} — ${user.email}`);
+            console.log(`   Rol:     ${user.role}`);
+            if (!user.isActive) {
+                console.log(`\n   ⚠ El usuario está INACTIVO — el PIN no funcionará hasta activarlo.`);
+            }
+            if (!MANAGER_ROLES.includes(user.role)) {
+                console.log(`\n   ⚠ ATENCIÓN: el rol ${user.role} NO autoriza en el POS.`);
+                console.log(`      Solo ${MANAGER_ROLES.join(' / ')} pueden autorizar cobros,`);
+                console.log(`      anulaciones y cortesías. El PIN quedó guardado, pero no servirá`);
+                console.log(`      para autorizar hasta que le cambies el rol.`);
+            } else {
+                console.log(`\n   Ya puede autorizar cobros, anulaciones y cortesías con ese PIN.`);
+            }
+            console.log('');
+            return;
         }
 
         // ── Modo 2: asignar contraseña ──────────────────────────────────────
@@ -98,7 +189,7 @@ async function main() {
                 process.exit(2);
             }
 
-            const passwordHash = await hashPassword(newPassword);
+            const passwordHash = await hashSecret(newPassword);
             await prisma.user.update({
                 where: { id: user.id },
                 data: { passwordHash, tokenVersion: { increment: 1 } },
@@ -141,6 +232,9 @@ async function main() {
         console.log(`Si no sabés la contraseña, asignale una nueva:\n`);
         console.log(`  npx tsx scripts/tenant-access.ts --tenant-slug=${slug} \\`);
         console.log(`    --email=<correo> --set-password="LaQueVosElijas123"\n`);
+        console.log(`Para el PIN del POS (autorizar cobros/anulaciones/cortesías):\n`);
+        console.log(`  npx tsx scripts/tenant-access.ts --tenant-slug=${slug} \\`);
+        console.log(`    --email=<correo> --set-pin=4821\n`);
     } finally {
         await prisma.$disconnect();
     }
