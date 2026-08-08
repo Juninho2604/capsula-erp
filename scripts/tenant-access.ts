@@ -22,6 +22,10 @@
  *     npx tsx scripts/tenant-access.ts --tenant-slug=tablepong \
  *       --email=gerente1@kpsula.app --set-pin=4821'
  *
+ *   # 4) DIAGNÓSTICO: ¿por qué el POS rechaza este PIN? (solo lectura)
+ *   sudo bash -c 'cd /var/www/capsula-erp && \
+ *     npx tsx scripts/tenant-access.ts --tenant-slug=tablepong --test-pin=4821'
+ *
  * La contraseña se pasa por parámetro y NO queda escrita en el código.
  * Al cambiarla se incrementa tokenVersion → las sesiones vivas de ESE
  * usuario se invalidan (tendrá que volver a entrar). Nadie más se ve
@@ -109,6 +113,69 @@ async function main() {
             const all = await prisma.tenant.findMany({ select: { slug: true, name: true } });
             console.error('Tenants disponibles:', all.map(t => t.slug).join(', ') || '(ninguno)');
             process.exit(2);
+        }
+
+        // ── Modo 4: PROBAR un PIN (réplica exacta de validateManagerPinAction) ──
+        if (args['test-pin']) {
+            const pin = args['test-pin'].trim();
+            console.log(`\n═══ DIAGNÓSTICO DE PIN · ${tenant.name} (${slug}) ═══\n`);
+            console.log(`Probando el PIN tecleado contra TODOS los usuarios del tenant.`);
+            console.log(`(el POS solo acepta ${MANAGER_ROLES.join(' / ')}, activos y con PIN)\n`);
+
+            const all = await prisma.user.findMany({
+                where: { tenantId: tenant.id },
+                select: {
+                    email: true, firstName: true, lastName: true,
+                    role: true, isActive: true, pin: true,
+                },
+                orderBy: [{ role: 'asc' }, { email: 'asc' }],
+            });
+
+            let matchedBy: string | null = null;
+            let matchedButRejected: string | null = null;
+
+            for (const u of all) {
+                const who = `${u.firstName} ${u.lastName} <${u.email}> [${u.role}]`;
+                if (!u.pin) continue;
+                if (await pinMatches(pin, u.pin)) {
+                    const esCandidato = MANAGER_ROLES.includes(u.role) && u.isActive;
+                    if (esCandidato) matchedBy = who;
+                    else {
+                        const motivo = !u.isActive ? 'usuario INACTIVO' : `rol ${u.role} NO autoriza`;
+                        matchedButRejected = `${who} — ${motivo}`;
+                    }
+                }
+            }
+
+            // Panorama: quiénes PODRÍAN autorizar hoy.
+            const candidatos = all.filter(u => MANAGER_ROLES.includes(u.role) && u.isActive && u.pin);
+            console.log(`Usuarios que el POS aceptaría (rol OK + activo + con PIN): ${candidatos.length}`);
+            for (const c of candidatos) {
+                console.log(`   · ${c.firstName} ${c.lastName} <${c.email}> [${c.role}]`);
+            }
+            if (candidatos.length === 0) {
+                console.log('   (ninguno — por eso NINGÚN PIN funciona en este tenant)');
+                const sinPin = all.filter(u => MANAGER_ROLES.includes(u.role) && u.isActive && !u.pin);
+                if (sinPin.length > 0) {
+                    console.log('\n   Gerentes activos SIN PIN asignado:');
+                    for (const u of sinPin) console.log(`   · ${u.firstName} ${u.lastName} <${u.email}> [${u.role}]`);
+                }
+            }
+
+            console.log('\n── RESULTADO ──');
+            if (matchedBy) {
+                console.log(`✅ El PIN es VÁLIDO — autoriza como: ${matchedBy}`);
+                console.log('   Si en el POS igual falla, el problema NO es el PIN:');
+                console.log('   revisá que el POS esté apuntando a ESTE servidor/base.');
+            } else if (matchedButRejected) {
+                console.log(`⚠ El PIN existe pero el POS lo RECHAZA: ${matchedButRejected}`);
+                console.log('   Corregí el rol (o activá el usuario) y volverá a funcionar.');
+            } else {
+                console.log('❌ Ese PIN no corresponde a NINGÚN usuario de este tenant.');
+                console.log('   Se guardó en otro tenant, en otra base, o nunca se guardó.');
+            }
+            console.log('');
+            return;
         }
 
         // ── Modo 3: asignar PIN del POS ─────────────────────────────────────
