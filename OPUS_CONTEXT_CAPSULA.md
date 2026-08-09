@@ -13701,3 +13701,29 @@ Contabo VPS`**, no `Validate`. Verde en `Validate` sólo dice que compila.
 Gates: tsc 0 · vitest 692 · `bash -n` y parseo YAML OK · round-trip
 empaquetar/desempaquetar verificado (947 archivos idénticos, permisos y
 migraciones incluidas).
+
+### §148.1 El swap atómico dejaba huérfano `storage/`
+
+Encontrado revisando lo anterior. `STORAGE_ROOT` es `process.cwd()/storage`
+(`src/app/api/upload/route.ts`), o sea `/var/www/capsula-erp/storage`: ahí
+viven las notas de entrega, los comprobantes de delivery y la media de
+WhatsApp que suben los usuarios. Ese directorio **no está en el repo** —
+lo crea la app con `mkdir -p` en la primera subida.
+
+El swap mueve el directorio entero (`mv $APP_DIR $OLD_BACKUP` →
+`mv $NEW_DIR $APP_DIR`), así que el build nuevo arrancaba con `storage/`
+vacío y los archivos quedaban dentro de `capsula-erp-OLD-<ts>`. Como
+`cleanup-deploy-artifacts.sh` retiene sólo los 3 builds más recientes
+(`KEEP_BUILDS=3`), a los tres deploys siguientes se borraban.
+
+Fix: `deploy-vps.sh` mueve `storage/` desde el build viejo al nuevo justo
+después del swap, con pm2 ya detenido para que nadie escriba a mitad del
+traslado. Es un `mv` dentro del mismo filesystem — instantáneo, no copia.
+
+Para recuperar lo que haya quedado en un build anterior:
+
+```bash
+ls -d /var/www/capsula-erp-OLD-*/storage 2>/dev/null
+# y del más reciente que tenga contenido:
+cp -an /var/www/capsula-erp-OLD-<ts>/storage/. /var/www/capsula-erp/storage/
+```

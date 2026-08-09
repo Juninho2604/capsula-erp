@@ -159,6 +159,18 @@ pm2 stop capsula-erp
 mv "$APP_DIR" "$OLD_BACKUP"
 mv "$NEW_DIR" "$APP_DIR"
 
+# `storage/` son los archivos que suben los usuarios — notas de entrega,
+# comprobantes de delivery, media de WhatsApp. Viven en <app>/storage
+# (STORAGE_ROOT = process.cwd()/storage, ver src/app/api/upload/route.ts) pero
+# NO están en el repo, así que el swap los dejaba huérfanos dentro de
+# OLD-<ts> y a los 3 builds el cleanup los borraba. Se mueven acá, con la app
+# ya detenida, para que nadie escriba a mitad del traslado.
+if [ -d "$OLD_BACKUP/storage" ]; then
+    rm -rf "$APP_DIR/storage"
+    mv "$OLD_BACKUP/storage" "$APP_DIR/storage"
+    echo "    storage/ trasladado desde el build anterior"
+fi
+
 unset PORT NODE_ENV DATABASE_URL NEXTAUTH_URL NEXTAUTH_SECRET JWT_SECRET CRON_SECRET HOSTNAME
 
 pm2 delete capsula-erp 2>/dev/null || true
