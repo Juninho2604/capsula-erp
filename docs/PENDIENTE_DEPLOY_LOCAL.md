@@ -48,7 +48,17 @@ curl -s localhost:3000/api/health
 
 ---
 
-## Acumulado pendiente
+## ✅ Acumulado — aplicado el 2026-08-09
+
+Todo lo de abajo está **en producción** desde el deploy de `455f8b1`
+(2026-08-09 17:26 VPS / 11:26 Caracas): swap atómico OK, `prisma migrate
+deploy` sin migraciones pendientes (78 encontradas), smoke test de Prisma OK,
+`GET https://kpsula.app` → 200. Backup previo en
+`capsula_erp_prod-deploy-20260809-172648.dump` (11 MB).
+
+Se deja la tabla como registro de qué entró y qué verificar.
+
+
 
 | § | Qué | Riesgo | Migración |
 |---|---|---|---|
