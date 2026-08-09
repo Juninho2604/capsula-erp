@@ -1,35 +1,50 @@
-# Pendiente de desplegar al servidor local (KPSULA-LOCAL)
+# Pendiente de desplegar (histórico §134–§147)
 
-> **Por qué existe este archivo.** Desde el cutover del 2026-07-25, Shanklish
-> opera on-premise: la app y la BD viven en el equipo del restaurante. El CI de
-> GitHub **solo despliega al VPS**, cuya app está detenida (contingencia). Por
-> eso un deploy puede salir "success" en verde mientras el restaurante sigue
-> con código viejo. Ver `docs/LOCAL_SERVER.md` §6 y `docs/SHANKLISH_ONPREM_ASBUILT.md`.
+> **Por qué existe este archivo.** Nació con el cutover del 2026-07-25, cuando
+> Shanklish pasó a operar on-premise y el CI de GitHub **sólo desplegaba al
+> VPS**: un deploy salía verde mientras el restaurante seguía con código viejo.
+
+## Estado al 2026-08-09 — el destino volvió a ser el VPS
+
+El equipo del restaurante (`KPSULA-LOCAL`) **murió** el 2026-08-08 tras la
+manipulación de breakers: enciende, los ventiladores giran, pero no da POST ni
+red. Shanklish volvió a la nube. **Ya no hay servidor local al que desplegar**,
+y `scripts/local-server/update-local-server.sh` no aplica hasta que haya una
+máquina nueva. El disco de la máquina muerta **no se toca ni se formatea**:
+tiene las ventas del 2026-08-08 entre las 6:15 y las 11:49 (hora Caracas).
+
+Lo que ahora manda es el deploy normal del CI a `main` → VPS.
+
+### Segundo problema, encadenado: el deploy al VPS estaba roto
+
+Al pasar el repo a privado (3 de agosto), `deploy-vps.sh` empezó a clonar por
+SSH y el VPS nunca tuvo la deploy key. **Seis deploys seguidos murieron en el
+paso `[2/9] Clone`** con `Permission denied (publickey)`, del 3 al 8 de agosto.
+El job `Validate` salía verde, así que en la lista de Actions parecía normal.
+
+Consecuencia concreta: **el VPS quedó parado en `768f6f7` (§145)**. Todo lo de
+§134–§145 sí está, porque esos deploys corrieron antes del cambio de
+visibilidad. Lo que **no** llegó es §146 y §147.
+
+Arreglado en este mismo bloque: el runner empaqueta el árbol y se lo manda al
+VPS (`capsula-src.tgz`), que ya no necesita credenciales de GitHub. Ver
+`docs/SECURITY_POSTURE.md` §9.
 
 ## Cómo aplicar
 
-Fuera de horario — el script hace build y reinicia pm2, y ese equipo **es** el
-que factura.
+Push a `main` — el CI hace backup de BD, build, `prisma migrate deploy`, smoke
+test de Prisma y recién entonces el swap atómico. Si algo falla, aborta antes
+del swap y la app vieja sigue atendiendo.
+
+Verificar **el job `Deploy to Contabo VPS`**, no sólo `Validate`. Y en el VPS:
 
 ```bash
-ssh root@147.93.6.70            # 1. VPS
-ssh -p 2223 kpsula@127.0.0.1    # 2. saltar al servidor del restaurante
-bash scripts/local-server/update-local-server.sh
-```
-
-Hace backup previo, `git pull`, build, `prisma migrate deploy` y restart.
-
-Después, verificar:
-
-```bash
+cd /var/www/capsula-erp
+cat .deploy-commit                     # SHA que quedó activo
 npx prisma migrate status              # "Database schema is up to date!"
 pm2 status                             # capsula-erp online
 curl -s localhost:3000/api/health
 ```
-
-**Con migraciones pendientes** (hay una, ver abajo): actualizar el VPS **en el
-mismo bloque de trabajo**, para que el dump que viaja al VPS nunca tenga un
-schema más nuevo que el código del stack de contingencia.
 
 ---
 

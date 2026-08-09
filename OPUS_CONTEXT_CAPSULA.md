@@ -13646,3 +13646,58 @@ $3.67 del segundo cobro ($11 sobre factura $7.34) quedó para confirmar con
 la cajera.
 
 Gates: tsc 0 · vitest 692 · build OK.
+
+---
+
+## §148 El deploy al VPS estaba roto hacía una semana (2026-08-09)
+
+Al pasar el repositorio a privado (§9 de `SECURITY_POSTURE`, commit `aa4be39`,
+3 de agosto), `deploy-vps.sh` cambió su `REPO_URL` a SSH. La deploy key del VPS
+era un paso manual de esa checklist y **nunca se registró en GitHub**. Desde
+entonces cada push a `main` moría en el paso `[2/9] Clone`:
+
+```
+err: Cloning into '/var/www/capsula-erp-NEW-...'
+err: git@github.com: Permission denied (publickey).
+2026/08/08 13:47:49 Process exited with status 128
+```
+
+Seis corridas seguidas fallaron así (`aa4be39`, `567cf3a`, `acc54ec`, `0de341d`,
+`e2ebd25`, `e41048d`). El job `Validate` salía verde en todas — tsc y tests
+pasaban — así que el rojo era del job de deploy y pasó desapercibido. El backup
+de BD (paso `[1/9]`) sí corría, y el swap atómico nunca llegaba a ejecutarse:
+**cero downtime, pero también cero deploys**.
+
+Efecto real: el VPS quedó clavado en `768f6f7` (§145). Como el 2026-08-08 murió
+el servidor local y Shanklish volvió a la nube, ese VPS pasó a ser producción —
+con **§146 (el fix del "cobro duplicado" en pago múltiple) sin aplicar**.
+
+### El arreglo: el VPS ya no clona
+
+El runner de Actions ya tiene el árbol con credenciales propias, así que ahora
+lo empaqueta y se lo manda:
+
+1. `ci.yml` → step **Empaquetar código**: `tar -czf capsula-src.tgz
+   --exclude=.git --exclude=node_modules --exclude=.next` (≈20 MB) + escribe
+   `.deploy-commit` con el SHA.
+2. `scp-action` sube el tarball junto al `deploy-vps.sh` ya existente.
+3. `deploy-vps.sh` acepta `SRC_TARBALL=...`: si está, desempaqueta; si no,
+   cae al `git clone` de siempre (camino manual desde el propio VPS).
+
+**`.git` queda fuera del paquete a propósito**: `actions/checkout` deja ahí el
+token de la corrida (`http.https://github.com/.extraheader`) y ese token no
+debe viajar al VPS. Por eso el SHA se transporta en `.deploy-commit`, y
+`verify-deploy.yml` lo lee de ahí con `git rev-parse HEAD` como fallback para
+builds viejos que sí fueron clonados.
+
+Resultado: el VPS **no guarda ninguna credencial de GitHub**. Un deploy no
+puede volver a romperse por una llave ausente o vencida.
+
+### Regla
+
+Al mirar Actions después de un merge, **el job que importa es `Deploy to
+Contabo VPS`**, no `Validate`. Verde en `Validate` sólo dice que compila.
+
+Gates: tsc 0 · vitest 692 · `bash -n` y parseo YAML OK · round-trip
+empaquetar/desempaquetar verificado (947 archivos idénticos, permisos y
+migraciones incluidas).

@@ -57,3 +57,7 @@ cloud-sql-proxy*.exe
 *.patch
 ts_errors.log
 .env.copy
+
+# Artefactos del deploy (los genera el CI/deploy-vps.sh, no se versionan)
+capsula-src.tgz
+.deploy-commit

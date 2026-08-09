@@ -251,8 +251,18 @@ Preparar esto **ANTES** de cambiar la visibilidad:
 | Qué se rompe | Dónde | Solución |
 |---|---|---|
 | `git clone/fetch` del servidor local | `/var/www/capsula-erp` | deploy key + remoto SSH |
-| `git clone` del deploy | `scripts/deploy-vps.sh` en el VPS | deploy key + remoto SSH (ya usa SSH por defecto) |
+| `git clone` del deploy | `scripts/deploy-vps.sh` en el VPS | resuelto: el CI **empaqueta y sube** el árbol; el VPS ya no clona |
 | Descarga del script de deploy | `ci.yml` bajaba de `raw.githubusercontent.com` | resuelto: ahora se **sube** desde el runner vía `scp-action` |
+
+> **El VPS ya no necesita deploy key.** El paso 2 de la lista de abajo quedó
+> obsoleto: entre el 3 y el 8 de agosto de 2026 el deploy murió seis veces
+> seguidas en `[2/9] Clone` con `git@github.com: Permission denied (publickey)`
+> porque esa llave nunca se registró, y el CI igual reportaba verde el job de
+> validación. Desde entonces el runner manda el código empaquetado
+> (`capsula-src.tgz`) y `deploy-vps.sh` lo desempaqueta. El VPS no guarda
+> ninguna credencial de GitHub. El `git clone` sigue existiendo como camino
+> manual, sólo si se corre el script a mano desde el servidor con una llave
+> propia.
 
 ### Orden de ejecución
 
@@ -268,7 +278,9 @@ git -C /var/www/capsula-erp remote set-url origin git@github.com:Juninho2604/cap
 git -C /var/www/capsula-erp fetch origin && echo "ACCESO OK"
 ```
 
-**2. Deploy key en el VPS** (crearla; es otra máquina, necesita la suya):
+**2. Deploy key en el VPS** — ~~crearla~~ **ya no hace falta**: el CI le manda
+el código empaquetado (ver la nota de arriba). Sólo si alguna vez se quiere
+correr `deploy-vps.sh` a mano desde el propio VPS:
 ```bash
 ssh-keygen -t ed25519 -N '' -C 'vps-deploy' -f /root/.ssh/github-deploy
 printf 'Host github.com\n  User git\n  IdentityFile /root/.ssh/github-deploy\n' >> /root/.ssh/config
@@ -282,7 +294,9 @@ ssh -T git@github.com                # debe saludar por nombre de usuario
 **3. Recién entonces**, cambiar la visibilidad a privado.
 
 **4. Verificar** que el pipeline sigue vivo: hacer un merge cualquiera a `main`
-y comprobar que el job `deploy` de Actions termina en verde.
+y comprobar que el job **`Deploy to Contabo VPS`** termina en verde — no
+alcanza con ver verde el job `Validate`, que corre antes y es el que engañó
+durante la semana del 3 al 8 de agosto.
 
 > Si algo falla tras el cambio, el remedio inmediato es volver el repo a
 > público, corregir las llaves con calma, y repetir.

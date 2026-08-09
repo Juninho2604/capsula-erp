@@ -101,12 +101,25 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # El script de deploy se SUBE desde el runner (que ya tiene el repo
-      # clonado con credenciales de Actions) en vez de que el VPS lo baje de
-      # raw.githubusercontent.com: esa URL exige autenticación en un repo
-      # privado y el deploy moriría con 404.
-      - name: Checkout (para obtener scripts/deploy-vps.sh)
+      # Tanto el script de deploy como el código se SUBEN desde el runner, que
+      # ya tiene el repo clonado con credenciales de Actions. Con el repo
+      # privado el VPS no tiene forma anónima de traer nada: raw.github
+      # devuelve 404 y `git clone` pide una deploy key propia. Mandándole el
+      # árbol, el VPS no necesita ninguna credencial de GitHub.
+      - name: Checkout (código a deployar)
         uses: actions/checkout@v4
+
+      # .git queda FUERA del paquete a propósito: actions/checkout deja ahí el
+      # token de la corrida (http.extraheader) y ese token no debe viajar al
+      # VPS. El SHA se pasa aparte, en .deploy-commit.
+      - name: Empaquetar código
+        run: |
+          echo "${{ github.sha }}" > "$GITHUB_WORKSPACE/.deploy-commit"
+          tar -czf "$RUNNER_TEMP/capsula-src.tgz" \
+            --exclude=.git --exclude=node_modules --exclude=.next \
+            -C "$GITHUB_WORKSPACE" .
+          cp "$RUNNER_TEMP/capsula-src.tgz" "$GITHUB_WORKSPACE/capsula-src.tgz"
+          ls -lh "$GITHUB_WORKSPACE/capsula-src.tgz"
 
       - name: Subir deploy-vps.sh al VPS
         uses: appleboy/scp-action@v0.1.7
@@ -117,6 +130,15 @@ jobs:
           source: scripts/deploy-vps.sh
           target: /tmp/capsula-deploy-${{ github.sha }}
           strip_components: 1
+
+      - name: Subir código al VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          source: capsula-src.tgz
+          target: /tmp/capsula-deploy-${{ github.sha }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -132,13 +154,17 @@ jobs:
             export BUILD_SHA="$GITHUB_SHA"
             export BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-            # Script subido por el step anterior, pinneado al commit que se
-            # deploya. Corre desde /tmp (no desde /var/www/capsula-erp) porque
-            # el propio script hace swap de ese directorio a mitad de ejecución.
-            DEPLOY_SCRIPT="/tmp/capsula-deploy-$GITHUB_SHA/deploy-vps.sh"
+            # Script y código subidos por los steps anteriores, pinneados al
+            # commit que se deploya. Corre desde /tmp (no desde
+            # /var/www/capsula-erp) porque el propio script hace swap de ese
+            # directorio a mitad de ejecución.
+            DEPLOY_DIR="/tmp/capsula-deploy-$GITHUB_SHA"
+            DEPLOY_SCRIPT="$DEPLOY_DIR/deploy-vps.sh"
+            SRC_TARBALL="$DEPLOY_DIR/capsula-src.tgz"
             test -s "$DEPLOY_SCRIPT" || { echo "ERROR: no llegó $DEPLOY_SCRIPT"; exit 1; }
+            test -s "$SRC_TARBALL"   || { echo "ERROR: no llegó $SRC_TARBALL"; exit 1; }
 
             echo ">>> Ejecutando deploy-vps.sh (SHA: $BUILD_SHA)"
-            bash "$DEPLOY_SCRIPT" main
-            rm -rf "/tmp/capsula-deploy-$GITHUB_SHA"
+            SRC_TARBALL="$SRC_TARBALL" bash "$DEPLOY_SCRIPT" main
+            rm -rf "$DEPLOY_DIR"
             echo ">>> Deploy completado OK"

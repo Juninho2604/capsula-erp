@@ -73,7 +73,10 @@ jobs:
 
           # ── 1. Commit SHA deployado ───────────────────────────────────────
           echo "[1/5] Commit SHA"
-          DEPLOYED_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+          # El deploy escribe .deploy-commit; el árbol ya no trae .git desde
+          # que el código viaja empaquetado desde el runner. git rev-parse
+          # queda como fallback para builds viejos clonados.
+          DEPLOYED_SHA=$(cat .deploy-commit 2>/dev/null || git rev-parse HEAD 2>/dev/null || echo "unknown")
           echo "  Esperado:  $EXPECTED_SHA"
           echo "  Deployado: $DEPLOYED_SHA"
           if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then

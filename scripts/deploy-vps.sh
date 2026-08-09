@@ -34,9 +34,15 @@
 set -euo pipefail
 
 BRANCH="${1:-main}"
-# SSH por defecto: con el repo privado, HTTPS anónimo falla. El VPS necesita
-# una deploy key de solo lectura registrada en GitHub (Settings → Deploy keys)
-# y su ~/.ssh/config apuntando a ella. Override con REPO_URL=... si hiciera falta.
+# Dos formas de obtener el código:
+#
+#   a) SRC_TARBALL=/ruta/al.tgz  → el CI ya empaquetó el árbol en el runner y
+#      se lo mandó al VPS. Es el camino normal desde agosto 2026: con el repo
+#      privado el VPS no tiene acceso anónimo a GitHub, y así tampoco necesita
+#      una deploy key propia que se pueda vencer o faltar.
+#   b) sin SRC_TARBALL           → git clone. Requiere deploy key en el VPS.
+#      Queda como salida manual para correr el deploy a mano desde el servidor.
+SRC_TARBALL="${SRC_TARBALL:-}"
 REPO_URL="${REPO_URL:-git@github.com:Juninho2604/capsula-erp.git}"
 APP_DIR="/var/www/capsula-erp"
 TS=$(date +%Y%m%d-%H%M%S)
@@ -64,12 +70,26 @@ mkdir -p /root/backups
 sudo -u postgres pg_dump -p 5433 -Fc capsula_erp_prod > "$DB_BACKUP"
 ls -lh "$DB_BACKUP"
 
-# 3. Clone
+# 3. Traer el código
 echo ""
-echo "[2/9] Clone $BRANCH..."
-git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$NEW_DIR"
-cd "$NEW_DIR"
-COMMIT=$(git rev-parse HEAD)
+echo "[2/9] Obtener código ($BRANCH)..."
+if [ -n "$SRC_TARBALL" ]; then
+    [ -s "$SRC_TARBALL" ] || { echo "ERROR: SRC_TARBALL=$SRC_TARBALL no existe o está vacío"; exit 1; }
+    echo "    Fuente: paquete $SRC_TARBALL"
+    mkdir -p "$NEW_DIR"
+    tar -xzf "$SRC_TARBALL" -C "$NEW_DIR"
+    cd "$NEW_DIR"
+    [ -f package.json ] || { echo "ERROR: el paquete no trae package.json"; exit 1; }
+    # El paquete viene sin .git (el token de Actions vive ahí). El SHA lo trae
+    # .deploy-commit, que es lo que lee verify-deploy.yml después del swap.
+    COMMIT="${BUILD_SHA:-$(cat .deploy-commit 2>/dev/null || echo unknown)}"
+else
+    echo "    Fuente: git clone $REPO_URL"
+    git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$NEW_DIR"
+    cd "$NEW_DIR"
+    COMMIT=$(git rev-parse HEAD)
+fi
+echo "$COMMIT" > "$NEW_DIR/.deploy-commit"
 echo "    Commit: $COMMIT"
 
 # 4. Copiar config de la instalación viva
