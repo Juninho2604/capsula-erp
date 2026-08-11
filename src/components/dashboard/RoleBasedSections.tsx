@@ -56,7 +56,9 @@ const PRODUCTION_STATUS: Record<string, { label: string; tone: 'ok' | 'warn' | '
 };
 
 const DISCOUNT_LABELS: Record<string, string> = {
-    DIVISAS_33:        'Divisas −33%',
+    // Sin número: el % es configurable (§87) y este mapa es un const de
+    // módulo. Escribir "−33%" acá mentía apenas alguien lo cambiaba.
+    DIVISAS_33:        'Pago en Divisas',
     CORTESIA_100:      'Cortesía 100%',
     CORTESIA_PERCENT:  'Cortesía parcial',
     NONE:              'Sin descuento',

@@ -18,6 +18,8 @@ import {
     voidSalesOrderAction
 } from '@/app/actions/sales-entry.actions';
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
+import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
+import { formatDivisasPercent } from '@/lib/sales/divisas-config';
 
 interface CartItem {
     menuItemId: string;
@@ -45,6 +47,9 @@ export default function SalesEntryView() {
     const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
     const [discountType, setDiscountType] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
+    // % de descuento por divisas configurado (§87), igual que el POS.
+    const divisasPercent = useDivisasPercent();
+    const divisasPctLabel = formatDivisasPercent(divisasPercent);
     const [notes, setNotes] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -184,10 +189,12 @@ export default function SalesEntryView() {
         }
     }
 
-    // Tipos de descuento
+    // Tipos de descuento. El de divisas NO es fijo: sale de Configuración →
+    // POS (§87). Estaba clavado en 33 y calculaba distinto al POS apenas
+    // alguien cambiaba el porcentaje — misma venta, dos montos.
     const discountTypes = [
         { id: '', label: 'Sin descuento', percent: 0 },
-        { id: 'DIVISAS_33', label: 'Divisas (33%)', percent: 33 },
+        { id: 'DIVISAS_33', label: `Divisas (${divisasPctLabel}%)`, percent: divisasPercent },
         { id: 'EMPLEADO_50', label: 'Empleado (50%)', percent: 50 },
         { id: 'CORTESIA_100', label: 'Cortesía (100%)', percent: 100 }
     ];

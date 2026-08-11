@@ -33,6 +33,13 @@ export function divisasDiscountRate(percent: number | null | undefined): number 
     return normalizeDivisasPercent(percent) / 100;
 }
 
+/** Porcentaje → texto para mostrar en pantalla y recibos ("33.33", "40").
+ *  Sirve para que ninguna pantalla vuelva a escribir "33%" a mano: ese cartel
+ *  quedaba mintiendo apenas alguien cambiaba el % en Configuración → POS. */
+export function formatDivisasPercent(percent: number | null | undefined): string {
+    return (Math.round(normalizeDivisasPercent(percent) * 100) / 100).toString();
+}
+
 /** Parsea el string guardado en SystemConfig a porcentaje normalizado. */
 export function parseDivisasPercent(raw: string | null | undefined): number {
     if (raw == null) return DEFAULT_DIVISAS_DISCOUNT_PERCENT;

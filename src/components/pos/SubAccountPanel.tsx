@@ -23,6 +23,7 @@ import {
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
+import { formatDivisasPercent } from '@/lib/sales/divisas-config';
 import { isTipDisproportionate } from '@/lib/sales/tip-calculation';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
@@ -283,7 +284,11 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     const [amountInput, setAmountInput] = useState('');
 
     const isPaid = sub.status === 'PAID';
-    // Si el método es divisas (cash USD/EUR/Zelle) → aplica 33% descuento automático.
+    // Porcentaje real que se está aplicando, para no escribir "33%" a mano en
+    // ningún cartel: el % es configurable (§87) y el rótulo fijo mentía apenas
+    // alguien lo cambiaba en Configuración → POS.
+    const divisasPctLabel = formatDivisasPercent(divisasRate * 100);
+    // Si el método es divisas (cash USD/EUR/Zelle) → aplica el descuento automático.
     // Sólo cuenta si la cajera HA ELEGIDO un método (payMethodTouched).
     const applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod);
     const discountAmount = applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
@@ -496,10 +501,10 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         </button>
                     ) : (
                         <div className="space-y-2 border-t border-capsula-line pt-2">
-                            {/* Aviso 33% descuento por divisas (cash USD/EUR/Zelle) */}
+                            {/* Aviso de descuento por divisas (cash USD/EUR/Zelle) */}
                             {applyDivisasDiscount && (
                                 <div className="rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-2 py-1.5 text-[11px] font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
-                                    <span className="font-semibold">−33% Pago en Divisas:</span>{' '}
+                                    <span className="font-semibold">−{divisasPctLabel}% Pago en Divisas:</span>{' '}
                                     <span className="tabular-nums">−${discountAmount.toFixed(2)}</span>{' '}
                                     <span className="opacity-80">(automático por método de pago)</span>
                                 </div>

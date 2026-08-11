@@ -39,7 +39,7 @@ import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
-import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
+import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
 import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
@@ -3920,7 +3920,7 @@ export async function paySubAccountAction(data: {
         const totalApplied = round2(subtotalAfterDiscount + serviceChargeApplied);
         const baseLabel = data.splitLabel || sub.label;
         const labelParts: string[] = [baseLabel];
-        if (discountType === 'DIVISAS_33') labelParts.push('-33% divisas');
+        if (discountType === 'DIVISAS_33') labelParts.push(`-${formatDivisasPercent(subDivisasRate * 100)}% divisas`);
         if (applyServiceFee) labelParts.push(`+${Math.round(subServiceRate * 100)}% serv`);
         const splitLabel = labelParts.join(' | ');
 

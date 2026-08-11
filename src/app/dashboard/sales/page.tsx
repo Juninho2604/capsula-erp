@@ -14,11 +14,15 @@ import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { exportZReportToExcel } from '@/lib/export-z-report';
 import { exportSalesAuditToExcel } from '@/lib/export-sales-audit';
 import { extractTabCode } from '@/lib/sales/collective-tip-ref';
+import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
+import { formatDivisasPercent } from '@/lib/sales/divisas-config';
 
 export default function SalesHistoryPage() {
     const branding = useTenantBranding();
     const [sales, setSales] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    // % de divisas configurado (§87) — el Z decía "33%" fijo.
+    const divisasPctLabel = formatDivisasPercent(useDivisasPercent());
     const [zReport, setZReport] = useState<ZReportData | null>(null);
     const [showZReport, setShowZReport] = useState(false);
     // Blindaje cajera: si el feature flag `hideCashierPaymentMethod` está
@@ -980,7 +984,7 @@ export default function SalesHistoryPage() {
                             {zReport.totalDiscounts > 0 && (<>
                                 <div className="flex justify-between text-[#B04A2E] dark:text-[#EFD2C8]"><span>(-) DESCUENTOS</span><span>-{formatMoney(zReport.totalDiscounts)}</span></div>
                                 {zReport.discountBreakdown.divisas > 0 && (
-                                    <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Divisas (33%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
+                                    <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Divisas ({divisasPctLabel}%)</span><span>-{formatMoney(zReport.discountBreakdown.divisas)}</span></div>
                                 )}
                                 {zReport.discountBreakdown.cortesias > 0 && (
                                     <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Cortesías</span><span>-{formatMoney(zReport.discountBreakdown.cortesias)}</span></div>

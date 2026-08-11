@@ -61,7 +61,7 @@ const HELP_GUIDES: Record<string, ModuleGuide> = {
       'El botón WhatsApp abre el parser para importar pedidos directamente del chat',
     ],
     tips: [
-      'El precio de delivery cambia si aplicas descuento Divisas (-33%)',
+      'El precio de delivery cambia si aplicas descuento Divisas (el % se configura en Configuración → POS)',
       'La dirección aparece en la comanda de cocina',
       'El parser de WhatsApp lee el formato de pedidos y carga el carrito automáticamente',
     ],
