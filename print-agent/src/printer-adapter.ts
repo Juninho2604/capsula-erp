@@ -325,7 +325,10 @@ function renderKitchen(printer: ThermalPrinter, p: KitchenPayload, station: stri
     if (p.dailyLabel) {
         printer.bold(true);
         printer.setTextSize(1, 1);
-        printer.println(humanDailyLabel(p.dailyLabel, p.orderTypeLabel));
+        // Sin pasar orderTypeLabel como hint: en mesa valía 'MESA' y volvía a
+        // imprimir "MESA N° 13". El ERP ya no manda dailyLabel en mesa (§151),
+        // esto es el cinturón por si llega uno viejo en cola.
+        printer.println(humanDailyLabel(p.dailyLabel, p.orderTypeLabel === 'MESA' ? undefined : p.orderTypeLabel));
         printer.setTextNormal();
         printer.bold(false);
     } else if (p.orderTypeLabel) {
@@ -449,7 +452,8 @@ function formatScheduled(iso: string): string {
  */
 const DAILY_PREFIX_WORD: Record<string, string> = {
     DL: 'DELIVERY',
-    MS: 'MESA',
+    // 'PEDIDO', no 'MESA' (§151): es el enésimo pedido del día, no la mesa.
+    MS: 'PEDIDO',
     WK: 'WINK',
     PY: 'PEDIDOSYA',
     PK: 'PICKUP',

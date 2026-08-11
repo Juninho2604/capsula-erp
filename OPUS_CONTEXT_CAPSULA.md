@@ -13879,3 +13879,50 @@ estricto de `KITCHEN_CHEF`**, y hay un test en
 todavía no fue migrado puede contar igual en vez de quedarse trabado.
 
 Gates: tsc 0 · vitest 716 (11 nuevos).
+
+---
+
+## §151 La comanda imprimía "MESA N° 13" cuando la mesa era la SP-10 (2026-08-11)
+
+Foto del auditor sobre TAB-4270. La comanda de cocina salía así:
+
+```
+COMANDA COCINA
+#TAB-4270
+Comanda #REST-11165
+MESA N° 13          ← el 13 NO es la mesa
+Hora:   10/08/2026 14:38
+Mesa:   Mesa SP-10  ← la mesa real, en chico
+```
+
+Ese 13 es el **contador diario del canal salón** (§84, `MS-13`): el pedido
+número 13 del día. `humanDailyLabel` lo traducía con la palabra `MESA`, así
+que la comanda mostraba dos "mesas" distintas, y la que iba en grande era la
+que no servía. Omar: *"es la N° 13 del día pero eso no es información
+relevante para la cocina"*.
+
+### Dos correcciones
+
+**1. La palabra estaba mal.** `DAILY_PREFIX_WORD.MS` pasa de `'MESA'` a
+`'PEDIDO'`. El contador es de pedidos, no de mesas — donde siga apareciendo
+(recibo del cliente) ahora dice "PEDIDO N° 13", que es lo que es.
+
+**2. En la comanda no va.** Nuevo `kitchenDailyLabel(dailyLabel, orderTypeLabel)`:
+devuelve `undefined` cuando el tipo es `MESA`, y conserva el label en
+delivery, pickup y marketplaces, donde ES el identificador con el que se
+cantan los pedidos. Se aplica en `enqueueKitchenCommand` (cubre las dos
+rutas, override y split, y por lo tanto a todos los llamadores: mesero,
+restaurante y el reimpresor de Comandas del Día).
+
+### Por qué no hubo que actualizar el agente de impresión
+
+La comanda térmica la arma `print-agent`, que corre en la PC del restaurante
+y se actualiza a mano. Pero esa línea la imprime bajo `if (p.dailyLabel)`:
+**omitir el campo en el payload la hace desaparecer sin tocar el agente.**
+Cae al tag `[ MESA ]`, que no es un número y no compite con la mesa real.
+
+Igual se corrigió la copia del agente (`MS: 'PEDIDO'` y no pasar `'MESA'`
+como hint) por si queda un job viejo en cola — pero eso viaja recién cuando
+se actualice el agente, y no hace falta para el arreglo.
+
+Gates: tsc 0 · vitest 720 (4 nuevos).

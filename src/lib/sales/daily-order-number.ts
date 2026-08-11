@@ -48,7 +48,10 @@ export function dailyLabel(scope: DailyScope, n: number): string {
  * pasan por este formateo.
  */
 const DAILY_PREFIX_WORD: Record<string, string> = {
-    MS: 'MESA',
+    // 'PEDIDO', no 'MESA' (§151). Este contador es el enésimo pedido del día,
+    // no el número de mesa. Impreso como "MESA N° 13" al lado de "Mesa: SP-10"
+    // la cocina leía dos mesas distintas en el mismo papel.
+    MS: 'PEDIDO',
     DL: 'DELIVERY',
     WK: 'WINK',
     PY: 'PEDIDOSYA',
@@ -68,6 +71,26 @@ export function humanDailyLabel(label: string, channelHint?: string): string {
     const num = parseInt(dash > 0 ? label.slice(dash + 1) : '', 10);
     const word = channelHint || DAILY_PREFIX_WORD[prefix] || prefix;
     return Number.isFinite(num) ? `${word} N° ${num}` : `${word} ${label}`;
+}
+
+/**
+ * Label del día que debe llevar la COMANDA de cocina/barra.
+ *
+ * En mesa devuelve undefined: para la cocina lo que importa es a qué mesa va
+ * el plato (SP-10), y el ordinal del día no aporta nada — sólo compite
+ * visualmente con el número de mesa. En delivery, pickup y marketplaces sí se
+ * conserva, porque ahí ES el identificador con el que se cantan los pedidos.
+ *
+ * Decisión de Omar (2026-08-09) sobre la comanda de TAB-4270: "es la N° 13
+ * del día pero eso no es información relevante para la cocina".
+ */
+export function kitchenDailyLabel(
+    dailyLabel: string | null | undefined,
+    orderTypeLabel?: string | null,
+): string | undefined {
+    if (!dailyLabel) return undefined;
+    if (orderTypeLabel === 'MESA') return undefined;
+    return dailyLabel;
 }
 
 /**

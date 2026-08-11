@@ -4,7 +4,7 @@
  * Utilidad para imprimir recibos y comandas con formato térmico 80mm
  */
 
-import { humanDailyLabel } from '@/lib/sales/daily-order-number';
+import { humanDailyLabel, kitchenDailyLabel } from '@/lib/sales/daily-order-number';
 import { enqueueReceipt, type AgentReceiptPayload } from '@/lib/print-via-agent';
 import { getPOSConfig } from '@/lib/pos-settings';
 
@@ -564,7 +564,7 @@ export function printKitchenCommand(data: any, station: 'kitchen' | 'bar' = 'kit
     <div class="sep">--------------------------------</div>
     <div class="title">${stationLabel}</div>
     <div class="order-num">#${orderNum}</div>
-    ${data.dailyLabel ? `<div class="order-type" style="font-size:22px;font-weight:900;">${escHtml(humanDailyLabel(data.dailyLabel, data.orderType === 'DELIVERY' ? 'DELIVERY' : (data.tableName ? 'MESA' : undefined)))}</div>` : ''}
+    ${kitchenDailyLabel(data.dailyLabel, data.tableName ? 'MESA' : undefined) ? `<div class="order-type" style="font-size:22px;font-weight:900;">${escHtml(humanDailyLabel(data.dailyLabel, data.orderType === 'DELIVERY' ? 'DELIVERY' : undefined))}</div>` : ''}
     <div class="order-type">${
         data.orderType === 'DELIVERY'
             ? 'DELIVERY'

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { dailyLabel, humanDailyLabel, nextDailyNumber, nextDailyNumberReusingGaps, type DailyScope } from './daily-order-number';
+import { dailyLabel, humanDailyLabel, kitchenDailyLabel, nextDailyNumber, nextDailyNumberReusingGaps, type DailyScope } from './daily-order-number';
 
 describe('dailyLabel', () => {
     it('formatea con prefijo de 2 letras y padding 2', () => {
@@ -47,7 +47,9 @@ describe('nextDailyNumber', () => {
 describe('humanDailyLabel — línea legible por canal para la comanda (§84.1)', () => {
     it('traduce el prefijo a palabra + número sin ceros a la izquierda', () => {
         expect(humanDailyLabel('DL-01')).toBe('DELIVERY N° 1');
-        expect(humanDailyLabel('MS-07')).toBe('MESA N° 7');
+        // §151 — 'PEDIDO', no 'MESA': es el enésimo pedido del día. Impreso
+        // como "MESA N° 7" junto a "Mesa: SP-10" la cocina leía dos mesas.
+        expect(humanDailyLabel('MS-07')).toBe('PEDIDO N° 7');
         expect(humanDailyLabel('WK-12')).toBe('WINK N° 12');
         expect(humanDailyLabel('PY-03')).toBe('PEDIDOSYA N° 3');
         expect(humanDailyLabel('PK-14')).toBe('PICKUP N° 14');
@@ -55,7 +57,7 @@ describe('humanDailyLabel — línea legible por canal para la comanda (§84.1)'
 
     it('channelHint sobreescribe el prefijo cuando el canal ya se conoce', () => {
         expect(humanDailyLabel('DL-05', 'DELIVERY')).toBe('DELIVERY N° 5');
-        expect(humanDailyLabel('MS-02', 'MESA')).toBe('MESA N° 2');
+        expect(humanDailyLabel('MS-02', 'PEDIDO')).toBe('PEDIDO N° 2');
     });
 
     it('defensivo: prefijo desconocido o sin numero no rompe', () => {
@@ -113,5 +115,29 @@ describe('nextDailyNumberReusingGaps', () => {
         expect(where.status).toEqual({ not: 'CANCELLED' });
         // 2026-07-10 01:00 UTC = 2026-07-09 21:00 Caracas → rango del 09
         expect(where.createdAt.gte.toISOString()).toBe('2026-07-09T04:00:00.000Z');
+    });
+});
+
+describe('kitchenDailyLabel — qué label lleva la COMANDA (§151)', () => {
+    it('en mesa no lleva ninguno: a la cocina le importa la mesa real', () => {
+        // Caso TAB-4270: imprimía "MESA N° 13" cuando la mesa era la SP-10.
+        expect(kitchenDailyLabel('MS-13', 'MESA')).toBeUndefined();
+    });
+
+    it('delivery, pickup y marketplaces lo conservan — ahí ES el identificador', () => {
+        expect(kitchenDailyLabel('DL-04', 'DELIVERY')).toBe('DL-04');
+        expect(kitchenDailyLabel('PK-09', 'PICKUP')).toBe('PK-09');
+        expect(kitchenDailyLabel('PY-02', 'PEDIDOSYA')).toBe('PY-02');
+        expect(kitchenDailyLabel('WK-01', 'WINK')).toBe('WK-01');
+    });
+
+    it('sin label del día no inventa nada', () => {
+        expect(kitchenDailyLabel(undefined, 'DELIVERY')).toBeUndefined();
+        expect(kitchenDailyLabel(null, 'MESA')).toBeUndefined();
+        expect(kitchenDailyLabel('', 'DELIVERY')).toBeUndefined();
+    });
+
+    it('sin tipo operativo se conserva — sólo mesa lo suprime', () => {
+        expect(kitchenDailyLabel('MS-13')).toBe('MS-13');
     });
 });

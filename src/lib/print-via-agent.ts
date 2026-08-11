@@ -18,6 +18,7 @@
  */
 
 import toast from 'react-hot-toast';
+import { kitchenDailyLabel } from '@/lib/sales/daily-order-number';
 import {
     enqueuePrintJobAction,
     type EnqueuePrintJobInput,
@@ -297,13 +298,24 @@ export async function enqueueVoidKitchenCommand(data: {
  * accesoria, no debe bloquear el envío a cocina vía API).
  */
 export async function enqueueKitchenCommand(
-    payload: AgentKitchenPayload,
+    input: AgentKitchenPayload,
     stationOverride?: string,
     /** §104 — Pedido futuro: la comanda se imprime sola a esta hora (ISO). */
     opts?: { scheduledFor?: string | null },
 ): Promise<void> {
-    const jobType = payload.type === 'VOID_KITCHEN' ? 'VOID_KITCHEN' : 'KITCHEN';
+    const jobType = input.type === 'VOID_KITCHEN' ? 'VOID_KITCHEN' : 'KITCHEN';
     const scheduledFor = opts?.scheduledFor ?? undefined;
+
+    // §151 — En mesa se saca el ordinal del día del payload. El agente sólo
+    // imprime esa línea `if (p.dailyLabel)`, así que omitirla acá desaparece
+    // el "MESA N° 13" de la comanda SIN tener que actualizar el agente en la
+    // PC del restaurante. Cae al tag `[ MESA ]`, que no es un número y no se
+    // confunde con la mesa real. Delivery/pickup lo conservan: ahí ES el
+    // identificador con el que se cantan los pedidos.
+    const payload: AgentKitchenPayload = {
+        ...input,
+        dailyLabel: kitchenDailyLabel(input.dailyLabel, input.orderTypeLabel),
+    };
 
     // Modo override: un solo job con la estación que diga el caller.
     if (stationOverride) {
