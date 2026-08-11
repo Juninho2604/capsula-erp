@@ -13727,3 +13727,88 @@ ls -d /var/www/capsula-erp-OLD-*/storage 2>/dev/null
 # y del más reciente que tenga contenido:
 cp -an /var/www/capsula-erp-OLD-<ts>/storage/. /var/www/capsula-erp/storage/
 ```
+
+---
+
+## §149 El % de divisas ya era configurable, pero varias pantallas decían 33% (2026-08-09)
+
+Omar: *"en las cuentas generales uno puede editar el porcentaje de descuento…
+necesito que este porcentaje para pagos en divisas no sea el 33 fijo, sino
+también editable"* — refiriéndose a las subcuentas.
+
+Al revisar, el diagnóstico era otro. El % **ya** es configurable desde §87:
+vive en `SystemConfig.divisas_discount_percent`, se cambia en Configuración →
+POS y lo leen los POS vía `useDivisasPercent()`. Lo que estaba clavado eran
+los **rótulos**, y en un caso el **cálculo**.
+
+### Lo que estaba mal
+
+| Dónde | Qué pasaba |
+|---|---|
+| **Ventas → Cargar** | `discountTypes` traía `percent: 33` y con eso calculaba el monto. Con un % configurado distinto, la misma venta salía por un monto en el POS y por otro en la carga manual. **Cobraba mal.** |
+| **Subcuentas (POS)** | El cálculo usaba el % configurado, pero el cartel decía `−33% Pago en Divisas` siempre. Monto correcto, rótulo mentiroso, sobre una pantalla de cobro. |
+| **`paySubAccountAction`** | El `splitLabel` guardaba `-33% divisas` fijo en auditoría, mientras las `notes` del mismo split guardaban el % real. |
+| **Z de ventas** | `Divisas (33%)` fijo. |
+| **Dashboard / Ayuda** | `Divisas −33%` en constantes de módulo. |
+
+### Regla
+
+Ninguna pantalla escribe el número a mano. Se agregó
+`formatDivisasPercent(percent)` en `divisas-config.ts` y todo rótulo sale de
+ahí, del mismo valor que alimenta el cálculo. Hay un test que verifica que
+rótulo y tasa coincidan sobre 0 / 10 / 33.33 / 40 / 55.5 / 90.
+
+Donde el número no puede ser dinámico (constantes de módulo como
+`DISCOUNT_LABELS` en `RoleBasedSections`), se quita el número en vez de
+mentirlo: dice "Pago en Divisas" a secas.
+
+---
+
+## §149.2 Ajuste del % de divisas por cobro, con PIN (2026-08-09)
+
+Segunda parte del pedido: además de que respete el configurado, poder usar
+un % distinto **para un cobro puntual** de subcuenta.
+
+### Cómo funciona
+
+1. En el aviso de descuento de la subcuenta aparece **"Ajustar %"**.
+2. Modal: porcentaje + PIN de gerente. Muestra en vivo cuánto queda el
+   descuento y el neto antes de confirmar.
+3. El ajuste es **por subcuenta y de un solo uso**: se limpia al cobrar y al
+   cambiar de mesa. Si quedara pegado, la subcuenta siguiente se cobraría con
+   un % que nadie autorizó.
+
+### Dónde está el candado
+
+El PIN se valida en el cliente (`validateManagerPinAction`), pero eso **no es
+la autorización**. `paySubAccountAction` vuelve a buscar el `authorizedById`
+en la BD y exige que sea un usuario **activo** con rol en
+`DIVISAS_OVERRIDE_ROLES` (OWNER / ADMIN_MANAGER / OPS_MANAGER) del mismo
+tenant. Sin eso, el cobro se rechaza — **no** cae en silencio al %
+configurado, porque entonces un request armado a mano sería indistinguible
+de uno autorizado.
+
+Detalle que importa: el lookup usa `data.authorizedById || '__sin_autorizante__'`.
+Con `id: undefined`, Prisma devolvería *un usuario cualquiera* y el candado
+quedaría abierto.
+
+La decisión vive en `src/lib/sales/divisas-override.ts` (`resolveDivisasRate`),
+separada de la action a propósito: es la pieza que decide cuánto dinero se
+descuenta y tiene que poder probarse sin base de datos. 9 tests cubren
+autorizado, no autorizado, gerente sin nombre, tope 0–90, 0% válido, NaN, y
+que el ajuste **no se cuele en un pago en bolívares**.
+
+### Rastro auditable
+
+- `PaymentSplit.splitLabel`: `-40% divisas (ajustado)`.
+- `PaymentSplit.notes`: `Pago en Divisas (40%) — % ajustado por <gerente>, configurado 33.33%`.
+  Sin el configurado no habría forma de ver después si el ajuste fue hacia
+  arriba o hacia abajo.
+- El recibo impreso muestra el % cobrado, no el configurado — también en las
+  reimpresiones dentro de la misma sesión (`divisasUsedBySub`).
+
+Roles: se usa el mismo conjunto que resuelve `validateManagerPinAction`. Si
+acá fuera más estricto, el PIN daría "autorización exitosa" y el cobro
+fallaría después sin que la cajera entienda por qué.
+
+Gates: tsc 0 · vitest 705 (13 nuevos) · build de producción OK.

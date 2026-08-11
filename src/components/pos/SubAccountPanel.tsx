@@ -23,7 +23,7 @@ import {
     type POSPaymentMethod,
 } from '@/app/actions/pos.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
-import { formatDivisasPercent } from '@/lib/sales/divisas-config';
+import { formatDivisasPercent, divisasDiscountRate } from '@/lib/sales/divisas-config';
 import { isTipDisproportionate } from '@/lib/sales/tip-calculation';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
@@ -264,13 +264,17 @@ interface SubAccountCardProps {
     canCharge: boolean;
     /** Fracción de descuento por divisas (§87). Default 1/3. */
     divisasRate?: number;
+    /** Nombre del gerente que ajustó el % para ESTA subcuenta (§149.2). */
+    divisasOverrideBy?: string;
+    /** Abre el modal de PIN para ajustar el % de divisas de esta subcuenta. */
+    onAdjustDivisas?: () => void;
 }
 
 // Cash USD/EUR/Zelle aplican descuento de divisas automático.
 const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
     m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3 }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3, divisasOverrideBy, onAdjustDivisas }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -504,9 +508,28 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                             {/* Aviso de descuento por divisas (cash USD/EUR/Zelle) */}
                             {applyDivisasDiscount && (
                                 <div className="rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-2 py-1.5 text-[11px] font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
-                                    <span className="font-semibold">−{divisasPctLabel}% Pago en Divisas:</span>{' '}
-                                    <span className="tabular-nums">−${discountAmount.toFixed(2)}</span>{' '}
-                                    <span className="opacity-80">(automático por método de pago)</span>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>
+                                            <span className="font-semibold">−{divisasPctLabel}% Pago en Divisas:</span>{' '}
+                                            <span className="tabular-nums">−${discountAmount.toFixed(2)}</span>
+                                        </span>
+                                        {onAdjustDivisas && (
+                                            <button
+                                                type="button"
+                                                onClick={onAdjustDivisas}
+                                                disabled={isProcessing}
+                                                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 text-[10px] font-semibold hover:bg-current/10 disabled:opacity-40"
+                                            >
+                                                <Pencil className="h-3 w-3" />
+                                                Ajustar %
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="opacity-80">
+                                        {divisasOverrideBy
+                                            ? `Ajustado para este cobro — autorizó ${divisasOverrideBy}`
+                                            : 'Automático por método de pago'}
+                                    </div>
                                 </div>
                             )}
                             {/* Service fee toggle */}
@@ -594,6 +617,64 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     const [voidStep, setVoidStep] = useState<'reason' | 'pin'>('reason');
     const [voidLoading, setVoidLoading] = useState(false);
 
+    // ── §149.2 — ajuste del % de divisas para un cobro puntual ───────────────
+    // El override es POR SUBCUENTA y de un solo uso: se limpia al cobrar y al
+    // cambiar de mesa. Si quedara pegado, la siguiente subcuenta se cobraría
+    // con un % que nadie volvió a autorizar.
+    const [divisasTarget, setDivisasTarget] = useState<SubAccount | null>(null);
+    const [divisasPctInput, setDivisasPctInput] = useState('');
+    const [divisasPin, setDivisasPin] = useState('');
+    const [divisasError, setDivisasError] = useState('');
+    const [divisasLoading, setDivisasLoading] = useState(false);
+    const [divisasOverride, setDivisasOverride] = useState<
+        { subId: string; percent: number; managerId: string; managerName: string } | null
+    >(null);
+    // % con el que quedó cobrada cada subcuenta ajustada, para que una
+    // reimpresión del recibo no muestre el % configurado en vez del cobrado.
+    const [divisasUsedBySub, setDivisasUsedBySub] = useState<Record<string, number>>({});
+
+    function openDivisasModal(sub: SubAccount) {
+        setDivisasTarget(sub);
+        setDivisasPctInput(
+            divisasOverride?.subId === sub.id
+                ? String(divisasOverride.percent)
+                : formatDivisasPercent(divisasPercent),
+        );
+        setDivisasPin('');
+        setDivisasError('');
+    }
+
+    function closeDivisasModal() {
+        setDivisasTarget(null);
+        setDivisasPctInput('');
+        setDivisasPin('');
+        setDivisasError('');
+    }
+
+    async function confirmDivisasOverride() {
+        if (!divisasTarget || divisasLoading) return;
+        const pct = parseFloat(divisasPctInput.replace(',', '.'));
+        // Mismo tope que normalizeDivisasPercent en el server: 0–90. Se valida
+        // acá para dar el error en el momento y no después del PIN.
+        if (!Number.isFinite(pct) || pct < 0 || pct > 90) {
+            setDivisasError('El porcentaje debe estar entre 0 y 90');
+            return;
+        }
+        setDivisasLoading(true);
+        const pinRes = await validateManagerPinAction(divisasPin);
+        if (!pinRes.success) {
+            setDivisasError(pinRes.message || 'PIN incorrecto');
+            setDivisasLoading(false);
+            return;
+        }
+        const managerName = (pinRes.data as { managerName?: string })?.managerName ?? 'Gerente';
+        const managerId = (pinRes.data as { managerId?: string })?.managerId ?? '';
+        setDivisasOverride({ subId: divisasTarget.id, percent: pct, managerId, managerName });
+        toast.success(`Descuento de divisas ajustado a ${formatDivisasPercent(pct)}% para esta subcuenta`);
+        closeDivisasModal();
+        setDivisasLoading(false);
+    }
+
     function openVoidModal(sub: SubAccount) {
         setVoidTarget(sub);
         setVoidReason('');
@@ -663,6 +744,15 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
     useEffect(() => { setIsLoading(true); loadTab().finally(() => setIsLoading(false)); }, [loadTab]);
 
+    // Al cambiar de mesa se descarta cualquier ajuste de % de divisas: es una
+    // autorización puntual para una subcuenta concreta, no una preferencia que
+    // deba seguir a la cajera a la mesa siguiente.
+    useEffect(() => {
+        setDivisasOverride(null);
+        setDivisasUsedBySub({});
+        setDivisasTarget(null);
+    }, [openTabId]);
+
     // ── Pool items: items with remaining qty not fully assigned ───────────────
 
     const allItems: SubSalesOrderItem[] = tab?.orders.flatMap((o) => o.items) ?? [];
@@ -721,15 +811,31 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
 
     async function handlePay(subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') {
         setIsProcessing(true);
+        // §149.2 — el override sólo viaja si es de ESTA subcuenta y el cobro
+        // realmente lleva descuento de divisas. El server igual revalida el
+        // gerente antes de honrarlo.
+        const override = divisasOverride?.subId === subId && discountType === 'DIVISAS_33'
+            ? divisasOverride
+            : null;
         const res = await paySubAccountAction({
             subAccountId: subId,
             paymentMethod: method,
             amount,
             serviceFeeIncluded: serviceIncluded,
             discountType,
+            divisasPercentOverride: override ? override.percent : undefined,
+            authorizedById: override ? override.managerId : undefined,
         });
         if (res.success) {
             toast.success(res.message);
+            // El ajuste de % era para este cobro y ya se usó. Si quedara, la
+            // próxima subcuenta se cobraría con un % que nadie autorizó. Se
+            // recuerda con qué % quedó cobrada para que el recibo (y sus
+            // reimpresiones) muestren lo cobrado y no lo configurado.
+            if (override) {
+                setDivisasOverride(null);
+                setDivisasUsedBySub(prev => ({ ...prev, [subId]: override.percent }));
+            }
             // Use the updated tab returned by the action — avoids an extra round-trip
             // and prevents triggering the loadTab → onTabUpdated cycle an extra time.
             const updatedTab = (res.data as TabWithSubs | undefined);
@@ -742,7 +848,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 // recibo refleje exactamente lo cobrado, no inferido.
                 const paidSub = updatedTab.subAccounts.find(s => s.id === subId);
                 const paidWithDivisas = discountType === 'DIVISAS_33';
-                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded, paidWithDivisas);
+                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded, paidWithDivisas, override?.percent);
             } else {
                 await loadTab(); // fallback if action didn't return data
             }
@@ -765,8 +871,11 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
      *                       si el método fue divisas (CASH_USD/EUR/Zelle).
      *                       Si la subcuenta ya está PAID y no se pasa,
      *                       se infiere desde sub.paymentMethod.
+     * @param overridePercent % de divisas con el que se cobró, si un gerente
+     *                       lo ajustó (§149.2). Sin esto el recibo imprimía el
+     *                       % configurado y no el que pagó el cliente.
      */
-    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true, paidWithDivisas?: boolean) {
+    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true, paidWithDivisas?: boolean, overridePercent?: number) {
         const items = sub.items.map(it => ({
             name: it.salesOrderItem.itemName,
             quantity: it.quantity,
@@ -789,7 +898,13 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             sub.paymentMethod === 'ZELLE'
         );
         const applyDivisasDiscount = paidWithDivisas ?? inferredDivisas;
-        const discountAmount = applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
+        // % efectivo: el ajustado para este cobro si lo hubo, si no el que
+        // quedó guardado al cobrar esta subcuenta (reimpresión), si no el
+        // configurado.
+        const effectivePercent = overridePercent ?? divisasUsedBySub[sub.id] ?? divisasPercent;
+        const effectiveRate = divisasDiscountRate(effectivePercent);
+        const effectivePctLabel = formatDivisasPercent(effectivePercent);
+        const discountAmount = applyDivisasDiscount ? sub.subtotal * effectiveRate : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
         const serviceFee = includeService ? subtotalAfterDiscount * 0.1 : 0;
         const subAccountLabel = sub.label || `Subcuenta ${sub.sortOrder + 1}`;
@@ -803,7 +918,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             items,
             subtotal: sub.subtotal,
             discount: discountAmount > 0 ? discountAmount : undefined,
-            discountReason: applyDivisasDiscount ? `Pago en Divisas (${divisasPctLabel}%)` : undefined,
+            discountReason: applyDivisasDiscount ? `Pago en Divisas (${effectivePctLabel}%)` : undefined,
             hideDiscount: applyDivisasDiscount,
             total: subtotalAfterDiscount,
             serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
@@ -908,7 +1023,15 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                         onPrint={handlePrintSubAccount}
                         onVoid={openVoidModal}
                         canCharge={canCharge}
-                        divisasRate={divisasRate}
+                        divisasRate={
+                            divisasOverride?.subId === sub.id
+                                ? divisasDiscountRate(divisasOverride.percent)
+                                : divisasRate
+                        }
+                        divisasOverrideBy={
+                            divisasOverride?.subId === sub.id ? divisasOverride.managerName : undefined
+                        }
+                        onAdjustDivisas={canCharge ? () => openDivisasModal(sub) : undefined}
                     />
                 ))}
 
@@ -954,6 +1077,114 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             </div>
 
             {/* ── MODAL: Anular subcuenta ────────────────────────────────────── */}
+            {/* ── §149.2 · Ajustar % de divisas para este cobro ──────────── */}
+            {divisasTarget && (
+                <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">
+                                    Ajustar % de divisas
+                                </h3>
+                                <p className="mt-0.5 text-xs text-capsula-ink-muted">
+                                    {divisasTarget.label} · ${divisasTarget.subtotal.toFixed(2)} ·
+                                    {' '}configurado {formatDivisasPercent(divisasPercent)}%
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeDivisasModal}
+                                disabled={divisasLoading}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center disabled:opacity-40"
+                                aria-label="Cerrar"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            <p className="text-sm text-capsula-ink-soft">
+                                Aplica sólo a este cobro. El porcentaje general se cambia en
+                                Configuración → POS.
+                            </p>
+                            <label className="block">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    Porcentaje de descuento
+                                </span>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={divisasPctInput}
+                                        onChange={(e) => { setDivisasPctInput(e.target.value); setDivisasError(''); }}
+                                        className="pos-input w-full text-center text-2xl tabular-nums"
+                                        placeholder="33.33"
+                                    />
+                                    <span className="text-lg font-semibold text-capsula-ink-muted">%</span>
+                                </div>
+                            </label>
+                            {(() => {
+                                const pct = parseFloat(divisasPctInput.replace(',', '.'));
+                                if (!Number.isFinite(pct) || pct < 0 || pct > 90) return null;
+                                const desc = divisasTarget.subtotal * divisasDiscountRate(pct);
+                                return (
+                                    <div className="rounded-lg bg-capsula-ivory-alt border border-capsula-line px-3 py-2 text-xs text-capsula-ink-soft">
+                                        Descuento{' '}
+                                        <span className="font-semibold tabular-nums">−${desc.toFixed(2)}</span>{' '}
+                                        → queda{' '}
+                                        <span className="font-semibold tabular-nums">
+                                            ${(divisasTarget.subtotal - desc).toFixed(2)}
+                                        </span>{' '}
+                                        <span className="opacity-70">(sin servicio)</span>
+                                    </div>
+                                );
+                            })()}
+                            <label className="block">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    <Lock className="inline-block h-3 w-3 mr-1" />
+                                    PIN de gerente
+                                </span>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={divisasPin}
+                                    onChange={(e) => { setDivisasPin(e.target.value); setDivisasError(''); }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && divisasPin.length >= 4 && !divisasLoading) {
+                                            confirmDivisasOverride();
+                                        }
+                                    }}
+                                    className="pos-input mt-1.5 w-full text-center text-2xl tabular-nums tracking-widest"
+                                    placeholder="••••"
+                                />
+                            </label>
+                            {divisasError && (
+                                <p className="text-xs text-capsula-coral font-semibold">{divisasError}</p>
+                            )}
+                        </div>
+
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
+                            <button
+                                onClick={closeDivisasModal}
+                                disabled={divisasLoading}
+                                className="pos-btn-secondary flex-1 py-3 disabled:opacity-40"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDivisasOverride}
+                                disabled={divisasLoading || divisasPin.length < 4 || !divisasPctInput.trim()}
+                                className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                            >
+                                <Check className="h-4 w-4" />
+                                {divisasLoading ? 'Verificando…' : 'Aplicar a este cobro'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {voidTarget && (
                 <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
                     <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">

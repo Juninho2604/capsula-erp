@@ -40,6 +40,7 @@ import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
+import { resolveDivisasRate } from '@/lib/sales/divisas-override';
 import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
@@ -67,6 +68,14 @@ const BS_PAYMENT_METHODS = new Set([
     'CASH_BS', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG',
     'MOBILE_PAY', 'CARD', 'TRANSFER',
 ]);
+
+/**
+ * Roles que pueden ajustar el % de divisas de un cobro puntual (§149.2).
+ * Mismo conjunto que resuelve validateManagerPinAction: si acá fuera más
+ * estricto, el PIN daría "autorización exitosa" y el cobro fallaría después
+ * sin que la cajera entienda por qué.
+ */
+const DIVISAS_OVERRIDE_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 
 // ============================================================================
 // TIPOS
@@ -3856,6 +3865,16 @@ export async function paySubAccountAction(data: {
      *   desde el frontend cuando el método es divisas.
      */
     discountType?: 'NONE' | 'DIVISAS_33';
+    /**
+     * % de divisas SÓLO para este cobro, distinto al configurado (§149.2).
+     * Requiere PIN de gerencia: el cliente valida el PIN y manda acá el
+     * managerId resultante en `authorizedById`. El server NO confía en el
+     * cliente — vuelve a comprobar que ese id sea un gerente activo de este
+     * tenant antes de honrar el override, y deja quién autorizó en el split.
+     */
+    divisasPercentOverride?: number;
+    /** Gerente que autorizó el override (managerId de validateManagerPinAction). */
+    authorizedById?: string;
 }): Promise<ActionResult> {
     const { db, tenantId } = await getTenantCtx();
     try {
@@ -3898,7 +3917,40 @@ export async function paySubAccountAction(data: {
         const discountType = (data.discountType === 'DIVISAS_33' && isDivisasPayment)
             ? 'DIVISAS_33'
             : 'NONE';
-        const subDivisasRate = await loadDivisasDiscountRate(db);
+        // §149.2 — % de divisas de ESTE cobro. Por defecto el configurado en
+        // Configuración → POS; un gerente puede ajustarlo para un cobro
+        // puntual, y eso queda con nombre y apellido en el split.
+        const configuredDivisasRate = await loadDivisasDiscountRate(db);
+        const wantsOverride = discountType === 'DIVISAS_33' && data.divisasPercentOverride != null;
+        // El PIN se valida en el cliente, pero acá se vuelve a comprobar que el
+        // autorizante exista, esté activo y sea gerencia de este tenant: sin
+        // esto bastaba un request armado a mano para regalarse el descuento
+        // que quisiera. El `|| '__sin_autorizante__'` importa — con id
+        // undefined el findFirst devolvería un usuario cualquiera.
+        const divisasManager = wantsOverride
+            ? await db.user.findFirst({
+                where: {
+                    id: data.authorizedById || '__sin_autorizante__',
+                    isActive: true,
+                    role: { in: DIVISAS_OVERRIDE_ROLES },
+                },
+                select: { firstName: true, lastName: true },
+            })
+            : null;
+        const divisasResolution = resolveDivisasRate({
+            configuredPercent: configuredDivisasRate * 100,
+            discountApplies: discountType === 'DIVISAS_33',
+            requestedPercent: wantsOverride ? data.divisasPercentOverride : null,
+            manager: divisasManager,
+        });
+        if (!divisasResolution.ok) {
+            return {
+                success: false,
+                message: 'Ajustar el % de divisas requiere autorización de gerencia (PIN).',
+            };
+        }
+        const subDivisasRate = divisasResolution.rate;
+        const divisasOverrideBy = divisasResolution.overrideBy;
         // §103: desglose redondeado a centavos — antes se persistían floats
         // largos y split.total ≠ paidAmount por fracciones de céntimo.
         const discountAmount = discountType === 'DIVISAS_33'
@@ -3920,7 +3972,11 @@ export async function paySubAccountAction(data: {
         const totalApplied = round2(subtotalAfterDiscount + serviceChargeApplied);
         const baseLabel = data.splitLabel || sub.label;
         const labelParts: string[] = [baseLabel];
-        if (discountType === 'DIVISAS_33') labelParts.push(`-${formatDivisasPercent(subDivisasRate * 100)}% divisas`);
+        if (discountType === 'DIVISAS_33') {
+            labelParts.push(
+                `-${formatDivisasPercent(subDivisasRate * 100)}% divisas${divisasOverrideBy ? ' (ajustado)' : ''}`,
+            );
+        }
         if (applyServiceFee) labelParts.push(`+${Math.round(subServiceRate * 100)}% serv`);
         const splitLabel = labelParts.join(' | ');
 
@@ -3961,7 +4017,14 @@ export async function paySubAccountAction(data: {
                     amountBs: isBsSubPayment && splitRate ? round2(totalApplied * splitRate) : null,
                     exchangeRate: splitRate ?? null,
                     paidAt: new Date(),
-                    notes: discountType === 'DIVISAS_33' ? `Pago en Divisas (${Math.round(subDivisasRate * 10000) / 100}%)` : undefined,
+                    notes: discountType === 'DIVISAS_33'
+                        ? (divisasOverrideBy
+                            // Queda el %, quién lo autorizó y contra qué se
+                            // desvió: sin el configurado no hay forma de ver
+                            // después si el ajuste fue hacia arriba o abajo.
+                            ? `Pago en Divisas (${formatDivisasPercent(subDivisasRate * 100)}%) — % ajustado por ${divisasOverrideBy}, configurado ${formatDivisasPercent(configuredDivisasRate * 100)}%`
+                            : `Pago en Divisas (${formatDivisasPercent(subDivisasRate * 100)}%)`)
+                        : undefined,
                 },
             });
 
