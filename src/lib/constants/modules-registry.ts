@@ -786,7 +786,10 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   sales_entry: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'],
   sales_history: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF', 'CASHIER'],
   sold_items_report: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'CHEF'],
-  kitchen_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF'],
+  // AREA_LEAD entra acá (§150): "jefe de área" y "jefe de cocina" son el mismo
+  // puesto en el restaurante, y era lo único que le faltaba al primero para
+  // cubrirlo entero. KITCHEN_CHEF queda para cuentas de pantalla de cocina.
+  kitchen_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF', 'AREA_LEAD'],
   barra_display: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR', 'KITCHEN_CHEF', 'AREA_LEAD', 'CASHIER'],
   pos_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD', 'CASHIER'],
   // Juegos (Table Pong)

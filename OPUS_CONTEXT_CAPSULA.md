@@ -13852,11 +13852,30 @@ Un test verifica lo inverso también: **todo el que puede aplicar puede
 contar**. Un auditor que aprueba pero no puede abrir el módulo no sirve de
 nada — ese era justamente el bug.
 
-### Nota operativa
+### §150.1 "Jefe de área y cocina es el mismo rol"
 
-`KITCHEN_CHEF` ve en el sidebar sólo los módulos de conteo dentro de
-Inventario, no el inventario completo (`inventory` sigue sin incluirlo). Si
-hiciera falta que vean el stock fuera del conteo, hay que agregarlo también
-en `MODULE_ROLES.inventory`.
+Aclaración de Omar al ver la matriz. En el sistema eran **dos roles que
+diferían en 13 módulos**:
 
-Gates: tsc 0 · vitest 712 (7 nuevos).
+| | `AREA_LEAD` | `KITCHEN_CHEF` |
+|---|:--:|:--:|
+| Dashboard, Inventario, Inventario diario | ✅ | ❌ |
+| Auditorías, Transferencias, Compras | ✅ | ❌ |
+| Producción, Proteínas | ✅ | ❌ |
+| POS Restaurante, POS Mesero, Config POS, Metas | ✅ | ❌ |
+| Pantalla de Cocina (KDS) | ❌ | ✅ |
+
+Quien estaba cargado como Jefe de Cocina no veía casi nada — esa era la pared
+contra la que chocaban Ramiro y Óscar, más allá del conteo.
+
+**Decisión: se unifica en `AREA_LEAD`.** Las personas se mueven a ese rol
+desde Configuración → Roles, y `KITCHEN_CHEF` queda para las cuentas de
+pantalla de cocina. Para que mover a alguien nunca le quite acceso, se le
+agregó `kitchen_display` a `AREA_LEAD`: ahora **`AREA_LEAD` es superconjunto
+estricto de `KITCHEN_CHEF`**, y hay un test en
+`modules-registry.test.ts` que lo vigila.
+
+`KITCHEN_CHEF` se deja dentro de `COUNT_ROLES` como red de seguridad: quien
+todavía no fue migrado puede contar igual en vez de quedarse trabado.
+
+Gates: tsc 0 · vitest 716 (11 nuevos).

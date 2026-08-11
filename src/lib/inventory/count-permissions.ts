@@ -22,7 +22,14 @@
  * Por eso AUDITOR aplica, y el chef y los jefes cuentan pero no aplican.
  */
 
-/** Contar: producción, cocina, jefes de área, chef, gerencia y auditoría. */
+/**
+ * Contar: producción, cocina, jefes de área, chef, gerencia y auditoría.
+ *
+ * KITCHEN_CHEF sigue acá aunque "jefe de cocina" y "jefe de área" pasaron a
+ * ser el mismo puesto bajo AREA_LEAD (§150): es la red de seguridad mientras
+ * queden usuarios sin migrar. Alguien cargado con el rol viejo puede contar
+ * igual, en vez de quedarse trabado esperando que le cambien el rol.
+ */
 export const COUNT_ROLES: string[] = [
     'OWNER',
     'AUDITOR',
