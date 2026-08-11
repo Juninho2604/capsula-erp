@@ -376,7 +376,7 @@ export default function CountSessionDetailView({ initial }: Props) {
                                 </button>
                             ) : (
                                 <div className="rounded-xl bg-[#F3EAD6] p-3 text-xs text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
-                                    El conteo quedó listo. El ajuste al inventario lo confirma gerencia.
+                                    El conteo quedó listo. El ajuste al inventario lo confirma gerencia o auditoría.
                                 </div>
                             )}
                         </>

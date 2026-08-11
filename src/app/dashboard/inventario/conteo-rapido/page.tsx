@@ -6,13 +6,12 @@ import CountSessionsView from './count-sessions-view';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'];
-const CAN_APPLY = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+import { canCount, canApplyCount } from '@/lib/inventory/count-permissions';
 
 export default async function ConteoRapidoPage() {
     const session = await getSession();
     if (!session) redirect('/login');
-    if (!ALLOWED.includes(session.role)) {
+    if (!canCount(session.role)) {
         redirect('/dashboard/inventario');
     }
 
@@ -25,7 +24,7 @@ export default async function ConteoRapidoPage() {
         <CountSessionsView
             areas={areas.map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }))}
             initialSessions={sessions.data ?? []}
-            canApply={CAN_APPLY.includes(session.role)}
+            canApply={canApplyCount(session.role)}
         />
     );
 }

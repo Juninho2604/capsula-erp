@@ -8,6 +8,8 @@
  * (o lo trae de la BD) y solo muestra los módulos activos.
  */
 
+import { COUNT_ROLES } from '@/lib/inventory/count-permissions';
+
 export interface ModuleDefinition {
   /** Identificador único del módulo */
   id: string;
@@ -754,8 +756,11 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   // para CASHIER/WAITER (su primer módulo visible era estadisticas).
   inventory_daily: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   inventory: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
-  inventory_count: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'],
-  inventory_quick_count: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'],
+  // Los módulos de conteo toman la matriz de count-permissions (§150): tener
+  // la lista escrita acá y otra en las actions fue lo que dejó a los jefes de
+  // cocina sin poder abrir el módulo.
+  inventory_count: COUNT_ROLES,
+  inventory_quick_count: COUNT_ROLES,
   audits: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   transfers: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD'],
   inventory_history: ['OWNER', 'AUDITOR', 'ADMIN_MANAGER', 'OPS_MANAGER'],

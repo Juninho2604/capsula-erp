@@ -13812,3 +13812,51 @@ acá fuera más estricto, el PIN daría "autorización exitosa" y el cobro
 fallaría después sin que la cajera entienda por qué.
 
 Gates: tsc 0 · vitest 705 (13 nuevos) · build de producción OK.
+
+---
+
+## §150 Permisos del conteo de inventario — una sola matriz (2026-08-09)
+
+Reporte del grupo SISTEMA SC, con el módulo §138 ya en producción:
+
+- *"A Victor lo deja actualizar pero para guardar la actualización pide que sea un gerente"* — correcto por diseño (Victor es CHEF).
+- *"Ramiro y Óscar no les deja cargar la opción de conteo rápido"* — jefes de cocina (`KITCHEN_CHEF`), que no estaban en ninguna lista.
+- *"La opción de aprobar solo la tiene David, no la tenemos ni Victor ni yo"* — `AUDITOR` no podía aplicar, pese a que la regla que el propio Omar escribió en el grupo dice *"una vez gerencia **o auditoría** haga la validación"*.
+
+### Causa raíz: la matriz estaba copiada en cuatro lugares
+
+`modules-registry.ts` (decide si aparece en el sidebar), las dos páginas del
+módulo (`conteo-rapido/page.tsx` y `[sessionId]/page.tsx`), y
+`count-session.actions.ts`. Cuatro listas que se desincronizaron. Ahora hay
+**una**: `src/lib/inventory/count-permissions.ts`, y los cuatro sitios la
+importan.
+
+### La matriz
+
+| Rol | Contar | Aplicar / aprobar | Cancelar |
+|---|:--:|:--:|:--:|
+| Dueño (`OWNER`) | ✅ | ✅ | ✅ |
+| Auditor (`AUDITOR`) | ✅ | ✅ | ✅ |
+| Gerente Adm. (`ADMIN_MANAGER`) | ✅ | ✅ | ✅ |
+| Gerente Ops. (`OPS_MANAGER`) | ✅ | ✅ | ✅ |
+| Chef Ejecutivo (`CHEF`) | ✅ | ❌ | ❌ |
+| Jefe de Área (`AREA_LEAD`) | ✅ | ❌ | ❌ |
+| Jefe de Cocina (`KITCHEN_CHEF`) | ✅ | ❌ | ❌ |
+| Cajera / Mesero / RRHH | ❌ | ❌ | ❌ |
+
+**Quien cuenta no confirma su propio conteo.** Es la razón de existir del
+módulo: nació del descuadre de la masa filo (39 cargados, 42 en sistema). Si
+el que carga las cantidades también aprueba el ajuste, no queda control.
+
+Un test verifica lo inverso también: **todo el que puede aplicar puede
+contar**. Un auditor que aprueba pero no puede abrir el módulo no sirve de
+nada — ese era justamente el bug.
+
+### Nota operativa
+
+`KITCHEN_CHEF` ve en el sidebar sólo los módulos de conteo dentro de
+Inventario, no el inventario completo (`inventory` sigue sin incluirlo). Si
+hiciera falta que vean el stock fuera del conteo, hay que agregarlo también
+en `MODULE_ROLES.inventory`.
+
+Gates: tsc 0 · vitest 712 (7 nuevos).

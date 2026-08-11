@@ -246,7 +246,7 @@ export default function CountSessionsView({ areas, initialSessions, canApply }: 
                         <li>Imprimís la hoja — trae una columna por almacén, igual que la pantalla.</li>
                         <li>El personal cuenta y anota. Vos tipeás: se guarda solo, al instante.</li>
                         <li>Si no terminan hoy, cierran y mañana lo retoman desde donde sea.</li>
-                        <li>Al final se revisan las diferencias y {canApply ? 'aplicás' : 'gerencia aplica'} el ajuste.</li>
+                        <li>Al final se revisan las diferencias y {canApply ? 'aplicás' : 'gerencia o auditoría aplica'} el ajuste.</li>
                     </ol>
                 </div>
             )}

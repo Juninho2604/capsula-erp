@@ -33,15 +33,13 @@ import {
     type VarianceRow,
 } from '@/lib/inventory/count-session';
 
-/** Quién puede contar (abrir sesión y escribir cantidades). */
-const COUNT_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'CHEF', 'AREA_LEAD', 'AUDITOR'];
-
-/**
- * Quién puede APLICAR (ajustar el stock real). Decisión de Omar: solo
- * gerencia — el chef y los jefes de área cuentan y dejan la sesión lista,
- * pero el ajuste al inventario lo confirma gerencia.
- */
-const APPLY_SESSION_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+// La matriz de permisos vive en un solo lugar (§150). Estaba duplicada acá,
+// en el registro de módulos y en las dos páginas, y se desincronizaron.
+import {
+    COUNT_ROLES,
+    APPLY_SESSION_ROLES,
+    CANCEL_SESSION_ROLES,
+} from '@/lib/inventory/count-permissions';
 
 type Result<T = undefined> = {
     success: boolean;
@@ -620,7 +618,7 @@ export async function cancelCountSessionAction(
     sessionId: string,
     reason?: string,
 ): Promise<Result> {
-    const res = await transition(sessionId, 'CANCELLED', 'CANCELLED', APPLY_SESSION_ROLES, reason);
+    const res = await transition(sessionId, 'CANCELLED', 'CANCELLED', CANCEL_SESSION_ROLES, reason);
     return res.success ? { ...res, message: 'Conteo cancelado' } : res;
 }
 
