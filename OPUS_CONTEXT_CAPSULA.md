@@ -13926,3 +13926,62 @@ como hint) por si queda un job viejo en cola — pero eso viaja recién cuando
 se actualice el agente, y no hace falta para el arreglo.
 
 Gates: tsc 0 · vitest 720 (4 nuevos).
+
+---
+
+## §152 El descuento de divisas no se podía aplicar en pago mixto (2026-08-12)
+
+Reporte de la cajera: *"no me agarra el descuento cuando es pago mixto; tengo
+un pago de Zelle y cash y me toma el monto completo sin descuento"*.
+
+### Causa: el efecto automático no sabía que existía el pago mixto
+
+El `useEffect` que aplica y quita `DIVISAS_33` miraba **sólo el selector de
+método único**. Entrar en modo mixto no marca ningún método como elegido
+(`paymentMethodTouched` queda en `false`), así que el efecto lo leía como
+"todavía no eligió nada" — y su respuesta a eso es **borrar** el descuento.
+
+Peor que no aplicarlo solo: el efecto tiene `discountType` en sus deps, así
+que cuando la cajera tocaba el botón de divisas el estado cambiaba, el efecto
+se disparaba y lo devolvía a `NONE`. **El botón parecía muerto.**
+
+Cuándo sí funcionaba, y por eso no se detectó antes: si tocaba Efectivo o
+Zelle en el selector único y *después* pasaba a mixto, quedaba pegado. Si iba
+directo a mixto, o si antes había tocado un método en bolívares, era
+imposible.
+
+**No vino del servidor local.** El candado de "método no elegido" entró el
+16 de julio (§121) y arregla un bug real: el POS arranca con `CASH_USD` de
+centinela y sin él las **pre-cuentas salían impresas con descuento** que
+nadie autorizó. No se podía simplemente quitar.
+
+### Fix
+
+`src/lib/sales/divisas-auto-discount.ts` — `nextDivisasDiscount()` decide el
+descuento que corresponde y devuelve `null` cuando no hay que tocar nada. En
+mixto alcanza con que **una** línea sea divisas; en único se conserva el
+candado de §121; una cortesía elegida a mano nunca se pisa. Aplica solo,
+igual que en método único (regla: cash siempre lleva descuento).
+
+### El descuento en mixto todo-divisas es GLOBAL — verificado
+
+Duda de Omar: *"hace un tiempo tomaba el descuento de una sola operación
+cuando en pago mixto los dos eran divisas"*. **Hoy no pasa**, y quedó fijado
+con tests:
+
+- `divisasPortion(lines)` suma **todas** las líneas que califican. Zelle $50 +
+  efectivo $40 → $90, no $50.
+- `computeDivisasSettlement` hace gross-up (`recibido / (1 − tasa)`) topado al
+  saldo: sobre una mesa de $90, dos líneas en divisas dan descuento **$30**,
+  el global. Idéntico a cobrarlo en una sola línea por el total.
+- Divisas + bolívares sigue siendo **parcial** a propósito (TAB-3048): $30 en
+  divisas sobre $90 cubren $45 brutos y descuentan $15.
+
+### De paso: un predicado, no cuatro
+
+`isDivisasMethod` estaba copiado en el POS de mesa, en delivery, en
+`SubAccountPanel` y como `isDivisasPayment` en el server. La suma de líneas,
+dos veces (mesa y pickup). Todo eso decide si hay descuento y cuánto — ahora
+sale de un solo módulo.
+
+Gates: tsc 0 · vitest 740 (20 nuevos) · build de producción OK.

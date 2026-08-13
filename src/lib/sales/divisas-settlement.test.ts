@@ -96,3 +96,66 @@ describe('computeDivisasSettlement — descuento divisas proporcional al pago', 
             .toMatchObject({ grossSettled: 0, discountAmount: 0 });
     });
 });
+
+describe('mixto todo-divisas: el descuento es GLOBAL, no de una línea (§152)', () => {
+    // Reporte de Omar: "hace un tiempo tomaba el descuento de una sola
+    // operación cuando en pago mixto los dos eran divisas". Estas pruebas
+    // fijan que la suma de las dos líneas produce el descuento de toda la
+    // mesa, con el gross-up topado al saldo.
+    const BALANCE = 90;
+    const RATE = 1 / 3;
+
+    it('Zelle 50 + efectivo 40 sobre una mesa de 90 → descuento 30, el total', () => {
+        // El cliente entrega los $90 completos repartidos en dos métodos.
+        const r = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 50 + 40,
+            serviceFeeIncluded: false, discountRate: RATE,
+        });
+        expect(r.grossSettled).toBeCloseTo(90, 6);   // topado al saldo
+        expect(r.discountAmount).toBeCloseTo(30, 6); // = 90 × ⅓, el global
+        expect(r.netItemsApplied).toBeCloseTo(60, 6);
+    });
+
+    it('si entrega ya el precio con descuento (30 + 30), el descuento sigue siendo 30', () => {
+        const r = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 30 + 30,
+            serviceFeeIncluded: false, discountRate: RATE,
+        });
+        expect(r.grossSettled).toBeCloseTo(90, 6);
+        expect(r.discountAmount).toBeCloseTo(30, 6);
+    });
+
+    it('dos líneas en divisas dan lo mismo que una sola por el total', () => {
+        const dosLineas = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 25 + 35,
+            serviceFeeIncluded: false, discountRate: RATE,
+        });
+        const unaLinea = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 60,
+            serviceFeeIncluded: false, discountRate: RATE,
+        });
+        expect(dosLineas).toEqual(unaLinea);
+    });
+
+    it('con servicio incluido tampoco se pierde el descuento global', () => {
+        // $90 de consumo con 10%: el cliente paga 60 + 6 = 66.
+        const r = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 40 + 26,
+            serviceFeeIncluded: true, serviceRate: 0.10, discountRate: RATE,
+        });
+        expect(r.grossSettled).toBeCloseTo(90, 6);
+        expect(r.discountAmount).toBeCloseTo(30, 6);
+        expect(r.facturaReal).toBeCloseTo(66, 6);
+    });
+
+    it('divisas + bolívares: sólo descuenta la porción en divisas', () => {
+        // Este es el caso PARCIAL y debe seguir comportándose así (TAB-3048):
+        // $30 en divisas sobre una mesa de $90 cubren $45 brutos, no los 90.
+        const r = computeDivisasSettlement({
+            balanceDue: BALANCE, receivedUSD: 30,
+            serviceFeeIncluded: false, discountRate: RATE,
+        });
+        expect(r.grossSettled).toBeCloseTo(45, 6);
+        expect(r.discountAmount).toBeCloseTo(15, 6);
+    });
+});

@@ -11,6 +11,7 @@ import type { PaymentLine as UIPaymentLine } from '@/components/pos/MixedPayment
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/components/pos/PaymentConfirmationModal';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
+import { isDivisasMethod } from '@/lib/sales/divisas-auto-discount';
 import { printReceipt, emitReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
@@ -381,7 +382,7 @@ export default function POSDeliveryPage() {
         // exacto). Antes redondeaba CASH_BS y omitía CASH_EUR → descuadre.
         return (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE') ? Math.round(amount) : amount;
     };
-    const isDivisasMethod = (m: string) => m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
+    // predicado compartido (§152) — ver import arriba
     // Bs methods: user enters amount in Bs, needs conversion to USD
     const BS_SINGLE_METHODS = new Set(['PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'CASH_BS']);
     const isBsPayMethod = BS_SINGLE_METHODS.has(paymentMethod);

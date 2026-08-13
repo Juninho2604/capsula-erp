@@ -24,6 +24,7 @@ import {
 } from '@/app/actions/pos.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
 import { formatDivisasPercent, divisasDiscountRate } from '@/lib/sales/divisas-config';
+import { isDivisasMethod } from '@/lib/sales/divisas-auto-discount';
 import { isTipDisproportionate } from '@/lib/sales/tip-calculation';
 import { printReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
@@ -270,9 +271,10 @@ interface SubAccountCardProps {
     onAdjustDivisas?: () => void;
 }
 
-// Cash USD/EUR/Zelle aplican descuento de divisas automático.
-const isDivisasPayMethod = (m: POSPaymentMethod): boolean =>
-    m === 'CASH' || m === 'CASH_USD' || m === 'CASH_EUR' || m === 'ZELLE';
+// Cash USD/EUR/Zelle aplican descuento de divisas automático. El predicado
+// es el compartido (§152) — estaba copiado acá, en el POS de mesa y en
+// delivery, y es la condición que decide si hay descuento.
+const isDivisasPayMethod = (m: POSPaymentMethod): boolean => isDivisasMethod(m);
 
 function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3, divisasOverrideBy, onAdjustDivisas }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);

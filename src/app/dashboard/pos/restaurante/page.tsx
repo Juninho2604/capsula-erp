@@ -25,6 +25,7 @@ import MixedPaymentSelector from "@/components/pos/MixedPaymentSelector";
 import { PaymentConfirmationModal, type PaymentConfirmationLine } from "@/components/pos/PaymentConfirmationModal";
 import { getExchangeRateValue } from "@/app/actions/exchange.actions";
 import { useDivisasPercent } from "@/lib/hooks/use-divisas-percent";
+import { nextDivisasDiscount, isDivisasMethod, divisasPortion } from "@/lib/sales/divisas-auto-discount";
 import { localId } from "@/lib/local-id";
 import { printReceipt, emitReceipt, type VoidKitchenCommandData } from "@/lib/print-command";
 import { useTenantBranding } from "@/lib/hooks/use-tenant-branding";
@@ -526,20 +527,23 @@ export default function POSSportBarPage() {
     // - Si el método pasa a ser efectivo o Zelle (divisas) → aplica DIVISAS_33
     //   automáticamente (regla de negocio: cash siempre tiene 33% off).
     // - Si el método pasa a no-divisas → quita DIVISAS_33 (no aplica).
+    // - En PAGO MIXTO alcanza con que una línea sea divisas (§152).
     // Sólo cambiamos cuando el discountType actual es NONE o DIVISAS_33;
     // si el cajero eligió CORTESIA, lo respetamos.
-    if (!paymentMethodTouched) {
-      if (discountType === 'DIVISAS_33') setDiscountType('NONE');
-      return;
-    }
-    if (discountType !== 'NONE' && discountType !== 'DIVISAS_33') return;
-    if (isDivisasMethod(paymentMethod)) {
-      if (discountType !== 'DIVISAS_33') setDiscountType('DIVISAS_33');
-    } else {
-      if (discountType === 'DIVISAS_33') setDiscountType('NONE');
-    }
+    // §152 — La decisión vive en nextDivisasDiscount. Antes este efecto sólo
+    // miraba el selector de método ÚNICO: en pago mixto leía "no eligió nada"
+    // y borraba el descuento, incluso el que la cajera acababa de poner a
+    // mano. El botón parecía muerto y la mesa se cobraba completa.
+    const next = nextDivisasDiscount({
+      mixedMode: isTableMixedMode || isPickupMixedMode,
+      mixedMethods: (isTableMixedMode ? mixedPaymentsTable : mixedPaymentsPickup).map(p => p.method),
+      method: paymentMethod,
+      methodTouched: paymentMethodTouched,
+      current: discountType,
+    });
+    if (next !== null) setDiscountType(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentMethod, paymentMethodTouched, discountType]);
+  }, [paymentMethod, paymentMethodTouched, discountType, isTableMixedMode, isPickupMixedMode, mixedPaymentsTable, mixedPaymentsPickup]);
 
   useEffect(() => {
     if (!selectedCategory || !categories.length) return;
@@ -685,7 +689,9 @@ export default function POSSportBarPage() {
     (method === 'CASH_USD' || method === 'CASH_EUR' || method === 'ZELLE')
       ? Math.ceil(amount)
       : amount;
-  const isDivisasMethod = (m: string) => m === "CASH" || m === "CASH_USD" || m === "CASH_EUR" || m === "ZELLE";
+  // isDivisasMethod y la suma de líneas viven en divisas-auto-discount (§152):
+  // estaban escritas inline acá y en delivery, y la suma dos veces (mesa y
+  // pickup). Es la entrada del cálculo del descuento, no se duplica más.
   // isPagoDivisas: used by TABLE mode (registerOpenTabPaymentAction)
   const isPagoDivisas = isDivisasMethod(paymentMethod);
   // isPagoDivisasPickup: single mode → method CASH/ZELLE; mixed mode → at least one USD line
@@ -693,14 +699,12 @@ export default function POSSportBarPage() {
     ? mixedPaymentsPickup.some(p => isDivisasMethod(p.method))
     : isDivisasMethod(paymentMethod);
   const divisasUsdAmountPickup = isPickupMixedMode
-    ? mixedPaymentsPickup.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
+    ? divisasPortion(mixedPaymentsPickup)
     : undefined;
   const totalMixedPickupPaid = mixedPaymentsPickup.reduce((s, p) => s + p.amountUSD, 0);
 
   // In TABLE mixed mode, only the divisas (CASH/CASH_USD/CASH_EUR/ZELLE) lines get the -33% discount
-  const divisasUsdAmountTable = isTableMixedMode
-    ? mixedPaymentsTable.filter(p => isDivisasMethod(p.method)).reduce((s, p) => s + p.amountUSD, 0)
-    : 0;
+  const divisasUsdAmountTable = isTableMixedMode ? divisasPortion(mixedPaymentsTable) : 0;
   /** Suma total ingresada en el MixedPaymentSelector de mesa */
   const totalMixedTablePaid = mixedPaymentsTable.reduce((s, p) => s + p.amountUSD, 0);
 
