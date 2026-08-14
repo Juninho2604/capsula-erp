@@ -41,6 +41,7 @@ import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
 import { resolveDivisasRate } from '@/lib/sales/divisas-override';
+import { CHARGE_AUTH_ROLES, VOID_AUTH_USER_ROLES } from '@/lib/pin-roles';
 import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
 import { createReorderBroadcastsAction } from '@/app/actions/purchase.actions';
@@ -71,11 +72,11 @@ const BS_PAYMENT_METHODS = new Set([
 
 /**
  * Roles que pueden ajustar el % de divisas de un cobro puntual (§149.2).
- * Mismo conjunto que resuelve validateManagerPinAction: si acá fuera más
- * estricto, el PIN daría "autorización exitosa" y el cobro fallaría después
- * sin que la cajera entienda por qué.
+ * Mismo conjunto que resuelve validateManagerPinAction (fuente única §153):
+ * si acá fuera más estricto, el PIN daría "autorización exitosa" y el cobro
+ * fallaría después sin que la cajera entienda por qué.
  */
-const DIVISAS_OVERRIDE_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
+const DIVISAS_OVERRIDE_ROLES = CHARGE_AUTH_ROLES;
 
 // ============================================================================
 // TIPOS
@@ -1404,7 +1405,7 @@ export async function validateManagerPinAction(pinRaw: string): Promise<ActionRe
 
         const candidates = await db.user.findMany({
             where: {
-                role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
+                role: { in: CHARGE_AUTH_ROLES },
                 isActive: true,
                 pin: { not: null },
             },
@@ -1467,7 +1468,7 @@ export async function validateCashierPinAction(pin: string): Promise<ActionResul
 
         const candidates = await db.user.findMany({
             where: {
-                role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'] },
+                role: { in: CHARGE_AUTH_ROLES },
                 isActive: true,
                 pin: { not: null },
             },
@@ -2742,7 +2743,7 @@ async function resolveVoidAuthPin(pin: string, branchId: string): Promise<VoidAu
 
     // Pool 2 — User gerente / dueño activo
     const managers = await db.user.findMany({
-        where: { role: { in: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AREA_LEAD'] }, isActive: true, pin: { not: null } },
+        where: { role: { in: VOID_AUTH_USER_ROLES }, isActive: true, pin: { not: null } },
         select: { id: true, firstName: true, lastName: true, pin: true },
     });
     for (const m of managers) {

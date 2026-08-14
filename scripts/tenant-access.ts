@@ -37,6 +37,8 @@
 
 import { PrismaClient } from '@prisma/client';
 import { webcrypto } from 'node:crypto';
+// Fuente única (§153) — la misma lista que usa validateManagerPinAction.
+import { CHARGE_AUTH_ROLES as MANAGER_ROLES } from '../src/lib/pin-roles';
 
 const toHex = (bytes: Uint8Array) =>
     Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -82,8 +84,6 @@ async function pinMatches(rawPin: string, stored: string): Promise<boolean> {
     } catch { return false; }
 }
 
-/** Roles cuyo PIN autoriza cobros/anulaciones/cortesías en el POS. */
-const MANAGER_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
 
 async function main() {
     const args: Record<string, string> = {};

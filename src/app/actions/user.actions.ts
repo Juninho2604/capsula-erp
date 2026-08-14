@@ -3,6 +3,7 @@
 import { prisma } from '@/server/db';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server'; // Correct path from previous files
+import { pinRoleWarning } from '@/lib/pin-roles';
 import { getSession, createSession } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { revalidatePath } from 'next/cache';
@@ -363,7 +364,15 @@ export async function updateUserPin(userId: string, rawPin: string) {
         });
 
         revalidatePath('/dashboard/usuarios');
-        return { success: true, message: 'PIN actualizado correctamente' };
+        // §153 — Si el rol del destinatario no autoriza en el POS, avisar a
+        // quien asigna EN ESTE MOMENTO. Antes decía "correctamente" a secas y
+        // el PIN nacía muerto: el gerente de TablePong se enteró frente al
+        // cliente de que su PIN no validaba, porque su rol no era candidato.
+        const warning = pinRoleWarning(targetRole);
+        return {
+            success: true,
+            message: warning ? `PIN guardado. ${warning}` : 'PIN actualizado correctamente',
+        };
     } catch (error) {
         console.error('Error updating user PIN:', error);
         return { success: false, message: 'Error al actualizar el PIN' };

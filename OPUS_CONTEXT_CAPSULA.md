@@ -13985,3 +13985,53 @@ dos veces (mesa y pickup). Todo eso decide si hay descuento y cuánto — ahora
 sale de un solo módulo.
 
 Gates: tsc 0 · vitest 740 (20 nuevos) · build de producción OK.
+
+---
+
+## §153 PIN que "no valida": el rol del destinatario no autorizaba, y nadie avisó (2026-08-14)
+
+Reporte de Omar sobre TablePong: le asignó el PIN a Ender entrando con el
+usuario de Carlos (dueño), la pantalla dijo "PIN actualizado correctamente",
+y al cobrar el POS lo rechaza. Ya había pasado en Shanklish.
+
+### Causa
+
+Dos fallas encadenadas, ninguna es el hash ni el PIN en sí:
+
+1. **`updateUserPin` guardaba el PIN a cualquier rol sin avisar.** Validaba
+   formato, unicidad (§132) y jerarquía — pero no si el rol del destinatario
+   es candidato en las validaciones del POS. `validateManagerPinAction` sólo
+   carga usuarios con rol OWNER/ADMIN_MANAGER/OPS_MANAGER: un PIN sobre un
+   WAITER (el rol inválido con el que quedaron los usuarios migrados de
+   TablePong, §147) nace muerto y nadie se entera hasta el cobro.
+2. **La lista de roles autorizados estaba copiada en cinco lugares**:
+   `validateManagerPinAction`, `validateCashierPinAction`,
+   `resolveVoidAuthPin` (+AREA_LEAD), `DIVISAS_OVERRIDE_ROLES` y
+   `scripts/tenant-access.ts`. Misma clase de bug que §150.
+
+### Fix global (todos los tenants)
+
+- **`src/lib/pin-roles.ts`** — fuente única: `CHARGE_AUTH_ROLES` (cobros,
+  sesión de caja, override de divisas) y `VOID_AUTH_USER_ROLES` (anulaciones,
+  = cobros + AREA_LEAD; los capitanes anulan con el PIN de la tabla `waiter`).
+  Los cinco sitios la importan.
+- **`updateUserPin` ahora avisa al asignar** vía `pinRoleWarning(rol)`:
+  gerencia → sin aviso; AREA_LEAD → "autoriza anulaciones pero NO cobros";
+  cualquier otro rol → "NO autoriza nada en el POS… cambia el rol en
+  Configuración → Roles". El aviso viaja en el mensaje de éxito y la UI lo
+  muestra en el toast. **No bloquea** el guardado: bloquear rompería el orden
+  natural PIN-primero-rol-después.
+
+### Lo que el código NO arregla solo: el rol de Ender
+
+El PIN de Ender está bien guardado; su ROL es el problema. Hay que cambiarlo
+a Gerente Ops./Adm. (Configuración → Roles como Carlos, o el diagnóstico):
+
+```bash
+cd /var/www/capsula-erp
+npx tsx scripts/tenant-access.ts --tenant-slug=tablepong --test-pin=<pin>
+```
+
+El script marca por usuario si matchea y por qué no autoriza (rol/inactivo).
+
+Gates: tsc 0 · vitest 748 (8 nuevos).
