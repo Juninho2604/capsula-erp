@@ -14035,3 +14035,52 @@ npx tsx scripts/tenant-access.ts --tenant-slug=tablepong --test-pin=<pin>
 El script marca por usuario si matchea y por qué no autoriza (rol/inactivo).
 
 Gates: tsc 0 · vitest 748 (8 nuevos).
+
+---
+
+## §154 Producción Manual escondía el producto de salida de sus ingredientes (2026-08-15)
+
+Christian reporta que no puede producir yogurt: la receta usa **yogurt** (como
+cultivo iniciador) **más leche**, para rendirlo. Omar sí pudo hacerlo. Los dos
+tenían razón — **son dos caminos distintos**:
+
+| Camino | Producto de salida como ingrediente |
+|---|---|
+| **Producción por receta** (botón verde) | ✅ Funciona. `RecipeForm` sólo filtra ingredientes ya usados, no el output. |
+| **Producción Manual** (botón ámbar) | ❌ El selector traía `.filter(… && item.id !== manualOutputItem)`: el ítem **desaparecía** del desplegable. |
+
+No era un error rojo ni un tema de permisos: el insumo simplemente no estaba
+en la lista, y no había forma de cargarlo. Una línea en la pantalla.
+
+### Fix
+
+Se quita la exclusión. Producir un ítem consumiendo parte de sí mismo es
+legítimo y común: además del yogurt, masas madre, fondos de cocina y
+encurtidos arrancan con una parte del lote anterior.
+
+**Y se muestra el neto**, que es lo que faltaba:
+
+> *Producción con auto-consumo. Yogurt es también ingrediente: se producen
+> 10 KG y se consumen 2 KG → el stock varía +8 KG.*
+
+No es decoración. Es lo único que delata un decimal mal puesto en el momento:
+producir 10 consumiendo `0.2` en vez de `2` deja **+9.8 KG** que nunca
+existieron, y ese descuadre no aparece hasta el conteo — la misma clase de
+diferencia que perseguimos con la masa filo (§145).
+
+`src/lib/inventory/production-net.ts` — `computeProductionNet` y
+`productionNetWarning`, puras, 8 tests. No bloquean: un neto negativo es raro
+pero legítimo (merma cargada como producción), y quien carga tiene que poder
+hacerlo viendo el número, no peleando con un candado.
+
+### El servidor ya estaba bien
+
+`manualProductionAction` y `quickProductionAction` descuentan los ingredientes
+y **después** releen y suman el producto de salida, con movimientos separados.
+Con el mismo ítem el saldo queda correcto y el Kardex muestra las dos líneas
+(`PRODUCTION_OUT` y `PRODUCTION_IN`). No hubo que tocar nada ahí.
+
+Pendiente menor: el aviso de neto sólo está en Producción Manual. En
+producción por receta convendría mostrarlo también.
+
+Gates: tsc 0 · vitest 756 (8 nuevos) · build de producción OK.

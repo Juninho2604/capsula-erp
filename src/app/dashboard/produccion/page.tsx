@@ -16,6 +16,7 @@ import {
     IngredientRequirement,
     ProductionActionResult,
 } from '@/app/actions/production.actions';
+import { computeProductionNet, productionNetWarning } from '@/lib/inventory/production-net';
 import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import toast from 'react-hot-toast';
@@ -272,6 +273,18 @@ export default function ProduccionPage() {
 
     // Helper: get item name by id
     const getItemName = (itemId: string) => allItems.find(i => i.id === itemId)?.name || itemId;
+
+    // §154 — Efecto neto sobre el producto de salida cuando también es
+    // ingrediente de sí mismo (yogurt con yogurt). Es lo único que delata un
+    // decimal mal puesto antes de que aparezca en el conteo.
+    const manualNet = computeProductionNet({
+        outputItemId: manualOutputItem,
+        outputQuantity: manualOutputQty,
+        ingredients: manualIngredients.map(i => ({ itemId: i.itemId, quantity: i.quantity })),
+    });
+    const manualNetWarning = manualOutputItem
+        ? productionNetWarning(manualNet, getItemName(manualOutputItem), manualOutputUnit)
+        : null;
     const getItemUnit = (itemId: string) => allItems.find(i => i.id === itemId)?.baseUnit || 'KG';
 
     return (
@@ -668,13 +681,26 @@ export default function ProduccionPage() {
                                 </div>
                             )}
 
+                            {/* §154 — Aviso de auto-consumo: el producto de salida
+                                es también ingrediente. Se muestra el neto real. */}
+                            {manualNetWarning && (
+                                <div className="border-t border-capsula-line bg-[#E6ECF4] px-6 py-3 text-sm text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]">
+                                    <span className="font-semibold">Producción con auto-consumo.</span>{' '}
+                                    {manualNetWarning}
+                                </div>
+                            )}
+
                             {/* Form para agregar ingrediente */}
                             <div className="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                                 <p className="mb-3 text-sm font-medium text-gray-600 dark:text-gray-400">Agregar ingrediente:</p>
                                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                                     <Combobox
                                         items={allItems
-                                            .filter(item => !manualIngredients.some(i => i.itemId === item.id) && item.id !== manualOutputItem)
+                                            // §154 — El producto de salida SÍ puede ser ingrediente
+                                            // de sí mismo: el yogurt se produce con yogurt (cultivo
+                                            // iniciador) más leche. Excluirlo hacía imposible cargar
+                                            // esa producción acá, aunque por receta sí funcionaba.
+                                            .filter(item => !manualIngredients.some(i => i.itemId === item.id))
                                             .map(item => ({
                                                 value: item.id,
                                                 label: `${item.name} (${item.baseUnit})`
