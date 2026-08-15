@@ -14149,3 +14149,56 @@ preparar por falta de stock, es otra situación, y llevarlo a negativo en
 silencio escondería problemas reales.
 
 Gates: tsc 0 · vitest 766 (10 nuevos) · build de producción OK.
+
+---
+
+## §156 "Arma tu Shawarma": plato sin receta + Descargo manual de consumo (2026-08-15)
+
+Planteo de Christian vía Omar: el plato armable tiene demasiadas
+combinaciones para modelarlo con modificadores — el kibe va por unidad, las
+carnes por gramos, y el árbol de opciones se vuelve inmantenible. Decisión:
+**el plato se vende sin receta**, el detalle va en la **nota del ítem** (ya
+existía y viaja a la comanda), y el consumo real se registra periódicamente
+con un **descargo manual agregado**.
+
+Racional: es más honesto un plato libre con descargo agregado real que una
+receta inventada que descuenta mal en cada venta. Un ítem sin `recipeId` se
+vende sin error y no descuenta nada — verificado, es el comportamiento de
+siempre del POS.
+
+### Lo nuevo: Descargo manual (`/dashboard/inventario/descargo`)
+
+Botón "Descargo" en el header de Inventario (patrón Kardex §145). Genérico a
+propósito: sirve para cualquier salida sin registro (mermas, consumo interno).
+
+- **Server**: `manual-discharge.actions.ts` → `manualDischargeAction`.
+  Movimiento `MANUAL_OUT` por línea (el Kardex lo clasifica salida por el
+  sufijo `_OUT`, sin tocar kardex.ts). Motivo obligatorio. Dedup de líneas
+  repetidas (se suman). Integrado con §155: si el stock no alcanza, ofrece
+  dejar el insumo en negativo con confirmación; upsert crea la fila de stock
+  si no existe.
+- **Contador que cierra el ciclo**: al vincular el descargo a un plato, la
+  pantalla muestra *"N unidades vendidas desde el último descargo de este
+  plato (fecha)"*. Sin eso nadie sabe qué período cubre ni si el descargo se
+  está acumulando sin hacerse. El vínculo se guarda como marcador
+  `[plato:<menuItemId>]` en las notas del movimiento — **sin migración**; el
+  contador busca el último `MANUAL_OUT` con ese marcador (scope por
+  `inventoryItem.tenantId`, §123) y suma `SalesOrderItem` no anulados desde
+  esa fecha.
+- **Roles**: `COUNT_ROLES` (§150) — registrar consumo es un acto operativo
+  como contar o producir, no una confirmación de control.
+
+### Configuración (sin código) para el plato
+
+1. Crear el MenuItem "Arma tu Shawarma" **sin receta**.
+2. El mesonero escribe el contenido en la nota del ítem.
+3. Si el precio varía según lo que lleve: grupo corto de modificadores **solo
+   de precio** (`+Kibe $2`), sin vínculo a inventario — ya soportado.
+
+### Trade-off aceptado
+
+El margen del plato queda ciego (sin receta → costo 0 en el reporte de
+márgenes). El costo real entra por el descargo agregado, así que los números
+globales cierran; el plato individual no reporta rentabilidad propia.
+
+Gates: tsc 0 · vitest 766 · build de producción OK.

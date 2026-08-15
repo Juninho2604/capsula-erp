@@ -82,7 +82,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     section: 'operations',
     enabledByDefault: true,
     sortOrder: 20,
-    subRoutes: ['/dashboard/inventario/entrada'],
+    subRoutes: ['/dashboard/inventario/entrada', '/dashboard/inventario/descargo'],
   },
   {
     id: 'inventory_quick_count',
