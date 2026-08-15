@@ -16,6 +16,12 @@
  */
 
 import { revalidatePath } from 'next/cache';
+import {
+    computeShortfalls,
+    shortfallMessage,
+    shortfallAuditNote,
+    type StockRequirementRow,
+} from '@/lib/inventory/stock-shortfall';
 import { prisma } from '@/server/db';
 import { getSession } from '@/lib/auth';
 import { withTenant } from '@/lib/prisma-tenant-client';
@@ -30,6 +36,13 @@ export interface QuickProductionFormData {
     actualQuantity: number;
     areaId: string;
     notes?: string;
+    /**
+     * §155 — Registrar aunque el stock del sistema no alcance, dejando los
+     * insumos en negativo. La materia prima suele estar físicamente; lo que
+     * falta es cargar la entrada. Se confirma en pantalla viendo la lista de
+     * qué queda en negativo, y queda rastro en la orden y los movimientos.
+     */
+    allowNegativeStock?: boolean;
 }
 
 export interface ProductionActionResult {
@@ -207,9 +220,9 @@ export async function quickProductionAction(
         const scaleFactor = formData.actualQuantity / Number(recipe.outputQuantity);
 
         // 2. Verificar stock disponible
-        const ingredientsToConsume: { itemId: string; name: string; quantity: number; unit: string; stockLevelId: string }[] = [];
-        const stockErrors: string[] = [];
+        const ingredientsToConsume: { itemId: string; name: string; quantity: number; unit: string; stockLevelId: string | null }[] = [];
 
+        const requirementRows: StockRequirementRow[] = [];
         for (const ing of recipe.ingredients) {
             const required = Number(ing.quantity) * scaleFactor;
             const wastePercent = Number(ing.wastePercentage) || 0;
@@ -220,23 +233,31 @@ export async function quickProductionAction(
             const stockLevel = ing.ingredientItem.stockLevels[0];
             const currentStock = stockLevel ? Number(stockLevel.currentStock) : 0;
 
-            if (currentStock < grossQty) {
-                stockErrors.push(`${ing.ingredientItem.name}: necesario ${grossQty.toFixed(3)}, disponible ${currentStock.toFixed(3)}`);
-            } else if (stockLevel) {
-                ingredientsToConsume.push({
-                    itemId: ing.ingredientItemId,
-                    name: ing.ingredientItem.name,
-                    quantity: parseFloat(grossQty.toFixed(4)),
-                    unit: ing.unit,
-                    stockLevelId: stockLevel.id
-                });
-            }
+            requirementRows.push({
+                itemId: ing.ingredientItemId,
+                name: ing.ingredientItem.name,
+                required: parseFloat(grossQty.toFixed(4)),
+                available: currentStock,
+                unit: ing.unit,
+            });
+            ingredientsToConsume.push({
+                itemId: ing.ingredientItemId,
+                name: ing.ingredientItem.name,
+                quantity: parseFloat(grossQty.toFixed(4)),
+                unit: ing.unit,
+                stockLevelId: stockLevel?.id ?? null,
+            });
         }
 
-        if (stockErrors.length > 0) {
+        // §155 — Sin el permiso explícito se bloquea como siempre. Con él, la
+        // producción se registra y los insumos quedan en negativo: una deuda
+        // visible que se salda al cargar la entrada, en vez de una producción
+        // que ocurrió en la cocina y no quedó en ningún lado.
+        const shortfalls = computeShortfalls(requirementRows);
+        if (shortfalls.length > 0 && !formData.allowNegativeStock) {
             return {
                 success: false,
-                message: `Stock insuficiente:\n${stockErrors.join('\n')}`,
+                message: `Stock insuficiente:\n${shortfallMessage(shortfalls)}`,
             };
         }
 
@@ -268,19 +289,31 @@ export async function quickProductionAction(
                     unit: recipe.outputUnit,
                     status: 'COMPLETED',
                     completedAt: new Date(),
-                    notes: formData.notes,
+                    notes: shortfalls.length > 0
+                        ? [formData.notes, shortfallAuditNote(shortfalls)].filter(Boolean).join(' · ')
+                        : formData.notes,
                     createdById: userId,
                     actualYieldPercentage: Number(recipe.yieldPercentage),
                 }
             });
 
-            // 4b. Descontar ingredientes del área de producción
+            // 4b. Descontar ingredientes del área de producción.
+            // upsert y no update: con §155 un insumo puede no tener fila de
+            // stock en el área todavía, y hay que crearla en negativo.
             for (const ing of ingredientsToConsume) {
-                await tx.inventoryLocation.update({
-                    where: { id: ing.stockLevelId },
-                    data: {
-                        currentStock: { decrement: ing.quantity }
-                    }
+                await tx.inventoryLocation.upsert({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: ing.itemId,
+                            areaId: formData.areaId,
+                        },
+                    },
+                    update: { currentStock: { decrement: ing.quantity } },
+                    create: {
+                        inventoryItemId: ing.itemId,
+                        areaId: formData.areaId,
+                        currentStock: -ing.quantity,
+                    },
                 });
 
                 await tx.inventoryMovement.create({
@@ -290,7 +323,9 @@ export async function quickProductionAction(
                         quantity: -ing.quantity,
                         unit: ing.unit,
                         reason: `Producción: ${recipe.name}`,
-                        notes: `Orden: ${orderNumber}`,
+                        notes: shortfalls.some(f => f.itemId === ing.itemId)
+                            ? `Orden: ${orderNumber} · faltante de inventario, queda en negativo`
+                            : `Orden: ${orderNumber}`,
                         createdById: userId,
                     }
                 });
@@ -465,6 +500,8 @@ export async function getProductionItemsAction() {
 // ============================================================================
 
 export interface ManualProductionFormData {
+    /** §155 — Ver QuickProductionFormData.allowNegativeStock. */
+    allowNegativeStock?: boolean;
     outputItemId: string;
     outputQuantity: number;
     outputUnit: string;
@@ -508,8 +545,9 @@ export async function manualProductionAction(
         }
 
         // Verificar stock de ingredientes
-        const ingredientsToConsume: { itemId: string; name: string; quantity: number; unit: string; stockLevelId: string }[] = [];
-        const stockErrors: string[] = [];
+        const ingredientsToConsume: { itemId: string; name: string; quantity: number; unit: string }[] = [];
+        const missingItems: string[] = [];
+        const requirementRows: StockRequirementRow[] = [];
 
         for (const ing of formData.ingredients) {
             // findFirst con tenant filter (el item debe pertenecer al tenant)
@@ -523,32 +561,41 @@ export async function manualProductionAction(
             });
 
             if (!item) {
-                stockErrors.push(`Item no encontrado: ${ing.itemId}`);
+                missingItems.push(`Item no encontrado: ${ing.itemId}`);
                 continue;
             }
 
             const stockLevel = item.stockLevels[0];
             const currentStock = stockLevel ? Number(stockLevel.currentStock) : 0;
 
-            if (currentStock < ing.quantity) {
-                stockErrors.push(`${item.name}: necesario ${ing.quantity.toFixed(3)}, disponible ${currentStock.toFixed(3)}`);
-            } else if (stockLevel) {
-                ingredientsToConsume.push({
-                    itemId: ing.itemId,
-                    name: item.name,
-                    quantity: ing.quantity,
-                    unit: ing.unit,
-                    stockLevelId: stockLevel.id
-                });
-            } else {
-                stockErrors.push(`${item.name}: no tiene stock en esta área`);
-            }
+            requirementRows.push({
+                itemId: ing.itemId,
+                name: item.name,
+                required: ing.quantity,
+                available: currentStock,
+                unit: ing.unit,
+            });
+            ingredientsToConsume.push({
+                itemId: ing.itemId,
+                name: item.name,
+                quantity: ing.quantity,
+                unit: ing.unit,
+            });
         }
 
-        if (stockErrors.length > 0) {
+        // Un ítem inexistente es un error de datos, no un faltante: nunca se
+        // deja pasar, ni con allowNegativeStock.
+        if (missingItems.length > 0) {
+            return { success: false, message: missingItems.join('\n') };
+        }
+
+        // §155 — Con el permiso explícito la producción se registra y los
+        // insumos quedan en negativo hasta que se cargue la entrada.
+        const shortfalls = computeShortfalls(requirementRows);
+        if (shortfalls.length > 0 && !formData.allowNegativeStock) {
             return {
                 success: false,
-                message: `Stock insuficiente:\n${stockErrors.join('\n')}`,
+                message: `Stock insuficiente:\n${shortfallMessage(shortfalls)}`,
             };
         }
 
@@ -602,17 +649,32 @@ export async function manualProductionAction(
                     unit: formData.outputUnit,
                     status: 'COMPLETED',
                     completedAt: new Date(),
-                    notes: formData.notes || `Producción manual`,
+                    notes: [
+                        formData.notes || 'Producción manual',
+                        shortfalls.length > 0 ? shortfallAuditNote(shortfalls) : null,
+                    ].filter(Boolean).join(' · '),
                     createdById: userId,
                     actualYieldPercentage: 100,
                 }
             });
 
-            // Descontar ingredientes
+            // Descontar ingredientes. upsert y no update: con §155 el insumo
+            // puede no tener fila de stock en el área, y hay que crearla en
+            // negativo.
             for (const ing of ingredientsToConsume) {
-                await tx.inventoryLocation.update({
-                    where: { id: ing.stockLevelId },
-                    data: { currentStock: { decrement: ing.quantity } }
+                await tx.inventoryLocation.upsert({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: ing.itemId,
+                            areaId: formData.areaId,
+                        },
+                    },
+                    update: { currentStock: { decrement: ing.quantity } },
+                    create: {
+                        inventoryItemId: ing.itemId,
+                        areaId: formData.areaId,
+                        currentStock: -ing.quantity,
+                    },
                 });
 
                 await tx.inventoryMovement.create({
@@ -622,7 +684,9 @@ export async function manualProductionAction(
                         quantity: -ing.quantity,
                         unit: ing.unit,
                         reason: `Producción manual: ${outputItem.name}`,
-                        notes: `Orden: ${orderNumber}`,
+                        notes: shortfalls.some(f => f.itemId === ing.itemId)
+                            ? `Orden: ${orderNumber} · faltante de inventario, queda en negativo`
+                            : `Orden: ${orderNumber}`,
                         createdById: userId,
                     }
                 });

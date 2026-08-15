@@ -535,3 +535,56 @@ export async function getInventoryForPrintAction() {
         };
     }
 }
+
+/**
+ * §155 — Insumos con stock NEGATIVO en algún almacén.
+ *
+ * Los negativos nacen de producciones registradas cuando la materia prima
+ * estaba físicamente pero su entrada no se había cargado. Es una deuda que se
+ * salda sola al cargar la entrada — pero SOLO si alguien la ve. Un negativo
+ * que nadie mira es exactamente el descuadre que perseguimos con la masa filo
+ * (§145). Por eso esto alimenta un banner en Inventario.
+ *
+ * Read-only, cero writes.
+ */
+export async function getNegativeStockSummaryAction(): Promise<{
+    total: number;
+    rows: { itemId: string; name: string; unit: string; areaName: string; quantity: number }[];
+}> {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const items = await db.inventoryItem.findMany({
+            where: { isActive: true, stockLevels: { some: { currentStock: { lt: 0 } } } },
+            select: {
+                id: true,
+                name: true,
+                baseUnit: true,
+                stockLevels: {
+                    where: { currentStock: { lt: 0 } },
+                    select: { currentStock: true, area: { select: { name: true } } },
+                },
+            },
+            orderBy: { name: 'asc' },
+        });
+
+        const rows = items.flatMap(item =>
+            item.stockLevels.map(sl => ({
+                itemId: item.id,
+                name: item.name,
+                unit: item.baseUnit,
+                areaName: sl.area?.name ?? 'Sin almacén',
+                quantity: Number(sl.currentStock),
+            })),
+        );
+
+        // Los más hundidos primero: son los que más urge reponer en sistema.
+        rows.sort((a, b) => a.quantity - b.quantity);
+
+        return { total: rows.length, rows };
+    } catch (error) {
+        console.error('Error getting negative stock summary:', error);
+        return { total: 0, rows: [] };
+    }
+}

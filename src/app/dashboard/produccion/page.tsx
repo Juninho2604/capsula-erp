@@ -17,6 +17,7 @@ import {
     ProductionActionResult,
 } from '@/app/actions/production.actions';
 import { computeProductionNet, productionNetWarning } from '@/lib/inventory/production-net';
+import { computeShortfalls } from '@/lib/inventory/stock-shortfall';
 import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import toast from 'react-hot-toast';
@@ -87,6 +88,10 @@ export default function ProduccionPage() {
     // ── Formulario Manual ──
     const [manualOutputItem, setManualOutputItem] = useState('');
     const [manualOutputQty, setManualOutputQty] = useState<number>(0);
+    // §155 — Mensaje de faltante devuelto por el servidor tras un intento
+    // bloqueado. El cliente no conoce el stock por área en esta pestaña, así
+    // que la confirmación llega después del intento, con el detalle real.
+    const [manualShortfall, setManualShortfall] = useState<string | null>(null);
     const [manualOutputUnit, setManualOutputUnit] = useState('KG');
     const [manualAreaId, setManualAreaId] = useState('');
     const [manualNotes, setManualNotes] = useState('');
@@ -150,10 +155,23 @@ export default function ProduccionPage() {
     const allIngredientsAvailable = requirements.length > 0 &&
         requirements.every(r => r.sufficient);
 
+    // §155 — Qué insumos quedarían en negativo si se registra igual. Es el
+    // listado que se confirma: hace evidente el error de tipeo (litros donde
+    // iban mililitros) antes de tocar el inventario.
+    const recipeShortfalls = computeShortfalls(requirements.map(r => ({
+        itemId: r.itemId,
+        name: r.itemName,
+        required: r.gross,
+        available: r.available,
+        unit: r.unit,
+    })));
+
     // ── Handlers ──
 
-    const handleRecipeProduction = async () => {
-        if (!selectedRecipe || quantity <= 0 || !allIngredientsAvailable || !areaId) return;
+    const handleRecipeProduction = async (allowNegativeStock = false) => {
+        // §155 — sin el permiso explícito se exige stock completo, como antes.
+        if (!selectedRecipe || quantity <= 0 || !areaId) return;
+        if (!allIngredientsAvailable && !allowNegativeStock) return;
         setIsSubmitting(true);
         setResult(null);
         try {
@@ -162,6 +180,7 @@ export default function ProduccionPage() {
                 actualQuantity: quantity,
                 areaId,
                 notes,
+                allowNegativeStock,
             });
             setResult(response);
             if (response.success) {
@@ -182,10 +201,11 @@ export default function ProduccionPage() {
         }
     };
 
-    const handleManualProduction = async () => {
+    const handleManualProduction = async (allowNegativeStock = false) => {
         if (!manualOutputItem || manualOutputQty <= 0 || !manualAreaId) return;
         setIsSubmitting(true);
         setResult(null);
+        setManualShortfall(null);
         try {
             const response = await manualProductionAction({
                 outputItemId: manualOutputItem,
@@ -198,6 +218,7 @@ export default function ProduccionPage() {
                     unit: i.unit,
                 })),
                 notes: manualNotes,
+                allowNegativeStock,
             });
             setResult(response);
             if (response.success) {
@@ -208,6 +229,10 @@ export default function ProduccionPage() {
                 setManualOutputQty(0);
                 setManualNotes('');
                 setManualIngredients([]);
+            } else if (response.message.startsWith('Stock insuficiente:')) {
+                // No es un error a gritar: es el caso de §155. Se ofrece
+                // registrar igual, con el detalle de en cuánto queda cada uno.
+                setManualShortfall(response.message.replace('Stock insuficiente:\n', ''));
             } else {
                 toast.error(response.message);
             }
@@ -502,7 +527,7 @@ export default function ProduccionPage() {
                     <div className="space-y-4">
                         <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 p-6 dark:border-emerald-800 dark:from-emerald-900/20 dark:to-green-900/20">
                             <button
-                                onClick={handleRecipeProduction}
+                                onClick={() => handleRecipeProduction(false)}
                                 disabled={isSubmitting || !selectedRecipe || quantity <= 0 || !allIngredientsAvailable || !areaId}
                                 className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 py-4 text-lg font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -517,10 +542,36 @@ export default function ProduccionPage() {
                                 )}
                             </button>
 
-                            {requirements.length > 0 && !allIngredientsAvailable && (
-                                <p className="mt-3 text-center text-sm text-red-600 dark:text-red-400">
-                                    ⚠️ Stock insuficiente de algunos ingredientes
-                                </p>
+                            {/* §155 — Faltante de stock: en vez de un error sin
+                                salida, se ofrece registrar igual mostrando en
+                                cuánto queda cada insumo. La materia prima suele
+                                estar; lo que falta es cargar la entrada. */}
+                            {recipeShortfalls.length > 0 && (
+                                <div className="mt-3 rounded-xl border border-[#E8D9B8] bg-[#F3EAD6] p-3 dark:border-[#5b4a24] dark:bg-[#3B2F15]">
+                                    <p className="text-sm font-semibold text-[#946A1C] dark:text-[#E8D9B8]">
+                                        Stock insuficiente en el sistema
+                                    </p>
+                                    <ul className="mt-2 space-y-1 text-xs text-[#946A1C] dark:text-[#E8D9B8]">
+                                        {recipeShortfalls.map(f => (
+                                            <li key={f.itemId} className="tabular-nums">
+                                                {f.name}: quedaría en{' '}
+                                                <span className="font-semibold">{f.resulting} {f.unit}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p className="mt-2 text-xs text-[#946A1C] dark:text-[#E8D9B8]">
+                                        Si la materia prima está y sólo falta cargar la entrada,
+                                        registrá igual: los insumos quedan en negativo y el saldo
+                                        se acomoda al cargarla.
+                                    </p>
+                                    <button
+                                        onClick={() => handleRecipeProduction(true)}
+                                        disabled={isSubmitting || !selectedRecipe || quantity <= 0 || !areaId}
+                                        className="mt-3 w-full rounded-lg border border-[#946A1C] px-3 py-2 text-sm font-semibold text-[#946A1C] transition-colors hover:bg-[#946A1C]/10 disabled:opacity-40 dark:border-[#E8D9B8] dark:text-[#E8D9B8]"
+                                    >
+                                        Registrar igual y dejar en negativo
+                                    </button>
+                                </div>
                             )}
                             {selectedRecipe && quantity > 0 && allIngredientsAvailable && (
                                 <p className="mt-3 text-center text-sm text-emerald-600 dark:text-emerald-400">
@@ -747,7 +798,7 @@ export default function ProduccionPage() {
                     <div className="space-y-4">
                         <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
                             <button
-                                onClick={handleManualProduction}
+                                onClick={() => handleManualProduction(false)}
                                 disabled={isSubmitting || !manualOutputItem || manualOutputQty <= 0 || !manualAreaId}
                                 className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-4 text-lg font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -761,6 +812,31 @@ export default function ProduccionPage() {
                                     </span>
                                 )}
                             </button>
+
+                            {/* §155 — El servidor bloqueó por stock: se ofrece
+                                registrar igual dejando los insumos en negativo. */}
+                            {manualShortfall && (
+                                <div className="mt-3 rounded-xl border border-[#E8D9B8] bg-[#F3EAD6] p-3 dark:border-[#5b4a24] dark:bg-[#3B2F15]">
+                                    <p className="text-sm font-semibold text-[#946A1C] dark:text-[#E8D9B8]">
+                                        Stock insuficiente en el sistema
+                                    </p>
+                                    <pre className="mt-2 whitespace-pre-wrap font-sans text-xs text-[#946A1C] dark:text-[#E8D9B8]">
+                                        {manualShortfall}
+                                    </pre>
+                                    <p className="mt-2 text-xs text-[#946A1C] dark:text-[#E8D9B8]">
+                                        Si la materia prima está y sólo falta cargar la entrada,
+                                        registrá igual: los insumos quedan en negativo y el saldo
+                                        se acomoda al cargarla.
+                                    </p>
+                                    <button
+                                        onClick={() => handleManualProduction(true)}
+                                        disabled={isSubmitting}
+                                        className="mt-3 w-full rounded-lg border border-[#946A1C] px-3 py-2 text-sm font-semibold text-[#946A1C] transition-colors hover:bg-[#946A1C]/10 disabled:opacity-40 dark:border-[#E8D9B8] dark:text-[#E8D9B8]"
+                                    >
+                                        Registrar igual y dejar en negativo
+                                    </button>
+                                </div>
+                            )}
 
                             {manualOutputItem && manualOutputQty > 0 && (
                                 <div className="mt-4 rounded-lg bg-white/60 p-3 dark:bg-gray-800/50">

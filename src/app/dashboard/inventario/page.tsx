@@ -2,6 +2,7 @@ import { getInventoryListAction, getAreasAction } from '@/app/actions/inventory.
 import InventoryView from './inventory-view';
 import PendingDeductionBanner from './pending-deduction-banner';
 import OrphanRecipesBanner from './orphan-recipes-banner';
+import NegativeStockBanner from './negative-stock-banner';
 
 // Esta página ahora es un Server Component
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ export default async function InventarioPage() {
     //    "descargo pendiente" suele tener como causa raíz una receta huérfana.
     return (
         <div className="space-y-4">
+            <NegativeStockBanner />
             <PendingDeductionBanner />
             <OrphanRecipesBanner />
             <InventoryView initialItems={items} initialAreas={areas} />

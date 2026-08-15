@@ -14084,3 +14084,68 @@ Pendiente menor: el aviso de neto sólo está en Producción Manual. En
 producción por receta convendría mostrarlo también.
 
 Gates: tsc 0 · vitest 756 (8 nuevos) · build de producción OK.
+
+---
+
+## §155 Producir con stock insuficiente: el insumo queda en negativo (2026-08-15)
+
+Omar: *"produzco aderezo de lomito de verdad, pero el sistema no me deja
+porque no tengo registrada la materia prima. Necesito que me deje registrar
+la producción y que la materia prima vaya a negativo, para que cuando cargue
+la entrada me concuerden los saldos."*
+
+### Por qué se acepta
+
+Una producción **no registrada es peor que un saldo negativo**. El negativo es
+una deuda visible que se salda sola al cargar la entrada. La producción que
+ocurrió en la cocina y no quedó en el sistema es invisible: rompe el costo del
+plato, el Kardex y el conteo siguiente, y no deja rastro de por qué. Bloquear
+no protegía el inventario — sólo escondía el problema.
+
+### Cómo se protege el dato
+
+Autorización elegida por Omar: **confirmar viendo la lista**, sin PIN. El
+gerente no siempre está en cocina, y exigirlo reintroduce el bloqueo que se
+está resolviendo. El listado ya ataja el riesgo real, que es el error de
+tipeo.
+
+1. **No es automático.** `allowNegativeStock` llega en falso por defecto; sin
+   él, ambas actions bloquean igual que antes.
+2. **Se confirma con el detalle.** La pantalla lista en cuánto queda cada
+   insumo (*"Aceite de oliva: quedaría en −4.5 L"*). Ese número es lo que
+   delata litros donde iban mililitros, antes de tocar el inventario.
+   - Por receta: el cliente ya conoce el stock (`calculateRequirementsAction`),
+     así que el aviso sale antes de intentar.
+   - Manual: no lo conoce por área, así que el detalle llega del servidor tras
+     el intento bloqueado y ahí aparece el botón.
+3. **Queda rastro.** `shortfallAuditNote` en las notas de la orden, y los
+   movimientos de esos insumos con *"faltante de inventario, queda en
+   negativo"*. Visible en el Kardex (§145).
+4. **Los negativos se ven.** `NegativeStockBanner` en Inventario lista insumo,
+   almacén y cuánto debe, ordenado por el más hundido, con acceso directo a
+   cargar la entrada. **Esta es la pieza que hace segura toda la función**: un
+   negativo que nadie mira deja de ser transitorio y se vuelve el descuadre
+   que nadie sabe explicar.
+
+### Detalle técnico
+
+El decremento pasó de `update` a **`upsert`** sobre `inventoryItemId_areaId`.
+Antes, un insumo sin fila de stock en el área daba *"no tiene stock en esta
+área"* y no había forma de avanzar ni con permiso; ahora la fila se crea
+directamente en negativo. Es el caso del insumo nuevo usado antes de cargarse.
+
+Un ítem **inexistente** sigue siendo error duro: no pasa ni con
+`allowNegativeStock`. Eso es dato corrupto, no un faltante.
+
+`src/lib/inventory/stock-shortfall.ts`, puro, 10 tests — incluye tolerancia de
+1 g/ml para que un residuo de coma flotante (`0.1 + 0.2`) no dispare un
+faltante falso, y el caso de un insumo que **ya venía en negativo** y se hunde
+más.
+
+### Fuera de alcance a propósito
+
+El descargo por ventas del POS **no** se toca. Si una mesa no se puede
+preparar por falta de stock, es otra situación, y llevarlo a negativo en
+silencio escondería problemas reales.
+
+Gates: tsc 0 · vitest 766 (10 nuevos) · build de producción OK.
