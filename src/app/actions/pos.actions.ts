@@ -39,8 +39,16 @@ import { registerSale } from '@/server/services/inventory.service';
 import { getCaracasDateStamp, getCaracasDayRange } from '@/lib/datetime';
 import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
-import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent, MIN_DELIVERY_FEE_DIVISAS } from '@/lib/sales/divisas-config';
+import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent } from '@/lib/sales/divisas-config';
 import { resolveDivisasRate } from '@/lib/sales/divisas-override';
+import {
+    DELIVERY_FEE_NORMAL_KEY,
+    DELIVERY_FEE_CERCANO_KEY,
+    DEFAULT_DELIVERY_FEES,
+    parseDeliveryFee,
+    deliveryFeeForZone,
+    type DeliveryFees,
+} from '@/lib/sales/delivery-fee-config';
 import { CHARGE_AUTH_ROLES, VOID_AUTH_USER_ROLES } from '@/lib/pin-roles';
 import { computeDeliveryTotals, divisasBaseFromPaid } from '@/lib/sales/delivery-totals';
 import { getStockValidationEnabled } from '@/app/actions/system-config.actions';
@@ -165,6 +173,9 @@ export interface CreateOrderData {
      * discountType, para compatibilidad).
      */
     deliveryFeeMode?: 'DIVISAS' | 'BS' | 'NONE';
+    /** §157 — Zona del envío: es lo que decide el MONTO del fee (normal $3 /
+     *  cercano $1, configurables). La moneda solo decide en qué se cobra. */
+    deliveryZone?: 'NORMAL' | 'CERCANO';
     // Hora de entrega solicitada (PICKUP/DELIVERY). ISO string desde el
     // cliente; la action la persiste como DateTime y la encola a la
     // comanda de cocina vía `enqueueKitchenCommand` cuando esté seteada.
@@ -423,12 +434,11 @@ async function resolveSalesAreaForBranch(branchId?: string) {
     return ensureBaseSalesArea();
 }
 
-const DELIVERY_FEE_NORMAL = 4.5;
-// PISO del fee de delivery en divisas (§87): SIEMPRE $3 mínimo — se le paga al
-// motorizado sí o sí. El descuento por divisas (editable) aplica SOLO a los
-// ítems, nunca al fee. Por eso el fee en divisas es un swap fijo NORMAL→$3, no
-// un %; el Math.max lo blinda ante un cambio accidental del constante.
-const DELIVERY_FEE_DIVISAS = Math.max(MIN_DELIVERY_FEE_DIVISAS, 3);
+// §157 — El fee de envío ya no está hardcodeado ni depende de la moneda:
+// depende de la ZONA (normal/cercano) y se configura en Configuración → POS.
+// El principio de §87 se mantiene intacto por otra vía: el descuento por
+// divisas aplica SOLO a los ítems, nunca al fee (computeDeliveryTotals recibe
+// feeNormal = feeDivisas = fee de la zona, así que ningún camino lo rebaja).
 
 /** Redondea a 2 decimales. */
 function round2(n: number): number { return Math.round(n * 100) / 100; }
@@ -446,6 +456,22 @@ async function loadDivisasDiscountRate(db: TenantPrismaClient): Promise<number> 
         return divisasDiscountRate(parseDivisasPercent(cfg?.value));
     } catch {
         return divisasDiscountRate(null);
+    }
+}
+
+/** Fees de envío por zona (§157), leídos de SystemConfig. Defaults 3/1. */
+async function loadDeliveryFees(db: TenantPrismaClient): Promise<DeliveryFees> {
+    try {
+        const rows = await db.systemConfig.findMany({
+            where: { key: { in: [DELIVERY_FEE_NORMAL_KEY, DELIVERY_FEE_CERCANO_KEY] } },
+        });
+        const byKey = new Map(rows.map(r => [r.key, r.value]));
+        return {
+            normal: parseDeliveryFee(byKey.get(DELIVERY_FEE_NORMAL_KEY), DEFAULT_DELIVERY_FEES.normal),
+            cercano: parseDeliveryFee(byKey.get(DELIVERY_FEE_CERCANO_KEY), DEFAULT_DELIVERY_FEES.cercano),
+        };
+    } catch {
+        return { ...DEFAULT_DELIVERY_FEES };
     }
 }
 
@@ -488,15 +514,18 @@ function roundToWhole(amount: number, paymentMethod?: string, exactTotal = false
 }
 
 function calculateCartTotals(
-    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery' | 'discountIncludesDelivery' | 'deliveryFeeMode'>,
+    data: Pick<CreateOrderData, 'orderType' | 'items' | 'discountType' | 'discountPercent' | 'amountPaid' | 'divisasUsdAmount' | 'paymentMethod' | 'freeDelivery' | 'discountIncludesDelivery' | 'deliveryFeeMode' | 'deliveryZone'>,
     exactTotal = false,
     // Fracción de descuento por divisas (§87). Default 1/3 (33,33% histórico).
-    // Aplica SOLO a los ítems; el fee de delivery mantiene su piso de $3.
+    // Aplica SOLO a los ítems; el fee de delivery no se descuenta nunca.
     divisasRate: number = 1 / 3,
+    // §157 — Fees por zona, leídos de SystemConfig por el caller. El default
+    // cubre a los llamadores que no cobran delivery (mesa/pickup).
+    deliveryFees: DeliveryFees = DEFAULT_DELIVERY_FEES,
 ) {
     const itemsSubtotal = data.items.reduce((sum, item) => sum + item.lineTotal, 0);
 
-    // DELIVERY: envío $4.5 normal / $3 divisas (piso). Sin 10% servicio.
+    // DELIVERY: envío por zona (§157, configurable). Sin 10% servicio.
     // §88: la matemática vive en computeDeliveryTotals (pura + testeada), la
     // MISMA regla que usa el POS → cliente y server no pueden divergir. La
     // cortesía en % descuenta SOLO los ítems; el envío se cobra completo.
@@ -523,8 +552,9 @@ function calculateCartTotals(
             // §97: moneda del envío explícita (saneada — nunca confiar en el cliente).
             feeMode: (data.deliveryFeeMode === 'DIVISAS' || data.deliveryFeeMode === 'BS' || data.deliveryFeeMode === 'NONE')
                 ? data.deliveryFeeMode : 'AUTO',
-            feeNormal: DELIVERY_FEE_NORMAL,
-            feeDivisas: DELIVERY_FEE_DIVISAS,
+            // §157: mismo monto en Bs o divisas — la zona decide.
+            feeNormal: deliveryFeeForZone(deliveryFees, data.deliveryZone),
+            feeDivisas: deliveryFeeForZone(deliveryFees, data.deliveryZone),
         });
 
         // Razón auditable del descuento.
@@ -1582,7 +1612,10 @@ export async function createSalesOrderAction(
             return { success: false, message: 'La cortesía requiere autorización de gerencia (PIN).' };
         }
 
-        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip, divisasRate);
+        const deliveryFees = data.orderType === 'DELIVERY'
+            ? await loadDeliveryFees(db)
+            : DEFAULT_DELIVERY_FEES;
+        const { subtotal, discount, total, change, discountReason } = calculateCartTotals(data, exactCashTip, divisasRate, deliveryFees);
 
         // (c) El pago debe cubrir el total. Antes paymentStatus quedaba PAID
         // hardcoded aunque las líneas mixtas no sumaran (ej. cajera olvida la

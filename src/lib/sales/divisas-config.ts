@@ -16,7 +16,13 @@ export const DIVISAS_DISCOUNT_CONFIG_KEY = 'divisas_discount_percent';
 /** 33,33% — histórico (equivale a pagar ⅔). */
 export const DEFAULT_DIVISAS_DISCOUNT_PERCENT = 100 / 3;
 
-/** Piso del fee de delivery en divisas: SIEMPRE se le paga al motorizado. */
+/**
+ * @deprecated §157 — El fee de delivery ya no depende de la moneda: depende
+ * de la zona y se configura en SystemConfig (delivery-fee-config.ts). El
+ * principio "el fee siempre se le paga al motorizado" se mantiene porque el
+ * descuento por divisas nunca toca el fee (computeDeliveryTotals). Queda solo
+ * para no romper imports viejos; no usar en código nuevo.
+ */
 export const MIN_DELIVERY_FEE_DIVISAS = 3;
 
 /** Normaliza un porcentaje de descuento divisas a [0, 90]. Fuera de rango o

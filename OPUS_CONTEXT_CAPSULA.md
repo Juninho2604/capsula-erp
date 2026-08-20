@@ -14202,3 +14202,48 @@ márgenes). El costo real entra por el descargo agregado, así que los números
 globales cierran; el plato individual no reporta rentabilidad propia.
 
 Gates: tsc 0 · vitest 766 · build de producción OK.
+
+---
+
+## §157 Costo de envío por ZONA, configurable — ya no por moneda ni hardcodeado (2026-08-16)
+
+Omar cambió la política de precios del delivery: **$3 el envío normal y $1 el
+cercano, sea Bs o cash**. Editó "el precio en el menú" y la pestaña de
+delivery siguió mostrando $4.50 — porque **el fee nunca salió del menú**:
+estaba escrito fijo en el código, en el cliente y en el server
+(`DELIVERY_FEE_NORMAL = 4.5`, `DELIVERY_FEE_DIVISAS = 3`), con la moneda
+decidiendo el monto.
+
+### Cambio de modelo
+
+| Antes | Ahora |
+|---|---|
+| El monto dependía de la **moneda** ($4.50 Bs / $3 divisas) | El monto depende de la **zona** (normal / cercano) |
+| Hardcodeado — cambiar precio = deploy | **SystemConfig**, editable en Configuración → POS |
+| — | La moneda (§97, toggle Bs/Dólares) solo decide EN QUÉ se cobra, nunca cuánto |
+
+Piezas:
+- `src/lib/sales/delivery-fee-config.ts` (pura): claves
+  `delivery_fee_normal` / `delivery_fee_cercano`, defaults 3/1, normalización
+  [0, 50] (el tope ataja el typo 300 por 3.00), `deliveryFeeForZone` — zona
+  desconocida cae a normal, **nunca a gratis**. 4 tests.
+- `system-config.actions`: `getDeliveryFeesAction` / `setDeliveryFeesAction`
+  (roles de §87: OWNER/AUDITOR/ADMIN_MANAGER).
+- Config UI: sección "Costo de envío del delivery" en Configuración → POS.
+- Delivery POS: selector de zona (Normal $X / Cercano $Y) + el toggle de
+  moneda existente con el mismo monto en ambos botones. Fees vía
+  `useDeliveryFees()` (patrón resiliente de §99: 3 reintentos y toast).
+- Server: `calculateCartTotals` recibe `deliveryFees` (leídos de SystemConfig
+  por `loadDeliveryFees`) y `data.deliveryZone`; pasa
+  `feeNormal = feeDivisas = deliveryFeeForZone(...)` a `computeDeliveryTotals`
+  — la matemática pura de §88/§112 no cambió en nada.
+
+### El "piso de $3" (§87) — qué pasó con él
+
+`MIN_DELIVERY_FEE_DIVISAS` quedó deprecado. El principio que protegía ("el
+fee siempre se le paga al motorizado") **se mantiene por otra vía**: el
+descuento por divisas nunca toca el fee — eso vive en `computeDeliveryTotals`
+y no se modificó. Lo que desaparece es el piso numérico fijo, que con el
+cercano a $1 era directamente incompatible.
+
+Gates: tsc 0 · vitest 770 (4 nuevos) · build de producción OK.

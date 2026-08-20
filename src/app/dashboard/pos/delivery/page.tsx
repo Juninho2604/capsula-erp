@@ -12,6 +12,8 @@ import { PaymentConfirmationModal, type PaymentConfirmationLine } from '@/compon
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
 import { isDivisasMethod } from '@/lib/sales/divisas-auto-discount';
+import { useDeliveryFees } from '@/lib/hooks/use-delivery-fees';
+import { deliveryFeeForZone, type DeliveryZone } from '@/lib/sales/delivery-fee-config';
 import { printReceipt, emitReceipt } from '@/lib/print-command';
 import { useTenantBranding } from '@/lib/hooks/use-tenant-branding';
 import { useTenantFeatureFlags } from '@/lib/hooks/use-feature-flags';
@@ -30,8 +32,9 @@ import { PriceDisplay } from '@/components/pos/PriceDisplay';
 import { CurrencyCalculator } from '@/components/pos/CurrencyCalculator';
 import ComandasDelDiaModal from '@/components/pos/ComandasDelDiaModal';
 
-const DELIVERY_FEE_NORMAL = 4.5;
-const DELIVERY_FEE_DIVISAS = 3;
+// §157 — El fee ya no está hardcodeado ni depende de la moneda: depende de la
+// ZONA (normal/cercano) y se configura en Configuración → POS. La moneda solo
+// decide en qué se cobra (Bs a tasa o USD), nunca cuánto.
 
 
 interface ModifierOption {
@@ -158,6 +161,10 @@ export default function POSDeliveryPage() {
     // §97 — Envío EXPLÍCITO: la cajera elige la moneda del envío (nunca se
     // infiere del método de pago). Default Bolívares $4.50; Divisas $3.
     const [deliveryFeeMode, setDeliveryFeeMode] = useState<'DIVISAS' | 'BS'>('BS');
+    // §157 — Zona del envío: decide el MONTO (normal $3 / cercano $1,
+    // configurables). deliveryFeeMode queda solo para la MONEDA de cobro.
+    const [deliveryZone, setDeliveryZone] = useState<DeliveryZone>('NORMAL');
+    const deliveryFees = useDeliveryFees();
     // §91 — Cortesía GLOBAL: cuando hay una cortesía en %, aplicar ese mismo %
     // TAMBIÉN al envío (descuento global). Solo relevante con CORTESIA_PERCENT;
     // con Cortesía 100% el envío ya va gratis. Default OFF → envío completo (§88).
@@ -396,7 +403,7 @@ export default function POSDeliveryPage() {
         : undefined; // undefined = full total gets -33%
     const cortesiaPercentNum = Math.min(100, Math.max(0, parseFloat(cortesiaPercent) || 0));
     // §97: el envío ya NO se infiere del descuento/método — lo elige la cajera.
-    const deliveryFeeBase = deliveryFeeMode === 'DIVISAS' ? DELIVERY_FEE_DIVISAS : DELIVERY_FEE_NORMAL;
+    const deliveryFeeBase = deliveryFeeForZone(deliveryFees, deliveryZone);
     // §91: cortesía global → el % también descuenta el envío. Solo con
     // CORTESIA_PERCENT + toggle activo. Coincide con computeDeliveryTotals.
     const cortesiaGlobalActiva = discountType === 'CORTESIA_PERCENT' && discountIncludesDelivery;
@@ -496,6 +503,7 @@ export default function POSDeliveryPage() {
                 freeDelivery,
                 discountIncludesDelivery: discountType === 'CORTESIA_PERCENT' ? discountIncludesDelivery : undefined,
                 deliveryFeeMode,
+                deliveryZone,
                 authorizedById: authorizedManager?.id,
                 notes: `Dirección: ${customerAddress}`
             });
@@ -987,12 +995,41 @@ export default function POSDeliveryPage() {
                         {/* Descuentos + Método + Cobro */}
                         <div className="space-y-3">
 
-                            {/* §97.1 — ENVÍO: la cajera elige la moneda. Señalización
-                                prominente; default Bolívares $4.50, Dólares $3. */}
+                            {/* §97.1 + §157 — ENVÍO: la ZONA decide el monto y la
+                                cajera elige la moneda de cobro. */}
                             <div className="space-y-2 rounded-2xl border border-capsula-line bg-capsula-ivory-surface p-3">
                                 <span className="flex items-center gap-1.5 text-sm font-semibold tracking-[-0.01em] text-capsula-ink">
                                     <Bike className="h-4 w-4 text-capsula-coral" />
-                                    ¿Cómo cobras el envío?
+                                    Envío
+                                </span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryZone('NORMAL')}
+                                        className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors active:scale-95 ${
+                                            deliveryZone === 'NORMAL'
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                                : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                        aria-pressed={deliveryZone === 'NORMAL'}
+                                    >
+                                        Normal · ${deliveryFees.normal.toFixed(2)}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryZone('CERCANO')}
+                                        className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors active:scale-95 ${
+                                            deliveryZone === 'CERCANO'
+                                                ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                                : 'border-capsula-line bg-capsula-ivory text-capsula-ink-soft hover:border-capsula-navy-deep'
+                                        }`}
+                                        aria-pressed={deliveryZone === 'CERCANO'}
+                                    >
+                                        Cercano · ${deliveryFees.cercano.toFixed(2)}
+                                    </button>
+                                </div>
+                                <span className="block px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    ¿Cómo lo cobras?
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
@@ -1006,7 +1043,7 @@ export default function POSDeliveryPage() {
                                         aria-pressed={deliveryFeeMode === 'DIVISAS'}
                                     >
                                         <DollarSign className="h-4 w-4" />
-                                        Dólares · $3.00
+                                        Dólares · ${deliveryFeeBase.toFixed(2)}
                                     </button>
                                     <button
                                         type="button"
@@ -1019,12 +1056,12 @@ export default function POSDeliveryPage() {
                                         aria-pressed={deliveryFeeMode === 'BS'}
                                     >
                                         <Banknote className="h-4 w-4" />
-                                        Bolívares · $4.50
+                                        Bolívares · ${deliveryFeeBase.toFixed(2)}
                                     </button>
                                 </div>
                                 {deliveryFeeMode === 'BS' && exchangeRate ? (
                                     <p className="px-1 text-[11px] font-medium tabular-nums text-capsula-ink-muted">
-                                        ≈ Bs {(DELIVERY_FEE_NORMAL * exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })} @ {exchangeRate.toFixed(0)}
+                                        ≈ Bs {(deliveryFeeBase * exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })} @ {exchangeRate.toFixed(0)}
                                     </p>
                                 ) : null}
                             </div>

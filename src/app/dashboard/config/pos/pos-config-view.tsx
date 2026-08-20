@@ -2,21 +2,29 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { getPOSConfig, setPOSConfig, type POSConfig } from '@/lib/pos-settings';
-import { setStockValidationEnabled, setDivisasDiscountPercentAction } from '@/app/actions/system-config.actions';
+import { setStockValidationEnabled, setDivisasDiscountPercentAction, setDeliveryFeesAction } from '@/app/actions/system-config.actions';
+import type { DeliveryFees } from '@/lib/sales/delivery-fee-config';
 import toast from 'react-hot-toast';
 
 interface Props {
   initialStockValidation: boolean;
   initialDivisasPercent: number;
   canEditDivisas: boolean;
+  /** §157 — Fees de envío por zona configurados. */
+  initialDeliveryFees: DeliveryFees;
 }
 
-export function POSConfigView({ initialStockValidation, initialDivisasPercent, canEditDivisas }: Props) {
+export function POSConfigView({ initialStockValidation, initialDivisasPercent, canEditDivisas, initialDeliveryFees }: Props) {
   const [config, setConfig] = useState<POSConfig | null>(null);
   const [stockValidation, setStockValidation] = useState(initialStockValidation);
   const [divisasStr, setDivisasStr] = useState(String(Math.round(initialDivisasPercent * 100) / 100));
   const [savedDivisas, setSavedDivisas] = useState(Math.round(initialDivisasPercent * 100) / 100);
   const [savingDivisas, setSavingDivisas] = useState(false);
+  // §157 — fees de envío por zona
+  const [feeNormalStr, setFeeNormalStr] = useState(String(initialDeliveryFees.normal));
+  const [feeCercanoStr, setFeeCercanoStr] = useState(String(initialDeliveryFees.cercano));
+  const [savedFees, setSavedFees] = useState(initialDeliveryFees);
+  const [savingFees, setSavingFees] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleSaveDivisas = async () => {
@@ -33,6 +41,26 @@ export function POSConfigView({ initialStockValidation, initialDivisasPercent, c
       setSavedDivisas(v);
       setDivisasStr(String(Math.round(v * 100) / 100));
       toast.success(`Descuento en divisas: ${Math.round(v * 100) / 100}%`);
+    } else {
+      toast.error(res.error ?? 'Error guardando');
+    }
+  };
+
+  const handleSaveFees = async () => {
+    const normal = parseFloat(feeNormalStr);
+    const cercano = parseFloat(feeCercanoStr);
+    if (!Number.isFinite(normal) || normal < 0 || normal > 50 || !Number.isFinite(cercano) || cercano < 0 || cercano > 50) {
+      toast.error('Ingresá montos entre 0 y 50');
+      return;
+    }
+    setSavingFees(true);
+    const res = await setDeliveryFeesAction({ normal, cercano });
+    setSavingFees(false);
+    if (res.ok && res.value) {
+      setSavedFees(res.value);
+      setFeeNormalStr(String(res.value.normal));
+      setFeeCercanoStr(String(res.value.cercano));
+      toast.success(`Envío: normal $${res.value.normal} · cercano $${res.value.cercano}`);
     } else {
       toast.error(res.error ?? 'Error guardando');
     }
@@ -111,7 +139,7 @@ export function POSConfigView({ initialStockValidation, initialDivisasPercent, c
         <div className="bg-gray-800 rounded-xl border border-amber-500/40 p-5">
           <h2 className="font-bold text-lg text-amber-300 mb-1 flex items-center gap-2">Descuento por pago en divisas</h2>
           <p className="text-xs text-gray-500 mb-4">
-            Descuento que se aplica cuando el cliente paga en efectivo USD/EUR o Zelle. Aplica a los ítems en todos los POS (mesa, delivery, pickup). Editable por dueño, auditor o administrador. El fee de delivery mantiene su piso de $3 al motorizado — este % no lo toca.
+            Descuento que se aplica cuando el cliente paga en efectivo USD/EUR o Zelle. Aplica a los ítems en todos los POS (mesa, delivery, pickup). Editable por dueño, auditor o administrador. El fee de delivery no se descuenta nunca — este % no lo toca.
           </p>
           {canEditDivisas ? (
             <div className="flex items-end gap-3 flex-wrap">
@@ -142,6 +170,57 @@ export function POSConfigView({ initialStockValidation, initialDivisasPercent, c
             </div>
           ) : (
             <p className="text-sm text-gray-300">Descuento actual: <span className="font-semibold text-amber-300">{savedDivisas}%</span> — solo dueño, auditor o administrador pueden cambiarlo.</p>
+          )}
+        </div>
+
+        {/* ── Costo de envío del delivery (§157) ───────────────────────── */}
+        <div className="bg-gray-800 rounded-xl border border-sky-500/40 p-5">
+          <h2 className="font-bold text-lg text-sky-300 mb-1">Costo de envío del delivery</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            El monto depende de la zona, no de la moneda: se cobra igual en Bs (a tasa) o en divisas.
+            La cajera elige la zona en la pestaña de Delivery. Editable por dueño, auditor o administrador.
+          </p>
+          {canEditDivisas ? (
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 mb-1">Envío normal</label>
+                <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-2">
+                  <span className="text-lg font-semibold text-gray-400 mr-1">$</span>
+                  <input
+                    type="number" inputMode="decimal" min={0} max={50} step="any"
+                    value={feeNormalStr}
+                    onChange={(e) => setFeeNormalStr(e.target.value)}
+                    className="w-20 bg-transparent text-right text-lg font-semibold text-white tabular-nums focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400 mb-1">Envío cercano</label>
+                <div className="flex items-center bg-gray-900 rounded-lg border border-gray-600 px-3 py-2">
+                  <span className="text-lg font-semibold text-gray-400 mr-1">$</span>
+                  <input
+                    type="number" inputMode="decimal" min={0} max={50} step="any"
+                    value={feeCercanoStr}
+                    onChange={(e) => setFeeCercanoStr(e.target.value)}
+                    className="w-20 bg-transparent text-right text-lg font-semibold text-white tabular-nums focus:outline-none"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveFees}
+                disabled={savingFees || (parseFloat(feeNormalStr) === savedFees.normal && parseFloat(feeCercanoStr) === savedFees.cercano)}
+                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
+              >
+                {savingFees ? 'Guardando…' : 'Guardar'}
+              </button>
+              <p className="text-xs text-gray-500 self-center">
+                Actual: <span className="font-semibold text-sky-300">${savedFees.normal} / ${savedFees.cercano}</span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-300">
+              Envío actual: <span className="font-semibold text-sky-300">normal ${savedFees.normal} · cercano ${savedFees.cercano}</span> — solo dueño, auditor o administrador pueden cambiarlo.
+            </p>
           )}
         </div>
 

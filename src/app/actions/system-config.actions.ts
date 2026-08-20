@@ -40,6 +40,16 @@ import { getTenantFeatureFlags } from '@/lib/feature-flags';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
 import {
+    DELIVERY_FEE_NORMAL_KEY,
+    DELIVERY_FEE_CERCANO_KEY,
+    DEFAULT_DELIVERY_FEE_NORMAL,
+    DEFAULT_DELIVERY_FEE_CERCANO,
+    DEFAULT_DELIVERY_FEES,
+    normalizeDeliveryFee,
+    parseDeliveryFee,
+    type DeliveryFees,
+} from '@/lib/sales/delivery-fee-config';
+import {
     DIVISAS_DISCOUNT_CONFIG_KEY,
     DEFAULT_DIVISAS_DISCOUNT_PERCENT,
     normalizeDivisasPercent,
@@ -261,5 +271,58 @@ export async function setDivisasDiscountPercentAction(percent: number): Promise<
         update: { value: String(normalized), updatedBy: session.id },
     });
     revalidatePath('/dashboard/config/pos');
+    return { ok: true, value: normalized };
+}
+
+// ── Costo de envío del delivery (§157) — por ZONA, no por moneda ────────────
+//
+// Antes el fee vivía hardcodeado ($4.50 Bs / $3 divisas) y "cambiar el precio"
+// requería un deploy — Omar lo editó en el menú y no pasó nada, porque el fee
+// nunca salió del menú. Ahora el monto depende de la zona (normal/cercano) y
+// se edita acá; la moneda solo decide en qué se cobra, nunca cuánto.
+
+/** Fees de envío configurados. Defaults: normal $3, cercano $1. */
+export async function getDeliveryFeesAction(): Promise<DeliveryFees> {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+        const rows = await db.systemConfig.findMany({
+            where: { key: { in: [DELIVERY_FEE_NORMAL_KEY, DELIVERY_FEE_CERCANO_KEY] } },
+        });
+        const byKey = new Map(rows.map(r => [r.key, r.value]));
+        return {
+            normal: parseDeliveryFee(byKey.get(DELIVERY_FEE_NORMAL_KEY), DEFAULT_DELIVERY_FEE_NORMAL),
+            cercano: parseDeliveryFee(byKey.get(DELIVERY_FEE_CERCANO_KEY), DEFAULT_DELIVERY_FEE_CERCANO),
+        };
+    } catch {
+        return { ...DEFAULT_DELIVERY_FEES };
+    }
+}
+
+export async function setDeliveryFeesAction(input: { normal: number; cercano: number }): Promise<{ ok: boolean; error?: string; value?: DeliveryFees }> {
+    const session = await getSession();
+    if (!session) return { ok: false, error: 'No autorizado' };
+    // Mismos roles que el % de divisas: dueño, auditor y administrador.
+    if (!DIVISAS_DISCOUNT_ROLES.includes(session.role)) {
+        return { ok: false, error: 'Solo dueño, auditor o administrador pueden cambiar el costo de envío' };
+    }
+    const normalized: DeliveryFees = {
+        normal: normalizeDeliveryFee(input.normal, DEFAULT_DELIVERY_FEE_NORMAL),
+        cercano: normalizeDeliveryFee(input.cercano, DEFAULT_DELIVERY_FEE_CERCANO),
+    };
+    const { tenantId } = await resolveTenantContext();
+    const entries: [string, number][] = [
+        [DELIVERY_FEE_NORMAL_KEY, normalized.normal],
+        [DELIVERY_FEE_CERCANO_KEY, normalized.cercano],
+    ];
+    for (const [key, value] of entries) {
+        await prisma.systemConfig.upsert({
+            where: { tenantId_key: { tenantId, key } },
+            create: { key, value: String(value), updatedBy: session.id, tenantId },
+            update: { value: String(value), updatedBy: session.id },
+        });
+    }
+    revalidatePath('/dashboard/config/pos');
+    revalidatePath('/dashboard/pos/delivery');
     return { ok: true, value: normalized };
 }
