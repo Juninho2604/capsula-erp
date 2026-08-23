@@ -14247,3 +14247,39 @@ y no se modificó. Lo que desaparece es el piso numérico fijo, que con el
 cercano a $1 era directamente incompatible.
 
 Gates: tsc 0 · vitest 770 (4 nuevos) · build de producción OK.
+
+---
+
+## §158 Renombrar mesoneros: permiso propio, y un candado que faltaba (2026-08-23)
+
+Julián (Jefe de Área) necesita cambiar el nombre de los usuarios de mesonero
+por la rotación de personal — tiene que saber quién está usando cada usuario.
+
+### Dos hallazgos
+
+1. **El módulo `mesoneros` estaba cerrado** a OWNER / ADMIN_MANAGER /
+   OPS_MANAGER / HR_MANAGER. Julián no lo veía en el sidebar.
+2. **Las actions no tenían ningún gate.** `createWaiterAction`,
+   `updateWaiterAction`, `toggleWaiterActiveAction` y `deleteWaiterAction`
+   sólo exigían sesión: cualquier usuario logueado podía renombrar mesoneros
+   invocándolas directamente. El módulo oculto era una cortina, no una llave.
+   Sólo el PIN tenía guardia propia (`PIN_MANAGER_ROLES`).
+
+### Cómo quedó — dos capas separadas
+
+- **Ver** el módulo: se agrega `AREA_LEAD` a `MODULE_ROLE_ACCESS.mesoneros`.
+  Quien supervisa el salón conoce la rotación.
+- **Editar**: nuevo permiso `MANAGE_WAITERS`, exigido por las cuatro actions
+  vía `checkActionPermission`. **No** viene en `ROLE_BASE_PERMS.AREA_LEAD` a
+  propósito: se concede por persona en Usuarios → Permisos, así no se lo lleva
+  cualquier Jefe de Área que se cree después. Gerencia, RRHH y OWNER lo traen
+  de base — nadie pierde lo que ya hacía.
+- **No habilita PINes.** El PIN de capitán autoriza anulaciones; sigue bajo
+  `PIN_MANAGER_ROLES`. Renombrar por rotación ≠ repartir autorizaciones.
+- `PERM_TO_MODULES[MANAGE_WAITERS] = ['mesoneros']`, para que la capa 2 de
+  permisos y la derivación de módulos del sidebar funcionen.
+
+Operativo: al conceder el permiso se invalida el JWT del usuario (tokenVersion)
+— tiene que volver a iniciar sesión.
+
+Gates: tsc 0 · vitest 775 (5 nuevos) · build de producción OK.

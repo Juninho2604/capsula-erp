@@ -806,7 +806,11 @@ export const MODULE_ROLE_ACCESS: Record<string, string[]> = {
   // Conversaciones WhatsApp (gated por flag waConversations + PERM.CONVERSATIONS_MANAGE)
   conversaciones: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],
   // Admin
-  mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER'],
+  // AREA_LEAD entra acá (§158): quien supervisa el salón es quien conoce la
+  // rotación y debe poder renombrar los usuarios de mesonero. Ver el módulo
+  // no alcanza para editar — las actions exigen el permiso MANAGE_WAITERS,
+  // que se concede por usuario en Usuarios → Permisos.
+  mesoneros: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AREA_LEAD'],
   users: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'HR_MANAGER', 'AUDITOR'],
   modulos_usuario: ['OWNER', 'ADMIN_MANAGER'],
   roles_config: ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'],

@@ -39,6 +39,7 @@ export const PERM = {
   MANAGE_BROADCAST:     'MANAGE_BROADCAST',      // Crear/editar anuncios al equipo
   EDIT_WINK_PRICE:      'EDIT_WINK_PRICE',       // Modificar precios de canal (WINK / PedidosYA) de un producto (gerente)
   MANAGE_PRICE_LISTS:   'MANAGE_PRICE_LISTS',    // Crear/editar/activar listas de precios por canal (gerente)
+  MANAGE_WAITERS:       'MANAGE_WAITERS',        // Renombrar/activar mesoneros (rotación de personal)
 
   // Reportes — permisos granulares por familia (reportes.<familia>.ver)
   REPORTES_VENTAS_VER:      'REPORTES_VENTAS_VER',      // reportes.ventas.ver
@@ -78,6 +79,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
   ],
 
   ADMIN_MANAGER: [
+    PERM.MANAGE_WAITERS,
     PERM.VOID_ORDER,
     PERM.APPLY_DISCOUNT,
     PERM.APPROVE_DISCOUNT,
@@ -105,6 +107,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
   ],
 
   OPS_MANAGER: [
+    PERM.MANAGE_WAITERS,
     PERM.VOID_ORDER,
     PERM.APPLY_DISCOUNT,
     PERM.APPROVE_DISCOUNT,
@@ -133,6 +136,7 @@ export const ROLE_BASE_PERMS: Record<string, PermKey[]> = {
   HR_MANAGER: [
     PERM.MANAGE_USERS,
     PERM.MANAGE_PINS,
+    PERM.MANAGE_WAITERS,
   ],
 
   CHEF: [
@@ -207,6 +211,7 @@ export const PERM_GROUPS: { key: string; label: string; icon: string; perms: Per
     perms: [
       PERM.MANAGE_USERS,
       PERM.MANAGE_PINS,
+      PERM.MANAGE_WAITERS,
       PERM.CONFIGURE_SYSTEM,
       PERM.MANAGE_BROADCAST,
       PERM.CONVERSATIONS_MANAGE,
@@ -239,6 +244,7 @@ export const PERM_LABELS: Record<PermKey, { label: string; description: string }
   [PERM.REPRINT_COMANDA]:     { label: 'Re-imprimir comanda',   description: 'Volver a imprimir comanda de cocina' },
   [PERM.EDIT_WINK_PRICE]:     { label: 'Editar precios de canal', description: 'Modificar precios WINK / PedidosYA de un producto (gerente)' },
   [PERM.MANAGE_PRICE_LISTS]:  { label: 'Gestionar listas de precios', description: 'Crear/editar/activar listas de precios por canal (gerente)' },
+  [PERM.MANAGE_WAITERS]:      { label: 'Gestionar mesoneros', description: 'Cambiar el nombre de los mesoneros y activarlos/desactivarlos. NO incluye asignar PIN.' },
   [PERM.CONVERSATIONS_MANAGE]:{ label: 'Conversaciones WA',     description: 'Bandeja de WhatsApp: ver chats, tomar el control del bot y responder' },
   [PERM.ADJUST_STOCK]:        { label: 'Ajustar inventario',    description: 'Crear ajuste manual de stock' },
   [PERM.APPROVE_TRANSFER]:    { label: 'Aprobar transferencias',description: 'Aprobar requisición de transferencia entre áreas' },

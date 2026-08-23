@@ -20,6 +20,8 @@
  */
 
 import { getSession } from '@/lib/auth';
+import { checkActionPermission } from '@/lib/permissions/action-guard';
+import { PERM } from '@/lib/constants/permissions-registry';
 import prisma from '@/server/db';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
@@ -106,6 +108,12 @@ export async function createWaiterAction(data: { firstName: string; lastName: st
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
+        // §158 — Hasta acá alcanzaba con estar logueado: cualquier sesión podía
+        // crear o renombrar mesoneros. El permiso es individual (Usuarios →
+        // Permisos), así que se concede a quien maneja la rotación de personal
+        // sin cambiarle el rol ni abrirle otros módulos.
+        const guard = await checkActionPermission(PERM.MANAGE_WAITERS);
+        if (!guard.ok) return { success: false, message: guard.message };
         const branch = await getActiveBranch();
         if (!branch) return { success: false, message: 'Sin sucursal activa' };
         if (data.pin && !PIN_MANAGER_ROLES.has(session.role)) {
@@ -136,6 +144,10 @@ export async function updateWaiterAction(id: string, data: { firstName: string; 
     try {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
+        const guard = await checkActionPermission(PERM.MANAGE_WAITERS);
+        if (!guard.ok) return { success: false, message: guard.message };
+        // El PIN sigue siendo aparte y más estricto: renombrar por rotación de
+        // personal no habilita a repartir PINes de anulación.
         if (data.pin !== undefined && !PIN_MANAGER_ROLES.has(session.role)) {
             return { success: false, message: 'No tienes permisos para cambiar el PIN' };
         }
@@ -175,8 +187,8 @@ export async function updateWaiterAction(id: string, data: { firstName: string; 
 
 export async function toggleWaiterActiveAction(id: string, isActive: boolean) {
     try {
-        const session = await getSession();
-        if (!session) return { success: false, message: 'No autorizado' };
+        const guard = await checkActionPermission(PERM.MANAGE_WAITERS);
+        if (!guard.ok) return { success: false, message: guard.message };
         const { tenantId } = await resolveTenantContext();
         const res = await withTenant(tenantId).waiter.updateMany({
             where: { id },
@@ -191,8 +203,8 @@ export async function toggleWaiterActiveAction(id: string, isActive: boolean) {
 
 export async function deleteWaiterAction(id: string) {
     try {
-        const session = await getSession();
-        if (!session) return { success: false, message: 'No autorizado' };
+        const guard = await checkActionPermission(PERM.MANAGE_WAITERS);
+        if (!guard.ok) return { success: false, message: guard.message };
         const { tenantId } = await resolveTenantContext();
         const res = await withTenant(tenantId).waiter.updateMany({
             where: { id },

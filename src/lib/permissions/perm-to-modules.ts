@@ -45,6 +45,7 @@ export const PERM_TO_MODULES: Record<PermKey, string[]> = {
     [PERM.MANAGE_BROADCAST]:    ['anuncios'],
     [PERM.EDIT_WINK_PRICE]:     ['menu', 'wink'],
     [PERM.MANAGE_PRICE_LISTS]:  ['menu', 'price_lists'],
+    [PERM.MANAGE_WAITERS]:      ['mesoneros'],
 
     // ── Reportes (granular por familia) ──────────────────────────────────────
     [PERM.REPORTES_VENTAS_VER]:     ['reportes'],
