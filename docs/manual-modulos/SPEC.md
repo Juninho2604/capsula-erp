@@ -49,11 +49,12 @@ Cada `MODULE`:
 ## Reglas de contenido (no negociables)
 
 1. **Todo factual.** Cada paso sale del código real (labels de botones, campos,
-   rutas) o de `OPUS_CONTEXT_CAPSULA.md`. Si no estás seguro de un label, andá a
+   rutas) o de `OPUS_CONTEXT_CAPSULA.md`. Si no estás seguro de un label, ve a
    leer el archivo del módulo en `src/app/dashboard/...`. **Nunca inventes**
    nombres de botones, campos ni comportamientos.
 2. **Español neutro-venezolano, tono de la guía por rol** (`docs/guia-roles/content.py`):
-   directo, segunda persona, sin tecnicismos. La cajera y el chef lo leen sin ayuda.
+   directo, segunda persona, sin tecnicismos. **Tuteo siempre (tú: toca, entra,
+   elige, puedes) — NUNCA voseo (vos: tocá, entrá, elegí, podés) ni «acá»/«andá».** La cajera y el chef lo leen sin ayuda.
 3. Botones y rutas van en `<span class='pill'>…</span>`. Negritas con `<strong>`.
 4. Callouts: `ok` (buena práctica), `warn` (requiere cuidado/PIN), `danger`
    (irreversible), `info` (contexto).
@@ -74,12 +75,12 @@ Cada `MODULE`:
     "kicker": "Compras y pagos",
     "who": "Administración, gerencia y auditoría",
     "what": "El directorio de todas las empresas y personas a las que el negocio le compra. "
-            "Cada proveedor creado acá queda disponible en <span class='pill'>Compras</span> para "
+            "Cada proveedor creado aquí queda disponible en <span class='pill'>Compras</span> para "
             "registrar documentos (facturas, notas de entrega) y en "
             "<span class='pill'>Cuentas por Pagar</span> para llevar la deuda. Si un proveedor no "
             "existe en este directorio, no se le puede registrar una compra.",
     "features": [
-        ("Directorio con búsqueda", "Buscá por nombre, RIF o código. Los inactivos quedan marcados pero no se pierden."),
+        ("Directorio con búsqueda", "Busca por nombre, RIF o código. Los inactivos quedan marcados pero no se pierden."),
         ("Ficha completa", "Nombre, RIF, código interno, persona de contacto, teléfono y correo."),
         ("Activar / desactivar", "Un proveedor con el que ya no se trabaja se desactiva — su historial de compras y deudas se conserva."),
     ],
@@ -87,14 +88,14 @@ Cada `MODULE`:
         {
             "title": "Crear un proveedor",
             "steps": [
-                ("Entrá al módulo Proveedores.", "Ruta <span class='pill'>/dashboard/proveedores</span>, en la sección <strong>Finanzas</strong> del menú lateral. Si no lo ves, escribí <em>proveedores</em> en el buscador de arriba del menú."),
-                ("Tocá <span class='pill'>Nuevo proveedor</span>.", "El botón está arriba a la derecha. Se abre la ficha vacía."),
-                ("Completá el nombre.", "Es el único campo obligatorio. Ej.: <em>Distribuidora X</em>."),
-                ("Agregá RIF, contacto, teléfono y correo si los tenés.", "El RIF con formato <span class='pill'>J-12345678-9</span>. Todo esto se puede completar después."),
-                ("Guardá.", "El proveedor aparece de inmediato en el directorio y ya se le pueden registrar documentos de compra."),
+                ("Entra al módulo Proveedores.", "Ruta <span class='pill'>/dashboard/proveedores</span>, en la sección <strong>Finanzas</strong> del menú lateral. Si no lo ves, escribe <em>proveedores</em> en el buscador de arriba del menú."),
+                ("Toca <span class='pill'>Nuevo proveedor</span>.", "El botón está arriba a la derecha. Se abre la ficha vacía."),
+                ("Completa el nombre.", "Es el único campo obligatorio. Ej.: <em>Distribuidora X</em>."),
+                ("Agrega RIF, contacto, teléfono y correo si los tienes.", "El RIF con formato <span class='pill'>J-12345678-9</span>. Todo esto se puede completar después."),
+                ("Guarda.", "El proveedor aparece de inmediato en el directorio y ya se le pueden registrar documentos de compra."),
             ],
             "callouts": [
-                ("info", "¿Y la deuda?", "La deuda no se carga acá: nace sola al registrar un documento de compra a crédito en <span class='pill'>Compras</span>, y se paga desde <span class='pill'>Cuentas por Pagar</span>."),
+                ("info", "¿Y la deuda?", "La deuda no se carga aquí: nace sola al registrar un documento de compra a crédito en <span class='pill'>Compras</span>, y se paga desde <span class='pill'>Cuentas por Pagar</span>."),
             ],
         },
     ],

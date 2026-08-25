@@ -61,7 +61,7 @@ def cover_page():
     <h1>Manual de uso<br><span class="accent">por módulo</span></h1>
     <p class="sub">Los {n_mods} módulos del sistema explicados uno por uno: qué hace cada
     pantalla, sus funcionalidades y las tareas del día a día paso a paso.
-    Buscá el módulo que necesitás en el índice y andá directo.</p>
+    Busca el módulo que necesitas en el índice y ve directo.</p>
   </div>
   <div class="meta">
     <div class="item"><div class="l">Documento</div><div class="v">Manual de referencia</div></div>
@@ -83,8 +83,8 @@ def toc_pages():
                 f'<span class="sub">— {esc(m.get("kicker", ""))}</span></span></div>')
         out.append('</div>')
     out.append(callout('info', 'Cómo leer este manual',
-        'No hace falta leerlo completo. Buscá el módulo en este índice, andá a su página y '
-        'seguí la tarea que necesités. Cada módulo dice arriba <strong>quién lo usa</strong> y '
+        'No hace falta leerlo completo. Busca el módulo en este índice, ve a su página y '
+        'sigue la tarea que necesites. Cada módulo dice arriba <strong>quién lo usa</strong> y '
         '<strong>su ruta</strong> en el sistema. Los módulos que no veas en tu menú lateral '
         'están apagados en tu instalación o fuera de tu rol — eso es normal.'))
     out.append('</div>')

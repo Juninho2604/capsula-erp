@@ -45,16 +45,16 @@ SECTION = {
                 {
                     "title": "Revisar el arranque del día",
                     "steps": [
-                        ("Entrá al sistema.", "El Dashboard es la pantalla inicial en <span class='pill'>/dashboard</span> para todos los roles de gestión."),
-                        ("Mirá las tarjetas de hoy.", "<strong>Órdenes hoy</strong>, <strong>Ticket promedio</strong>, <strong>Propinas hoy</strong> y <strong>Anuladas hoy</strong> — si algo se sale de lo normal, ahí se nota primero."),
-                        ("Bajá al <span class='pill'>Resumen Financiero del Mes</span>.", "Ventas, costo y utilidad del mes acumulado, para saber cómo viene el negocio sin abrir Finanzas."),
+                        ("Entra al sistema.", "El Dashboard es la pantalla inicial en <span class='pill'>/dashboard</span> para todos los roles de gestión."),
+                        ("Mira las tarjetas de hoy.", "<strong>Órdenes hoy</strong>, <strong>Ticket promedio</strong>, <strong>Propinas hoy</strong> y <strong>Anuladas hoy</strong> — si algo se sale de lo normal, ahí se nota primero."),
+                        ("Baja al <span class='pill'>Resumen Financiero del Mes</span>.", "Ventas, costo y utilidad del mes acumulado, para saber cómo viene el negocio sin abrir Finanzas."),
                     ],
                 },
                 {
                     "title": "Atender una alerta de stock",
                     "steps": [
-                        ("Revisá <span class='pill'>Alertas Críticas de Stock</span>.", "Lista los insumos que quedaron por debajo del mínimo configurado en Inventario."),
-                        ("Decidí la acción.", "Si hay que comprar, andá a <span class='pill'>Compras</span> (la pestaña Auto-Generar arma la orden con estos mismos ítems). Si el stock está en otra área, pedí una transferencia."),
+                        ("Revisa <span class='pill'>Alertas Críticas de Stock</span>.", "Lista los insumos que quedaron por debajo del mínimo configurado en Inventario."),
+                        ("Decide la acción.", "Si hay que comprar, ve a <span class='pill'>Compras</span> (la pestaña Auto-Generar arma la orden con estos mismos ítems). Si el stock está en otra área, pide una transferencia."),
                     ],
                 },
             ],
@@ -87,21 +87,21 @@ SECTION = {
                 {
                     "title": "Hacer el cierre del día",
                     "steps": [
-                        ("Entrá a Inventario Físico y elegí fecha y área.", "Ruta <span class='pill'>/dashboard/inventario/diario</span>."),
-                        ("Cargá el conteo físico de cada ítem.", "Las cantidades reales contadas. Tocá <span class='pill'>Guardar</span> para no perder el avance."),
-                        ("Tocá <span class='pill'>Sumar Ventas POS</span>.", "El sistema descuenta lo vendido y calcula el <strong>Cierre Teórico</strong>."),
-                        ("Revisá el <span class='pill'>Resumen pre-cierre</span>.", "Compara cierre teórico contra cierre real. Si hay ítems marcados, revisalos antes de seguir."),
-                        ("Tocá <span class='pill'>Finalizar día</span>.", "La varianza del día queda registrada y el cierre pasa a ser la apertura de mañana."),
+                        ("Entra a Inventario Físico y elige fecha y área.", "Ruta <span class='pill'>/dashboard/inventario/diario</span>."),
+                        ("Carga el conteo físico de cada ítem.", "Las cantidades reales contadas. Toca <span class='pill'>Guardar</span> para no perder el avance."),
+                        ("Toca <span class='pill'>Sumar Ventas POS</span>.", "El sistema descuenta lo vendido y calcula el <strong>Cierre Teórico</strong>."),
+                        ("Revisa el <span class='pill'>Resumen pre-cierre</span>.", "Compara cierre teórico contra cierre real. Si hay ítems marcados, revisalos antes de seguir."),
+                        ("Toca <span class='pill'>Finalizar día</span>.", "La varianza del día queda registrada y el cierre pasa a ser la apertura de mañana."),
                     ],
                     "callouts": [
-                        ("info", "¿Contaste mal?", "Un día finalizado se puede reabrir para corregir el conteo; al reabrirlo el sistema avisa <em>Inventario reabierto</em> y podés guardar de nuevo."),
+                        ("info", "¿Contaste mal?", "Un día finalizado se puede reabrir para corregir el conteo; al reabrirlo el sistema avisa <em>Inventario reabierto</em> y puedes guardar de nuevo."),
                     ],
                 },
                 {
                     "title": "Ver las variaciones de un período",
                     "steps": [
-                        ("Cambiá a la vista de rango.", "En el mismo módulo, la vista <span class='pill'>Variaciones al final del día — rango de fechas</span>."),
-                        ("Elegí desde y hasta, y el área.", "El reporte muestra la variación total, los ítems con faltante y el top de varianzas negativas del período."),
+                        ("Cambia a la vista de rango.", "En el mismo módulo, la vista <span class='pill'>Variaciones al final del día — rango de fechas</span>."),
+                        ("Elige desde y hasta, y el área.", "El reporte muestra la variación total, los ítems con faltante y el top de varianzas negativas del período."),
                     ],
                 },
             ],
@@ -126,7 +126,7 @@ SECTION = {
                 "reflejado aquí."
             ),
             "features": [
-                ("Catálogo con búsqueda y filtros", "Buscá por nombre, SKU o categoría; filtrá por almacén y por tipo: Insumos, Sub-recetas o Productos."),
+                ("Catálogo con búsqueda y filtros", "Busca por nombre, SKU o categoría; filtra por almacén y por tipo: Insumos, Sub-recetas o Productos."),
                 ("Stock por almacén", "Cada ítem muestra cuánto hay en cada área, con su stock mínimo y punto de reorden."),
                 ("Kardex", "El historial completo de movimientos de un ítem: entradas, salidas, producciones, ajustes y descargos, con fecha y motivo."),
                 ("Descargo manual de consumo", "Registra salidas que la venta no descuenta: platos sin receta (como Arma tu Shawarma), mermas y consumo interno."),
@@ -138,51 +138,51 @@ SECTION = {
                 {
                     "title": "Buscar un ítem y revisar su stock",
                     "steps": [
-                        ("Entrá a Inventario.", "Ruta <span class='pill'>/dashboard/inventario</span>."),
-                        ("Usá el buscador.", "Por nombre, SKU o categoría. Los filtros de arriba cambian entre <strong>Insumos</strong>, <strong>Sub-recetas</strong> y <strong>Productos</strong>, y entre almacenes."),
-                        ("Abrí el <span class='pill'>Kardex</span> si algo no cuadra.", "Ahí está cada movimiento del ítem con fecha, tipo y motivo — la forma de saber a dónde se fue el stock."),
+                        ("Entra a Inventario.", "Ruta <span class='pill'>/dashboard/inventario</span>."),
+                        ("Usa el buscador.", "Por nombre, SKU o categoría. Los filtros de arriba cambian entre <strong>Insumos</strong>, <strong>Sub-recetas</strong> y <strong>Productos</strong>, y entre almacenes."),
+                        ("Abre el <span class='pill'>Kardex</span> si algo no cuadra.", "Ahí está cada movimiento del ítem con fecha, tipo y motivo — la forma de saber a dónde se fue el stock."),
                     ],
                 },
                 {
                     "title": "Registrar un Descargo manual de consumo",
                     "intro": "Para platos que se venden sin receta (el caso Arma tu Shawarma), mermas o consumo interno: la venta no descuenta nada, así que el consumo real se registra aquí, agregado por período.",
                     "steps": [
-                        ("Tocá <span class='pill'>Descargo</span> en el encabezado de Inventario.", "Abre la pantalla <strong>Descargo manual de consumo</strong> en <span class='pill'>/dashboard/inventario/descargo</span>."),
-                        ("Elegí el <span class='pill'>Almacén</span> y, si aplica, el <span class='pill'>Plato vinculado (opcional)</span>.", "Al vincular un plato, el sistema muestra cuántas <strong>unidades se vendieron desde el último descargo</strong> de ese plato y desde cuándo. Este descargo debería cubrir ese consumo."),
-                        ("Abrí el panel <span class='pill'>Con qué se despachó</span>.", "Agrupa las notas que los mesoneros escribieron en cada unidad vendida (ej. <em>12 u. de «kibe + pollo»</em>). Multiplicá cada combinación por sus unidades para saber cuánto descargar de cada insumo."),
-                        ("Cargá los <span class='pill'>Insumos a descargar</span>.", "Buscá el insumo, poné la cantidad en su unidad base y tocá <span class='pill'>Agregar</span>. Repetí por cada insumo consumido."),
-                        ("Escribí el <span class='pill'>Motivo</span>.", "Es obligatorio. Ej.: <em>Consumo Arma tu Shawarma, semana 10–16 de agosto</em>."),
-                        ("Tocá <span class='pill'>Registrar descargo</span>.", "El stock baja y cada movimiento queda en el Kardex. Si vinculaste un plato, el contador se reinicia: este descargo pasa a ser «el último»."),
+                        ("Toca <span class='pill'>Descargo</span> en el encabezado de Inventario.", "Abre la pantalla <strong>Descargo manual de consumo</strong> en <span class='pill'>/dashboard/inventario/descargo</span>."),
+                        ("Elige el <span class='pill'>Almacén</span> y, si aplica, el <span class='pill'>Plato vinculado (opcional)</span>.", "Al vincular un plato, el sistema muestra cuántas <strong>unidades se vendieron desde el último descargo</strong> de ese plato y desde cuándo. Este descargo debería cubrir ese consumo."),
+                        ("Abre el panel <span class='pill'>Con qué se despachó</span>.", "Agrupa las notas que los mesoneros escribieron en cada unidad vendida (ej. <em>12 u. de «kibe + pollo»</em>). Multiplica cada combinación por sus unidades para saber cuánto descargar de cada insumo."),
+                        ("Carga los <span class='pill'>Insumos a descargar</span>.", "Busca el insumo, pon la cantidad en su unidad base y toca <span class='pill'>Agregar</span>. Repite por cada insumo consumido."),
+                        ("Escribe el <span class='pill'>Motivo</span>.", "Es obligatorio. Ej.: <em>Consumo Arma tu Shawarma, semana 10–16 de agosto</em>."),
+                        ("Toca <span class='pill'>Registrar descargo</span>.", "El stock baja y cada movimiento queda en el Kardex. Si vinculaste un plato, el contador se reinicia: este descargo pasa a ser «el último»."),
                     ],
                     "callouts": [
                         ("warn", "Unidades sin nota", "Si el panel avisa que algunas unidades se vendieron <strong>sin nota</strong>, no hay registro de qué llevaron: estimalas aparte. Y si ese número crece, el problema está en la toma de pedidos, no en el descargo."),
-                        ("info", "¿No alcanza el stock?", "Si el sistema dice <em>Stock insuficiente</em>, muestra en cuánto quedaría cada insumo. Si el consumo fue real y solo falta cargar la compra, tocá <span class='pill'>Registrar igual y dejar en negativo</span>: el saldo se acomoda al cargar la entrada."),
+                        ("info", "¿No alcanza el stock?", "Si el sistema dice <em>Stock insuficiente</em>, muestra en cuánto quedaría cada insumo. Si el consumo fue real y solo falta cargar la compra, toca <span class='pill'>Registrar igual y dejar en negativo</span>: el saldo se acomoda al cargar la entrada."),
                     ],
                 },
                 {
                     "title": "Atender el banner de stock negativo",
                     "intro": "Un insumo queda en negativo cuando se produjo o descargó antes de cargar su compra. El negativo es una deuda visible que se salda sola al registrar la entrada — pero alguien tiene que mirarla.",
                     "steps": [
-                        ("Mirá el aviso al entrar a Inventario.", "El banner dice cuántos insumos están en negativo y lista los más hundidos, con su almacén y cuánto deben."),
-                        ("Cargá la entrada pendiente.", "El propio banner lleva a <span class='pill'>Entrada de Mercancía</span> (<span class='pill'>/dashboard/inventario/entrada</span>). Al registrar la compra, el saldo se acomoda solo."),
+                        ("Mira el aviso al entrar a Inventario.", "El banner dice cuántos insumos están en negativo y lista los más hundidos, con su almacén y cuánto deben."),
+                        ("Carga la entrada pendiente.", "El propio banner lleva a <span class='pill'>Entrada de Mercancía</span> (<span class='pill'>/dashboard/inventario/entrada</span>). Al registrar la compra, el saldo se acomoda solo."),
                     ],
                     "callouts": [
-                        ("warn", "No lo dejes crecer", "Un negativo que nadie mira deja de ser transitorio y se vuelve el descuadre que nadie sabe explicar. Si el banner sigue ahí después de cargar las compras del día, algo más está pasando: revisá el Kardex del insumo."),
+                        ("warn", "No lo dejes crecer", "Un negativo que nadie mira deja de ser transitorio y se vuelve el descuadre que nadie sabe explicar. Si el banner sigue ahí después de cargar las compras del día, algo más está pasando: revisa el Kardex del insumo."),
                     ],
                 },
                 {
                     "title": "Editar un ítem del catálogo",
                     "steps": [
-                        ("Tocá <span class='pill'>Editar ítem</span> en la fila del producto.", "Se abre la ficha con nombre, SKU, categoría y unidad de medida."),
-                        ("Ajustá <span class='pill'>Stock Mínimo</span> y <span class='pill'>Punto de Reorden</span>.", "Con estos valores se disparan las alertas de stock bajo y la pestaña Auto-Generar de Compras."),
-                        ("Guardá.", "Eliminar un ítem es solo para gerentes — y solo si no tiene historial que lo necesite."),
+                        ("Toca <span class='pill'>Editar ítem</span> en la fila del producto.", "Se abre la ficha con nombre, SKU, categoría y unidad de medida."),
+                        ("Ajusta <span class='pill'>Stock Mínimo</span> y <span class='pill'>Punto de Reorden</span>.", "Con estos valores se disparan las alertas de stock bajo y la pestaña Auto-Generar de Compras."),
+                        ("Guarda.", "Eliminar un ítem es solo para gerentes — y solo si no tiene historial que lo necesite."),
                     ],
                 },
                 {
                     "title": "Dar entrada de mercancía",
                     "steps": [
-                        ("Tocá <span class='pill'>Entrada de Mercancía</span> en el encabezado.", "Ruta <span class='pill'>/dashboard/inventario/entrada</span>."),
-                        ("Cargá los ítems recibidos y sus cantidades.", "Cada línea genera un movimiento de compra que suma al stock del almacén elegido y actualiza el costo del insumo."),
+                        ("Toca <span class='pill'>Entrada de Mercancía</span> en el encabezado.", "Ruta <span class='pill'>/dashboard/inventario/entrada</span>."),
+                        ("Carga los ítems recibidos y sus cantidades.", "Cada línea genera un movimiento de compra que suma al stock del almacén elegido y actualiza el costo del insumo."),
                     ],
                     "callouts": [
                         ("info", "¿Vino con factura?", "Si la mercancía llega con un documento de proveedor, conviene registrarla desde <span class='pill'>Compras</span> / Facturas y Notas: la entrada queda vinculada al documento y a la deuda en Cuentas por Pagar."),
@@ -208,7 +208,7 @@ SECTION = {
             ),
             "features": [
                 ("Conteo por almacenes", "Al abrir un conteo se eligen los almacenes a contar; se puede contar más de uno en la misma sesión."),
-                ("Tipeo veloz", "Buscá por SKU, nombre o categoría; Tab/Enter avanza al siguiente. El filtro <span class='pill'>Solo pendientes</span> esconde lo ya contado."),
+                ("Tipeo veloz", "Busca por SKU, nombre o categoría; Tab/Enter avanza al siguiente. El filtro <span class='pill'>Solo pendientes</span> esconde lo ya contado."),
                 ("Revisión con diferencias", "Antes de aplicar, una tabla muestra Producto, Almacén, Sistema, Contado y la diferencia — con las varianzas grandes destacadas."),
                 ("Aplicación en dos manos", "El que contó envía a revisión; el ajuste al inventario lo aplica gerencia, dueño o auditor."),
                 ("Estados claros", "Contando → En revisión → Aplicado (o Cancelado). Un conteo aplicado es solo lectura."),
@@ -217,20 +217,20 @@ SECTION = {
                 {
                     "title": "Contar y enviar a revisión",
                     "steps": [
-                        ("Tocá <span class='pill'>Nuevo conteo</span> y elegí los almacenes.", "Ruta <span class='pill'>/dashboard/inventario/conteo-rapido</span>. Luego <span class='pill'>Comenzar conteo</span>."),
-                        ("Tipeá las cantidades de la hoja.", "Buscá cada producto por SKU o nombre y cargá lo contado; Tab o Enter pasa al siguiente. Con <span class='pill'>Solo pendientes</span> ves solo lo que falta."),
-                        ("Tocá <span class='pill'>Revisar diferencias</span>.", "El conteo pasa a revisión y muestra las diferencias contra el sistema. Si te faltó algo, <span class='pill'>Seguir contando</span> lo reabre."),
+                        ("Toca <span class='pill'>Nuevo conteo</span> y elige los almacenes.", "Ruta <span class='pill'>/dashboard/inventario/conteo-rapido</span>. Luego <span class='pill'>Comenzar conteo</span>."),
+                        ("Tipea las cantidades de la hoja.", "Busca cada producto por SKU o nombre y carga lo contado; Tab o Enter pasa al siguiente. Con <span class='pill'>Solo pendientes</span> ves solo lo que falta."),
+                        ("Toca <span class='pill'>Revisar diferencias</span>.", "El conteo pasa a revisión y muestra las diferencias contra el sistema. Si te faltó algo, <span class='pill'>Seguir contando</span> lo reabre."),
                     ],
                 },
                 {
                     "title": "Aplicar el ajuste (gerencia o auditoría)",
                     "steps": [
-                        ("Abrí el conteo en revisión.", "La tabla marca las diferencias grandes; si no hay ninguna, el sistema lo dice."),
-                        ("Tocá <span class='pill'>Aplicar y ajustar el inventario</span>.", "Pide confirmación: indica cuántos productos quedarán con una cantidad distinta y avisa que no se puede deshacer."),
-                        ("Confirmá.", "El stock de los almacenes contados se ajusta a lo contado y el conteo queda como Aplicado, solo lectura."),
+                        ("Abre el conteo en revisión.", "La tabla marca las diferencias grandes; si no hay ninguna, el sistema lo dice."),
+                        ("Toca <span class='pill'>Aplicar y ajustar el inventario</span>.", "Pide confirmación: indica cuántos productos quedarán con una cantidad distinta y avisa que no se puede deshacer."),
+                        ("Confirma.", "El stock de los almacenes contados se ajusta a lo contado y el conteo queda como Aplicado, solo lectura."),
                     ],
                     "callouts": [
-                        ("warn", "Quién puede qué", "Contar pueden producción, cocina, jefes de área, gerencia y auditoría. <strong>Aplicar el ajuste (o cancelar el conteo) solo gerencia, dueño o auditor.</strong> Si contaste vos, otra persona confirma: es el control del módulo, no un trámite."),
+                        ("warn", "Quién puede qué", "Contar pueden producción, cocina, jefes de área, gerencia y auditoría. <strong>Aplicar el ajuste (o cancelar el conteo) solo gerencia, dueño o auditor.</strong> Si contaste tú, otra persona confirma: es el control del módulo, no un trámite."),
                     ],
                 },
             ],
@@ -262,24 +262,24 @@ SECTION = {
                 {
                     "title": "Pedir stock a otra área",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva requisición</span>.", "Ruta <span class='pill'>/dashboard/transferencias</span>."),
-                        ("Elegí origen y destino, y cargá los ítems.", "Buscá cada ítem y poné la cantidad solicitada."),
-                        ("Enviá la solicitud.", "Queda como Pendiente en la bandeja del área de origen, con vos como solicitante."),
+                        ("Toca <span class='pill'>Nueva requisición</span>.", "Ruta <span class='pill'>/dashboard/transferencias</span>."),
+                        ("Elige origen y destino, y carga los ítems.", "Busca cada ítem y pon la cantidad solicitada."),
+                        ("Envía la solicitud.", "Queda como Pendiente en la bandeja del área de origen, contigo como solicitante."),
                     ],
                 },
                 {
                     "title": "Despachar y recibir una transferencia",
                     "steps": [
-                        ("El área de origen tocá <span class='pill'>Despachar</span>.", "En el detalle de la solicitud se ajustan las cantidades si se despacha menos de lo pedido."),
+                        ("El área de origen toca <span class='pill'>Despachar</span>.", "En el detalle de la solicitud se ajustan las cantidades si se despacha menos de lo pedido."),
                         ("El receptor verifica los items despachados.", "La pantalla lista los ítems despachados para verificar las cantidades recibidas, con espacio para notas de recepción."),
-                        ("Tocá <span class='pill'>Confirmar Recepción</span>.", "El stock sale del área de origen y entra al destino. La transferencia queda cerrada y trazable."),
+                        ("Toca <span class='pill'>Confirmar Recepción</span>.", "El stock sale del área de origen y entra al destino. La transferencia queda cerrada y trazable."),
                     ],
                 },
                 {
                     "title": "Mover stock en un paso (Transferencia Rápida)",
                     "steps": [
-                        ("Abrí <span class='pill'>Transferencia Rápida</span>.", "Elegí el área origen y el área destino."),
-                        ("Cargá los ítems y confirmá el movimiento.", "El stock se mueve al instante, sin pasar por solicitud y despacho. Úsala para movimientos internos de confianza; para pedidos entre áreas, la requisición deja mejor rastro."),
+                        ("Abre <span class='pill'>Transferencia Rápida</span>.", "Elige el área origen y el área destino."),
+                        ("Carga los ítems y confirma el movimiento.", "El stock se mueve al instante, sin pasar por solicitud y despacho. Úsala para movimientos internos de confianza; para pedidos entre áreas, la requisición deja mejor rastro."),
                     ],
                 },
             ],
@@ -310,15 +310,15 @@ SECTION = {
                 {
                     "title": "Registrar una nota de entrega",
                     "steps": [
-                        ("Tocá <span class='pill'>Registrar Nota de Entrega</span>.", "Ruta <span class='pill'>/dashboard/prestamos</span>."),
-                        ("Elegí almacén, producto y cantidad.", "Y anotá a quién se le entrega. El stock sale del inventario y la nota queda abierta."),
+                        ("Toca <span class='pill'>Registrar Nota de Entrega</span>.", "Ruta <span class='pill'>/dashboard/prestamos</span>."),
+                        ("Elige almacén, producto y cantidad.", "Y anota a quién se le entrega. El stock sale del inventario y la nota queda abierta."),
                     ],
                 },
                 {
                     "title": "Resolver una nota pendiente",
                     "steps": [
-                        ("Abrí la nota y elegí el tipo de resolución.", "<span class='pill'>Reposición (Devuelven producto)</span> — el producto vuelve al inventario — o <span class='pill'>Pago (Compran producto)</span> con su precio acordado."),
-                        ("Tocá <span class='pill'>Confirmar Resolución</span>.", "Con reposición, el stock reingresa. Con pago, queda registrado que el dinero se recibió (o pasa a Cuentas por Cobrar)."),
+                        ("Abre la nota y elige el tipo de resolución.", "<span class='pill'>Reposición (Devuelven producto)</span> — el producto vuelve al inventario — o <span class='pill'>Pago (Compran producto)</span> con su precio acordado."),
+                        ("Toca <span class='pill'>Confirmar Resolución</span>.", "Con reposición, el stock reingresa. Con pago, queda registrado que el dinero se recibió (o pasa a Cuentas por Cobrar)."),
                     ],
                 },
             ],
@@ -347,17 +347,17 @@ SECTION = {
                 ("Rendimiento (Yield)", "Cantidad base que rinde el lote — de ahí sale el costo por unidad producida."),
                 ("Armado en Servicio", "Marca para recetas que no se producen aparte: se descargan directo en la venta, sin pasar por Producción."),
                 ("Recalcular costos", "Cuando cambian los precios de los insumos, un botón actualiza el costo de las recetas."),
-                ("Búsqueda y categorías", "Buscá por nombre, categoría o unidad; filtrá por tipo y categoría."),
+                ("Búsqueda y categorías", "Busca por nombre, categoría o unidad; filtra por tipo y categoría."),
             ],
             "tasks": [
                 {
                     "title": "Crear una receta",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva receta</span>.", "Ruta <span class='pill'>/dashboard/recetas</span>; el formulario abre en <span class='pill'>/dashboard/recetas/nueva</span>."),
-                        ("Completá la <span class='pill'>Información Básica</span>.", "Nombre, categoría y tipo: <strong>Producto Final (Venta)</strong> o <strong>Sub-Receta</strong>. Definí la <span class='pill'>Cantidad Base</span> y el <span class='pill'>Rendimiento (Yield)</span> del lote."),
-                        ("Agregá los ingredientes.", "Con <span class='pill'>Agregar ingrediente</span>: buscá el insumo y cargá <span class='pill'>Cant. Bruta</span> y <span class='pill'>Merma</span>; el sistema calcula la neta y el costo de la línea."),
-                        ("Revisá el <span class='pill'>Análisis de Costos</span>.", "Costo de ingredientes, costo total del lote y costo unitario, calculados en vivo."),
-                        ("Guardá.", "La receta queda lista para producir y para vincular a un plato del Menú."),
+                        ("Toca <span class='pill'>Nueva receta</span>.", "Ruta <span class='pill'>/dashboard/recetas</span>; el formulario abre en <span class='pill'>/dashboard/recetas/nueva</span>."),
+                        ("Completa la <span class='pill'>Información Básica</span>.", "Nombre, categoría y tipo: <strong>Producto Final (Venta)</strong> o <strong>Sub-Receta</strong>. Define la <span class='pill'>Cantidad Base</span> y el <span class='pill'>Rendimiento (Yield)</span> del lote."),
+                        ("Agrega los ingredientes.", "Con <span class='pill'>Agregar ingrediente</span>: busca el insumo y carga <span class='pill'>Cant. Bruta</span> y <span class='pill'>Merma</span>; el sistema calcula la neta y el costo de la línea."),
+                        ("Revisa el <span class='pill'>Análisis de Costos</span>.", "Costo de ingredientes, costo total del lote y costo unitario, calculados en vivo."),
+                        ("Guarda.", "La receta queda lista para producir y para vincular a un plato del Menú."),
                     ],
                     "callouts": [
                         ("info", "Costo en cadena", "Si un ingrediente es una sub-receta, su costo se calcula recursivamente desde sus propios insumos. Nunca se calcula a mano."),
@@ -367,21 +367,21 @@ SECTION = {
                     "title": "Marcar una receta como Armado en Servicio",
                     "intro": "Para preparaciones que se arman al momento de vender (no se producen por lote): la venta descuenta los ingredientes directamente.",
                     "steps": [
-                        ("Abrí la receta y activá <span class='pill'>Armado en Servicio</span>.", "La opción dice <em>Descarga directa en venta (sin producción)</em>."),
-                        ("Guardá.", "Cada venta del plato vinculado descuenta los ingredientes de la receta, sin orden de producción de por medio."),
+                        ("Abre la receta y activa <span class='pill'>Armado en Servicio</span>.", "La opción dice <em>Descarga directa en venta (sin producción)</em>."),
+                        ("Guarda.", "Cada venta del plato vinculado descuenta los ingredientes de la receta, sin orden de producción de por medio."),
                     ],
                 },
                 {
                     "title": "Recalcular los costos",
                     "steps": [
-                        ("Tocá <span class='pill'>Recalcular costos</span> en el listado.", "También existe por receta (<span class='pill'>Recalcular costo</span>)."),
-                        ("Revisá el resultado.", "Los costos se actualizan con los precios vigentes del módulo Costos — el módulo de Margen por Plato lee estos números."),
+                        ("Toca <span class='pill'>Recalcular costos</span> en el listado.", "También existe por receta (<span class='pill'>Recalcular costo</span>)."),
+                        ("Revisa el resultado.", "Los costos se actualizan con los precios vigentes del módulo Costos — el módulo de Margen por Plato lee estos números."),
                     ],
                 },
                 {
                     "title": "Editar o eliminar una receta",
                     "steps": [
-                        ("Tocá <span class='pill'>Editar receta</span> en la fila.", "Podés cambiar ingredientes, cantidades, mermas y rendimiento; el costo se recalcula."),
+                        ("Toca <span class='pill'>Editar receta</span> en la fila.", "Puedes cambiar ingredientes, cantidades, mermas y rendimiento; el costo se recalcula."),
                         ("Para borrarla, <span class='pill'>Eliminar receta</span>.", "Solo si ya no se usa: un plato del menú vinculado a esa receta quedaría sin descargo de inventario."),
                     ],
                     "callouts": [
@@ -414,8 +414,8 @@ SECTION = {
                 {
                     "title": "Crear una sub-receta",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva sub-receta</span>.", "Ruta <span class='pill'>/dashboard/subrecetas</span>. Ej.: <em>Salsa de Ajo de la Casa</em>."),
-                        ("Cargá ingredientes, rendimiento y guardá.", "Igual que una receta normal; el tipo ya viene como Sub-Receta."),
+                        ("Toca <span class='pill'>Nueva sub-receta</span>.", "Ruta <span class='pill'>/dashboard/subrecetas</span>. Ej.: <em>Salsa de Ajo de la Casa</em>."),
+                        ("Carga ingredientes, rendimiento y guarda.", "Igual que una receta normal; el tipo ya viene como Sub-Receta."),
                     ],
                 },
                 {
@@ -446,7 +446,7 @@ SECTION = {
                 "movimientos en el Kardex."
             ),
             "features": [
-                ("Producción desde Receta", "Elegís la receta y la cantidad; el sistema calcula lo necesario, muestra lo disponible y descuenta al registrar."),
+                ("Producción desde Receta", "Eliges la receta y la cantidad; el sistema calcula lo necesario, muestra lo disponible y descuenta al registrar."),
                 ("Producción Manual", "Producto de salida + ingredientes cargados a mano, para producciones fuera de receta o ajustes."),
                 ("Auto-consumo permitido", "Una receta puede llevar su propio producto como ingrediente (yogurt con cultivo, masa madre): el sistema muestra el neto — cuánto varía el stock de verdad."),
                 ("Producir con faltante", "Si no alcanza la materia prima, se puede registrar igual dejando el insumo en negativo — con confirmación explícita viendo la lista."),
@@ -456,31 +456,31 @@ SECTION = {
                 {
                     "title": "Producir desde una receta",
                     "steps": [
-                        ("Entrá a Producción y elegí <span class='pill'>Producción desde Receta</span>.", "Ruta <span class='pill'>/dashboard/produccion</span>."),
-                        ("Buscá la receta e indicá la cantidad.", "El sistema lista cada ingrediente con lo <strong>Necesario</strong> y lo <strong>Disponible</strong>."),
-                        ("Tocá <span class='pill'>Registrar Producción</span>.", "Descuenta los ingredientes y suma el producto terminado. La orden queda registrada con vos como responsable."),
+                        ("Entra a Producción y elige <span class='pill'>Producción desde Receta</span>.", "Ruta <span class='pill'>/dashboard/produccion</span>."),
+                        ("Busca la receta e indica la cantidad.", "El sistema lista cada ingrediente con lo <strong>Necesario</strong> y lo <strong>Disponible</strong>."),
+                        ("Toca <span class='pill'>Registrar Producción</span>.", "Descuenta los ingredientes y suma el producto terminado. La orden queda registrada contigo como responsable."),
                     ],
                 },
                 {
                     "title": "Hacer una Producción Manual",
                     "steps": [
-                        ("Elegí <span class='pill'>Producción Manual</span>.", "Para producciones sin receta o con ingredientes distintos a los de la ficha."),
-                        ("Seleccioná el producto de salida y su cantidad.", "Con <span class='pill'>Seleccionar producto de salida...</span>."),
-                        ("Agregá los ingredientes consumidos.", "Uno por uno, con sus cantidades reales."),
-                        ("Tocá <span class='pill'>Registrar Producción Manual</span>.", "Los insumos bajan y el producto sube, con movimientos separados en el Kardex."),
+                        ("Elige <span class='pill'>Producción Manual</span>.", "Para producciones sin receta o con ingredientes distintos a los de la ficha."),
+                        ("Selecciona el producto de salida y su cantidad.", "Con <span class='pill'>Seleccionar producto de salida...</span>."),
+                        ("Agrega los ingredientes consumidos.", "Uno por uno, con sus cantidades reales."),
+                        ("Toca <span class='pill'>Registrar Producción Manual</span>.", "Los insumos bajan y el producto sube, con movimientos separados en el Kardex."),
                     ],
                     "callouts": [
-                        ("info", "Producto que se consume a sí mismo", "Es válido usar el producto de salida como ingrediente (el yogurt arranca con yogurt). La pantalla muestra el aviso de <em>Producción con auto-consumo</em> con el neto: se producen 10 KG y se consumen 2 KG → el stock varía +8 KG. Leé ese número — es lo que delata un decimal mal puesto antes de tocar el inventario."),
+                        ("info", "Producto que se consume a sí mismo", "Es válido usar el producto de salida como ingrediente (el yogurt arranca con yogurt). La pantalla muestra el aviso de <em>Producción con auto-consumo</em> con el neto: se producen 10 KG y se consumen 2 KG → el stock varía +8 KG. Lee ese número — es lo que delata un decimal mal puesto antes de tocar el inventario."),
                     ],
                 },
                 {
                     "title": "Registrar una producción sin materia prima suficiente",
                     "intro": "Una producción real que no se registra es peor que un saldo negativo: rompe el costo, el Kardex y el conteo siguiente. Por eso el sistema deja registrarla dejando el insumo en negativo — pero nunca en silencio.",
                     "steps": [
-                        ("Intentá registrar la producción normal.", "Si el stock no alcanza, el sistema muestra en cuánto quedaría cada insumo (ej. <em>Aceite de oliva: quedaría en −4.5 L</em>)."),
-                        ("Leé la lista con calma.", "Ese detalle es el control: litros donde iban mililitros se ven ahí, antes de tocar el inventario."),
-                        ("Tocá <span class='pill'>Registrar igual y dejar en negativo</span>.", "La producción se registra, los insumos quedan en negativo y el movimiento queda anotado como faltante de inventario, visible en el Kardex."),
-                        ("Cargá la entrada de la materia prima apenas puedas.", "El banner de stock negativo en Inventario te lo va a recordar; al registrar la compra, el saldo se acomoda solo."),
+                        ("Intenta registrar la producción normal.", "Si el stock no alcanza, el sistema muestra en cuánto quedaría cada insumo (ej. <em>Aceite de oliva: quedaría en −4.5 L</em>)."),
+                        ("Lee la lista con calma.", "Ese detalle es el control: litros donde iban mililitros se ven ahí, antes de tocar el inventario."),
+                        ("Toca <span class='pill'>Registrar igual y dejar en negativo</span>.", "La producción se registra, los insumos quedan en negativo y el movimiento queda anotado como faltante de inventario, visible en el Kardex."),
+                        ("Carga la entrada de la materia prima apenas puedas.", "El banner de stock negativo en Inventario te lo va a recordar; al registrar la compra, el saldo se acomoda solo."),
                     ],
                     "callouts": [
                         ("warn", "Es una excepción, no la rutina", "El paso existe para que la operación no se frene cuando la compra todavía no se cargó. Si los negativos se vuelven costumbre, el problema es el orden de carga de las compras."),
@@ -489,8 +489,8 @@ SECTION = {
                 {
                     "title": "Corregir o cancelar una orden",
                     "steps": [
-                        ("Abrí la orden en el listado.", "Cada orden muestra producto, cantidad, responsable, estado e ingredientes consumidos."),
-                        ("Usá <span class='pill'>Editar notas</span> o <span class='pill'>Cancelar orden</span>.", "Las notas documentan el lote; cancelar revierte la orden cuando se cargó por error."),
+                        ("Abre la orden en el listado.", "Cada orden muestra producto, cantidad, responsable, estado e ingredientes consumidos."),
+                        ("Usa <span class='pill'>Editar notas</span> o <span class='pill'>Cancelar orden</span>.", "Las notas documentan el lote; cancelar revierte la orden cuando se cargó por error."),
                     ],
                 },
             ],
@@ -520,16 +520,16 @@ SECTION = {
                 {
                     "title": "Actualizar el costo de un insumo",
                     "steps": [
-                        ("Buscá el insumo y tocá <span class='pill'>Editar costo</span>.", "Ruta <span class='pill'>/dashboard/costos</span>."),
-                        ("Cargá el nuevo costo y la moneda.", "Con el motivo si aplica (ej. <em>subió el proveedor</em>)."),
-                        ("Tocá <span class='pill'>Guardar costo</span>.", "Después conviene pasar por Recetas → <span class='pill'>Recalcular costos</span> para que el cambio llegue a los platos."),
+                        ("Busca el insumo y toca <span class='pill'>Editar costo</span>.", "Ruta <span class='pill'>/dashboard/costos</span>."),
+                        ("Carga el nuevo costo y la moneda.", "Con el motivo si aplica (ej. <em>subió el proveedor</em>)."),
+                        ("Toca <span class='pill'>Guardar costo</span>.", "Después conviene pasar por Recetas → <span class='pill'>Recalcular costos</span> para que el cambio llegue a los platos."),
                     ],
                 },
                 {
                     "title": "Importar costos desde Excel",
                     "steps": [
-                        ("Tocá <span class='pill'>Importar Costos desde Excel</span>.", "Subí el archivo con SKU y costo."),
-                        ("Revisá el resumen antes de aplicar.", "El importador separa <strong>Coincidentes</strong>, <strong>No Encontrados</strong> e <strong>Inválidos</strong> — solo se aplican los que matchean."),
+                        ("Toca <span class='pill'>Importar Costos desde Excel</span>.", "Sube el archivo con SKU y costo."),
+                        ("Revisa el resumen antes de aplicar.", "El importador separa <strong>Coincidentes</strong>, <strong>No Encontrados</strong> e <strong>Inválidos</strong> — solo se aplican los que matchean."),
                     ],
                 },
             ],
@@ -560,16 +560,16 @@ SECTION = {
                 {
                     "title": "Revisar la rentabilidad de la carta",
                     "steps": [
-                        ("Entrá a Margen por Plato.", "Ruta <span class='pill'>/dashboard/costos/margen</span>."),
-                        ("Mirá los totales de arriba.", "Total de platos, margen promedio, rentables y en riesgo."),
-                        ("Ordená o filtrá para encontrar los problemas.", "Los platos en riesgo primero: o suben de precio, o baja su costo, o se revisa su receta."),
+                        ("Entra a Margen por Plato.", "Ruta <span class='pill'>/dashboard/costos/margen</span>."),
+                        ("Mira los totales de arriba.", "Total de platos, margen promedio, rentables y en riesgo."),
+                        ("Ordena o filtra para encontrar los problemas.", "Los platos en riesgo primero: o suben de precio, o baja su costo, o se revisa su receta."),
                     ],
                 },
                 {
                     "title": "Arreglar un plato con margen malo",
                     "steps": [
-                        ("Verificá que el costo sea real.", "Un margen absurdo suele ser un costo desactualizado o una receta con cantidades mal cargadas — revisá Costos y la receta antes de tocar el precio."),
-                        ("Ajustá precio o receta.", "El precio se cambia en <span class='pill'>Menú</span>; la receta en <span class='pill'>Recetas</span>. El margen se recalcula solo."),
+                        ("Verifica que el costo sea real.", "Un margen absurdo suele ser un costo desactualizado o una receta con cantidades mal cargadas — revisa Costos y la receta antes de tocar el precio."),
+                        ("Ajusta precio o receta.", "El precio se cambia en <span class='pill'>Menú</span>; la receta en <span class='pill'>Recetas</span>. El margen se recalcula solo."),
                     ],
                     "callouts": [
                         ("info", "Platos sin receta", "Un plato sin receta aparece con costo 0 y margen ciego. Si es a propósito (Arma tu Shawarma), su costo real entra por el Descargo manual — los números globales cierran, aunque el plato no reporte margen propio."),
@@ -607,51 +607,51 @@ SECTION = {
                 {
                     "title": "Crear una orden de compra manual",
                     "steps": [
-                        ("Entrá a Compras y abrí la pestaña <span class='pill'>Manual</span>.", "Ruta <span class='pill'>/dashboard/compras</span>."),
-                        ("Completá proveedor y fecha.", "El proveedor es opcional (se puede dejar <em>Sin proveedor específico</em>) y hay campo de fecha de entrega esperada y notas."),
-                        ("Agregá los ítems desde el panel izquierdo.", "Buscá cada ítem y cargá la cantidad pedida."),
-                        ("Creá la orden.", "Nace en Borrador; cuando se manda al proveedor, tocá <span class='pill'>Marcar como enviada</span>."),
+                        ("Entra a Compras y abre la pestaña <span class='pill'>Manual</span>.", "Ruta <span class='pill'>/dashboard/compras</span>."),
+                        ("Completa proveedor y fecha.", "El proveedor es opcional (se puede dejar <em>Sin proveedor específico</em>) y hay campo de fecha de entrega esperada y notas."),
+                        ("Agrega los ítems desde el panel izquierdo.", "Busca cada ítem y carga la cantidad pedida."),
+                        ("Crea la orden.", "Nace en Borrador; cuando se manda al proveedor, toca <span class='pill'>Marcar como enviada</span>."),
                     ],
                 },
                 {
                     "title": "Generar la orden desde el stock bajo",
                     "steps": [
-                        ("Abrí la pestaña <span class='pill'>Auto-Generar</span>.", "Lista los <strong>Items con Stock Bajo</strong>: los que están por debajo de su mínimo, con stock actual, mínimo y cuánto falta para el punto de reorden."),
-                        ("Revisá y ajustá cantidades.", "El sistema propone; vos decidís."),
-                        ("Generá la orden.", "Queda como una orden normal, lista para enviar y recibir."),
+                        ("Abre la pestaña <span class='pill'>Auto-Generar</span>.", "Lista los <strong>Items con Stock Bajo</strong>: los que están por debajo de su mínimo, con stock actual, mínimo y cuánto falta para el punto de reorden."),
+                        ("Revisa y ajusta cantidades.", "El sistema propone; tú decides."),
+                        ("Genera la orden.", "Queda como una orden normal, lista para enviar y recibir."),
                     ],
                 },
                 {
                     "title": "Enviar el pedido por WhatsApp",
                     "steps": [
-                        ("Abrí la orden y tocá <span class='pill'>Copiar para WhatsApp</span>.", "La orden se copia al portapapeles con formato de chat."),
-                        ("Pegala en el chat del proveedor y marcá la orden como enviada.", "La pestaña <span class='pill'>WhatsApp</span> también funciona al revés: pegás el texto del chat, tocás <span class='pill'>Analizar Orden</span>, corregís los ítems reconocidos y los cargás a la orden."),
+                        ("Abre la orden y toca <span class='pill'>Copiar para WhatsApp</span>.", "La orden se copia al portapapeles con formato de chat."),
+                        ("Pegala en el chat del proveedor y marca la orden como enviada.", "La pestaña <span class='pill'>WhatsApp</span> también funciona al revés: pegas el texto del chat, tocas <span class='pill'>Analizar Orden</span>, corriges los ítems reconocidos y los cargas a la orden."),
                     ],
                 },
                 {
                     "title": "Recibir la mercancía",
                     "steps": [
-                        ("Abrí la pestaña <span class='pill'>Recibir</span>.", "La pantalla <strong>Recibir Mercancía desde Orden de Compra</strong>."),
-                        ("Seleccioná la orden y el área de almacenamiento.", "Con <span class='pill'>Seleccionar orden…</span>."),
-                        ("Cargá las cantidades realmente recibidas, línea por línea.", "Si llegó menos, la orden queda Parcial y el resto pendiente."),
-                        ("Tocá <span class='pill'>Recibir mercancía</span>.", "Lo recibido entra al stock del área elegida y actualiza el costo del insumo."),
+                        ("Abre la pestaña <span class='pill'>Recibir</span>.", "La pantalla <strong>Recibir Mercancía desde Orden de Compra</strong>."),
+                        ("Selecciona la orden y el área de almacenamiento.", "Con <span class='pill'>Seleccionar orden…</span>."),
+                        ("Carga las cantidades realmente recibidas, línea por línea.", "Si llegó menos, la orden queda Parcial y el resto pendiente."),
+                        ("Toca <span class='pill'>Recibir mercancía</span>.", "Lo recibido entra al stock del área elegida y actualiza el costo del insumo."),
                     ],
                 },
                 {
                     "title": "Dar entrada a un documento repartiendo en varios almacenes",
                     "intro": "Una factura real trae mercancía para varios destinos: la carne al centro de producción, las bebidas al restaurante. Ya no hace falta darle entrada a todo en un almacén y transferir después.",
                     "steps": [
-                        ("Abrí el documento del proveedor y tocá <span class='pill'>Dar entrada</span>.", "En Facturas y Notas (<span class='pill'>/dashboard/compras/documentos</span>). Se abre el modal <strong>Dar entrada al inventario</strong>."),
-                        ("Camino rápido: elegí un almacén y confirmá.", "Si toda la factura va al mismo destino, no hay nada más que hacer."),
-                        ("Para repartir, abrí <span class='pill'>Repartir en varios almacenes</span>.", "Cada línea muestra su propio selector; las que quedan en <span class='pill'>— destino general —</span> van al almacén principal elegido."),
-                        ("Tocá <span class='pill'>Dar entrada</span>.", "Cada línea suma al stock de su almacén. El registro de auditoría lista los almacenes usados."),
+                        ("Abre el documento del proveedor y toca <span class='pill'>Dar entrada</span>.", "En Facturas y Notas (<span class='pill'>/dashboard/compras/documentos</span>). Se abre el modal <strong>Dar entrada al inventario</strong>."),
+                        ("Camino rápido: elige un almacén y confirma.", "Si toda la factura va al mismo destino, no hay nada más que hacer."),
+                        ("Para repartir, abre <span class='pill'>Repartir en varios almacenes</span>.", "Cada línea muestra su propio selector; las que quedan en <span class='pill'>— destino general —</span> van al almacén principal elegido."),
+                        ("Toca <span class='pill'>Dar entrada</span>.", "Cada línea suma al stock de su almacén. El registro de auditoría lista los almacenes usados."),
                     ],
                 },
                 {
                     "title": "Configurar stock mínimo y punto de reorden",
                     "steps": [
-                        ("Abrí la pestaña <span class='pill'>Stock Mín.</span>", "La pantalla <strong>Configurar Stock Mínimo y Punto de Reorden</strong>."),
-                        ("Cargá mínimo y reorden por ítem.", "Con estos umbrales se arman las alertas del Dashboard y la pestaña Auto-Generar."),
+                        ("Abre la pestaña <span class='pill'>Stock Mín.</span>", "La pantalla <strong>Configurar Stock Mínimo y Punto de Reorden</strong>."),
+                        ("Carga mínimo y reorden por ítem.", "Con estos umbrales se arman las alertas del Dashboard y la pestaña Auto-Generar."),
                     ],
                 },
             ],
@@ -683,17 +683,17 @@ SECTION = {
                 {
                     "title": "Crear una plantilla de procesamiento",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva Plantilla de Procesamiento</span>.", "Ruta <span class='pill'>/dashboard/proteinas</span>."),
-                        ("Nombrá la plantilla y agregá los subproductos.", "Con <span class='pill'>Agregar subproducto</span> — cada corte con su nombre (ej. <em>Huesos de Pollo</em>) y su orden en la cadena."),
-                        ("Guardá.", "La plantilla queda disponible para todos los procesamientos de esa proteína."),
+                        ("Toca <span class='pill'>Nueva Plantilla de Procesamiento</span>.", "Ruta <span class='pill'>/dashboard/proteinas</span>."),
+                        ("Nombra la plantilla y agrega los subproductos.", "Con <span class='pill'>Agregar subproducto</span> — cada corte con su nombre (ej. <em>Huesos de Pollo</em>) y su orden en la cadena."),
+                        ("Guarda.", "La plantilla queda disponible para todos los procesamientos de esa proteína."),
                     ],
                 },
                 {
                     "title": "Registrar un procesamiento",
                     "steps": [
-                        ("Tocá <span class='pill'>Nuevo Procesamiento</span>.", "Elegí la proteína, el proveedor si aplica y los datos del lote."),
-                        ("Cargá los subproductos obtenidos y el desperdicio.", "Los pesos reales de cada corte y el <span class='pill'>Desperdicio Reportado (kg)</span>."),
-                        ("Tocá <span class='pill'>Completar y Actualizar Inventario</span>.", "La materia prima se descuenta y los cortes entran al stock, con el desperdicio registrado."),
+                        ("Toca <span class='pill'>Nuevo Procesamiento</span>.", "Elige la proteína, el proveedor si aplica y los datos del lote."),
+                        ("Carga los subproductos obtenidos y el desperdicio.", "Los pesos reales de cada corte y el <span class='pill'>Desperdicio Reportado (kg)</span>."),
+                        ("Toca <span class='pill'>Completar y Actualizar Inventario</span>.", "La materia prima se descuenta y los cortes entran al stock, con el desperdicio registrado."),
                     ],
                 },
             ],
@@ -724,17 +724,17 @@ SECTION = {
                 {
                     "title": "Crear un mesonero",
                     "steps": [
-                        ("Entrá a Mesoneros y creá uno nuevo.", "Ruta <span class='pill'>/dashboard/mesoneros</span>. La ficha pide nombre y apellido (ej. <em>Carlos López</em>)."),
-                        ("Marcá <span class='pill'>Capitán</span> si corresponde.", "Solo los capitanes dividen cuentas y transfieren mesas en el POS."),
-                        ("Guardá.", "El mesonero aparece en la lista del POS Mesero; sin PIN todavía no puede identificarse."),
+                        ("Entra a Mesoneros y crea uno nuevo.", "Ruta <span class='pill'>/dashboard/mesoneros</span>. La ficha pide nombre y apellido (ej. <em>Carlos López</em>)."),
+                        ("Marca <span class='pill'>Capitán</span> si corresponde.", "Solo los capitanes dividen cuentas y transfieren mesas en el POS."),
+                        ("Guarda.", "El mesonero aparece en la lista del POS Mesero; sin PIN todavía no puede identificarse."),
                     ],
                 },
                 {
                     "title": "Renombrar un mesonero por rotación de personal",
                     "intro": "Cuando entra gente nueva al salón, el usuario de mesonero se renombra en vez de crear uno por persona — así el jefe de área siempre sabe quién está detrás de cada usuario.",
                     "steps": [
-                        ("Tocá <span class='pill'>Editar</span> en la fila del mesonero.", "Se abre la ficha <strong>Editar mesonero</strong>."),
-                        ("Cambiá nombre y apellido, y guardá.", "El historial de ventas y comandas del usuario se conserva; solo cambia a quién representa."),
+                        ("Toca <span class='pill'>Editar</span> en la fila del mesonero.", "Se abre la ficha <strong>Editar mesonero</strong>."),
+                        ("Cambia nombre y apellido, y guarda.", "El historial de ventas y comandas del usuario se conserva; solo cambia a quién representa."),
                     ],
                     "callouts": [
                         ("warn", "Requiere el permiso Gestionar mesoneros", "Ver el módulo no alcanza para editar: las acciones exigen el permiso <strong>Gestionar mesoneros</strong>, que se concede por persona en <span class='pill'>Usuarios → Permisos</span> (gerencia y RRHH lo traen de base; a un jefe de área hay que concedérselo). Tras recibirlo, la persona debe cerrar sesión y volver a entrar."),
@@ -743,8 +743,8 @@ SECTION = {
                 {
                     "title": "Asignar o cambiar el PIN",
                     "steps": [
-                        ("Abrí la ficha del mesonero.", "El campo <span class='pill'>PIN</span> acepta 4 a 6 dígitos numéricos; también existe <span class='pill'>Borrar PIN</span>."),
-                        ("Guardá.", "El PIN permite al mesonero identificarse en el POS Mesero. Asignar o borrar PIN es exclusivo de gerencia (dueño, gerente administrativo o de operaciones)."),
+                        ("Abre la ficha del mesonero.", "El campo <span class='pill'>PIN</span> acepta 4 a 6 dígitos numéricos; también existe <span class='pill'>Borrar PIN</span>."),
+                        ("Guarda.", "El PIN permite al mesonero identificarse en el POS Mesero. Asignar o borrar PIN es exclusivo de gerencia (dueño, gerente administrativo o de operaciones)."),
                     ],
                     "callouts": [
                         ("info", "Este PIN no autoriza cobros", "El PIN de mesonero identifica en el POS Mesero (y el de capitán autoriza anulaciones); no habilita cobros ni descuentos — eso es del PIN de gerente."),
@@ -778,17 +778,17 @@ SECTION = {
                 {
                     "title": "Crear una familia",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva familia</span>.", "Ruta <span class='pill'>/dashboard/sku-studio</span>."),
-                        ("Cargá nombre y código.", "Ej. familia <em>Carnes y proteínas</em>, código <em>CARN</em>; subcategoría e ícono opcionales."),
-                        ("Guardá.", "Los SKU de esa familia van a compartir el prefijo y la clasificación."),
+                        ("Toca <span class='pill'>Nueva familia</span>.", "Ruta <span class='pill'>/dashboard/sku-studio</span>."),
+                        ("Carga nombre y código.", "Ej. familia <em>Carnes y proteínas</em>, código <em>CARN</em>; subcategoría e ícono opcionales."),
+                        ("Guarda.", "Los SKU de esa familia van a compartir el prefijo y la clasificación."),
                     ],
                 },
                 {
                     "title": "Crear productos usando una plantilla",
                     "steps": [
-                        ("Elegí la familia y la plantilla.", "La plantilla trae pre-cargados el tipo de inventario, la unidad base y el seguimiento de stock."),
-                        ("Completá nombre y formato de cada ítem.", "Ej. <em>Pechuga deshuesada MAP</em>, formato <em>KG</em>. El código se arma con el patrón de la familia."),
-                        ("Guardá.", "Los ítems nacen en el inventario ya estandarizados, listos para costos y recetas."),
+                        ("Elige la familia y la plantilla.", "La plantilla trae pre-cargados el tipo de inventario, la unidad base y el seguimiento de stock."),
+                        ("Completa nombre y formato de cada ítem.", "Ej. <em>Pechuga deshuesada MAP</em>, formato <em>KG</em>. El código se arma con el patrón de la familia."),
+                        ("Guarda.", "Los ítems nacen en el inventario ya estandarizados, listos para costos y recetas."),
                     ],
                 },
             ],
@@ -820,16 +820,16 @@ SECTION = {
                 {
                     "title": "Crear un insumo estandarizado",
                     "steps": [
-                        ("Entrá al Asistente.", "Ruta <span class='pill'>/dashboard/asistente</span>."),
-                        ("Seguí la guía: nombre, unidad y SKU.", "El asistente propone el formato estándar; podés registrar el stock inicial y el punto de alerta en el mismo paso."),
-                        ("Usá <span class='pill'>Agregar a recetas</span> si aplica.", "El insumo queda creado en el inventario y conectado a las recetas que lo usan."),
+                        ("Entra al Asistente.", "Ruta <span class='pill'>/dashboard/asistente</span>."),
+                        ("Sigue la guía: nombre, unidad y SKU.", "El asistente propone el formato estándar; puedes registrar el stock inicial y el punto de alerta en el mismo paso."),
+                        ("Usa <span class='pill'>Agregar a recetas</span> si aplica.", "El insumo queda creado en el inventario y conectado a las recetas que lo usan."),
                     ],
                 },
                 {
                     "title": "Auditar la conexión ventas → inventario",
                     "steps": [
-                        ("Revisá el panel <span class='pill'>Estado de conexión ventas → inventario</span>.", "Separa los platos en <strong>Receta completa</strong>, <strong>Receta vacía</strong> y <strong>Sin receta</strong>."),
-                        ("Completá lo que falte.", "Un plato sin receta (o con receta vacía) se vende sin descontar inventario. La meta es que el panel diga <em>¡Todos los platos tienen receta completa!</em> — salvo los platos sin receta a propósito, cuyo consumo entra por el Descargo manual."),
+                        ("Revisa el panel <span class='pill'>Estado de conexión ventas → inventario</span>.", "Separa los platos en <strong>Receta completa</strong>, <strong>Receta vacía</strong> y <strong>Sin receta</strong>."),
+                        ("Completa lo que falte.", "Un plato sin receta (o con receta vacía) se vende sin descontar inventario. La meta es que el panel diga <em>¡Todos los platos tienen receta completa!</em> — salvo los platos sin receta a propósito, cuyo consumo entra por el Descargo manual."),
                     ],
                 },
             ],
@@ -858,37 +858,37 @@ SECTION = {
                 ("Producto de reventa", "Alta en un solo paso: crea el producto del menú, su ítem de inventario y la receta técnica 1:1 que descuenta al vender."),
                 ("Estado de receta a la vista", "Cada plato indica si su receta está completa, sin ingredientes o si no existe — con acceso directo a crearla o completarla."),
                 ("Precios por canal", "Columnas PYA $ y WINK $ para PedidosYA y WINK; vacío usa el precio base. Solo gerentes."),
-                ("Búsqueda", "Buscá por plato para editar precio, nombre o disponibilidad sin recorrer la carta."),
+                ("Búsqueda", "Busca por plato para editar precio, nombre o disponibilidad sin recorrer la carta."),
             ],
             "tasks": [
                 {
                     "title": "Crear una categoría",
                     "steps": [
-                        ("Andá a <span class='pill'>Categorías del menú</span> y tocá <span class='pill'>Nueva categoría</span>.", "Ruta <span class='pill'>/dashboard/menu</span>."),
-                        ("Nombrala y guardá.", "Ej.: <em>Entradas</em>, <em>Cócteles</em>. Las categorías ordenan el menú del POS."),
+                        ("Ve a <span class='pill'>Categorías del menú</span> y toca <span class='pill'>Nueva categoría</span>.", "Ruta <span class='pill'>/dashboard/menu</span>."),
+                        ("Nombrala y guarda.", "Ej.: <em>Entradas</em>, <em>Cócteles</em>. Las categorías ordenan el menú del POS."),
                     ],
                 },
                 {
                     "title": "Crear un plato preparado",
                     "steps": [
-                        ("Tocá <span class='pill'>Nuevo plato preparado</span>.", "Para productos con receta multi-ingrediente (ej. <em>Shawarma Mixto</em>)."),
-                        ("Completá nombre, categoría y precio.", "El sistema indica qué se va a crear automáticamente, incluida la receta vacía."),
-                        ("Completá la receta.", "El plato queda marcado <em>Receta sin ingredientes — complétala</em>; el enlace lleva a Recetas y al guardar volvés al Menú. Hasta completarla, el plato se vende pero no descuenta inventario."),
+                        ("Toca <span class='pill'>Nuevo plato preparado</span>.", "Para productos con receta multi-ingrediente (ej. <em>Shawarma Mixto</em>)."),
+                        ("Completa nombre, categoría y precio.", "El sistema indica qué se va a crear automáticamente, incluida la receta vacía."),
+                        ("Completa la receta.", "El plato queda marcado <em>Receta sin ingredientes — complétala</em>; el enlace lleva a Recetas y al guardar vuelves al Menú. Hasta completarla, el plato se vende pero no descuenta inventario."),
                     ],
                 },
                 {
                     "title": "Crear un producto de reventa",
                     "steps": [
-                        ("Tocá <span class='pill'>Producto de reventa</span>.", "Para productos que se compran y se venden tal cual: Pepsi 355ml, agua, cervezas."),
-                        ("Completá nombre, precio, almacén y stock.", "En un solo paso se crean el producto del menú, el ítem de inventario con su stock y la receta técnica 1:1."),
-                        ("Guardá.", "Vender 1 descuenta 1 del stock automáticamente. No hay receta que completar."),
+                        ("Toca <span class='pill'>Producto de reventa</span>.", "Para productos que se compran y se venden tal cual: Pepsi 355ml, agua, cervezas."),
+                        ("Completa nombre, precio, almacén y stock.", "En un solo paso se crean el producto del menú, el ítem de inventario con su stock y la receta técnica 1:1."),
+                        ("Guarda.", "Vender 1 descuenta 1 del stock automáticamente. No hay receta que completar."),
                     ],
                 },
                 {
                     "title": "Cargar precios por canal (PedidosYA / WINK)",
                     "steps": [
-                        ("Buscá el plato y editá las columnas <span class='pill'>PYA $</span> y <span class='pill'>WINK $</span>.", "Son los precios que usan los POS de PedidosYA y WINK."),
-                        ("Dejá vacío para usar el precio base.", "El precio WINK es editable solo por gerentes."),
+                        ("Busca el plato y edita las columnas <span class='pill'>PYA $</span> y <span class='pill'>WINK $</span>.", "Son los precios que usan los POS de PedidosYA y WINK."),
+                        ("Deja vacío para usar el precio base.", "El precio WINK es editable solo por gerentes."),
                     ],
                     "callouts": [
                         ("info", "¿Muchos precios distintos?", "Si el negocio maneja precios por canal de forma sistemática, el módulo <span class='pill'>Listas de precios</span> lo resuelve por lista completa en vez de plato por plato."),
@@ -923,20 +923,20 @@ SECTION = {
                 {
                     "title": "Crear un grupo de modificadores",
                     "steps": [
-                        ("Tocá <span class='pill'>Crear Grupo de Modificadores</span>.", "Ruta <span class='pill'>/dashboard/menu/modificadores</span>."),
-                        ("Nombrá el grupo y definí <span class='pill'>Mín.</span> y <span class='pill'>Máx.</span>", "Ej.: <em>Acompañante</em>, <em>Salsa</em>, <em>Extras</em>. El máximo 99 significa sin límite."),
+                        ("Toca <span class='pill'>Crear Grupo de Modificadores</span>.", "Ruta <span class='pill'>/dashboard/menu/modificadores</span>."),
+                        ("Nombra el grupo y define <span class='pill'>Mín.</span> y <span class='pill'>Máx.</span>", "Ej.: <em>Acompañante</em>, <em>Salsa</em>, <em>Extras</em>. El máximo 99 significa sin límite."),
                         ("Vinculalo a los platos.", "En <span class='pill'>Aplica a platos del POS</span>: sin el vínculo, el grupo no aparece al vender."),
                     ],
                 },
                 {
                     "title": "Agregar una opción que descuenta inventario",
                     "steps": [
-                        ("Tocá <span class='pill'>Nuevo Modificador</span> dentro del grupo.", "Nombre (ej. <em>Tabule</em>, <em>Extra queso</em>) y su <span class='pill'>Precio (+/-$)</span>."),
-                        ("En <span class='pill'>Descarga inventario de</span>, tocá <span class='pill'>Agregar insumo</span>.", "Buscá el insumo por nombre o SKU y cargá la cantidad que descuenta por unidad vendida."),
-                        ("Guardá.", "Cada vez que el POS venda esa opción, el insumo baja del stock."),
+                        ("Toca <span class='pill'>Nuevo Modificador</span> dentro del grupo.", "Nombre (ej. <em>Tabule</em>, <em>Extra queso</em>) y su <span class='pill'>Precio (+/-$)</span>."),
+                        ("En <span class='pill'>Descarga inventario de</span>, toca <span class='pill'>Agregar insumo</span>.", "Busca el insumo por nombre o SKU y carga la cantidad que descuenta por unidad vendida."),
+                        ("Guarda.", "Cada vez que el POS venda esa opción, el insumo baja del stock."),
                     ],
                     "callouts": [
-                        ("warn", "Opciones sin insumos", "Un modificador vinculado sin insumos se vende sin descontar nada. El módulo los lista — revisá ese aviso al terminar. La excepción válida son los modificadores solo de precio (ej. <em>+Kibe $2</em> en un plato sin receta cuyo consumo entra por el Descargo manual)."),
+                        ("warn", "Opciones sin insumos", "Un modificador vinculado sin insumos se vende sin descontar nada. El módulo los lista — revisa ese aviso al terminar. La excepción válida son los modificadores solo de precio (ej. <em>+Kibe $2</em> en un plato sin receta cuyo consumo entra por el Descargo manual)."),
                     ],
                 },
             ],
@@ -968,17 +968,17 @@ SECTION = {
                 {
                     "title": "Crear un happy hour",
                     "steps": [
-                        ("Tocá <span class='pill'>Nueva promoción</span>.", "Ruta <span class='pill'>/dashboard/promociones</span>. Ej.: <em>Happy Hour Cervezas</em>."),
-                        ("Elegí el tipo de descuento y el valor.", "<span class='pill'>Porcentaje (%)</span> — con su tope por unidad si querés — o <span class='pill'>Fijo</span> con el monto por unidad."),
-                        ("Definí a qué aplica y cuándo.", "Productos o categorías, días de la semana, horario (HH:MM) y fechas de vigencia opcionales."),
-                        ("Guardá.", "La promoción queda creada; falta que el dueño la encienda."),
+                        ("Toca <span class='pill'>Nueva promoción</span>.", "Ruta <span class='pill'>/dashboard/promociones</span>. Ej.: <em>Happy Hour Cervezas</em>."),
+                        ("Elige el tipo de descuento y el valor.", "<span class='pill'>Porcentaje (%)</span> — con su tope por unidad si quieres — o <span class='pill'>Fijo</span> con el monto por unidad."),
+                        ("Define a qué aplica y cuándo.", "Productos o categorías, días de la semana, horario (HH:MM) y fechas de vigencia opcionales."),
+                        ("Guarda.", "La promoción queda creada; falta que el dueño la encienda."),
                     ],
                 },
                 {
                     "title": "Activar o desactivar una promoción",
                     "steps": [
                         ("Pedile al dueño que use el interruptor de la promoción.", "<strong>Solo el OWNER puede activar/desactivar</strong> — así los descuentos automáticos no se prenden sin la última firma."),
-                        ("Verificá en el POS dentro de la ventana.", "El descuento se aplica solo en los días y horas configurados."),
+                        ("Verifica en el POS dentro de la ventana.", "El descuento se aplica solo en los días y horas configurados."),
                     ],
                 },
             ],
@@ -1009,15 +1009,15 @@ SECTION = {
                 {
                     "title": "Crear una lista y cargar precios",
                     "steps": [
-                        ("Tocá <span class='pill'>Crear lista de precios</span>.", "Ruta <span class='pill'>/dashboard/menu/listas-precios</span>. Nombrala y elegí los canales donde aplica."),
-                        ("Cargá los precios de los productos.", "Buscá cada producto y poné su precio para esta lista; los demás siguen con el precio base."),
+                        ("Toca <span class='pill'>Crear lista de precios</span>.", "Ruta <span class='pill'>/dashboard/menu/listas-precios</span>. Nombrala y elige los canales donde aplica."),
+                        ("Carga los precios de los productos.", "Busca cada producto y pon su precio para esta lista; los demás siguen con el precio base."),
                     ],
                 },
                 {
                     "title": "Activar la lista de un canal",
                     "steps": [
-                        ("Tocá <span class='pill'>Activar</span> en la lista.", "La lista activa de cada canal define el precio de sus productos en ese canal."),
-                        ("Verificá en el POS del canal.", "Sin listas activadas, el POS usa el precio base del menú."),
+                        ("Toca <span class='pill'>Activar</span> en la lista.", "La lista activa de cada canal define el precio de sus productos en ese canal."),
+                        ("Verifica en el POS del canal.", "Sin listas activadas, el POS usa el precio base del menú."),
                     ],
                     "callouts": [
                         ("info", "¿No ves el módulo?", "Listas de precios está detrás de una función que el dueño activa por instalación. Si no aparece en el menú, no está encendida."),
@@ -1050,16 +1050,16 @@ SECTION = {
                 {
                     "title": "Crear un cliente",
                     "steps": [
-                        ("Tocá <span class='pill'>Nuevo cliente</span>.", "Ruta <span class='pill'>/dashboard/clientes</span>."),
-                        ("Completá la ficha.", "El nombre completo es lo único obligatorio; cédula/RIF, teléfono, email y la dirección de delivery ayudan después."),
-                        ("Tocá <span class='pill'>Guardar</span>.", "El cliente queda disponible para asociarlo a pedidos."),
+                        ("Toca <span class='pill'>Nuevo cliente</span>.", "Ruta <span class='pill'>/dashboard/clientes</span>."),
+                        ("Completa la ficha.", "El nombre completo es lo único obligatorio; cédula/RIF, teléfono, email y la dirección de delivery ayudan después."),
+                        ("Toca <span class='pill'>Guardar</span>.", "El cliente queda disponible para asociarlo a pedidos."),
                     ],
                 },
                 {
                     "title": "Consultar el historial de un cliente",
                     "steps": [
-                        ("Buscalo por nombre, cédula o teléfono.", "Y abrí su ficha."),
-                        ("Revisá el historial de compras.", "Pedidos con fecha e ítems, total gastado, ticket promedio y última visita — la foto de qué tan habitual es."),
+                        ("Buscalo por nombre, cédula o teléfono.", "Y abre su ficha."),
+                        ("Revisa el historial de compras.", "Pedidos con fecha e ítems, total gastado, ticket promedio y última visita — la foto de qué tan habitual es."),
                     ],
                 },
             ],
@@ -1090,15 +1090,15 @@ SECTION = {
                 {
                     "title": "Revisar los resultados del día",
                     "steps": [
-                        ("Entrá a Satisfacción y elegí la fecha.", "Ruta <span class='pill'>/dashboard/encuestas</span>."),
-                        ("Mirá promedio y distribución.", "Si un día no tiene encuestas, la pantalla lo dice — puede ser señal de que en el POS no se están llenando."),
+                        ("Entra a Satisfacción y elige la fecha.", "Ruta <span class='pill'>/dashboard/encuestas</span>."),
+                        ("Mira promedio y distribución.", "Si un día no tiene encuestas, la pantalla lo dice — puede ser señal de que en el POS no se están llenando."),
                     ],
                 },
                 {
                     "title": "Comparar el desempeño por mesonero",
                     "steps": [
-                        ("Bajá a la sección <span class='pill'>Por mesonero</span>.", "Respuestas y promedio de cada uno."),
-                        ("Cruzá con el detalle.", "El <span class='pill'>Detalle de respuestas</span> muestra cada encuesta individual, para entender qué hay detrás de un promedio bajo."),
+                        ("Baja a la sección <span class='pill'>Por mesonero</span>.", "Respuestas y promedio de cada uno."),
+                        ("Cruza con el detalle.", "El <span class='pill'>Detalle de respuestas</span> muestra cada encuesta individual, para entender qué hay detrás de un promedio bajo."),
                     ],
                 },
             ],
