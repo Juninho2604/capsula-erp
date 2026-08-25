@@ -14396,3 +14396,39 @@ movimientos de stock. Mientras tanto: revertir con el Descargo manual (§156) y
 anular después.
 
 Gates: tsc 0 · vitest 786 (11 nuevos) · build de producción OK.
+
+---
+
+## §161 Manual de uso por módulo + fix del label "−33%" (2026-08-25)
+
+El administrador de Shanklish pidió por WhatsApp "el manual de uso nuevamente"
+(quería crear un proveedor y no recordaba el módulo). Omar pidió manuales
+**más completos, por funcionalidades y por módulos** — complemento del
+existente por rol (`docs/guia-roles/`).
+
+### `docs/manual-modulos/` — nuevo pipeline
+
+Mismo sistema que guia-roles (weasyprint, Minimal Navy, Inter Tight):
+
+- `SPEC.md` — esquema del contenido + módulo ejemplar (Proveedores). Es el
+  contrato para regenerar/ampliar secciones.
+- `content_{operaciones,ventas,admin,finanzas,juegos}.py` — 61 módulos en 5
+  secciones, ~170 tareas paso a paso con labels literales del código.
+- `generate.py` → `KPSULA-Manual-de-uso-por-modulo.pdf` (106 páginas A4).
+- Regenerar: `pip3 install weasyprint && python3 generate.py`.
+
+Regla aprendida: la ubicación de un módulo se documenta **como se ve en el
+sidebar** (`src/components/layout/Sidebar.tsx`), no según la `section` interna
+de `modules-registry.ts` — Proveedores está bajo "Finanzas" en el menú aunque
+el registry lo clasifique `admin`. El buscador "Buscar módulo…" del sidebar es
+la respuesta universal a "no encuentro la pantalla".
+
+### Fix: el botón de descuento divisas mentía el %
+
+Documentando el POS, el label no se pudo citar porque contradecía §149: la
+matemática usa el % de SystemConfig desde §149, pero quedaban labels fijos —
+`Divisas −33%` (×2) y un tooltip en POS Restaurante, `Divisa -33%` en POS
+Delivery. Ahora usan `divisasPctLabel` (patrón que POS Mesero ya tenía). Si el
+% configurado no es 33, el botón lo refleja.
+
+Gates: tsc 0 · vitest 795 · build de producción OK.
