@@ -231,7 +231,7 @@ SECTION = {
                 {
                     "title": "Crear un proveedor",
                     "steps": [
-                        ("Entrá al módulo Proveedores.", "Ruta <span class='pill'>/dashboard/proveedores</span>, en el grupo de Administración del menú lateral."),
+                        ("Entrá al módulo Proveedores.", "Ruta <span class='pill'>/dashboard/proveedores</span>, en la sección <strong>Finanzas</strong> del menú lateral. Si no lo ves, escribí <em>proveedores</em> en el buscador de arriba del menú."),
                         ("Tocá <span class='pill'>Nuevo proveedor</span>.", "El botón está arriba a la derecha. Se abre la ficha vacía."),
                         ("Completá el nombre.", "Es el único campo obligatorio. Ej.: <em>Distribuidora X</em>."),
                         ("Agregá RIF, contacto, teléfono y correo si los tenés.", "El RIF con formato <span class='pill'>J-12345678-9</span>. Todo esto se puede completar después."),
