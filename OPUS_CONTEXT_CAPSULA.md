@@ -14203,6 +14203,34 @@ globales cierran; el plato individual no reporta rentabilidad propia.
 
 Gates: tsc 0 · vitest 766 · build de producción OK.
 
+### §156.1 Leer las notas antes de descargar (2026-08-25)
+
+El contador de §156 decía **cuántas** unidades se vendieron, pero no **con
+qué** se despachó cada una — y en un plato sin receta esa es justamente la
+información que dice qué descargar. Estaba guardada (`SalesOrderItem.notes`),
+pero no había dónde leerla junta: el historial de ventas sólo renderiza notas
+a nivel de orden, así que había que abrir venta por venta.
+
+- `src/lib/inventory/discharge-notes.ts` (pura, 9 tests):
+  `normalizeNote` (NFD sin acentos, minúsculas, espacios colapsados) para que
+  "Kibe + Pollo" y "kibe  +  pollo" sean la misma combinación, y
+  `summarizeDischargeNotes` → `{ groups, withoutNote, totalUnits }` ordenado
+  por unidades desc, desempate alfabético (orden estable). **Se muestra la
+  redacción del mesonero, no la normalizada** — el chef lee lo que se escribió.
+- `getDischargeContextAction` devuelve además `soldLines` y `truncated`. Tope
+  de 500 líneas: un período de meses sin descargar traería miles, y si se
+  recorta la pantalla lo dice en vez de mostrar un resumen incompleto en
+  silencio.
+- UI: panel colapsable "Con qué se despachó" bajo el contador, con la lista
+  agrupada (`12 × kibe + pollo`) para multiplicar de una vez.
+
+**Las unidades sin nota se cuentan aparte a propósito** y con tono de
+advertencia: ese número es la señal operativa de que los mesoneros dejaron de
+anotar el contenido y el descargo se vuelve adivinanza. Si crece, el problema
+no es el descargo, es la comanda.
+
+Gates: tsc 0 · vitest 795 · build de producción OK.
+
 ---
 
 ## §157 Costo de envío por ZONA, configurable — ya no por moneda ni hardcodeado (2026-08-16)
