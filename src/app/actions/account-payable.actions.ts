@@ -7,6 +7,7 @@ import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
 import { settlePayable, checkPaymentFits, round2 as r2 } from '@/lib/finance/payable-settlement';
+import { canVoidPayable } from '@/lib/finance/payable-void';
 
 export interface AccountPayableData {
   id: string;
@@ -401,5 +402,83 @@ export async function getCreditCandidatePurchaseOrdersAction(): Promise<{
     };
   } catch {
     return { success: false, error: 'Error al cargar órdenes de compra' };
+  }
+}
+
+// ─── §160 · Anulación de cuentas por pagar ──────────────────────────────────
+
+/**
+ * Anula una cuenta por pagar. NO borra: deja el registro con estado VOID, el
+ * motivo y quién lo hizo, visible en el listado completo pero fuera de los
+ * totales de deuda.
+ *
+ * Bloqueada si tiene abonos o retenciones — ver canVoidPayable (§160). El
+ * chequeo se repite DENTRO del updateMany condicional para que un pago
+ * registrado entre la lectura y la escritura no se pierda.
+ */
+export async function voidAccountPayableAction(
+  accountPayableId: string,
+  reason: string,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: 'No autorizado' };
+  if (!['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'].includes(session.role)) {
+    return { success: false, error: 'Sin permisos para anular cuentas por pagar' };
+  }
+  const motivo = (reason ?? '').trim();
+  if (motivo.length < 3) {
+    return { success: false, error: 'Indicá el motivo de la anulación — queda en la auditoría.' };
+  }
+
+  try {
+    const { tenantId } = await resolveTenantContext();
+    const db = withTenant(tenantId);
+
+    const account = await db.accountPayable.findUnique({ where: { id: accountPayableId } });
+    if (!account) return { success: false, error: 'Cuenta por pagar no encontrada' };
+
+    const check = canVoidPayable({
+      status: account.status,
+      paidAmountUsd: account.paidAmountUsd,
+      retentionIvaUsd: account.retentionIvaUsd,
+      retentionIslrUsd: account.retentionIslrUsd,
+    });
+    if (!check.ok) return { success: false, error: check.reason ?? 'No se puede anular' };
+
+    // Guardia de carrera: sólo anula si SIGUE sin abonos y sin anular.
+    const claimed = await db.accountPayable.updateMany({
+      where: { id: accountPayableId, status: { not: 'VOID' }, paidAmountUsd: { lte: 0.005 } },
+      data: {
+        status: 'VOID',
+        remainingUsd: 0,
+        description: `${account.description} · ANULADA: ${motivo}`,
+      },
+    });
+    if (claimed.count === 0) {
+      return { success: false, error: 'La cuenta cambió mientras se anulaba. Recargá y volvé a intentar.' };
+    }
+
+    // El documento que la originó queda sin deuda asociada, para que pueda
+    // regenerarse si la anulación fue por un monto mal cargado.
+    await db.supplierDocument.updateMany({
+      where: { accountPayableId },
+      data: { accountPayableId: null },
+    });
+
+    await logAudit({
+      userId: session.id, userName: `${session.firstName} ${session.lastName}`,
+      userRole: session.role, action: 'VOID', entityType: 'AccountPayable',
+      entityId: accountPayableId,
+      description: `Anuló cuenta por pagar ${account.invoiceNumber ?? account.description} `
+        + `($${account.totalAmountUsd.toFixed(2)}): ${motivo}`,
+      module: 'CONFIG',
+    });
+
+    revalidatePath('/dashboard/cuentas-pagar');
+    revalidatePath('/dashboard/finanzas');
+    revalidatePath('/dashboard/compras/documentos');
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Error al anular la cuenta por pagar' };
   }
 }

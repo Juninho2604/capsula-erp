@@ -14315,3 +14315,56 @@ Sin migración. Gates: tsc 0 · vitest 775 · build de producción OK.
 Pendiente relacionado (plan presentado a Omar, esperando ok y decisión de
 roles): anulación de cuentas por pagar (§ siguiente cuando se apruebe) — hoy
 anular un documento dejaría su CXP huérfana (caso FACTURA 007023).
+
+---
+
+## §160 Anulación de cuentas por pagar (2026-08-25)
+
+Admin pregunta si puede **eliminar** la FACTURA 007023 de inversiones jal 1
+C.A. ($183.71, Pendiente) desde kpsula. Diagnóstico previo: el *documento* se
+podía anular (§141), pero la *deuda* que generó en Cuentas por Pagar **no
+tenía ninguna acción** — ni anular ni eliminar. Y anular el documento la
+dejaba **huérfana**, Pendiente para siempre.
+
+### Decisión: se anula, no se borra
+
+Un borrado real de facturas es lo primero que un auditor cuestiona, y no hay
+caso que lo justifique. Si se cargó mal, queda quién la anuló y por qué.
+
+### Regla dura: una deuda con dinero encima no se anula
+
+`src/lib/finance/payable-void.ts` — `canVoidPayable()`, pura, 11 tests.
+Bloquea si hay **abonos** (`paidAmountUsd`) o **retenciones** aplicadas
+(§115): esos movimientos son reales y anular la deuda los dejaría apuntando a
+la nada. Tolerancia de un centavo para que un residuo flotante no trabe una
+deuda que en la práctica no tiene un solo abono.
+
+### Piezas
+
+- **`voidAccountPayableAction(id, motivo)`** — roles OWNER / ADMIN_MANAGER /
+  OPS_MANAGER (los mismos que registran pagos; el AUDITOR ve pero no anula).
+  Motivo obligatorio (≥3 chars). El chequeo se repite dentro de un
+  `updateMany` condicional (`status != VOID AND paidAmountUsd <= 0.005`) para
+  que un pago registrado entre la lectura y la escritura no se pierda.
+- **Cascada desde el documento**: `voidSupplierDocumentAction` anula la CXP en
+  el mismo acto. Si la deuda tiene abonos, **bloquea también la anulación del
+  documento** con el motivo — antes las dos quedaban inconsistentes.
+- **El documento queda liberado** (`accountPayableId = null`) al anular. Si la
+  anulación fue por monto mal cargado, se corrige el documento y se regenera
+  la deuda; sin esto el documento quedaba marcado como "ya tiene deuda".
+- **UI**: botón "Anular" en la fila, sólo visible cuando `canVoidPayable` da
+  OK (no ofrecer un botón que va a fallar; el server revalida igual). Modal
+  con motivo obligatorio que explica que no se borra.
+
+Los filtros y totales **ya excluían VOID** de "Activas" y de la deuda
+pendiente, y el estado ya tenía etiqueta "Anulado" — esa parte no se tocó.
+
+Sin migración: `VOID` ya existía en el enum de estados del modelo.
+
+### Fuera de alcance (fase 2, sólo si aparece el caso)
+
+Anular documentos que **ya entraron a inventario** — exige revertir los
+movimientos de stock. Mientras tanto: revertir con el Descargo manual (§156) y
+anular después.
+
+Gates: tsc 0 · vitest 786 (11 nuevos) · build de producción OK.

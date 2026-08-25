@@ -7,6 +7,7 @@ import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
 import { registrarEntradaMercancia } from './entrada.actions';
+import { canVoidPayable } from '@/lib/finance/payable-void';
 
 const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'];
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
@@ -557,7 +558,50 @@ export async function voidSupplierDocumentAction(
     if (doc.inventoryStatus === 'ENTERED') {
       return { success: false, error: 'No se puede anular: ya entró al inventario. Revertí el inventario aparte.' };
     }
-    await db.supplierDocument.updateMany({ where: { id: documentId }, data: { status: 'VOID', notes: reason?.trim() || null } });
+
+    // §160 — La deuda que generó este documento se anula EN EL MISMO ACTO.
+    // Antes anular el documento dejaba su cuenta por pagar viva y Pendiente
+    // para siempre, sin forma de tocarla (caso FACTURA 007023). Si la deuda
+    // ya tiene abonos, no se anula nada: primero hay que revertir los pagos.
+    if (doc.accountPayableId) {
+      const payable = await db.accountPayable.findUnique({ where: { id: doc.accountPayableId } });
+      if (payable) {
+        const check = canVoidPayable({
+          status: payable.status,
+          paidAmountUsd: payable.paidAmountUsd,
+          retentionIvaUsd: payable.retentionIvaUsd,
+          retentionIslrUsd: payable.retentionIslrUsd,
+        });
+        if (!check.ok && payable.status !== 'VOID') {
+          return {
+            success: false,
+            error: `No se puede anular el documento: su cuenta por pagar tiene movimientos. ${check.reason}`,
+          };
+        }
+        if (payable.status !== 'VOID') {
+          await db.accountPayable.updateMany({
+            where: { id: doc.accountPayableId, status: { not: 'VOID' }, paidAmountUsd: { lte: 0.005 } },
+            data: {
+              status: 'VOID',
+              remainingUsd: 0,
+              description: `${payable.description} · ANULADA con el documento: ${reason?.trim() || 'sin motivo'}`,
+            },
+          });
+          await logAudit({
+            userId: session.id, userName: `${session.firstName} ${session.lastName}`,
+            userRole: session.role, action: 'VOID', entityType: 'AccountPayable',
+            entityId: doc.accountPayableId,
+            description: `Anuló la cuenta por pagar al anular el documento ${doc.documentNumber}: ${reason}`,
+            module: 'CONFIG',
+          });
+        }
+      }
+    }
+
+    await db.supplierDocument.updateMany({
+      where: { id: documentId },
+      data: { status: 'VOID', notes: reason?.trim() || null, accountPayableId: null },
+    });
     await logAudit({
       userId: session.id, userName: `${session.firstName} ${session.lastName}`,
       userRole: session.role, action: 'VOID', entityType: 'SupplierDocument',

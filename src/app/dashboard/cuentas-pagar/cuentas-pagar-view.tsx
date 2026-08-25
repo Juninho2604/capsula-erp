@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { Plus, Hourglass, AlertOctagon, CheckCircle2, Building2, X, FileText, Clock } from 'lucide-react';
 import {
   getAccountsPayableAction, createAccountPayableAction, registerPaymentAction,
+  voidAccountPayableAction,
   type AccountPayableData, type CreditCandidatePO,
 } from '@/app/actions/account-payable.actions';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
@@ -14,6 +15,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import type { BadgeProps } from '@/components/ui/Badge';
 import { Badge } from '@/components/ui/Badge';
+import { canVoidPayable } from '@/lib/finance/payable-void';
 
 const PAYMENT_METHODS = [
   { value: 'CASH_USD', label: 'Efectivo USD' },
@@ -66,6 +68,11 @@ interface Props {
 export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates, currentUserRole }: Props) {
   const [accounts, setAccounts] = useState<AccountPayableData[]>(initialAccounts);
   const [filter, setFilter] = useState<string>('ACTIVE'); // ACTIVE | ALL | PAID
+  // §160 — Anulación de cuentas por pagar.
+  const [voidTarget, setVoidTarget] = useState<AccountPayableData | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidError, setVoidError] = useState('');
+  const [voiding, setVoiding] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [payTarget, setPayTarget] = useState<AccountPayableData | null>(null);
   const [retentionTarget, setRetentionTarget] = useState<AccountPayableData | null>(null);
@@ -436,6 +443,21 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
                                   className="rounded-lg border border-capsula-line text-xs font-semibold px-3 py-1.5 text-capsula-ink-soft hover:border-capsula-navy-deep transition">
                                   Retención
                                 </button>
+                                {/* §160 — Anular: sólo si no tiene plata encima.
+                                    El server revalida igual; esto es para no
+                                    ofrecer un botón que va a fallar. */}
+                                {canVoidPayable({
+                                  status: a.status,
+                                  paidAmountUsd: a.paidAmountUsd,
+                                  retentionIvaUsd: a.retentionIvaUsd,
+                                  retentionIslrUsd: a.retentionIslrUsd,
+                                }).ok && (
+                                  <button onClick={() => { setVoidTarget(a); setVoidReason(''); setVoidError(''); }}
+                                    title="Anular esta cuenta por pagar (queda registrada, no se borra)"
+                                    className="rounded-lg border border-capsula-line text-xs font-semibold px-3 py-1.5 text-capsula-coral hover:border-capsula-coral transition">
+                                    Anular
+                                  </button>
+                                )}
                               </div>
                             )}
                           </td>
@@ -617,6 +639,66 @@ export function CuentasPagarView({ initialAccounts, suppliers, creditCandidates,
           onClose={() => setRetentionTarget(null)}
           onSaved={() => { setRetentionTarget(null); reload(); }}
         />
+      )}
+
+      {/* §160 — Anular cuenta por pagar. No borra: deja el registro con
+          motivo y autor, fuera de los totales de deuda. */}
+      {voidTarget && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-[60] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+            <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+              <div className="border-b border-capsula-line p-5">
+                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">Anular cuenta por pagar</h3>
+                <p className="mt-0.5 text-xs text-capsula-ink-muted">
+                  {voidTarget.description} · ${fmt(voidTarget.totalAmountUsd)}
+                </p>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-sm text-capsula-ink-soft">
+                  La cuenta <strong>no se borra</strong>: queda registrada como anulada, con tu
+                  nombre y el motivo, y deja de sumar a la deuda. Si vino de un documento de
+                  proveedor, ese documento queda libre para regenerar la deuda corregida.
+                </p>
+                <label className="block">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                    Motivo de la anulación
+                  </span>
+                  <textarea
+                    autoFocus
+                    value={voidReason}
+                    onChange={(e) => { setVoidReason(e.target.value); setVoidError(''); }}
+                    rows={3}
+                    placeholder="Ej. factura duplicada, monto mal cargado, no corresponde a este proveedor…"
+                    className="pos-input mt-1.5 w-full resize-none text-sm"
+                  />
+                </label>
+                {voidError && <p className="text-sm text-capsula-coral font-semibold">{voidError}</p>}
+              </div>
+              <div className="border-t border-capsula-line p-4 flex gap-3">
+                <button onClick={() => setVoidTarget(null)} disabled={voiding}
+                  className="pos-btn-secondary flex-1 py-3 disabled:opacity-40">
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (voiding) return;
+                    if (voidReason.trim().length < 3) { setVoidError('Indicá el motivo — queda en la auditoría.'); return; }
+                    setVoiding(true);
+                    const res = await voidAccountPayableAction(voidTarget.id, voidReason.trim());
+                    setVoiding(false);
+                    if (!res.success) { setVoidError(res.error ?? 'Error al anular'); return; }
+                    setVoidTarget(null);
+                    reload();
+                  }}
+                  disabled={voiding || voidReason.trim().length < 3}
+                  className="pos-btn-danger flex-[2] py-3 disabled:opacity-50"
+                >
+                  {voiding ? 'Anulando…' : 'Anular cuenta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
       )}
       </div>
     </div>
