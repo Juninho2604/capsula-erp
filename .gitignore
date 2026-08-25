@@ -61,3 +61,4 @@ ts_errors.log
 # Artefactos del deploy (los genera el CI/deploy-vps.sh, no se versionan)
 capsula-src.tgz
 .deploy-commit
+__pycache__/
