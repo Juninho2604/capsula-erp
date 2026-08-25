@@ -1086,7 +1086,7 @@ export default function POSDeliveryPage() {
                                             : 'border-capsula-line bg-capsula-ivory-surface text-[#2F6B4E] hover:bg-[#E5EDE7]/60'
                                     }`}
                                 >
-                                    Divisa -33%
+                                    Divisa −{divisasPctLabel}%
                                 </button>
                                 <button
                                     onClick={() => handleDiscountSelect('CORTESIA_100')}

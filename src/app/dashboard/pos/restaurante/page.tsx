@@ -2675,7 +2675,7 @@ export default function POSSportBarPage() {
                     title={!isPagoDivisasPickup ? "Solo con Efectivo o Zelle" : ""}
                     className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-cream" : isPagoDivisasPickup ? "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory-surface border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
                   >
-                    Divisas −33%
+                    Divisas −{divisasPctLabel}%
                   </button>
                   <button
                     onClick={openCortesiaModal}
@@ -3130,7 +3130,7 @@ export default function POSSportBarPage() {
                         </button>
                         <button
                           onClick={() => handlePrintPrecuenta(true)}
-                          title="Pre-cuenta aplicando 33% off por pago en divisas"
+                          title={`Pre-cuenta aplicando ${divisasPctLabel}% off por pago en divisas`}
                           className="text-xs font-semibold text-capsula-ink bg-capsula-ivory hover:bg-capsula-navy-soft border border-capsula-line rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
                         >
                           <Printer className="h-3.5 w-3.5" />
@@ -3156,7 +3156,7 @@ export default function POSSportBarPage() {
                         title={(!isPagoDivisas && !isTableMixedMode) ? "Solo con Efectivo o Zelle" : "Descuento por pago en divisas"}
                         className={`py-3 text-sm font-semibold rounded-xl transition ${discountType === "DIVISAS_33" ? "bg-capsula-navy-deep text-capsula-cream" : (isPagoDivisas || isTableMixedMode) ? "bg-capsula-ivory border border-capsula-line text-capsula-ink-soft hover:border-capsula-navy-deep/40" : "bg-capsula-ivory border border-capsula-line text-capsula-ink-faint cursor-not-allowed opacity-50"}`}
                       >
-                        Divisas −33%
+                        Divisas −{divisasPctLabel}%
                       </button>
                       <button
                         onClick={openCortesiaModal}
