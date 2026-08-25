@@ -14283,3 +14283,35 @@ Operativo: al conceder el permiso se invalida el JWT del usuario (tokenVersion)
 — tiene que volver a iniciar sesión.
 
 Gates: tsc 0 · vitest 775 (5 nuevos) · build de producción OK.
+
+---
+
+## §159 Entrada por documento repartida en varios almacenes (2026-08-25)
+
+Christian: al dar entrada a mercancía desde un documento de proveedor, el
+sistema sólo dejaba elegir UN almacén para toda la factura. Una factura real
+trae mercancía para varios destinos (la carne al centro de producción, las
+bebidas al restaurante); el destino único obligaba a transferir después, y
+esas transferencias no se hacían — otra fuente de descuadres.
+
+### Cómo quedó
+
+- `enterDocumentToInventoryAction(documentId, areaId, lineAreas?)` — tercer
+  parámetro opcional: mapa `id de línea → areaId`. Las líneas sin override van
+  al área general de siempre (compat total). La entrada ya era línea por línea
+  vía `registrarEntradaMercancia`, así que el cambio es el destino de cada
+  llamada, no la mecánica.
+- **Ownership de TODAS las áreas** (general + overrides) validado antes de
+  mover un gramo: un areaId ajeno o inactivo aborta la entrada completa.
+- El log de auditoría lista los almacenes usados: `… 5/5 líneas → Centro de
+  Producción, Restaurante`.
+- **UI**: el modal "Dar entrada" mantiene el camino rápido (un select +
+  confirmar). Debajo, el desplegable "Repartir en varios almacenes" muestra
+  cada línea con su selector, default "— destino general —". Cerrado por
+  defecto para no estorbar la entrada simple.
+
+Sin migración. Gates: tsc 0 · vitest 775 · build de producción OK.
+
+Pendiente relacionado (plan presentado a Omar, esperando ok y decisión de
+roles): anulación de cuentas por pagar (§ siguiente cuando se apruebe) — hoy
+anular un documento dejaría su CXP huérfana (caso FACTURA 007023).

@@ -450,11 +450,18 @@ function CreateModal({ items, suppliers, editDoc, onClose, onSaved }: Props & { 
 
 function EntryModal({ doc, areas, onClose, onSaved }: { doc: SupplierDocumentData; areas: AreaOpt[]; onClose: () => void; onSaved: () => void }) {
   const [areaId, setAreaId] = useState(areas[0]?.id ?? '');
+  // §159 — Overrides por línea (id de línea → areaId). Vacío u '' = va al
+  // destino general. El camino rápido (todo a un almacén) sigue siendo un
+  // solo select + confirmar, igual que siempre.
+  const [lineAreas, setLineAreas] = useState<Record<string, string>>({});
+  const [splitOpen, setSplitOpen] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const overrides = Object.fromEntries(Object.entries(lineAreas).filter(([, v]) => v));
+  const overrideCount = Object.keys(overrides).length;
   async function submit() {
     setError(''); setSaving(true);
-    const res = await enterDocumentToInventoryAction(doc.id, areaId);
+    const res = await enterDocumentToInventoryAction(doc.id, areaId, overrideCount > 0 ? overrides : undefined);
     setSaving(false);
     if (!res.success) { setError(res.error ?? 'Error'); return; }
     onSaved();
@@ -462,12 +469,45 @@ function EntryModal({ doc, areas, onClose, onSaved }: { doc: SupplierDocumentDat
   return (
     <ModalShell title="Dar entrada al inventario" onClose={onClose}>
       <div className="p-5 space-y-4">
-        <p className="text-sm text-capsula-ink-soft">Se cargarán <strong>{doc.items.length}</strong> ítem(s) de <strong>{doc.documentNumber}</strong> al área elegida (movimiento + stock + costo promedio).</p>
-        <Field label="Área destino">
+        <p className="text-sm text-capsula-ink-soft">Se cargarán <strong>{doc.items.length}</strong> ítem(s) de <strong>{doc.documentNumber}</strong> (movimiento + stock + costo promedio).</p>
+        <Field label="Almacén destino (general)">
           <select className="pos-input w-full" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </Field>
+
+        {/* §159 — Repartir líneas entre almacenes. Cerrado por default para no
+            estorbar la entrada simple; al abrirlo, cada línea puede ir a otro
+            almacén y las no tocadas siguen al destino general. */}
+        <button
+          type="button"
+          onClick={() => setSplitOpen(o => !o)}
+          className="text-sm font-semibold text-capsula-ink-muted underline-offset-2 hover:text-capsula-ink hover:underline"
+        >
+          {splitOpen ? 'Ocultar reparto por almacén' : `Repartir en varios almacenes${overrideCount > 0 ? ` (${overrideCount} línea(s) con destino propio)` : ''}`}
+        </button>
+
+        {splitOpen && (
+          <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-capsula-line bg-capsula-ivory-alt p-3">
+            {doc.items.map((it) => (
+              <div key={it.id} className="grid grid-cols-[1fr_150px] items-center gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-capsula-ink">{it.itemName}</p>
+                  <p className="text-xs tabular-nums text-capsula-ink-muted">{fmt(it.quantity)} {it.unit}</p>
+                </div>
+                <select
+                  className="pos-input text-sm"
+                  value={lineAreas[it.id] ?? ''}
+                  onChange={(e) => setLineAreas(prev => ({ ...prev, [it.id]: e.target.value }))}
+                >
+                  <option value="">— destino general —</option>
+                  {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+
         {error && <p className="text-sm text-capsula-coral">{error}</p>}
       </div>
       <ModalFooter onClose={onClose} onConfirm={submit} saving={saving} confirmLabel="Dar entrada" />

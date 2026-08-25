@@ -363,7 +363,15 @@ export async function updateSupplierDocumentAction(input: {
 
 export async function enterDocumentToInventoryAction(
   documentId: string,
-  areaId: string
+  areaId: string,
+  /**
+   * §159 — Destino POR LÍNEA (id de línea → areaId). Una factura real trae
+   * mercancía para varios almacenes (la carne al centro de producción, las
+   * bebidas al restaurante); obligar un destino único forzaba a transferir
+   * después, y esas transferencias nunca se hacían. Las líneas sin override
+   * van al área default de siempre — compat total con el flujo viejo.
+   */
+  lineAreas?: Record<string, string>
 ): Promise<{ success: boolean; error?: string; entered?: number }> {
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
@@ -382,9 +390,26 @@ export async function enterDocumentToInventoryAction(
     if (doc.inventoryStatus === 'ENTERED') return { success: false, error: 'Este documento ya entró al inventario' };
     if (doc.items.length === 0) return { success: false, error: 'El documento no tiene líneas' };
 
+    // Ownership de TODAS las áreas involucradas (default + overrides) antes de
+    // mover un solo gramo. Un areaId ajeno o inactivo aborta la entrada entera.
+    const requestedAreaIds = Array.from(new Set([
+      areaId,
+      ...Object.values(lineAreas ?? {}).filter(Boolean),
+    ]));
+    const ownedAreas = await db.area.findMany({
+      where: { id: { in: requestedAreaIds }, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (ownedAreas.length !== requestedAreaIds.length) {
+      return { success: false, error: 'Uno o más almacenes destino no existen o están inactivos' };
+    }
+    const areaNameById = new Map(ownedAreas.map(a => [a.id, a.name]));
+
     // Reusa la lógica de entrada probada en producción, línea por línea.
     let entered = 0;
+    const usedAreaIds = new Set<string>();
     for (const it of doc.items) {
+      const lineAreaId = lineAreas?.[it.id] || areaId;
       const res = await registrarEntradaMercancia({
         inventoryItemId: it.inventoryItemId,
         quantity: it.quantity,
@@ -392,13 +417,13 @@ export async function enterDocumentToInventoryAction(
         unitCost: it.unitCost,
         currency: doc.currency,
         supplierId: doc.supplierId ?? undefined,
-        areaId,
+        areaId: lineAreaId,
         referenceNumber: doc.documentNumber,
         documentUrl: doc.documentUrl ?? undefined,
         documentType: doc.documentType,
         userId: session.id,
       });
-      if (res.success) entered++;
+      if (res.success) { entered++; usedAreaIds.add(lineAreaId); }
       else console.error('[SUPPLIER_DOC] línea no entró:', it.itemName, res.message);
     }
 
@@ -407,11 +432,12 @@ export async function enterDocumentToInventoryAction(
       data: { inventoryStatus: 'ENTERED', inventoryEnteredAt: new Date() },
     });
 
+    const areaSummary = Array.from(usedAreaIds).map(id => areaNameById.get(id) ?? id).join(', ');
     await logAudit({
       userId: session.id, userName: `${session.firstName} ${session.lastName}`,
       userRole: session.role, action: 'UPDATE', entityType: 'SupplierDocument',
       entityId: documentId,
-      description: `Entrada a inventario de ${doc.documentNumber}: ${entered}/${doc.items.length} líneas`,
+      description: `Entrada a inventario de ${doc.documentNumber}: ${entered}/${doc.items.length} líneas → ${areaSummary}`,
       module: 'CONFIG',
     });
 
