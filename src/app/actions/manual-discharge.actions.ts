@@ -194,6 +194,14 @@ export interface DischargeContext {
     lastDischargeAt: string | null;
     /** Unidades vendidas del plato desde entonces (o desde siempre). */
     soldSince: number;
+    /**
+     * §156.1 — Qué se despachó en cada unidad, según la nota del mesonero.
+     * Sin esto el contador dice CUÁNTOS pero no CON QUÉ, y había que abrir
+     * venta por venta para saber qué descargar.
+     */
+    soldLines: { note: string | null; quantity: number }[];
+    /** true si se recortó la lista (período muy largo sin descargar). */
+    truncated: boolean;
 }
 
 export async function getDischargeContextAction(menuItemId: string): Promise<DischargeContext> {
@@ -212,26 +220,43 @@ export async function getDischargeContextAction(menuItemId: string): Promise<Dis
             select: { createdAt: true },
         });
 
+        const where = {
+            menuItemId,
+            voidedAt: null,
+            order: {
+                tenantId,
+                status: { not: 'CANCELLED' },
+                ...(last ? { createdAt: { gte: last.createdAt } } : {}),
+            },
+        };
+
         const sold = await prisma.salesOrderItem.aggregate({
             _sum: { quantity: true },
-            where: {
-                menuItemId,
-                voidedAt: null,
-                order: {
-                    tenantId,
-                    status: { not: 'CANCELLED' },
-                    ...(last ? { createdAt: { gte: last.createdAt } } : {}),
-                },
-            },
+            where,
         });
+
+        // Tope defensivo: un período sin descargar de meses puede traer miles
+        // de líneas. 500 alcanza para leerlas y agruparlas; si se recorta, la
+        // pantalla lo avisa en vez de mostrar un resumen incompleto en
+        // silencio.
+        const MAX_LINES = 500;
+        const rows = await prisma.salesOrderItem.findMany({
+            where,
+            select: { notes: true, quantity: true },
+            orderBy: { id: 'desc' },
+            take: MAX_LINES + 1,
+        });
+        const truncated = rows.length > MAX_LINES;
 
         return {
             lastDischargeAt: last ? last.createdAt.toISOString() : null,
             soldSince: sold._sum.quantity ?? 0,
+            soldLines: rows.slice(0, MAX_LINES).map(r => ({ note: r.notes, quantity: r.quantity })),
+            truncated,
         };
     } catch (error) {
         console.error('Error en getDischargeContextAction:', error);
-        return { lastDischargeAt: null, soldSince: 0 };
+        return { lastDischargeAt: null, soldSince: 0, soldLines: [], truncated: false };
     }
 }
 

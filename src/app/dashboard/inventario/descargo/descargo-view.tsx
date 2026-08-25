@@ -13,11 +13,12 @@
  * y delata cuando el descargo se acumula sin hacerse.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
     ArrowLeft, ClipboardList, Plus, Trash2, Check, Loader2, UtensilsCrossed,
+    ChevronDown, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import {
@@ -25,6 +26,7 @@ import {
     getDischargeContextAction,
     type DischargeContext,
 } from '@/app/actions/manual-discharge.actions';
+import { summarizeDischargeNotes } from '@/lib/inventory/discharge-notes';
 import { formatNumber } from '@/lib/utils';
 
 interface AreaOpt { id: string; name: string }
@@ -54,6 +56,7 @@ export default function DescargoView({ areas, items, menuItems }: {
     const [submitting, setSubmitting] = useState(false);
     const [shortfall, setShortfall] = useState<string | null>(null);
     const [nextKey, setNextKey] = useState(1);
+    const [notesOpen, setNotesOpen] = useState(false);
 
     const itemById = (id: string) => items.find(i => i.id === id);
 
@@ -61,11 +64,19 @@ export default function DescargoView({ areas, items, menuItems }: {
     useEffect(() => {
         if (!menuItemId) { setContext(null); return; }
         let cancelled = false;
+        setNotesOpen(false);
         getDischargeContextAction(menuItemId).then(ctx => {
             if (!cancelled) setContext(ctx);
         });
         return () => { cancelled = true; };
     }, [menuItemId]);
+
+    // §156.1 — Qué se despachó en cada unidad, agrupado por la nota del
+    // mesonero. Sin esto el contador dice CUÁNTOS pero no CON QUÉ.
+    const notes = useMemo(
+        () => summarizeDischargeNotes(context?.soldLines ?? []),
+        [context],
+    );
 
     function addLine() {
         if (!newItemId || newQty <= 0) return;
@@ -172,6 +183,69 @@ export default function DescargoView({ areas, items, menuItems }: {
                             ? <>desde el último descargo de este plato ({lastLabel}).</>
                             : <>desde siempre — este plato todavía no tiene ningún descargo.</>}
                         {' '}Este descargo debería cubrir ese consumo.
+                    </div>
+                )}
+
+                {/* §156.1 — Qué llevó cada unidad, según la nota del mesonero. */}
+                {menuItemId && context && (notes.groups.length > 0 || notes.withoutNote > 0) && (
+                    <div className="rounded-xl border border-capsula-line bg-capsula-ivory-surface">
+                        <button
+                            onClick={() => setNotesOpen(o => !o)}
+                            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                        >
+                            <span className="text-sm font-semibold text-capsula-ink">
+                                Con qué se despachó
+                                <span className="ml-2 font-normal text-capsula-ink-muted">
+                                    {notes.groups.length}{' '}
+                                    {notes.groups.length === 1 ? 'combinación' : 'combinaciones'}
+                                </span>
+                            </span>
+                            {notesOpen
+                                ? <ChevronDown className="h-4 w-4 shrink-0 text-capsula-ink-muted" />
+                                : <ChevronRight className="h-4 w-4 shrink-0 text-capsula-ink-muted" />}
+                        </button>
+
+                        {notesOpen && (
+                            <div className="border-t border-capsula-line p-3">
+                                <p className="mb-2 text-xs text-capsula-ink-muted">
+                                    Notas de las unidades vendidas en el período. Multiplicá cada
+                                    combinación por sus unidades para saber cuánto descargar.
+                                </p>
+                                <ul className="max-h-72 space-y-1 overflow-y-auto">
+                                    {notes.groups.map(g => (
+                                        <li
+                                            key={g.note}
+                                            className="flex items-start justify-between gap-3 rounded-lg bg-capsula-ivory-alt px-3 py-2"
+                                        >
+                                            <span className="min-w-0 whitespace-pre-wrap break-words text-sm text-capsula-ink">
+                                                {g.note}
+                                            </span>
+                                            <span className="shrink-0 text-sm font-semibold tabular-nums text-capsula-ink">
+                                                {formatNumber(g.units)} u.
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                {notes.withoutNote > 0 && (
+                                    <div className="mt-2 flex items-start gap-2 rounded-lg bg-[#F3EAD6] px-3 py-2 text-xs text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
+                                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>
+                                            <span className="font-semibold tabular-nums">{notes.withoutNote}</span>{' '}
+                                            {notes.withoutNote === 1 ? 'unidad se vendió' : 'unidades se vendieron'}{' '}
+                                            sin nota — no hay registro de qué llevaron. Estimalas aparte.
+                                        </span>
+                                    </div>
+                                )}
+
+                                {context.truncated && (
+                                    <p className="mt-2 text-xs text-capsula-ink-muted">
+                                        Se listan las últimas 500 líneas del período. Hay más ventas
+                                        sin descargar: conviene descargar más seguido.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
