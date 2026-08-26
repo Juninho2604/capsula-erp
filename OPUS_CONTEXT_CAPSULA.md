@@ -14432,3 +14432,35 @@ Delivery. Ahora usan `divisasPctLabel` (patrón que POS Mesero ya tenía). Si el
 % configurado no es 33, el botón lo refleja.
 
 Gates: tsc 0 · vitest 795 · build de producción OK.
+
+---
+
+## §162 Compras: fuera los "bultos", las líneas van en la unidad del insumo (2026-08-26)
+
+Christian mandó foto del formulario de documento con `MEREY KG`, Bultos **0**,
+Costo 28 → **Total línea $0,00**, y el pedido textual: *"Eso de bultos quitalo…
+osea se usan kg lt y und"*.
+
+La presentación por bulto de §108 ("5 bultos × 12 paquetes a $30 el bulto")
+modelaba una compra que este equipo no hace: compran y cuentan en kg, litros y
+unidades. Peor, el total de la línea es `bultos × costo`, así que quien leía
+"Bultos" como "no aplica" y ponía 0 obtenía un documento en cero — sin error
+visible, sólo un total que no cuadra.
+
+### Cambio en el formulario (`compras/documentos`)
+
+| Antes | Ahora |
+|---|---|
+| Insumo · Bultos · Unid./bulto · Costo bulto | Insumo · **Cantidad** · **Costo por unidad** |
+| Cantidad = bultos, había que traducir | Cantidad = lo que entra al almacén, en su unidad |
+| `Cant.` genérico | `Cant. KG` / `Cant. LT` — la unidad del insumo elegido |
+
+`src/lib/purchases/pack-line.ts` **no cambió**: sin `unitsPerPack` la
+matemática ya colapsa a `cantidad × costo` (unid./bulto ⇒ 1). Se quitó el
+input y el contrato nuevo quedó fijado con 2 tests (`sin unitsPerPack`), así
+que los documentos viejos cargados con bultos siguen leyéndose igual — lo
+guardado siempre estuvo en unidad base y USD.
+
+Manual actualizado en el capítulo de Facturas y Notas.
+
+Gates: tsc 0 · vitest 797 · build de producción OK.

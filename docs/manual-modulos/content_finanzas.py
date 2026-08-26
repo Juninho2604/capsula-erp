@@ -501,7 +501,7 @@ SECTION = {
             "kicker": "Compras y pagos",
             "who": "Administración, gerencia de operaciones y auditoría",
             "what": "El punto de entrada del papel del proveedor al sistema: aquí se carga cada factura o "
-                    "nota de entrega tal como llegó, con sus líneas (bultos, unidades por bulto, costo). "
+                    "nota de entrega tal como llegó, con sus líneas (insumo, cantidad y costo por unidad). "
                     "Desde el documento salen tres acciones que se pueden hacer en cualquier momento y "
                     "en cualquier orden: <strong>dar entrada al inventario</strong>, <strong>vincularlo a "
                     "una orden de compra</strong> ya recibida, y — si es a crédito — <strong>generar la "
@@ -509,7 +509,7 @@ SECTION = {
             "features": [
                 ("Factura o Nota de entrega", "Cada documento con su número, proveedor (o «Sin proveedor»), fecha y condición Contado / Crédito."),
                 ("Moneda del documento", "Se carga en la moneda en que vino la factura; si es Bs, con su tasa Bs/USD."),
-                ("Líneas por presentación", "Bultos × unidades por bulto × costo por bulto — el sistema calcula unidades y total por línea."),
+                ("Líneas en la unidad del insumo", "Cantidad en kg, litros o unidades × costo de esa unidad — el sistema calcula el total por línea y el del documento."),
                 ("Estado a la vista", "Etiquetas de En inventario / Sin entrada, OC vinculada, Deuda y Anulado en cada fila."),
                 ("Pestaña Conciliación", "Descalces entre documentos y compras: documentos sin compra ni entrada, y compras recibidas sin documento."),
             ],
@@ -520,7 +520,7 @@ SECTION = {
                         ("Entra a <span class='pill'>/dashboard/compras/documentos</span> y toca <span class='pill'>Nuevo documento</span>.", "Elige el tipo: <strong>Factura</strong> o <strong>Nota de entrega</strong>."),
                         ("Completa número, proveedor y condición de pago.", "Si el proveedor no está en el sistema puedes escribir su nombre; la condición es <strong>Contado</strong> o <strong>Crédito</strong>."),
                         ("Elige la moneda de la factura.", "Si está en Bs, carga la <strong>Tasa Bs/USD</strong> con la que se convierte."),
-                        ("Carga las líneas: insumo, bultos, unidades por bulto y costo.", "Ej.: 5 bultos × 12 unidades. Si compras por unidad, deja las unidades por bulto vacías. El total por línea y el total del documento se calculan solos."),
+                        ("Carga las líneas: insumo, cantidad y costo por unidad.", "La cantidad va en la unidad del insumo (kg, lt, und) y el costo es lo que vale <strong>una</strong> de esas unidades. Ej.: 5 kg de merey a $28 el kg → total de la línea $140. Los totales se calculan solos."),
                         ("Guarda.", "El documento queda en la lista, marcado <strong>Sin entrada</strong> hasta que ingreses la mercancía."),
                     ],
                 },

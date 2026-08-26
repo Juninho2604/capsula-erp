@@ -45,4 +45,20 @@ describe('pack-line — presentación por bulto (§108.1)', () => {
     expect(packLineTotal(line)).toBe(0);
     expect(packUnitCost(line)).toBe(0);
   });
+
+  // §162 — el formulario ya no pide bultos: manda la línea SIN el campo y
+  // carga en la unidad base del insumo. Sin esto, "5 kg a $28" daba $0 cuando
+  // el usuario dejaba bultos en 0 (reportado por Christian con MEREY KG).
+  it('sin unitsPerPack: la línea es cantidad × costo por unidad', () => {
+    const line = { quantity: '5', unitCost: '28' };
+    expect(packUnits(line)).toBe(5);
+    expect(packUnitCost(line)).toBe(28);
+    expect(packLineTotal(line)).toBe(140);
+  });
+
+  it('sin unitsPerPack admite decimales de peso (2.5 kg)', () => {
+    const line = { quantity: '2.5', unitCost: '12.40' };
+    expect(packUnits(line)).toBe(2.5);
+    expect(packLineTotal(line)).toBe(31);
+  });
 });

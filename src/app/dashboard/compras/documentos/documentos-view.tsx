@@ -249,11 +249,12 @@ function ReconciliationTab() {
 interface Line {
   inventoryItemId: string;
   itemName: string;
-  // §108: soporte de presentación — "5 bultos x 12 paquetes por $X el bulto".
-  // quantity = cantidad de bultos (o unidades sueltas si unitsPerPack queda en 1).
+  // §162 — se carga en la UNIDAD BASE del insumo (kg, lt, und). La
+  // presentación por bulto de §108 se retiró del formulario: el equipo compra
+  // y cuenta en kg/lt/und, y pedir "bultos × unid./bulto" hacía que una línea
+  // con 0 bultos diera total $0 (reportado por Christian con MEREY KG).
   quantity: string;
-  unitsPerPack: string; // unidades del insumo por bulto (default 1)
-  unitCost: string;     // costo POR BULTO en la moneda del documento
+  unitCost: string; // costo POR UNIDAD BASE en la moneda del documento
   unit: string;
 }
 
@@ -281,9 +282,9 @@ function CreateModal({ items, suppliers, editDoc, onClose, onSaved }: Props & { 
     editDoc && editDoc.items.length > 0
       ? editDoc.items.map((i) => ({
           inventoryItemId: i.inventoryItemId, itemName: i.itemName,
-          quantity: String(i.quantity), unitsPerPack: '', unitCost: String(i.unitCost), unit: i.unit,
+          quantity: String(i.quantity), unitCost: String(i.unitCost), unit: i.unit,
         }))
-      : [{ inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }],
+      : [{ inventoryItemId: '', itemName: '', quantity: '', unitCost: '', unit: '' }],
   );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -393,40 +394,39 @@ function CreateModal({ items, suppliers, editDoc, onClose, onSaved }: Props & { 
           )}
         </div>
 
-        {/* §108: líneas con presentación bulto × unidades */}
+        {/* §162: líneas en la unidad base del insumo (kg / lt / und) */}
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">Líneas</p>
-          <div className="hidden sm:grid grid-cols-[minmax(0,4fr)_minmax(80px,1fr)_minmax(90px,1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-muted px-1">
-            <span>Insumo</span><span>Bultos</span><span>Unid./bulto</span><span>Costo bulto {sym}</span><span className="text-right">Total línea</span><span />
+          <div className="hidden sm:grid grid-cols-[minmax(0,4fr)_minmax(100px,1.1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-capsula-ink-muted px-1">
+            <span>Insumo</span><span>Cantidad</span><span>Costo por unidad {sym}</span><span className="text-right">Total línea</span><span />
           </div>
           {lines.map((l, idx) => {
             const units = lineUnits(l);
             return (
-              <div key={idx} className="grid grid-cols-2 sm:grid-cols-[minmax(0,4fr)_minmax(80px,1fr)_minmax(90px,1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 items-center border-b border-capsula-line/60 sm:border-0 pb-2 sm:pb-0">
+              <div key={idx} className="grid grid-cols-2 sm:grid-cols-[minmax(0,4fr)_minmax(100px,1.1fr)_minmax(110px,1.4fr)_minmax(90px,1.2fr)_28px] gap-2 items-center border-b border-capsula-line/60 sm:border-0 pb-2 sm:pb-0">
                 <select className="pos-input w-full py-3 min-w-0 col-span-2 sm:col-span-1" value={l.inventoryItemId} onChange={(e) => pickItem(idx, e.target.value)}>
                   <option value="">— insumo —</option>
                   {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
-                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder="Cant." title="Cantidad de bultos (o unidades sueltas)"
+                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal"
+                  placeholder={l.unit ? `Cant. ${l.unit}` : 'Cant.'} title={`Cantidad en ${l.unit || 'la unidad del insumo'}`}
                   value={l.quantity} onChange={(e) => setLine(idx, { quantity: e.target.value })} />
-                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder="×1" title="Unidades por bulto (deja vacío si compras por unidad)"
-                  value={l.unitsPerPack} onChange={(e) => setLine(idx, { unitsPerPack: e.target.value })} />
-                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder={`Costo ${sym}`} title={`Costo por bulto en ${sym}`}
+                <input className="pos-input w-full py-3 tabular-nums" type="number" step="0.01" min="0" inputMode="decimal" placeholder={`Costo ${sym}`} title={`Costo por unidad (${sym}) — lo que cuesta 1 ${l.unit || 'unidad'}`}
                   value={l.unitCost} onChange={(e) => setLine(idx, { unitCost: e.target.value })} />
                 <div className="text-right text-sm tabular-nums text-capsula-ink-soft">
                   <p className="font-semibold text-capsula-ink">{sym} {fmt(lineTotal(l))}</p>
-                  {units > 0 && <p className="text-[10px] text-capsula-ink-muted">{fmt(units)} {l.unit || 'unid.'}</p>}
+                  {units > 0 && <p className="text-[10px] text-capsula-ink-muted">entra {fmt(units)} {l.unit || 'unid.'}</p>}
                 </div>
                 <button onClick={() => setLines((ls) => ls.length > 1 ? ls.filter((_, i) => i !== idx) : ls)} className="text-capsula-ink-muted hover:text-capsula-coral shrink-0 justify-self-end" aria-label="Quitar"><Trash2 className="h-4 w-4" /></button>
               </div>
             );
           })}
-          <button onClick={() => setLines((ls) => [...ls, { inventoryItemId: '', itemName: '', quantity: '', unitsPerPack: '', unitCost: '', unit: '' }])} className="text-xs font-semibold text-capsula-ink-muted hover:text-capsula-ink inline-flex items-center gap-1">
+          <button onClick={() => setLines((ls) => [...ls, { inventoryItemId: '', itemName: '', quantity: '', unitCost: '', unit: '' }])} className="text-xs font-semibold text-capsula-ink-muted hover:text-capsula-ink inline-flex items-center gap-1">
             <Plus className="h-3.5 w-3.5" /> Agregar línea
           </button>
           <p className="text-[11px] text-capsula-ink-muted">
-            Ej: 5 bultos de harina × 12 paquetes c/u a {sym} 30 el bulto → escribe Bultos 5, Unid./bulto 12, Costo bulto 30.
-            Si compras por unidad, deja «Unid./bulto» vacío.
+            Carga la cantidad en la unidad del insumo (kg, lt, und) y lo que cuesta esa unidad.
+            Ej: 5 kg de merey a {sym} 28 el kg → Cantidad 5, Costo por unidad 28, Total {sym} 140.
           </p>
         </div>
 
