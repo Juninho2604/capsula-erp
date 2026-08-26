@@ -14541,3 +14541,41 @@ tasa del momento de consultar. En un cierre de $2.346,63 mostraba
   se renderizan) para no romper consumidores serializados.
 
 Gates: tsc 0 · vitest 810 · build de producción OK.
+
+---
+
+## §164 Vincular factura ↔ orden de compra: el selector que no servía (2026-08-26)
+
+Christian, dos reportes sobre el mismo modal ("Vincular a orden de compra"):
+
+1. *"Generé una orden de compra y no me sale acá para registrar la factura"*.
+2. *"Cuando vinculo el pedido no me sale reflejado que ya se vinculó y aún
+   salen las 1500 odc"*.
+
+### Causa
+
+La página cargaba el selector con `getPurchaseOrdersAction('RECEIVED')`:
+
+- **Sólo estado `RECEIVED`.** Una OC recién generada nace `DRAFT` y pasa a
+  `SENT` al enviarla — no aparecía. Justo el momento en que llega la factura
+  y hace falta vincularla era el único en que no se podía.
+- **Sin filtrar las ya tomadas.** Devolvía todas las recibidas históricas,
+  vinculadas o no, en un `<select>` nativo sin buscador: ~1500 opciones donde
+  era imposible ver cuál faltaba por vincular. De ahí la sensación de que el
+  vínculo "no se reflejaba".
+
+### Arreglo
+
+`getLinkablePurchaseOrdersAction(currentDocumentId?)` (§164) devuelve todo lo
+que **no** esté `CANCELLED` y que **ningún otro documento vigente** tenga
+tomado. Detalles:
+
+- Un documento anulado (`VOID`) **libera** su OC — vuelve a la lista.
+- La OC del documento que se está editando sigue apareciendo, para poder
+  desvincularla.
+- El modal ahora usa `Combobox` (buscador) en vez de `<select>`, y cada opción
+  muestra **número · proveedor · estado · monto**, así se distingue cuál es.
+- Se recarga al abrir el modal, no sólo con la página.
+- Si no queda ninguna, lo dice explícitamente en vez de mostrar una lista vacía.
+
+Gates: tsc 0 · vitest 810 · build de producción OK.

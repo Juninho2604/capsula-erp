@@ -13,6 +13,8 @@ import {
   type SupplierDocumentData,
 } from '@/app/actions/supplier-document.actions';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
+import { getLinkablePurchaseOrdersAction } from '@/app/actions/purchase.actions';
+import { Combobox } from '@/components/ui/combobox';
 import { packUnits, packLineTotal, packUnitCost } from '@/lib/purchases/pack-line';
 
 const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -22,7 +24,10 @@ const todayStamp = () => { const d = new Date(); return `${d.getFullYear()}-${St
 interface ItemOpt { id: string; name: string; unit: string }
 interface AreaOpt { id: string; name: string }
 interface SupplierOpt { id: string; name: string }
-interface POOpt { id: string; orderNumber: string; orderName: string | null }
+interface POOpt {
+  id: string; orderNumber: string; orderName: string | null;
+  supplierName?: string; statusLabel?: string; orderDate?: Date | string | null; totalAmount?: number;
+}
 
 interface Props {
   initialDocuments: SupplierDocumentData[];
@@ -74,7 +79,7 @@ export function DocumentosView(props: Props) {
         <>
           <div className="bg-capsula-ivory-alt border border-capsula-line rounded-2xl p-4 flex gap-3 text-sm text-capsula-ink-soft">
             <Info className="h-5 w-5 shrink-0 text-capsula-ink-muted mt-0.5" />
-            <p>Carga la factura o nota de entrega. Después, en cualquier momento: <strong>da entrada al inventario</strong>, <strong>vincúlala a una orden de compra</strong> ya recibida, y/o <strong>genera la cuenta por pagar</strong> (si es a crédito).</p>
+            <p>Carga la factura o nota de entrega. Después, en cualquier momento: <strong>da entrada al inventario</strong>, <strong>vincúlala a su orden de compra</strong>, y/o <strong>genera la cuenta por pagar</strong> (si es a crédito).</p>
           </div>
 
           {initialDocuments.length === 0 ? (
@@ -519,6 +524,20 @@ function LinkModal({ doc, pos, onClose, onSaved }: { doc: SupplierDocumentData; 
   const [poId, setPoId] = useState(doc.linkedPurchaseOrderId ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // §164: la lista se pide al abrir el modal — ya sin las OC que otro
+  // documento tiene tomadas, y con las recién generadas incluidas. `pos` (el
+  // listado que llega con la página) queda de respaldo mientras carga.
+  const [options, setOptions] = useState<POOpt[]>(pos);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLinkablePurchaseOrdersAction(doc.id)
+      .then((rows) => { if (!cancelled) setOptions(rows); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [doc.id]);
+
   async function submit() {
     setError(''); setSaving(true);
     const res = await linkDocumentToPurchaseOrderAction(doc.id, poId || null);
@@ -526,16 +545,42 @@ function LinkModal({ doc, pos, onClose, onSaved }: { doc: SupplierDocumentData; 
     if (!res.success) { setError(res.error ?? 'Error'); return; }
     onSaved();
   }
+
+  const label = (p: POOpt) => {
+    const parts = [p.orderNumber];
+    if (p.supplierName) parts.push(p.supplierName);
+    else if (p.orderName) parts.push(p.orderName);
+    if (p.statusLabel) parts.push(p.statusLabel);
+    if (typeof p.totalAmount === 'number' && p.totalAmount > 0) parts.push(`$${p.totalAmount.toFixed(2)}`);
+    return parts.join(' · ');
+  };
+
   return (
     <ModalShell title="Vincular a orden de compra" onClose={onClose}>
       <div className="p-5 space-y-4">
-        <p className="text-sm text-capsula-ink-soft">Vincula <strong>{doc.documentNumber}</strong> a una OC recibida (cuando la mercancía entró antes por una orden).</p>
+        <p className="text-sm text-capsula-ink-soft">
+          Vincula <strong>{doc.documentNumber}</strong> a la orden por la que se pidió esta mercancía.
+          Se listan las órdenes que todavía no tiene tomadas otro documento, en cualquier estado.
+        </p>
         <Field label="Orden de compra">
-          <select className="pos-input w-full" value={poId} onChange={(e) => setPoId(e.target.value)}>
-            <option value="">— sin vincular —</option>
-            {pos.map((p) => <option key={p.id} value={p.id}>{p.orderNumber}{p.orderName ? ` · ${p.orderName}` : ''}</option>)}
-          </select>
+          <Combobox
+            items={[
+              { value: '', label: '— sin vincular —' },
+              ...options.map((p) => ({ value: p.id, label: label(p) })),
+            ]}
+            value={poId}
+            onChange={setPoId}
+            placeholder={loading ? 'Cargando órdenes…' : 'Buscar por número, proveedor o monto…'}
+            searchPlaceholder="Buscar orden…"
+            emptyMessage="No hay órdenes por vincular"
+          />
         </Field>
+        {!loading && options.length === 0 && (
+          <p className="text-xs text-capsula-ink-muted">
+            Todas las órdenes de compra ya están vinculadas a un documento. Si te falta una,
+            revisa que el documento que la tiene tomada sea el correcto.
+          </p>
+        )}
         {error && <p className="text-sm text-capsula-coral">{error}</p>}
       </div>
       <ModalFooter onClose={onClose} onConfirm={submit} saving={saving} />

@@ -496,6 +496,86 @@ export async function getPurchaseOrdersAction(status?: string) {
 }
 
 // ============================================================================
+// ACTION: ÓRDENES VINCULABLES A UN DOCUMENTO (§164)
+// ============================================================================
+
+export interface LinkablePurchaseOrder {
+    id: string;
+    orderNumber: string;
+    orderName: string | null;
+    supplierName: string;
+    status: string;
+    statusLabel: string;
+    orderDate: Date | null;
+    totalAmount: number;
+}
+
+const PO_STATUS_LABEL: Record<string, string> = {
+    DRAFT: 'Borrador', SENT: 'Enviada', PARTIAL: 'Parcial', RECEIVED: 'Recibida',
+};
+
+/**
+ * §164 — Órdenes que se le pueden vincular a una factura o nota de entrega.
+ *
+ * Dos cosas que el selector viejo hacía mal y dejaban a Christian trabado:
+ *
+ *  1. Sólo listaba las `RECEIVED`. Una orden recién generada (Borrador o
+ *     Enviada) no aparecía, así que quien tenía la factura en la mano no podía
+ *     vincularla — que es justo cuando se necesita. Ahora entra todo lo que no
+ *     esté cancelado, con su estado a la vista.
+ *  2. Listaba TODAS, incluidas las que ya tenía tomadas otro documento: ~1500
+ *     opciones donde no se distinguía cuál faltaba por vincular. Las tomadas
+ *     ya no salen.
+ *
+ * Una OC anulada libera su vínculo (el documento VOID no la retiene), y la que
+ * ya tiene este mismo documento sigue en la lista para poder desvincularla.
+ */
+export async function getLinkablePurchaseOrdersAction(
+    currentDocumentId?: string,
+): Promise<LinkablePurchaseOrder[]> {
+    try {
+        const { tenantId } = await resolveTenantContext();
+        const db = withTenant(tenantId);
+
+        const taken = await db.supplierDocument.findMany({
+            where: {
+                linkedPurchaseOrderId: { not: null },
+                status: { not: 'VOID' },
+                ...(currentDocumentId ? { id: { not: currentDocumentId } } : {}),
+            },
+            select: { linkedPurchaseOrderId: true },
+        });
+        const takenIds = new Set(taken.map(t => t.linkedPurchaseOrderId as string));
+
+        const orders = await db.purchaseOrder.findMany({
+            where: { status: { not: 'CANCELLED' } },
+            select: {
+                id: true, orderNumber: true, orderName: true, status: true,
+                orderDate: true, totalAmount: true,
+                supplier: { select: { name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return orders
+            .filter(o => !takenIds.has(o.id))
+            .map(o => ({
+                id: o.id,
+                orderNumber: o.orderNumber,
+                orderName: o.orderName,
+                supplierName: o.supplier?.name || 'Sin proveedor',
+                status: o.status,
+                statusLabel: PO_STATUS_LABEL[o.status] ?? o.status,
+                orderDate: o.orderDate,
+                totalAmount: o.totalAmount,
+            }));
+    } catch (error) {
+        console.error('Error en getLinkablePurchaseOrdersAction:', error);
+        return [];
+    }
+}
+
+// ============================================================================
 // ACTION: OBTENER ORDEN DE COMPRA POR ID
 // ============================================================================
 
