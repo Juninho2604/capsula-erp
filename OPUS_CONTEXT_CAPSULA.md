@@ -14464,3 +14464,61 @@ guardado siempre estuvo en unidad base y USD.
 Manual actualizado en el capítulo de Facturas y Notas.
 
 Gates: tsc 0 · vitest 797 · build de producción OK.
+
+---
+
+## §163 Arqueo en bolívares + el efectivo Bs que caía en "Otros" (2026-08-26)
+
+Pedido de Omar: *"poner lo de los pdv y pago móviles en bs"*. El arqueo del
+Reporte Z mostraba todo en dólares, pero **PDV, Pago Móvil, Efectivo Bs y
+transferencia se cobran en bolívares**: el cuadre contra el lote del punto y
+contra el estado de cuenta se hace en Bs, así que la cajera tenía que
+reconvertir a mano.
+
+### Hallazgo al hacerlo: `CASH_BS` no estaba clasificado
+
+El clasificador del arqueo vivía escrito a mano dentro de `z-report.actions.ts`
+y sólo miraba `CASH / CASH_USD / CASH_EUR`. `CASH_BS` —método real y
+persistido— no coincidía con ninguna rama y caía en **"Otros"**. El total
+nunca estuvo mal; la plata estaba mal etiquetada. Mismo patrón que §150/§153:
+la lista escrita a mano en un solo archivo.
+
+### `src/lib/sales/payment-bs.ts` (puro, 13 tests)
+
+- `paymentBucket(method)` — tabla única método → casilla, con `cashBs` propio.
+- `isBsPaymentMethod` — PDV, pago móvil, efectivo Bs, transferencia.
+- `registeredBs({ amountBs, exchangeRate, amountUSD })` — Bs guardado; si no
+  está, se deriva con la tasa **de ese cobro**; si tampoco, `null`.
+
+**Regla dura: no se reconvierte con la tasa de hoy.** Ya la fijaba el esquema
+para `PaymentSplit.amountBs` ("los reportes NO reconvierten con tasa actual").
+Si la tasa se movió durante el día, un número reconvertido no cuadra contra el
+lote del punto y manda a buscar un descuadre inexistente. Los cobros viejos sin
+Bs guardado se cuentan aparte (`bsMissingCount`) y la pantalla lo advierte en
+vez de mostrar un subtotal corto como si fuera el total.
+
+### Alcance
+
+- Z: `paymentBreakdownBs`, `pdvBreakdownBs`, `bsMissingCount`; el desglose en
+  Bs respeta el mismo blindaje de cajera (`hidePaymentMethod`) que el de USD.
+- Pantalla del arqueo: sufijo `· Bs X` en PDV (total y por terminal), Pago
+  Móvil, Efectivo Bs y Transferencia.
+- Excel del Z: misma columna, línea propia de Efectivo Bs, y `cashBs` sumado
+  en `SUMA MÉTODOS DE PAGO` (sin eso el Excel quedaba corto).
+- `end-of-day.actions.ts` NO cambió: clasifica divisas-vs-Bs por conjunto
+  complementario, y ahí `CASH_BS` siempre cayó bien.
+
+### Por qué la propina no suma a la VENTA NETA (consulta de Omar)
+
+No es un bug, es la contabilidad: la propina **entra a caja** (está dentro de
+`TOTAL COBRADO` y del arqueo) pero **no es ingreso del negocio** — es dinero
+del personal en tránsito. Si sumara a ventas, se inflaría la venta y se
+pagarían impuestos/comisiones sobre plata ajena.
+
+Lo que sí puede faltar: con el flag `unifyTipReporting` **apagado** quedan
+fuera del total de propina (a) las **propinas colectivas** registradas aparte
+—que además no entran al arqueo ni a `totalCollected`— y (b) el **Caso C**,
+propina explícita cuando hubo vuelto, que la fórmula histórica daba en cero.
+Se activa en Configuración → Feature Flags, sin deploy.
+
+Gates: tsc 0 · vitest 810 (13 nuevos) · build de producción OK.

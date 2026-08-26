@@ -311,6 +311,13 @@ export default function SalesHistoryPage() {
     };
 
     const formatMoney = (amount: number) => `$${(amount || 0).toFixed(2)}`;
+    // §163 — sufijo en bolívares para los métodos que se cobran en Bs. Es el
+    // monto guardado al cobrar, no una reconversión con la tasa de hoy: por eso
+    // si no hay Bs registrado no se muestra nada en vez de un número inventado.
+    const bsSuffix = (bs?: number) =>
+        (bs ?? 0) > 0
+            ? ` · Bs ${bs!.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '';
 
     // ---- FILTRADO ----
     const clearAllFilters = () => {
@@ -1024,28 +1031,38 @@ export default function SalesHistoryPage() {
                         {!zReport.hidePaymentMethod && (
                             <div className="mb-4 border-b-2 border-dashed border-black pb-4">
                                 <h3 className="font-semibold underline mb-2">ARQUEO DE CAJA</h3>
+                                {/* §163: los métodos que se cobran en Bs muestran el monto
+                                    en bolívares realmente cobrado — es contra eso que se
+                                    cuadra el lote del punto y el banco. */}
                                 <div className="space-y-0.5 text-sm">
                                     {zReport.paymentBreakdown.cash > 0 && <div className="flex justify-between"><span>Efectivo USD</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cash)}</span></div>}
                                     {zReport.paymentBreakdown.zelle > 0 && <div className="flex justify-between"><span>Zelle</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.zelle)}</span></div>}
                                     {zReport.paymentBreakdown.card > 0 && (
                                         <>
-                                            <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}</span></div>
+                                            <div className="flex justify-between"><span>Punto PDV</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.card)}{bsSuffix(zReport.paymentBreakdownBs?.card)}</span></div>
                                             {(zReport.pdvBreakdown?.shanklish ?? 0) > 0 && (
-                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Shanklish</span><span>{formatMoney(zReport.pdvBreakdown!.shanklish)}</span></div>
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Shanklish</span><span>{formatMoney(zReport.pdvBreakdown!.shanklish)}{bsSuffix(zReport.pdvBreakdownBs?.shanklish)}</span></div>
                                             )}
                                             {(zReport.pdvBreakdown?.superferro ?? 0) > 0 && (
-                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Superferro</span><span>{formatMoney(zReport.pdvBreakdown!.superferro)}</span></div>
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>PDV Superferro</span><span>{formatMoney(zReport.pdvBreakdown!.superferro)}{bsSuffix(zReport.pdvBreakdownBs?.superferro)}</span></div>
                                             )}
                                             {(zReport.pdvBreakdown?.otherCard ?? 0) > 0 && (
-                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Otros PDV / tarjeta</span><span>{formatMoney(zReport.pdvBreakdown!.otherCard)}</span></div>
+                                                <div className="flex justify-between text-xs text-capsula-ink-muted pl-4"><span>Otros PDV / tarjeta</span><span>{formatMoney(zReport.pdvBreakdown!.otherCard)}{bsSuffix(zReport.pdvBreakdownBs?.otherCard)}</span></div>
                                             )}
                                         </>
                                     )}
-                                    {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}</span></div>}
-                                    {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}</span></div>}
+                                    {zReport.paymentBreakdown.mobile > 0 && <div className="flex justify-between"><span>Pago Móvil</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.mobile)}{bsSuffix(zReport.paymentBreakdownBs?.mobile)}</span></div>}
+                                    {(zReport.paymentBreakdown.cashBs ?? 0) > 0 && <div className="flex justify-between"><span>Efectivo Bs</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.cashBs!)}{bsSuffix(zReport.paymentBreakdownBs?.cashBs)}</span></div>}
+                                    {zReport.paymentBreakdown.transfer > 0 && <div className="flex justify-between"><span>Transferencia</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.transfer)}{bsSuffix(zReport.paymentBreakdownBs?.transfer)}</span></div>}
                                     {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
                                     {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-muted"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                                 </div>
+                                {(zReport.bsMissingCount ?? 0) > 0 && (
+                                    <p className="mt-2 text-xs text-[#946A1C] dark:text-[#E8D9B8]">
+                                        {zReport.bsMissingCount} cobro(s) en Bs sin monto en bolívares guardado
+                                        (cobros viejos). Los subtotales en Bs de arriba no los incluyen.
+                                    </p>
+                                )}
                             </div>
                         )}
 

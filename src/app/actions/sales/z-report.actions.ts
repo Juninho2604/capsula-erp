@@ -16,6 +16,9 @@ import { PERM } from '@/lib/constants/permissions-registry';
 import { canViewPaymentMethod } from '@/lib/permissions/payment-method';
 import { tenantFeatureEnabled } from '@/lib/feature-flags';
 import { inferOrderTip } from '@/lib/sales/infer-tip';
+import {
+    paymentBucket, isBsPaymentMethod, accumulateBs, emptyBsBreakdown,
+} from '@/lib/sales/payment-bs';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 
 export interface ZReportData {
@@ -56,6 +59,8 @@ export interface ZReportData {
 
     paymentBreakdown: {
         cash: number;
+        /** §163: efectivo en bolívares. Antes se contaba dentro de `other`. */
+        cashBs?: number;
         zelle: number;
         card: number;
         mobile: number;
@@ -63,6 +68,28 @@ export interface ZReportData {
         external: number;
         other: number;
     };
+
+    /**
+     * §163: el mismo arqueo, en BOLÍVARES, para los métodos que se cobran en
+     * Bs (PDV, pago móvil, efectivo Bs, transferencia). Sale del monto en Bs
+     * guardado al cobrar — NO se reconvierte con la tasa de hoy. Los métodos
+     * en divisas quedan en cero acá a propósito.
+     */
+    paymentBreakdownBs?: {
+        cash: number; cashBs: number; zelle: number; card: number;
+        mobile: number; transfer: number; external: number; other: number;
+    };
+    /** §163: desglose en Bs del rubro `card` por terminal. */
+    pdvBreakdownBs?: {
+        shanklish: number;
+        superferro: number;
+        otherCard: number;
+    };
+    /**
+     * §163: cobros en Bs sin monto en Bs guardado (cobros históricos). Si es
+     * > 0, los subtotales en Bs están incompletos y la pantalla lo advierte.
+     */
+    bsMissingCount?: number;
 
     /**
      * §107: desglose del rubro `card` por terminal punto de venta.
@@ -115,7 +142,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                     customerName: { not: 'PROPINA COLECTIVA' },
                 },
                 include: {
-                    orderPayments: { select: { method: true, amountUSD: true } },
+                    orderPayments: { select: { method: true, amountUSD: true, amountBS: true, exchangeRate: true } },
                     openTab: {
                         select: {
                             runningSubtotal:    true,
@@ -124,7 +151,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                             totalServiceCharge: true,
                             paymentSplits: {
                                 where:  { status: 'PAID' },
-                                select: { paymentMethod: true, paidAmount: true, splitLabel: true },
+                                select: { paymentMethod: true, paidAmount: true, splitLabel: true, amountBs: true, exchangeRate: true },
                             },
                             subAccounts: {
                                 select: { id: true, status: true },
@@ -151,25 +178,45 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         ]);
 
         type OrderRow = typeof orders[number];
-        type Split = { paymentMethod: string | null; paidAmount: number; splitLabel: string };
+        type Split = {
+            paymentMethod: string | null; paidAmount: number; splitLabel: string;
+            amountBs?: number | null; exchangeRate?: number | null;
+        };
 
-        const pay = { cash: 0, card: 0, transfer: 0, mobile: 0, zelle: 0, external: 0, other: 0 };
+        const pay = { cash: 0, cashBs: 0, card: 0, transfer: 0, mobile: 0, zelle: 0, external: 0, other: 0 };
         // §107: dentro de `card`, discriminar por terminal PDV.
         const pdv = { shanklish: 0, superferro: 0, otherCard: 0 };
-        const addPayment = (pm: string | null | undefined, amt: number) => {
+        // §163: arqueo en bolívares de los métodos que SE COBRAN en Bs (PDV,
+        // pago móvil, efectivo Bs, transferencia). Es contra esto que la
+        // administración cuadra el lote del punto y el banco.
+        const payBs = emptyBsBreakdown();
+        const pdvBs = { shanklish: 0, superferro: 0, otherCard: 0 };
+        // Cobros en Bs sin monto en Bs guardado (cobros históricos): el
+        // subtotal en Bs queda corto y hay que decirlo, no disimularlo.
+        let bsMissing = 0;
+
+        const addPayment = (pm: string | null | undefined, amt: number, bs?: {
+            amountBs?: number | null; exchangeRate?: number | null;
+        }) => {
             const k = (pm ?? '').toUpperCase();
-            if      (k === 'CASH' || k === 'CASH_USD' || k === 'CASH_EUR')                              pay.cash     += amt;
-            else if (k === 'ZELLE')                                                                      pay.zelle    += amt;
-            else if (k === 'CARD' || k === 'BS_POS' || k === 'PDV_SHANKLISH' || k === 'PDV_SUPERFERRO') {
-                pay.card += amt;
+            const bucket = paymentBucket(k);
+            pay[bucket] += amt;
+            if (bucket === 'card') {
                 if      (k === 'PDV_SHANKLISH')  pdv.shanklish  += amt;
                 else if (k === 'PDV_SUPERFERRO') pdv.superferro += amt;
                 else                             pdv.otherCard  += amt;
             }
-            else if (k === 'MOBILE_PAY' || k === 'PAGO_MOVIL' || k === 'MOVIL_NG')                      pay.mobile   += amt;
-            else if (k === 'TRANSFER' || k === 'BANK_TRANSFER')                                          pay.transfer += amt;
-            else if (k === 'PY')                                                                         pay.external += amt;
-            else                                                                                         pay.other    += amt;
+
+            if (!isBsPaymentMethod(k)) return;
+            const before = payBs[bucket];
+            const ok = accumulateBs(payBs, k, { ...bs, amountUSD: amt });
+            if (!ok) { bsMissing++; return; }
+            if (bucket === 'card') {
+                const deltaBs = Math.round((payBs[bucket] - before) * 100) / 100;
+                if      (k === 'PDV_SHANKLISH')  pdvBs.shanklish  += deltaBs;
+                else if (k === 'PDV_SUPERFERRO') pdvBs.superferro += deltaBs;
+                else                             pdvBs.otherCard  += deltaBs;
+            }
         };
 
         const disc = { divisas: 0, cortesias: 0, other: 0 };
@@ -230,7 +277,8 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             totalTips += tabTip;
             if (tabTip > 0) tipCount++;
 
-            for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0);
+            for (const s of splits) addPayment(s.paymentMethod, s.paidAmount ?? 0,
+                { amountBs: s.amountBs, exchangeRate: s.exchangeRate });
         }
 
         for (const o of nonTabOrders) {
@@ -250,11 +298,14 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
             totalTips += orderTip;
             if (orderTip > 0) tipCount++;
 
-            const mixedLines = (o as any).orderPayments as { method: string; amountUSD: number }[] | undefined;
+            const mixedLines = (o as any).orderPayments as {
+                method: string; amountUSD: number; amountBS?: number | null; exchangeRate?: number | null;
+            }[] | undefined;
             if (mixedLines && mixedLines.length > 0) {
-                for (const p of mixedLines) addPayment(p.method, p.amountUSD);
+                for (const p of mixedLines) addPayment(p.method, p.amountUSD,
+                    { amountBs: p.amountBS, exchangeRate: p.exchangeRate });
             } else {
-                addPayment(o.paymentMethod, netReceived);
+                addPayment(o.paymentMethod, netReceived, { exchangeRate: o.exchangeRateValue });
             }
 
             const ot = (o.orderType || '').toUpperCase();
@@ -302,11 +353,16 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         // activo, devolvemos el desglose en cero para que ni siquiera viaje
         // al cliente (no se filtra en DevTools).
         const exposedPaymentBreakdown = hidePaymentMethod
-            ? { cash: 0, zelle: 0, card: 0, mobile: 0, transfer: 0, external: 0, other: 0 }
+            ? { cash: 0, cashBs: 0, zelle: 0, card: 0, mobile: 0, transfer: 0, external: 0, other: 0 }
             : pay;
         const exposedPdvBreakdown = hidePaymentMethod
             ? { shanklish: 0, superferro: 0, otherCard: 0 }
             : pdv;
+        // §163: el desglose en Bs sigue el mismo blindaje que el de USD.
+        const exposedPaymentBreakdownBs = hidePaymentMethod ? emptyBsBreakdown() : payBs;
+        const exposedPdvBreakdownBs = hidePaymentMethod
+            ? { shanklish: 0, superferro: 0, otherCard: 0 }
+            : pdvBs;
 
         return {
             success: true,
@@ -325,6 +381,9 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 discountBreakdown: disc,
                 paymentBreakdown:  exposedPaymentBreakdown,
                 pdvBreakdown:      exposedPdvBreakdown,
+                paymentBreakdownBs: exposedPaymentBreakdownBs,
+                pdvBreakdownBs:     exposedPdvBreakdownBs,
+                bsMissingCount:     hidePaymentMethod ? 0 : bsMissing,
                 bsRate,
                 totalCollectedBs,
                 hidePaymentMethod,
