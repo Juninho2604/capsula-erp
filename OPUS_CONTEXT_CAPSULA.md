@@ -14522,3 +14522,22 @@ propina explícita cuando hubo vuelto, que la fórmula histórica daba en cero.
 Se activa en Configuración → Feature Flags, sin deploy.
 
 Gates: tsc 0 · vitest 810 (13 nuevos) · build de producción OK.
+
+### §163.1 Fuera el "TOTAL EN Bs" global (2026-08-26)
+
+Observación de Omar apenas vio §163: la línea **TOTAL EN Bs** (bajo TOTAL
+COBRADO) *"se puede confundir… prácticamente lo que estás poniendo es cuánto es
+en bolos lo que ingresó en total"*. Tenía razón: convertía **todo** el total
+—incluidos el efectivo en divisas y el Zelle, que nunca fueron bolívares— a la
+tasa del momento de consultar. En un cierre de $2.346,63 mostraba
+`Bs 1.842.268,81`, un número que no entró por ninguna taquilla.
+
+- Se quitó del Z (pantalla y Excel), junto con la línea "Tasa del día (al
+  consultar)" que la acompañaba.
+- En su lugar, al final del arqueo: **TOTAL RECIBIDO EN Bs** = suma real de
+  PDV + pago móvil + efectivo Bs + transferencia, tomada de lo guardado en
+  cada cobro. Es lo que aquella línea aparentaba ser.
+- `bsRate` y `totalCollectedBs` quedan en el tipo marcados `@deprecated` (no
+  se renderizan) para no romper consumidores serializados.
+
+Gates: tsc 0 · vitest 810 · build de producción OK.

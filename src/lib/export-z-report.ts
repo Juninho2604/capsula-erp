@@ -45,11 +45,9 @@ export function exportZReportToExcel(zReport: ZReportData) {
         ['(+) Servicio 10% mesas',          fmtOpt(zReport.totalServiceFee)],
         ['(+) Propinas del día',             fmtOpt(zReport.totalTips)],
         ['TOTAL COBRADO',                    fmt(zReport.totalCollected)],
-        // §107: equivalente en Bs a la tasa vigente al consultar.
-        ...(((zReport.bsRate ?? 0) > 0 ? [
-            ['TOTAL EN Bs',                  `Bs ${(zReport.totalCollectedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-            ['Tasa del día (al consultar)',  `1 USD = Bs ${(zReport.bsRate ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-        ] : []) as [string, string][]),
+        // §163.1: el viejo "TOTAL EN Bs" convertía TODO el total (incluidos
+        // efectivo en divisas y Zelle) a la tasa de hoy y se leía como "esto
+        // entró en bolívares". El bolívar real va en el arqueo, por método.
         ['', ''],
 
         // ── arqueo por método de pago — omitido bajo blindaje cajera ────────
@@ -81,6 +79,9 @@ export function exportZReportToExcel(zReport: ZReportData) {
                 zReport.paymentBreakdown.external +
                 zReport.paymentBreakdown.other
             )],
+            ...((((zReport.totalReceivedBs ?? 0) > 0
+                ? [['TOTAL RECIBIDO EN Bs', `Bs ${(zReport.totalReceivedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]]
+                : [])) as [string, string][]),
             ...(((zReport.bsMissingCount ?? 0) > 0
                 ? [['Cobros en Bs sin monto en Bs guardado', String(zReport.bsMissingCount)]]
                 : []) as [string, string][]),

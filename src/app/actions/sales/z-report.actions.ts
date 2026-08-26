@@ -102,9 +102,19 @@ export interface ZReportData {
         otherCard: number;
     };
 
-    /** §107: tasa Bs/USD vigente al momento de consultar (null si no hay tasa cargada). */
+    /**
+     * §163.1: bolívares REALMENTE recibidos (suma del arqueo en Bs). Es lo
+     * que entró por PDV, pago móvil, efectivo Bs y transferencia.
+     */
+    totalReceivedBs?: number;
+
+    /**
+     * @deprecated §163.1 — ya no se muestra. Convertía TODO el total cobrado
+     * (incluidos efectivo en divisas y Zelle) a la tasa de hoy, y se leía como
+     * "esto entró en bolívares" sin serlo. Usar `totalReceivedBs`.
+     */
     bsRate?: number | null;
-    /** §107: totalCollected expresado en Bs a `bsRate` (0 si no hay tasa). */
+    /** @deprecated §163.1 — ver `bsRate`. Usar `totalReceivedBs`. */
     totalCollectedBs?: number;
 
     ordersByStatus: Record<string, number>;
@@ -349,6 +359,14 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
         const bsRate = await getExchangeRateValue().catch(() => null);
         const totalCollectedBs = bsRate ? Math.round(totalCollected * bsRate * 100) / 100 : 0;
 
+        // §163.1: total REALMENTE recibido en bolívares = suma del arqueo en
+        // Bs. Reemplaza al viejo "TOTAL EN Bs", que convertía TODO el total
+        // (incluidos el efectivo en dólares y el Zelle) a la tasa de hoy y se
+        // leía como "esto entró en bolos" sin serlo.
+        const totalReceivedBs = Math.round(
+            (payBs.card + payBs.mobile + payBs.cashBs + payBs.transfer) * 100,
+        ) / 100;
+
         // Strip server-side: si el rol no debe ver el método y el flag está
         // activo, devolvemos el desglose en cero para que ni siquiera viaje
         // al cliente (no se filtra en DevTools).
@@ -382,6 +400,7 @@ export async function getDailyZReportAction(date?: string): Promise<{ success: b
                 paymentBreakdown:  exposedPaymentBreakdown,
                 pdvBreakdown:      exposedPdvBreakdown,
                 paymentBreakdownBs: exposedPaymentBreakdownBs,
+                totalReceivedBs:    hidePaymentMethod ? 0 : totalReceivedBs,
                 pdvBreakdownBs:     exposedPdvBreakdownBs,
                 bsMissingCount:     hidePaymentMethod ? 0 : bsMissing,
                 bsRate,

@@ -1008,18 +1008,6 @@ export default function SalesHistoryPage() {
                                 <div className="flex justify-between text-[#2F6B4E] dark:text-[#6FB88F]"><span>(+) PROPINAS{zReport.tipCount > 0 ? ` (${zReport.tipCount})` : ''}</span><span>+{formatMoney(zReport.totalTips)}</span></div>
                             )}
                             <div className="flex justify-between font-semibold text-xl tracking-[-0.02em] mt-2 pt-2 border-t-2 border-black"><span>TOTAL COBRADO</span><span>{formatMoney(zReport.totalCollected)}</span></div>
-                            {(zReport.bsRate ?? 0) > 0 && (
-                                <>
-                                    <div className="flex justify-between font-semibold text-base tabular-nums">
-                                        <span>TOTAL EN Bs</span>
-                                        <span>Bs {(zReport.totalCollectedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-capsula-ink-muted tabular-nums">
-                                        <span>Tasa del día (al consultar)</span>
-                                        <span>1 USD = Bs {(zReport.bsRate ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                </>
-                            )}
                             {zReport.openTabsPending && zReport.openTabsPending.count > 0 && (
                                 <div className="mt-2 p-2 border border-dashed border-amber-600 rounded text-xs bg-[#F3EAD6] text-[#946A1C] dark:bg-[#3B2F15] dark:text-[#E8D9B8]">
                                     <span className="font-semibold">CUENTAS PENDIENTES ({zReport.openTabsPending.count})</span>{' — '}{formatMoney(zReport.openTabsPending.total)} no cobradas aún (excluidas del cierre)
@@ -1057,6 +1045,12 @@ export default function SalesHistoryPage() {
                                     {zReport.paymentBreakdown.external > 0 && <div className="flex justify-between"><span>PedidosYA / Externo</span><span className="font-semibold">{formatMoney(zReport.paymentBreakdown.external)}</span></div>}
                                     {zReport.paymentBreakdown.other > 0 && <div className="flex justify-between text-capsula-ink-muted"><span>Otros</span><span>{formatMoney(zReport.paymentBreakdown.other)}</span></div>}
                                 </div>
+                                {(zReport.totalReceivedBs ?? 0) > 0 && (
+                                    <div className="flex justify-between font-semibold text-sm tabular-nums mt-1 pt-1 border-t border-capsula-line">
+                                        <span>TOTAL RECIBIDO EN Bs</span>
+                                        <span>Bs {(zReport.totalReceivedBs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
                                 {(zReport.bsMissingCount ?? 0) > 0 && (
                                     <p className="mt-2 text-xs text-[#946A1C] dark:text-[#E8D9B8]">
                                         {zReport.bsMissingCount} cobro(s) en Bs sin monto en bolívares guardado
