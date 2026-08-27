@@ -14720,3 +14720,49 @@ son deuda acumulada por el flujo roto. Se resuelven después de la unificación,
 con conteo físico y ajuste trazable — no con UPDATE a mano.
 
 Gates: tsc 0 · vitest 810 · build de producción OK.
+
+---
+
+## §167 Navegación: «atrás» sacaba del módulo, no de la pestaña (2026-08-27)
+
+David: *"en muchos módulos no deja la opción de regresar al menú anterior… en
+compras no hay manera de retroceder, hay que ir al menú de inicio y reiniciar
+todos los pasos. Ocurre en la gran mayoría de los módulos."*
+
+### Causa
+
+Los módulos con pestañas guardaban la vista activa en `useState` — memoria del
+componente, no dirección. La barra de pestañas siempre estuvo visible, así que
+cambiar de vista era un clic; **el problema es el botón «atrás»**: como la vista
+nunca entró al historial, retroceder no cambiaba de pestaña, salía del módulo
+entero. En el teléfono, donde «atrás» es un gesto reflejo, cualquier
+distracción costaba todo lo que se llevara escrito.
+
+### Piezas
+
+- `src/lib/navigation/view-param.ts` (puro, 11 tests): `parseViewParam` valida
+  contra las vistas que el módulo realmente tiene — una vista inventada en la
+  URL cae a la de entrada, nunca deja la pantalla en un estado inexistente; y
+  `buildViewSearch` conserva los demás parámetros y **quita** el parámetro en la
+  vista inicial, para que la dirección limpia sea la de entrada.
+- `src/lib/hooks/use-view-param.ts`: reemplazo directo de `useState<ViewMode>`.
+  Usa el History API nativo (Next 14.1+), **no `router.push`** — cambiar de
+  pestaña es navegación de cliente y no debe disparar una vuelta al servidor en
+  pantallas `force-dynamic`. Escucha `popstate`, así que sirve al gesto del
+  teléfono igual que al botón del navegador.
+- `src/lib/navigation/draft-storage.ts` (puro, 9 tests): borradores de
+  formulario en `localStorage`, con guarda y `try/catch` en todo acceso (el POS
+  on-premise corre sobre HTTP y hay contextos donde el almacenamiento lanza —
+  §4.1 del as-built). Un borrador corrupto o de otra versión del formulario se
+  descarta en silencio; uno vacío no se ofrece.
+
+### Alcance aplicado
+
+Vista en la URL: **Compras**, Conciliación, Proteínas, Cargar Ventas, Facturas
+y Notas, Cuentas Bancarias.
+
+Borrador restaurable: la **recepción de mercancía** de Compras (lo más caro de
+volver a teclear: hasta 30 insumos a mano). Al volver avisa que recuperó las
+cantidades y ofrece "Empezar de cero"; se limpia solo al confirmar la recepción.
+
+Gates: tsc 0 · vitest 827 (20 nuevos) · build de producción OK.

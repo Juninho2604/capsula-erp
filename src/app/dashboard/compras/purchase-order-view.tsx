@@ -31,9 +31,15 @@ import {
     LowStockItem, StockConfigItem
 } from '@/app/actions/purchase.actions';
 import WhatsAppPurchaseOrderParser from '@/components/whatsapp-purchase-order-parser';
+import { useViewParam } from '@/lib/hooks/use-view-param';
+import { draftKey, readDraft, writeDraft, clearDraft, isDraftWorthRestoring } from '@/lib/navigation/draft-storage';
 import { copyToClipboard } from "@/lib/clipboard";
 
 type ViewMode = 'orders' | 'create' | 'auto' | 'config' | 'receive' | 'whatsapp';
+const VIEW_MODES = ['orders', 'create', 'auto', 'config', 'receive', 'whatsapp'] as const;
+// §167 — borrador de las cantidades a recibir: lo más caro de volver a
+// escribir si alguien toca «atrás» a mitad de una recepción larga.
+const RECEIVE_DRAFT = draftKey('compras', 'recepcion');
 
 interface OrderItem {
     rowId: string; // ID único por fila (permite duplicados del mismo producto)
@@ -50,7 +56,9 @@ function genRowId() {
 }
 
 export default function PurchaseOrderView() {
-    const [viewMode, setViewMode] = useState<ViewMode>('orders');
+    // §167: la pestaña vive en la URL — «atrás» retrocede de pestaña en vez
+    // de sacar del módulo, y refrescar cae en la misma pantalla.
+    const [viewMode, setViewMode] = useViewParam<ViewMode>(VIEW_MODES, 'orders');
     const [orders, setOrders] = useState<any[]>([]);
     const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
     const [allItems, setAllItems] = useState<any[]>([]);
@@ -71,6 +79,32 @@ export default function PurchaseOrderView() {
     const [selectedOrderId, setSelectedOrderId] = useState('');
     const [selectedAreaId, setSelectedAreaId] = useState('');
     const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
+    const [draftRestored, setDraftRestored] = useState(false);
+
+    // §167 — Al volver a "Recibir" se recupera lo que se estaba cargando. Sin
+    // esto, retroceder a mitad de una recepción de 30 insumos obligaba a
+    // teclearlo todo de nuevo, que es justo lo que reportó David.
+    useEffect(() => {
+        const d = readDraft<{ orderId: string; qty: Record<string, number> } | null>(
+            RECEIVE_DRAFT, null,
+            (v) => typeof v === 'object' && v !== null && 'orderId' in (v as object),
+        );
+        if (d && isDraftWorthRestoring(d.qty)) {
+            setSelectedOrderId(d.orderId);
+            setReceiveQuantities(d.qty);
+            setDraftRestored(true);
+        }
+    }, []);
+
+    // Se guarda solo mientras haya algo escrito; al confirmar se limpia.
+    useEffect(() => {
+        if (!selectedOrderId) return;
+        if (isDraftWorthRestoring(receiveQuantities)) {
+            writeDraft(RECEIVE_DRAFT, { orderId: selectedOrderId, qty: receiveQuantities });
+        } else {
+            clearDraft(RECEIVE_DRAFT);
+        }
+    }, [selectedOrderId, receiveQuantities]);
 
     // Config state
     const [configEdits, setConfigEdits] = useState<Record<string, { min: number; reorder: number }>>({});
@@ -202,6 +236,7 @@ export default function PurchaseOrderView() {
         const r = await receivePurchaseOrderItemsAction(selectedOrderId, items, selectedAreaId);
         if (r.success) {
             toast.success(r.message);
+            clearDraft(RECEIVE_DRAFT); setDraftRestored(false);
             setReceiveQuantities({}); setSelectedOrderId(''); loadData(); setViewMode('orders');
         } else {
             toast.error(r.message);
@@ -595,6 +630,17 @@ export default function PurchaseOrderView() {
                                 </p>
                             </div>
                         </div>
+                        {draftRestored && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#E6ECF4] px-4 py-3 text-sm text-[#2A4060] dark:bg-[#1A2636] dark:text-[#D1DCE9]">
+                                <span>Se recuperaron las cantidades que estabas cargando antes de salir.</span>
+                                <button
+                                    onClick={() => { setReceiveQuantities({}); clearDraft(RECEIVE_DRAFT); setDraftRestored(false); }}
+                                    className="font-semibold underline underline-offset-2"
+                                >
+                                    Empezar de cero
+                                </button>
+                            </div>
+                        )}
                         {selectedOrder && (
                             <div className="overflow-hidden rounded-lg border border-capsula-line">
                                 {Object.entries(selectedOrderItemsByCategory).map(([cat, items]) => (

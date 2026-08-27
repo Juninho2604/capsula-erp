@@ -12,12 +12,15 @@ import {
   type BankAccountData, type PosTerminalData,
 } from '@/app/actions/bank-account.actions';
 import { ComisionesReport } from './comisiones-report';
+import { useViewParam } from '@/lib/hooks/use-view-param';
 
 const KIND_LABEL: Record<string, string> = { BANK: 'Banco', CASH: 'Efectivo', DIGITAL: 'Digital' };
 const POS_METHOD_OPTIONS = [
   '', 'PDV_SHANKLISH', 'PDV_SUPERFERRO', 'MOVIL_NG', 'ZELLE',
   'CASH_USD', 'CASH_BS', 'CASH_EUR', 'MOBILE_PAY', 'TRANSFER', 'CARD',
 ];
+
+const BANK_TABS = ['cuentas', 'comisiones'] as const;
 
 function KindIcon({ kind }: { kind: string }) {
   if (kind === 'CASH') return <Wallet className="h-4 w-4" />;
@@ -45,7 +48,8 @@ export function CuentasBancariasView({
   canEdit: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<'cuentas' | 'comisiones'>('cuentas');
+  // §167: la pestaña en la URL — «atrás» vuelve a Cuentas.
+  const [tab, setTab] = useViewParam(BANK_TABS, 'cuentas');
   const [accountModal, setAccountModal] = useState<{ open: boolean; edit?: BankAccountData }>({ open: false });
   const [terminalModal, setTerminalModal] = useState<{ open: boolean; accountId?: string; edit?: PosTerminalData }>({ open: false });
 

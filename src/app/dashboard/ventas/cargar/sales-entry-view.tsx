@@ -20,6 +20,7 @@ import {
 import WhatsAppOrderParser from '@/components/whatsapp-order-parser';
 import { useDivisasPercent } from '@/lib/hooks/use-divisas-percent';
 import { formatDivisasPercent } from '@/lib/sales/divisas-config';
+import { useViewParam } from '@/lib/hooks/use-view-param';
 
 interface CartItem {
     menuItemId: string;
@@ -28,6 +29,8 @@ interface CartItem {
     unitPrice: number;
     notes?: string;
 }
+
+const SALES_ENTRY_VIEWS = ['entry', 'history', 'whatsapp'] as const;
 
 export default function SalesEntryView() {
     const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -56,7 +59,8 @@ export default function SalesEntryView() {
     const [deliveryAddress, setDeliveryAddress] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [viewMode, setViewMode] = useState<'entry' | 'history' | 'whatsapp'>('entry');
+    // §167: la vista en la URL — «atrás» cambia de pestaña, no de módulo.
+    const [viewMode, setViewMode] = useViewParam(SALES_ENTRY_VIEWS, 'entry');
 
     // Cargar datos iniciales
     useEffect(() => {

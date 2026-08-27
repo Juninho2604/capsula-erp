@@ -10,6 +10,7 @@ import {
   type ReconMovementsView, type ReconMovement, type ReconReport,
 } from '@/app/actions/treasury.actions';
 import { getCaracasNowParts } from '@/lib/datetime';
+import { useViewParam } from '@/lib/hooks/use-view-param';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -19,8 +20,11 @@ const fmt = (n: number | null) => n == null ? '—' : n.toLocaleString('es-VE', 
 
 interface AccountOption { id: string; name: string; currency: string }
 
+const CONCIL_VIEWS = ['menu', 'work', 'report'] as const;
+
 export function ConciliacionView({ accounts, canEdit }: { accounts: AccountOption[]; canEdit: boolean }) {
-  const [mode, setMode] = useState<'menu' | 'work' | 'report'>('menu');
+  // §167: la vista en la URL — «atrás» vuelve al menú del módulo.
+  const [mode, setMode] = useViewParam(CONCIL_VIEWS, 'menu');
 
   if (mode === 'menu') {
     return (

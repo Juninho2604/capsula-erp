@@ -16,6 +16,7 @@ import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { getLinkablePurchaseOrdersAction } from '@/app/actions/purchase.actions';
 import { Combobox } from '@/components/ui/combobox';
 import { packUnits, packLineTotal, packUnitCost } from '@/lib/purchases/pack-line';
+import { useViewParam } from '@/lib/hooks/use-view-param';
 
 const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d: Date | string | null) => d ? new Date(d).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
@@ -38,10 +39,13 @@ interface Props {
   canEdit: boolean;
 }
 
+const DOC_TABS = ['docs', 'concil'] as const;
+
 export function DocumentosView(props: Props) {
   const { initialDocuments, canEdit } = props;
   const router = useRouter();
-  const [tab, setTab] = useState<'docs' | 'concil'>('docs');
+  // §167: la pestaña en la URL — «atrás» vuelve a Documentos.
+  const [tab, setTab] = useViewParam(DOC_TABS, 'docs');
   const [createOpen, setCreateOpen] = useState(false);
   const [editFor, setEditFor] = useState<SupplierDocumentData | null>(null);
   const [entryFor, setEntryFor] = useState<SupplierDocumentData | null>(null);

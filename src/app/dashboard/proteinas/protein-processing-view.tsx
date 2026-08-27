@@ -42,6 +42,7 @@ import { createQuickItem } from '@/app/actions/inventory.actions';
 import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import ProcessingTemplates from './processing-templates';
+import { useViewParam } from '@/lib/hooks/use-view-param';
 
 const STEP_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: string; bgColor: string; borderColor: string }> = {
     'LIMPIEZA': { label: 'Limpieza', Icon: Brush as LucideIcon, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
@@ -55,6 +56,8 @@ interface SubProduct extends SubProductInput {
     outputItemId?: string; // ID del item de inventario al que corresponde
 }
 
+const PROTEIN_VIEWS = ['list', 'create', 'detail', 'templates'] as const;
+
 export default function ProteinProcessingView() {
     const [proteinItems, setProteinItems] = useState<any[]>([]);
     const [areas, setAreas] = useState<any[]>([]);
@@ -66,7 +69,8 @@ export default function ProteinProcessingView() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Estado del formulario
-    const [viewMode, setViewMode] = useState<'list' | 'create' | 'detail' | 'templates'>('list');
+    // §167: la vista en la URL — «atrás» vuelve al listado, no fuera del módulo.
+    const [viewMode, setViewMode] = useViewParam(PROTEIN_VIEWS, 'list');
     const [processDate, setProcessDate] = useState(new Date().toISOString().slice(0, 10));
     const [sourceItemId, setSourceItemId] = useState('');
     const [supplierId, setSupplierId] = useState('');
