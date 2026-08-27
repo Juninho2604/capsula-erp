@@ -12,23 +12,24 @@
 --   psql "$DATABASE_URL" -f scripts/diagnostico-recepcion-compras.sql
 -- ============================================================================
 
-\echo '=== 1. Recepciones de los últimos 15 días, por almacén ==================='
--- Si TODO cae en un mismo almacén, ese es el default que nadie está cambiando.
+\echo '=== 1. Recepciones de los ultimos 15 dias =============================='
+-- OJO: InventoryMovement NO guarda el almacen (no tiene areaId). Por eso NO se
+-- puede atribuir una recepcion vieja a un almacen desde esta tabla — un intento
+-- de cruzarla contra InventoryLocation multiplica las filas y da un total
+-- identico en todos los almacenes, que es basura.
+-- Desde §165 el almacen queda escrito en `notes` ("Almacen: X"), asi que las
+-- recepciones NUEVAS si son auditables. Las viejas salen con notes en blanco.
 SELECT
-    a.name                        AS almacen,
-    a."isActive"                  AS activo,
+    m."createdAt"::date           AS fecha,
+    COALESCE(m.notes, '(sin almacen registrado — recepcion anterior a §165)') AS almacen,
     COUNT(*)                      AS movimientos,
-    ROUND(SUM(m.quantity)::numeric, 2) AS unidades_recibidas
+    ROUND(SUM(m.quantity)::numeric, 2) AS unidades
 FROM "InventoryMovement" m
 JOIN "InventoryItem" i ON i.id = m."inventoryItemId"
--- El movimiento de compra no guarda el área; se infiere por la ubicación que
--- se tocó en la misma recepción. Por eso se cruza contra InventoryLocation.
-LEFT JOIN "InventoryLocation" l ON l."inventoryItemId" = m."inventoryItemId"
-LEFT JOIN "Area" a ON a.id = l."areaId"
 WHERE m."movementType" = 'PURCHASE'
   AND m."createdAt" >= NOW() - INTERVAL '15 days'
-GROUP BY a.name, a."isActive"
-ORDER BY unidades_recibidas DESC NULLS LAST;
+GROUP BY m."createdAt"::date, m.notes
+ORDER BY fecha DESC;
 
 \echo ''
 \echo '=== 2. Stock por almacén, incluidos los DESACTIVADOS ====================='

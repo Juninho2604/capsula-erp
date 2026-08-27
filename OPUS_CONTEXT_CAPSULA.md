@@ -14622,3 +14622,32 @@ almacén (delata el default), stock por almacén **incluidos los desactivados**
 movimiento de compra (ese sí sería el bug literal).
 
 Gates: tsc 0 · vitest 810 · build de producción OK.
+
+### §165.1 InventoryMovement no guarda el almacén (2026-08-26)
+
+Al correr el diagnóstico de §165 en producción, la consulta 1 devolvió el mismo
+número para los 11 almacenes (226 movimientos, 46.905,27 unidades cada uno).
+No era un dato: era un **producto cartesiano**. La consulta cruzaba
+`InventoryMovement` contra `InventoryLocation` sólo por `inventoryItemId`, así
+que cada movimiento se contaba una vez por cada almacén donde el insumo tuviera
+fila. Consulta mal escrita, corregida.
+
+**Lo que destapó el error es más importante que el error:** `InventoryMovement`
+**no tiene `areaId`**. Guarda insumo, tipo, cantidad, costo, motivo y notas —
+pero no a qué almacén afectó. Consecuencias:
+
+- El Kardex no puede decir en qué almacén ocurrió un movimiento.
+- Las recepciones **anteriores a §165 no son auditables**: no hay forma de
+  reconstruir a dónde entró esa mercancía. El stock actual por almacén
+  (consulta 2) es la única fuente.
+
+Mitigación aplicada sin migración: `receivePurchaseOrderItemsAction` ahora
+escribe `notes: "Almacén: <nombre>"`, igual que el descargo manual (§156). Las
+recepciones nuevas sí quedan trazables.
+
+**Pendiente de decisión:** agregar `areaId String?` a `InventoryMovement` es la
+solución de fondo (columna nullable = migración segura en producción viva según
+las reglas de despliegue), pero obliga a poblarla en todos los escritores de
+movimientos. No se hizo sin aprobación.
+
+Gates: tsc 0 · vitest 810 · build de producción OK.

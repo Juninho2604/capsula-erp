@@ -705,6 +705,12 @@ export async function receivePurchaseOrderItemsAction(
                     totalCost: item.quantityReceived * unitCost,
                     createdById: session.id,
                     reason: `Recepción OC - Orden ${orderId.slice(0, 8)}`,
+                    // §165: el almacén queda escrito en la nota. InventoryMovement
+                    // NO tiene areaId, así que sin esto es imposible auditar
+                    // después a qué almacén entró una recepción — que es
+                    // exactamente lo que hacía falta para responderle a David.
+                    // Mismo recurso que usa el descargo manual (§156).
+                    notes: `Almacén: ${ownedArea.name}`,
                     referenceNumber: orderId
                 }
             });
