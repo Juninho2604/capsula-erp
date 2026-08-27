@@ -14669,8 +14669,8 @@ levantaron los jefes de producción, y los negativos gigantes.
   precargado con `areas[0]` (primero alfabético) → **"Almacén Principal"**.
 - Nadie transfiere entre ambos.
 
-Stock real al 27-ago (9 almacenes con existencias, **todos activos** — la
-hipótesis del almacén desactivado queda descartada):
+Stock real al 27-ago, **sólo Shanklish Caracas** (todos activos — la hipótesis
+del almacén desactivado queda descartada):
 
 | Almacén | Ítems | Stock |
 |---|---|---|
@@ -14678,7 +14678,12 @@ hipótesis del almacén desactivado queda descartada):
 | CENTRO DE PRODUCCION | 126 | **−26.288,32** |
 | Almacén Principal | 194 | +8.849,15 |
 | CARLOS | 5 | +17.296,00 |
-| ALMACÉN PRINCIPAL | 21 | +665,00 |
+| EVENTO | 16 | +382,00 |
+| COMIDA PERSONAL | 1 | +16,00 |
+
+(El total suma unidades de distinta naturaleza — kg, litros, unidades — así que
+no es una cantidad física: sirve para leer el signo y el orden de magnitud, no
+como inventario valorizado.)
 
 Dos cuentas que nunca se tocan: una sólo consume, la otra sólo acumula. El
 teórico no puede cuadrar con el físico por más conteos que se hagan.
@@ -14690,8 +14695,16 @@ Principal" y se transfiere a Restaurante Principal / Centro de Producción segú
 se despacha; y las compras que van directo a un almacén específico (típico:
 Centro de Producción) se reciben ahí mismo — el selector ya lo permite.
 
-Además: **unificar el almacén duplicado** (`Almacén Principal` vs
-`ALMACÉN PRINCIPAL`, dos áreas que difieren sólo en mayúsculas).
+**CORRECCIÓN — el "almacén duplicado" no existía.** Se creyó que
+`Almacén Principal` y `ALMACÉN PRINCIPAL` eran el mismo depósito escrito de dos
+formas. `ALMACÉN PRINCIPAL` es del tenant **Capsula Demo Bistró**, no de
+Shanklish. El error nació de una consulta que agrupaba por nombre de área **sin
+filtrar por tenant**: en una base multi-tenant eso mezcla negocios en un mismo
+renglón. Toda consulta de diagnóstico sobre `Area` / `InventoryLocation` debe
+unir contra `Tenant` y mostrar el negocio.
+
+La guarda de `unificar-almacenes.ts` (aborta si origen y destino son de tenants
+distintos) fue lo que lo detectó, antes de mover un solo saldo.
 
 ### `scripts/unificar-almacenes.ts`
 
