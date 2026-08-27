@@ -185,7 +185,17 @@ export default function PurchaseOrderView() {
     }
 
     async function handleReceiveItems() {
-        if (!selectedOrderId || !selectedAreaId) return;
+        // §165: antes esto era un `return` mudo. Si no había área cargada o
+        // elegida, tocar "Confirmar Recepción" no hacía absolutamente nada —
+        // ni error ni aviso — y quien recibía la mercancía se iba creyendo que
+        // había entrado.
+        if (!selectedOrderId) { toast.error('Selecciona la orden a recibir'); return; }
+        if (!selectedAreaId) {
+            toast.error(areas.length === 0
+                ? 'No hay almacenes activos. Crea uno en Almacenes antes de recibir.'
+                : 'Selecciona el almacén donde entra la mercancía');
+            return;
+        }
         const items = Object.entries(receiveQuantities).filter(([, qty]) => qty > 0).map(([id, qty]) => ({ purchaseOrderItemId: id, quantityReceived: qty }));
         if (items.length === 0) { toast.error('Ingresa cantidades a recibir'); return; }
         setIsSubmitting(true);
@@ -576,6 +586,13 @@ export default function PurchaseOrderView() {
                                 >
                                     {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                 </select>
+                                {/* §165: el selector viene con un almacén puesto por
+                                    defecto (el primero por orden alfabético). Si nadie
+                                    lo mira, la mercancía entra ahí y después "no
+                                    aparece" en el almacén donde la buscan. */}
+                                <p className="mt-1 text-xs text-capsula-ink-muted">
+                                    Todo lo que recibas entra a este almacén. Verifícalo antes de confirmar.
+                                </p>
                             </div>
                         </div>
                         {selectedOrder && (

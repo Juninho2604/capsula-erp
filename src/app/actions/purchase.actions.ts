@@ -664,7 +664,7 @@ export async function receivePurchaseOrderItemsAction(
 
         const ownedArea = await db.area.findFirst({
             where: { id: areaId },
-            select: { id: true },
+            select: { id: true, name: true },
         });
         if (!ownedArea) return { success: false, message: 'Área no encontrada' };
 
@@ -792,10 +792,27 @@ export async function receivePurchaseOrderItemsAction(
 
         revalidatePath('/dashboard/compras');
         revalidatePath('/dashboard/inventario');
+        revalidatePath('/dashboard/inventario/diario');
+        revalidatePath('/dashboard/almacenes');
 
+        // §165: recibir 0 ítems NO es un éxito. Antes devolvía
+        // "Se recibieron 0 item(s) exitosamente" — el jefe leía "listo" y el
+        // stock no se había movido. Es el reporte de David: "le dan entrada y
+        // no se suma al almacén".
+        if (receivedCount === 0) {
+            return {
+                success: false,
+                message: 'No se recibió ningún ítem. Revisa que las cantidades sean mayores a cero '
+                    + 'y que la orden siga abierta.',
+            };
+        }
+
+        // §165: el mensaje dice A QUÉ ALMACÉN entró. Sin eso, recibir en el
+        // almacén equivocado (el selector viene con uno puesto por defecto) es
+        // invisible: el stock sube, pero en un sitio que nadie está mirando.
         return {
             success: true,
-            message: `Se recibieron ${receivedCount} item(s) exitosamente`
+            message: `Se recibieron ${receivedCount} ítem(s) en ${ownedArea.name}`
         };
     } catch (error) {
         console.error('Error en receivePurchaseOrderItemsAction:', error);

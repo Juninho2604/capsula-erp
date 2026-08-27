@@ -14579,3 +14579,46 @@ tomado. Detalles:
 - Si no queda ninguna, lo dice explícitamente en vez de mostrar una lista vacía.
 
 Gates: tsc 0 · vitest 810 · build de producción OK.
+
+---
+
+## §165 Recepción de compras: "le dan entrada y no se suma al almacén" (2026-08-26)
+
+David: *"los jefes le dan entrada a almacén [desde Compras] y luego yo registro
+la factura… pero no se está sumando al almacén los productos a los cuales ellos
+le dan entrada"*.
+
+### Lo que NO era
+
+`receivePurchaseOrderItemsAction` **sí** incrementa `InventoryLocation` y crea
+el `InventoryMovement` de tipo `PURCHASE`. Y las pantallas de inventario son
+`force-dynamic`, así que tampoco es caché. El stock se escribe.
+
+### Los tres defectos reales (todos de visibilidad)
+
+1. **Recibir 0 ítems se reportaba como éxito.** Si ningún `orderItem` matcheaba
+   (orden equivocada, ítems ya completos), la acción devolvía
+   *"Se recibieron 0 item(s) exitosamente"*. El jefe leía "listo" y se iba. Ahora
+   devuelve error explícito.
+2. **El botón fallaba en silencio.** `if (!selectedOrderId || !selectedAreaId)
+   return;` — sin área cargada o elegida, "Confirmar Recepción" no hacía nada:
+   ni error ni toast. Si `getAreasForReceivingAction` fallaba, `areas` quedaba
+   vacío y la pantalla entera era un botón muerto.
+3. **El almacén destino era invisible.** El selector se autocompleta con
+   `areas[0]` (primero por orden alfabético) y el mensaje de éxito no decía a
+   dónde entró la mercancía. Recibir en el almacén equivocado no dejaba ninguna
+   señal: el stock sube, pero en un sitio que nadie mira. Ahora el mensaje dice
+   *"Se recibieron N ítem(s) en \<Almacén\>"* y el selector lleva la advertencia.
+
+También se agregó `revalidatePath` de `/dashboard/inventario/diario` y
+`/dashboard/almacenes`, que quedaban fuera.
+
+### Diagnóstico con datos
+
+`scripts/diagnostico-recepcion-compras.sql` — 4 consultas: recepciones por
+almacén (delata el default), stock por almacén **incluidos los desactivados**
+(la hipótesis del descuadre histórico), últimas 30 recepciones con alerta de
+`unidad_movimiento <> unidad_base`, y órdenes marcadas recibidas **sin**
+movimiento de compra (ese sí sería el bug literal).
+
+Gates: tsc 0 · vitest 810 · build de producción OK.
