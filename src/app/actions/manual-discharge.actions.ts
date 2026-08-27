@@ -163,6 +163,7 @@ export async function manualDischargeAction(input: ManualDischargeInput): Promis
                         quantity: -qty,
                         unit: item.baseUnit,
                         reason: reasonLabel,
+                        areaId: ownedArea.id, // §165.2
                         notes: `${marker}Almacén: ${ownedArea.name}`
                             + (shortfalls.some(f => f.itemId === item.id)
                                 ? ' · faltante de inventario, queda en negativo'

@@ -705,11 +705,12 @@ export async function receivePurchaseOrderItemsAction(
                     totalCost: item.quantityReceived * unitCost,
                     createdById: session.id,
                     reason: `Recepción OC - Orden ${orderId.slice(0, 8)}`,
-                    // §165: el almacén queda escrito en la nota. InventoryMovement
-                    // NO tiene areaId, así que sin esto es imposible auditar
-                    // después a qué almacén entró una recepción — que es
-                    // exactamente lo que hacía falta para responderle a David.
-                    // Mismo recurso que usa el descargo manual (§156).
+                    // §165.2: el movimiento queda anclado al almacén. La columna
+                    // `areaId` existe en el modelo desde siempre; simplemente no
+                    // se estaba llenando, y por eso no había forma de auditar a
+                    // dónde entró una recepción. La nota se mantiene por
+                    // legibilidad directa en el Kardex.
+                    areaId: ownedArea.id,
                     notes: `Almacén: ${ownedArea.name}`,
                     referenceNumber: orderId
                 }

@@ -1005,6 +1005,9 @@ async function registerInventoryForCartItems(params: {
                     unit: op.unit,
                     reason: `Venta — Orden: ${params.orderId}`,
                     notes: op.label,
+                    // §165.2: de qué almacén salió. Sin esto el Kardex no podía
+                    // decir dónde se consumió el insumo.
+                    areaId: params.areaId,
                     salesOrderId: params.orderId,
                     createdById: params.userId,
                 },

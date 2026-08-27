@@ -14632,22 +14632,78 @@ No era un dato: era un **producto cartesiano**. La consulta cruzaba
 que cada movimiento se contaba una vez por cada almacén donde el insumo tuviera
 fila. Consulta mal escrita, corregida.
 
-**Lo que destapó el error es más importante que el error:** `InventoryMovement`
-**no tiene `areaId`**. Guarda insumo, tipo, cantidad, costo, motivo y notas —
-pero no a qué almacén afectó. Consecuencias:
+**CORRECCIÓN (§165.2):** afirmé que `InventoryMovement` no tenía `areaId`. Es
+falso — la columna existe desde siempre (`areaId String?` + relación con
+`Area`). Lo leí mal: grepeé sólo el encabezado del modelo y el campo está más
+abajo. El problema real es que **casi nadie la llena**: de 30 sitios que crean
+movimientos, sólo 9 la ponían. Consecuencias mientras estuvo vacía:
 
 - El Kardex no puede decir en qué almacén ocurrió un movimiento.
 - Las recepciones **anteriores a §165 no son auditables**: no hay forma de
   reconstruir a dónde entró esa mercancía. El stock actual por almacén
   (consulta 2) es la única fuente.
 
-Mitigación aplicada sin migración: `receivePurchaseOrderItemsAction` ahora
-escribe `notes: "Almacén: <nombre>"`, igual que el descargo manual (§156). Las
-recepciones nuevas sí quedan trazables.
+Arreglado en §165.2, **sin migración** (la columna ya existía): ahora poblan
+`areaId` los tres escritores de mayor volumen — recepción de compras, descarga
+por venta y descargo manual. Los movimientos históricos quedan con `areaId`
+nulo; no se rellenan hacia atrás porque no hay dato del que deducirlo.
 
-**Pendiente de decisión:** agregar `areaId String?` a `InventoryMovement` es la
-solución de fondo (columna nullable = migración segura en producción viva según
-las reglas de despliegue), pero obliga a poblarla en todos los escritores de
-movimientos. No se hizo sin aprobación.
+Gates: tsc 0 · vitest 810 · build de producción OK.
+
+---
+
+## §166 El descuadre de inventario: compras y ventas en almacenes distintos (2026-08-27)
+
+Diagnóstico cerrado con datos de producción. Explica de una vez el reporte de
+David ("le dan entrada y no se suma al almacén"), el descuadre histórico que
+levantaron los jefes de producción, y los negativos gigantes.
+
+### El mecanismo
+
+- **Las ventas descargan SIEMPRE de un único almacén fijo.** `ensureBaseSalesArea()`
+  lo resuelve por nombre: `SHANKLISH SERVICIO` → `Restaurante` → `Barra` →
+  `Oficina` → cualquiera activo. Shanklish no tiene el primero, así que **todo
+  lo vendido sale de "Restaurante Principal"**, sin importar dónde esté
+  físicamente el insumo.
+- **Las compras entran donde elija quien recibe**, y el selector viene
+  precargado con `areas[0]` (primero alfabético) → **"Almacén Principal"**.
+- Nadie transfiere entre ambos.
+
+Stock real al 27-ago (9 almacenes con existencias, **todos activos** — la
+hipótesis del almacén desactivado queda descartada):
+
+| Almacén | Ítems | Stock |
+|---|---|---|
+| Restaurante Principal | 295 | **−615.585,65** |
+| CENTRO DE PRODUCCION | 126 | **−26.288,32** |
+| Almacén Principal | 194 | +8.849,15 |
+| CARLOS | 5 | +17.296,00 |
+| ALMACÉN PRINCIPAL | 21 | +665,00 |
+
+Dos cuentas que nunca se tocan: una sólo consume, la otra sólo acumula. El
+teórico no puede cuadrar con el físico por más conteos que se hagan.
+
+### Decisión de Omar
+
+**Opción B — depósito + transferencias.** Las compras entran a "Almacén
+Principal" y se transfiere a Restaurante Principal / Centro de Producción según
+se despacha; y las compras que van directo a un almacén específico (típico:
+Centro de Producción) se reciben ahí mismo — el selector ya lo permite.
+
+Además: **unificar el almacén duplicado** (`Almacén Principal` vs
+`ALMACÉN PRINCIPAL`, dos áreas que difieren sólo en mayúsculas).
+
+### `scripts/unificar-almacenes.ts`
+
+Simulación por defecto; sólo escribe con `--apply`. Suma el stock del origen al
+destino dejando **dos movimientos TRANSFER por ítem** (salida y entrada, con
+`areaId`), repunta requisiciones y desactiva el origen. Los movimientos
+históricos NO se repuntan: son hechos pasados y moverlos falsearía el Kardex.
+Match por nombre exacto y sensible a mayúsculas — precisamente porque el
+problema es que dos nombres se parecen.
+
+**Pendiente:** los negativos de Restaurante Principal y Centro de Producción
+son deuda acumulada por el flujo roto. Se resuelven después de la unificación,
+con conteo físico y ajuste trazable — no con UPDATE a mano.
 
 Gates: tsc 0 · vitest 810 · build de producción OK.
