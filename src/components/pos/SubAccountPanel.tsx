@@ -258,7 +258,7 @@ interface SubAccountCardProps {
     isProcessing: boolean;
     onRename: (subId: string, label: string) => void;
     onDelete: (subId: string) => void;
-    onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') => void;
+    onPay: (subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT') => void;
     onUnassign: (itemId: string, subId: string) => void;
     onPrint: (sub: SubAccount, includeService: boolean) => void;
     onVoid: (sub: SubAccount) => void;
@@ -269,6 +269,12 @@ interface SubAccountCardProps {
     divisasOverrideBy?: string;
     /** Abre el modal de PIN para ajustar el % de divisas de esta subcuenta. */
     onAdjustDivisas?: () => void;
+    /** §168 — Cortesía autorizada para ESTA subcuenta (con PIN ya validado). */
+    cortesia?: { type: 'CORTESIA_100' | 'CORTESIA_PERCENT'; percent: number; managerName: string } | null;
+    /** Abre el modal de PIN para autorizar cortesía en esta subcuenta. */
+    onOpenCortesia?: () => void;
+    /** Quita la cortesía autorizada antes de cobrar. */
+    onClearCortesia?: () => void;
 }
 
 // Cash USD/EUR/Zelle aplican descuento de divisas automático. El predicado
@@ -276,7 +282,7 @@ interface SubAccountCardProps {
 // delivery, y es la condición que decide si hay descuento.
 const isDivisasPayMethod = (m: POSPaymentMethod): boolean => isDivisasMethod(m);
 
-function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3, divisasOverrideBy, onAdjustDivisas }: SubAccountCardProps) {
+function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassign, onPrint, onVoid, canCharge, divisasRate = 1 / 3, divisasOverrideBy, onAdjustDivisas, cortesia, onOpenCortesia, onClearCortesia }: SubAccountCardProps) {
     const [editing, setEditing] = useState(false);
     const [labelInput, setLabelInput] = useState(sub.label);
     const [showPayForm, setShowPayForm] = useState(false);
@@ -296,8 +302,13 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     const divisasPctLabel = formatDivisasPercent(divisasRate * 100);
     // Si el método es divisas (cash USD/EUR/Zelle) → aplica el descuento automático.
     // Sólo cuenta si la cajera HA ELEGIDO un método (payMethodTouched).
-    const applyDivisasDiscount = payMethodTouched && isDivisasPayMethod(payMethod);
-    const discountAmount = applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
+    // §168 — la cortesía autorizada manda: un cobro lleva UN solo descuento.
+    const hasCortesia = !!cortesia;
+    const isFullCortesia = cortesia?.type === 'CORTESIA_100';
+    const applyDivisasDiscount = !hasCortesia && payMethodTouched && isDivisasPayMethod(payMethod);
+    const discountAmount = hasCortesia
+        ? Math.round((isFullCortesia ? sub.subtotal : sub.subtotal * (cortesia!.percent / 100)) * 100) / 100
+        : applyDivisasDiscount ? sub.subtotal * divisasRate : 0;
     const subtotalAfterDiscount = sub.subtotal - discountAmount;
     const serviceChargeAfterDiscount = serviceIncluded ? subtotalAfterDiscount * 0.1 : 0;
     const totalWithService = subtotalAfterDiscount + serviceChargeAfterDiscount;
@@ -322,6 +333,12 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
     }
 
     function handlePayConfirm() {
+        // §168 — cortesía total: no hay dinero que cobrar; método y monto no aplican.
+        if (isFullCortesia) {
+            onPay(sub.id, 'CORTESIA' as POSPaymentMethod, 0, serviceIncluded, 'CORTESIA_100');
+            setShowPayForm(false);
+            return;
+        }
         if (!payMethodTouched) { toast.error('Selecciona un método de pago'); return; }
         const amt = parseFloat(amountInput);
         if (isNaN(amt) || amt <= 0) { toast.error('Monto inválido'); return; }
@@ -337,7 +354,10 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
             );
             if (!ok) return;
         }
-        onPay(sub.id, payMethod, amt, serviceIncluded, applyDivisasDiscount ? 'DIVISAS_33' : 'NONE');
+        onPay(
+            sub.id, payMethod, amt, serviceIncluded,
+            hasCortesia ? 'CORTESIA_PERCENT' : applyDivisasDiscount ? 'DIVISAS_33' : 'NONE',
+        );
         setShowPayForm(false);
     }
 
@@ -507,6 +527,40 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                         </button>
                     ) : (
                         <div className="space-y-2 border-t border-capsula-line pt-2">
+                            {/* §168 — Cortesía autorizada con PIN para esta subcuenta */}
+                            {hasCortesia ? (
+                                <div className="rounded-lg bg-[#F3EAD6] dark:bg-[#3B2F15] px-2 py-1.5 text-[11px] font-medium text-[#946A1C] dark:text-[#E8D9B8]">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>
+                                            <span className="font-semibold">{isFullCortesia ? 'Cortesía 100%' : `Cortesía ${cortesia!.percent}%`}:</span>{' '}
+                                            <span className="tabular-nums">−${discountAmount.toFixed(2)}</span>
+                                        </span>
+                                        {onClearCortesia && (
+                                            <button
+                                                type="button"
+                                                onClick={onClearCortesia}
+                                                disabled={isProcessing}
+                                                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-current/30 px-2 py-0.5 text-[10px] font-semibold hover:bg-current/10 disabled:opacity-40"
+                                            >
+                                                <XIcon className="h-3 w-3" />
+                                                Quitar
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="opacity-80">Autorizó {cortesia!.managerName}</div>
+                                </div>
+                            ) : (
+                                onOpenCortesia && (
+                                    <button
+                                        type="button"
+                                        onClick={onOpenCortesia}
+                                        disabled={isProcessing}
+                                        className="w-full rounded-lg border border-dashed border-capsula-line px-2 py-1.5 text-[11px] font-medium text-capsula-ink-muted transition-colors hover:border-capsula-coral/50 hover:text-capsula-coral disabled:opacity-40"
+                                    >
+                                        Cortesía (PIN de gerencia)
+                                    </button>
+                                )
+                            )}
                             {/* Aviso de descuento por divisas (cash USD/EUR/Zelle) */}
                             {applyDivisasDiscount && (
                                 <div className="rounded-lg bg-[#E5EDE7] dark:bg-[#1E3B2C] px-2 py-1.5 text-[11px] font-medium text-[#2F6B4E] dark:text-[#6FB88F]">
@@ -547,7 +601,8 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     Total: ${totalWithService.toFixed(2)}
                                 </span>
                             </label>
-                            {/* Method */}
+                            {/* Method — con cortesía total no hay dinero que cobrar */}
+                            {!isFullCortesia && (
                             <div className="grid grid-cols-3 gap-1">
                                 {PAY_METHODS.map((m) => (
                                     <button
@@ -564,7 +619,9 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     </button>
                                 ))}
                             </div>
+                            )}
                             {/* Amount */}
+                            {!isFullCortesia && (
                             <input
                                 type="number" min="0" step="0.01"
                                 value={amountInput}
@@ -572,6 +629,7 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                 className="w-full rounded-lg border border-capsula-line bg-capsula-ivory px-3 py-2 text-sm font-medium tabular-nums text-capsula-ink focus:border-capsula-navy-deep focus:outline-none"
                                 placeholder={`$${totalWithService.toFixed(2)}`}
                             />
+                            )}
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setShowPayForm(false)}
@@ -580,12 +638,12 @@ function SubAccountCard({ sub, isProcessing, onRename, onDelete, onPay, onUnassi
                                     Cancelar
                                 </button>
                                 <button
-                                    disabled={isProcessing || !payMethodTouched}
+                                    disabled={isProcessing || (!payMethodTouched && !isFullCortesia)}
                                     onClick={handlePayConfirm}
                                     className="pos-btn flex-[2] !min-h-0 py-2 text-xs disabled:opacity-40"
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {payMethodTouched ? 'Confirmar' : 'Elige método'}
+                                    {isFullCortesia ? 'Confirmar cortesía' : payMethodTouched ? 'Confirmar' : 'Elige método'}
                                 </button>
                             </div>
                         </div>
@@ -634,6 +692,69 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
     // % con el que quedó cobrada cada subcuenta ajustada, para que una
     // reimpresión del recibo no muestre el % configurado en vez del cobrado.
     const [divisasUsedBySub, setDivisasUsedBySub] = useState<Record<string, number>>({});
+
+    // ── §168 — Cortesía por subcuenta (PIN de gerencia) ──────────────────────
+    // Igual que el override de divisas: el PIN se valida acá y la autorización
+    // vive UNA subcuenta y UN cobro; el server re-verifica al gerente.
+    const [cortesiaTarget, setCortesiaTarget] = useState<SubAccount | null>(null);
+    const [cortesiaMode, setCortesiaMode] = useState<'100' | 'percent'>('100');
+    const [cortesiaPctInput, setCortesiaPctInput] = useState('');
+    const [cortesiaPin, setCortesiaPin] = useState('');
+    const [cortesiaError, setCortesiaError] = useState('');
+    const [cortesiaLoading, setCortesiaLoading] = useState(false);
+    const [cortesiaAuth, setCortesiaAuth] = useState<
+        { subId: string; type: 'CORTESIA_100' | 'CORTESIA_PERCENT'; percent: number; managerId: string; managerName: string } | null
+    >(null);
+    // Con qué % quedó cobrada cada subcuenta (para el recibo y reimpresiones).
+    const [cortesiaUsedBySub, setCortesiaUsedBySub] = useState<Record<string, number>>({});
+
+    function openCortesiaModal(sub: SubAccount) {
+        setCortesiaTarget(sub);
+        setCortesiaMode('100');
+        setCortesiaPctInput('');
+        setCortesiaPin('');
+        setCortesiaError('');
+    }
+    function closeCortesiaModal() {
+        setCortesiaTarget(null);
+        setCortesiaPctInput('');
+        setCortesiaPin('');
+        setCortesiaError('');
+    }
+    async function confirmCortesia() {
+        if (!cortesiaTarget || cortesiaLoading) return;
+        let pct = 100;
+        if (cortesiaMode === 'percent') {
+            pct = parseFloat(cortesiaPctInput.replace(',', '.'));
+            // Mismos límites que resolveSubAccountCortesia en el server; se
+            // valida acá para dar el error antes de pedir el PIN.
+            if (!Number.isFinite(pct) || pct < 1 || pct > 99.99) {
+                setCortesiaError('El porcentaje debe estar entre 1 y 99.99. Para cubrir todo usa Cortesía 100%.');
+                return;
+            }
+        }
+        setCortesiaLoading(true);
+        const pinRes = await validateManagerPinAction(cortesiaPin);
+        if (!pinRes.success) {
+            setCortesiaError(pinRes.message || 'PIN incorrecto');
+            setCortesiaLoading(false);
+            return;
+        }
+        const managerName = (pinRes.data as { managerName?: string })?.managerName ?? 'Gerente';
+        const managerId = (pinRes.data as { managerId?: string })?.managerId ?? '';
+        setCortesiaAuth({
+            subId: cortesiaTarget.id,
+            type: cortesiaMode === '100' ? 'CORTESIA_100' : 'CORTESIA_PERCENT',
+            percent: cortesiaMode === '100' ? 100 : pct,
+            managerId,
+            managerName,
+        });
+        toast.success(cortesiaMode === '100'
+            ? `Cortesía 100% autorizada para ${cortesiaTarget.label}`
+            : `Cortesía ${pct}% autorizada para ${cortesiaTarget.label}`);
+        closeCortesiaModal();
+        setCortesiaLoading(false);
+    }
 
     function openDivisasModal(sub: SubAccount) {
         setDivisasTarget(sub);
@@ -811,7 +932,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
         setIsProcessing(false);
     }
 
-    async function handlePay(subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33') {
+    async function handlePay(subId: string, method: POSPaymentMethod, amount: number, serviceIncluded: boolean, discountType: 'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT') {
         setIsProcessing(true);
         // §149.2 — el override sólo viaja si es de ESTA subcuenta y el cobro
         // realmente lleva descuento de divisas. El server igual revalida el
@@ -819,6 +940,15 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
         const override = divisasOverride?.subId === subId && discountType === 'DIVISAS_33'
             ? divisasOverride
             : null;
+        // §168 — la cortesía sólo viaja si el gerente la autorizó para ESTA
+        // subcuenta. El server re-verifica el managerId contra los roles.
+        const isCortesia = discountType === 'CORTESIA_100' || discountType === 'CORTESIA_PERCENT';
+        const cort = isCortesia && cortesiaAuth?.subId === subId ? cortesiaAuth : null;
+        if (isCortesia && !cort) {
+            toast.error('La cortesía requiere autorización de gerencia (PIN).');
+            setIsProcessing(false);
+            return;
+        }
         const res = await paySubAccountAction({
             subAccountId: subId,
             paymentMethod: method,
@@ -826,7 +956,8 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             serviceFeeIncluded: serviceIncluded,
             discountType,
             divisasPercentOverride: override ? override.percent : undefined,
-            authorizedById: override ? override.managerId : undefined,
+            cortesiaPercent: cort && discountType === 'CORTESIA_PERCENT' ? cort.percent : undefined,
+            authorizedById: cort ? cort.managerId : override ? override.managerId : undefined,
         });
         if (res.success) {
             toast.success(res.message);
@@ -837,6 +968,11 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             if (override) {
                 setDivisasOverride(null);
                 setDivisasUsedBySub(prev => ({ ...prev, [subId]: override.percent }));
+            }
+            // §168 — la autorización era para este cobro y ya se usó.
+            if (cort) {
+                setCortesiaAuth(null);
+                setCortesiaUsedBySub(prev => ({ ...prev, [subId]: cort.percent }));
             }
             // Use the updated tab returned by the action — avoids an extra round-trip
             // and prevents triggering the loadTab → onTabUpdated cycle an extra time.
@@ -850,7 +986,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                 // recibo refleje exactamente lo cobrado, no inferido.
                 const paidSub = updatedTab.subAccounts.find(s => s.id === subId);
                 const paidWithDivisas = discountType === 'DIVISAS_33';
-                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded, paidWithDivisas, override?.percent);
+                if (paidSub) handlePrintSubAccount(paidSub, serviceIncluded, paidWithDivisas, override?.percent, cort?.percent);
             } else {
                 await loadTab(); // fallback if action didn't return data
             }
@@ -877,7 +1013,7 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
      *                       lo ajustó (§149.2). Sin esto el recibo imprimía el
      *                       % configurado y no el que pagó el cliente.
      */
-    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true, paidWithDivisas?: boolean, overridePercent?: number) {
+    function handlePrintSubAccount(sub: SubAccount, includeService: boolean = true, paidWithDivisas?: boolean, overridePercent?: number, cortesiaPercent?: number) {
         const items = sub.items.map(it => ({
             name: it.salesOrderItem.itemName,
             quantity: it.quantity,
@@ -899,14 +1035,21 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             sub.paymentMethod === 'CASH_EUR' ||
             sub.paymentMethod === 'ZELLE'
         );
-        const applyDivisasDiscount = paidWithDivisas ?? inferredDivisas;
+        // §168 — cortesía: explícita tras el cobro, recordada para reimpresión,
+        // o inferida (método CORTESIA = cortesía total). Manda sobre divisas.
+        const cortesiaPct = cortesiaPercent
+            ?? cortesiaUsedBySub[sub.id]
+            ?? (sub.status === 'PAID' && sub.paymentMethod === 'CORTESIA' ? 100 : undefined);
+        const applyDivisasDiscount = cortesiaPct != null ? false : (paidWithDivisas ?? inferredDivisas);
         // % efectivo: el ajustado para este cobro si lo hubo, si no el que
         // quedó guardado al cobrar esta subcuenta (reimpresión), si no el
         // configurado.
         const effectivePercent = overridePercent ?? divisasUsedBySub[sub.id] ?? divisasPercent;
         const effectiveRate = divisasDiscountRate(effectivePercent);
         const effectivePctLabel = formatDivisasPercent(effectivePercent);
-        const discountAmount = applyDivisasDiscount ? sub.subtotal * effectiveRate : 0;
+        const discountAmount = cortesiaPct != null
+            ? Math.round(sub.subtotal * cortesiaPct) / 100
+            : applyDivisasDiscount ? sub.subtotal * effectiveRate : 0;
         const subtotalAfterDiscount = sub.subtotal - discountAmount;
         const serviceFee = includeService ? subtotalAfterDiscount * 0.1 : 0;
         const subAccountLabel = sub.label || `Subcuenta ${sub.sortOrder + 1}`;
@@ -920,8 +1063,12 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
             items,
             subtotal: sub.subtotal,
             discount: discountAmount > 0 ? discountAmount : undefined,
-            discountReason: applyDivisasDiscount ? `Pago en Divisas (${effectivePctLabel}%)` : undefined,
-            hideDiscount: applyDivisasDiscount,
+            discountReason: cortesiaPct != null
+                ? `Cortesía ${cortesiaPct}%`
+                : applyDivisasDiscount ? `Pago en Divisas (${effectivePctLabel}%)` : undefined,
+            // La cortesía SÍ se muestra en el ticket — el cliente debe ver qué
+            // le regalaron; el descuento de divisas se oculta (regla histórica).
+            hideDiscount: cortesiaPct != null ? false : applyDivisasDiscount,
             total: subtotalAfterDiscount,
             serviceFee: serviceFee > 0.001 ? serviceFee : undefined,
             isPrecuenta: sub.status !== 'PAID',
@@ -1034,6 +1181,15 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                             divisasOverride?.subId === sub.id ? divisasOverride.managerName : undefined
                         }
                         onAdjustDivisas={canCharge ? () => openDivisasModal(sub) : undefined}
+                        cortesia={
+                            cortesiaAuth?.subId === sub.id
+                                ? { type: cortesiaAuth.type, percent: cortesiaAuth.percent, managerName: cortesiaAuth.managerName }
+                                : null
+                        }
+                        onOpenCortesia={canCharge ? () => openCortesiaModal(sub) : undefined}
+                        onClearCortesia={
+                            cortesiaAuth?.subId === sub.id ? () => setCortesiaAuth(null) : undefined
+                        }
                     />
                 ))}
 
@@ -1181,6 +1337,133 @@ export function SubAccountPanel({ openTabId, exchangeRate, onClose, onTabUpdated
                             >
                                 <Check className="h-4 w-4" />
                                 {divisasLoading ? 'Verificando…' : 'Aplicar a este cobro'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* §168 — Modal de cortesía por subcuenta (PIN de gerencia) */}
+            {cortesiaTarget && (
+                <div className="fixed inset-0 z-[70] bg-capsula-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-capsula-ivory border border-capsula-line w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl">
+                        <div className="border-b border-capsula-line p-5 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-lg tracking-[-0.02em] text-capsula-ink">
+                                    Cortesía en subcuenta
+                                </h3>
+                                <p className="mt-0.5 text-xs text-capsula-ink-muted">
+                                    {cortesiaTarget.label} · ${cortesiaTarget.subtotal.toFixed(2)}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeCortesiaModal}
+                                disabled={cortesiaLoading}
+                                className="h-8 w-8 rounded-full hover:bg-capsula-coral/10 hover:text-capsula-coral text-capsula-ink-muted flex items-center justify-center disabled:opacity-40"
+                                aria-label="Cerrar"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => { setCortesiaMode('100'); setCortesiaError(''); }}
+                                    className={`rounded-xl border py-3 text-sm font-semibold transition-colors ${
+                                        cortesiaMode === '100'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep/40'
+                                    }`}
+                                >
+                                    Cortesía 100%
+                                </button>
+                                <button
+                                    onClick={() => { setCortesiaMode('percent'); setCortesiaError(''); }}
+                                    className={`rounded-xl border py-3 text-sm font-semibold transition-colors ${
+                                        cortesiaMode === 'percent'
+                                            ? 'border-capsula-navy-deep bg-capsula-navy-deep text-capsula-cream'
+                                            : 'border-capsula-line bg-capsula-ivory-surface text-capsula-ink-soft hover:border-capsula-navy-deep/40'
+                                    }`}
+                                >
+                                    Porcentaje
+                                </button>
+                            </div>
+                            {cortesiaMode === 'percent' && (
+                                <label className="block">
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                        Porcentaje de cortesía
+                                    </span>
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={cortesiaPctInput}
+                                            onChange={(e) => { setCortesiaPctInput(e.target.value); setCortesiaError(''); }}
+                                            className="pos-input w-full text-center text-2xl tabular-nums"
+                                            placeholder="15"
+                                        />
+                                        <span className="text-lg font-semibold text-capsula-ink-muted">%</span>
+                                    </div>
+                                </label>
+                            )}
+                            {(() => {
+                                const pct = cortesiaMode === '100' ? 100 : parseFloat(cortesiaPctInput.replace(',', '.'));
+                                if (!Number.isFinite(pct) || pct < 1 || pct > 100) return null;
+                                const desc = Math.round(cortesiaTarget.subtotal * pct) / 100;
+                                return (
+                                    <div className="rounded-lg bg-capsula-ivory-alt border border-capsula-line px-3 py-2 text-xs text-capsula-ink-soft">
+                                        Cortesía{' '}
+                                        <span className="font-semibold tabular-nums">−${desc.toFixed(2)}</span>{' '}
+                                        → el cliente paga{' '}
+                                        <span className="font-semibold tabular-nums">
+                                            ${(cortesiaTarget.subtotal - desc).toFixed(2)}
+                                        </span>{' '}
+                                        <span className="opacity-70">(sin servicio)</span>
+                                    </div>
+                                );
+                            })()}
+                            <label className="block">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-capsula-ink-muted">
+                                    <Lock className="inline-block h-3 w-3 mr-1" />
+                                    PIN de gerente
+                                </span>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={cortesiaPin}
+                                    onChange={(e) => { setCortesiaPin(e.target.value); setCortesiaError(''); }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && cortesiaPin.length >= 4 && !cortesiaLoading) {
+                                            confirmCortesia();
+                                        }
+                                    }}
+                                    className="pos-input mt-1.5 w-full text-center text-2xl tabular-nums tracking-widest"
+                                    placeholder="••••"
+                                />
+                            </label>
+                            {cortesiaError && (
+                                <p className="text-xs text-capsula-coral font-semibold">{cortesiaError}</p>
+                            )}
+                        </div>
+
+                        <div className="border-t border-capsula-line p-4 flex gap-3">
+                            <button
+                                onClick={closeCortesiaModal}
+                                disabled={cortesiaLoading}
+                                className="pos-btn-secondary flex-1 py-3 disabled:opacity-40"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmCortesia}
+                                disabled={cortesiaLoading || cortesiaPin.length < 4 || (cortesiaMode === 'percent' && !cortesiaPctInput.trim())}
+                                className="pos-btn flex-[2] py-3 inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                            >
+                                <Check className="h-4 w-4" />
+                                {cortesiaLoading ? 'Verificando…' : 'Autorizar cortesía'}
                             </button>
                         </div>
                     </div>

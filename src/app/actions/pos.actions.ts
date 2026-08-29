@@ -41,6 +41,7 @@ import { getNextCorrelativo } from '@/lib/invoice-counter';
 import { nextDailyNumber, nextDailyNumberReusingGaps } from '@/lib/sales/daily-order-number';
 import { DIVISAS_DISCOUNT_CONFIG_KEY, divisasDiscountRate, parseDivisasPercent, formatDivisasPercent } from '@/lib/sales/divisas-config';
 import { resolveDivisasRate } from '@/lib/sales/divisas-override';
+import { resolveSubAccountCortesia, subCortesiaLabel } from '@/lib/sales/subaccount-cortesia';
 import {
     DELIVERY_FEE_NORMAL_KEY,
     DELIVERY_FEE_CERCANO_KEY,
@@ -3901,7 +3902,7 @@ export async function paySubAccountAction(data: {
      *   para pagos en cash USD/EUR/Zelle). Se aplica automáticamente
      *   desde el frontend cuando el método es divisas.
      */
-    discountType?: 'NONE' | 'DIVISAS_33';
+    discountType?: 'NONE' | 'DIVISAS_33' | 'CORTESIA_100' | 'CORTESIA_PERCENT';
     /**
      * % de divisas SÓLO para este cobro, distinto al configurado (§149.2).
      * Requiere PIN de gerencia: el cliente valida el PIN y manda acá el
@@ -3910,7 +3911,13 @@ export async function paySubAccountAction(data: {
      * tenant antes de honrar el override, y deja quién autorizó en el split.
      */
     divisasPercentOverride?: number;
-    /** Gerente que autorizó el override (managerId de validateManagerPinAction). */
+    /** §168 — % de la cortesía parcial (CORTESIA_PERCENT). 1–99.99. */
+    cortesiaPercent?: number;
+    /**
+     * Gerente que autorizó (managerId de validateManagerPinAction). Requerido
+     * para el override de divisas Y para cualquier cortesía (§168) — el server
+     * lo re-verifica contra CHARGE_AUTH_ROLES en ambos casos.
+     */
     authorizedById?: string;
 }): Promise<ActionResult> {
     const { db, tenantId } = await getTenantCtx();
@@ -3918,7 +3925,12 @@ export async function paySubAccountAction(data: {
         const session = await getSession();
         if (!session) return { success: false, message: 'No autorizado' };
 
-        if (data.amount <= 0) return { success: false, message: 'El monto debe ser mayor a cero' };
+        // §168 (espejo de §144): la cortesía total es el único cobro legítimo
+        // de $0 — el descuento ES lo que salda la subcuenta.
+        const isFullCortesia = data.discountType === 'CORTESIA_100';
+        if (data.amount <= 0 && !isFullCortesia) {
+            return { success: false, message: 'El monto debe ser mayor a cero' };
+        }
 
         const sub = await prisma.tabSubAccount.findFirst({
             where: { id: data.subAccountId, openTab: { tenantId } },
@@ -3988,11 +4000,49 @@ export async function paySubAccountAction(data: {
         }
         const subDivisasRate = divisasResolution.rate;
         const divisasOverrideBy = divisasResolution.overrideBy;
+
+        // §168 — Cortesía en subcuenta. SIEMPRE con gerente re-verificado
+        // server-side (mismas reglas que el override de divisas: un request
+        // armado a mano sin autorizante válido no consigue nada). Un cobro
+        // lleva UN descuento: si llega cortesía, divisas queda descartado.
+        const isCortesiaSub = data.discountType === 'CORTESIA_100' || data.discountType === 'CORTESIA_PERCENT';
+        let cortesiaDiscount = 0;
+        let cortesiaPercentApplied = 0;
+        let cortesiaAuthorizedBy = '';
+        if (isCortesiaSub) {
+            const cortesiaManager = await db.user.findFirst({
+                where: {
+                    id: data.authorizedById || '__sin_autorizante__',
+                    isActive: true,
+                    role: { in: DIVISAS_OVERRIDE_ROLES },
+                },
+                select: { firstName: true, lastName: true },
+            });
+            const cortesia = resolveSubAccountCortesia({
+                type: data.discountType as 'CORTESIA_100' | 'CORTESIA_PERCENT',
+                percent: data.cortesiaPercent,
+                subtotal: sub.subtotal,
+                manager: cortesiaManager,
+            });
+            if (!cortesia.ok) {
+                const msg = cortesia.reason === 'UNAUTHORIZED'
+                    ? 'La cortesía requiere autorización de gerencia (PIN).'
+                    : cortesia.reason === 'INVALID_PERCENT'
+                        ? 'El % de cortesía debe estar entre 1 y 99.99. Para cubrir todo usa Cortesía 100%.'
+                        : 'La subcuenta no tiene monto para aplicar cortesía.';
+                return { success: false, message: msg };
+            }
+            cortesiaDiscount = cortesia.discount;
+            cortesiaPercentApplied = cortesia.percent;
+            cortesiaAuthorizedBy = cortesia.authorizedBy;
+        }
         // §103: desglose redondeado a centavos — antes se persistían floats
         // largos y split.total ≠ paidAmount por fracciones de céntimo.
-        const discountAmount = discountType === 'DIVISAS_33'
-            ? round2(sub.subtotal * subDivisasRate)
-            : 0;
+        const discountAmount = isCortesiaSub
+            ? cortesiaDiscount
+            : discountType === 'DIVISAS_33'
+                ? round2(sub.subtotal * subDivisasRate)
+                : 0;
         const subtotalAfterDiscount = round2(sub.subtotal - discountAmount);
         const subServiceRate = normalizeServiceRate(data.serviceFeePercent);
         // §100: en subcuentas no existe ruta de exención con PIN — 0% directo
@@ -4009,6 +4059,9 @@ export async function paySubAccountAction(data: {
         const totalApplied = round2(subtotalAfterDiscount + serviceChargeApplied);
         const baseLabel = data.splitLabel || sub.label;
         const labelParts: string[] = [baseLabel];
+        if (isCortesiaSub) {
+            labelParts.push(subCortesiaLabel(cortesiaPercentApplied));
+        }
         if (discountType === 'DIVISAS_33') {
             labelParts.push(
                 `-${formatDivisasPercent(subDivisasRate * 100)}% divisas${divisasOverrideBy ? ' (ajustado)' : ''}`,
@@ -4017,9 +4070,14 @@ export async function paySubAccountAction(data: {
         if (applyServiceFee) labelParts.push(`+${Math.round(subServiceRate * 100)}% serv`);
         const splitLabel = labelParts.join(' | ');
 
+        // §168 — cortesía total: método CORTESIA y cobro $0, como en la cuenta
+        // principal. El monto que mande el cliente se ignora: no entró dinero.
+        const effectiveMethod = isFullCortesia ? 'CORTESIA' : data.paymentMethod;
+        const effectiveAmount = isFullCortesia ? 0 : data.amount;
+
         // Tasa BCV del momento del cobro (dual currency — BUG #3, FASE B)
         const splitRate = await getExchangeRateValue().catch(() => null);
-        const isBsSubPayment = BS_PAYMENT_METHODS.has(data.paymentMethod);
+        const isBsSubPayment = BS_PAYMENT_METHODS.has(effectiveMethod);
 
         const updatedTab = await db.$transaction(async (tx) => {
             // Mark subcuenta as PAID
@@ -4027,8 +4085,8 @@ export async function paySubAccountAction(data: {
                 where: { id: data.subAccountId },
                 data: {
                     status: 'PAID',
-                    paidAmount: data.amount,
-                    paymentMethod: data.paymentMethod,
+                    paidAmount: effectiveAmount,
+                    paymentMethod: effectiveMethod,
                     paidAt: new Date(),
                 },
             });
@@ -4040,7 +4098,7 @@ export async function paySubAccountAction(data: {
                     subAccountId: data.subAccountId,
                     splitLabel,
                     splitType: 'CUSTOM',
-                    paymentMethod: data.paymentMethod,
+                    paymentMethod: effectiveMethod,
                     status: 'PAID',
                     // §103: subtotal del split = NETO aplicado (post-descuento),
                     // misma semántica que los splits de mesa — antes subcuenta
@@ -4049,12 +4107,14 @@ export async function paySubAccountAction(data: {
                     discount: discountAmount,
                     serviceChargeAmount: serviceChargeApplied,
                     total: totalApplied,
-                    paidAmount: Math.max(data.amount, totalApplied),
+                    paidAmount: isFullCortesia ? 0 : Math.max(data.amount, totalApplied),
                     // Dual currency (FASE B): Bs del total cobrado + tasa histórica
                     amountBs: isBsSubPayment && splitRate ? round2(totalApplied * splitRate) : null,
                     exchangeRate: splitRate ?? null,
                     paidAt: new Date(),
-                    notes: discountType === 'DIVISAS_33'
+                    notes: isCortesiaSub
+                        ? `${subCortesiaLabel(cortesiaPercentApplied)} — autorizada por ${cortesiaAuthorizedBy}`
+                        : discountType === 'DIVISAS_33'
                         ? (divisasOverrideBy
                             // Queda el %, quién lo autorizó y contra qué se
                             // desvió: sin el configurado no hay forma de ver
@@ -4091,6 +4151,16 @@ export async function paySubAccountAction(data: {
                     // Service charge cobrado se acumula con el realmente aplicado
                     // (sobre el subtotal post-descuento), no el pre-computado.
                     totalServiceCharge: openTab.totalServiceCharge + serviceChargeApplied,
+                    // §168 — el descuento de la subcuenta (divisas O cortesía)
+                    // entra a los acumulados de la mesa. Sin esto el Z leía
+                    // runningDiscount (que las subcuentas nunca tocaban): la
+                    // VENTA NETA salía inflada y, peor, el descuento se comía
+                    // las propinas de las otras subcuentas de la misma mesa
+                    // (tip = cobrado − factura, y la factura no bajaba).
+                    ...(discountAmount > 0 ? {
+                        runningDiscount: round2(openTab.runningDiscount + discountAmount),
+                        runningTotal: Math.max(0, round2(openTab.runningTotal - discountAmount)),
+                    } : {}),
                 },
             });
 

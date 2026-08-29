@@ -14766,3 +14766,42 @@ volver a teclear: hasta 30 insumos a mano). Al volver avisa que recuperó las
 cantidades y ofrece "Empezar de cero"; se limpia solo al confirmar la recepción.
 
 Gates: tsc 0 · vitest 827 (20 nuevos) · build de producción OK.
+
+---
+
+## §168 Cortesía en subcuentas, con PIN de gerencia (2026-08-28)
+
+Cierre del reporte de Gianni (la "membresía" era la cortesía): al dividir una
+mesa en subcuentas, la cortesía desaparecía porque las subcuentas sólo
+conocían el descuento de divisas. Decisión de Omar: que exista, con PIN.
+
+### Piezas
+
+- `src/lib/sales/subaccount-cortesia.ts` (puro, 9 tests):
+  `resolveSubAccountCortesia` — SIEMPRE exige gerente re-verificado (sin
+  gerente → UNAUTHORIZED, nunca degrada en silencio, patrón §149.2);
+  CORTESIA_100 cubre el subtotal; CORTESIA_PERCENT admite 1–99.99 (el 100 como
+  % se rechaza: la total tiene semántica propia). `subCortesiaLabel`.
+- `paySubAccountAction`: acepta `CORTESIA_100 | CORTESIA_PERCENT` +
+  `cortesiaPercent` + `authorizedById` (re-verificado contra
+  CHARGE_AUTH_ROLES, mismo riel del override de divisas). Cortesía total:
+  cobro $0 permitido (espejo de §144), método forzado `CORTESIA`, paidAmount 0.
+  Un cobro lleva UN descuento — cortesía y divisas son excluyentes.
+- `SubAccountPanel`: botón "Cortesía (PIN de gerencia)" en el formulario de
+  cobro → modal (100% o %) → PIN (`validateManagerPinAction`). La autorización
+  vale UNA subcuenta y UN cobro, y se limpia al usarse (patrón divisasOverride).
+  El recibo muestra "Cortesía X%" VISIBLE (a diferencia de divisas, que se
+  oculta) y la reimpresión infiere la total desde método CORTESIA.
+
+### De paso: los descuentos de subcuenta ahora SÍ entran a los acumulados
+
+Hueco preexistente: `paySubAccountAction` nunca tocaba
+`runningDiscount`/`runningTotal` — el descuento de divisas dado en una
+subcuenta era invisible para la VENTA NETA del Z (que lee `runningDiscount`) y
+además **se comía las propinas de las otras subcuentas de la misma mesa** (el
+Z infiere propina como cobrado − factura, y la factura no bajaba). Ahora todo
+descuento de subcuenta (divisas o cortesía) acumula en la mesa dentro de la
+misma actualización con guardia de versión (§103). Sin efecto retroactivo:
+los Z de días pasados leen los valores ya guardados.
+
+Gates: tsc 0 · vitest 836 (9 nuevos) · build de producción OK.
