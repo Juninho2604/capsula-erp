@@ -21,6 +21,7 @@ import { computeShortfalls } from '@/lib/inventory/stock-shortfall';
 import { Factory, Plus, Clock, CheckCircle, AlertTriangle, ChefHat, Package, Trash2, Edit3, X, Wrench } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import toast from 'react-hot-toast';
+import { NumberInput } from '@/components/ui/number-input';
 
 interface RecipeOption {
     id: string;
@@ -459,12 +460,9 @@ export default function ProduccionPage() {
                                         Cantidad Producida *
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            value={quantity || ''}
-                                            onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                                            min="0"
-                                            step="0.1"
+                                        <NumberInput
+                                            value={quantity}
+                                            onValueChange={(v) => setQuantity(v ?? 0)}
                                             placeholder="20"
                                             className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         />
@@ -685,12 +683,9 @@ export default function ProduccionPage() {
                                         Cantidad Producida *
                                     </label>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            value={manualOutputQty || ''}
-                                            onChange={(e) => setManualOutputQty(parseFloat(e.target.value) || 0)}
-                                            min="0"
-                                            step="0.1"
+                                        <NumberInput
+                                            value={manualOutputQty}
+                                            onValueChange={(v) => setManualOutputQty(v ?? 0)}
                                             placeholder="0"
                                             className="w-24 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         />
@@ -808,12 +803,9 @@ export default function ProduccionPage() {
                                         searchPlaceholder="Buscar insumo..."
                                         emptyMessage="No hay insumos disponibles"
                                     />
-                                    <input
-                                        type="number"
-                                        value={newIngQty || ''}
-                                        onChange={(e) => setNewIngQty(parseFloat(e.target.value) || 0)}
-                                        min="0"
-                                        step="0.01"
+                                    <NumberInput
+                                        value={newIngQty}
+                                        onValueChange={(v) => setNewIngQty(v ?? 0)}
                                         placeholder="Cant."
                                         className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                     />

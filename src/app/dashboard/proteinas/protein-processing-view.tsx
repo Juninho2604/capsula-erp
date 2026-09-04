@@ -43,6 +43,7 @@ import { toast } from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import ProcessingTemplates from './processing-templates';
 import { useViewParam } from '@/lib/hooks/use-view-param';
+import { NumberInput } from '@/components/ui/number-input';
 
 const STEP_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: string; bgColor: string; borderColor: string }> = {
     'LIMPIEZA': { label: 'Limpieza', Icon: Brush as LucideIcon, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-300' },
@@ -716,33 +717,27 @@ export default function ProteinProcessingView() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="pos-label">Peso Congelado (kg) *</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={frozenWeight || ''}
-                                        onChange={(e) => setFrozenWeight(parseFloat(e.target.value) || 0)}
+                                    <NumberInput
+                                        value={frozenWeight}
+                                        onValueChange={(v) => setFrozenWeight(v ?? 0)}
                                         placeholder="0.00"
                                         className="pos-input mt-1 w-full tabular-nums"
                                     />
                                 </div>
                                 <div>
                                     <label className="pos-label">Peso Escurrido (kg) *</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={drainedWeight || ''}
-                                        onChange={(e) => setDrainedWeight(parseFloat(e.target.value) || 0)}
+                                    <NumberInput
+                                        value={drainedWeight}
+                                        onValueChange={(v) => setDrainedWeight(v ?? 0)}
                                         placeholder="0.00"
                                         className="pos-input mt-1 w-full tabular-nums"
                                     />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="pos-label">Desperdicio Reportado (kg) — Entrada Manual</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={reportedWaste || ''}
-                                        onChange={(e) => setReportedWaste(parseFloat(e.target.value) || 0)}
+                                    <NumberInput
+                                        value={reportedWaste}
+                                        onValueChange={(v) => setReportedWaste(v ?? 0)}
                                         placeholder="Ingresa el desperdicio real según Excel..."
                                         className="mt-1 w-full rounded-lg border border-red-200 bg-red-50/30 px-4 py-2.5 tabular-nums text-capsula-ink focus:border-red-500 focus:outline-none dark:border-red-900 dark:bg-red-950/30"
                                     />
@@ -904,11 +899,9 @@ export default function ProteinProcessingView() {
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="relative w-24">
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={newSubProductWeight || ''}
-                                                onChange={(e) => setNewSubProductWeight(parseFloat(e.target.value) || 0)}
+                                            <NumberInput
+                                                value={newSubProductWeight}
+                                                onValueChange={(v) => setNewSubProductWeight(v ?? 0)}
                                                 placeholder="Peso"
                                                 className="pos-input w-full px-3 py-2 text-sm tabular-nums"
                                             />

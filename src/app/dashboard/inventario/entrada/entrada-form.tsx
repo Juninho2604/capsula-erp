@@ -28,6 +28,7 @@ import {
 import toast from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 import QuickItemModal from './QuickItemModal';
+import { NumberInput } from '@/components/ui/number-input';
 
 // Tipos
 interface UploadedFile {
@@ -554,12 +555,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                 <div>
                                     <label className="pos-label">Cantidad</label>
                                     <div className="mt-1 flex gap-1">
-                                        <input
-                                            type="number"
-                                            value={quantity || ''}
-                                            onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                                            min="0"
-                                            step="0.1"
+                                        <NumberInput
+                                            value={quantity}
+                                            onValueChange={(v) => setQuantity(v ?? 0)}
                                             placeholder="0"
                                             className="pos-input w-16 px-2 py-2 text-sm tabular-nums"
                                         />
@@ -579,12 +577,9 @@ export default function EntradaMercanciaForm({ itemsList, areasList }: Props) {
                                     <label className="pos-label">Costo Unit. (USD)</label>
                                     <div className="relative mt-1">
                                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-capsula-ink-muted">$</span>
-                                        <input
-                                            type="number"
-                                            value={unitCost || ''}
-                                            onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
-                                            min="0"
-                                            step="0.01"
+                                        <NumberInput
+                                            value={unitCost}
+                                            onValueChange={(v) => setUnitCost(v ?? 0)}
                                             placeholder="0.00"
                                             className="pos-input w-full py-2 pl-6 pr-2 text-sm tabular-nums"
                                         />

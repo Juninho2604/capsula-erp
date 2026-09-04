@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { registrarEntradaMercancia } from '@/app/actions/entrada.actions';
 import { Combobox } from '@/components/ui/combobox';
+import { NumberInput } from '@/components/ui/number-input';
 
 interface Props {
     itemsList: any[];
@@ -155,12 +156,9 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                             <div>
                                 <label className="pos-label">Cantidad *</label>
                                 <div className="mt-1 flex gap-2">
-                                    <input
-                                        type="number"
-                                        value={quantity || ''}
-                                        onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-                                        min="0"
-                                        step="0.01"
+                                    <NumberInput
+                                        value={quantity}
+                                        onValueChange={(v) => setQuantity(v ?? 0)}
                                         required
                                         placeholder="0"
                                         className="pos-input w-24 tabular-nums"
@@ -182,12 +180,9 @@ export default function CompraForm({ itemsList, areasList }: Props) {
                                 <label className="pos-label">Costo por Unidad (USD) *</label>
                                 <div className="relative mt-1">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-capsula-ink-muted">$</span>
-                                    <input
-                                        type="number"
-                                        value={unitCost || ''}
-                                        onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
-                                        min="0"
-                                        step="0.01"
+                                    <NumberInput
+                                        value={unitCost}
+                                        onValueChange={(v) => setUnitCost(v ?? 0)}
                                         required
                                         placeholder="0.00"
                                         className="pos-input w-full py-2.5 pl-8 pr-4 tabular-nums"

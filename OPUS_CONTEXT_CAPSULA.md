@@ -14854,3 +14854,58 @@ Ambas rutas de producción (rápida y manual) ahora escriben `areaId` y
 no se estaban llenando — mismo hallazgo de §165.2.
 
 Gates: tsc 0 · vitest 849 (13 nuevos) · build de producción OK.
+
+---
+
+## §170 Los campos numéricos no dejaban escribir el cero (2026-09-04)
+
+Víctor: *"en el cuadro donde se pone la cantidad del ingrediente no deja
+escribir el 0. Hay que escribir primero el número mayor a 0 y luego mover el
+cursor a la izquierda y escribir el punto al lado y poner el 0."*
+
+### Causa
+
+Patrón repetido en 23 campos del sistema:
+
+```tsx
+value={cantidad || ''}
+onChange={e => setCantidad(parseFloat(e.target.value) || 0)}
+```
+
+Al teclear `0`: `parseFloat('0')` → 0, `0 || 0` → 0, y entonces
+`value={0 || ''}` **vacía el campo**. El cero desaparece mientras se escribe, y
+el punto decimal después tampoco sobrevive (`parseFloat('0.')` vuelve a dar 0).
+Escribir "0.5" de corrido era imposible: de ahí el truco del cursor.
+
+El `|| 0` confundía dos cosas distintas: *"todavía no escribí nada"* y *"vale
+cero"*.
+
+### Piezas
+
+- `src/lib/forms/numeric-input.ts` (puro, 15 tests): `sanitizeNumericText`
+  (dígitos + un separador), `parseNumericText` (devuelve **null**, no cero,
+  cuando el texto aún no es un número), `isIntermediateNumericText`,
+  `formatNumericValue`.
+- `src/components/ui/number-input.tsx`: mientras se escribe guarda el TEXTO;
+  avisa el número sólo cuando ya es número. Un `ref` con lo último emitido
+  distingue un cambio venido de afuera (reset) de uno propio — sin eso, teclear
+  `0.` se re-sincronizaba a `0` y el punto se perdía otra vez.
+
+Es `type="text"` + `inputMode="decimal"`, no `type="number"`: acepta **coma**
+como decimal (como se teclea acá y como lo dan los teclados táctiles), no cambia
+el valor si alguien rueda la ruedita del mouse encima, y no pinta flechitas que
+en táctil sólo estorban.
+
+### Alcance
+
+Migrados 11 campos: Producción (los 3, incluido el que reportó Víctor),
+Proteínas (4), Entrada de Mercancía (2), Compras/compra-form (2). Quedan 12 en
+transferencias, promociones, préstamos, descargo, asistente y purchase-order —
+mismo reemplazo, pendiente de una pasada con prueba en pantalla.
+
+Nota de proceso: correr `prettier` sobre un archivo para arreglar la
+indentación reformateó 1807 líneas y volvió el diff irrevisable. Se revirtió y
+se alineó sólo lo tocado. **No pasar prettier sobre archivos que no siguen su
+formato.**
+
+Gates: tsc 0 · vitest 864 (15 nuevos) · build de producción OK.
