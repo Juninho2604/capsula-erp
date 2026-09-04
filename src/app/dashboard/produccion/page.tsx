@@ -271,16 +271,58 @@ export default function ProduccionPage() {
         }
     };
 
+    // §169 — Cancelar una producción REVIERTE el inventario: los insumos
+    // vuelven y el producto terminado sale. Antes sólo cambiaba la etiqueta a
+    // "Cancelado" y el stock quedaba como si la producción hubiera ocurrido
+    // (reportado por Víctor: un error de tipeo quedaba grabado para siempre).
     const handleCancelOrder = async (orderId: string) => {
-        if (!confirm('¿Estás seguro de cancelar esta orden de producción?')) return;
-        const response = await deleteProductionOrderAction(orderId);
-        if (response.success) {
-            toast.success(response.message);
-            const newHistory = await getProductionHistoryAction({ limit: 50 });
-            setProductionHistory(newHistory);
-        } else {
-            toast.error(response.message);
-        }
+        if (!confirm(
+            '¿Cancelar esta orden de producción?\n\n' +
+            'Se revierte el inventario: los insumos consumidos vuelven al almacén ' +
+            'y el producto terminado se retira.'
+        )) return;
+
+        const run = async (opts?: { areaId?: string; allowNegativeStock?: boolean }) => {
+            const response = await deleteProductionOrderAction(orderId, opts);
+
+            // Orden vieja sin almacén registrado: hay que indicarlo.
+            if (!response.success && response.needsArea) {
+                const nombres = areas.map((a, i) => `${i + 1}. ${a.name}`).join('\n');
+                const elegido = window.prompt(
+                    'Esta producción es anterior al registro de almacén, así que el ' +
+                    'sistema no sabe de dónde revertirla.\n\n' +
+                    'Escribe el número del almacén donde se hizo:\n\n' + nombres,
+                );
+                const idx = parseInt((elegido ?? '').trim(), 10) - 1;
+                if (!areas[idx]) { toast.error('Cancelación abortada: no se indicó el almacén.'); return; }
+                await run({ ...opts, areaId: areas[idx].id });
+                return;
+            }
+
+            // El reverso deja insumos en negativo (el producto ya se usó).
+            if (!response.success && response.negatives?.length) {
+                const detalle = response.negatives
+                    .map(n => `• ${n.name}: ${n.current} → ${n.after} ${n.unit}`)
+                    .join('\n');
+                if (!confirm(
+                    'Revertir esta producción deja insumos en NEGATIVO:\n\n' + detalle +
+                    '\n\nSuele pasar cuando el producto terminado ya se consumió o se vendió. ' +
+                    'El negativo se acomoda al cargar la próxima entrada.\n\n¿Revertir igual?'
+                )) return;
+                await run({ ...opts, allowNegativeStock: true });
+                return;
+            }
+
+            if (response.success) {
+                toast.success(response.message);
+                const newHistory = await getProductionHistoryAction({ limit: 50 });
+                setProductionHistory(newHistory);
+            } else {
+                toast.error(response.message);
+            }
+        };
+
+        await run();
     };
 
     const getStatusBadge = (status: string) => {

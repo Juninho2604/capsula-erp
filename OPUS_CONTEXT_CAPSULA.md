@@ -14805,3 +14805,52 @@ misma actualización con guardia de versión (§103). Sin efecto retroactivo:
 los Z de días pasados leen los valores ya guardados.
 
 Gates: tsc 0 · vitest 836 (9 nuevos) · build de producción OK.
+
+---
+
+## §169 Cancelar una producción no revertía nada (2026-08-30)
+
+Víctor (chef): *"hubo error de tipeo y el sistema ahora reconoce cantidades que
+no existen. Al cancelar la orden, teóricamente debe existir un reverso de las
+producciones declaradas e insumos usados, y esto no pasa: aunque cancele la
+orden las cantidades quedan sin descontar y las producciones quedan intactas en
+el conteo del sistema."*
+
+Tenía razón, y era grave. `deleteProductionOrderAction` hacía **una sola cosa**:
+
+```ts
+data: { status: 'CANCELLED', notes: 'Cancelado por el usuario' }
+```
+
+Cambiaba la etiqueta. El inventario quedaba exactamente como si la producción
+hubiera ocurrido: los insumos descontados y el producto terminado sumado. Peor
+que no poder cancelar — daba la falsa sensación de haberlo corregido.
+
+### El reverso
+
+`src/lib/inventory/production-reversal.ts` (puro, 13 tests):
+`buildProductionReversal` invierte los movimientos de la orden — los
+`PRODUCTION_OUT` (insumos) vuelven, el `PRODUCTION_IN` (producto) sale — y
+`negativesAfterReversal` avisa qué quedaría bajo cero.
+
+Decisiones que importan:
+
+- **El almacén sale de los propios movimientos.** Si hay más de uno, se aborta
+  y lo resuelve una persona: no se elige por mayoría.
+- **Nunca se adivina el almacén.** Las órdenes anteriores a §169 no lo
+  guardaban; ahí la pantalla PIDE indicarlo en vez de asumir.
+- **El auto-consumo (§154) se neteta.** Yogurt que consume yogurt: si entra 5 y
+  sale 5, el reverso no toca nada; si entra 5 y sale 2, revierte sólo los 3.
+- **Nada se borra.** El reverso son movimientos NUEVOS de signo contrario, con
+  `areaId` y `productionOrderId`, para que el Kardex explique el ajuste. Los
+  originales quedan como hechos históricos.
+- **Negativos no bloquean** (regla de §155): si el producto ya se vendió,
+  retirarlo deja saldo negativo — se muestra insumo por insumo y se confirma.
+
+### Forward fix
+
+Ambas rutas de producción (rápida y manual) ahora escriben `areaId` y
+`productionOrderId` en sus movimientos. Sin migración: las columnas existían y
+no se estaban llenando — mismo hallazgo de §165.2.
+
+Gates: tsc 0 · vitest 849 (13 nuevos) · build de producción OK.

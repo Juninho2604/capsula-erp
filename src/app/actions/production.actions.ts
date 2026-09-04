@@ -23,6 +23,10 @@ import {
     type StockRequirementRow,
 } from '@/lib/inventory/stock-shortfall';
 import { prisma } from '@/server/db';
+import {
+    buildProductionReversal,
+    negativesAfterReversal,
+} from '@/lib/inventory/production-reversal';
 import { getSession } from '@/lib/auth';
 import { withTenant } from '@/lib/prisma-tenant-client';
 import { resolveTenantContext } from '@/lib/tenant-context.server';
@@ -326,6 +330,10 @@ export async function quickProductionAction(
                         notes: shortfalls.some(f => f.itemId === ing.itemId)
                             ? `Orden: ${orderNumber} · faltante de inventario, queda en negativo`
                             : `Orden: ${orderNumber}`,
+                        // §169: sin estos dos campos la cancelación no puede
+                        // saber qué revertir ni en qué almacén.
+                        areaId: formData.areaId,
+                        productionOrderId: productionOrder.id,
                         createdById: userId,
                     }
                 });
@@ -367,6 +375,8 @@ export async function quickProductionAction(
                     unit: recipe.outputUnit,
                     reason: `Producción: ${recipe.name}`,
                     notes: `Orden: ${orderNumber}`,
+                    areaId: formData.areaId,          // §169
+                    productionOrderId: productionOrder.id,
                     createdById: userId,
                 }
             });
@@ -687,6 +697,10 @@ export async function manualProductionAction(
                         notes: shortfalls.some(f => f.itemId === ing.itemId)
                             ? `Orden: ${orderNumber} · faltante de inventario, queda en negativo`
                             : `Orden: ${orderNumber}`,
+                        // §169: sin estos dos campos la cancelación no puede
+                        // saber qué revertir ni en qué almacén.
+                        areaId: formData.areaId,
+                        productionOrderId: productionOrder.id,
                         createdById: userId,
                     }
                 });
@@ -726,6 +740,8 @@ export async function manualProductionAction(
                     unit: formData.outputUnit,
                     reason: `Producción manual: ${outputItem.name}`,
                     notes: `Orden: ${orderNumber}`,
+                    areaId: formData.areaId,          // §169
+                    productionOrderId: productionOrder.id,
                     createdById: userId,
                 }
             });
@@ -800,8 +816,14 @@ export async function updateProductionOrderAction(
 // ============================================================================
 
 export async function deleteProductionOrderAction(
-    orderId: string
-): Promise<{ success: boolean; message: string }> {
+    orderId: string,
+    options?: { areaId?: string; allowNegativeStock?: boolean }
+): Promise<{
+    success: boolean;
+    message: string;
+    needsArea?: boolean;
+    negatives?: { name: string; current: number; after: number; unit: string }[];
+}> {
     try {
         const session = await getSession();
         if (!session?.id) {
@@ -809,20 +831,144 @@ export async function deleteProductionOrderAction(
         }
 
         const { tenantId } = await resolveTenantContext();
-        const res = await withTenant(tenantId).productionOrder.updateMany({
+        const db = withTenant(tenantId);
+
+        const order = await db.productionOrder.findFirst({
             where: { id: orderId },
-            data: {
-                status: 'CANCELLED',
-                notes: 'Cancelado por el usuario',
-            }
+            select: { id: true, orderNumber: true, status: true },
         });
-        if (res.count === 0) return { success: false, message: 'Orden no encontrada' };
+        if (!order) return { success: false, message: 'Orden no encontrada' };
+        if (order.status === 'CANCELLED') {
+            return { success: false, message: 'Esta orden ya está cancelada.' };
+        }
+
+        // §169 — Movimientos de la orden. Las órdenes nuevas quedan enlazadas
+        // por `productionOrderId`; las viejas sólo dejaron el número en las
+        // notas, así que se buscan por ahí también.
+        const movements = await prisma.inventoryMovement.findMany({
+            where: {
+                movementType: { in: ['PRODUCTION_IN', 'PRODUCTION_OUT'] },
+                inventoryItem: { tenantId },
+                OR: [
+                    { productionOrderId: orderId },
+                    { notes: { contains: `Orden: ${order.orderNumber}` } },
+                ],
+            },
+            select: {
+                id: true, inventoryItemId: true, movementType: true,
+                quantity: true, unit: true, areaId: true,
+            },
+        });
+
+        // Una orden sin movimientos (nunca se completó) sólo cambia de estado.
+        const plan = buildProductionReversal(movements, options?.areaId ?? null);
+        if (!plan.ok) {
+            if (plan.reason === 'NO_MOVEMENTS') {
+                await db.productionOrder.updateMany({
+                    where: { id: orderId },
+                    data: {
+                        status: 'CANCELLED',
+                        notes: `Cancelada por ${session.firstName} ${session.lastName} — sin movimientos que revertir`,
+                    },
+                });
+                revalidatePath('/dashboard/produccion');
+                return { success: true, message: 'Orden cancelada. No tenía movimientos de inventario.' };
+            }
+            if (plan.reason === 'AREA_AMBIGUOUS') {
+                return {
+                    success: false,
+                    message: 'Esta orden tiene movimientos en más de un almacén. Revertila a mano desde Inventario.',
+                };
+            }
+            // AREA_UNKNOWN — orden anterior a §169: hay que indicar el almacén.
+            return {
+                success: false,
+                needsArea: true,
+                message: 'Indica en qué almacén se hizo esta producción para poder revertirla.',
+            };
+        }
+
+        // ¿El reverso deja algo en negativo? Pasa cuando el producto ya se
+        // consumió o vendió. No se bloquea (§155): se muestra y se confirma.
+        const itemIds = plan.lines.map(l => l.inventoryItemId);
+        const stockRows = await prisma.inventoryLocation.findMany({
+            where: { areaId: plan.areaId, inventoryItemId: { in: itemIds } },
+            select: { inventoryItemId: true, currentStock: true },
+        });
+        const stockByItem: Record<string, number> = {};
+        for (const r of stockRows) stockByItem[r.inventoryItemId] = Number(r.currentStock);
+
+        const negatives = negativesAfterReversal(plan.lines, stockByItem);
+        if (negatives.length > 0 && !options?.allowNegativeStock) {
+            const items = await db.inventoryItem.findMany({
+                where: { id: { in: negatives.map(n => n.inventoryItemId) } },
+                select: { id: true, name: true, baseUnit: true },
+            });
+            const nameById = Object.fromEntries(items.map(i => [i.id, i]));
+            return {
+                success: false,
+                message: 'Revertir esta producción deja insumos en negativo.',
+                negatives: negatives.map(n => ({
+                    name: nameById[n.inventoryItemId]?.name ?? n.inventoryItemId,
+                    unit: nameById[n.inventoryItemId]?.baseUnit ?? '',
+                    current: n.current,
+                    after: n.after,
+                })),
+            };
+        }
+
+        const who = `${session.firstName} ${session.lastName}`;
+        await prisma.$transaction(async (tx) => {
+            for (const line of plan.lines) {
+                await tx.inventoryLocation.upsert({
+                    where: {
+                        inventoryItemId_areaId: {
+                            inventoryItemId: line.inventoryItemId,
+                            areaId: plan.areaId,
+                        },
+                    },
+                    update: { currentStock: { increment: line.delta } },
+                    create: {
+                        inventoryItemId: line.inventoryItemId,
+                        areaId: plan.areaId,
+                        currentStock: line.delta,
+                    },
+                });
+                // Nada se borra: el reverso es un movimiento nuevo de signo
+                // contrario, para que el Kardex explique el ajuste.
+                await tx.inventoryMovement.create({
+                    data: {
+                        inventoryItemId: line.inventoryItemId,
+                        movementType: line.movementType,
+                        quantity: line.delta,
+                        unit: line.unit,
+                        areaId: plan.areaId,
+                        productionOrderId: orderId,
+                        reason: `Reverso por cancelación de producción ${order.orderNumber}`,
+                        notes: `Orden: ${order.orderNumber} · cancelada por ${who}`,
+                        createdById: session.id,
+                    },
+                });
+            }
+
+            await tx.productionOrder.updateMany({
+                where: { id: orderId, status: { not: 'CANCELLED' } },
+                data: {
+                    status: 'CANCELLED',
+                    notes: `Cancelada por ${who} — inventario revertido (${plan.lines.length} insumo(s))`,
+                },
+            });
+        });
 
         revalidatePath('/dashboard/produccion');
+        revalidatePath('/dashboard/inventario');
 
-        return { success: true, message: 'Orden cancelada correctamente' };
+        return {
+            success: true,
+            message: `Orden ${order.orderNumber} cancelada y inventario revertido (${plan.lines.length} insumo(s)).`,
+        };
     } catch (error) {
-        console.error('Error deleting production order:', error);
+        console.error('Error cancelling production order:', error);
         return { success: false, message: 'Error al cancelar la orden' };
     }
 }
