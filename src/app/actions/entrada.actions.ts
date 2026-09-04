@@ -152,6 +152,11 @@ export async function registrarEntradaMercancia(
                     documentType: input.documentType || 'nota_entrega',
                     notes: input.notes,
                     reason: `Entrada mercancía: ${input.quantity} ${input.unit} (${areaName})${input.referenceNumber ? ` - Ref: ${input.referenceNumber}` : ''}`,
+                    // §171: sin el almacén en el movimiento, anular un
+                    // documento después no puede saber de dónde sacar la
+                    // mercancía. Mismo hallazgo de §165.2: la columna existía
+                    // y nadie la llenaba.
+                    areaId: input.areaId,
                     createdById: finalUserId,
                 },
             });

@@ -14,6 +14,7 @@ import {
 } from '@/app/actions/supplier-document.actions';
 import { getExchangeRateValue } from '@/app/actions/exchange.actions';
 import { getLinkablePurchaseOrdersAction } from '@/app/actions/purchase.actions';
+import { validateManagerPinAction } from '@/app/actions/pos.actions';
 import { Combobox } from '@/components/ui/combobox';
 import { packUnits, packLineTotal, packUnitCost } from '@/lib/purchases/pack-line';
 import { useViewParam } from '@/lib/hooks/use-view-param';
@@ -144,10 +145,55 @@ function DocRow({ doc, canEdit, onEntry, onLink, onEdit, onChanged }: {
     setBusy('');
     if (!res.success) alert(res.error); else onChanged();
   }
+  // §171 — Anular un documento que YA entró al inventario: se muestra qué se
+  // va a revertir, se pide motivo y PIN, y recién ahí se mueve el stock.
   async function voidDoc() {
-    if (!confirm('¿Anular este documento?')) return;
+    const motivo = window.prompt('¿Por qué se anula este documento?\n\n(Queda registrado en la auditoría.)');
+    if (motivo === null) return;
+    if (!motivo.trim()) { alert('El motivo es obligatorio.'); return; }
+
     setBusy('void');
-    const res = await voidSupplierDocumentAction(doc.id, 'Anulado desde la lista');
+    const first = await voidSupplierDocumentAction(doc.id, motivo);
+
+    // Documento sin entrada de inventario: se anuló y listo.
+    if (first.success) { setBusy(''); onChanged(); return; }
+
+    if (!first.needsInventoryReversal) {
+      setBusy('');
+      alert(first.error);
+      return;
+    }
+
+    // Ya entró: mostrar el detalle exacto de lo que sale del stock.
+    const detalle = (first.reversalLines ?? [])
+      .map(l => `• ${l.quantity} ${l.unit} de ${l.name} — sale de ${l.areaName}`)
+      .join('\n');
+    const aviso = first.outsideWindow
+      ? `\n\nATENCIÓN: entró hace ${first.daysSinceEntry} días (más de 15). Sólo el dueño puede autorizarlo.`
+      : '';
+    if (!confirm(
+      `Este documento ya entró al inventario. Al anularlo se revierte:\n\n${detalle}${aviso}\n\n¿Continuar?`
+    )) { setBusy(''); return; }
+
+    const pin = window.prompt(
+      first.outsideWindow
+        ? 'PIN del dueño para autorizar la anulación fuera de plazo:'
+        : 'PIN del dueño o gerente de administración para autorizar:'
+    );
+    if (!pin) { setBusy(''); return; }
+
+    const pinRes = await validateManagerPinAction(pin);
+    if (!pinRes.success) {
+      setBusy('');
+      alert(pinRes.message || 'PIN inválido');
+      return;
+    }
+    const managerId = (pinRes.data as { managerId?: string })?.managerId ?? '';
+
+    const res = await voidSupplierDocumentAction(doc.id, motivo, {
+      reverseInventory: true,
+      authorizedById: managerId,
+    });
     setBusy('');
     if (!res.success) alert(res.error); else onChanged();
   }
@@ -193,11 +239,12 @@ function DocRow({ doc, canEdit, onEntry, onLink, onEdit, onChanged }: {
               {busy === 'pay' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />} Generar deuda
             </button>
           )}
-          {doc.inventoryStatus !== 'ENTERED' && (
-            <button onClick={voidDoc} disabled={busy === 'void'} className="pos-btn-danger px-3 py-1.5 text-xs inline-flex items-center gap-1.5 disabled:opacity-60">
-              <Ban className="h-3.5 w-3.5" /> Anular
-            </button>
-          )}
+          {/* §171: el botón ya no se esconde cuando el documento entró al
+              inventario — ahora existe el camino para revertirlo. Las reglas
+              (ventana, rol, conteo cerrado) las resuelve el server. */}
+          <button onClick={voidDoc} disabled={busy === 'void'} className="pos-btn-danger px-3 py-1.5 text-xs inline-flex items-center gap-1.5 disabled:opacity-60">
+            <Ban className="h-3.5 w-3.5" /> Anular
+          </button>
         </div>
       )}
     </div>

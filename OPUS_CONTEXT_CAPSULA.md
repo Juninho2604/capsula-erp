@@ -14928,3 +14928,50 @@ se detiene.
 
 Imprime el efecto total por insumo (antes → después) y marca los que quedarían
 en negativo antes de pedir el `--apply`.
+
+---
+
+## §171 Anular un documento que ya entró al inventario (2026-09-05)
+
+Caso de Maurizio: una factura de compra con entrada de inventario no se podía
+anular — el botón desaparecía. La regla era sana (anular sin revertir infla el
+stock) pero **chocaba con el flujo real**: los jefes dan entrada primero y
+administración registra la factura después, así que el documento llegaba ya
+bloqueado a quien tenía que corregirlo. La ventana existía justo cuando la
+persona que corrige no estaba mirando.
+
+### Reglas (decididas con el dueño)
+
+1. **Dentro de 15 días** — dueño y gerente de administración, con PIN.
+2. **Pasados 15 días** — sólo el dueño, con PIN. No se bloquea del todo: un
+   bloqueo empuja a "arreglarlo" con ajustes a mano, peor y menos rastreable.
+3. **Bloqueo duro, sin importar fecha ni rol, si hubo un conteo CERRADO de ese
+   almacén después de la entrada.** Es el peligro real —revertir movería
+   existencias ya verificadas a mano y reabre el descuadre que el conteo vino a
+   cerrar—. El mensaje nombra el almacén, la fecha del conteo y manda a
+   corregir con un ajuste de inventario.
+
+La fecha es un proxy; **el conteo es el hecho**, por eso la regla 3 gana.
+
+### Piezas
+
+- `src/lib/purchases/document-void-window.ts` (puro, 10 tests):
+  `canVoidEnteredDocument`. Motivo obligatorio siempre; conteo antes que todo;
+  sin fecha de entrada no adivina.
+- `voidSupplierDocumentAction`: en dos pasadas. La primera devuelve
+  `needsInventoryReversal` con el **detalle exacto** de qué sale y de qué
+  almacén; la segunda, con `reverseInventory` + `authorizedById`, aplica.
+  El server re-verifica al autorizante contra el rol que corresponda según la
+  ventana. El reverso son movimientos `ADJUSTMENT_OUT` nuevos con `areaId` —
+  nada se borra— y el documento queda `inventoryStatus = 'REVERSED'`.
+- El botón "Anular" dejó de esconderse para documentos ingresados.
+
+### Forward fix
+
+`registrarEntradaMercancia` ahora escribe `areaId` en el movimiento. Sin eso el
+reverso no sabe de qué almacén sacar la mercancía: los documentos ingresados
+**antes** de §171 no se pueden revertir solos y la acción lo dice, mandando al
+descargo manual. Tercera vez que aparece el mismo hallazgo (§165.2, §169): la
+columna existía y nadie la llenaba.
+
+Gates: tsc 0 · vitest 874 (10 nuevos) · build de producción OK.

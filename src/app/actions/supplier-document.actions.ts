@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { logAudit } from '@/lib/audit-log';
 import { registrarEntradaMercancia } from './entrada.actions';
 import { canVoidPayable } from '@/lib/finance/payable-void';
+import { canVoidEnteredDocument } from '@/lib/purchases/document-void-window';
 
 const READ_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER', 'AUDITOR'];
 const WRITE_ROLES = ['OWNER', 'ADMIN_MANAGER', 'OPS_MANAGER'];
@@ -544,8 +545,17 @@ export async function generatePayableFromDocumentAction(
 }
 
 export async function voidSupplierDocumentAction(
-  documentId: string, reason: string
-): Promise<{ success: boolean; error?: string }> {
+  documentId: string, reason: string,
+  options?: { authorizedById?: string; reverseInventory?: boolean }
+): Promise<{
+  success: boolean;
+  error?: string;
+  /** §171 — el documento ya entró: hay que confirmar el reverso con PIN. */
+  needsInventoryReversal?: boolean;
+  outsideWindow?: boolean;
+  daysSinceEntry?: number;
+  reversalLines?: { name: string; quantity: number; unit: string; areaName: string }[];
+}> {
   const session = await getSession();
   if (!session) return { success: false, error: 'No autorizado' };
   if (!WRITE_ROLES.includes(session.role)) return { success: false, error: 'Sin permisos' };
@@ -555,8 +565,147 @@ export async function voidSupplierDocumentAction(
     // No anulamos si ya entró a inventario (los movimientos no se revierten acá).
     const doc = await db.supplierDocument.findUnique({ where: { id: documentId } });
     if (!doc) return { success: false, error: 'Documento no encontrado' };
+    // §171 — Antes esto era un bloqueo seco. Con el flujo real de trabajo
+    // (los jefes dan entrada primero, administración registra la factura
+    // después) el documento casi siempre llegaba ya bloqueado a quien tenía
+    // que corregirlo. Ahora se puede anular revirtiendo el inventario, con
+    // reglas: ventana de 15 días, roles, y bloqueo si hubo conteo cerrado.
+    let reversal: {
+      lines: { inventoryItemId: string; name: string; quantity: number; unit: string; areaId: string; areaName: string }[];
+    } | null = null;
+
     if (doc.inventoryStatus === 'ENTERED') {
-      return { success: false, error: 'No se puede anular: ya entró al inventario. Revertí el inventario aparte.' };
+      // Movimientos de compra de este documento. Desde §171 traen `areaId`;
+      // los anteriores no, y sin almacén no hay reverso posible.
+      const movements = await prisma.inventoryMovement.findMany({
+        where: {
+          movementType: 'PURCHASE',
+          referenceNumber: doc.documentNumber,
+          inventoryItem: { tenantId },
+        },
+        select: {
+          inventoryItemId: true, quantity: true, unit: true, areaId: true,
+          inventoryItem: { select: { name: true } },
+        },
+      });
+      const withArea = movements.filter(m => m.areaId);
+      if (movements.length === 0 || withArea.length === 0) {
+        return {
+          success: false,
+          error: 'Este documento entró al inventario antes de que se registrara el almacén en cada '
+            + 'movimiento, así que no se puede revertir solo. Descárgalo a mano desde Inventario → '
+            + 'Descargo y anúlalo después.',
+        };
+      }
+
+      const areaIds = Array.from(new Set(withArea.map(m => m.areaId as string)));
+      const areas = await db.area.findMany({
+        where: { id: { in: areaIds } },
+        select: { id: true, name: true },
+      });
+      const areaNameById = new Map(areas.map(a => [a.id, a.name]));
+
+      // Regla dura: ¿hubo conteo cerrado de esos almacenes después de la entrada?
+      const enteredAt = doc.inventoryEnteredAt;
+      const closedCounts = enteredAt
+        ? await db.dailyInventory.findMany({
+            where: { areaId: { in: areaIds }, status: 'CLOSED', closedAt: { gt: enteredAt } },
+            select: { areaId: true, closedAt: true },
+            orderBy: { closedAt: 'desc' },
+          })
+        : [];
+
+      const check = canVoidEnteredDocument({
+        role: session.role,
+        enteredAt,
+        reason,
+        closedCountsAfterEntry: closedCounts.map(c => ({
+          areaName: areaNameById.get(c.areaId) ?? 'el almacén',
+          closedAt: c.closedAt as Date,
+        })),
+      });
+      if (!check.ok) return { success: false, error: check.message };
+
+      reversal = {
+        lines: withArea.map(m => ({
+          inventoryItemId: m.inventoryItemId,
+          name: m.inventoryItem.name,
+          quantity: Number(m.quantity),
+          unit: m.unit,
+          areaId: m.areaId as string,
+          areaName: areaNameById.get(m.areaId as string) ?? '—',
+        })),
+      };
+
+      // Primera pasada: se devuelve el detalle para que la pantalla lo muestre
+      // y pida el PIN. Sin confirmación explícita no se mueve un gramo.
+      if (!options?.reverseInventory) {
+        return {
+          success: false,
+          needsInventoryReversal: true,
+          outsideWindow: check.outsideWindow,
+          daysSinceEntry: check.daysSinceEntry,
+          reversalLines: reversal.lines.map(l => ({
+            name: l.name, quantity: l.quantity, unit: l.unit, areaName: l.areaName,
+          })),
+        };
+      }
+
+      // El PIN se valida en el cliente; el server re-verifica al autorizante.
+      const manager = await db.user.findFirst({
+        where: {
+          id: options.authorizedById || '__sin_autorizante__',
+          isActive: true,
+          role: { in: check.outsideWindow ? ['OWNER'] : ['OWNER', 'ADMIN_MANAGER'] },
+        },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (!manager) {
+        return {
+          success: false,
+          error: check.outsideWindow
+            ? 'Pasados 15 días, la anulación la autoriza el dueño con su PIN.'
+            : 'La anulación requiere PIN del dueño o del gerente de administración.',
+        };
+      }
+
+      const who = `${manager.firstName} ${manager.lastName}`;
+      await prisma.$transaction(async (tx) => {
+        for (const l of reversal!.lines) {
+          await tx.inventoryLocation.upsert({
+            where: { inventoryItemId_areaId: { inventoryItemId: l.inventoryItemId, areaId: l.areaId } },
+            update: { currentStock: { decrement: l.quantity } },
+            create: { inventoryItemId: l.inventoryItemId, areaId: l.areaId, currentStock: -l.quantity },
+          });
+          // Nada se borra: la salida queda explicada en el Kardex.
+          await tx.inventoryMovement.create({
+            data: {
+              inventoryItemId: l.inventoryItemId,
+              movementType: 'ADJUSTMENT_OUT',
+              quantity: -l.quantity,
+              unit: l.unit,
+              areaId: l.areaId,
+              referenceNumber: doc.documentNumber,
+              reason: `Reverso por anulación del documento ${doc.documentNumber}`,
+              notes: `Almacén: ${l.areaName} · autorizó ${who} · ${reason.trim()}`,
+              createdById: session.id,
+            },
+          });
+        }
+        await tx.supplierDocument.updateMany({
+          where: { id: documentId },
+          data: { inventoryStatus: 'REVERSED' },
+        });
+      });
+
+      await logAudit({
+        userId: session.id, userName: `${session.firstName} ${session.lastName}`,
+        userRole: session.role, action: 'VOID', entityType: 'SupplierDocument',
+        entityId: documentId,
+        description: `Revirtió el inventario del documento ${doc.documentNumber} `
+          + `(${reversal.lines.length} línea(s), autorizó ${who}${check.outsideWindow ? ', fuera de plazo' : ''}): ${reason}`,
+        module: 'CONFIG',
+      });
     }
 
     // §160 — La deuda que generó este documento se anula EN EL MISMO ACTO.
