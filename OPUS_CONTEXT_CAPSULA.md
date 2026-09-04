@@ -14909,3 +14909,22 @@ se alineó sólo lo tocado. **No pasar prettier sobre archivos que no siguen su
 formato.**
 
 Gates: tsc 0 · vitest 864 (15 nuevos) · build de producción OK.
+
+### §169.1 Reverso retroactivo de las producciones canceladas antes de §169
+
+`scripts/reverso-producciones-canceladas.ts` — simulación por defecto, escribe
+sólo con `--apply`.
+
+Cómo detecta lo pendiente **sin depender de una lista de números de orden**:
+suma todos los movimientos de producción de cada orden cancelada. Una orden ya
+revertida netea en cero; si el neto de un insumo es distinto de cero, ese resto
+es exactamente lo que falta. Eso lo hace **idempotente** — correrlo dos veces no
+descuenta dos veces — y deja fuera solas a las órdenes canceladas después de
+§169, que ya se revirtieron en el acto.
+
+`--area "<nombre>"` sólo hace falta para las órdenes viejas: sus movimientos no
+guardaban `areaId`. Sin ese dato **no adivina**: lista las órdenes afectadas y
+se detiene.
+
+Imprime el efecto total por insumo (antes → después) y marca los que quedarían
+en negativo antes de pedir el `--apply`.
